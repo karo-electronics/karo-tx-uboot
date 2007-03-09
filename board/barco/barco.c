@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1  2007-03-09 09:43:18  lothar
- * Initial revision
+ * Revision 1.1.1.1  2007-03-09 09:43:18  lothar
+ * imported U-Boot 1.1.6
  *
  * Revision 1.4  2005/03/02 16:40:20  mleeman
  * remove empty labels (3.4 complains)

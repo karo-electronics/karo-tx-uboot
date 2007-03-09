@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:59  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:59  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.35  2003/01/31 14:12:41  mkunz
  *	single port adapter runs now with two identical MAC addresses

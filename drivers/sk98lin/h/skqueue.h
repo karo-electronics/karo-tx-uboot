@@ -27,8 +27,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:59  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:59  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.14  2002/03/15 10:52:13  mkunz
  *	Added event classes for link aggregation

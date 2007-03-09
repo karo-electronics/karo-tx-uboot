@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.91  2003/02/05 15:09:34  rschmidt
  *	Removed setting of 'Collision Test'-bit in SkGmInitPhyMarv().

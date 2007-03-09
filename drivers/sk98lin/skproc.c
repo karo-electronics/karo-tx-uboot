@@ -28,8 +28,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.4  2003/02/25 14:16:37  mlindner
  *	Fix: Copyright statement

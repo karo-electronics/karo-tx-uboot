@@ -25,8 +25,8 @@
  *
  * History:
  * $Log$
- * Revision 1.1  2007-03-09 09:43:58  lothar
- * Initial revision
+ * Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ * imported U-Boot 1.1.6
  *
  * Revision 1.49  2003/01/28 09:43:49  rschmidt
  * Added defines for PCI-Spec. 2.3 IRQ

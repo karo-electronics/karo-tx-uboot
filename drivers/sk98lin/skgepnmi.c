@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.102  2002/12/16 14:03:24  tschilli
  *	VCT code in Vct() changed.

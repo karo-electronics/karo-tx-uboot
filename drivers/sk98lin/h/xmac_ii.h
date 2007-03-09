@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:59  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:59  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.46  2003/01/28 09:47:45  rschmidt
  *	Added defines for copper MDI/MDIX configuration

@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:59  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:59  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.15  2003/01/13 10:39:38  rschmidt
  *	Replaced define for PCI device Id for YUKON with GENESIS

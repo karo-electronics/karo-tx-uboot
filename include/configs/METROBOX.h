@@ -29,8 +29,8 @@
  *
  *
  * $Log$
- * Revision 1.1  2007-03-09 09:44:05  lothar
- * Initial revision
+ * Revision 1.1.1.1  2007-03-09 09:44:05  lothar
+ * imported U-Boot 1.1.6
  *
  * Revision 1.21  2005/06/03 15:05:25  tsawyer
  * MB rev 2.0.3 KA rev 0.0.7.  Add CONFIG_VERSION_VARIABLE, Add fakeled to MB

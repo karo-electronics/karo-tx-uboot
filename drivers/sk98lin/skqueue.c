@@ -27,8 +27,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.18  2002/05/07 14:11:11  rwahl
  *	Fixed Watcom Precompiler error.

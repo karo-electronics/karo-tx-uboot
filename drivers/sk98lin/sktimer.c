@@ -27,8 +27,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.12  1999/11/22 13:38:51  cgoos
  *	Changed license header to GPL.

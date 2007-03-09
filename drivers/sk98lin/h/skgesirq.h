@@ -25,8 +25,8 @@
  *
  * History:
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:59  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:59  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.26  2002/10/14 09:52:36  rschmidt
  *	Added SKERR_SIRQ_E023 and SKERR_SIRQ_E023 for GPHY (Yukon)

@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1  2007-03-09 09:44:07  lothar
- * Initial revision
+ * Revision 1.1.1.1  2007-03-09 09:44:07  lothar
+ * imported U-Boot 1.1.6
  *
  * Revision 1.2  2005/02/21 12:48:58  mleeman
  * update of copyright years (feedback wd)

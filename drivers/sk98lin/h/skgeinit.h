@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.1.1  2007-03-09 09:43:58  lothar
+ *	imported U-Boot 1.1.6
  *
  *	Revision 1.75  2003/02/05 13:36:39  rschmidt
  *	Added define SK_FACT_78	for YUKON's Host Clock of 78.12 MHz
