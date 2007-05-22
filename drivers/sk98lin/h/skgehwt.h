@@ -27,8 +27,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:40  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.5  1999/11/22 13:54:24  cgoos
  *	Changed license header to GPL.

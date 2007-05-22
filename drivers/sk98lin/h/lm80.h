@@ -26,8 +26,8 @@
  *
  * History:
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:39  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.4  2002/04/25 11:04:10  rschmidt
  *	Editorial changes

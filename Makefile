@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 #
-
+CROSS_COMPILE = arm-linux-
 VERSION = 1
 PATCHLEVEL = 1
 SUBLEVEL = 6
@@ -248,6 +248,7 @@ $(obj)u-boot.srec:	$(obj)u-boot
 
 $(obj)u-boot.bin:	$(obj)u-boot
 		$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
+		$(OBJCOPY) ${OBJCFLAGS} -O elf32-littlearm $< $(obj)u-boot.elf
 
 $(obj)u-boot.img:	$(obj)u-boot.bin
 		./tools/mkimage -A $(ARCH) -T firmware -C none \
@@ -2030,6 +2031,10 @@ xsengine_config :	unconfig
 
 zylonite_config :
 	@$(MKCONFIG) $(@:_config=) arm pxa zylonite
+
+triton320_config :
+	@$(MKCONFIG) $(@:_config=) arm pxa triton320
+
 
 #########################################################################
 ## ARM1136 Systems

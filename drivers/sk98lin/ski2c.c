@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:38  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.57  2003/01/28 09:17:38  rschmidt
  *	Fixed handling for sensors on YUKON Fiber.

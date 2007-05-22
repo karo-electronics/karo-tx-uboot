@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:40  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.34  2002/12/16 09:05:18  tschilli
  *	Code for VCT handling added.

@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:37  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.48  2003/02/12 17:09:37  tschilli
  *	Fix in SkAddrOverride() to set both (physical and logical) MAC addresses

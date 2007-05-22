@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:58  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:39  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.26  2002/11/15 07:24:42  tschilli
  *	SK_ADDR_EQUAL macro fixed.

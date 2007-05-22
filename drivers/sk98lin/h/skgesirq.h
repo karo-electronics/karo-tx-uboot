@@ -25,8 +25,8 @@
  *
  * History:
  *	$Log$
- *	Revision 1.1  2007-03-09 09:43:59  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:01:40  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.26  2002/10/14 09:52:36  rschmidt
  *	Added SKERR_SIRQ_E023 and SKERR_SIRQ_E023 for GPHY (Yukon)

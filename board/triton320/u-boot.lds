@@ -21,34 +21,36 @@
  * MA 02111-1307 USA
  */
 
-#include <common.h>
-#include <exports.h>
-
-int hello_world (int argc, char *argv[])
+OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
+OUTPUT_ARCH(arm)
+ENTRY(_start)
+SECTIONS
 {
-	int i;
+	. = 0x00000000;
 
-	/* Print the ABI version */
-	app_startup(argv);
-	printf ("Example expects ABI version %d\n", XF_VERSION);
-	printf ("Actual U-Boot ABI version %d\n", (int)get_version());
-
-	printf ("Hello World here is KaRo\n");
-
-	printf ("argc = %d\n", argc);
-
-	for (i=0; i<=argc; ++i) {
-		printf ("argv[%d] = \"%s\"\n",
-			i,
-			argv[i] ? argv[i] : "<NULL>");
+	. = ALIGN(4);
+	.text      :
+	{
+	  cpu/pxa/start.o	(.text)
+	  *(.text)
 	}
 
-	printf ("Hit any key to exit ... ");
-	while (!tstc())
-		;
-	/* consume input */
-	(void) getc();
+	. = ALIGN(4);
+	.rodata : { *(.rodata) }
 
-	printf ("\n\n");
-	return (0);
+	. = ALIGN(4);
+	.data : { *(.data) }
+
+	. = ALIGN(4);
+	.got : { *(.got) }
+
+	. = .;
+	__u_boot_cmd_start = .;
+	.u_boot_cmd : { *(.u_boot_cmd) }
+	__u_boot_cmd_end = .;
+
+	. = ALIGN(4);
+	__bss_start = .;
+	.bss : { *(.bss) }
+	_end = .;
 }

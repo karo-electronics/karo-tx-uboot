@@ -29,8 +29,8 @@
  *
  *
  * $Log$
- * Revision 1.1  2007-03-09 09:44:05  lothar
- * Initial revision
+ * Revision 1.1.3.1  2007-05-22 17:02:18  lothar
+ * imported KARO specific modifications
  *
  * Revision 1.21  2005/06/03 15:05:25  tsawyer
  * MB rev 2.0.3 KA rev 0.0.7.  Add CONFIG_VERSION_VARIABLE, Add fakeled to MB

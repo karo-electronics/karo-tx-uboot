@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1  2007-03-09 09:43:18  lothar
- * Initial revision
+ * Revision 1.1.3.1  2007-05-22 16:58:59  lothar
+ * imported KARO specific modifications
  *
  * Revision 1.2  2005/02/21 12:48:58  mleeman
  * update of copyright years (feedback wd)

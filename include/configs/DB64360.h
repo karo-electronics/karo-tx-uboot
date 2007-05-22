@@ -38,8 +38,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2007-03-09 09:44:04  lothar
- *	Initial revision
+ *	Revision 1.1.3.1  2007-05-22 17:02:15  lothar
+ *	imported KARO specific modifications
  *
  *	Revision 1.3  2003/04/26 04:58:13  brad
  *	Cosmetic changes and compiler warning cleanups

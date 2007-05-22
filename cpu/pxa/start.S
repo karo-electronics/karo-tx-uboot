@@ -245,8 +245,13 @@ cpu_init_crit:
 	/* set clock speed */
 #ifdef CONFIG_CPU_MONAHANS
 	ldr	r0, =ACCR
+	/* KaRo: do not clear other clock fields, otherwise boards still running in SDRAM will crash here */
+	ldr	r2, =~(ACCR_XN_MASK | ACCR_XL_MASK)
+	ldr	r1, [r0]
+	and	r2, r2, r1
 	ldr	r1, =(((CFG_MONAHANS_TURBO_RUN_MODE_RATIO<<8) & ACCR_XN_MASK) | (CFG_MONAHANS_RUN_MODE_OSC_RATIO & ACCR_XL_MASK))
-	str	r1, [r0]
+	orr	r2, r2, r1
+	str	r2, [r0]
 #else /* ! CONFIG_CPU_MONAHANS */
 #ifdef CFG_CPUSPEED
 	ldr	r0, CC_BASE

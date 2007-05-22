@@ -220,7 +220,7 @@ LIST_pxa="	\
 	adsvix		cerf250		cradle		csb226		\
 	delta		innokom		lubbock		pleb2		\
 	pxa255_idp	wepep250	xaeniax		xm250		\
-	xsengine	zylonite					\
+	xsengine	zylonite	triton320				\
 "
 
 LIST_ixp="ixdp425	ixdpg425	pdnb3"

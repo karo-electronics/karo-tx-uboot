@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1  2007-03-09 09:43:18  lothar
- * Initial revision
+ * Revision 1.1.3.1  2007-05-22 16:58:58  lothar
+ * imported KARO specific modifications
  *
  * Revision 1.4  2005/03/02 16:40:20  mleeman
  * remove empty labels (3.4 complains)

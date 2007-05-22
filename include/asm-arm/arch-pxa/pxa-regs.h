@@ -2036,6 +2036,36 @@ typedef void		(*ExcpHndlr) (void) ;
 #define PAD_SCLK        __REG_2(0x4810012C)
 #define TAI		__REG_2(0x48100F00) /* TAI Tavor Address Isolation Register */
 
+/* some CSADRCFG bits	*/
+#define	CSADRCFG_INFTYPE_SyncDevice	(0xe)
+#define	CSADRCFG_INFTYPE_SyncFlash	(0xd)
+#define CSADRCFG_INFTYPE_VLIO		(0xb)
+#define CSADRCFG_INFTYPE_SRAM		(0x9)
+
+#define CSADRCFG_INFTYPE_BASE0		(0<<4)
+#define CSADRCFG_INFTYPE_BASE1		(1<<4)
+#define CSADRCFG_INFTYPE_BASE2		(2<<4)
+#define CSADRCFG_INFTYPE_BASE3		(3<<4)
+
+#define CSADRCFG_Split16		(8<<8)
+#define CSADRCFG_Split17		(9<<8)
+
+#define CSADRCFG_AdrCfg_FullLatch	(0<<14)
+#define CSADRCFG_AdrCfg_LowOrder	(3<<14)
+
+#define CSADRCFG_ALW1			(1<<17)
+#define CSADRCFG_ALW2			(2<<17)
+#define CSADRCFG_ALW3			(3<<17)
+#define CSADRCFG_ALW4			(4<<17)
+#define CSADRCFG_ALW5			(5<<17)
+#define CSADRCFG_ALW6			(6<<17)
+#define CSADRCFG_ALW7		(7<<17)
+
+#define CSADRCFG_ALT_0S0H	(0<<20)
+#define CSADRCFG_ALT_0S1H	(1<<20)
+#define CSADRCFG_ALT_1S0H	(2<<20)
+#define CSADRCFG_ALT_1S1H	(3<<20)
+
 /* Some frequently used bits */
 #define MDCNFG_DMAP	0x80000000	/* SDRAM 1GB Memory Map Enable */
 #define MDCNFG_DMCEN	0x40000000	/* Enable Dynamic Memory Controller */
