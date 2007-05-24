@@ -25,7 +25,7 @@
 #include <watchdog.h>
 #include <zlib.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2)
+#if (CFG_FS_CRAMFS)
 
 static z_stream stream;
 

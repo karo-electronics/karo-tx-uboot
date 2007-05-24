@@ -261,6 +261,6 @@
 /* mtdparts command line support */
 #define CONFIG_JFFS2_CMDLINE
 #define MTDIDS_DEFAULT		"nand0=triton320-nand"
-#define MTDPARTS_DEFAULT	"mtdparts=triton320-nand:128k(sbootl),256k(u-boot),128k(env),2m(linux_kernel),83456k(userfs),32m(wince);" 
+#define MTDPARTS_DEFAULT	"mtdparts=triton320-nand:128k(sbootl),256k(u-boot),128k(env),2m(linux_kernel),12m(rootfs),83456k(userfs),32m(wince);" 
 
 #endif	/* __CONFIG_H */

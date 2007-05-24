@@ -30,7 +30,7 @@ LOAD_ADDR = 0x40000
 endif
 
 ifeq ($(ARCH),arm)
-LOAD_ADDR = 0xc100000
+LOAD_ADDR = 0x100000
 endif
 
 ifeq ($(ARCH),mips)

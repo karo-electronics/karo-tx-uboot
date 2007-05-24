@@ -33,7 +33,7 @@ int hello_world (int argc, char *argv[])
 	printf ("Example expects ABI version %d\n", XF_VERSION);
 	printf ("Actual U-Boot ABI version %d\n", (int)get_version());
 
-	printf ("Hello World\n");
+	printf ("Hello World here is KaRo\n");
 
 	printf ("argc = %d\n", argc);
 
