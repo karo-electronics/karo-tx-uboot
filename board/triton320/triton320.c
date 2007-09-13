@@ -1,10 +1,8 @@
 /*
- * (C) Copyright 2002
- * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
+ * (C) Copyright 2007
+ * Ka-Ro electronics GmbH <http://www.karo-electronics.de>
  *
- * (C) Copyright 2002
- * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
- * Marius Groeger <mgroeger@sysgo.de>
+ * based on: board/zylonite/zylonite.c
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -26,6 +24,7 @@
  */
 
 #include <common.h>
+#include <asm/hardware.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -33,37 +32,54 @@ DECLARE_GLOBAL_DATA_PTR;
  * Miscelaneous platform dependent initialisations
  */
 
-int board_init (void)
+int board_init(void)
 {
 	/* memory and cpu-speed are setup before relocation */
 	/* so we do _nothing_ here */
 
-	/* arch number of Lubbock-Board */
+	/* arch number of KARO-Board */
 	gd->bd->bi_arch_number = MACH_TYPE_KARO;
 
 	/* adress of boot parameters */
 	
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
-
 	return 0;
 }
 
 int board_late_init(void)
 {
+	unsigned long arsr = ARSR;
+	char *dlm = " ";
+
 	setenv("stdout", "serial");
 	setenv("stderr", "serial");
+
+	printf("Last Reset caused by:");
+	if (arsr & ARSR_GPR) {
+		printf("%sgpio reset", dlm);
+		dlm=" | ";
+	}
+	if (arsr & ARSR_LPMR) {
+		printf("%slow power mode wakeup", dlm);
+		dlm=" | ";
+	}
+	if (arsr & ARSR_WDR) {
+		printf("%swatchdog reset", dlm);
+		dlm=" | ";
+	}
+	if (arsr & ARSR_HWR) {
+		printf("%shardware reset", dlm);
+		dlm=" | ";
+	}
+	printf("\n");
 	return 0;
 }
 
-
-int dram_init (void)
+int dram_init(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
 
 	return 0;
 }
-
-
-
