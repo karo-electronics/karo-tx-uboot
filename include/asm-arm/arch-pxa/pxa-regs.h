@@ -1520,6 +1520,11 @@ typedef void		(*ExcpHndlr) (void) ;
 #define PWSR		__REG(0x40F50014)  /* Power Manager Wake-up Status Register */
 #define PECR		__REG(0x40F50018)  /* Power Manager EXT_WAKEUP[1:0] Control Register */
 #define DCDCSR		__REG(0x40F50080)  /* DC-DC Controller Status Register */
+
+/* see Specification Update Rev. 0.73 page 86f */
+#define AVCR		__REG(0x40F50094)  /* VCC_APPS Voltage Control Register */
+#define SVCR		__REG(0x40F50098)  /* VCC_SRAM Voltage Control Register */
+
 #define PVCR		__REG(0x40F50100)  /* Power Manager Voltage Change Control Register */
 #define    PCMD(x) __REG(0x40F50110 + x*4)
 #define    PCMD0   __REG(0x40F50110 + 0 * 4)
@@ -1560,11 +1565,16 @@ typedef void		(*ExcpHndlr) (void) ;
 #define    PCMD_LC     (1<<10)
 #define    PCMD_SQC    (3<<8)  /* only 00 and 01 are valid */
 
-#define PVCR_FVC                   (0x1 << 28)
+#define PVCR_FVE	(1 << 31)
+#define PVCR_PVE	(1 << 30)
+#define PVCR_TVE	(1 << 29)
 #define PVCR_VCSA                  (0x1<<14)
-#define PVCR_CommandDelay          (0xf80)
-#define PVCR_ReadPointer           (0x01f00000)
 #define PVCR_SlaveAddress          (0x7f)
+
+#define ARSR_GPR	(1 << 3)	/* GPIO Reset */
+#define ARSR_LPMR	(1 << 2)	/* Low Power Mode Exit */
+#define ARSR_WDR	(1 << 1)	/* Watchdog Reset */
+#define ARSR_HWR	(1 << 0)	/* Hardware Reset */
 
 #else /* ifdef CONFIG_CPU_MONAHANS */
 
@@ -1738,6 +1748,7 @@ typedef void		(*ExcpHndlr) (void) ;
 #define CKENA_3_CAMERA	(1 << 3)	/* Camera Interface Clock Enable */
 #define CKENA_2_USBHOST	(1 << 2)	/* USB Host Unit Clock Enable */
 #define CKENA_1_LCD	(1 << 1)	/* LCD Unit Clock Enable */
+#define CKENA_RSRVD	0x84010021	/* These bits must always be set! */
 
 #define CKENB_8_1WIRE	((1 << 8) + 32) /* One Wire Interface Unit Clock Enable */
 #define CKENB_7_GPIO	((1 << 7) + 32)	/* GPIO Clock Enable */
@@ -1745,6 +1756,7 @@ typedef void		(*ExcpHndlr) (void) ;
 #define CKENB_4_I2C	((1 << 4) + 32)	/* I2C Unit Clock Enable */
 #define CKENB_1_PWM1	((1 << 1) + 32)	/* PWM2 & PWM3 Clock Enable */
 #define CKENB_0_PWM0	((1 << 0) + 32)	/* PWM0 & PWM1 Clock Enable */
+#define CKENB_RSRVD	0xfffcfc2c	/* These bits must always be set! */
 
 #else /* if defined CONFIG_CPU_MONAHANS */
 
