@@ -170,11 +170,6 @@ struct list_head devices;
 static struct mtd_device *current_dev = NULL;
 static u8 current_partnum = 0;
 
-extern int cramfs_check (struct part_info *info);
-extern int cramfs_load (char *loadoffset, struct part_info *info, char *filename);
-extern int cramfs_ls (struct part_info *info, char *filename);
-extern int cramfs_info (struct part_info *info);
-
 static struct part_info* jffs2_part_info(struct mtd_device *dev, unsigned int part_num);
 
 /* command line only routines */
@@ -1875,20 +1870,15 @@ int do_jffs2_fsload(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if ((part = jffs2_part_info(current_dev, current_partnum))){
 
 		/* check partition type for cramfs */
-#ifdef CFG_FS_CRAMFS
 		fsname = (cramfs_check(part) ? "CRAMFS" : "JFFS2");
 		printf("### %s loading '%s' to 0x%lx\n", fsname, filename, offset);
+
 		if (cramfs_check(part)) {
 			size = cramfs_load ((char *) offset, part, filename);
 		} else {
 			/* if this is not cramfs assume jffs2 */
 			size = jffs2_1pass_load((char *)offset, part, filename);
 		}
-#else
-		fsname = "JFFS2";
-		printf("### %s loading '%s' to 0x%lx\n", fsname, filename, offset);
-		size = jffs2_1pass_load((char *)offset, part, filename);		
-#endif
 
 		if (size > 0) {
 			char buf[10];
@@ -1931,16 +1921,12 @@ int do_jffs2_ls(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if ((part = jffs2_part_info(current_dev, current_partnum))){
 
 		/* check partition type for cramfs */
-#ifdef CFG_FS_CRAMFS 
 		if (cramfs_check(part)) {
 			ret = cramfs_ls (part, filename);
 		} else {
 			/* if this is not cramfs assume jffs2 */
 			ret = jffs2_1pass_ls(part, filename);
 		}
-#else
-		ret = jffs2_1pass_ls(part, filename);	
-#endif	
 
 		return ret ? 0 : 1;
 	}
@@ -1970,7 +1956,6 @@ int do_jffs2_fsinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if ((part = jffs2_part_info(current_dev, current_partnum))){
 
 		/* check partition type for cramfs */
-#ifdef CFG_FS_CRAMFS
 		fsname = (cramfs_check(part) ? "CRAMFS" : "JFFS2");
 		printf("### filesystem type is %s\n", fsname);
 
@@ -1980,11 +1965,7 @@ int do_jffs2_fsinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			/* if this is not cramfs assume jffs2 */
 			ret = jffs2_1pass_info(part);
 		}
-#else
-		fsname = "JFFS2";
-		printf("### filesystem type is %s\n", fsname);
-		ret = jffs2_1pass_info(part);
-#endif
+
 		return ret ? 0 : 1;
 	}
 	return 1;
