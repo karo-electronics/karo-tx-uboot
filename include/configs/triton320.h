@@ -1,10 +1,8 @@
 /*
- * (C) Copyright 2002
- * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
+ * (C) Copyright 2007
+ * Ka-Ro electronics GmbH <http://www.karo-electronics.de>
  *
- * (C) Copyright 2002
- * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
- * Marius Groeger <mgroeger@sysgo.de>
+ * based on: board/zylonite/zylonite.c
  *
  * Configuation settings for the TRITON320 board.
  *
@@ -34,15 +32,15 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_CPU_MONAHANS	1	/* Intel Monahan CPU    */
-#define CONFIG_TRITON320	1	/* Zylonite board       */
+#define CONFIG_CPU_MONAHANS		1	/* Intel/Marvell Monahans CPU    */
+#define CONFIG_TRITON320		1	/* KARO Triton-320 board */
 
-/* #define CONFIG_LCD		1 */
+/* #define CONFIG_LCD			1 */
 #ifdef CONFIG_LCD
 #define CONFIG_SHARP_LM8V31
 #endif
-/* #define CONFIG_MMC		1 */
-#define BOARD_LATE_INIT		1
+/* #define CONFIG_MMC			1 */
+#define BOARD_LATE_INIT			1
 
 #define CONFIG_SKIP_RELOCATE_UBOOT	1
 #undef CONFIG_SKIP_LOWLEVEL_INIT  
@@ -51,21 +49,17 @@
 /*
  * Size of malloc() pool
  */
-#define CFG_MALLOC_LEN	    (CFG_ENV_SIZE + 256*1024)
-#define CFG_GBL_DATA_SIZE	512	/* size in bytes reserved for initial data */
+#define CFG_MALLOC_LEN			(CFG_ENV_SIZE + 256*1024)
+#define CFG_GBL_DATA_SIZE		512	/* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
  */
-
-
 #define CONFIG_DRIVER_DM9000		1
 #define CONFIG_DM9000_BASE		0x10000300
 #define DM9000_IO			CONFIG_DM9000_BASE
 #define DM9000_DATA			(CONFIG_DM9000_BASE+0x8000)
 #define CONFIG_DM9000_USE_16BIT
-
-
 
 /*
  * select serial console configuration
@@ -76,24 +70,6 @@
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_BAUDRATE		38400
-
-#if 0
-# define CONFIG_COMMANDS	CFG_CMD_AUTOSCRIPT 	\
-		|	CFG_CMD_BDI		\
-		|	CFG_CMD_BOOTD		\
-		|	CFG_CMD_CONSOLE		\
-		|	CFG_CMD_ECHO		\
-		|	CFG_CMD_ENV		\
-		|	CFG_CMD_IMI		\
-		|	CFG_CMD_ITEST		\
-		|	CFG_CMD_LOADB		\
-		|	CFG_CMD_LOADS		\
-		|	CFG_CMD_MEMORY		\
-		|	CFG_CMD_NAND		\
-		|	CFG_CMD_REGINFO		\
-		|	CFG_CMD_RUN	\
-		&	~(CFG_CMD_JFFS2 | CFG_CMD_FLASH | CFG_CMD_IMLS)
-#endif
 
 #define CONFIG_COMMANDS	((CONFIG_CMD_DFL|	\
 			 CFG_CMD_NAND	|	\
@@ -106,14 +82,16 @@
 /* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
 #include <cmd_confdefs.h>
 
-#define CONFIG_BOOTDELAY			3
-#define CONFIG_BOOTCOMMAND			"bootm 80000"
-#define CONFIG_BOOTARGS				"root=/dev/mtdblock1 rootfstype=jffs2 console=ttyS0,38400"
+#define CONFIG_BOOTDELAY		3
+#define CONFIG_BOOTCOMMAND		"run bootce"
+#define CONFIG_BOOTARGS			"init=/linuxrc root=/dev/mtdblock1 rootfstype=jffs2 console=ttyS0,38400 ro panic=5"
 #define CONFIG_BOOT_RETRY_TIME		-1
 #define CONFIG_BOOT_RETRY_MIN		60
 #define CONFIG_RESET_TO_RETRY
 #define CONFIG_AUTOBOOT_PROMPT		"autoboot in %d seconds\n"
-#define CONFIG_AUTOBOOT_DELAY_STR 	" "
+
+#define CONFIG_AUTOBOOT_KEYED		/* enable autoboot abort by password */
+#define CONFIG_AUTOBOOT_DELAY_STR 	"\003"
 #define CONFIG_AUTOBOOT_STOP_STR	"system"
 
 #define CONFIG_ETHADDR			ff:ff:ff:ff:ff:ff
@@ -157,9 +135,15 @@
 #define CFG_HZ			3250000		/* incrementer freq: 3.25 MHz */
 
 /* Monahans Core Frequency */
+#if 1
+/* max. speed values */
 #define CFG_MONAHANS_RUN_MODE_OSC_RATIO		31 /* valid values: 8, 16, 24, 31 */
 #define CFG_MONAHANS_TURBO_RUN_MODE_RATIO	2  /* valid values: 1, 2 */
-
+#else
+/* default power up values */
+#define CFG_MONAHANS_RUN_MODE_OSC_RATIO		8
+#define CFG_MONAHANS_TURBO_RUN_MODE_RATIO	1
+#endif
 						/* valid baudrates */
 #define CFG_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
@@ -186,7 +170,6 @@
 #define CFG_DRAM_BASE		PHYS_SDRAM_1
 #define CFG_DRAM_SIZE		PHYS_SDRAM_1_SIZE
 
-
 #define CFG_LOAD_ADDR		(PHYS_SDRAM_1 + 0x100000) /* default load address */
 
 #define CFG_SKIP_DRAM_SCRUB
@@ -195,7 +178,6 @@
  * NAND Flash
  */
 /* Use the new NAND code. (BOARDLIBS = drivers/nand/libnand.a required) */
-#define CONFIG_NEW_NAND_CODE
 #define CFG_NAND0_BASE		0x0
 #undef CFG_NAND1_BASE
 
@@ -210,28 +192,31 @@
 #define CFG_NAND_SENDCMD_RETRY	3
 #undef NAND_ALLOW_ERASE_ALL	/* Allow erasing bad blocks - don't use */
 
+#if 0
+// NOT USED! timing is set up by system boot loader
 /* NAND Timing Parameters (in ns) */
 #define NAND_TIMING_tCH		10
-#define NAND_TIMING_tCS		0
-#define NAND_TIMING_tWH		20
-#define NAND_TIMING_tWP		40
+#define NAND_TIMING_tCS		10
+#define NAND_TIMING_tWH		15
+#define NAND_TIMING_tWP		25
 
-#define NAND_TIMING_tRH		20
-#define NAND_TIMING_tRP		40
+#define NAND_TIMING_tRH		15
+#define NAND_TIMING_tRP		25
 
-#define NAND_TIMING_tR		11123
-#define NAND_TIMING_tWHR	100
+#define NAND_TIMING_tR		25000
+#define NAND_TIMING_tWHR	60
 #define NAND_TIMING_tAR		10
+#endif
 
 /* NAND debugging */
 #if 0
-#define  	CFG_DFC_DEBUG1  	/* useful */
-#define	 	CFG_DFC_DEBUG2  	/* noisy */
-#define  	CFG_DFC_DEBUG3   	/* extremly noisy  */
+#define	CFG_DFC_DEBUG1  	/* useful */
+#define	CFG_DFC_DEBUG2  	/* noisy */
+#define	CFG_DFC_DEBUG3   	/* extremly noisy  */
 #else
-#undef  	CFG_DFC_DEBUG1  	/* useful */
-#undef	 	CFG_DFC_DEBUG2  	/* noisy */
-#undef  	CFG_DFC_DEBUG3   	/* extremly noisy  */
+#undef  CFG_DFC_DEBUG1  	/* useful */
+#undef	CFG_DFC_DEBUG2  	/* noisy */
+#undef	CFG_DFC_DEBUG3   	/* extremly noisy  */
 #endif
 
 #define CONFIG_MTD_DEBUG	0
@@ -257,10 +242,9 @@
 #define CONFIG_JFFS2_NAND_OFF 0x80000			/* start of jffs2 partition */
 #define CONFIG_JFFS2_NAND_SIZE 64*1024*1024		/* size of jffs2 partition */
 
-
 /* mtdparts command line support */
 #define CONFIG_JFFS2_CMDLINE
 #define MTDIDS_DEFAULT		"nand0=triton320-nand"
-#define MTDPARTS_DEFAULT	"mtdparts=triton320-nand:128k(sbootl),256k(u-boot),128k(env),2m(linux_kernel),83456k(userfs),32m(wince);" 
+#define MTDPARTS_DEFAULT	"mtdparts=triton320-nand:128k(sbootl),256k(u-boot),128k(env),2m(linux_kernel),12m(rootfs),83456k(userfs),32m(wince);" 
 
 #endif	/* __CONFIG_H */
