@@ -220,7 +220,7 @@ LIST_pxa="	\
 	adsvix		cerf250		cradle		csb226		\
 	delta		innokom		lubbock		pleb2		\
 	pxa255_idp	wepep250	xaeniax		xm250		\
-	xsengine	zylonite	triton320				\
+	xsengine	zylonite	triton320			\
 "
 
 LIST_ixp="ixdp425	ixdpg425	pdnb3"
@@ -319,10 +319,10 @@ build_target() {
 	target=$1
 
 	${MAKE} distclean >/dev/null
-	${MAKE} ${target}_config
+	${MAKE} ${target}_config || exit
 
 	${MAKE} ${JOBS} all 2>&1 >${LOG_DIR}/$target.MAKELOG \
-				| tee ${LOG_DIR}/$target.ERR
+				| tee ${LOG_DIR}/$target.ERR || exit
 
 	${CROSS_COMPILE:-ppc_8xx-}size ${BUILD_DIR}/u-boot \
 				| tee -a ${LOG_DIR}/$target.MAKELOG

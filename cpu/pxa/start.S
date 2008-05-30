@@ -225,7 +225,7 @@ cpu_init_crit:
 	/* Step 1 - Enable CP6 permission */
 	mrc	p15, 0, r1, c15, c1, 0	@ read CPAR
 	orr	r1, r1, #0x40
-		mcr	p15, 0, r1, c15, c1, 0
+	mcr	p15, 0, r1, c15, c1, 0
 	CPWAIT	r1
 
 	/* Step 2 - Mask ICMR & ICMR2 */
@@ -244,26 +244,29 @@ cpu_init_crit:
 
 	/* set clock speed */
 #ifdef CONFIG_CPU_MONAHANS
+	/* Enable voltage change with frequency/power change */
+	ldr	r0, =PVCR
+	ldr	r1, [r0]
+	orr	r1, #(PVCR_FVE|PVCR_PVE)
+	str	r1, [r0]
+
 	ldr	r0, =ACCR
 	/* KaRo: do not clear other clock fields, otherwise boards still running in SDRAM will crash here */
 	ldr	r2, =~(ACCR_XN_MASK | ACCR_XL_MASK)
 	ldr	r1, [r0]
 	and	r2, r2, r1
-	ldr	r1, =(((CFG_MONAHANS_TURBO_RUN_MODE_RATIO<<8) & ACCR_XN_MASK) | (CFG_MONAHANS_RUN_MODE_OSC_RATIO & ACCR_XL_MASK))
+	ldr	r1, =(((CFG_MONAHANS_TURBO_RUN_MODE_RATIO<<8) & ACCR_XN_MASK) | \
+		      (CFG_MONAHANS_RUN_MODE_OSC_RATIO & ACCR_XL_MASK))
 	orr	r2, r2, r1
 	str	r2, [r0]
+	mov	r0, #3
 #else /* ! CONFIG_CPU_MONAHANS */
-#ifdef CFG_CPUSPEED
 	ldr	r0, CC_BASE
 	ldr	r1, cpuspeed
 	str	r1, [r0, #CCCR]
 	mov	r0, #2
-	mcr	p14, 0, r0, c6, c0, 0
-
-setspeed_done:
-
-#endif /* CFG_CPUSPEED */
 #endif /* CONFIG_CPU_MONAHANS */
+	mcr	p14, 0, r0, c6, c0, 0
 
 	/*
 	 * before relocating, we have to setup RAM timing

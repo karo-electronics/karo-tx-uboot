@@ -119,4 +119,16 @@ int cramfs_uncompress_block(void *dst, void *src, int srclen);
 int cramfs_uncompress_init(void);
 int cramfs_uncompress_exit(void);
 
+#if (CFG_FS_CRAMFS)
+extern int cramfs_check (struct part_info *info);
+extern int cramfs_load (char *loadoffset, struct part_info *info, char *filename);
+extern int cramfs_ls (struct part_info *info, char *filename);
+extern int cramfs_info (struct part_info *info);
+#else
+#define cramfs_check(i)		(0)
+#define cramfs_load(l,i,f)	(0)
+#define cramfs_ls(i,f)		(0)
+#define cramfs_info(i)		(0)
+#endif
+
 #endif	/* __CRAMFS_H */

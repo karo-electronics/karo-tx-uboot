@@ -160,7 +160,19 @@ static __inline__ int abortboot(int bootdelay)
 	/* In order to keep up with incoming data, check timeout only
 	 * when catch up.
 	 */
-	while (!abort && get_ticks() <= etime) {
+	while (!abort && ((get_ticks() <= etime) || tstc())) {
+		if (tstc()) {
+			if (presskey_len < presskey_max) {
+				presskey [presskey_len ++] = getc();
+			}
+			else {
+				for (i = 0; i < presskey_max - 1; i ++)
+					presskey [i] = presskey [i + 1];
+
+				presskey [i] = getc();
+			}
+		}
+
 		for (i = 0; i < sizeof(delaykey) / sizeof(delaykey[0]); i ++) {
 			if (delaykey[i].len > 0 &&
 			    presskey_len >= delaykey[i].len &&
@@ -178,18 +190,6 @@ static __inline__ int abortboot(int bootdelay)
 					retry_time = -1;
 #  endif
 				abort = 1;
-			}
-		}
-
-		if (tstc()) {
-			if (presskey_len < presskey_max) {
-				presskey [presskey_len ++] = getc();
-			}
-			else {
-				for (i = 0; i < presskey_max - 1; i ++)
-					presskey [i] = presskey [i + 1];
-
-				presskey [i] = getc();
 			}
 		}
 	}

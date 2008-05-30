@@ -1,5 +1,8 @@
 /*
- * (C) Copyright 2006 DENX Software Engineering
+ * (C) Copyright 2007 KA-Ro electronics GmbH
+ *
+ * based on:
+ * board/zylonite/nand.c (C) Copyright 2006 DENX Software Engineering
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -24,7 +27,7 @@
 #define NAND_RESET_COMMAND 0x80000000
 
 #if (CONFIG_COMMANDS & CFG_CMD_NAND)
-#ifdef CONFIG_NEW_NAND_CODE
+#ifndef CONFIG_NAND_LEGACY
 
 #include <nand.h>
 #include <asm/arch/pxa-regs.h>
@@ -56,17 +59,14 @@ uint8_t		partial_buffer[2048+64];	/* used to handle partial writes in case of na
 int			partial_page;
 int			partial_pointer;		
 
-
-
-
-static struct nand_bbt_descr delta_bbt_descr = {
+static struct nand_bbt_descr triton320_bbt_descr = {
 	.options = 0,
 	.offs = 0,
 	.len = 2,
 	.pattern = scan_ff_pattern
 };
 
-static struct nand_oobinfo delta_oob = {
+static struct nand_oobinfo triton320_oob = {
 	.useecc = MTD_NANDECC_AUTOPL_USR, /* MTD_NANDECC_PLACEONLY, */
 	.eccbytes = 24,
 	.eccpos = {0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37},
@@ -82,9 +82,6 @@ static void dfc_hwcontrol(struct mtd_info *mtdinfo, int cmd)
 	return;
 }
 
-
-
-
 #if 0
 /* read device ready pin */
 static int dfc_device_ready(struct mtd_info *mtdinfo)
@@ -97,10 +94,6 @@ static int dfc_device_ready(struct mtd_info *mtdinfo)
 }
 #endif
 
-
-
-
-
 /*
  * Write buf to the DFC Controller Data Buffer
  */
@@ -111,23 +104,25 @@ static void dfc_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 	unsigned long *long_buf;
 	int i;
 
-	if(!partial_page) {
-		DFC_DEBUG2("dfc_write_buf: writing %d bytes starting with 0x%x .\n", len, *((unsigned long*) buf));
-		if(bytes_multi) {
-			for(i=0; i<bytes_multi; i+=4) {
-				long_buf = (unsigned long*) &buf[i];
+	if (!partial_page) {
+		DFC_DEBUG2("dfc_write_buf: writing %d bytes starting with 0x%x .\n",
+			   len, *((unsigned long*)buf));
+		if (bytes_multi) {
+			for (i = 0; i < bytes_multi; i += 4) {
+				long_buf = (unsigned long*)&buf[i];
 				NDDB = *long_buf;
 			}
 		}
 	
-		if(rest) {
+		if (rest) {
 			printf("dfc_write_buf: ERROR, writing non 4-byte aligned data.\n");
 		}
 		return;
 	} else {
-		DFC_DEBUG2("dfc_write_buf: writing %d bytes starting with 0x%x to local buffer.\n", len, *((unsigned long*) buf));
-		for(i=0; i<len; i++) {
-			partial_buffer[partial_pointer+i]=buf[i];
+		DFC_DEBUG2("dfc_write_buf: writing %d bytes starting with 0x%x to local buffer.\n",
+			   len, *((unsigned long*)buf));
+		for (i = 0; i < len; i++) {
+			partial_buffer[partial_pointer + i] = buf[i];
 		}
 	}
 }
@@ -169,17 +164,17 @@ static void dfc_read_buf(struct mtd_info *mtd, u_char* const buf, int len)
 
 	DFC_DEBUG3("dfc_read_buf: reading %d bytes.\n", len);
 	/* if there are any, first copy multiple of 4 bytes */
-	if(bytes_multi) {
-		for(i=0; i<bytes_multi; i+=4) {
+	if (bytes_multi) {
+		for (i=0; i<bytes_multi; i+=4) {
 			long_buf = (unsigned long*) &buf[i];
 			*long_buf = NDDB;
 		}
 	}
 
 	/* ...then the rest */
-	if(rest) {
+	if (rest) {
 		unsigned long rest_data = NDDB;
-		for(j=0;j<rest; j++)
+		for (j=0;j<rest; j++)
 			buf[i+j] = (u_char) ((rest_data>>j) & 0xff);
 	}
 
@@ -231,24 +226,13 @@ static u_char dfc_read_byte(struct mtd_info *mtd)
 	return byte;
 }
 
-/* calculate delta between OSCR values start and now  */
-static unsigned long get_delta(unsigned long start)
-{
-	unsigned long cur = OSCR;
-
-	if(cur < start) /* OSCR overflowed */
-		return (cur + (start^0xffffffff));
-	else
-		return (cur - start);
-}
-
 /* delay function, this doesn't belong here */
 static void wait_us(unsigned long us)
 {
 	unsigned long start = OSCR;
 	us *= OSCR_CLK_FREQ;
 
-	while (get_delta(start) < us) {
+	while ((OSCR - start) < us) {
 		/* do nothing */
 	}
 }
@@ -264,20 +248,20 @@ static unsigned long dfc_wait_event(unsigned long event)
 {
 	unsigned long ndsr, timeout, start = OSCR;
 
-	if(!event)
+	if (!event)
 		return 0xff000000;
-	else if(event & (NDSR_CS0_CMDD | NDSR_CS0_BBD))
+	else if (event & (NDSR_CS0_CMDD | NDSR_CS0_BBD))
 		timeout = CFG_NAND_PROG_ERASE_TO * OSCR_CLK_FREQ;
 	else
 		timeout = CFG_NAND_OTHER_TO * OSCR_CLK_FREQ;
 
 	while(1) {
 		ndsr = NDSR;
-		if(ndsr & event) {
+		if (ndsr & event) {
 			NDSR |= event;
 			break;
 		}
-		if(get_delta(start) > timeout) {
+		if ((OSCR - start) > timeout) {
 			DFC_DEBUG1("dfc_wait_event: TIMEOUT waiting for event: 0x%x      timeout: %d ticks   status register: 0x%08X  control register: 0x%08X.\n", event, timeout, ndsr, NDCR);
 			return 0xff000000;
 		}
@@ -330,7 +314,6 @@ static int dfc_wait(struct mtd_info *mtd, struct nand_chip *this, int state)
 	return 0;
 }
 
-
 /* cmdfunc send commands to the DFC */
 static void dfc_cmdfunc(struct mtd_info *mtd, unsigned command,
 			int column, int page_addr)
@@ -369,8 +352,8 @@ static void dfc_cmdfunc(struct mtd_info *mtd, unsigned command,
 		/* sent as a multicommand in NAND_CMD_SEQIN */
 		DFC_DEBUG2("dfc_cmdfunc: NAND_CMD_PAGEPROG empty due to multicmd.\n");
 		if(partial_page) {
-			partial_page=0;
-			dfc_write_buf(mtd, partial_buffer, 2048+64);	/* write back the partial buffer */
+			partial_page = 0;
+			dfc_write_buf(mtd, partial_buffer, 2048 + 64);	/* write back the partial buffer */
 		}
 		goto end;
 	case NAND_CMD_ERASE1:
@@ -389,19 +372,20 @@ static void dfc_cmdfunc(struct mtd_info *mtd, unsigned command,
 			DFC_DEBUG3("dfc_cmdfunc: NAND_CMD_READ0, page_addr: 0x%x, column: 0x%x.\n", page_addr, column);
 			dfc_new_cmd();
 			NDCB0 = (NAND_CMD_READ0  | (NAND_CMD_READSTART<<8) | (4<<16) | (1<<19));
-			NDCB0 = (column & 0xfff) |  ((page_addr & 0xffff)<<16);
+			NDCB0 = (page_addr & 0xffff) << 16;
 			NDCB0 = 0;
 			event = NDSR_RDDREQ;
 			dfc_wait_event(event);
-			dfc_read_buf(mtd, partial_buffer, 2048+64); /* this works in that way only for large page */
+			dfc_read_buf(mtd, partial_buffer, 2048 + 64); /* this works in that way only for large page */
 		} else {
 			partial_page = 0;
 		}
-			
+
 		dfc_new_cmd();
 		DFC_DEBUG2("dfc_cmdfunc: NAND_CMD_SEQIN/PAGE_PROG,  page_addr: 0x%x, column: 0x%x.\n", page_addr, column);
 		ndcb0 = (0x1080 | (1<<25) | (1<<21) | (1<<19) | (4<<16));
-		ndcb1 = (column & 0xfff) |  ((page_addr & 0xffff)<<16);
+		/* column address must be 0 since we cannot write partial pages */
+		ndcb1 = (page_addr & 0xffff)<<16;
 		ndcb2 = 0;
 		event = NDSR_WRDREQ;
 		goto write_cmd;
@@ -441,50 +425,13 @@ static void dfc_cmdfunc(struct mtd_info *mtd, unsigned command,
 	return;
 }
 
-static void dfc_gpio_init(void)
-{
-	DFC_DEBUG2("Setting up DFC GPIO's.\n");
-
-	/* no idea what is done here, see triton320.c */
-	GPIO4 = 0x1;
-
-	DF_ALE_WE1 = 0x00000001;
-	DF_ALE_WE2 = 0x00000001;
-	DF_nCS0 = 0x00000001;
-	DF_nCS1 = 0x00000001;
-	DF_nWE = 0x00000001;
-	DF_nRE = 0x00000001;
-	DF_IO0 = 0x00000001;
-	DF_IO8 = 0x00000001;
-	DF_IO1 = 0x00000001;
-	DF_IO9 = 0x00000001;
-	DF_IO2 = 0x00000001;
-	DF_IO10 = 0x00000001;
-	DF_IO3 = 0x00000001;
-	DF_IO11 = 0x00000001;
-	DF_IO4 = 0x00000001;
-	DF_IO12 = 0x00000001;
-	DF_IO5 = 0x00000001;
-	DF_IO13 = 0x00000001;
-	DF_IO6 = 0x00000001;
-	DF_IO14 = 0x00000001;
-	DF_IO7 = 0x00000001;
-	DF_IO15 = 0x00000001;
-
-	DF_nWE = 0x1901;
-	DF_nRE = 0x1901;
-	DF_CLE_NOE = 0x1900;
-	DF_ALE_WE1 = 0x1901;
-	DF_INT_RnB = 0x1900;
-}
-
 /*
  * Board-specific NAND initialization. The following members of the
  * argument are board-specific (per include/linux/mtd/nand_new.h):
  * - IO_ADDR_R?: address to read the 8 I/O lines of the flash device
  * - IO_ADDR_W?: address to write the 8 I/O lines of the flash device
- * - hwcontrol: hardwarespecific function for accesing control-lines
- * - dev_ready: hardwarespecific function for  accesing device ready/busy line
+ * - hwcontrol: hardwarespecific function for accessing control-lines
+ * - dev_ready: hardwarespecific function for  accessing device ready/busy line
  * - enable_hwecc?: function to enable (reset)  hardware ecc generator. Must
  *   only be provided if a hardware ECC is available
  * - eccmode: mode of ecc, see defines
@@ -499,119 +446,6 @@ static void dfc_gpio_init(void)
 void board_nand_init(struct nand_chip *nand)
 {
 	unsigned long value;
-#if 0		/* this is already done by low level board initialisation */
-	unsigned long tCH, tCS, tWH, tWP, tRH, tRP, tRP_high, tR, tWHR, tAR;
-
-	/* set up GPIO Control Registers */
-	/*dfc_gpio_init(); */  /* should be done by the low level board initialisation */
-
-	/* turn on the NAND Controller Clock (104 MHz @ D0) */
-	CKENA |= (CKENA_4_NAND | CKENA_9_SMC);
-
-#undef CFG_TIMING_TIGHT
-#ifndef CFG_TIMING_TIGHT
-	tCH = MIN(((unsigned long) (NAND_TIMING_tCH * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tCH);
-	tCS = MIN(((unsigned long) (NAND_TIMING_tCS * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tCS);
-	tWH = MIN(((unsigned long) (NAND_TIMING_tWH * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tWH);
-	tWP = MIN(((unsigned long) (NAND_TIMING_tWP * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tWP);
-	tRH = MIN(((unsigned long) (NAND_TIMING_tRH * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tRH);
-	tRP = MIN(((unsigned long) (NAND_TIMING_tRP * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tRP);
-	tR = MIN(((unsigned long) (NAND_TIMING_tR * DFC_CLK_PER_US) + 1),
-		 DFC_MAX_tR);
-	tWHR = MIN(((unsigned long) (NAND_TIMING_tWHR * DFC_CLK_PER_US) + 1),
-		   DFC_MAX_tWHR);
-	tAR = MIN(((unsigned long) (NAND_TIMING_tAR * DFC_CLK_PER_US) + 1),
-		  DFC_MAX_tAR);
-#else /* this is the tight timing */
-
-	tCH = MIN(((unsigned long) (NAND_TIMING_tCH * DFC_CLK_PER_US)),
-		  DFC_MAX_tCH);
-	tCS = MIN(((unsigned long) (NAND_TIMING_tCS * DFC_CLK_PER_US)),
-		  DFC_MAX_tCS);
-	tWH = MIN(((unsigned long) (NAND_TIMING_tWH * DFC_CLK_PER_US)),
-		  DFC_MAX_tWH);
-	tWP = MIN(((unsigned long) (NAND_TIMING_tWP * DFC_CLK_PER_US)),
-		  DFC_MAX_tWP);
-	tRH = MIN(((unsigned long) (NAND_TIMING_tRH * DFC_CLK_PER_US)),
-		  DFC_MAX_tRH);
-	tRP = MIN(((unsigned long) (NAND_TIMING_tRP * DFC_CLK_PER_US)),
-		  DFC_MAX_tRP);
-	tR = MIN(((unsigned long) (NAND_TIMING_tR * DFC_CLK_PER_US) - tCH - 2),
-		 DFC_MAX_tR);
-	tWHR = MIN(((unsigned long) (NAND_TIMING_tWHR * DFC_CLK_PER_US) - tCH - 2),
-		   DFC_MAX_tWHR);
-	tAR = MIN(((unsigned long) (NAND_TIMING_tAR * DFC_CLK_PER_US) - 2),
-		  DFC_MAX_tAR);
-#endif /* CFG_TIMING_TIGHT */
-
-
-	DFC_DEBUG2("tCH=%u, tCS=%u, tWH=%u, tWP=%u, tRH=%u, tRP=%u, tR=%u, tWHR=%u, tAR=%u.\n", tCH, tCS, tWH, tWP, tRH, tRP, tR, tWHR, tAR);
-
-	/* tRP value is split in the register */
-	if(tRP & (1 << 4)) {
-		tRP_high = 1;
-		tRP &= ~(1 << 4);
-	} else {
-		tRP_high = 0;
-	}
-
-	NDTR0CS0 = (tCH << 19) |
-		(tCS << 16) |
-		(tWH << 11) |
-		(tWP << 8) |
-		(tRP_high << 6) |
-		(tRH << 3) |
-		(tRP << 0);
-
-	NDTR1CS0 = (tR << 16) |
-		(tWHR << 4) |
-		(tAR << 0);
-
-	/* If it doesn't work (unlikely) think about:
-	 *  - ecc enable
-	 *  - chip select don't care
-	 *  - read id byte count
-	 *
-	 * Intentionally enabled by not setting bits:
-	 *  - dma (DMA_EN)
-	 *  - page size = 512
-	 *  - cs don't care, see if we can enable later!
-	 *  - row address start position (after second cycle)
-	 *  - pages per block = 32
-	 *  - ND_RDY : clears command buffer
-	 */
-	/* NDCR_NCSX |		/\* Chip select busy don't care *\/ */
-
-	NDCR = (NDCR_SPARE_EN |		/* use the spare area */
-		NDCR_DWIDTH_C |		/* 16bit DFC data bus width  */
-		NDCR_DWIDTH_M |		/* 16 bit Flash device data bus width */
-		(2 << 16) |		/* read id count = 7 ???? mk@tbd */
-		NDCR_ND_ARB_EN |	/* enable bus arbiter */
-		NDCR_RDYM |		/* flash device ready ir masked */
-		NDCR_CS0_PAGEDM |	/* ND_nCSx page done ir masked */
-		NDCR_CS1_PAGEDM |
-		NDCR_CS0_CMDDM |	/* ND_CSx command done ir masked */
-		NDCR_CS1_CMDDM |
-		NDCR_CS0_BBDM |		/* ND_CSx bad block detect ir masked */
-		NDCR_CS1_BBDM |
-		NDCR_DBERRM |		/* double bit error ir masked */
-		NDCR_SBERRM |		/* single bit error ir masked */
-		NDCR_WRDREQM |		/* write data request ir masked */
-		NDCR_RDDREQM |		/* read data request ir masked */
-		NDCR_WRCMDREQM);	/* write command request ir masked */
-
-
-	/* wait 10 us due to cmd buffer clear reset */
-	/*	wait(10); */
-
-#endif
-
 
 	value = NDCR & ~(NDCR_ECC_EN); /* clear hardware ECC */
 	NDCR = value;
@@ -629,8 +463,8 @@ void board_nand_init(struct nand_chip *nand)
 	nand->write_buf = dfc_write_buf;
 
 	nand->cmdfunc = dfc_cmdfunc;
-	nand->autooob = &delta_oob;
-	nand->badblock_pattern = &delta_bbt_descr;
+	nand->autooob = &triton320_oob;
+	nand->badblock_pattern = &triton320_bbt_descr;
 }
 
 #else

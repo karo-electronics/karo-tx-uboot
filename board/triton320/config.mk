@@ -1,4 +1,7 @@
-####PLATFORM_CPPFLAGS+= -Wa,-mfpu=softvfp 
 #PLATFORM_CPPFLAGS+= -DDEBUG
-TEXT_BASE = 0x800c0000
-#####TEXT_BASE = 0x007c0000
+PLATFORM_CPPFLAGS += -march=armv5 -mtune=xscale
+PLATFORM_CPPFLAGS += -mno-thumb-interwork
+PLATFORM_CPPFLAGS += -mabi=apcs-gnu -mno-thumb-interwork
+PLATFORM_RELFLAGS += -msoft-float -Wa,-mfpu=vfp
+
+TEXT_BASE = 0xa3fc0000
