@@ -230,8 +230,8 @@ static u_char dfc_read_byte(struct mtd_info *mtd)
 static void wait_us(unsigned long us)
 {
 	unsigned long start = OSCR;
-	us *= OSCR_CLK_FREQ;
 
+	us = US_TO_OSCR(us);
 	while ((OSCR - start) < us) {
 		/* do nothing */
 	}
@@ -251,9 +251,9 @@ static unsigned long dfc_wait_event(unsigned long event)
 	if (!event)
 		return 0xff000000;
 	else if (event & (NDSR_CS0_CMDD | NDSR_CS0_BBD))
-		timeout = CFG_NAND_PROG_ERASE_TO * OSCR_CLK_FREQ;
+		timeout = US_TO_OSCR(CFG_NAND_PROG_ERASE_TO);
 	else
-		timeout = CFG_NAND_OTHER_TO * OSCR_CLK_FREQ;
+		timeout = US_TO_OSCR(CFG_NAND_OTHER_TO);
 
 	while(1) {
 		ndsr = NDSR;
