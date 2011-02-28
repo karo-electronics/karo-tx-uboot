@@ -24,8 +24,6 @@
 #include <common.h>
 #include <command.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_DISPLAY)
-
 #undef DEBUG_DISP
 
 #define DISP_SIZE	8
@@ -38,7 +36,7 @@ int do_display (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int pos;
 
 	/* Clear display */
-	*((volatile char*)(CFG_DISP_CWORD)) = CWORD_CLEAR;
+	*((volatile char*)(CONFIG_SYS_DISP_CWORD)) = CWORD_CLEAR;
 	udelay(1000 * CLEAR_DELAY);
 
 	if (argc < 2)
@@ -48,14 +46,14 @@ int do_display (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		char *p = argv[i], c;
 
 		if (i > 1) {
-			*((volatile uchar *) (CFG_DISP_CHR_RAM + pos++)) = ' ';
+			*((volatile uchar *) (CONFIG_SYS_DISP_CHR_RAM + pos++)) = ' ';
 #ifdef DEBUG_DISP
 			putc(' ');
 #endif
 		}
 
 		while ((c = *p++) != '\0' && pos < DISP_SIZE) {
-			*((volatile uchar *) (CFG_DISP_CHR_RAM + pos++)) = c;
+			*((volatile uchar *) (CONFIG_SYS_DISP_CHR_RAM + pos++)) = c;
 #ifdef DEBUG_DISP
 			putc(c);
 #endif
@@ -72,11 +70,9 @@ int do_display (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 /***************************************************/
 
 U_BOOT_CMD(
-	display,	CFG_MAXARGS,	1,	do_display,
-	"display- display string on dot matrix display\n",
+	display,	CONFIG_SYS_MAXARGS,	1,	do_display,
+	"display string on dot matrix display",
 	"[<string>]\n"
 	"    - with <string> argument: display <string> on dot matrix display\n"
-	"    - without arguments: clear dot matrix display\n"
+	"    - without arguments: clear dot matrix display"
 );
-
-#endif	/* CFG_CMD_DISPLAY */

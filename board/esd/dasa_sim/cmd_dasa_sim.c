@@ -25,6 +25,7 @@
 #include <common.h>
 #include <command.h>
 #include <pci.h>
+#include <asm/io.h>
 
 #define OK 0
 #define ERROR (-1)
@@ -48,13 +49,13 @@ static unsigned int PciEepromReadLongVPD (int offs)
 	unsigned int ret;
 	int count;
 
-	pci_write_config_dword (CFG_PCI9054_DEV_FN, 0x4c,
+	pci_write_config_dword (CONFIG_SYS_PCI9054_DEV_FN, 0x4c,
 				(offs << 16) | 0x0003);
 	count = 0;
 
 	for (;;) {
 		udelay (10 * 1000);
-		pci_read_config_dword (CFG_PCI9054_DEV_FN, 0x4c, &ret);
+		pci_read_config_dword (CONFIG_SYS_PCI9054_DEV_FN, 0x4c, &ret);
 		if ((ret & 0x80000000) != 0) {
 			break;
 		} else {
@@ -66,7 +67,7 @@ static unsigned int PciEepromReadLongVPD (int offs)
 		}
 	}
 
-	pci_read_config_dword (CFG_PCI9054_DEV_FN, 0x50, &value);
+	pci_read_config_dword (CONFIG_SYS_PCI9054_DEV_FN, 0x50, &value);
 
 	return value;
 }
@@ -77,14 +78,14 @@ static int PciEepromWriteLongVPD (int offs, unsigned int value)
 	unsigned int ret;
 	int count;
 
-	pci_write_config_dword (CFG_PCI9054_DEV_FN, 0x50, value);
-	pci_write_config_dword (CFG_PCI9054_DEV_FN, 0x4c,
+	pci_write_config_dword (CONFIG_SYS_PCI9054_DEV_FN, 0x50, value);
+	pci_write_config_dword (CONFIG_SYS_PCI9054_DEV_FN, 0x4c,
 				(offs << 16) | 0x80000003);
 	count = 0;
 
 	for (;;) {
 		udelay (10 * 1000);
-		pci_read_config_dword (CFG_PCI9054_DEV_FN, 0x4c, &ret);
+		pci_read_config_dword (CONFIG_SYS_PCI9054_DEV_FN, 0x4c, &ret);
 		if ((ret & 0x80000000) == 0) {
 			break;
 		} else {
@@ -109,7 +110,7 @@ static void showPci9054 (void)
 	for (l = 0; l < 6; l++) {
 		printf ("%02x: ", l * 0x10);
 		for (i = 0; i < 4; i++) {
-			pci_read_config_dword (CFG_PCI9054_DEV_FN,
+			pci_read_config_dword (CONFIG_SYS_PCI9054_DEV_FN,
 						l * 16 + i * 4,
 						(unsigned int *)&val);
 			printf ("%08x ", val);
@@ -136,8 +137,8 @@ static void updatePci9054 (void)
 	/*
 	 * Set EEPROM write-protect register to 0
 	 */
-	out32 (pci9054_iobase + 0x0c,
-		   in32 (pci9054_iobase + 0x0c) & 0xffff00ff);
+	out_be32 ((void *)(pci9054_iobase + 0x0c),
+		  in_be32 ((void *)(pci9054_iobase + 0x0c)) & 0xffff00ff);
 
 	/* Long Serial EEPROM Load Registers... */
 	val = PciEepromWriteLongVPD (0x00, 0x905410b5);
@@ -190,8 +191,8 @@ static void clearPci9054 (void)
 	/*
 	 * Set EEPROM write-protect register to 0
 	 */
-	out32 (pci9054_iobase + 0x0c,
-		in32 (pci9054_iobase + 0x0c) & 0xffff00ff);
+	out_be32 ((void *)(pci9054_iobase + 0x0c),
+		  in_be32 ((void *)(pci9054_iobase + 0x0c)) & 0xffff00ff);
 
 	/* Long Serial EEPROM Load Registers... */
 	val = PciEepromWriteLongVPD (0x00, 0xffffffff);
@@ -220,16 +221,16 @@ int do_pci9054 (cmd_tbl_t * cmdtp, int flag, int argc,
 		return 0;
 	}
 
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 
 }
 
 U_BOOT_CMD(
 	pci9054, 3, 1, do_pci9054,
-	"pci9054 - PLX PCI9054 EEPROM access\n",
+	"PLX PCI9054 EEPROM access",
 	"pci9054 info - print EEPROM values\n"
-	"pci9054 update - updates EEPROM with default values\n"
+	"pci9054 update - updates EEPROM with default values"
 );
 
 /* ------------------------------------------------------------------------- */

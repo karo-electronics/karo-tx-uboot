@@ -28,29 +28,28 @@
 #include <watchdog.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 
-#ifdef	CONFIG_M5272
-#include <asm/immap_5272.h>
-#endif
+#include <asm/immap.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_IDE)
 #include <ide.h>
 #endif
-#if (CONFIG_COMMANDS & CFG_CMD_SCSI)
+#if defined(CONFIG_CMD_SCSI)
 #include <scsi.h>
 #endif
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 #include <kgdb.h>
 #endif
 #ifdef CONFIG_STATUS_LED
 #include <status_led.h>
 #endif
 #include <net.h>
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG)
+#include <serial.h>
+#if defined(CONFIG_CMD_BEDBUG)
 #include <cmd_bedbug.h>
 #endif
-#ifdef CFG_ALLOC_DPRAM
+#ifdef CONFIG_SYS_ALLOC_DPRAM
 #include <commproc.h>
 #endif
 #include <version.h>
@@ -59,6 +58,12 @@
     defined(CONFIG_SOFT_I2C)
 #include <i2c.h>
 #endif
+
+#ifdef CONFIG_CMD_SPI
+#include <spi.h>
+#endif
+
+#include <nand.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -70,12 +75,12 @@ extern flash_info_t flash_info[];
 
 #include <environment.h>
 
-#if ( ((CFG_ENV_ADDR+CFG_ENV_SIZE) < CFG_MONITOR_BASE) || \
-      (CFG_ENV_ADDR >= (CFG_MONITOR_BASE + CFG_MONITOR_LEN)) ) || \
-    defined(CFG_ENV_IS_IN_NVRAM)
-#define	TOTAL_MALLOC_LEN	(CFG_MALLOC_LEN + CFG_ENV_SIZE)
+#if ( ((CONFIG_ENV_ADDR+CONFIG_ENV_SIZE) < CONFIG_SYS_MONITOR_BASE) || \
+      (CONFIG_ENV_ADDR >= (CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)) ) || \
+    defined(CONFIG_ENV_IS_IN_NVRAM)
+#define	TOTAL_MALLOC_LEN	(CONFIG_SYS_MALLOC_LEN + CONFIG_ENV_SIZE)
 #else
-#define	TOTAL_MALLOC_LEN	CFG_MALLOC_LEN
+#define	TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
 #endif
 
 extern ulong __init_end;
@@ -113,7 +118,7 @@ static	ulong	mem_malloc_brk	 = 0;
  */
 static void mem_malloc_init (void)
 {
-	ulong dest_addr = CFG_MONITOR_BASE + gd->reloc_off;
+	ulong dest_addr = CONFIG_SYS_MONITOR_BASE + gd->reloc_off;
 
 	mem_malloc_end = dest_addr;
 	mem_malloc_start = dest_addr - TOTAL_MALLOC_LEN;
@@ -137,23 +142,6 @@ void *sbrk (ptrdiff_t increment)
 	return ((void *)old);
 }
 
-char *strmhz(char *buf, long hz)
-{
-    long l, n;
-    long m;
-
-    n = hz / 1000000L;
-
-    l = sprintf (buf, "%ld", n);
-
-    m = (hz % 1000000L) / 1000L;
-
-    if (m != 0)
-	sprintf (buf+l, ".%03ld", m);
-
-    return (buf);
-}
-
 /*
  * All attempts to come up with a "common" initialization sequence
  * that works for all boards and architectures failed: some of the
@@ -169,7 +157,7 @@ char *strmhz(char *buf, long hz)
 typedef int (init_fnc_t) (void);
 
 /************************************************************************
- * Init Utilities							*
+ * Init Utilities
  ************************************************************************
  * Some of this code should be moved into the core functions,
  * but let's get it working (again) first...
@@ -177,7 +165,7 @@ typedef int (init_fnc_t) (void);
 
 static int init_baudrate (void)
 {
-	uchar tmp[64];	/* long enough for environment variables */
+	char tmp[64];	/* long enough for environment variables */
 	int i = getenv_r ("baudrate", tmp, sizeof (tmp));
 
 	gd->baudrate = (i > 0)
@@ -207,7 +195,17 @@ static int init_func_ram (void)
 static int init_func_i2c (void)
 {
 	puts ("I2C:   ");
-	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+	puts ("ready\n");
+	return (0);
+}
+#endif
+
+#if defined(CONFIG_HARD_SPI)
+static int init_func_spi (void)
+{
+	puts ("SPI:   ");
+	spi_init ();
 	puts ("ready\n");
 	return (0);
 }
@@ -221,6 +219,7 @@ static int init_func_i2c (void)
  */
 
 init_fnc_t *init_sequence[] = {
+	get_clocks,
 	env_init,
 	init_baudrate,
 	serial_init,
@@ -231,10 +230,13 @@ init_fnc_t *init_sequence[] = {
 #if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
 	init_func_i2c,
 #endif
+#if defined(CONFIG_HARD_SPI)
+	init_func_spi,
+#endif
 	init_func_ram,
-#if defined(CFG_DRAM_TEST)
+#if defined(CONFIG_SYS_DRAM_TEST)
 	testdram,
-#endif /* CFG_DRAM_TEST */
+#endif /* CONFIG_SYS_DRAM_TEST */
 	INIT_FUNC_WATCHDOG_INIT
 	NULL,			/* Terminate this list */
 };
@@ -267,11 +269,11 @@ board_init_f (ulong bootflag)
 #ifdef CONFIG_PRAM
 	int i;
 	ulong reg;
-	uchar tmp[64];		/* long enough for environment variables */
+	char tmp[64];		/* long enough for environment variables */
 #endif
 
 	/* Pointer is writable since we allocated a register for it */
-	gd = (gd_t *) (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET);
+	gd = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
 	/* compiler optimization barrier needed for GCC >= 3.4 */
 	__asm__ __volatile__("": : :"memory");
 
@@ -294,9 +296,9 @@ board_init_f (ulong bootflag)
 	 *	- monitor code
 	 *	- board info struct
 	 */
-	len = (ulong)&_end - CFG_MONITOR_BASE;
+	len = (ulong)&_end - CONFIG_SYS_MONITOR_BASE;
 
-	addr = CFG_SDRAM_BASE + gd->ram_size;
+	addr = CONFIG_SYS_SDRAM_BASE + gd->ram_size;
 
 #ifdef CONFIG_LOGBUFFER
 	/* reserve kernel log buffer */
@@ -313,6 +315,16 @@ board_init_f (ulong bootflag)
 	addr -= (reg << 10);		/* size is in kB */
 	debug ("Reserving %ldk for protected RAM at %08lx\n", reg, addr);
 #endif /* CONFIG_PRAM */
+
+	/* round down to next 4 kB limit */
+	addr &= ~(4096 - 1);
+	debug ("Top of RAM usable for U-Boot at: %08lx\n", addr);
+
+#ifdef CONFIG_LCD
+	/* reserve memory for LCD display (always full pages) */
+	addr = lcd_setmem (addr);
+	gd->fb_base = addr;
+#endif /* CONFIG_LCD */
 
 	/*
 	 * reserve memory for U-Boot code, data & bss
@@ -337,18 +349,18 @@ board_init_f (ulong bootflag)
 	addr_sp -= sizeof (bd_t);
 	bd = (bd_t *) addr_sp;
 	gd->bd = bd;
-	debug ("Reserving %d Bytes for Board Info at: %08lx\n",
+	debug ("Reserving %zu Bytes for Board Info at: %08lx\n",
 			sizeof (bd_t), addr_sp);
 	addr_sp -= sizeof (gd_t);
 	id = (gd_t *) addr_sp;
-	debug ("Reserving %d Bytes for Global Data at: %08lx\n",
+	debug ("Reserving %zu Bytes for Global Data at: %08lx\n",
 			sizeof (gd_t), addr_sp);
 
- 	/* Reserve memory for boot params. */
-	addr_sp -= CFG_BOOTPARAMS_LEN;
+	/* Reserve memory for boot params. */
+	addr_sp -= CONFIG_SYS_BOOTPARAMS_LEN;
 	bd->bi_boot_params = addr_sp;
 	debug ("Reserving %dk for boot parameters at: %08lx\n",
-			CFG_BOOTPARAMS_LEN >> 10, addr_sp);
+			CONFIG_SYS_BOOTPARAMS_LEN >> 10, addr_sp);
 
 	/*
 	 * Finally, we set up a new (bigger) stack.
@@ -369,18 +381,30 @@ board_init_f (ulong bootflag)
 	/*
 	 * Save local variables to board info struct
 	 */
-	bd->bi_memstart  = CFG_SDRAM_BASE;	/* start of  DRAM memory      */
+	bd->bi_memstart  = CONFIG_SYS_SDRAM_BASE;	/* start of  DRAM memory      */
 	bd->bi_memsize   = gd->ram_size;	/* size  of  DRAM memory in bytes */
-	bd->bi_mbar_base = CFG_MBAR;		/* base of internal registers */
+#ifdef CONFIG_SYS_INIT_RAM_ADDR
+	bd->bi_sramstart = CONFIG_SYS_INIT_RAM_ADDR;	/* start of  SRAM memory	*/
+	bd->bi_sramsize  = CONFIG_SYS_INIT_RAM_END;	/* size  of  SRAM memory	*/
+#endif
+	bd->bi_mbar_base = CONFIG_SYS_MBAR;		/* base of internal registers */
 
 	bd->bi_bootflags = bootflag;		/* boot / reboot flag (for LynxOS)    */
 
 	WATCHDOG_RESET ();
 	bd->bi_intfreq = gd->cpu_clk;	/* Internal Freq, in Hz */
 	bd->bi_busfreq = gd->bus_clk;	/* Bus Freq,      in Hz */
+#ifdef CONFIG_PCI
+	bd->bi_pcifreq = gd->pci_clk;		/* PCI Freq in Hz */
+#endif
+#ifdef CONFIG_EXTRA_CLOCK
+	bd->bi_inpfreq = gd->inp_clk;		/* input Freq in Hz */
+	bd->bi_vcofreq = gd->vco_clk;		/* vco Freq in Hz */
+	bd->bi_flbfreq = gd->flb_clk;		/* flexbus Freq in Hz */
+#endif
 	bd->bi_baudrate = gd->baudrate;	/* Console Baudrate     */
 
-#ifdef CFG_EXTBDINFO
+#ifdef CONFIG_SYS_EXTBDINFO
 	strncpy (bd->bi_s_version, "1.2", sizeof (bd->bi_s_version));
 	strncpy (bd->bi_r_version, U_BOOT_VERSION, sizeof (bd->bi_r_version));
 #endif
@@ -396,7 +420,7 @@ board_init_f (ulong bootflag)
 
 	memcpy (id, (void *)gd, sizeof (gd_t));
 
-	debug ("Start relocate of code from %08x to %08lx\n", CFG_MONITOR_BASE, addr);
+	debug ("Start relocate of code from %08x to %08lx\n", CONFIG_SYS_MONITOR_BASE, addr);
 	relocate_code (addr_sp, id, addr);
 
 	/* NOTREACHED - jump_to_ram() does not return */
@@ -414,15 +438,14 @@ board_init_f (ulong bootflag)
 void board_init_r (gd_t *id, ulong dest_addr)
 {
 	cmd_tbl_t *cmdtp;
-	char *s, *e;
+	char *s;
 	bd_t *bd;
-	int i;
 	extern void malloc_bin_reloc (void);
 
-#ifndef CFG_ENV_IS_NOWHERE
+#ifndef CONFIG_ENV_IS_NOWHERE
 	extern char * env_name_spec;
 #endif
-#ifndef CFG_NO_FLASH
+#ifndef CONFIG_SYS_NO_FLASH
 	ulong flash_size;
 #endif
 	gd = id;		/* initialize RAM version of global data */
@@ -430,11 +453,15 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
 
+#ifdef CONFIG_SERIAL_MULTI
+	serial_initialize();
+#endif
+
 	debug ("Now running in RAM - U-Boot at: %08lx\n", dest_addr);
 
 	WATCHDOG_RESET ();
 
-	gd->reloc_off =  dest_addr - CFG_MONITOR_BASE;
+	gd->reloc_off =  dest_addr - CONFIG_SYS_MONITOR_BASE;
 
 	monitor_flash_len = (ulong)&__init_end - dest_addr;
 
@@ -458,7 +485,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 			addr = (ulong)(cmdtp->usage) + gd->reloc_off;
 			cmdtp->usage = (char *)addr;
 		}
-#ifdef	CFG_LONGHELP
+#ifdef	CONFIG_SYS_LONGHELP
 		if (cmdtp->help) {
 			addr = (ulong)(cmdtp->help) + gd->reloc_off;
 			cmdtp->help = (char *)addr;
@@ -466,7 +493,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 	}
 	/* there are some other pointer constants we must deal with */
-#ifndef CFG_ENV_IS_NOWHERE
+#ifndef CONFIG_ENV_IS_NOWHERE
 	env_name_spec += gd->reloc_off;
 #endif
 
@@ -489,13 +516,17 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	/*
 	 * Setup trap handlers
 	 */
-	trap_init (0);
+	trap_init (CONFIG_SYS_SDRAM_BASE);
 
-#if !defined(CFG_NO_FLASH)
+	/* initialize malloc() area */
+	mem_malloc_init ();
+	malloc_bin_reloc ();
+
+#if !defined(CONFIG_SYS_NO_FLASH)
 	puts ("FLASH: ");
 
 	if ((flash_size = flash_init ()) > 0) {
-# ifdef CFG_FLASH_CHECKSUM
+# ifdef CONFIG_SYS_FLASH_CHECKSUM
 		print_size (flash_size, "");
 		/*
 		 * Compute and print flash CRC if flashchecksum is set to 'y'
@@ -504,29 +535,29 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		 */
 		s = getenv ("flashchecksum");
 		if (s && (*s == 'y')) {
-			printf ("  CRC: %08lX",
+			printf ("  CRC: %08X",
 					crc32 (0,
-						   (const unsigned char *) CFG_FLASH_BASE,
+						   (const unsigned char *) CONFIG_SYS_FLASH_BASE,
 						   flash_size)
 					);
 		}
 		putc ('\n');
-# else	/* !CFG_FLASH_CHECKSUM */
+# else	/* !CONFIG_SYS_FLASH_CHECKSUM */
 		print_size (flash_size, "\n");
-# endif /* CFG_FLASH_CHECKSUM */
+# endif /* CONFIG_SYS_FLASH_CHECKSUM */
 	} else {
 		puts (failed);
 		hang ();
 	}
 
-	bd->bi_flashstart = CFG_FLASH_BASE;	/* update start of FLASH memory    */
+	bd->bi_flashstart = CONFIG_SYS_FLASH_BASE;	/* update start of FLASH memory    */
 	bd->bi_flashsize = flash_size;	/* size of FLASH memory (final value) */
 	bd->bi_flashoffset = 0;
-#else	/* CFG_NO_FLASH */
+#else	/* CONFIG_SYS_NO_FLASH */
 	bd->bi_flashsize = 0;
 	bd->bi_flashstart = 0;
 	bd->bi_flashoffset = 0;
-#endif /* !CFG_NO_FLASH */
+#endif /* !CONFIG_SYS_NO_FLASH */
 
 	WATCHDOG_RESET ();
 
@@ -535,12 +566,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET ();
 
-	/* initialize malloc() area */
-	mem_malloc_init ();
-	malloc_bin_reloc ();
-
 #ifdef CONFIG_SPI
-# if !defined(CFG_ENV_IS_IN_EEPROM)
+# if !defined(CONFIG_ENV_IS_IN_EEPROM)
 	spi_init_f ();
 # endif
 	spi_init_r ();
@@ -556,22 +583,20 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 * where had to use getenv_r(), which can be pretty slow when
 	 * the environment is in EEPROM.
 	 */
-	s = getenv ("ethaddr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-
-	/* IP Address */
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
 
 	WATCHDOG_RESET ();
 
+#if defined(CONFIG_PCI)
+	/*
+	 * Do pci configuration
+	 */
+	pci_init ();
+#endif
 
 	/** leave this here (after malloc(), environment and PCI are working) **/
-	/* Initialize devices */
-	devices_init ();
+	/* Initialize stdio devices */
+	stdio_init ();
 
 	/* Initialize the jump table for applications */
 	jumptable_init ();
@@ -584,7 +609,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	misc_init_r ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	WATCHDOG_RESET ();
 	puts ("KGDB:  ");
 	kgdb_init ();
@@ -620,33 +645,52 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	if ((s = getenv ("loadaddr")) != NULL) {
 		load_addr = simple_strtoul (s, NULL, 16);
 	}
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 	if ((s = getenv ("bootfile")) != NULL) {
 		copy_filename (BootFile, s, sizeof (BootFile));
 	}
-#endif /* CFG_CMD_NET */
+#endif
 
 	WATCHDOG_RESET ();
 
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
+#if defined(CONFIG_CMD_DOC)
 	WATCHDOG_RESET ();
 	puts ("DOC:   ");
 	doc_init ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
+#if defined(CONFIG_CMD_NAND)
 	WATCHDOG_RESET ();
 	puts ("NAND:  ");
 	nand_init();		/* go init the NAND */
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET) && defined(FEC_ENET)
+#if defined(CONFIG_CMD_NET)
 	WATCHDOG_RESET();
+#if defined(FEC_ENET)
 	eth_init(bd);
+#endif
+#if defined(CONFIG_NET_MULTI)
+	puts ("Net:   ");
+	eth_initialize (bd);
+#endif
 #endif
 
 #ifdef CONFIG_POST
 	post_run (NULL, POST_RAM | post_bootmode_get(0));
+#endif
+
+#if defined(CONFIG_CMD_PCMCIA) \
+    && !defined(CONFIG_CMD_IDE)
+	WATCHDOG_RESET ();
+	puts ("PCMCIA:");
+	pcmcia_init ();
+#endif
+
+#if defined(CONFIG_CMD_IDE)
+	WATCHDOG_RESET ();
+	puts ("IDE:   ");
+	ide_init ();
 #endif
 
 #ifdef CONFIG_LAST_STAGE_INIT
@@ -659,7 +703,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	last_stage_init ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG)
+#if defined(CONFIG_CMD_BEDBUG)
 	WATCHDOG_RESET ();
 	bedbug_init ();
 #endif
@@ -671,7 +715,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 */
 	{
 		ulong pram;
-		uchar memsz[32];
+		char memsz[32];
 #ifdef CONFIG_PRAM
 		char *s;
 

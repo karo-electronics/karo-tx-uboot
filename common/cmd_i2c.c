@@ -27,11 +27,6 @@
  * There are several parameters in many of the commands that bear further
  * explanations:
  *
- * Two of the commands (imm and imw) take a byte/word/long modifier
- * (e.g. imm.w specifies the word-length modifier).  This was done to
- * allow manipulating word-length registers.  It was not done on any other
- * commands because it was not deemed useful.
- *
  * {i2c_chip} is the I2C chip address (the first byte sent on the bus).
  *   Each I2C chip on the bus has a unique address.  On the I2C data bus,
  *   the address is the upper seven bits and the LSB is the "read/write"
@@ -65,15 +60,15 @@
  *   significant 1, 2, or 3 bits of address into the chip address byte.
  *   This effectively makes one chip (logically) look like 2, 4, or
  *   8 chips.  This is handled (awkwardly) by #defining
- *   CFG_I2C_EEPROM_ADDR_OVERFLOW and using the .1 modifier on the
+ *   CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW and using the .1 modifier on the
  *   {addr} field (since .1 is the default, it doesn't actually have to
  *   be specified).  Examples: given a memory chip at I2C chip address
  *   0x50, the following would happen...
- *     imd 50 0 10      display 16 bytes starting at 0x000
+ *     i2c md 50 0 10   display 16 bytes starting at 0x000
  *                      On the bus: <S> A0 00 <E> <S> A1 <rd> ... <rd>
- *     imd 50 100 10    display 16 bytes starting at 0x100
+ *     i2c md 50 100 10 display 16 bytes starting at 0x100
  *                      On the bus: <S> A2 00 <E> <S> A3 <rd> ... <rd>
- *     imd 50 210 10    display 16 bytes starting at 0x210
+ *     i2c md 50 210 10 display 16 bytes starting at 0x210
  *                      On the bus: <S> A4 10 <E> <S> A5 <rd> ... <rd>
  *   This is awfully ugly.  It would be nice if someone would think up
  *   a better way of handling this.
@@ -83,11 +78,10 @@
 
 #include <common.h>
 #include <command.h>
+#include <environment.h>
 #include <i2c.h>
+#include <malloc.h>
 #include <asm/byteorder.h>
-
-#if (CONFIG_COMMANDS & CFG_CMD_I2C)
-
 
 /* Display values from last command.
  * Memory modify remembered values are different from display memory.
@@ -101,17 +95,62 @@ static uchar	i2c_mm_last_chip;
 static uint	i2c_mm_last_addr;
 static uint	i2c_mm_last_alen;
 
-#if defined(CFG_I2C_NOPROBES)
-static uchar i2c_no_probes[] = CFG_I2C_NOPROBES;
+/* If only one I2C bus is present, the list of devices to ignore when
+ * the probe command is issued is represented by a 1D array of addresses.
+ * When multiple buses are present, the list is an array of bus-address
+ * pairs.  The following macros take care of this */
+
+#if defined(CONFIG_SYS_I2C_NOPROBES)
+#if defined(CONFIG_I2C_MULTI_BUS)
+static struct
+{
+	uchar	bus;
+	uchar	addr;
+} i2c_no_probes[] = CONFIG_SYS_I2C_NOPROBES;
+#define GET_BUS_NUM	i2c_get_bus_num()
+#define COMPARE_BUS(b,i)	(i2c_no_probes[(i)].bus == (b))
+#define COMPARE_ADDR(a,i)	(i2c_no_probes[(i)].addr == (a))
+#define NO_PROBE_ADDR(i)	i2c_no_probes[(i)].addr
+#else		/* single bus */
+static uchar i2c_no_probes[] = CONFIG_SYS_I2C_NOPROBES;
+#define GET_BUS_NUM	0
+#define COMPARE_BUS(b,i)	((b) == 0)	/* Make compiler happy */
+#define COMPARE_ADDR(a,i)	(i2c_no_probes[(i)] == (a))
+#define NO_PROBE_ADDR(i)	i2c_no_probes[(i)]
+#endif	/* CONFIG_MULTI_BUS */
+
+#define NUM_ELEMENTS_NOPROBE (sizeof(i2c_no_probes)/sizeof(i2c_no_probes[0]))
 #endif
 
-static int
-mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[]);
-extern int cmd_get_data_size(char* arg, int default_size);
+#if defined(CONFIG_I2C_MUX)
+static I2C_MUX_DEVICE	*i2c_mux_devices = NULL;
+static	int	i2c_mux_busid = CONFIG_SYS_MAX_I2C_BUS;
+
+DECLARE_GLOBAL_DATA_PTR;
+
+#endif
+
+/* TODO: Implement architecture-specific get/set functions */
+unsigned int __def_i2c_get_bus_speed(void)
+{
+	return CONFIG_SYS_I2C_SPEED;
+}
+unsigned int i2c_get_bus_speed(void)
+	__attribute__((weak, alias("__def_i2c_get_bus_speed")));
+
+int __def_i2c_set_bus_speed(unsigned int speed)
+{
+	if (speed != CONFIG_SYS_I2C_SPEED)
+		return -1;
+
+	return 0;
+}
+int i2c_set_bus_speed(unsigned int)
+	__attribute__((weak, alias("__def_i2c_set_bus_speed")));
 
 /*
  * Syntax:
- *	imd {i2c_chip} {addr}{.0, .1, .2} {len}
+ *	i2c md {i2c_chip} {addr}{.0, .1, .2} {len}
  */
 #define DISP_LINE_LEN	16
 
@@ -130,7 +169,7 @@ int do_i2c_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	length = i2c_dp_last_length;
 
 	if (argc < 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -151,17 +190,16 @@ int do_i2c_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		 */
 		addr = simple_strtoul(argv[2], NULL, 16);
 		alen = 1;
-		for(j = 0; j < 8; j++) {
+		for (j = 0; j < 8; j++) {
 			if (argv[2][j] == '.') {
 				alen = argv[2][j+1] - '0';
 				if (alen > 4) {
-					printf ("Usage:\n%s\n", cmdtp->usage);
+					cmd_usage(cmdtp);
 					return 1;
 				}
 				break;
-			} else if (argv[2][j] == '\0') {
+			} else if (argv[2][j] == '\0')
 				break;
-			}
 		}
 
 		/*
@@ -185,9 +223,9 @@ int do_i2c_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 		linebytes = (nbytes > DISP_LINE_LEN) ? DISP_LINE_LEN : nbytes;
 
-		if(i2c_read(chip, addr, alen, linebuf, linebytes) != 0) {
+		if (i2c_read(chip, addr, alen, linebuf, linebytes) != 0)
 			puts ("Error reading the chip.\n");
-		} else {
+		else {
 			printf("%04x:", addr);
 			cp = linebuf;
 			for (j=0; j<linebytes; j++) {
@@ -216,21 +254,11 @@ int do_i2c_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
-int do_i2c_mm ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
-{
-	return mod_i2c_mem (cmdtp, 1, flag, argc, argv);
-}
-
-
-int do_i2c_nm ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
-{
-	return mod_i2c_mem (cmdtp, 0, flag, argc, argv);
-}
 
 /* Write (fill) memory
  *
  * Syntax:
- *	imw {i2c_chip} {addr}{.0, .1, .2} {data} [{count}]
+ *	i2c mw {i2c_chip} {addr}{.0, .1, .2} {data} [{count}]
  */
 int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
@@ -242,13 +270,13 @@ int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int	j;
 
 	if ((argc < 4) || (argc > 5)) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	/*
- 	 * Chip is always specified.
- 	 */
+	 * Chip is always specified.
+	 */
 	chip = simple_strtoul(argv[1], NULL, 16);
 
 	/*
@@ -256,17 +284,16 @@ int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	addr = simple_strtoul(argv[2], NULL, 16);
 	alen = 1;
-	for(j = 0; j < 8; j++) {
+	for (j = 0; j < 8; j++) {
 		if (argv[2][j] == '.') {
 			alen = argv[2][j+1] - '0';
-			if(alen > 4) {
-				printf ("Usage:\n%s\n", cmdtp->usage);
+			if (alen > 4) {
+				cmd_usage(cmdtp);
 				return 1;
 			}
 			break;
-		} else if (argv[2][j] == '\0') {
+		} else if (argv[2][j] == '\0')
 			break;
-		}
 	}
 
 	/*
@@ -277,16 +304,14 @@ int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	/*
 	 * Optional count
 	 */
-	if(argc == 5) {
+	if (argc == 5)
 		count = simple_strtoul(argv[4], NULL, 16);
-	} else {
+	else
 		count = 1;
-	}
 
 	while (count-- > 0) {
-		if(i2c_write(chip, addr++, alen, &byte, 1) != 0) {
+		if (i2c_write(chip, addr++, alen, &byte, 1) != 0)
 			puts ("Error writing the chip.\n");
-		}
 		/*
 		 * Wait for the write to complete.  The write can take
 		 * up to 10mSec (we allow a little more time).
@@ -298,14 +323,14 @@ int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 /*
  * No write delay with FRAM devices.
  */
-#if !defined(CFG_I2C_FRAM)
+#if !defined(CONFIG_SYS_I2C_FRAM)
 		udelay(11000);
 #endif
 
 #if 0
-		for(timeout = 0; timeout < 10; timeout++) {
+		for (timeout = 0; timeout < 10; timeout++) {
 			udelay(2000);
-			if(i2c_probe(chip) == 0)
+			if (i2c_probe(chip) == 0)
 				break;
 		}
 #endif
@@ -314,11 +339,10 @@ int do_i2c_mw ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return (0);
 }
 
-
 /* Calculate a CRC on memory
  *
  * Syntax:
- *	icrc32 {i2c_chip} {addr}{.0, .1, .2} {count}
+ *	i2c crc32 {i2c_chip} {addr}{.0, .1, .2} {count}
  */
 int do_i2c_crc (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
@@ -332,13 +356,13 @@ int do_i2c_crc (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int	j;
 
 	if (argc < 4) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	/*
- 	 * Chip is always specified.
- 	 */
+	 * Chip is always specified.
+	 */
 	chip = simple_strtoul(argv[1], NULL, 16);
 
 	/*
@@ -346,17 +370,16 @@ int do_i2c_crc (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	addr = simple_strtoul(argv[2], NULL, 16);
 	alen = 1;
-	for(j = 0; j < 8; j++) {
+	for (j = 0; j < 8; j++) {
 		if (argv[2][j] == '.') {
 			alen = argv[2][j+1] - '0';
-			if(alen > 4) {
-				printf ("Usage:\n%s\n", cmdtp->usage);
+			if (alen > 4) {
+				cmd_usage(cmdtp);
 				return 1;
 			}
 			break;
-		} else if (argv[2][j] == '\0') {
+		} else if (argv[2][j] == '\0')
 			break;
-		}
 	}
 
 	/*
@@ -371,29 +394,25 @@ int do_i2c_crc (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	crc = 0;
 	err = 0;
-	while(count-- > 0) {
-		if(i2c_read(chip, addr, alen, &byte, 1) != 0) {
+	while (count-- > 0) {
+		if (i2c_read(chip, addr, alen, &byte, 1) != 0)
 			err++;
-		}
 		crc = crc32 (crc, &byte, 1);
 		addr++;
 	}
-	if(err > 0)
-	{
+	if (err > 0)
 		puts ("Error reading the chip,\n");
-	} else {
+	else
 		printf ("%08lx\n", crc);
-	}
 
 	return 0;
 }
 
-
 /* Modify memory.
  *
  * Syntax:
- *	imm{.b, .w, .l} {i2c_chip} {addr}{.0, .1, .2}
- *	inm{.b, .w, .l} {i2c_chip} {addr}{.0, .1, .2}
+ *	i2c mm{.b, .w, .l} {i2c_chip} {addr}{.0, .1, .2}
+ *	i2c nm{.b, .w, .l} {i2c_chip} {addr}{.0, .1, .2}
  */
 
 static int
@@ -409,7 +428,7 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 	extern char console_buffer[];
 
 	if (argc != 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -432,8 +451,8 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 		size = cmd_get_data_size(argv[0], 1);
 
 		/*
-	 	 * Chip is always specified.
-	 	 */
+		 * Chip is always specified.
+		 */
 		chip = simple_strtoul(argv[1], NULL, 16);
 
 		/*
@@ -441,17 +460,16 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 		 */
 		addr = simple_strtoul(argv[2], NULL, 16);
 		alen = 1;
-		for(j = 0; j < 8; j++) {
+		for (j = 0; j < 8; j++) {
 			if (argv[2][j] == '.') {
 				alen = argv[2][j+1] - '0';
-				if(alen > 4) {
-					printf ("Usage:\n%s\n", cmdtp->usage);
+				if (alen > 4) {
+					cmd_usage(cmdtp);
 					return 1;
 				}
 				break;
-			} else if (argv[2][j] == '\0') {
+			} else if (argv[2][j] == '\0')
 				break;
-			}
 		}
 	}
 
@@ -461,17 +479,16 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 	 */
 	do {
 		printf("%08lx:", addr);
-		if(i2c_read(chip, addr, alen, (uchar *)&data, size) != 0) {
+		if (i2c_read(chip, addr, alen, (uchar *)&data, size) != 0)
 			puts ("\nError reading the chip,\n");
-		} else {
+		else {
 			data = cpu_to_be32(data);
-			if(size == 1) {
+			if (size == 1)
 				printf(" %02lx", (data >> 24) & 0x000000FF);
-			} else if(size == 2) {
+			else if (size == 2)
 				printf(" %04lx", (data >> 16) & 0x0000FFFF);
-			} else {
+			else
 				printf(" %08lx", data);
-			}
 		}
 
 		nbytes = readline (" ? ");
@@ -488,19 +505,17 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 #endif
 		}
 #ifdef CONFIG_BOOT_RETRY_TIME
-		else if (nbytes == -2) {
+		else if (nbytes == -2)
 			break;	/* timed out, exit the command	*/
-		}
 #endif
 		else {
 			char *endp;
 
 			data = simple_strtoul(console_buffer, &endp, 16);
-			if(size == 1) {
+			if (size == 1)
 				data = data << 24;
-			} else if(size == 2) {
+			else if (size == 2)
 				data = data << 16;
-			}
 			data = be32_to_cpu(data);
 			nbytes = endp - console_buffer;
 			if (nbytes) {
@@ -510,11 +525,10 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 				 */
 				reset_cmd_timeout();
 #endif
-				if(i2c_write(chip, addr, alen, (uchar *)&data, size) != 0) {
+				if (i2c_write(chip, addr, alen, (uchar *)&data, size) != 0)
 					puts ("Error writing the chip.\n");
-				}
-#ifdef CFG_EEPROM_PAGE_WRITE_DELAY_MS
-				udelay(CFG_EEPROM_PAGE_WRITE_DELAY_MS * 1000);
+#ifdef CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS
+				udelay(CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS * 1000);
 #endif
 				if (incrflag)
 					addr += size;
@@ -522,30 +536,31 @@ mod_i2c_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 		}
 	} while (nbytes);
 
-	chip = i2c_mm_last_chip;
-	addr = i2c_mm_last_addr;
-	alen = i2c_mm_last_alen;
+	i2c_mm_last_chip = chip;
+	i2c_mm_last_addr = addr;
+	i2c_mm_last_alen = alen;
 
 	return 0;
 }
 
 /*
  * Syntax:
- *	iprobe {addr}{.0, .1, .2}
+ *	i2c probe {addr}{.0, .1, .2}
  */
 int do_i2c_probe (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	int j;
-#if defined(CFG_I2C_NOPROBES)
+#if defined(CONFIG_SYS_I2C_NOPROBES)
 	int k, skip;
-#endif
+	uchar bus = GET_BUS_NUM;
+#endif	/* NOPROBES */
 
 	puts ("Valid chip addresses:");
-	for(j = 0; j < 128; j++) {
-#if defined(CFG_I2C_NOPROBES)
+	for (j = 0; j < 128; j++) {
+#if defined(CONFIG_SYS_I2C_NOPROBES)
 		skip = 0;
-		for (k = 0; k < sizeof(i2c_no_probes); k++){
-			if (j == i2c_no_probes[k]){
+		for (k=0; k < NUM_ELEMENTS_NOPROBE; k++) {
+			if (COMPARE_BUS(bus, k) && COMPARE_ADDR(j, k)) {
 				skip = 1;
 				break;
 			}
@@ -553,26 +568,26 @@ int do_i2c_probe (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		if (skip)
 			continue;
 #endif
-		if(i2c_probe(j) == 0) {
+		if (i2c_probe(j) == 0)
 			printf(" %02X", j);
-		}
 	}
 	putc ('\n');
 
-#if defined(CFG_I2C_NOPROBES)
+#if defined(CONFIG_SYS_I2C_NOPROBES)
 	puts ("Excluded chip addresses:");
-	for( k = 0; k < sizeof(i2c_no_probes); k++ )
-		printf(" %02X", i2c_no_probes[k] );
+	for (k=0; k < NUM_ELEMENTS_NOPROBE; k++) {
+		if (COMPARE_BUS(bus,k))
+			printf(" %02X", NO_PROBE_ADDR(k));
+	}
 	putc ('\n');
 #endif
 
 	return 0;
 }
 
-
 /*
  * Syntax:
- *	iloop {i2c_chip} {addr}{.0, .1, .2} [{length}] [{delay}]
+ *	i2c loop {i2c_chip} {addr}{.0, .1, .2} [{length}] [{delay}]
  *	{length} - Number of bytes to read
  *	{delay}  - A DECIMAL number and defaults to 1000 uSec
  */
@@ -587,7 +602,7 @@ int do_i2c_loop(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int	j;
 
 	if (argc < 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -601,17 +616,16 @@ int do_i2c_loop(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	addr = simple_strtoul(argv[2], NULL, 16);
 	alen = 1;
-	for(j = 0; j < 8; j++) {
+	for (j = 0; j < 8; j++) {
 		if (argv[2][j] == '.') {
 			alen = argv[2][j+1] - '0';
 			if (alen > 4) {
-				printf ("Usage:\n%s\n", cmdtp->usage);
+				cmd_usage(cmdtp);
 				return 1;
 			}
 			break;
-		} else if (argv[2][j] == '\0') {
+		} else if (argv[2][j] == '\0')
 			break;
-		}
 	}
 
 	/*
@@ -619,24 +633,21 @@ int do_i2c_loop(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	length = 1;
 	length = simple_strtoul(argv[3], NULL, 16);
-	if(length > sizeof(bytes)) {
+	if (length > sizeof(bytes))
 		length = sizeof(bytes);
-	}
 
 	/*
 	 * The delay time (uSec) is optional.
 	 */
 	delay = 1000;
-	if (argc > 3) {
+	if (argc > 3)
 		delay = simple_strtoul(argv[4], NULL, 10);
-	}
 	/*
 	 * Run the loop...
 	 */
-	while(1) {
-		if(i2c_read(chip, addr, alen, bytes, length) != 0) {
+	while (1) {
+		if (i2c_read(chip, addr, alen, bytes, length) != 0)
 			puts ("Error reading the chip.\n");
-		}
 		udelay(delay);
 	}
 
@@ -644,34 +655,125 @@ int do_i2c_loop(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
-
 /*
  * The SDRAM command is separately configured because many
  * (most?) embedded boards don't use SDRAM DIMMs.
  */
-#if (CONFIG_COMMANDS & CFG_CMD_SDRAM)
+#if defined(CONFIG_CMD_SDRAM)
+static void print_ddr2_tcyc (u_char const b)
+{
+	printf ("%d.", (b >> 4) & 0x0F);
+	switch (b & 0x0F) {
+	case 0x0:
+	case 0x1:
+	case 0x2:
+	case 0x3:
+	case 0x4:
+	case 0x5:
+	case 0x6:
+	case 0x7:
+	case 0x8:
+	case 0x9:
+		printf ("%d ns\n", b & 0x0F);
+		break;
+	case 0xA:
+		puts ("25 ns\n");
+		break;
+	case 0xB:
+		puts ("33 ns\n");
+		break;
+	case 0xC:
+		puts ("66 ns\n");
+		break;
+	case 0xD:
+		puts ("75 ns\n");
+		break;
+	default:
+		puts ("?? ns\n");
+		break;
+	}
+}
+
+static void decode_bits (u_char const b, char const *str[], int const do_once)
+{
+	u_char mask;
+
+	for (mask = 0x80; mask != 0x00; mask >>= 1, ++str) {
+		if (b & mask) {
+			puts (*str);
+			if (do_once)
+				return;
+		}
+	}
+}
 
 /*
  * Syntax:
- *	sdram {i2c_chip}
+ *	i2c sdram {i2c_chip}
  */
-int do_sdram  ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_sdram (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
+	enum { unknown, EDO, SDRAM, DDR2 } type;
+
 	u_char	chip;
 	u_char	data[128];
 	u_char	cksum;
 	int	j;
 
+	static const char *decode_CAS_DDR2[] = {
+		" TBD", " 6", " 5", " 4", " 3", " 2", " TBD", " TBD"
+	};
+
+	static const char *decode_CAS_default[] = {
+		" TBD", " 7", " 6", " 5", " 4", " 3", " 2", " 1"
+	};
+
+	static const char *decode_CS_WE_default[] = {
+		" TBD", " 6", " 5", " 4", " 3", " 2", " 1", " 0"
+	};
+
+	static const char *decode_byte21_default[] = {
+		"  TBD (bit 7)\n",
+		"  Redundant row address\n",
+		"  Differential clock input\n",
+		"  Registerd DQMB inputs\n",
+		"  Buffered DQMB inputs\n",
+		"  On-card PLL\n",
+		"  Registered address/control lines\n",
+		"  Buffered address/control lines\n"
+	};
+
+	static const char *decode_byte22_DDR2[] = {
+		"  TBD (bit 7)\n",
+		"  TBD (bit 6)\n",
+		"  TBD (bit 5)\n",
+		"  TBD (bit 4)\n",
+		"  TBD (bit 3)\n",
+		"  Supports partial array self refresh\n",
+		"  Supports 50 ohm ODT\n",
+		"  Supports weak driver\n"
+	};
+
+	static const char *decode_row_density_DDR2[] = {
+		"512 MiB", "256 MiB", "128 MiB", "16 GiB",
+		"8 GiB", "4 GiB", "2 GiB", "1 GiB"
+	};
+
+	static const char *decode_row_density_default[] = {
+		"512 MiB", "256 MiB", "128 MiB", "64 MiB",
+		"32 MiB", "16 MiB", "8 MiB", "4 MiB"
+	};
+
 	if (argc < 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 	/*
 	 * Chip is always specified.
- 	 */
-	chip = simple_strtoul(argv[1], NULL, 16);
+	 */
+	chip = simple_strtoul (argv[1], NULL, 16);
 
-	if(i2c_read(chip, 0, 1, data, sizeof(data)) != 0) {
+	if (i2c_read (chip, 0, 1, data, sizeof (data)) != 0) {
 		puts ("No SDRAM Serial Presence Detect found.\n");
 		return 1;
 	}
@@ -680,84 +782,159 @@ int do_sdram  ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	for (j = 0; j < 63; j++) {
 		cksum += data[j];
 	}
-	if(cksum != data[63]) {
+	if (cksum != data[63]) {
 		printf ("WARNING: Configuration data checksum failure:\n"
-			"  is 0x%02x, calculated 0x%02x\n",
-			data[63], cksum);
+			"  is 0x%02x, calculated 0x%02x\n", data[63], cksum);
 	}
-	printf("SPD data revision            %d.%d\n",
+	printf ("SPD data revision            %d.%d\n",
 		(data[62] >> 4) & 0x0F, data[62] & 0x0F);
-	printf("Bytes used                   0x%02X\n", data[0]);
-	printf("Serial memory size           0x%02X\n", 1 << data[1]);
+	printf ("Bytes used                   0x%02X\n", data[0]);
+	printf ("Serial memory size           0x%02X\n", 1 << data[1]);
+
 	puts ("Memory type                  ");
-	switch(data[2]) {
-		case 2:  puts ("EDO\n");	break;
-		case 4:  puts ("SDRAM\n");	break;
-		default: puts ("unknown\n");	break;
+	switch (data[2]) {
+	case 2:
+		type = EDO;
+		puts ("EDO\n");
+		break;
+	case 4:
+		type = SDRAM;
+		puts ("SDRAM\n");
+		break;
+	case 8:
+		type = DDR2;
+		puts ("DDR2\n");
+		break;
+	default:
+		type = unknown;
+		puts ("unknown\n");
+		break;
 	}
+
 	puts ("Row address bits             ");
-	if((data[3] & 0x00F0) == 0) {
-		printf("%d\n", data[3] & 0x0F);
-	} else {
-		printf("%d/%d\n", data[3] & 0x0F, (data[3] >> 4) & 0x0F);
-	}
+	if ((data[3] & 0x00F0) == 0)
+		printf ("%d\n", data[3] & 0x0F);
+	else
+		printf ("%d/%d\n", data[3] & 0x0F, (data[3] >> 4) & 0x0F);
+
 	puts ("Column address bits          ");
-	if((data[4] & 0x00F0) == 0) {
-		printf("%d\n", data[4] & 0x0F);
-	} else {
-		printf("%d/%d\n", data[4] & 0x0F, (data[4] >> 4) & 0x0F);
+	if ((data[4] & 0x00F0) == 0)
+		printf ("%d\n", data[4] & 0x0F);
+	else
+		printf ("%d/%d\n", data[4] & 0x0F, (data[4] >> 4) & 0x0F);
+
+	switch (type) {
+	case DDR2:
+		printf ("Number of ranks              %d\n",
+			(data[5] & 0x07) + 1);
+		break;
+	default:
+		printf ("Module rows                  %d\n", data[5]);
+		break;
 	}
-	printf("Module rows                  %d\n", data[5]);
-	printf("Module data width            %d bits\n", (data[7] << 8) | data[6]);
+
+	switch (type) {
+	case DDR2:
+		printf ("Module data width            %d bits\n", data[6]);
+		break;
+	default:
+		printf ("Module data width            %d bits\n",
+			(data[7] << 8) | data[6]);
+		break;
+	}
+
 	puts ("Interface signal levels      ");
 	switch(data[8]) {
-		case 0:  puts ("5.0v/TTL\n");	break;
+		case 0:  puts ("TTL 5.0 V\n");	break;
 		case 1:  puts ("LVTTL\n");	break;
-		case 2:  puts ("HSTL 1.5\n");	break;
-		case 3:  puts ("SSTL 3.3\n");	break;
-		case 4:  puts ("SSTL 2.5\n");	break;
+		case 2:  puts ("HSTL 1.5 V\n");	break;
+		case 3:  puts ("SSTL 3.3 V\n");	break;
+		case 4:  puts ("SSTL 2.5 V\n");	break;
+		case 5:  puts ("SSTL 1.8 V\n");	break;
 		default: puts ("unknown\n");	break;
 	}
-	printf("SDRAM cycle time             %d.%d nS\n",
-		(data[9] >> 4) & 0x0F, data[9] & 0x0F);
-	printf("SDRAM access time            %d.%d nS\n",
-		(data[10] >> 4) & 0x0F, data[10] & 0x0F);
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM cycle time             ");
+		print_ddr2_tcyc (data[9]);
+		break;
+	default:
+		printf ("SDRAM cycle time             %d.%d ns\n",
+			(data[9] >> 4) & 0x0F, data[9] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM access time            0.%d%d ns\n",
+			(data[10] >> 4) & 0x0F, data[10] & 0x0F);
+		break;
+	default:
+		printf ("SDRAM access time            %d.%d ns\n",
+			(data[10] >> 4) & 0x0F, data[10] & 0x0F);
+		break;
+	}
+
 	puts ("EDC configuration            ");
-	switch(data[11]) {
+	switch (data[11]) {
 		case 0:  puts ("None\n");	break;
 		case 1:  puts ("Parity\n");	break;
 		case 2:  puts ("ECC\n");	break;
 		default: puts ("unknown\n");	break;
 	}
-	if((data[12] & 0x80) == 0) {
+
+	if ((data[12] & 0x80) == 0)
 		puts ("No self refresh, rate        ");
-	} else {
+	else
 		puts ("Self refresh, rate           ");
-	}
+
 	switch(data[12] & 0x7F) {
-		case 0:  puts ("15.625uS\n");	break;
-		case 1:  puts ("3.9uS\n");	break;
-		case 2:  puts ("7.8uS\n");	break;
-		case 3:  puts ("31.3uS\n");	break;
-		case 4:  puts ("62.5uS\n");	break;
-		case 5:  puts ("125uS\n");	break;
+		case 0:  puts ("15.625 us\n");	break;
+		case 1:  puts ("3.9 us\n");	break;
+		case 2:  puts ("7.8 us\n");	break;
+		case 3:  puts ("31.3 us\n");	break;
+		case 4:  puts ("62.5 us\n");	break;
+		case 5:  puts ("125 us\n");	break;
 		default: puts ("unknown\n");	break;
 	}
-	printf("SDRAM width (primary)        %d\n", data[13] & 0x7F);
-	if((data[13] & 0x80) != 0) {
-		printf("  (second bank)              %d\n",
-			2 * (data[13] & 0x7F));
-	}
-	if(data[14] != 0) {
-		printf("EDC width                    %d\n",
-			data[14] & 0x7F);
-		if((data[14] & 0x80) != 0) {
-			printf("  (second bank)              %d\n",
-				2 * (data[14] & 0x7F));
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM width (primary)        %d\n", data[13]);
+		break;
+	default:
+		printf ("SDRAM width (primary)        %d\n", data[13] & 0x7F);
+		if ((data[13] & 0x80) != 0) {
+			printf ("  (second bank)              %d\n",
+				2 * (data[13] & 0x7F));
 		}
+		break;
 	}
-	printf("Min clock delay, back-to-back random column addresses %d\n",
-		data[15]);
+
+	switch (type) {
+	case DDR2:
+		if (data[14] != 0)
+			printf ("EDC width                    %d\n", data[14]);
+		break;
+	default:
+		if (data[14] != 0) {
+			printf ("EDC width                    %d\n",
+				data[14] & 0x7F);
+
+			if ((data[14] & 0x80) != 0) {
+				printf ("  (second bank)              %d\n",
+					2 * (data[14] & 0x7F));
+			}
+		}
+		break;
+	}
+
+	if (DDR2 != type) {
+		printf ("Min clock delay, back-to-back random column addresses "
+			"%d\n", data[15]);
+	}
+
 	puts ("Burst length(s)             ");
 	if (data[16] & 0x80) puts (" Page");
 	if (data[16] & 0x08) puts (" 8");
@@ -765,169 +942,600 @@ int do_sdram  ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (data[16] & 0x02) puts (" 2");
 	if (data[16] & 0x01) puts (" 1");
 	putc ('\n');
-	printf("Number of banks              %d\n", data[17]);
-	puts ("CAS latency(s)              ");
-	if (data[18] & 0x80) puts (" TBD");
-	if (data[18] & 0x40) puts (" 7");
-	if (data[18] & 0x20) puts (" 6");
-	if (data[18] & 0x10) puts (" 5");
-	if (data[18] & 0x08) puts (" 4");
-	if (data[18] & 0x04) puts (" 3");
-	if (data[18] & 0x02) puts (" 2");
-	if (data[18] & 0x01) puts (" 1");
-	putc ('\n');
-	puts ("CS latency(s)               ");
-	if (data[19] & 0x80) puts (" TBD");
-	if (data[19] & 0x40) puts (" 6");
-	if (data[19] & 0x20) puts (" 5");
-	if (data[19] & 0x10) puts (" 4");
-	if (data[19] & 0x08) puts (" 3");
-	if (data[19] & 0x04) puts (" 2");
-	if (data[19] & 0x02) puts (" 1");
-	if (data[19] & 0x01) puts (" 0");
-	putc ('\n');
-	puts ("WE latency(s)               ");
-	if (data[20] & 0x80) puts (" TBD");
-	if (data[20] & 0x40) puts (" 6");
-	if (data[20] & 0x20) puts (" 5");
-	if (data[20] & 0x10) puts (" 4");
-	if (data[20] & 0x08) puts (" 3");
-	if (data[20] & 0x04) puts (" 2");
-	if (data[20] & 0x02) puts (" 1");
-	if (data[20] & 0x01) puts (" 0");
-	putc ('\n');
-	puts ("Module attributes:\n");
-	if (!data[21])       puts ("  (none)\n");
-	if (data[21] & 0x80) puts ("  TBD (bit 7)\n");
-	if (data[21] & 0x40) puts ("  Redundant row address\n");
-	if (data[21] & 0x20) puts ("  Differential clock input\n");
-	if (data[21] & 0x10) puts ("  Registerd DQMB inputs\n");
-	if (data[21] & 0x08) puts ("  Buffered DQMB inputs\n");
-	if (data[21] & 0x04) puts ("  On-card PLL\n");
-	if (data[21] & 0x02) puts ("  Registered address/control lines\n");
-	if (data[21] & 0x01) puts ("  Buffered address/control lines\n");
-	puts ("Device attributes:\n");
-	if (data[22] & 0x80) puts ("  TBD (bit 7)\n");
-	if (data[22] & 0x40) puts ("  TBD (bit 6)\n");
-	if (data[22] & 0x20) puts ("  Upper Vcc tolerance 5%\n");
-	else                 puts ("  Upper Vcc tolerance 10%\n");
-	if (data[22] & 0x10) puts ("  Lower Vcc tolerance 5%\n");
-	else                 puts ("  Lower Vcc tolerance 10%\n");
-	if (data[22] & 0x08) puts ("  Supports write1/read burst\n");
-	if (data[22] & 0x04) puts ("  Supports precharge all\n");
-	if (data[22] & 0x02) puts ("  Supports auto precharge\n");
-	if (data[22] & 0x01) puts ("  Supports early RAS# precharge\n");
-	printf("SDRAM cycle time (2nd highest CAS latency)        %d.%d nS\n",
-		(data[23] >> 4) & 0x0F, data[23] & 0x0F);
-	printf("SDRAM access from clock (2nd highest CAS latency) %d.%d nS\n",
-		(data[24] >> 4) & 0x0F, data[24] & 0x0F);
-	printf("SDRAM cycle time (3rd highest CAS latency)        %d.%d nS\n",
-		(data[25] >> 4) & 0x0F, data[25] & 0x0F);
-	printf("SDRAM access from clock (3rd highest CAS latency) %d.%d nS\n",
-		(data[26] >> 4) & 0x0F, data[26] & 0x0F);
-	printf("Minimum row precharge        %d nS\n", data[27]);
-	printf("Row active to row active min %d nS\n", data[28]);
-	printf("RAS to CAS delay min         %d nS\n", data[29]);
-	printf("Minimum RAS pulse width      %d nS\n", data[30]);
-	puts ("Density of each row         ");
-	if (data[31] & 0x80) puts (" 512");
-	if (data[31] & 0x40) puts (" 256");
-	if (data[31] & 0x20) puts (" 128");
-	if (data[31] & 0x10) puts (" 64");
-	if (data[31] & 0x08) puts (" 32");
-	if (data[31] & 0x04) puts (" 16");
-	if (data[31] & 0x02) puts (" 8");
-	if (data[31] & 0x01) puts (" 4");
-	puts ("MByte\n");
-	printf("Command and Address setup    %c%d.%d nS\n",
-		(data[32] & 0x80) ? '-' : '+',
-		(data[32] >> 4) & 0x07, data[32] & 0x0F);
-	printf("Command and Address hold     %c%d.%d nS\n",
-		(data[33] & 0x80) ? '-' : '+',
-		(data[33] >> 4) & 0x07, data[33] & 0x0F);
-	printf("Data signal input setup      %c%d.%d nS\n",
-		(data[34] & 0x80) ? '-' : '+',
-		(data[34] >> 4) & 0x07, data[34] & 0x0F);
-	printf("Data signal input hold       %c%d.%d nS\n",
-		(data[35] & 0x80) ? '-' : '+',
-		(data[35] >> 4) & 0x07, data[35] & 0x0F);
-	puts ("Manufacturer's JEDEC ID      ");
-	for(j = 64; j <= 71; j++)
-		printf("%02X ", data[j]);
-	putc ('\n');
-	printf("Manufacturing Location       %02X\n", data[72]);
-	puts ("Manufacturer's Part Number   ");
-	for(j = 73; j <= 90; j++)
-		printf("%02X ", data[j]);
-	putc ('\n');
-	printf("Revision Code                %02X %02X\n", data[91], data[92]);
-	printf("Manufacturing Date           %02X %02X\n", data[93], data[94]);
-	puts ("Assembly Serial Number       ");
-	for(j = 95; j <= 98; j++)
-		printf("%02X ", data[j]);
-	putc ('\n');
-	printf("Speed rating                 PC%d\n",
-		data[126] == 0x66 ? 66 : data[126]);
+	printf ("Number of banks              %d\n", data[17]);
 
+	switch (type) {
+	case DDR2:
+		puts ("CAS latency(s)              ");
+		decode_bits (data[18], decode_CAS_DDR2, 0);
+		putc ('\n');
+		break;
+	default:
+		puts ("CAS latency(s)              ");
+		decode_bits (data[18], decode_CAS_default, 0);
+		putc ('\n');
+		break;
+	}
+
+	if (DDR2 != type) {
+		puts ("CS latency(s)               ");
+		decode_bits (data[19], decode_CS_WE_default, 0);
+		putc ('\n');
+	}
+
+	if (DDR2 != type) {
+		puts ("WE latency(s)               ");
+		decode_bits (data[20], decode_CS_WE_default, 0);
+		putc ('\n');
+	}
+
+	switch (type) {
+	case DDR2:
+		puts ("Module attributes:\n");
+		if (data[21] & 0x80)
+			puts ("  TBD (bit 7)\n");
+		if (data[21] & 0x40)
+			puts ("  Analysis probe installed\n");
+		if (data[21] & 0x20)
+			puts ("  TBD (bit 5)\n");
+		if (data[21] & 0x10)
+			puts ("  FET switch external enable\n");
+		printf ("  %d PLLs on DIMM\n", (data[21] >> 2) & 0x03);
+		if (data[20] & 0x11) {
+			printf ("  %d active registers on DIMM\n",
+				(data[21] & 0x03) + 1);
+		}
+		break;
+	default:
+		puts ("Module attributes:\n");
+		if (!data[21])
+			puts ("  (none)\n");
+		else
+			decode_bits (data[21], decode_byte21_default, 0);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		decode_bits (data[22], decode_byte22_DDR2, 0);
+		break;
+	default:
+		puts ("Device attributes:\n");
+		if (data[22] & 0x80) puts ("  TBD (bit 7)\n");
+		if (data[22] & 0x40) puts ("  TBD (bit 6)\n");
+		if (data[22] & 0x20) puts ("  Upper Vcc tolerance 5%\n");
+		else                 puts ("  Upper Vcc tolerance 10%\n");
+		if (data[22] & 0x10) puts ("  Lower Vcc tolerance 5%\n");
+		else                 puts ("  Lower Vcc tolerance 10%\n");
+		if (data[22] & 0x08) puts ("  Supports write1/read burst\n");
+		if (data[22] & 0x04) puts ("  Supports precharge all\n");
+		if (data[22] & 0x02) puts ("  Supports auto precharge\n");
+		if (data[22] & 0x01) puts ("  Supports early RAS# precharge\n");
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM cycle time (2nd highest CAS latency)        ");
+		print_ddr2_tcyc (data[23]);
+		break;
+	default:
+		printf ("SDRAM cycle time (2nd highest CAS latency)        %d."
+			"%d ns\n", (data[23] >> 4) & 0x0F, data[23] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM access from clock (2nd highest CAS latency) 0."
+			"%d%d ns\n", (data[24] >> 4) & 0x0F, data[24] & 0x0F);
+		break;
+	default:
+		printf ("SDRAM access from clock (2nd highest CAS latency) %d."
+			"%d ns\n", (data[24] >> 4) & 0x0F, data[24] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM cycle time (3rd highest CAS latency)        ");
+		print_ddr2_tcyc (data[25]);
+		break;
+	default:
+		printf ("SDRAM cycle time (3rd highest CAS latency)        %d."
+			"%d ns\n", (data[25] >> 4) & 0x0F, data[25] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("SDRAM access from clock (3rd highest CAS latency) 0."
+			"%d%d ns\n", (data[26] >> 4) & 0x0F, data[26] & 0x0F);
+		break;
+	default:
+		printf ("SDRAM access from clock (3rd highest CAS latency) %d."
+			"%d ns\n", (data[26] >> 4) & 0x0F, data[26] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("Minimum row precharge        %d.%02d ns\n",
+			(data[27] >> 2) & 0x3F, 25 * (data[27] & 0x03));
+		break;
+	default:
+		printf ("Minimum row precharge        %d ns\n", data[27]);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("Row active to row active min %d.%02d ns\n",
+			(data[28] >> 2) & 0x3F, 25 * (data[28] & 0x03));
+		break;
+	default:
+		printf ("Row active to row active min %d ns\n", data[28]);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("RAS to CAS delay min         %d.%02d ns\n",
+			(data[29] >> 2) & 0x3F, 25 * (data[29] & 0x03));
+		break;
+	default:
+		printf ("RAS to CAS delay min         %d ns\n", data[29]);
+		break;
+	}
+
+	printf ("Minimum RAS pulse width      %d ns\n", data[30]);
+
+	switch (type) {
+	case DDR2:
+		puts ("Density of each row          ");
+		decode_bits (data[31], decode_row_density_DDR2, 1);
+		putc ('\n');
+		break;
+	default:
+		puts ("Density of each row          ");
+		decode_bits (data[31], decode_row_density_default, 1);
+		putc ('\n');
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		puts ("Command and Address setup    ");
+		if (data[32] >= 0xA0) {
+			printf ("1.%d%d ns\n",
+				((data[32] >> 4) & 0x0F) - 10, data[32] & 0x0F);
+		} else {
+			printf ("0.%d%d ns\n",
+				((data[32] >> 4) & 0x0F), data[32] & 0x0F);
+		}
+		break;
+	default:
+		printf ("Command and Address setup    %c%d.%d ns\n",
+			(data[32] & 0x80) ? '-' : '+',
+			(data[32] >> 4) & 0x07, data[32] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		puts ("Command and Address hold     ");
+		if (data[33] >= 0xA0) {
+			printf ("1.%d%d ns\n",
+				((data[33] >> 4) & 0x0F) - 10, data[33] & 0x0F);
+		} else {
+			printf ("0.%d%d ns\n",
+				((data[33] >> 4) & 0x0F), data[33] & 0x0F);
+		}
+		break;
+	default:
+		printf ("Command and Address hold     %c%d.%d ns\n",
+			(data[33] & 0x80) ? '-' : '+',
+			(data[33] >> 4) & 0x07, data[33] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("Data signal input setup      0.%d%d ns\n",
+			(data[34] >> 4) & 0x0F, data[34] & 0x0F);
+		break;
+	default:
+		printf ("Data signal input setup      %c%d.%d ns\n",
+			(data[34] & 0x80) ? '-' : '+',
+			(data[34] >> 4) & 0x07, data[34] & 0x0F);
+		break;
+	}
+
+	switch (type) {
+	case DDR2:
+		printf ("Data signal input hold       0.%d%d ns\n",
+			(data[35] >> 4) & 0x0F, data[35] & 0x0F);
+		break;
+	default:
+		printf ("Data signal input hold       %c%d.%d ns\n",
+			(data[35] & 0x80) ? '-' : '+',
+			(data[35] >> 4) & 0x07, data[35] & 0x0F);
+		break;
+	}
+
+	puts ("Manufacturer's JEDEC ID      ");
+	for (j = 64; j <= 71; j++)
+		printf ("%02X ", data[j]);
+	putc ('\n');
+	printf ("Manufacturing Location       %02X\n", data[72]);
+	puts ("Manufacturer's Part Number   ");
+	for (j = 73; j <= 90; j++)
+		printf ("%02X ", data[j]);
+	putc ('\n');
+	printf ("Revision Code                %02X %02X\n", data[91], data[92]);
+	printf ("Manufacturing Date           %02X %02X\n", data[93], data[94]);
+	puts ("Assembly Serial Number       ");
+	for (j = 95; j <= 98; j++)
+		printf ("%02X ", data[j]);
+	putc ('\n');
+
+	if (DDR2 != type) {
+		printf ("Speed rating                 PC%d\n",
+			data[126] == 0x66 ? 66 : data[126]);
+	}
 	return 0;
 }
-#endif	/* CFG_CMD_SDRAM */
+#endif
 
+#if defined(CONFIG_I2C_MUX)
+int do_i2c_add_bus(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+{
+	int ret=0;
+
+	if (argc == 1) {
+		/* show all busses */
+		I2C_MUX		*mux;
+		I2C_MUX_DEVICE	*device = i2c_mux_devices;
+
+		printf ("Busses reached over muxes:\n");
+		while (device != NULL) {
+			printf ("Bus ID: %x\n", device->busid);
+			printf ("  reached over Mux(es):\n");
+			mux = device->mux;
+			while (mux != NULL) {
+				printf ("    %s@%x ch: %x\n", mux->name, mux->chip, mux->channel);
+				mux = mux->next;
+			}
+			device = device->next;
+		}
+	} else {
+		I2C_MUX_DEVICE *dev;
+
+		dev = i2c_mux_ident_muxstring ((uchar *)argv[1]);
+		ret = 0;
+	}
+	return ret;
+}
+#endif  /* CONFIG_I2C_MUX */
+
+#if defined(CONFIG_I2C_MULTI_BUS)
+int do_i2c_bus_num(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+{
+	int bus_idx, ret=0;
+
+	if (argc == 1)
+		/* querying current setting */
+		printf("Current bus is %d\n", i2c_get_bus_num());
+	else {
+		bus_idx = simple_strtoul(argv[1], NULL, 10);
+		printf("Setting bus to %d\n", bus_idx);
+		ret = i2c_set_bus_num(bus_idx);
+		if (ret)
+			printf("Failure changing bus number (%d)\n", ret);
+	}
+	return ret;
+}
+#endif  /* CONFIG_I2C_MULTI_BUS */
+
+int do_i2c_bus_speed(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+{
+	int speed, ret=0;
+
+	if (argc == 1)
+		/* querying current speed */
+		printf("Current bus speed=%d\n", i2c_get_bus_speed());
+	else {
+		speed = simple_strtoul(argv[1], NULL, 10);
+		printf("Setting bus speed to %d Hz\n", speed);
+		ret = i2c_set_bus_speed(speed);
+		if (ret)
+			printf("Failure changing bus speed (%d)\n", ret);
+	}
+	return ret;
+}
+
+int do_i2c(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+{
+	/* Strip off leading 'i2c' command argument */
+	argc--;
+	argv++;
+
+#if defined(CONFIG_I2C_MUX)
+	if (!strncmp(argv[0], "bu", 2))
+		return do_i2c_add_bus(cmdtp, flag, argc, argv);
+#endif  /* CONFIG_I2C_MUX */
+	if (!strncmp(argv[0], "sp", 2))
+		return do_i2c_bus_speed(cmdtp, flag, argc, argv);
+#if defined(CONFIG_I2C_MULTI_BUS)
+	if (!strncmp(argv[0], "de", 2))
+		return do_i2c_bus_num(cmdtp, flag, argc, argv);
+#endif  /* CONFIG_I2C_MULTI_BUS */
+	if (!strncmp(argv[0], "md", 2))
+		return do_i2c_md(cmdtp, flag, argc, argv);
+	if (!strncmp(argv[0], "mm", 2))
+		return mod_i2c_mem (cmdtp, 1, flag, argc, argv);
+	if (!strncmp(argv[0], "mw", 2))
+		return do_i2c_mw(cmdtp, flag, argc, argv);
+	if (!strncmp(argv[0], "nm", 2))
+		return mod_i2c_mem (cmdtp, 0, flag, argc, argv);
+	if (!strncmp(argv[0], "cr", 2))
+		return do_i2c_crc(cmdtp, flag, argc, argv);
+	if (!strncmp(argv[0], "pr", 2))
+		return do_i2c_probe(cmdtp, flag, argc, argv);
+	if (!strncmp(argv[0], "re", 2)) {
+		i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+		return 0;
+	}
+	if (!strncmp(argv[0], "lo", 2))
+		return do_i2c_loop(cmdtp, flag, argc, argv);
+#if defined(CONFIG_CMD_SDRAM)
+	if (!strncmp(argv[0], "sd", 2))
+		return do_sdram(cmdtp, flag, argc, argv);
+#endif
+	cmd_usage(cmdtp);
+	return 0;
+}
 
 /***************************************************/
 
 U_BOOT_CMD(
-	imd,	4,	1,	do_i2c_md,		\
-	"imd     - i2c memory display\n",				\
-	"chip address[.0, .1, .2] [# of objects]\n    - i2c memory display\n" \
-);
-
-U_BOOT_CMD(
- 	imm,	3,	1,	do_i2c_mm,
-	"imm     - i2c memory modify (auto-incrementing)\n",
-	"chip address[.0, .1, .2]\n"
-	"    - memory modify, auto increment address\n"
-);
-U_BOOT_CMD(
-	inm,	3,	1,	do_i2c_nm,
-	"inm     - memory modify (constant address)\n",
-	"chip address[.0, .1, .2]\n    - memory modify, read and keep address\n"
-);
-
-U_BOOT_CMD(
-	imw,	5,	1,	do_i2c_mw,
-	"imw     - memory write (fill)\n",
-	"chip address[.0, .1, .2] value [count]\n    - memory write (fill)\n"
-);
-
-U_BOOT_CMD(
-	icrc32,	5,	1,	do_i2c_crc,
-	"icrc32  - checksum calculation\n",
-	"chip address[.0, .1, .2] count\n    - compute CRC32 checksum\n"
-);
-
-U_BOOT_CMD(
-	iprobe,	1,	1,	do_i2c_probe,
-	"iprobe  - probe to discover valid I2C chip addresses\n",
-	"\n    -discover valid I2C chip addresses\n"
-);
-
-/*
- * Require full name for "iloop" because it is an infinite loop!
- */
-U_BOOT_CMD(
-	iloop,	5,	1,	do_i2c_loop,
-	"iloop   - infinite loop on address range\n",
-	"chip address[.0, .1, .2] [# of objects]\n"
-	"    - loop, reading a set of addresses\n"
-);
-
-#if (CONFIG_COMMANDS & CFG_CMD_SDRAM)
-U_BOOT_CMD(
-	isdram,	2,	1,	do_sdram,
-	"isdram  - print SDRAM configuration information\n",
-	"chip\n    - print SDRAM configuration information\n"
-	"      (valid chip values 50..57)\n"
-);
+	i2c, 6, 1, do_i2c,
+	"I2C sub-system",
+	"speed [speed] - show or set I2C bus speed\n"
+#if defined(CONFIG_I2C_MUX)
+	"i2c bus [muxtype:muxaddr:muxchannel] - add a new bus reached over muxes\n"
+#endif  /* CONFIG_I2C_MUX */
+#if defined(CONFIG_I2C_MULTI_BUS)
+	"i2c dev [dev] - show or set current I2C bus\n"
+#endif  /* CONFIG_I2C_MULTI_BUS */
+	"i2c md chip address[.0, .1, .2] [# of objects] - read from I2C device\n"
+	"i2c mm chip address[.0, .1, .2] - write to I2C device (auto-incrementing)\n"
+	"i2c mw chip address[.0, .1, .2] value [count] - write to I2C device (fill)\n"
+	"i2c nm chip address[.0, .1, .2] - write to I2C device (constant address)\n"
+	"i2c crc32 chip address[.0, .1, .2] count - compute CRC32 checksum\n"
+	"i2c probe - show devices on the I2C bus\n"
+	"i2c reset - re-init the I2C Controller\n"
+	"i2c loop chip address[.0, .1, .2] [# of objects] - looping read of device"
+#if defined(CONFIG_CMD_SDRAM)
+	"\n"
+	"i2c sdram chip - print SDRAM configuration information"
 #endif
-#endif	/* CFG_CMD_I2C */
+);
+
+#if defined(CONFIG_I2C_MUX)
+
+int i2c_mux_add_device(I2C_MUX_DEVICE *dev)
+{
+	I2C_MUX_DEVICE	*devtmp = i2c_mux_devices;
+
+	if (i2c_mux_devices == NULL) {
+		i2c_mux_devices = dev;
+		return 0;
+	}
+	while (devtmp->next != NULL)
+		devtmp = devtmp->next;
+
+	devtmp->next = dev;
+	return 0;
+}
+
+I2C_MUX_DEVICE	*i2c_mux_search_device(int id)
+{
+	I2C_MUX_DEVICE	*device = i2c_mux_devices;
+
+	while (device != NULL) {
+		if (device->busid == id)
+			return device;
+		device = device->next;
+	}
+	return NULL;
+}
+
+/* searches in the buf from *pos the next ':'.
+ * returns:
+ *     0 if found (with *pos = where)
+ *   < 0 if an error occured
+ *   > 0 if the end of buf is reached
+ */
+static int i2c_mux_search_next (int *pos, uchar	*buf, int len)
+{
+	while ((buf[*pos] != ':') && (*pos < len)) {
+		*pos += 1;
+	}
+	if (*pos >= len)
+		return 1;
+	if (buf[*pos] != ':')
+		return -1;
+	return 0;
+}
+
+static int i2c_mux_get_busid (void)
+{
+	int	tmp = i2c_mux_busid;
+
+	i2c_mux_busid ++;
+	return tmp;
+}
+
+/* Analyses a Muxstring and sends immediately the
+   Commands to the Muxes. Runs from Flash.
+ */
+int i2c_mux_ident_muxstring_f (uchar *buf)
+{
+	int	pos = 0;
+	int	oldpos;
+	int	ret = 0;
+	int	len = strlen((char *)buf);
+	int	chip;
+	uchar	channel;
+	int	was = 0;
+
+	while (ret == 0) {
+		oldpos = pos;
+		/* search name */
+		ret = i2c_mux_search_next(&pos, buf, len);
+		if (ret != 0)
+			printf ("ERROR\n");
+		/* search address */
+		pos ++;
+		oldpos = pos;
+		ret = i2c_mux_search_next(&pos, buf, len);
+		if (ret != 0)
+			printf ("ERROR\n");
+		buf[pos] = 0;
+		chip = simple_strtoul((char *)&buf[oldpos], NULL, 16);
+		buf[pos] = ':';
+		/* search channel */
+		pos ++;
+		oldpos = pos;
+		ret = i2c_mux_search_next(&pos, buf, len);
+		if (ret < 0)
+			printf ("ERROR\n");
+		was = 0;
+		if (buf[pos] != 0) {
+			buf[pos] = 0;
+			was = 1;
+		}
+		channel = simple_strtoul((char *)&buf[oldpos], NULL, 16);
+		if (was)
+			buf[pos] = ':';
+		if (i2c_write(chip, 0, 0, &channel, 1) != 0) {
+			printf ("Error setting Mux: chip:%x channel: \
+				%x\n", chip, channel);
+			return -1;
+		}
+		pos ++;
+		oldpos = pos;
+
+	}
+
+	return 0;
+}
+
+/* Analyses a Muxstring and if this String is correct
+ * adds a new I2C Bus.
+ */
+I2C_MUX_DEVICE *i2c_mux_ident_muxstring (uchar *buf)
+{
+	I2C_MUX_DEVICE	*device;
+	I2C_MUX		*mux;
+	int	pos = 0;
+	int	oldpos;
+	int	ret = 0;
+	int	len = strlen((char *)buf);
+	int	was = 0;
+
+	device = (I2C_MUX_DEVICE *)malloc (sizeof(I2C_MUX_DEVICE));
+	device->mux = NULL;
+	device->busid = i2c_mux_get_busid ();
+	device->next = NULL;
+	while (ret == 0) {
+		mux = (I2C_MUX *)malloc (sizeof(I2C_MUX));
+		mux->next = NULL;
+		/* search name of mux */
+		oldpos = pos;
+		ret = i2c_mux_search_next(&pos, buf, len);
+		if (ret != 0)
+			printf ("%s no name.\n", __FUNCTION__);
+		mux->name = (char *)malloc (pos - oldpos + 1);
+		memcpy (mux->name, &buf[oldpos], pos - oldpos);
+		mux->name[pos - oldpos] = 0;
+		/* search address */
+		pos ++;
+		oldpos = pos;
+		ret = i2c_mux_search_next(&pos, buf, len);
+		if (ret != 0)
+			printf ("%s no mux address.\n", __FUNCTION__);
+		buf[pos] = 0;
+		mux->chip = simple_strtoul((char *)&buf[oldpos], NULL, 16);
+		buf[pos] = ':';
+		/* search channel */
+		pos ++;
+		oldpos = pos;
+		ret = i2c_mux_search_next(&pos, buf, len);
+		if (ret < 0)
+			printf ("%s no mux channel.\n", __FUNCTION__);
+		was = 0;
+		if (buf[pos] != 0) {
+			buf[pos] = 0;
+			was = 1;
+		}
+		mux->channel = simple_strtoul((char *)&buf[oldpos], NULL, 16);
+		if (was)
+			buf[pos] = ':';
+		if (device->mux == NULL)
+			device->mux = mux;
+		else {
+			I2C_MUX		*muxtmp = device->mux;
+			while (muxtmp->next != NULL) {
+				muxtmp = muxtmp->next;
+			}
+			muxtmp->next = mux;
+		}
+		pos ++;
+		oldpos = pos;
+	}
+	if (ret > 0) {
+		/* Add Device */
+		i2c_mux_add_device (device);
+		return device;
+	}
+
+	return NULL;
+}
+
+int i2x_mux_select_mux(int bus)
+{
+	I2C_MUX_DEVICE  *dev;
+	I2C_MUX		*mux;
+
+	if ((gd->flags & GD_FLG_RELOC) != GD_FLG_RELOC) {
+		/* select Default Mux Bus */
+#if defined(CONFIG_SYS_I2C_IVM_BUS)
+		i2c_mux_ident_muxstring_f ((uchar *)CONFIG_SYS_I2C_IVM_BUS);
+#else
+		{
+		unsigned char *buf;
+		buf = (unsigned char *) getenv("EEprom_ivm");
+		if (buf != NULL)
+			i2c_mux_ident_muxstring_f (buf);
+		}
+#endif
+		return 0;
+	}
+	dev = i2c_mux_search_device(bus);
+	if (dev == NULL)
+		return -1;
+
+	mux = dev->mux;
+	while (mux != NULL) {
+		if (i2c_write(mux->chip, 0, 0, &mux->channel, 1) != 0) {
+			printf ("Error setting Mux: chip:%x channel: \
+				%x\n", mux->chip, mux->channel);
+			return -1;
+		}
+		mux = mux->next;
+	}
+	return 0;
+}
+#endif /* CONFIG_I2C_MUX */

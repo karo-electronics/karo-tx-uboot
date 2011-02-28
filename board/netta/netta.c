@@ -289,7 +289,7 @@ const uint sdram_table[0x40] = {
 #define MAR_SDRAM_INIT		((CAS_LATENCY << 6) | 0x00000008LU)
 
 /* 8 */
-#define CFG_MAMR	((CFG_MAMR_PTA << MAMR_PTA_SHIFT)  | MAMR_PTAE	    |	\
+#define CONFIG_SYS_MAMR	((CONFIG_SYS_MAMR_PTA << MAMR_PTA_SHIFT)  | MAMR_PTAE	    |	\
 			 MAMR_AMA_TYPE_0 | MAMR_DSA_1_CYCL | MAMR_G0CLA_A11 |	\
 			 MAMR_RLFA_1X	 | MAMR_WLFA_1X	   | MAMR_TLFA_4X)
 
@@ -337,9 +337,9 @@ void check_ram(unsigned int addr, unsigned int size)
 	}
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
 	long int size;
 
@@ -355,10 +355,10 @@ long int initdram(int board_type)
 	/*
 	 * Map controller bank 3 to the SDRAM bank at preliminary address.
 	 */
-	memctl->memc_or3 = CFG_OR3_PRELIM;
-	memctl->memc_br3 = CFG_BR3_PRELIM;
+	memctl->memc_or3 = CONFIG_SYS_OR3_PRELIM;
+	memctl->memc_br3 = CONFIG_SYS_BR3_PRELIM;
 
-	memctl->memc_mbmr = CFG_MAMR & ~MAMR_PTAE;	/* no refresh yet */
+	memctl->memc_mbmr = CONFIG_SYS_MAMR & ~MAMR_PTAE;	/* no refresh yet */
 
 	udelay(200);
 
@@ -505,7 +505,7 @@ int last_stage_init(void)
 
 int board_early_init_f(void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile iop8xx_t *ioport = &immap->im_ioport;
 	volatile cpm8xx_t *cpm = &immap->im_cpm;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
@@ -555,22 +555,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
-#if (CONFIG_COMMANDS & CFG_CMD_NAND) && defined(CFG_NAND_LEGACY)
-
-#include <linux/mtd/nand_legacy.h>
-
-extern ulong nand_probe(ulong physadr);
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
-
-void nand_init(void)
-{
-	unsigned long totlen = nand_probe(CFG_NAND_BASE);
-
-	printf ("%4lu MB\n", totlen >> 20);
-}
-#endif
-
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 
 int pcmcia_init(void)
 {

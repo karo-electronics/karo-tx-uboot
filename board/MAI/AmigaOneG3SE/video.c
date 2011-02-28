@@ -22,7 +22,7 @@
  */
 
 #include <common.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include "memio.h"
 #include <part.h>
 
@@ -56,6 +56,7 @@ int  video_rows(void);
 int  video_cols(void);
 
 char *prompt_string = "=>";
+unsigned char video_get_attr(void);
 
 void video_set_color(unsigned char attr)
 {
@@ -97,7 +98,7 @@ int video_inited = 0;
 int drv_video_init(void)
 {
     int error, devices = 1 ;
-    device_t vgadev ;
+    struct stdio_dev vgadev ;
     if (video_inited) return 1;
     video_inited = 1;
     video_init();
@@ -111,7 +112,7 @@ int drv_video_init(void)
     vgadev.tstc = NULL;
     vgadev.start = video_start;
 
-    error = device_register (&vgadev);
+    error = stdio_register (&vgadev);
 
     if (error == 0)
     {

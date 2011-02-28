@@ -25,7 +25,7 @@
 #include <watchdog.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #ifdef CONFIG_8xx
 #include <mpc8xx.h>
 #endif
@@ -35,21 +35,24 @@
 #ifdef CONFIG_MPC5xxx
 #include <mpc5xxx.h>
 #endif
-#if (CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_IDE)
 #include <ide.h>
 #endif
-#if (CONFIG_COMMANDS & CFG_CMD_SCSI)
+#if defined(CONFIG_CMD_SCSI)
 #include <scsi.h>
 #endif
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 #include <kgdb.h>
 #endif
 #ifdef CONFIG_STATUS_LED
 #include <status_led.h>
 #endif
 #include <net.h>
+#ifdef CONFIG_GENERIC_MMC
+#include <mmc.h>
+#endif
 #include <serial.h>
-#ifdef CFG_ALLOC_DPRAM
+#ifdef CONFIG_SYS_ALLOC_DPRAM
 #if !defined(CONFIG_CPM2)
 #include <commproc.h>
 #endif
@@ -65,23 +68,38 @@
 #if defined(CONFIG_LOGBUFFER)
 #include <logbuff.h>
 #endif
-#if defined(CFG_INIT_RAM_LOCK) && defined(CONFIG_E500)
+#if defined(CONFIG_SYS_INIT_RAM_LOCK) && defined(CONFIG_E500)
 #include <asm/cache.h>
 #endif
 #ifdef CONFIG_PS2KBD
 #include <keyboard.h>
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
+#ifdef CONFIG_ADDR_MAP
+#include <asm/mmu.h>
+#endif
+
+#ifdef CONFIG_MP
+#include <asm/mp.h>
+#endif
+
+#ifdef CONFIG_SYS_UPDATE_FLASH_SIZE
+extern int update_flash_size (int flash_size);
+#endif
+
+#if defined(CONFIG_SC3)
+extern void sc3_read_eeprom(void);
+#endif
+
+#if defined(CONFIG_CMD_DOC)
 void doc_init (void);
 #endif
 #if defined(CONFIG_HARD_I2C) || \
     defined(CONFIG_SOFT_I2C)
 #include <i2c.h>
 #endif
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-void nand_init (void);
-#endif
+#include <spi.h>
+#include <nand.h>
 
 static char *failed = "*** failed ***\n";
 
@@ -89,25 +107,32 @@ static char *failed = "*** failed ***\n";
 extern flash_info_t flash_info[];
 #endif
 
+#if defined(CONFIG_START_IDE)
+extern int board_start_ide(void);
+#endif
 #include <environment.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if defined(CFG_ENV_IS_EMBEDDED)
-#define TOTAL_MALLOC_LEN	CFG_MALLOC_LEN
-#elif ( ((CFG_ENV_ADDR+CFG_ENV_SIZE) < CFG_MONITOR_BASE) || \
-	(CFG_ENV_ADDR >= (CFG_MONITOR_BASE + CFG_MONITOR_LEN)) ) || \
-      defined(CFG_ENV_IS_IN_NVRAM)
-#define	TOTAL_MALLOC_LEN	(CFG_MALLOC_LEN + CFG_ENV_SIZE)
+#if defined(CONFIG_ENV_IS_EMBEDDED)
+#define TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
+#elif ( ((CONFIG_ENV_ADDR+CONFIG_ENV_SIZE) < CONFIG_SYS_MONITOR_BASE) || \
+	(CONFIG_ENV_ADDR >= (CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)) ) || \
+      defined(CONFIG_ENV_IS_IN_NVRAM)
+#define	TOTAL_MALLOC_LEN	(CONFIG_SYS_MALLOC_LEN + CONFIG_ENV_SIZE)
 #else
-#define	TOTAL_MALLOC_LEN	CFG_MALLOC_LEN
+#define	TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
+#endif
+
+#if !defined(CONFIG_SYS_MEM_TOP_HIDE)
+#define CONFIG_SYS_MEM_TOP_HIDE	0
 #endif
 
 extern ulong __init_end;
 extern ulong _end;
 ulong monitor_flash_len;
 
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG)
+#if defined(CONFIG_CMD_BEDBUG)
 #include <bedbug/type.h>
 #endif
 
@@ -128,10 +153,10 @@ static	ulong	mem_malloc_brk	 = 0;
  */
 static void mem_malloc_init (void)
 {
-	ulong dest_addr = CFG_MONITOR_BASE + gd->reloc_off;
-
-	mem_malloc_end = dest_addr;
-	mem_malloc_start = dest_addr - TOTAL_MALLOC_LEN;
+#if !defined(CONFIG_RELOC_FIXUP_WORKS)
+	mem_malloc_end = CONFIG_SYS_MONITOR_BASE + gd->reloc_off;
+#endif
+	mem_malloc_start = mem_malloc_end - TOTAL_MALLOC_LEN;
 	mem_malloc_brk = mem_malloc_start;
 
 	memset ((void *) mem_malloc_start,
@@ -149,19 +174,6 @@ void *sbrk (ptrdiff_t increment)
 	}
 	mem_malloc_brk = new;
 	return ((void *) old);
-}
-
-char *strmhz (char *buf, long hz)
-{
-	long l, n;
-	long m;
-
-	n = hz / 1000000L;
-	l = sprintf (buf, "%ld", n);
-	m = (hz % 1000000L) / 1000L;
-	if (m != 0)
-		sprintf (buf + l, ".%03ld", m);
-	return (buf);
 }
 
 /*
@@ -198,9 +210,12 @@ static int init_baudrate (void)
 
 /***********************************************************************/
 
-#ifdef CONFIG_ADD_RAM_INFO
-void board_add_ram_info(int);
-#endif
+void __board_add_ram_info(int use_default)
+{
+	/* please define platform specific board_add_ram_info() */
+}
+void board_add_ram_info(int) __attribute__((weak, alias("__board_add_ram_info")));
+
 
 static int init_func_ram (void)
 {
@@ -213,9 +228,7 @@ static int init_func_ram (void)
 
 	if ((gd->ram_size = initdram (board_type)) > 0) {
 		print_size (gd->ram_size, "");
-#ifdef CONFIG_ADD_RAM_INFO
 		board_add_ram_info(0);
-#endif
 		putc('\n');
 		return (0);
 	}
@@ -229,7 +242,17 @@ static int init_func_ram (void)
 static int init_func_i2c (void)
 {
 	puts ("I2C:   ");
-	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+	puts ("ready\n");
+	return (0);
+}
+#endif
+
+#if defined(CONFIG_HARD_SPI)
+static int init_func_spi (void)
+{
+	puts ("SPI:   ");
+	spi_init ();
 	puts ("ready\n");
 	return (0);
 }
@@ -276,7 +299,7 @@ init_fnc_t *init_sequence[] = {
 #endif
 	init_timebase,
 #endif
-#ifdef CFG_ALLOC_DPRAM
+#ifdef CONFIG_SYS_ALLOC_DPRAM
 #if !defined(CONFIG_CPM2)
 	dpram_init,
 #endif
@@ -298,11 +321,9 @@ init_fnc_t *init_sequence[] = {
 	prt_8260_rsr,
 	prt_8260_clks,
 #endif /* CONFIG_8260 */
-
-#if defined(CONFIG_MPC83XX)
-	print_clock_conf,
+#if defined(CONFIG_MPC83xx)
+	prt_83xx_rsr,
 #endif
-
 	checkcpu,
 #if defined(CONFIG_MPC5xxx)
 	prt_mpc5xxx_clks,
@@ -319,21 +340,32 @@ init_fnc_t *init_sequence[] = {
 #if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
 	init_func_i2c,
 #endif
-#if defined(CONFIG_DTT)		/* Digital Thermometers and Thermostats */
-	dtt_init,
+#if defined(CONFIG_HARD_SPI)
+	init_func_spi,
 #endif
 #ifdef CONFIG_POST
 	post_init_f,
 #endif
 	INIT_FUNC_WATCHDOG_RESET
 	init_func_ram,
-#if defined(CFG_DRAM_TEST)
+#if defined(CONFIG_SYS_DRAM_TEST)
 	testdram,
-#endif /* CFG_DRAM_TEST */
+#endif /* CONFIG_SYS_DRAM_TEST */
 	INIT_FUNC_WATCHDOG_RESET
 
 	NULL,			/* Terminate this list */
 };
+
+ulong get_effective_memsize(void)
+{
+#ifndef	CONFIG_VERY_BIG_RAM
+	return gd->ram_size;
+#else
+	/* limit stack to what we can reasonable map */
+	return ((gd->ram_size > CONFIG_MAX_MEM_MAPPED) ?
+		 CONFIG_MAX_MEM_MAPPED : gd->ram_size);
+#endif
+}
 
 /************************************************************************
  *
@@ -351,6 +383,13 @@ init_fnc_t *init_sequence[] = {
  ************************************************************************
  */
 
+#ifdef CONFIG_LOGBUFFER
+unsigned long logbuffer_base(void)
+{
+	return CONFIG_SYS_SDRAM_BASE + get_effective_memsize() - LOGBUFF_LEN;
+}
+#endif
+
 void board_init_f (ulong bootflag)
 {
 	bd_t *bd;
@@ -365,11 +404,12 @@ void board_init_f (ulong bootflag)
 #endif
 
 	/* Pointer is writable since we allocated a register for it */
-	gd = (gd_t *) (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET);
+	gd = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
 	/* compiler optimization barrier needed for GCC >= 3.4 */
 	__asm__ __volatile__("": : :"memory");
 
-#if !defined(CONFIG_CPM2)
+#if !defined(CONFIG_CPM2) && !defined(CONFIG_MPC83xx) && \
+    !defined(CONFIG_MPC85xx) && !defined(CONFIG_MPC86xx)
 	/* Clear initial global data */
 	memset ((void *) gd, 0, sizeof (gd_t));
 #endif
@@ -385,26 +425,46 @@ void board_init_f (ulong bootflag)
 	 * relocate the code and continue running from DRAM.
 	 *
 	 * Reserve memory at end of RAM for (top down in that order):
+	 *  - area that won't get touched by U-Boot and Linux (optional)
 	 *  - kernel log buffer
 	 *  - protected RAM
 	 *  - LCD framebuffer
 	 *  - monitor code
 	 *  - board info struct
 	 */
-	len = (ulong)&_end - CFG_MONITOR_BASE;
+	len = (ulong)&_end - CONFIG_SYS_MONITOR_BASE;
 
-#ifndef	CONFIG_VERY_BIG_RAM
-	addr = CFG_SDRAM_BASE + gd->ram_size;
-#else
-	/* only allow stack below 256M */
-	addr = CFG_SDRAM_BASE +
-	       (gd->ram_size > 256 << 20) ? 256 << 20 : gd->ram_size;
+	/*
+	 * Subtract specified amount of memory to hide so that it won't
+	 * get "touched" at all by U-Boot. By fixing up gd->ram_size
+	 * the Linux kernel should now get passed the now "corrected"
+	 * memory size and won't touch it either. This should work
+	 * for arch/ppc and arch/powerpc. Only Linux board ports in
+	 * arch/powerpc with bootwrapper support, that recalculate the
+	 * memory size from the SDRAM controller setup will have to
+	 * get fixed.
+	 */
+	gd->ram_size -= CONFIG_SYS_MEM_TOP_HIDE;
+
+	addr = CONFIG_SYS_SDRAM_BASE + get_effective_memsize();
+
+#if defined(CONFIG_MP) && (defined(CONFIG_MPC86xx) || defined(CONFIG_E500))
+	/*
+	 * We need to make sure the location we intend to put secondary core
+	 * boot code is reserved and not used by any part of u-boot
+	 */
+	if (addr > determine_mp_bootpg()) {
+		addr = determine_mp_bootpg();
+		debug ("Reserving MP boot page to %08lx\n", addr);
+	}
 #endif
 
 #ifdef CONFIG_LOGBUFFER
+#ifndef CONFIG_ALT_LB_ADDR
 	/* reserve kernel log buffer */
 	addr -= (LOGBUFF_RESERVE);
 	debug ("Reserving %dk for kernel logbuffer at %08lx\n", LOGBUFF_LEN, addr);
+#endif
 #endif
 
 #ifdef CONFIG_PRAM
@@ -464,11 +524,11 @@ void board_init_f (ulong bootflag)
 	addr_sp -= sizeof (bd_t);
 	bd = (bd_t *) addr_sp;
 	gd->bd = bd;
-	debug ("Reserving %d Bytes for Board Info at: %08lx\n",
+	debug ("Reserving %zu Bytes for Board Info at: %08lx\n",
 			sizeof (bd_t), addr_sp);
 	addr_sp -= sizeof (gd_t);
 	id = (gd_t *) addr_sp;
-	debug ("Reserving %d Bytes for Global Data at: %08lx\n",
+	debug ("Reserving %zu Bytes for Global Data at: %08lx\n",
 			sizeof (gd_t), addr_sp);
 
 	/*
@@ -489,15 +549,15 @@ void board_init_f (ulong bootflag)
 	 * Save local variables to board info struct
 	 */
 
-	bd->bi_memstart  = CFG_SDRAM_BASE;	/* start of  DRAM memory	*/
+	bd->bi_memstart  = CONFIG_SYS_SDRAM_BASE;	/* start of  DRAM memory	*/
 	bd->bi_memsize   = gd->ram_size;	/* size  of  DRAM memory in bytes */
 
 #ifdef CONFIG_IP860
 	bd->bi_sramstart = SRAM_BASE;	/* start of  SRAM memory	*/
 	bd->bi_sramsize  = SRAM_SIZE;	/* size  of  SRAM memory	*/
 #elif defined CONFIG_MPC8220
-	bd->bi_sramstart = CFG_SRAM_BASE;	/* start of  SRAM memory	*/
-	bd->bi_sramsize  = CFG_SRAM_SIZE;	/* size  of  SRAM memory	*/
+	bd->bi_sramstart = CONFIG_SYS_SRAM_BASE;	/* start of  SRAM memory	*/
+	bd->bi_sramsize  = CONFIG_SYS_SRAM_SIZE;	/* size  of  SRAM memory	*/
 #else
 	bd->bi_sramstart = 0;		/* FIXME */ /* start of  SRAM memory	*/
 	bd->bi_sramsize  = 0;		/* FIXME */ /* size  of  SRAM memory	*/
@@ -505,33 +565,33 @@ void board_init_f (ulong bootflag)
 
 #if defined(CONFIG_8xx) || defined(CONFIG_8260) || defined(CONFIG_5xx) || \
     defined(CONFIG_E500) || defined(CONFIG_MPC86xx)
-	bd->bi_immr_base = CFG_IMMR;	/* base  of IMMR register     */
+	bd->bi_immr_base = CONFIG_SYS_IMMR;	/* base  of IMMR register     */
 #endif
 #if defined(CONFIG_MPC5xxx)
-	bd->bi_mbar_base = CFG_MBAR;	/* base of internal registers */
+	bd->bi_mbar_base = CONFIG_SYS_MBAR;	/* base of internal registers */
 #endif
-#if defined(CONFIG_MPC83XX)
-	bd->bi_immrbar = CFG_IMMRBAR;
+#if defined(CONFIG_MPC83xx)
+	bd->bi_immrbar = CONFIG_SYS_IMMR;
 #endif
 #if defined(CONFIG_MPC8220)
-	bd->bi_mbar_base = CFG_MBAR;	/* base of internal registers */
+	bd->bi_mbar_base = CONFIG_SYS_MBAR;	/* base of internal registers */
 	bd->bi_inpfreq   = gd->inp_clk;
 	bd->bi_pcifreq   = gd->pci_clk;
 	bd->bi_vcofreq   = gd->vco_clk;
 	bd->bi_pevfreq   = gd->pev_clk;
 	bd->bi_flbfreq   = gd->flb_clk;
 
-    /* store bootparam to sram (backward compatible), here? */
-    {
-	u32 *sram = (u32 *)CFG_SRAM_BASE;
-	*sram++ = gd->ram_size;
-	*sram++ = gd->bus_clk;
-	*sram++ = gd->inp_clk;
-	*sram++ = gd->cpu_clk;
-	*sram++ = gd->vco_clk;
-	*sram++ = gd->flb_clk;
-	*sram++ = 0xb8c3ba11;  /* boot signature */
-    }
+	/* store bootparam to sram (backward compatible), here? */
+	{
+		u32 *sram = (u32 *)CONFIG_SYS_SRAM_BASE;
+		*sram++ = gd->ram_size;
+		*sram++ = gd->bus_clk;
+		*sram++ = gd->inp_clk;
+		*sram++ = gd->cpu_clk;
+		*sram++ = gd->vco_clk;
+		*sram++ = gd->flb_clk;
+		*sram++ = 0xb8c3ba11;  /* boot signature */
+	}
 #endif
 
 	bd->bi_bootflags = bootflag;	/* boot / reboot flag (for LynxOS)    */
@@ -545,22 +605,27 @@ void board_init_f (ulong bootflag)
 	bd->bi_sccfreq = gd->scc_clk;
 	bd->bi_vco     = gd->vco_out;
 #endif /* CONFIG_CPM2 */
+#if defined(CONFIG_MPC512X)
+	bd->bi_ipsfreq = gd->ips_clk;
+#endif /* CONFIG_MPC512X */
 #if defined(CONFIG_MPC5xxx)
 	bd->bi_ipbfreq = gd->ipb_clk;
 	bd->bi_pcifreq = gd->pci_clk;
 #endif /* CONFIG_MPC5xxx */
 	bd->bi_baudrate = gd->baudrate;	/* Console Baudrate     */
 
-#ifdef CFG_EXTBDINFO
+#ifdef CONFIG_SYS_EXTBDINFO
 	strncpy ((char *)bd->bi_s_version, "1.2", sizeof (bd->bi_s_version));
 	strncpy ((char *)bd->bi_r_version, U_BOOT_VERSION, sizeof (bd->bi_r_version));
 
 	bd->bi_procfreq = gd->cpu_clk;	/* Processor Speed, In Hz */
 	bd->bi_plb_busfreq = gd->bus_clk;
-#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || defined(CONFIG_440EP) || defined(CONFIG_440GR)
+#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || \
+    defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 	bd->bi_pci_busfreq = get_PCI_freq ();
 	bd->bi_opbfreq = get_OPB_freq ();
-#elif defined(CONFIG_XILINX_ML300)
+#elif defined(CONFIG_XILINX_405)
 	bd->bi_pci_busfreq = get_PCI_freq ();
 #endif
 #endif
@@ -595,15 +660,14 @@ void board_init_f (ulong bootflag)
 void board_init_r (gd_t *id, ulong dest_addr)
 {
 	cmd_tbl_t *cmdtp;
-	char *s, *e;
+	char *s;
 	bd_t *bd;
-	int i;
 	extern void malloc_bin_reloc (void);
-#ifndef CFG_ENV_IS_NOWHERE
+#ifndef CONFIG_ENV_IS_NOWHERE
 	extern char * env_name_spec;
 #endif
 
-#ifndef CFG_NO_FLASH
+#ifndef CONFIG_SYS_NO_FLASH
 	ulong flash_size;
 #endif
 
@@ -611,7 +675,13 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	bd = gd->bd;
 
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
-	gd->reloc_off = dest_addr - CFG_MONITOR_BASE;
+
+#if defined(CONFIG_RELOC_FIXUP_WORKS)
+	gd->reloc_off = 0;
+	mem_malloc_end = dest_addr;
+#else
+	gd->reloc_off = dest_addr - CONFIG_SYS_MONITOR_BASE;
+#endif
 
 #ifdef CONFIG_SERIAL_MULTI
 	serial_initialize();
@@ -620,6 +690,15 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	debug ("Now running in RAM - U-Boot at: %08lx\n", dest_addr);
 
 	WATCHDOG_RESET ();
+
+	/*
+	 * Setup trap handlers
+	 */
+	trap_init (dest_addr);
+
+#ifdef CONFIG_ADDR_MAP
+	init_addr_map();
+#endif
 
 #if defined(CONFIG_BOARD_EARLY_INIT_R)
 	board_early_init_r ();
@@ -647,7 +726,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 			addr = (ulong)(cmdtp->usage) + gd->reloc_off;
 			cmdtp->usage = (char *)addr;
 		}
-#ifdef	CFG_LONGHELP
+#ifdef	CONFIG_SYS_LONGHELP
 		if (cmdtp->help) {
 			addr = (ulong)(cmdtp->help) + gd->reloc_off;
 			cmdtp->help = (char *)addr;
@@ -655,7 +734,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 	}
 	/* there are some other pointer constants we must deal with */
-#ifndef CFG_ENV_IS_NOWHERE
+#ifndef CONFIG_ENV_IS_NOWHERE
 	env_name_spec += gd->reloc_off;
 #endif
 
@@ -671,12 +750,11 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET();
 
-#if defined(CONFIG_IP860) || defined(CONFIG_PCU_E) || \
-	defined (CONFIG_FLAGADM) || defined(CONFIG_MPC83XX)
+#if defined(CONFIG_SYS_DELAYED_ICACHE) || defined(CONFIG_MPC83xx)
 	icache_enable ();	/* it's time to enable the instruction cache */
 #endif
 
-#if defined(CFG_INIT_RAM_LOCK) && defined(CONFIG_E500)
+#if defined(CONFIG_SYS_INIT_RAM_LOCK) && defined(CONFIG_E500)
 	unlock_ram_in_cache();	/* it's time to unlock D-cache in e500 */
 #endif
 
@@ -697,16 +775,15 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	asm ("sync ; isync");
 
-	/*
-	 * Setup trap handlers
-	 */
-	trap_init (dest_addr);
+	/* initialize malloc() area */
+	mem_malloc_init ();
+	malloc_bin_reloc ();
 
-#if !defined(CFG_NO_FLASH)
+#if !defined(CONFIG_SYS_NO_FLASH)
 	puts ("FLASH: ");
 
 	if ((flash_size = flash_init ()) > 0) {
-# ifdef CFG_FLASH_CHECKSUM
+# ifdef CONFIG_SYS_FLASH_CHECKSUM
 		print_size (flash_size, "");
 		/*
 		 * Compute and print flash CRC if flashchecksum is set to 'y'
@@ -715,35 +792,42 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		 */
 		s = getenv ("flashchecksum");
 		if (s && (*s == 'y')) {
-			printf ("  CRC: %08lX",
-				crc32 (0, (const unsigned char *) CFG_FLASH_BASE, flash_size)
+			printf ("  CRC: %08X",
+				crc32 (0, (const unsigned char *) CONFIG_SYS_FLASH_BASE, flash_size)
 			);
 		}
 		putc ('\n');
-# else	/* !CFG_FLASH_CHECKSUM */
+# else	/* !CONFIG_SYS_FLASH_CHECKSUM */
 		print_size (flash_size, "\n");
-# endif /* CFG_FLASH_CHECKSUM */
+# endif /* CONFIG_SYS_FLASH_CHECKSUM */
 	} else {
 		puts (failed);
 		hang ();
 	}
 
-	bd->bi_flashstart = CFG_FLASH_BASE;	/* update start of FLASH memory    */
+	bd->bi_flashstart = CONFIG_SYS_FLASH_BASE;	/* update start of FLASH memory    */
 	bd->bi_flashsize = flash_size;	/* size of FLASH memory (final value) */
+
+#if defined(CONFIG_SYS_UPDATE_FLASH_SIZE)
+	/* Make a update of the Memctrl. */
+	update_flash_size (flash_size);
+#endif
+
+
 # if defined(CONFIG_PCU_E) || defined(CONFIG_OXC) || defined(CONFIG_RMU)
 	/* flash mapped at end of memory map */
 	bd->bi_flashoffset = TEXT_BASE + flash_size;
-# elif CFG_MONITOR_BASE == CFG_FLASH_BASE
+# elif CONFIG_SYS_MONITOR_BASE == CONFIG_SYS_FLASH_BASE
 	bd->bi_flashoffset = monitor_flash_len;	/* reserved area for startup monitor  */
 # else
 	bd->bi_flashoffset = 0;
 # endif
-#else	/* CFG_NO_FLASH */
+#else	/* CONFIG_SYS_NO_FLASH */
 
 	bd->bi_flashsize = 0;
 	bd->bi_flashstart = 0;
 	bd->bi_flashoffset = 0;
-#endif /* !CFG_NO_FLASH */
+#endif /* !CONFIG_SYS_NO_FLASH */
 
 	WATCHDOG_RESET ();
 
@@ -752,18 +836,14 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET ();
 
-	/* initialize malloc() area */
-	mem_malloc_init ();
-	malloc_bin_reloc ();
-
 #ifdef CONFIG_SPI
-# if !defined(CFG_ENV_IS_IN_EEPROM)
+# if !defined(CONFIG_ENV_IS_IN_EEPROM)
 	spi_init_f ();
 # endif
 	spi_init_r ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
+#if defined(CONFIG_CMD_NAND)
 	WATCHDOG_RESET ();
 	puts ("NAND:  ");
 	nand_init();		/* go init the NAND */
@@ -780,7 +860,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 * the environment is in EEPROM.
 	 */
 
-#if defined(CFG_EXTBDINFO)
+#if defined(CONFIG_SYS_EXTBDINFO)
 #if defined(CONFIG_405GP) || defined(CONFIG_405EP)
 #if defined(CONFIG_I2CFAST)
 	/*
@@ -802,22 +882,16 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	bd->bi_iic_fast[1] = 0;
 #endif	/* CONFIG_I2CFAST */
 #endif	/* CONFIG_405GP, CONFIG_405EP */
-#endif	/* CFG_EXTBDINFO */
+#endif	/* CONFIG_SYS_EXTBDINFO */
 
-	s = getenv ("ethaddr");
-#if defined (CONFIG_MBX) || \
-    defined (CONFIG_RPXCLASSIC) || \
-    defined(CONFIG_IAD210) || \
-    defined(CONFIG_V38B)
-	if (s == NULL)
-		board_get_enetaddr (bd->bi_enetaddr);
-	else
+#if defined(CONFIG_SC3)
+	sc3_read_eeprom();
 #endif
-		for (i = 0; i < 6; ++i) {
-			bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-			if (s)
-				s = (*e) ? e + 1 : e;
-		}
+
+#if defined (CONFIG_ID_EEPROM) || defined (CONFIG_SYS_I2C_MAC_OFFSET)
+	mac_read_from_eeprom();
+#endif
+
 #ifdef	CONFIG_HERMES
 	if ((gd->board_type >> 16) == 2)
 		bd->bi_ethspeed = gd->board_type & 0xFFFF;
@@ -825,60 +899,26 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		bd->bi_ethspeed = 0xFFFF;
 #endif
 
-#ifdef CONFIG_NX823
-	load_sernum_ethaddr ();
-#endif
-
+#ifdef CONFIG_CMD_NET
+	/* kept around for legacy kernels only ... ignore the next section */
+	eth_getenv_enetaddr("ethaddr", bd->bi_enetaddr);
 #ifdef CONFIG_HAS_ETH1
-	/* handle the 2nd ethernet address */
-
-	s = getenv ("eth1addr");
-
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet1addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
+	eth_getenv_enetaddr("eth1addr", bd->bi_enet1addr);
 #endif
 #ifdef CONFIG_HAS_ETH2
-	/* handle the 3rd ethernet address */
-
-	s = getenv ("eth2addr");
-#if defined(CONFIG_XPEDITE1K) || defined(CONFIG_METROBOX) || defined(CONFIG_KAREF)
-	if (s == NULL)
-		board_get_enetaddr(bd->bi_enet2addr);
-	else
+	eth_getenv_enetaddr("eth2addr", bd->bi_enet2addr);
 #endif
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet2addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-
 #ifdef CONFIG_HAS_ETH3
-	/* handle 4th ethernet address */
-	s = getenv("eth3addr");
-#if defined(CONFIG_XPEDITE1K) || defined(CONFIG_METROBOX) || defined(CONFIG_KAREF)
-	if (s == NULL)
-		board_get_enetaddr(bd->bi_enet3addr);
-	else
+	eth_getenv_enetaddr("eth3addr", bd->bi_enet3addr);
 #endif
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet3addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
+#ifdef CONFIG_HAS_ETH4
+	eth_getenv_enetaddr("eth4addr", bd->bi_enet4addr);
 #endif
+#ifdef CONFIG_HAS_ETH5
+	eth_getenv_enetaddr("eth5addr", bd->bi_enet5addr);
+#endif
+#endif /* CONFIG_CMD_NET */
 
-#ifdef CFG_ID_EEPROM
-	mac_read_from_eeprom();
-#endif
-
-#if defined(CONFIG_TQM8xxL) || defined(CONFIG_TQM8260) || \
-    defined(CONFIG_CCM) || defined(CONFIG_KUP4K) || defined(CONFIG_KUP4X)
-	load_sernum_ethaddr ();
-#endif
 	/* IP Address */
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
 
@@ -892,11 +932,16 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 /** leave this here (after malloc(), environment and PCI are working) **/
-	/* Initialize devices */
-	devices_init ();
+	/* Initialize stdio devices */
+	stdio_init ();
 
 	/* Initialize the jump table for applications */
 	jumptable_init ();
+
+#if defined(CONFIG_API)
+	/* Initialize API */
+	api_init ();
+#endif
 
 	/* Initialize the console (after the relocation and devices init) */
 	console_init_r ();
@@ -909,6 +954,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
     defined(CONFIG_KUP4X)	|| \
     defined(CONFIG_LWMON)	|| \
     defined(CONFIG_PCU_E)	|| \
+    defined(CONFIG_SC3)		|| \
     defined(CONFIG_W7O)		|| \
     defined(CONFIG_MISC_INIT_R)
 	/* miscellaneous platform dependent initialisations */
@@ -920,7 +966,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		hermes_start_lxt980 ((int) bd->bi_ethspeed);
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	WATCHDOG_RESET ();
 	puts ("KGDB:  ");
 	kgdb_init ();
@@ -940,7 +986,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	serial_buffered_init();
 #endif
 
-#ifdef CONFIG_STATUS_LED
+#if defined(CONFIG_STATUS_LED) && defined(STATUS_LED_BOOT)
 	status_led_set (STATUS_LED_BOOT, STATUS_LED_BLINKING);
 #endif
 
@@ -952,27 +998,36 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	if ((s = getenv ("loadaddr")) != NULL) {
 		load_addr = simple_strtoul (s, NULL, 16);
 	}
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 	if ((s = getenv ("bootfile")) != NULL) {
 		copy_filename (BootFile, s, sizeof (BootFile));
 	}
-#endif /* CFG_CMD_NET */
+#endif
 
 	WATCHDOG_RESET ();
 
-#if (CONFIG_COMMANDS & CFG_CMD_SCSI)
+#if defined(CONFIG_DTT)		/* Digital Thermometers and Thermostats */
+	dtt_init ();
+#endif
+#if defined(CONFIG_CMD_SCSI)
 	WATCHDOG_RESET ();
 	puts ("SCSI:  ");
 	scsi_init ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
+#ifdef CONFIG_GENERIC_MMC
+	WATCHDOG_RESET ();
+	puts ("MMC:  ");
+	mmc_initialize (bd);
+#endif
+
+#if defined(CONFIG_CMD_DOC)
 	WATCHDOG_RESET ();
 	puts ("DOC:   ");
 	doc_init ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 #if defined(CONFIG_NET_MULTI)
 	WATCHDOG_RESET ();
 	puts ("Net:   ");
@@ -980,7 +1035,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	eth_initialize (bd);
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET) && ( \
+#if defined(CONFIG_CMD_NET) && ( \
     defined(CONFIG_CCM)		|| \
     defined(CONFIG_ELPT860)	|| \
     defined(CONFIG_EP8260)	|| \
@@ -1005,21 +1060,27 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	post_run (NULL, POST_RAM | post_bootmode_get(0));
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA) && !(CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_PCMCIA) \
+    && !defined(CONFIG_CMD_IDE)
 	WATCHDOG_RESET ();
 	puts ("PCMCIA:");
 	pcmcia_init ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_IDE)
 	WATCHDOG_RESET ();
 # ifdef	CONFIG_IDE_8xx_PCCARD
 	puts ("PCMCIA:");
 # else
 	puts ("IDE:   ");
 #endif
+#if defined(CONFIG_START_IDE)
+	if (board_start_ide())
+		ide_init ();
+#else
 	ide_init ();
-#endif /* CFG_CMD_IDE */
+#endif
+#endif
 
 #ifdef CONFIG_LAST_STAGE_INIT
 	WATCHDOG_RESET ();
@@ -1031,7 +1092,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	last_stage_init ();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG)
+#if defined(CONFIG_CMD_BEDBUG)
 	WATCHDOG_RESET ();
 	bedbug_init ();
 #endif
@@ -1056,8 +1117,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		pram=0;
 #endif
 #ifdef CONFIG_LOGBUFFER
+#ifndef CONFIG_ALT_LB_ADDR
 		/* Also take the logbuffer into account (pram is in kB) */
 		pram += (LOGBUFF_LEN+LOGBUFF_OVERHEAD)/1024;
+#endif
 #endif
 		sprintf ((char *)memsz, "%ldk", (bd->bi_memsize / 1024) - pram);
 		setenv ("mem", (char *)memsz);
@@ -1090,109 +1153,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 void hang (void)
 {
 	puts ("### ERROR ### Please RESET the board ###\n");
-#ifdef CONFIG_SHOW_BOOT_PROGRESS
 	show_boot_progress(-30);
-#endif
 	for (;;);
 }
 
-#ifdef CONFIG_MODEM_SUPPORT
-/* called from main loop (common/main.c) */
-/* 'inline' - We have to do it fast */
-static inline void mdm_readline(char *buf, int bufsiz)
-{
-	char c;
-	char *p;
-	int n;
-
-	n = 0;
-	p = buf;
-	for(;;) {
-		c = serial_getc();
-
-		/*		dbg("(%c)", c); */
-
-		switch(c) {
-		case '\r':
-			break;
-		case '\n':
-			*p = '\0';
-			return;
-
-		default:
-			if(n++ > bufsiz) {
-				*p = '\0';
-				return; /* sanity check */
-			}
-			*p = c;
-			p++;
-			break;
-		}
-	}
-}
-
-extern void  dbg(const char *fmt, ...);
-int mdm_init (void)
-{
-	char env_str[16];
-	char *init_str;
-	int i;
-	extern char console_buffer[];
-	extern void enable_putc(void);
-	extern int hwflow_onoff(int);
-
-	enable_putc(); /* enable serial_putc() */
-
-#ifdef CONFIG_HWFLOW
-	init_str = getenv("mdm_flow_control");
-	if (init_str && (strcmp(init_str, "rts/cts") == 0))
-		hwflow_onoff (1);
-	else
-		hwflow_onoff(-1);
-#endif
-
-	for (i = 1;;i++) {
-		sprintf(env_str, "mdm_init%d", i);
-		if ((init_str = getenv(env_str)) != NULL) {
-			serial_puts(init_str);
-			serial_puts("\n");
-			for(;;) {
-				mdm_readline(console_buffer, CFG_CBSIZE);
-				dbg("ini%d: [%s]", i, console_buffer);
-
-				if ((strcmp(console_buffer, "OK") == 0) ||
-					(strcmp(console_buffer, "ERROR") == 0)) {
-					dbg("ini%d: cmd done", i);
-					break;
-				} else /* in case we are originating call ... */
-					if (strncmp(console_buffer, "CONNECT", 7) == 0) {
-						dbg("ini%d: connect", i);
-						return 0;
-					}
-			}
-		} else
-			break; /* no init string - stop modem init */
-
-		udelay(100000);
-	}
-
-	udelay(100000);
-
-	/* final stage - wait for connect */
-	for(;i > 1;) { /* if 'i' > 1 - wait for connection
-				  message from modem */
-		mdm_readline(console_buffer, CFG_CBSIZE);
-		dbg("ini_f: [%s]", console_buffer);
-		if (strncmp(console_buffer, "CONNECT", 7) == 0) {
-			dbg("ini_f: connected");
-			return 0;
-		}
-	}
-
-	return 0;
-}
-
-#endif
 
 #if 0 /* We could use plain global data, but the resulting code is bigger */
 /*
@@ -1202,7 +1166,7 @@ int mdm_init (void)
  */
 #undef	XTRN_DECLARE_GLOBAL_DATA_PTR
 #define XTRN_DECLARE_GLOBAL_DATA_PTR	/* empty = allocate here */
-DECLARE_GLOBAL_DATA_PTR = (gd_t *) (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET);
+DECLARE_GLOBAL_DATA_PTR = (gd_t *) (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
 #endif  /* 0 */
 
 /************************************************************************/

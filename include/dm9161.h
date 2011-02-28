@@ -15,7 +15,7 @@
 
 /* DAVICOM PHYSICAL LAYER TRANSCEIVER DM9161 */
 
-#define	DM9161_BMCR 		0	/* Basic Mode Control Register */
+#define	DM9161_BMCR		0	/* Basic Mode Control Register */
 #define DM9161_BMSR		1	/* Basic Mode Status Register */
 #define DM9161_PHYID1		2	/* PHY Idendifier Register 1 */
 #define DM9161_PHYID2		3	/* PHY Idendifier Register 2 */
@@ -32,7 +32,7 @@
 
 
 /* --Bit definitions: DM9161_BMCR */
-#define DM9161_RESET   	         (1 << 15)	/* 1= Software Reset; 0=Normal Operation */
+#define DM9161_RESET	         (1 << 15)	/* 1= Software Reset; 0=Normal Operation */
 #define DM9161_LOOPBACK	         (1 << 14)	/* 1=loopback Enabled; 0=Normal Operation */
 #define DM9161_SPEED_SELECT      (1 << 13)	/* 1=100Mbps; 0=10Mbps */
 #define DM9161_AUTONEG	         (1 << 12)
@@ -43,9 +43,9 @@
 #define DM9161_COLLISION_TEST    (1 << 7)
 
 /*--Bit definitions: DM9161_BMSR */
-#define DM9161_100BASE_T4        (1 << 15)
+#define DM9161_100BASE_TX        (1 << 15)
 #define DM9161_100BASE_TX_FD     (1 << 14)
-#define DM9161_100BASE_T4_HD     (1 << 13)
+#define DM9161_100BASE_TX_HD     (1 << 13)
 #define DM9161_10BASE_T_FD       (1 << 12)
 #define DM9161_10BASE_T_HD       (1 << 11)
 #define DM9161_MF_PREAMB_SUPPR   (1 << 6)

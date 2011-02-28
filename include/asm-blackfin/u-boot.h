@@ -1,7 +1,7 @@
 /*
  * U-boot - u-boot.h Structure declarations for board specific data
  *
- * Copyright (c) 2005 blackfin.uclinux.org
+ * Copyright (c) 2005-2007 Analog Devices Inc.
  *
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -21,8 +21,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  */
 
 #ifndef _U_BOOT_H_
@@ -31,17 +31,18 @@
 typedef struct bd_info {
 	int bi_baudrate;		/* serial console baudrate */
 	unsigned long bi_ip_addr;	/* IP Address */
-	unsigned char bi_enetaddr[6];	/* Ethernet adress */
-	unsigned long bi_arch_number;	/* unique id for this board */
 	unsigned long bi_boot_params;	/* where this board expects params */
 	unsigned long bi_memstart;	/* start of DRAM memory */
-	unsigned long bi_memsize;	/* size  of DRAM memory in bytes */
+	phys_size_t bi_memsize;		/* size  of DRAM memory in bytes */
 	unsigned long bi_flashstart;	/* start of FLASH memory */
 	unsigned long bi_flashsize;	/* size  of FLASH memory */
 	unsigned long bi_flashoffset;	/* reserved area for startup monitor */
+	const char *bi_r_version;
+	const char *bi_cpu;
+	const char *bi_board_name;
+	unsigned long bi_vco;
+	unsigned long bi_cclk;
+	unsigned long bi_sclk;
 } bd_t;
-
-#define bi_env_data bi_env->data
-#define bi_env_crc  bi_env->crc
 
 #endif	/* _U_BOOT_H_ */

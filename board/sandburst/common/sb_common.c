@@ -43,7 +43,7 @@ int sbcommon_get_master(void)
 {
 	ppc440_gpio_regs_t *gpio_regs;
 
-	gpio_regs = (ppc440_gpio_regs_t *)CFG_GPIO_BASE;
+	gpio_regs = (ppc440_gpio_regs_t *)CONFIG_SYS_GPIO_BASE;
 
 	if (gpio_regs->in & SBCOMMON_GPIO_PRI_N) {
 		return 0;
@@ -63,7 +63,7 @@ int sbcommon_secondary_present(void)
 {
 	ppc440_gpio_regs_t *gpio_regs;
 
-	gpio_regs = (ppc440_gpio_regs_t *)CFG_GPIO_BASE;
+	gpio_regs = (ppc440_gpio_regs_t *)CONFIG_SYS_GPIO_BASE;
 
 	if (gpio_regs->in & SBCOMMON_GPIO_SEC_PRES)
 		return 0;
@@ -84,7 +84,7 @@ unsigned short sbcommon_get_serial_number(void)
 
 	/* Get the board serial number from eeprom */
 	/* Initialize I2C */
-	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 
 	/* Read 256 bytes in EEPROM */
 	i2c_read (0x50, 0, 1, buff, 0x100);
@@ -200,7 +200,7 @@ void sbcommon_fans(void)
  *  Initialize sdram
  *
  ************************************************************************/
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long dram_size = 0;
 
@@ -218,11 +218,11 @@ long int initdram (int board_type)
  *
  *
  ************************************************************************/
-#if defined(CFG_DRAM_TEST)
+#if defined(CONFIG_SYS_DRAM_TEST)
 int testdram (void)
 {
-	uint *pstart = (uint *) CFG_MEMTEST_START;
-	uint *pend = (uint *) CFG_MEMTEST_END;
+	uint *pstart = (uint *) CONFIG_SYS_MEMTEST_START;
+	uint *pend = (uint *) CONFIG_SYS_MEMTEST_END;
 	uint *p;
 
 	printf("Testing SDRAM: ");
@@ -313,7 +313,7 @@ long int fixed_sdram (void)
  *	certain pre-initialization actions.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT)
+#if defined(CONFIG_PCI)
 int pci_pre_init(struct pci_controller * hose )
 {
 	unsigned long strap;
@@ -330,7 +330,7 @@ int pci_pre_init(struct pci_controller * hose )
 
 	return 1;
 }
-#endif /* defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT) */
+#endif /* defined(CONFIG_PCI) */
 
 /*************************************************************************
  *  pci_target_init
@@ -340,7 +340,7 @@ int pci_pre_init(struct pci_controller * hose )
  *	may not be sufficient for a given board.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT)
+#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
 void pci_target_init(struct pci_controller * hose )
 {
 	/*--------------------------------------------------------------------------+
@@ -355,7 +355,7 @@ void pci_target_init(struct pci_controller * hose )
 	 * Map all of SDRAM to PCI address 0x0000_0000. Note that the 440 strapping
 	 * options to not support sizes such as 128/256 MB.
 	 *--------------------------------------------------------------------------*/
-	out32r( PCIX0_PIM0LAL, CFG_SDRAM_BASE );
+	out32r( PCIX0_PIM0LAL, CONFIG_SYS_SDRAM_BASE );
 	out32r( PCIX0_PIM0LAH, 0 );
 	out32r( PCIX0_PIM0SA, ~(gd->ram_size - 1) | 1 );
 
@@ -364,12 +364,12 @@ void pci_target_init(struct pci_controller * hose )
 	/*--------------------------------------------------------------------------+
 	 * Program the board's subsystem id/vendor id
 	 *--------------------------------------------------------------------------*/
-	out16r( PCIX0_SBSYSVID, CFG_PCI_SUBSYS_VENDORID );
-	out16r( PCIX0_SBSYSID, CFG_PCI_SUBSYS_DEVICEID );
+	out16r( PCIX0_SBSYSVID, CONFIG_SYS_PCI_SUBSYS_VENDORID );
+	out16r( PCIX0_SBSYSID, CONFIG_SYS_PCI_SUBSYS_DEVICEID );
 
 	out16r( PCIX0_CMD, in16r(PCIX0_CMD) | PCI_COMMAND_MEMORY );
 }
-#endif /* defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT) */
+#endif /* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
 
 
 /*************************************************************************
@@ -394,9 +394,8 @@ int is_pci_host(struct pci_controller *hose)
  *  mgmt mac address.
  *
  ************************************************************************/
-static int macaddr_idx = 0;
 
-void board_get_enetaddr (uchar * enet)
+void board_get_enetaddr(int macaddr_idx, uchar *enet)
 {
 	int i;
 	unsigned short tmp;
@@ -405,7 +404,7 @@ void board_get_enetaddr (uchar * enet)
 	if (0 == macaddr_idx) {
 
 		/* Initialize I2C */
-		i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+		i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 
 		/* Read 256 bytes in EEPROM */
 		i2c_read (0x50, 0, 1, buff, 0x100);
@@ -419,7 +418,6 @@ void board_get_enetaddr (uchar * enet)
 		tmp += 31;
 		memcpy(&enet[4], &tmp, 2);
 
-		macaddr_idx++;
 	} else {
 		enet[0] = 0x02;
 		enet[1] = 0x00;

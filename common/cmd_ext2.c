@@ -33,20 +33,19 @@
  * Ext2fs support
  */
 #include <common.h>
-
-#if (CONFIG_COMMANDS & CFG_CMD_EXT2)
+#include <part.h>
 #include <config.h>
 #include <command.h>
 #include <image.h>
 #include <linux/ctype.h>
 #include <asm/byteorder.h>
 #include <ext2fs.h>
-#if ((CONFIG_COMMANDS & CFG_CMD_USB) && defined(CONFIG_USB_STORAGE))
+#if defined(CONFIG_CMD_USB) && defined(CONFIG_USB_STORAGE)
 #include <usb.h>
 #endif
 
-#ifndef CONFIG_DOS_PARTITION
-#error DOS partition support must be selected
+#if !defined(CONFIG_DOS_PARTITION) && !defined(CONFIG_EFI_PARTITION)
+#error DOS or EFI partition support must be selected
 #endif
 
 /* #define	EXT2_DEBUG */
@@ -56,41 +55,6 @@
 #else
 #define PRINTF(fmt,args...)
 #endif
-
-static block_dev_desc_t *get_dev (char* ifname, int dev)
-{
-#if (CONFIG_COMMANDS & CFG_CMD_IDE)
-	if (strncmp(ifname,"ide",3)==0) {
-		extern block_dev_desc_t * ide_get_dev(int dev);
-		return((dev >= CFG_IDE_MAXDEVICE) ? NULL : ide_get_dev(dev));
-	}
-#endif
-#if (CONFIG_COMMANDS & CFG_CMD_SCSI)
-	if (strncmp(ifname,"scsi",4)==0) {
-		extern block_dev_desc_t * scsi_get_dev(int dev);
-		return((dev >= CFG_SCSI_MAXDEVICE) ? NULL : scsi_get_dev(dev));
-	}
-#endif
-#if ((CONFIG_COMMANDS & CFG_CMD_USB) && defined(CONFIG_USB_STORAGE))
-	if (strncmp(ifname,"usb",3)==0) {
-		extern block_dev_desc_t * usb_stor_get_dev(int dev);
-		return((dev >= USB_MAX_STOR_DEV) ? NULL : usb_stor_get_dev(dev));
-	}
-#endif
-#if defined(CONFIG_MMC)
-	if (strncmp(ifname,"mmc",3)==0) {
-		extern block_dev_desc_t *  mmc_get_dev(int dev);
-		return((dev >= 1) ? NULL : mmc_get_dev(dev));
-	}
-#endif
-#if defined(CONFIG_SYSTEMACE)
-	if (strcmp(ifname,"ace")==0) {
-		extern block_dev_desc_t *  systemace_get_dev(int dev);
-		return((dev >= 1) ? NULL : systemace_get_dev(dev));
-	}
-#endif
-	return(NULL);
-}
 
 int do_ext2ls (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
@@ -102,59 +66,58 @@ int do_ext2ls (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int part_length;
 
 	if (argc < 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
-		return(1);
+		cmd_usage(cmdtp);
+		return 1;
 	}
 	dev = (int)simple_strtoul (argv[2], &ep, 16);
-	dev_desc=get_dev(argv[1],dev);
+	dev_desc = get_dev(argv[1],dev);
 
 	if (dev_desc == NULL) {
 		printf ("\n** Block device %s %d not supported\n", argv[1], dev);
-		return(1);
+		return 1;
 	}
 
 	if (*ep) {
 		if (*ep != ':') {
 			puts ("\n** Invalid boot device, use `dev[:part]' **\n");
-			return(1);
+			return 1;
 		}
 		part = (int)simple_strtoul(++ep, NULL, 16);
 	}
 
-	if (argc == 4) {
-	    filename = argv[3];
-	}
+	if (argc == 4)
+		filename = argv[3];
 
 	PRINTF("Using device %s %d:%d, directory: %s\n", argv[1], dev, part, filename);
 
 	if ((part_length = ext2fs_set_blk_dev(dev_desc, part)) == 0) {
 		printf ("** Bad partition - %s %d:%d **\n",  argv[1], dev, part);
 		ext2fs_close();
-		return(1);
+		return 1;
 	}
 
 	if (!ext2fs_mount(part_length)) {
 		printf ("** Bad ext2 partition or disk - %s %d:%d **\n",  argv[1], dev, part);
 		ext2fs_close();
-		return(1);
+		return 1;
 	}
 
 	if (ext2fs_ls (filename)) {
 		printf ("** Error ext2fs_ls() **\n");
 		ext2fs_close();
-		return(1);
+		return 1;
 	};
 
 	ext2fs_close();
 
-	return(0);
+	return 0;
 }
 
 U_BOOT_CMD(
 	ext2ls,	4,	1,	do_ext2ls,
-	"ext2ls  - list files in a directory (default /)\n",
+	"list files in a directory (default /)",
 	"<interface> <dev[:part]> [directory]\n"
-	"    - list files from 'dev' on 'interface' in a 'directory'\n"
+	"    - list files from 'dev' on 'interface' in a 'directory'"
 );
 
 /******************************************************************************
@@ -165,7 +128,8 @@ int do_ext2load (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	char *filename = NULL;
 	char *ep;
 	int dev, part = 1;
-	ulong addr = 0, part_length, filelen;
+	ulong addr = 0, part_length;
+	int filelen;
 	disk_partition_t info;
 	block_dev_desc_t *dev_desc = NULL;
 	char buf [12];
@@ -175,11 +139,11 @@ int do_ext2load (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	switch (argc) {
 	case 3:
 		addr_str = getenv("loadaddr");
-		if (addr_str != NULL) {
+		if (addr_str != NULL)
 			addr = simple_strtoul (addr_str, NULL, 16);
-		} else {
-			addr = CFG_LOAD_ADDR;
-		}
+		else
+			addr = CONFIG_SYS_LOAD_ADDR;
+
 		filename = getenv ("bootfile");
 		count = 0;
 		break;
@@ -200,25 +164,25 @@ int do_ext2load (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		break;
 
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
-		return(1);
+		cmd_usage(cmdtp);
+		return 1;
 	}
 
 	if (!filename) {
-		puts ("\n** No boot file defined **\n");
-		return(1);
+		puts ("** No boot file defined **\n");
+		return 1;
 	}
 
 	dev = (int)simple_strtoul (argv[2], &ep, 16);
-	dev_desc=get_dev(argv[1],dev);
+	dev_desc = get_dev(argv[1],dev);
 	if (dev_desc==NULL) {
-		printf ("\n** Block device %s %d not supported\n", argv[1], dev);
-		return(1);
+		printf ("** Block device %s %d not supported\n", argv[1], dev);
+		return 1;
 	}
 	if (*ep) {
 		if (*ep != ':') {
-			puts ("\n** Invalid boot device, use `dev[:part]' **\n");
-			return(1);
+			puts ("** Invalid boot device, use `dev[:part]' **\n");
+			return 1;
 		}
 		part = (int)simple_strtoul(++ep, NULL, 16);
 	}
@@ -228,50 +192,53 @@ int do_ext2load (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (part != 0) {
 		if (get_partition_info (dev_desc, part, &info)) {
 			printf ("** Bad partition %d **\n", part);
-			return(1);
+			return 1;
 		}
 
 		if (strncmp((char *)info.type, BOOT_PART_TYPE, sizeof(info.type)) != 0) {
-			printf ("\n** Invalid partition type \"%.32s\""
+			printf ("** Invalid partition type \"%.32s\""
 				" (expect \"" BOOT_PART_TYPE "\")\n",
 				info.type);
-			return(1);
+			return 1;
 		}
-		PRINTF ("\nLoading from block device %s device %d, partition %d: "
-			"Name: %.32s  Type: %.32s  File:%s\n",
-			argv[1], dev, part, info.name, info.type, filename);
+		printf ("Loading file \"%s\" "
+			"from %s device %d:%d (%.32s)\n",
+			filename,
+			argv[1], dev, part, info.name);
 	} else {
-		PRINTF ("\nLoading from block device %s device %d, File:%s\n",
-			argv[1], dev, filename);
+		printf ("Loading file \"%s\" from %s device %d\n",
+			filename, argv[1], dev);
 	}
 
 
 	if ((part_length = ext2fs_set_blk_dev(dev_desc, part)) == 0) {
 		printf ("** Bad partition - %s %d:%d **\n",  argv[1], dev, part);
 		ext2fs_close();
-		return(1);
+		return 1;
 	}
 
 	if (!ext2fs_mount(part_length)) {
-		printf ("** Bad ext2 partition or disk - %s %d:%d **\n",  argv[1], dev, part);
+		printf ("** Bad ext2 partition or disk - %s %d:%d **\n",
+			argv[1], dev, part);
 		ext2fs_close();
-		return(1);
+		return 1;
 	}
 
 	filelen = ext2fs_open(filename);
 	if (filelen < 0) {
 		printf("** File not found %s\n", filename);
 		ext2fs_close();
-		return(1);
+		return 1;
 	}
 	if ((count < filelen) && (count != 0)) {
 	    filelen = count;
 	}
 
 	if (ext2fs_read((char *)addr, filelen) != filelen) {
-		printf("\n** Unable to read \"%s\" from %s %d:%d **\n", filename, argv[1], dev, part);
+		printf("** Unable to read \"%s\" from %s %d:%d **\n",
+			filename, argv[1], dev, part);
 		ext2fs_close();
-		return(1);
+		return 1;
 	}
 
 	ext2fs_close();
@@ -279,19 +246,17 @@ int do_ext2load (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	/* Loading ok, update default load address */
 	load_addr = addr;
 
-	printf ("\n%ld bytes read\n", filelen);
-	sprintf(buf, "%lX", filelen);
+	printf ("%d bytes read\n", filelen);
+	sprintf(buf, "%X", filelen);
 	setenv("filesize", buf);
 
-	return(filelen);
+	return 0;
 }
 
 U_BOOT_CMD(
 	ext2load,	6,	0,	do_ext2load,
-	"ext2load- load binary file from a Ext2 filesystem\n",
+	"load binary file from a Ext2 filesystem",
 	"<interface> <dev[:part]> [addr] [filename] [bytes]\n"
 	"    - load binary file 'filename' from 'dev' on 'interface'\n"
-	"      to address 'addr' from ext2 filesystem\n"
+	"      to address 'addr' from ext2 filesystem"
 );
-
-#endif	/* CONFIG_COMMANDS & CFG_CMD_EXT2 */

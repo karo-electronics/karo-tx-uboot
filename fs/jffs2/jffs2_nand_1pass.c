@@ -1,7 +1,5 @@
 #include <common.h>
 
-#if !defined(CFG_NAND_LEGACY) && (CONFIG_COMMANDS & CFG_CMD_JFFS2)
-
 #include <malloc.h>
 #include <linux/stat.h>
 #include <linux/time.h>
@@ -96,7 +94,7 @@ add_node(struct b_list *list, int size)
 static struct b_node *
 insert_node(struct b_list *list, struct b_node *new)
 {
-#ifdef CFG_JFFS2_SORT_FRAGMENTS
+#ifdef CONFIG_SYS_JFFS2_SORT_FRAGMENTS
 	struct b_node *b, *prev;
 
 	if (list->listTail != NULL && list->listCompare(new, list->listTail))
@@ -173,7 +171,7 @@ insert_dirent(struct b_list *list, struct jffs2_raw_dirent *node, u32 offset)
 	return insert_node(list, (struct b_node *)new);
 }
 
-#ifdef CFG_JFFS2_SORT_FRAGMENTS
+#ifdef CONFIG_SYS_JFFS2_SORT_FRAGMENTS
 /* Sort data entries with the latest version last, so that if there
  * is overlapping data the latest version will be used.
  */
@@ -250,7 +248,7 @@ jffs_init_1pass_list(struct part_info *part)
 		pL = (struct b_lists *)part->jffs2_priv;
 
 		memset(pL, 0, sizeof(*pL));
-#ifdef CFG_JFFS2_SORT_FRAGMENTS
+#ifdef CONFIG_SYS_JFFS2_SORT_FRAGMENTS
 		pL->dir.listCompare = compare_dirents;
 		pL->frag.listCompare = compare_inodes;
 #endif
@@ -268,7 +266,7 @@ jffs2_1pass_read_inode(struct b_lists *pL, u32 ino, char *dest,
 	u32 latestVersion = 0;
 	long ret;
 
-#ifdef CFG_JFFS2_SORT_FRAGMENTS
+#ifdef CONFIG_SYS_JFFS2_SORT_FRAGMENTS
 	/* Find file size before loading any data, so fragments that
 	 * start past the end of file can be ignored. A fragment
 	 * that is partially in the file is loaded, so extra data may
@@ -290,7 +288,7 @@ jffs2_1pass_read_inode(struct b_lists *pL, u32 ino, char *dest,
 	for (jNode = (struct b_inode *)pL->frag.listHead; jNode; jNode = jNode->next) {
 		if ((ino != jNode->ino))
 			continue;
-#ifndef CFG_JFFS2_SORT_FRAGMENTS
+#ifndef CONFIG_SYS_JFFS2_SORT_FRAGMENTS
 		/* get actual file length from the newest node */
 		if (jNode->version >= latestVersion) {
 			totalSize = jNode->isize;
@@ -758,7 +756,7 @@ dump_dirents(struct b_lists *pL)
 		putLabeledWord("\tbuild_list: type = ", jDir->type);
 		putLabeledWord("\tbuild_list: node_crc = ", jDir->node_crc);
 		putLabeledWord("\tbuild_list: name_crc = ", jDir->name_crc);
-		putLabeledWord("\tbuild_list: offset = ", b->offset); 	/* FIXME: ? [RS] */
+		putLabeledWord("\tbuild_list: offset = ", b->offset);	/* FIXME: ? [RS] */
 		b = b->next;
 		put_fl_mem(jDir);
 	}
@@ -864,16 +862,18 @@ jffs2_1pass_build_lists(struct part_info * part)
 			} else if (node->nodetype == JFFS2_NODETYPE_CLEANMARKER) {
 				if (node->totlen != sizeof(struct jffs2_unknown_node))
 					printf("OOPS Cleanmarker has bad size "
-						"%d != %d\n", node->totlen,
+						"%d != %zu\n",
+						node->totlen,
 						sizeof(struct jffs2_unknown_node));
 			} else if (node->nodetype == JFFS2_NODETYPE_PADDING) {
 				if (node->totlen < sizeof(struct jffs2_unknown_node))
 					printf("OOPS Padding has bad size "
-						"%d < %d\n", node->totlen,
+						"%d < %zu\n",
+						node->totlen,
 						sizeof(struct jffs2_unknown_node));
 			} else {
-				printf("Unknown node type: %x len %d "
-					"offset 0x%x\n", node->nodetype,
+				printf("Unknown node type: %x len %d offset 0x%x\n",
+					node->nodetype,
 					node->totlen, offset);
 			}
 			offset += ((node->totlen + 3) & ~3);
@@ -1032,5 +1032,3 @@ jffs2_1pass_info(struct part_info * part)
 	}
 	return 1;
 }
-
-#endif /* CFG_CMD_JFFS2 */

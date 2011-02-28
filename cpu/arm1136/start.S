@@ -5,7 +5,7 @@
  *
  *  Copyright (c) 2001	Marius Gröger <mag@sysgo.de>
  *  Copyright (c) 2002	Alex Züpke <azu@sysgo.de>
- *  Copyright (c) 2002	Gary Jennejohn <gj@denx.de>
+ *  Copyright (c) 2002	Gary Jennejohn <garyj@denx.de>
  *  Copyright (c) 2003	Richard Woodruff <r-woodruff2@ti.com>
  *  Copyright (c) 2003	Kshitij <kshitij@ti.com>
  *
@@ -30,11 +30,27 @@
 
 #include <config.h>
 #include <version.h>
-#if !defined(CONFIG_INTEGRATOR) && ! defined(CONFIG_ARCH_CINTEGRATOR)
-#include <asm/arch/omap2420.h>
-#endif
 .globl _start
 _start: b	reset
+#ifdef CONFIG_PRELOADER
+	ldr	pc, _hang
+	ldr	pc, _hang
+	ldr	pc, _hang
+	ldr	pc, _hang
+	ldr	pc, _hang
+	ldr	pc, _hang
+	ldr	pc, _hang
+
+_hang:
+	.word	do_hang
+	.word	0x12345678
+	.word	0x12345678
+	.word	0x12345678
+	.word	0x12345678
+	.word	0x12345678
+	.word	0x12345678
+	.word	0x12345678	/* now 16*4=64 */
+#else
 	ldr	pc, _undefined_instruction
 	ldr	pc, _software_interrupt
 	ldr	pc, _prefetch_abort
@@ -51,6 +67,7 @@ _not_used:		.word not_used
 _irq:			.word irq
 _fiq:			.word fiq
 _pad:			.word 0x12345678 /* now 16*4=64 */
+#endif	/* CONFIG_PRELOADER */
 .global _end_vect
 _end_vect:
 
@@ -114,7 +131,7 @@ reset:
 #ifdef CONFIG_OMAP2420H4
        /* Copy vectors to mask ROM indirect addr */
 	adr	r0, _start		/* r0 <- current position of code   */
- 		add     r0, r0, #4				/* skip reset vector			*/
+		add     r0, r0, #4				/* skip reset vector			*/
 	mov	r2, #64			/* r2 <- size to copy  */
 	add	r2, r0, r2		/* r2 <- source end address	    */
 	mov	r1, #SRAM_OFFSET0	  /* build vect addr */
@@ -139,7 +156,9 @@ relocate:				/* relocate U-Boot to RAM	    */
 	adr	r0, _start		/* r0 <- current position of code   */
 	ldr	r1, _TEXT_BASE		/* test if we run from flash or RAM */
 	cmp	r0, r1			/* don't reloc during debug	    */
+#ifndef CONFIG_PRELOADER
 	beq	stack_setup
+#endif	/* CONFIG_PRELOADER */
 
 	ldr	r2, _armboot_start
 	ldr	r3, _bss_start
@@ -156,27 +175,40 @@ copy_loop:
 	/* Set up the stack						    */
 stack_setup:
 	ldr	r0, _TEXT_BASE		/* upper 128 KiB: relocated uboot   */
-	sub	r0, r0, #CFG_MALLOC_LEN /* malloc area			    */
-	sub	r0, r0, #CFG_GBL_DATA_SIZE /* bdinfo			    */
+#ifdef CONFIG_PRELOADER
+	sub	sp, r0, #128		/* leave 32 words for abort-stack   */
+#else
+	sub	r0, r0, #CONFIG_SYS_MALLOC_LEN /* malloc area			    */
+	sub	r0, r0, #CONFIG_SYS_GBL_DATA_SIZE /* bdinfo			    */
 #ifdef CONFIG_USE_IRQ
 	sub	r0, r0, #(CONFIG_STACKSIZE_IRQ+CONFIG_STACKSIZE_FIQ)
 #endif
 	sub	sp, r0, #12		/* leave 3 words for abort-stack    */
+#endif	/* CONFIG_PRELOADER */
 
 clear_bss:
 	ldr	r0, _bss_start		/* find start of bss segment	    */
 	ldr	r1, _bss_end		/* stop here			    */
 	mov	r2, #0x00000000		/* clear			    */
 
+#ifndef CONFIG_PRELOADER
 clbss_l:str	r2, [r0]		/* clear loop...		    */
 	add	r0, r0, #4
 	cmp	r0, r1
 	bne	clbss_l
+#endif
 
 	ldr	pc, _start_armboot
 
+#ifdef CONFIG_NAND_SPL
+_start_armboot: .word nand_boot
+#else
+#ifdef CONFIG_ONENAND_IPL
+_start_armboot: .word start_oneboot
+#else
 _start_armboot: .word start_armboot
-
+#endif /* CONFIG_ONENAND_IPL */
+#endif /* CONFIG_NAND_SPL */
 
 /*
  *************************************************************************
@@ -188,6 +220,7 @@ _start_armboot: .word start_armboot
  *
  *************************************************************************
  */
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
 cpu_init_crit:
 	/*
 	 * flush v4 I/D caches
@@ -214,6 +247,9 @@ cpu_init_crit:
 	bl	lowlevel_init	/* go setup pll,mux,memory */
 	mov	lr, ip		/* restore link */
 	mov	pc, lr		/* back to my caller */
+#endif /* CONFIG_SKIP_LOWLEVEL_INIT */
+
+#ifndef CONFIG_PRELOADER
 /*
  *************************************************************************
  *
@@ -259,8 +295,8 @@ cpu_init_crit:
 	stmia	sp, {r0 - r12}			@ Save user registers (now in svc mode) r0-r12
 
 	ldr	r2, _armboot_start
-	sub	r2, r2, #(CFG_MALLOC_LEN)
-	sub	r2, r2, #(CFG_GBL_DATA_SIZE+8)	@ set base 2 words into abort stack
+	sub	r2, r2, #(CONFIG_SYS_MALLOC_LEN)
+	sub	r2, r2, #(CONFIG_SYS_GBL_DATA_SIZE+8)	@ set base 2 words into abort stack
 	ldmia	r2, {r2 - r3}			@ get values for "aborted" pc and cpsr (into parm regs)
 	add	r0, sp, #S_FRAME_SIZE		@ grab pointer to old stack
 
@@ -292,8 +328,8 @@ cpu_init_crit:
 
 	.macro get_bad_stack
 	ldr	r13, _armboot_start		@ setup our mode stack (enter in banked mode)
-	sub	r13, r13, #(CFG_MALLOC_LEN)	@ move past malloc pool
-	sub	r13, r13, #(CFG_GBL_DATA_SIZE+8) @ move to reserved a couple spots for abort stack
+	sub	r13, r13, #(CONFIG_SYS_MALLOC_LEN)	@ move past malloc pool
+	sub	r13, r13, #(CONFIG_SYS_GBL_DATA_SIZE+8) @ move to reserved a couple spots for abort stack
 
 	str	lr, [r13]			@ save caller lr in position 0 of saved stack
 	mrs	lr, spsr			@ get the spsr
@@ -310,8 +346,8 @@ cpu_init_crit:
 	sub	r13, r13, #4			@ space on current stack for scratch reg.
 	str	r0, [r13]			@ save R0's value.
 	ldr	r0, _armboot_start		@ get data regions start
-	sub	r0, r0, #(CFG_MALLOC_LEN)	@ move past malloc pool
-	sub	r0, r0, #(CFG_GBL_DATA_SIZE+8)	@ move past gbl and a couple spots for abort stack
+	sub	r0, r0, #(CONFIG_SYS_MALLOC_LEN)	@ move past malloc pool
+	sub	r0, r0, #(CONFIG_SYS_GBL_DATA_SIZE+8)	@ move past gbl and a couple spots for abort stack
 	str	lr, [r0]			@ save caller lr in position 0 of saved stack
 	mrs	r0, spsr			@ get the spsr
 	str	lr, [r0, #4]			@ save spsr in position 1 of saved stack
@@ -326,10 +362,17 @@ cpu_init_crit:
 	.macro get_fiq_stack			@ setup FIQ stack
 	ldr	sp, FIQ_STACK_START
 	.endm
+#endif	/* CONFIG_PRELOADER */
 
 /*
  * exception handlers
  */
+#ifdef CONFIG_PRELOADER
+	.align	5
+do_hang:
+	ldr	sp, _TEXT_BASE			/* use 32 words about stack */
+	bl	hang				/* hang and never return */
+#else	/* !CONFIG_PRELOADER */
 	.align	5
 undefined_instruction:
 	get_bad_stack
@@ -397,21 +440,4 @@ fiq:
 arm1136_cache_flush:
 		mcr	p15, 0, r1, c7, c5, 0	@ invalidate I cache
 		mov	pc, lr			@ back to caller
-
-#if defined(CONFIG_INTEGRATOR) && defined(CONFIG_ARCH_CINTEGRATOR)
-/* Use the IntegratorCP function from board/integratorcp/platform.S */
-#else
-
-	.align	5
-.globl reset_cpu
-reset_cpu:
-	ldr	r1, rstctl	/* get addr for global reset reg */
-	mov	r3, #0x2	/* full reset pll+mpu */
-	str	r3, [r1]	/* force reset */
-	mov	r0, r0
-_loop_forever:
-	b	_loop_forever
-rstctl:
-	.word	PM_RSTCTRL_WKUP
-
-#endif
+#endif	/* CONFIG_PRELOADER */

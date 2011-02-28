@@ -31,7 +31,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #undef	ET_DEBUG
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET) && \
+#if defined(CONFIG_CMD_NET) && \
 	(defined(FEC_ENET) || defined(CONFIG_ETHER_ON_FEC1) || defined(CONFIG_ETHER_ON_FEC2))
 
 /* compatibility test, if only FEC_ENET defined assume ETHER on FEC1 */
@@ -40,7 +40,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #endif
 
 /* define WANT_MII when MII support is required */
-#if defined(CFG_DISCOVER_PHY) || defined(CONFIG_FEC1_PHY) || defined(CONFIG_FEC2_PHY)
+#if defined(CONFIG_SYS_DISCOVER_PHY) || defined(CONFIG_FEC1_PHY) || defined(CONFIG_FEC2_PHY)
 #define WANT_MII
 #else
 #undef WANT_MII
@@ -49,7 +49,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #if defined(WANT_MII)
 #include <miiphy.h>
 
-#if !(defined(CONFIG_MII) || (CONFIG_COMMANDS & CFG_CMD_MII))
+#if !(defined(CONFIG_MII) || defined(CONFIG_CMD_MII))
 #error "CONFIG_MII has to be defined!"
 #endif
 
@@ -59,7 +59,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #error RMII support is unusable without a working PHY.
 #endif
 
-#ifdef CFG_DISCOVER_PHY
+#ifdef CONFIG_SYS_DISCOVER_PHY
 static int mii_discover_phy(struct eth_device *dev);
 #endif
 
@@ -143,6 +143,9 @@ static int fec_send(struct eth_device* dev, volatile void *packet, int length);
 static int fec_recv(struct eth_device* dev);
 static int fec_init(struct eth_device* dev, bd_t * bd);
 static void fec_halt(struct eth_device* dev);
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+static void __mii_init(void);
+#endif
 
 int fec_initialize(bd_t *bis)
 {
@@ -182,7 +185,7 @@ int fec_initialize(bd_t *bis)
 
 		eth_register(dev);
 
-#if defined(CONFIG_MII) || (CONFIG_COMMANDS & CFG_CMD_MII)
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 		miiphy_register(dev->name,
 			fec8xx_miiphy_read, fec8xx_miiphy_write);
 #endif
@@ -194,7 +197,7 @@ static int fec_send(struct eth_device* dev, volatile void *packet, int length)
 {
 	int j, rc;
 	struct ether_fcc_info_s *efis = dev->priv;
-	volatile fec_t *fecp = (volatile fec_t *)(CFG_IMMR + efis->fecp_offset);
+	volatile fec_t *fecp = (volatile fec_t *)(CONFIG_SYS_IMMR + efis->fecp_offset);
 
 	/* section 16.9.23.3
 	 * Wait for ready
@@ -245,7 +248,7 @@ static int fec_recv (struct eth_device *dev)
 {
 	struct ether_fcc_info_s *efis = dev->priv;
 	volatile fec_t *fecp =
-		(volatile fec_t *) (CFG_IMMR + efis->fecp_offset);
+		(volatile fec_t *) (CONFIG_SYS_IMMR + efis->fecp_offset);
 	int length;
 
 	for (;;) {
@@ -268,7 +271,7 @@ static int fec_recv (struct eth_device *dev)
 
 			length -= 4;
 
-#if (CONFIG_COMMANDS & CFG_CMD_CDP)
+#if defined(CONFIG_CMD_CDP)
 			if ((rx[0] & 1) != 0
 			    && memcmp ((uchar *) rx, NetBcastAddr, 6) != 0
 			    && memcmp ((uchar *) rx, NetCDPAddr, 6) != 0)
@@ -336,7 +339,7 @@ static inline void fec_10Mbps(struct eth_device *dev)
 	if ((unsigned int)fecidx >= 2)
 		hang();
 
-	((volatile immap_t *)CFG_IMMR)->im_cpm.cp_cptr |=  mask;
+	((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_cptr |=  mask;
 }
 
 static inline void fec_100Mbps(struct eth_device *dev)
@@ -348,7 +351,7 @@ static inline void fec_100Mbps(struct eth_device *dev)
 	if ((unsigned int)fecidx >= 2)
 		hang();
 
-	((volatile immap_t *)CFG_IMMR)->im_cpm.cp_cptr &= ~mask;
+	((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_cptr &= ~mask;
 }
 
 #endif
@@ -356,7 +359,7 @@ static inline void fec_100Mbps(struct eth_device *dev)
 static inline void fec_full_duplex(struct eth_device *dev)
 {
 	struct ether_fcc_info_s *efis = dev->priv;
-	volatile fec_t *fecp = (volatile fec_t *)(CFG_IMMR + efis->fecp_offset);
+	volatile fec_t *fecp = (volatile fec_t *)(CONFIG_SYS_IMMR + efis->fecp_offset);
 
 	fecp->fec_r_cntrl &= ~FEC_RCNTRL_DRT;
 	fecp->fec_x_cntrl |=  FEC_TCNTRL_FDEN;	/* FD enable */
@@ -365,7 +368,7 @@ static inline void fec_full_duplex(struct eth_device *dev)
 static inline void fec_half_duplex(struct eth_device *dev)
 {
 	struct ether_fcc_info_s *efis = dev->priv;
-	volatile fec_t *fecp = (volatile fec_t *)(CFG_IMMR + efis->fecp_offset);
+	volatile fec_t *fecp = (volatile fec_t *)(CONFIG_SYS_IMMR + efis->fecp_offset);
 
 	fecp->fec_r_cntrl |=  FEC_RCNTRL_DRT;
 	fecp->fec_x_cntrl &= ~FEC_TCNTRL_FDEN;	/* FD disable */
@@ -374,7 +377,7 @@ static inline void fec_half_duplex(struct eth_device *dev)
 static void fec_pin_init(int fecidx)
 {
 	bd_t           *bd = gd->bd;
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile fec_t *fecp;
 
 	/*
@@ -395,7 +398,7 @@ static void fec_pin_init(int fecidx)
 	 * * the MII management interface clock must be less than or equal
 	 * * to 2.5 MHz.
 	 * * This MDC frequency is equal to system clock / (2 * MII_SPEED).
-	 * * Then MII_SPEED = system_clock / 2 * 2,5 Mhz.
+	 * * Then MII_SPEED = system_clock / 2 * 2,5 MHz.
 	 *
 	 * All MII configuration is done via FEC1 registers:
 	 */
@@ -471,7 +474,7 @@ static void fec_pin_init(int fecidx)
 		 * Configure port A for MII.
 		 */
 
-#if defined(CONFIG_ICU862) && defined(CFG_DISCOVER_PHY)
+#if defined(CONFIG_ICU862) && defined(CONFIG_SYS_DISCOVER_PHY)
 
 		/*
 		 * On the ICU862 board the MII-MDC pin is routed to PD8 pin
@@ -539,12 +542,36 @@ static void fec_pin_init(int fecidx)
 	}
 }
 
+static int fec_reset(volatile fec_t *fecp)
+{
+	int i;
+
+	/* Whack a reset.
+	 * A delay is required between a reset of the FEC block and
+	 * initialization of other FEC registers because the reset takes
+	 * some time to complete. If you don't delay, subsequent writes
+	 * to FEC registers might get killed by the reset routine which is
+	 * still in progress.
+	 */
+
+	fecp->fec_ecntrl = FEC_ECNTRL_PINMUX | FEC_ECNTRL_RESET;
+	for (i = 0;
+	     (fecp->fec_ecntrl & FEC_ECNTRL_RESET) && (i < FEC_RESET_DELAY);
+	     ++i) {
+		udelay (1);
+	}
+	if (i == FEC_RESET_DELAY)
+		return -1;
+
+	return 0;
+}
+
 static int fec_init (struct eth_device *dev, bd_t * bd)
 {
 	struct ether_fcc_info_s *efis = dev->priv;
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile fec_t *fecp =
-		(volatile fec_t *) (CFG_IMMR + efis->fecp_offset);
+		(volatile fec_t *) (CONFIG_SYS_IMMR + efis->fecp_offset);
 	int i;
 
 	if (efis->ether_index == 0) {
@@ -573,23 +600,17 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 #endif /* CONFIG_FADS */
 	}
 
-	/* Whack a reset.
-	 * A delay is required between a reset of the FEC block and
-	 * initialization of other FEC registers because the reset takes
-	 * some time to complete. If you don't delay, subsequent writes
-	 * to FEC registers might get killed by the reset routine which is
-	 * still in progress.
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+	/* the MII interface is connected to FEC1
+	 * so for the miiphy_xxx function to work we must
+	 * call mii_init since fec_halt messes the thing up
 	 */
-	fecp->fec_ecntrl = FEC_ECNTRL_PINMUX | FEC_ECNTRL_RESET;
-	for (i = 0;
-	     (fecp->fec_ecntrl & FEC_ECNTRL_RESET) && (i < FEC_RESET_DELAY);
-	     ++i) {
-		udelay (1);
-	}
-	if (i == FEC_RESET_DELAY) {
+	if (efis->ether_index != 0)
+		__mii_init();
+#endif
+
+	if (fec_reset(fecp) < 0)
 		printf ("FEC_RESET_DELAY timeout\n");
-		return 0;
-	}
 
 	/* We use strictly polling mode only
 	 */
@@ -603,12 +624,12 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 
 	/* Set station address
 	 */
-#define ea eth_get_dev()->enetaddr
+#define ea dev->enetaddr
 	fecp->fec_addr_low = (ea[0] << 24) | (ea[1] << 16) | (ea[2] << 8) | (ea[3]);
 	fecp->fec_addr_high = (ea[4] << 8) | (ea[5]);
 #undef ea
 
-#if (CONFIG_COMMANDS & CFG_CMD_CDP)
+#if defined(CONFIG_CMD_CDP)
 	/*
 	 * Turn on multicast address hash table
 	 */
@@ -636,7 +657,7 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 	txIdx = 0;
 
 	if (!rtx) {
-#ifdef CFG_ALLOC_DPRAM
+#ifdef CONFIG_SYS_ALLOC_DPRAM
 		rtx = (RTXBD *) (immr->im_cpm.cp_dpmem +
 				 dpram_alloc_align (sizeof (RTXBD), 8));
 #else
@@ -700,7 +721,7 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 	fecp->fec_ecntrl = FEC_ECNTRL_PINMUX | FEC_ECNTRL_ETHER_EN;
 
 	if (efis->phy_addr == -1) {
-#ifdef CFG_DISCOVER_PHY
+#ifdef CONFIG_SYS_DISCOVER_PHY
 		/*
 		 * wait for the PHY to wake up after reset
 		 */
@@ -708,7 +729,7 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 
 		if (efis->actual_phy_addr == -1) {
 			printf ("Unable to discover phy!\n");
-			return 0;
+			return -1;
 		}
 #else
 		efis->actual_phy_addr = -1;
@@ -716,15 +737,8 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 	} else {
 		efis->actual_phy_addr = efis->phy_addr;
 	}
+
 #if defined(CONFIG_MII) && defined(CONFIG_RMII)
-
-	/* the MII interface is connected to FEC1
-	 * so for the miiphy_xxx function to work we must
-	 * call mii_init since fec_halt messes the thing up
-	 */
-	if (efis->ether_index != 0)
-		mii_init();
-
 	/*
 	 * adapt the RMII speed to the speed of the phy
 	 */
@@ -751,14 +765,14 @@ static int fec_init (struct eth_device *dev, bd_t * bd)
 
 	efis->initialized = 1;
 
-	return 1;
+	return 0;
 }
 
 
 static void fec_halt(struct eth_device* dev)
 {
 	struct ether_fcc_info_s *efis = dev->priv;
-	volatile fec_t *fecp = (volatile fec_t *)(CFG_IMMR + efis->fecp_offset);
+	volatile fec_t *fecp = (volatile fec_t *)(CONFIG_SYS_IMMR + efis->fecp_offset);
 	int i;
 
 	/* avoid halt if initialized; mii gets stuck otherwise */
@@ -787,7 +801,7 @@ static void fec_halt(struct eth_device* dev)
 	efis->initialized = 0;
 }
 
-#if defined(CFG_DISCOVER_PHY) || defined(CONFIG_MII) || (CONFIG_COMMANDS & CFG_CMD_MII)
+#if defined(CONFIG_SYS_DISCOVER_PHY) || defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 
 /* Make MII read/write commands for the FEC.
 */
@@ -832,7 +846,7 @@ mii_send(uint mii_cmd)
 	volatile fec_t	*ep;
 	int cnt;
 
-	ep = &(((immap_t *)CFG_IMMR)->im_cpm.cp_fec);
+	ep = &(((immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_fec);
 
 	ep->fec_mii_data = mii_cmd;	/* command to phy */
 
@@ -852,9 +866,9 @@ mii_send(uint mii_cmd)
 #endif
 	return (mii_reply & 0xffff);		/* data read from phy */
 }
-#endif /* CFG_DISCOVER_PHY || (CONFIG_COMMANDS & CFG_CMD_MII) */
+#endif
 
-#if defined(CFG_DISCOVER_PHY)
+#if defined(CONFIG_SYS_DISCOVER_PHY)
 static int mii_discover_phy(struct eth_device *dev)
 {
 #define MAX_PHY_PASSES 11
@@ -874,15 +888,14 @@ static int mii_discover_phy(struct eth_device *dev)
 			udelay(10000);	/* wait 10ms */
 		}
 		for (phyno = 0; phyno < 32 && phyaddr < 0; ++phyno) {
-			phytype = mii_send(mk_mii_read(phyno, PHY_PHYIDR1));
+			phytype = mii_send(mk_mii_read(phyno, PHY_PHYIDR2));
 #ifdef ET_DEBUG
 			printf("PHY type 0x%x pass %d type ", phytype, pass);
 #endif
 			if (phytype != 0xffff) {
 				phyaddr = phyno;
-				phytype <<= 16;
 				phytype |= mii_send(mk_mii_read(phyno,
-								PHY_PHYIDR2));
+								PHY_PHYIDR1)) << 16;
 
 #ifdef ET_DEBUG
 				printf("PHY @ 0x%x pass %d type ",phyno,pass);
@@ -924,41 +937,22 @@ static int mii_discover_phy(struct eth_device *dev)
 	}
 	return phyaddr;
 }
-#endif	/* CFG_DISCOVER_PHY */
+#endif	/* CONFIG_SYS_DISCOVER_PHY */
 
-#if (defined(CONFIG_MII) || (CONFIG_COMMANDS & CFG_CMD_MII)) && !defined(CONFIG_BITBANGMII)
+#if (defined(CONFIG_MII) || defined(CONFIG_CMD_MII)) && !defined(CONFIG_BITBANGMII)
 
 /****************************************************************************
- * mii_init -- Initialize the MII for MII command without ethernet
+ * mii_init -- Initialize the MII via FEC 1 for MII command without ethernet
  * This function is a subset of eth_init
  ****************************************************************************
  */
-void mii_init (void)
+static void __mii_init(void)
 {
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile fec_t *fecp = &(immr->im_cpm.cp_fec);
-	int i, j;
 
-	for (j = 0; j < sizeof(ether_fcc_info) / sizeof(ether_fcc_info[0]); j++) {
-
-	/* Whack a reset.
-	 * A delay is required between a reset of the FEC block and
-	 * initialization of other FEC registers because the reset takes
-	 * some time to complete. If you don't delay, subsequent writes
-	 * to FEC registers might get killed by the reset routine which is
-	 * still in progress.
-	 */
-
-	fecp->fec_ecntrl = FEC_ECNTRL_PINMUX | FEC_ECNTRL_RESET;
-	for (i = 0;
-	     (fecp->fec_ecntrl & FEC_ECNTRL_RESET) && (i < FEC_RESET_DELAY);
-	     ++i) {
-		udelay (1);
-	}
-	if (i == FEC_RESET_DELAY) {
+	if (fec_reset(fecp) < 0)
 		printf ("FEC_RESET_DELAY timeout\n");
-		return;
-	}
 
 	/* We use strictly polling mode only
 	 */
@@ -968,14 +962,21 @@ void mii_init (void)
 	 */
 	fecp->fec_ievent = 0xffc0;
 
-	/* Setup the pin configuration of the FEC(s)
-	*/
-		fec_pin_init(ether_fcc_info[i].ether_index);
-
 	/* Now enable the transmit and receive processing
 	 */
 	fecp->fec_ecntrl = FEC_ECNTRL_PINMUX | FEC_ECNTRL_ETHER_EN;
-	}
+}
+
+void mii_init (void)
+{
+	int i;
+
+	__mii_init();
+
+	/* Setup the pin configuration of the FEC(s)
+	*/
+	for (i = 0; i < sizeof(ether_fcc_info) / sizeof(ether_fcc_info[0]); i++)
+		fec_pin_init(ether_fcc_info[i].ether_index);
 }
 
 /*****************************************************************************
@@ -1020,6 +1021,6 @@ int fec8xx_miiphy_write(char *devname, unsigned char  addr,
 #endif
 	return 0;
 }
-#endif /* (CONFIG_COMMANDS & CFG_CMD_MII) && !defined(CONFIG_BITBANGMII)*/
+#endif
 
-#endif	/* CFG_CMD_NET, FEC_ENET */
+#endif

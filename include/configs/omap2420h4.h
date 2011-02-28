@@ -47,7 +47,7 @@
 /* On H4, NOR and NAND flash are mutual exclusive.
    Define this if you want to use NAND
  */
-/*#define CFG_NAND_BOOT */
+/*#define CONFIG_SYS_NAND_BOOT */
 
 #ifdef CONFIG_APTIX
 #define V_SCLK                   1500000
@@ -70,9 +70,9 @@
 /*
  * Size of malloc() pool
  */
-#define CFG_ENV_SIZE             SZ_128K     /* Total Size of Environment Sector */
-#define CFG_MALLOC_LEN           (CFG_ENV_SIZE + SZ_128K)
-#define CFG_GBL_DATA_SIZE        128  /* size in bytes reserved for initial data */
+#define CONFIG_ENV_SIZE             SZ_128K     /* Total Size of Environment Sector */
+#define CONFIG_SYS_MALLOC_LEN           (CONFIG_ENV_SIZE + SZ_128K)
+#define CONFIG_SYS_GBL_DATA_SIZE        128  /* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
@@ -94,11 +94,11 @@
 #define V_NS16550_CLK            (48000000)  /* 48MHz (APLL96/2) */
 #endif
 
-#define CFG_NS16550
-#define CFG_NS16550_SERIAL
-#define CFG_NS16550_REG_SIZE     (-4)
-#define CFG_NS16550_CLK          V_NS16550_CLK   /* 3MHz (1.5MHz*2) */
-#define CFG_NS16550_COM1         OMAP2420_UART1
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE     (-4)
+#define CONFIG_SYS_NS16550_CLK          V_NS16550_CLK   /* 3MHz (1.5MHz*2) */
+#define CONFIG_SYS_NS16550_COM1         OMAP2420_UART1
 
 /*
  * select serial console configuration
@@ -109,61 +109,43 @@
    * I2C configuration
    */
 #define CONFIG_HARD_I2C
-#define CFG_I2C_SPEED          100000
-#define CFG_I2C_SLAVE          1
+#define CONFIG_SYS_I2C_SPEED          100000
+#define CONFIG_SYS_I2C_SLAVE          1
 #define CONFIG_DRIVER_OMAP24XX_I2C
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX        1
 #define CONFIG_BAUDRATE          115200
-#define CFG_BAUDRATE_TABLE       {9600, 19200, 38400, 57600, 115200}
+#define CONFIG_SYS_BAUDRATE_TABLE       {9600, 19200, 38400, 57600, 115200}
 
-#ifdef CFG_NAND_BOOT
-#define CONFIG_COMMANDS          (CONFIG_CMD_DFL | CFG_CMD_DHCP | CFG_CMD_I2C | CFG_CMD_NAND | CFG_CMD_JFFS2)
-#else
-#define CONFIG_COMMANDS          ((CONFIG_CMD_DFL | CFG_CMD_DHCP | CFG_CMD_I2C | CFG_CMD_JFFS2) & ~CFG_CMD_AUTOSCRIPT)
-#endif
-#define CONFIG_BOOTP_MASK        CONFIG_BOOTP_DEFAULT
-
-/* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
-#include <cmd_confdefs.h>
 
 /*
- *  Board NAND Info.
+ * Command line configuration.
  */
-#define CFG_NAND_LEGACY
-#define CFG_NAND_ADDR 0x04000000  /* physical address to access nand at CS0*/
+#include <config_cmd_default.h>
 
-#define CFG_MAX_NAND_DEVICE 1	/* Max number of NAND devices */
-#define SECTORSIZE          512
+#ifdef CONFIG_SYS_NAND_BOOT
+    #define CONFIG_CMD_DHCP
+    #define CONFIG_CMD_I2C
+    #define CONFIG_CMD_NAND
+    #define CONFIG_CMD_JFFS2
+#else
+    #define CONFIG_CMD_DHCP
+    #define CONFIG_CMD_I2C
+    #define CONFIG_CMD_JFFS2
 
-#define ADDR_COLUMN         1
-#define ADDR_PAGE           2
-#define ADDR_COLUMN_PAGE    3
+    #undef CONFIG_CMD_SOURCE
+#endif
 
-#define NAND_ChipID_UNKNOWN 0x00
-#define NAND_MAX_FLOORS     1
-#define NAND_MAX_CHIPS      1
 
-#define WRITE_NAND_COMMAND(d, adr) do {*(volatile u16 *)0x6800A07C = d;} while(0)
-#define WRITE_NAND_ADDRESS(d, adr) do {*(volatile u16 *)0x6800A080 = d;} while(0)
-#define WRITE_NAND(d, adr) do {*(volatile u16 *)0x6800A084 = d;} while(0)
-#define READ_NAND(adr) (*(volatile u16 *)0x6800A084)
-#define NAND_WAIT_READY(nand)  udelay(10)
-
-#define NAND_NO_RB          1
-
-#define CFG_NAND_WP
-#define NAND_WP_OFF()  do {*(volatile u32 *)(0x6800A050) |= 0x00000010;} while(0)
-#define NAND_WP_ON()  do {*(volatile u32 *)(0x6800A050) &= ~0x00000010;} while(0)
-
-#define NAND_CTL_CLRALE(nandptr)
-#define NAND_CTL_SETALE(nandptr)
-#define NAND_CTL_CLRCLE(nandptr)
-#define NAND_CTL_SETCLE(nandptr)
-#define NAND_DISABLE_CE(nand)
-#define NAND_ENABLE_CE(nand)
+/*
+ * BOOTP options
+ */
+#define CONFIG_BOOTP_SUBNETMASK
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
+#define CONFIG_BOOTP_BOOTPATH
 
 #define CONFIG_BOOTDELAY         3
 
@@ -187,33 +169,31 @@
 #define V_PROMPT                 "OMAP242x H4 # "
 #endif
 
-#define CFG_LONGHELP             /* undef to save memory */
-#define CFG_PROMPT               V_PROMPT
-#define CFG_CBSIZE               256  /* Console I/O Buffer Size */
+#define CONFIG_SYS_LONGHELP             /* undef to save memory */
+#define CONFIG_SYS_PROMPT               V_PROMPT
+#define CONFIG_SYS_CBSIZE               256  /* Console I/O Buffer Size */
 /* Print Buffer Size */
-#define CFG_PBSIZE               (CFG_CBSIZE+sizeof(CFG_PROMPT)+16)
-#define CFG_MAXARGS              16          /* max number of command args */
-#define CFG_BARGSIZE             CFG_CBSIZE  /* Boot Argument Buffer Size */
+#define CONFIG_SYS_PBSIZE               (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
+#define CONFIG_SYS_MAXARGS              16          /* max number of command args */
+#define CONFIG_SYS_BARGSIZE             CONFIG_SYS_CBSIZE  /* Boot Argument Buffer Size */
 
-#define CFG_MEMTEST_START        (OMAP2420_SDRC_CS0)  /* memtest works on */
-#define CFG_MEMTEST_END          (OMAP2420_SDRC_CS0+SZ_31M)
+#define CONFIG_SYS_MEMTEST_START        (OMAP2420_SDRC_CS0)  /* memtest works on */
+#define CONFIG_SYS_MEMTEST_END          (OMAP2420_SDRC_CS0+SZ_31M)
 
-#undef	CFG_CLKS_IN_HZ           /* everything, incl board info, in Hz */
-
-#define CFG_LOAD_ADDR            (OMAP2420_SDRC_CS0) /* default load address */
+#define CONFIG_SYS_LOAD_ADDR            (OMAP2420_SDRC_CS0) /* default load address */
 
 /* The 2420 has 12 GP timers, they can be driven by the SysClk (12/13/19.2) or by
  * 32KHz clk, or from external sig. This rate is divided by a local divisor.
  */
 #ifdef CONFIG_APTIX
-#define V_PVT                    3
+#define V_PTV			3
 #else
-#define V_PVT                    7  /* use with 12MHz/128 */
+#define V_PTV			7	/* use with 12MHz/128 */
 #endif
 
-#define CFG_TIMERBASE            OMAP2420_GPT2
-#define CFG_PVT                  V_PVT  /* 2^(pvt+1) */
-#define CFG_HZ	                 ((CONFIG_SYS_CLK_FREQ)/(2 << CFG_PVT))
+#define CONFIG_SYS_TIMERBASE		OMAP2420_GPT2
+#define CONFIG_SYS_PTV			V_PTV	/* 2^(PTV+1) */
+#define CONFIG_SYS_HZ			((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PTV))
 
 /*-----------------------------------------------------------------------
  * Stack sizes
@@ -243,42 +223,42 @@
 /*-----------------------------------------------------------------------
  * FLASH and environment organization
  */
-#define CFG_FLASH_BASE           PHYS_FLASH_1
-#define CFG_MAX_FLASH_BANKS      2           /* max number of memory banks */
-#define CFG_MAX_FLASH_SECT       (259)	     /* max number of sectors on one chip */
-#define CFG_MONITOR_BASE	CFG_FLASH_BASE /* Monitor at beginning of flash */
-#define CFG_MONITOR_LEN		SZ_128K      /* Reserve 1 sector */
-#define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE, CFG_FLASH_BASE + PHYS_FLASH_SIZE_1 }
+#define CONFIG_SYS_FLASH_BASE           PHYS_FLASH_1
+#define CONFIG_SYS_MAX_FLASH_BANKS      2           /* max number of memory banks */
+#define CONFIG_SYS_MAX_FLASH_SECT       (259)	     /* max number of sectors on one chip */
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_FLASH_BASE /* Monitor at beginning of flash */
+#define CONFIG_SYS_MONITOR_LEN		SZ_128K      /* Reserve 1 sector */
+#define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE, CONFIG_SYS_FLASH_BASE + PHYS_FLASH_SIZE_1 }
 
-#ifdef CFG_NAND_BOOT
-#define CFG_ENV_IS_IN_NAND	1
-#define CFG_ENV_OFFSET	0x80000	/* environment starts here  */
+#ifdef CONFIG_SYS_NAND_BOOT
+#define CONFIG_ENV_IS_IN_NAND	1
+#define CONFIG_ENV_OFFSET	0x80000	/* environment starts here  */
 #else
-#define CFG_ENV_ADDR             (CFG_FLASH_BASE + SZ_128K)
-#define	CFG_ENV_IS_IN_FLASH      1
-#define CFG_ENV_SECT_SIZE	PHYS_FLASH_SECT_SIZE
-#define CFG_ENV_OFFSET	( CFG_MONITOR_BASE + CFG_MONITOR_LEN ) /* Environment after Monitor */
+#define CONFIG_ENV_ADDR             (CONFIG_SYS_FLASH_BASE + SZ_128K)
+#define	CONFIG_ENV_IS_IN_FLASH      1
+#define CONFIG_ENV_SECT_SIZE	PHYS_FLASH_SECT_SIZE
+#define CONFIG_ENV_OFFSET	( CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN ) /* Environment after Monitor */
 #endif
 
 /*-----------------------------------------------------------------------
  * CFI FLASH driver setup
  */
-#define CFG_FLASH_CFI		1	/* Flash memory is CFI compliant */
-#define CFG_FLASH_CFI_DRIVER	1	/* Use drivers/cfi_flash.c */
-#define CFG_FLASH_USE_BUFFER_WRITE 1	/* Use buffered writes (~10x faster) */
-#define CFG_FLASH_PROTECTION	1	/* Use hardware sector protection */
+#define CONFIG_SYS_FLASH_CFI		1	/* Flash memory is CFI compliant */
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use drivers/mtd/cfi_flash.c */
+#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE 1	/* Use buffered writes (~10x faster) */
+#define CONFIG_SYS_FLASH_PROTECTION	1	/* Use hardware sector protection */
 
 /* timeout values are in ticks */
-#define CFG_FLASH_ERASE_TOUT     (100*CFG_HZ) /* Timeout for Flash Erase */
-#define CFG_FLASH_WRITE_TOUT     (100*CFG_HZ) /* Timeout for Flash Write */
+#define CONFIG_SYS_FLASH_ERASE_TOUT     (100*CONFIG_SYS_HZ) /* Timeout for Flash Erase */
+#define CONFIG_SYS_FLASH_WRITE_TOUT     (100*CONFIG_SYS_HZ) /* Timeout for Flash Write */
 
-#define CFG_JFFS2_MEM_NAND
+#define CONFIG_SYS_JFFS2_MEM_NAND
 
 /*
  * JFFS2 partitions
  */
 /* No command line, one static partition, whole device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor1"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
@@ -286,7 +266,7 @@
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor1=omap2420-1"
 #define MTDPARTS_DEFAULT	"mtdparts=omap2420-1:-(jffs2)"
 */

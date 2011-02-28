@@ -4,11 +4,11 @@
 
 #undef	CONFIG_PCMCIA
 
-#if	(CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if	defined(CONFIG_CMD_PCMCIA)
 #define	CONFIG_PCMCIA
 #endif
 
-#if	(CONFIG_COMMANDS & CFG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
 #define	CONFIG_PCMCIA
 #endif
 
@@ -22,8 +22,8 @@ static void cfg_ports (void)
 	volatile cpm8xx_t	*cp;
 	ushort sreg;
 
-	immap = (immap_t *)CFG_IMMR;
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/*
 	* Configure Port C for TPS2211 PC-Card Power-Interface Switch
@@ -69,10 +69,10 @@ int pcmcia_hardware_enable(int slot)
 
 	udelay(10000);
 
-	immap = (immap_t *)CFG_IMMR;
-	sysp  = (sysconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_siu_conf));
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	sysp  = (sysconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_siu_conf));
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/* Configure Ports for TPS2211A PC-Card Power-Interface Switch */
 	cfg_ports ();
@@ -165,7 +165,7 @@ int pcmcia_hardware_enable(int slot)
 }
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 int pcmcia_hardware_disable(int slot)
 {
 	volatile immap_t	*immap;
@@ -175,8 +175,8 @@ int pcmcia_hardware_disable(int slot)
 
 	debug ("hardware_disable: " PCMCIA_BOARD_MSG " Slot %c\n", 'A'+slot);
 
-	immap = (immap_t *)CFG_IMMR;
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
 
 	/* Configure PCMCIA General Control Register */
 	debug ("Disable PCMCIA buffers and assert RESET\n");
@@ -193,7 +193,7 @@ int pcmcia_hardware_disable(int slot)
 
 	return (0);
 }
-#endif	/* CFG_CMD_PCMCIA */
+#endif
 
 
 int pcmcia_voltage_set(int slot, int vcc, int vpp)
@@ -209,9 +209,9 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 			" Slot %c, Vcc=%d.%d, Vpp=%d.%d\n",
 	'A'+slot, vcc/10, vcc%10, vpp/10, vcc%10);
 
-	immap = (immap_t *)CFG_IMMR;
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
 	/*
 	* Disable PCMCIA buffers (isolate the interface)
 	* and assert RESET signal
@@ -235,14 +235,14 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 	sreg |= TPS2211_VPPD0 | TPS2211_VPPD1;		/* VAVPP always Hi-Z */
 
 	switch(vcc) {
-		case  0: 			break;	/* Switch off		*/
+		case  0:			break;	/* Switch off		*/
 		case 33: sreg |=  TPS2211_VCCD0;	/* Switch on 3.3V	*/
 		sreg &= ~TPS2211_VCCD1;
 		break;
 		case 50: sreg &= ~TPS2211_VCCD0;	/* Switch on 5.0V	*/
 		sreg |=  TPS2211_VCCD1;
 		break;
-		default: 			goto done;
+		default:			goto done;
 	}
 
 	/* Checking supported voltages */

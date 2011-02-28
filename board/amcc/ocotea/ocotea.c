@@ -42,7 +42,7 @@ void fpga_init (void);
 int board_early_init_f (void)
 {
 	unsigned long mfr;
-	unsigned char *fpga_base = (unsigned char *) CFG_FPGA_BASE;
+	unsigned char *fpga_base = (unsigned char *) CONFIG_SYS_FPGA_BASE;
 	unsigned char switch_status;
 	unsigned long cs0_base;
 	unsigned long cs0_size;
@@ -147,36 +147,48 @@ int board_early_init_f (void)
 	/*--------------------------------------------------------------------
 	 * Setup the interrupt controller polarities, triggers, etc.
 	 *-------------------------------------------------------------------*/
-	mtdcr (uic0sr, 0xffffffff);	/* clear all */
-	mtdcr (uic0er, 0x00000000);	/* disable all */
-	mtdcr (uic0cr, 0x00000009);	/* SMI & UIC1 crit are critical */
-	mtdcr (uic0pr, 0xfffffe13);	/* per ref-board manual */
-	mtdcr (uic0tr, 0x01c00008);	/* per ref-board manual */
-	mtdcr (uic0vr, 0x00000001);	/* int31 highest, base=0x000 */
-	mtdcr (uic0sr, 0xffffffff);	/* clear all */
-
+	/*
+	 * Because of the interrupt handling rework to handle 440GX interrupts
+	 * with the common code, we needed to change names of the UIC registers.
+	 * Here the new relationship:
+	 *
+	 * U-Boot name	440GX name
+	 * -----------------------
+	 * UIC0		UICB0
+	 * UIC1		UIC0
+	 * UIC2		UIC1
+	 * UIC3		UIC2
+	 */
 	mtdcr (uic1sr, 0xffffffff);	/* clear all */
 	mtdcr (uic1er, 0x00000000);	/* disable all */
-	mtdcr (uic1cr, 0x00000000);	/* all non-critical */
-	mtdcr (uic1pr, 0xffffe0ff);	/* per ref-board manual */
-	mtdcr (uic1tr, 0x00ffc000);	/* per ref-board manual */
+	mtdcr (uic1cr, 0x00000009);	/* SMI & UIC1 crit are critical */
+	mtdcr (uic1pr, 0xfffffe13);	/* per ref-board manual */
+	mtdcr (uic1tr, 0x01c00008);	/* per ref-board manual */
 	mtdcr (uic1vr, 0x00000001);	/* int31 highest, base=0x000 */
 	mtdcr (uic1sr, 0xffffffff);	/* clear all */
 
 	mtdcr (uic2sr, 0xffffffff);	/* clear all */
 	mtdcr (uic2er, 0x00000000);	/* disable all */
 	mtdcr (uic2cr, 0x00000000);	/* all non-critical */
-	mtdcr (uic2pr, 0xffffffff);	/* per ref-board manual */
-	mtdcr (uic2tr, 0x00ff8c0f);	/* per ref-board manual */
+	mtdcr (uic2pr, 0xffffe0ff);	/* per ref-board manual */
+	mtdcr (uic2tr, 0x00ffc000);	/* per ref-board manual */
 	mtdcr (uic2vr, 0x00000001);	/* int31 highest, base=0x000 */
 	mtdcr (uic2sr, 0xffffffff);	/* clear all */
 
-	mtdcr (uicb0sr, 0xfc000000); /* clear all */
-	mtdcr (uicb0er, 0x00000000); /* disable all */
-	mtdcr (uicb0cr, 0x00000000); /* all non-critical */
-	mtdcr (uicb0pr, 0xfc000000); /* */
-	mtdcr (uicb0tr, 0x00000000); /* */
-	mtdcr (uicb0vr, 0x00000001); /* */
+	mtdcr (uic3sr, 0xffffffff);	/* clear all */
+	mtdcr (uic3er, 0x00000000);	/* disable all */
+	mtdcr (uic3cr, 0x00000000);	/* all non-critical */
+	mtdcr (uic3pr, 0xffffffff);	/* per ref-board manual */
+	mtdcr (uic3tr, 0x00ff8c0f);	/* per ref-board manual */
+	mtdcr (uic3vr, 0x00000001);	/* int31 highest, base=0x000 */
+	mtdcr (uic3sr, 0xffffffff);	/* clear all */
+
+	mtdcr (uic0sr, 0xfc000000); /* clear all */
+	mtdcr (uic0er, 0x00000000); /* disable all */
+	mtdcr (uic0cr, 0x00000000); /* all non-critical */
+	mtdcr (uic0pr, 0xfc000000); /* */
+	mtdcr (uic0tr, 0x00000000); /* */
+	mtdcr (uic0vr, 0x00000001); /* */
 	mfsdr (sdr_mfr, mfr);
 	mfr &= ~SDR0_MFR_ECS_MASK;
 /*	mtsdr(sdr_mfr, mfr); */
@@ -201,7 +213,7 @@ int checkboard (void)
 }
 
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long dram_size = 0;
 
@@ -213,36 +225,6 @@ long int initdram (int board_type)
 	return dram_size;
 }
 
-
-#if defined(CFG_DRAM_TEST)
-int testdram (void)
-{
-	uint *pstart = (uint *) 0x00000000;
-	uint *pend = (uint *) 0x08000000;
-	uint *p;
-
-	for (p = pstart; p < pend; p++)
-		*p = 0xaaaaaaaa;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0xaaaaaaaa) {
-			printf ("SDRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-
-	for (p = pstart; p < pend; p++)
-		*p = 0x55555555;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0x55555555) {
-			printf ("SDRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-	return 0;
-}
-#endif
 
 #if !defined(CONFIG_SPD_EEPROM)
 /*************************************************************************
@@ -306,7 +288,7 @@ long int fixed_sdram (void)
  *	certain pre-initialization actions.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT)
+#if defined(CONFIG_PCI)
 int pci_pre_init(struct pci_controller * hose )
 {
 	unsigned long strap;
@@ -323,7 +305,7 @@ int pci_pre_init(struct pci_controller * hose )
 
 	return 1;
 }
-#endif /* defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT) */
+#endif /* defined(CONFIG_PCI) */
 
 /*************************************************************************
  *  pci_target_init
@@ -333,7 +315,7 @@ int pci_pre_init(struct pci_controller * hose )
  *	may not be sufficient for a given board.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT)
+#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
 void pci_target_init(struct pci_controller * hose )
 {
 	/*--------------------------------------------------------------------------+
@@ -348,7 +330,7 @@ void pci_target_init(struct pci_controller * hose )
 	 * Map all of SDRAM to PCI address 0x0000_0000. Note that the 440 strapping
 	 * options to not support sizes such as 128/256 MB.
 	 *--------------------------------------------------------------------------*/
-	out32r( PCIX0_PIM0LAL, CFG_SDRAM_BASE );
+	out32r( PCIX0_PIM0LAL, CONFIG_SYS_SDRAM_BASE );
 	out32r( PCIX0_PIM0LAH, 0 );
 	out32r( PCIX0_PIM0SA, ~(gd->ram_size - 1) | 1 );
 
@@ -357,12 +339,12 @@ void pci_target_init(struct pci_controller * hose )
 	/*--------------------------------------------------------------------------+
 	 * Program the board's subsystem id/vendor id
 	 *--------------------------------------------------------------------------*/
-	out16r( PCIX0_SBSYSVID, CFG_PCI_SUBSYS_VENDORID );
-	out16r( PCIX0_SBSYSID, CFG_PCI_SUBSYS_DEVICEID );
+	out16r( PCIX0_SBSYSVID, CONFIG_SYS_PCI_SUBSYS_VENDORID );
+	out16r( PCIX0_SBSYSID, CONFIG_SYS_PCI_SUBSYS_DEVICEID );
 
 	out16r( PCIX0_CMD, in16r(PCIX0_CMD) | PCI_COMMAND_MEMORY );
 }
-#endif /* defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT) */
+#endif /* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
 
 
 /*************************************************************************

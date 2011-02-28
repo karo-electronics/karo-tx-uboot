@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 Freescale Semiconductor.
+ * Copyright 2004,2007,2008 Freescale Semiconductor, Inc.
  * (C) Copyright 2002, 2003 Motorola Inc.
  * Xianghua Xiao (X.Xiao@motorola.com)
  *
@@ -25,55 +25,105 @@
  * MA 02111-1307 USA
  */
 
+#include <config.h>
 #include <common.h>
 #include <watchdog.h>
 #include <command.h>
+#include <tsec.h>
+#include <netdev.h>
+#include <fsl_esdhc.h>
 #include <asm/cache.h>
+#include <asm/io.h>
 
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-#endif
+DECLARE_GLOBAL_DATA_PTR;
 
+struct cpu_type cpu_type_list [] = {
+	CPU_TYPE_ENTRY(8533, 8533),
+	CPU_TYPE_ENTRY(8533, 8533_E),
+	CPU_TYPE_ENTRY(8535, 8535),
+	CPU_TYPE_ENTRY(8535, 8535_E),
+	CPU_TYPE_ENTRY(8536, 8536),
+	CPU_TYPE_ENTRY(8536, 8536_E),
+	CPU_TYPE_ENTRY(8540, 8540),
+	CPU_TYPE_ENTRY(8541, 8541),
+	CPU_TYPE_ENTRY(8541, 8541_E),
+	CPU_TYPE_ENTRY(8543, 8543),
+	CPU_TYPE_ENTRY(8543, 8543_E),
+	CPU_TYPE_ENTRY(8544, 8544),
+	CPU_TYPE_ENTRY(8544, 8544_E),
+	CPU_TYPE_ENTRY(8545, 8545),
+	CPU_TYPE_ENTRY(8545, 8545_E),
+	CPU_TYPE_ENTRY(8547, 8547_E),
+	CPU_TYPE_ENTRY(8548, 8548),
+	CPU_TYPE_ENTRY(8548, 8548_E),
+	CPU_TYPE_ENTRY(8555, 8555),
+	CPU_TYPE_ENTRY(8555, 8555_E),
+	CPU_TYPE_ENTRY(8560, 8560),
+	CPU_TYPE_ENTRY(8567, 8567),
+	CPU_TYPE_ENTRY(8567, 8567_E),
+	CPU_TYPE_ENTRY(8568, 8568),
+	CPU_TYPE_ENTRY(8568, 8568_E),
+	CPU_TYPE_ENTRY(8569, 8569),
+	CPU_TYPE_ENTRY(8569, 8569_E),
+	CPU_TYPE_ENTRY(8572, 8572),
+	CPU_TYPE_ENTRY(8572, 8572_E),
+	CPU_TYPE_ENTRY(P2020, P2020),
+	CPU_TYPE_ENTRY(P2020, P2020_E),
+};
+
+struct cpu_type *identify_cpu(u32 ver)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(cpu_type_list); i++)
+		if (cpu_type_list[i].soc_ver == ver)
+			return &cpu_type_list[i];
+
+	return NULL;
+}
 
 int checkcpu (void)
 {
 	sys_info_t sysinfo;
-	uint lcrr;		/* local bus clock ratio register */
-	uint clkdiv;		/* clock divider portion of lcrr */
 	uint pvr, svr;
 	uint fam;
 	uint ver;
 	uint major, minor;
+	struct cpu_type *cpu;
+	char buf1[32], buf2[32];
+#ifdef CONFIG_DDR_CLK_FREQ
+	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	u32 ddr_ratio = ((gur->porpllsr) & MPC85xx_PORPLLSR_DDR_RATIO)
+		>> MPC85xx_PORPLLSR_DDR_RATIO_SHIFT;
+#else
+	u32 ddr_ratio = 0;
+#endif
+	int i;
 
 	svr = get_svr();
-	ver = SVR_VER(svr);
+	ver = SVR_SOC_VER(svr);
 	major = SVR_MAJ(svr);
+#ifdef CONFIG_MPC8536
+	major &= 0x7; /* the msb of this nibble is a mfg code */
+#endif
 	minor = SVR_MIN(svr);
 
+#if (CONFIG_NUM_CPUS > 1)
+	volatile ccsr_pic_t *pic = (void *)(CONFIG_SYS_MPC85xx_PIC_ADDR);
+	printf("CPU%d:  ", pic->whoami);
+#else
 	puts("CPU:   ");
-	switch (ver) {
-	case SVR_8540:
-		puts("8540");
-		break;
-	case SVR_8541:
-		puts("8541");
-		break;
-	case SVR_8555:
-		puts("8555");
-		break;
-	case SVR_8560:
-		puts("8560");
-		break;
-	case SVR_8548:
-		puts("8548");
-		break;
-	case SVR_8548_E:
-		puts("8548_E");
-		break;
-	default:
+#endif
+
+	cpu = identify_cpu(ver);
+	if (cpu) {
+		puts(cpu->name);
+
+		if (IS_E_PROCESSOR(svr))
+			puts("E");
+	} else {
 		puts("Unknown");
-		break;
 	}
+
 	printf(", Version: %d.%d, (0x%08x)\n", major, minor, svr);
 
 	pvr = get_pvr();
@@ -91,44 +141,54 @@ int checkcpu (void)
 	    puts("Unknown");
 	    break;
 	}
+
+	if (PVR_MEM(pvr) == 0x03)
+		puts("MC");
+
 	printf(", Version: %d.%d, (0x%08x)\n", major, minor, pvr);
 
 	get_sys_info(&sysinfo);
 
-	puts("Clock Configuration:\n");
-	printf("       CPU:%4lu MHz, ", sysinfo.freqProcessor / 1000000);
-	printf("CCB:%4lu MHz,\n", sysinfo.freqSystemBus / 1000000);
-	printf("       DDR:%4lu MHz, ", sysinfo.freqSystemBus / 2000000);
-
-#if defined(CFG_LBC_LCRR)
-	lcrr = CFG_LBC_LCRR;
-#else
-	{
-	    volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	    volatile ccsr_lbc_t *lbc= &immap->im_lbc;
-
-	    lcrr = lbc->lcrr;
+	puts("Clock Configuration:");
+	for (i = 0; i < CONFIG_NUM_CPUS; i++) {
+		if (!(i & 3))
+			printf ("\n       ");
+		printf("CPU%d:%-4s MHz, ",
+				i,strmhz(buf1, sysinfo.freqProcessor[i]));
 	}
+	printf("\n       CCB:%-4s MHz,\n", strmhz(buf1, sysinfo.freqSystemBus));
+
+	switch (ddr_ratio) {
+	case 0x0:
+		printf("       DDR:%-4s MHz (%s MT/s data rate), ",
+			strmhz(buf1, sysinfo.freqDDRBus/2),
+			strmhz(buf2, sysinfo.freqDDRBus));
+		break;
+	case 0x7:
+		printf("       DDR:%-4s MHz (%s MT/s data rate) (Synchronous), ",
+			strmhz(buf1, sysinfo.freqDDRBus/2),
+			strmhz(buf2, sysinfo.freqDDRBus));
+		break;
+	default:
+		printf("       DDR:%-4s MHz (%s MT/s data rate) (Asynchronous), ",
+			strmhz(buf1, sysinfo.freqDDRBus/2),
+			strmhz(buf2, sysinfo.freqDDRBus));
+		break;
+	}
+
+	if (sysinfo.freqLocalBus > LCRR_CLKDIV)
+		printf("LBC:%-4s MHz\n", strmhz(buf1, sysinfo.freqLocalBus));
+	else
+		printf("LBC: unknown (LCRR[CLKDIV] = 0x%02lx)\n",
+		       sysinfo.freqLocalBus);
+
+#ifdef CONFIG_CPM2
+	printf("CPM:   %s MHz\n", strmhz(buf1, sysinfo.freqSystemBus));
 #endif
-	clkdiv = lcrr & 0x0f;
-	if (clkdiv == 2 || clkdiv == 4 || clkdiv == 8) {
-#ifdef CONFIG_MPC8548
-		/*
-		 * Yes, the entire PQ38 family use the same
-		 * bit-representation for twice the clock divider values.
-		 */
-		 clkdiv *= 2;
-#endif
-		printf("LBC:%4lu MHz\n",
-		       sysinfo.freqSystemBus / 1000000 / clkdiv);
-	} else {
-		printf("LBC: unknown (lcrr: 0x%08x)\n", lcrr);
-	}
 
-	if (ver == SVR_8560) {
-		printf("CPM:  %lu Mhz\n",
-		       sysinfo.freqSystemBus / 1000000);
-	}
+#ifdef CONFIG_QE
+	printf("       QE:%-4s MHz\n", strmhz(buf1, sysinfo.freqQE));
+#endif
 
 	puts("L1:    D-cache 32 kB enabled\n       I-cache 32 kB enabled\n");
 
@@ -140,11 +200,30 @@ int checkcpu (void)
 
 int do_reset (cmd_tbl_t *cmdtp, bd_t *bd, int flag, int argc, char *argv[])
 {
+	uint pvr;
+	uint ver;
+	unsigned long val, msr;
+
+	pvr = get_pvr();
+	ver = PVR_VER(pvr);
+
+	if (ver & 1){
+	/* e500 v2 core has reset control register */
+		volatile unsigned int * rstcr;
+		rstcr = (volatile unsigned int *)(CONFIG_SYS_IMMR + 0xE00B0);
+		*rstcr = 0x2;		/* HRESET_REQ */
+		udelay(100);
+	}
+
 	/*
+	 * Fallthrough if the code above failed
 	 * Initiate hard reset in debug control register DBCR0
 	 * Make sure MSR[DE] = 1
 	 */
-	unsigned long val;
+
+	msr = mfmsr ();
+	msr |= MSR_DE;
+	mtmsr (msr);
 
 	val = mfspr(DBCR0);
 	val |= 0x70000000;
@@ -159,11 +238,7 @@ int do_reset (cmd_tbl_t *cmdtp, bd_t *bd, int flag, int argc, char *argv[])
  */
 unsigned long get_tbclk (void)
 {
-
-	sys_info_t  sys_info;
-
-	get_sys_info(&sys_info);
-	return ((sys_info.freqSystemBus + 7L) / 8L);
+	return (gd->bus_clk + 4UL)/8UL;
 }
 
 
@@ -183,95 +258,108 @@ reset_85xx_watchdog(void)
 	 * Clear TSR(WIS) bit by writing 1
 	 */
 	unsigned long val;
-	val = mfspr(tsr);
-	val |= 0x40000000;
-	mtspr(tsr, val);
+	val = mfspr(SPRN_TSR);
+	val |= TSR_WIS;
+	mtspr(SPRN_TSR, val);
 }
 #endif	/* CONFIG_WATCHDOG */
 
-#if defined(CONFIG_DDR_ECC)
-void dma_init(void) {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_dma_t *dma = &immap->im_dma;
-
-	dma->satr0 = 0x02c40000;
-	dma->datr0 = 0x02c40000;
-	asm("sync; isync; msync");
-	return;
-}
-
-uint dma_check(void) {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_dma_t *dma = &immap->im_dma;
-	volatile uint status = dma->sr0;
-
-	/* While the channel is busy, spin */
-	while((status & 4) == 4) {
-		status = dma->sr0;
-	}
-
-	if (status != 0) {
-		printf ("DMA Error: status = %x\n", status);
-	}
-	return status;
-}
-
-int dma_xfer(void *dest, uint count, void *src) {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_dma_t *dma = &immap->im_dma;
-
-	dma->dar0 = (uint) dest;
-	dma->sar0 = (uint) src;
-	dma->bcr0 = count;
-	dma->mr0 = 0xf000004;
-	asm("sync;isync;msync");
-	dma->mr0 = 0xf000005;
-	asm("sync;isync;msync");
-	return dma_check();
-}
-#endif
-
-
-#ifdef CONFIG_OF_FLAT_TREE
-void
-ft_cpu_setup(void *blob, bd_t *bd)
+/*
+ * Configures a UPM. The function requires the respective MxMR to be set
+ * before calling this function. "size" is the number or entries, not a sizeof.
+ */
+void upmconfig (uint upm, uint * table, uint size)
 {
-	u32 *p;
-	ulong clock;
-	int len;
+	int i, mdr, mad, old_mad = 0;
+	volatile u32 *mxmr;
+	volatile ccsr_lbc_t *lbc = (void *)(CONFIG_SYS_MPC85xx_LBC_ADDR);
+	volatile u32 *brp,*orp;
+	volatile u8* dummy = NULL;
+	int upmmask;
 
-	clock = bd->bi_busfreq;
-	p = ft_get_prop(blob, "/cpus/" OF_CPU "/bus-frequency", &len);
-	if (p != NULL)
-		*p = cpu_to_be32(clock);
+	switch (upm) {
+	case UPMA:
+		mxmr = &lbc->mamr;
+		upmmask = BR_MS_UPMA;
+		break;
+	case UPMB:
+		mxmr = &lbc->mbmr;
+		upmmask = BR_MS_UPMB;
+		break;
+	case UPMC:
+		mxmr = &lbc->mcmr;
+		upmmask = BR_MS_UPMC;
+		break;
+	default:
+		printf("%s: Bad UPM index %d to configure\n", __FUNCTION__, upm);
+		hang();
+	}
 
-	p = ft_get_prop(blob, "/" OF_SOC "/serial@4500/clock-frequency", &len);
-	if (p != NULL)
-		*p = cpu_to_be32(clock);
+	/* Find the address for the dummy write transaction */
+	for (brp = &lbc->br0, orp = &lbc->or0, i = 0; i < 8;
+		 i++, brp += 2, orp += 2) {
 
-	p = ft_get_prop(blob, "/" OF_SOC "/serial@4600/clock-frequency", &len);
-	if (p != NULL)
-		*p = cpu_to_be32(clock);
+		/* Look for a valid BR with selected UPM */
+		if ((in_be32(brp) & (BR_V | BR_MSEL)) == (BR_V | upmmask)) {
+			dummy = (volatile u8*)(in_be32(brp) & BR_BA);
+			break;
+		}
+	}
 
-#if defined(CONFIG_MPC85XX_TSEC1)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@24000/mac-address", &len);
-		memcpy(p, bd->bi_enetaddr, 6);
-#endif
+	if (i == 8) {
+		printf("Error: %s() could not find matching BR\n", __FUNCTION__);
+		hang();
+	}
 
-#if defined(CONFIG_HAS_ETH1)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@25000/mac-address", &len);
-		memcpy(p, bd->bi_enet1addr, 6);
-#endif
-
-#if defined(CONFIG_HAS_ETH2)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@26000/mac-address", &len);
-		memcpy(p, bd->bi_enet2addr, 6);
-#endif
-
-#if defined(CONFIG_HAS_ETH3)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@27000/mac-address", &len);
-		memcpy(p, bd->bi_enet3addr, 6);
-#endif
-
+	for (i = 0; i < size; i++) {
+		/* 1 */
+		out_be32(mxmr,  (in_be32(mxmr) & 0x4fffffc0) | MxMR_OP_WARR | i);
+		/* 2 */
+		out_be32(&lbc->mdr, table[i]);
+		/* 3 */
+		mdr = in_be32(&lbc->mdr);
+		/* 4 */
+		*(volatile u8 *)dummy = 0;
+		/* 5 */
+		do {
+			mad = in_be32(mxmr) & MxMR_MAD_MSK;
+		} while (mad <= old_mad && !(!mad && i == (size-1)));
+		old_mad = mad;
+	}
+	out_be32(mxmr, (in_be32(mxmr) & 0x4fffffc0) | MxMR_OP_NORM);
 }
+
+
+/*
+ * Initializes on-chip ethernet controllers.
+ * to override, implement board_eth_init()
+ */
+int cpu_eth_init(bd_t *bis)
+{
+#if defined(CONFIG_ETHER_ON_FCC)
+	fec_initialize(bis);
 #endif
+
+#if defined(CONFIG_UEC_ETH)
+	uec_standard_init(bis);
+#endif
+
+#if defined(CONFIG_TSEC_ENET) || defined(CONFIG_MPC85XX_FEC)
+	tsec_standard_init(bis);
+#endif
+
+	return 0;
+}
+
+/*
+ * Initializes on-chip MMC controllers.
+ * to override, implement board_mmc_init()
+ */
+int cpu_mmc_init(bd_t *bis)
+{
+#ifdef CONFIG_FSL_ESDHC
+	return fsl_esdhc_mmc_init(bis);
+#else
+	return 0;
+#endif
+}

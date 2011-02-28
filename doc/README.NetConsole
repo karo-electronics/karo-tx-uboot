@@ -22,21 +22,16 @@ For example, if your server IP is 192.168.1.1, you could use:
 
 On the host side, please use this script to access the console:
 
-+++++++++++++++++++++++++++++++++++++++++++
-#! /bin/bash
+	tools/netconsole <ip> [port]
 
-[ $# = 1 ] || { echo "Usage: $0 target_ip" >&2 ; exit 1 ; }
-TARGET_IP=$1
+The script uses netcat to talk to the board over UDP.  It requires you to
+specify the target IP address (or host name, assuming DNS is working). The
+script can be interrupted by pressing ^T (CTRL-T).
 
-stty -icanon -echo intr ^T
-nc -u -l -p 6666 < /dev/null &
-nc -u ${TARGET_IP} 6666
-stty icanon echo intr ^C
-+++++++++++++++++++++++++++++++++++++++++++
-
-The script expects exactly one argument, which is interpreted as  the
-target IP address (or host name, assuming DNS is working). The script
-can be interrupted by pressing ^T (CTRL-T).
+Be aware that in some distributives (Fedora Core 5 at least)
+usage of nc has been changed and -l and -p options are considered
+as mutually exclusive. If nc complains about options provided,
+you can just remove the -p option from the script.
 
 It turns out that 'netcat' cannot be used to listen to broadcast
 packets. We developed our own tool 'ncb' (see tools directory) that
@@ -60,10 +55,8 @@ Again, this script takes exactly one argument, which is interpreted
 as the target IP address (or host name, assuming DNS is working). The
 script can be interrupted by pressing ^T (CTRL-T).
 
-The 'ncb' tool can be found in the tools directory; it will not be
-built by default so you will ither have to adjust the Makefile or
-build it manually.
-
+The 'ncb' tool can be found in the tools directory; it will be built
+when compiling for a board which has CONFIG_NETCONSOLE defined.
 
 For Linux, the network-based console needs special configuration.
 Minimally, the host IP address needs to be specified. This can be

@@ -25,12 +25,12 @@
 
 
 #include <common.h>
-#ifdef CFG_CMD_IDE
+#if defined(CONFIG_CMD_IDE)
 #include <ata.h>
 #include <ide.h>
 #include <pci.h>
 
-extern ulong ide_bus_offset[CFG_IDE_MAXBUS];
+extern ulong ide_bus_offset[CONFIG_SYS_IDE_MAXBUS];
 
 int ide_preinit (void)
 {
@@ -39,23 +39,27 @@ int ide_preinit (void)
 	int l;
 
 	status = 1;
-	for (l = 0; l < CFG_IDE_MAXBUS; l++) {
+	if (CPCI750_SLAVE_TEST != 0)
+		return status;
+	for (l = 0; l < CONFIG_SYS_IDE_MAXBUS; l++) {
 		ide_bus_offset[l] = -ATA_STATUS;
 	}
 	devbusfn = pci_find_device (0x1103, 0x0004, 0);
+	if (devbusfn == -1)
+	        devbusfn = pci_find_device (0x1095, 0x3114, 0);
 	if (devbusfn != -1) {
 		status = 0;
 
 		pci_read_config_dword (devbusfn, PCI_BASE_ADDRESS_0,
 				       (u32 *) & ide_bus_offset[0]);
 		ide_bus_offset[0] &= 0xfffffffe;
-		ide_bus_offset[0] += CFG_PCI0_IO_SPACE;
+		ide_bus_offset[0] += CONFIG_SYS_PCI0_IO_SPACE;
 		pci_read_config_dword (devbusfn, PCI_BASE_ADDRESS_2,
 				       (u32 *) & ide_bus_offset[1]);
 		ide_bus_offset[1] &= 0xfffffffe;
-		ide_bus_offset[1] += CFG_PCI0_IO_SPACE;
+		ide_bus_offset[1] += CONFIG_SYS_PCI0_IO_SPACE;
 	}
-	return (status);
+	return status;
 }
 
 void ide_set_reset (int flag) {

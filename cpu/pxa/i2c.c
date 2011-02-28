@@ -37,7 +37,7 @@
 #ifdef CONFIG_HARD_I2C
 
 /*
- *	- CFG_I2C_SPEED
+ *	- CONFIG_SYS_I2C_SPEED
  *	- I2C_PXA_SLAVE_ADDR
  */
 
@@ -45,10 +45,10 @@
 #include <asm/arch/pxa-regs.h>
 #include <i2c.h>
 
-/*#define	DEBUG_I2C 	1	/###* activate local debugging output  */
+/*#define	DEBUG_I2C	1	/###* activate local debugging output  */
 #define I2C_PXA_SLAVE_ADDR	0x1	/* slave pxa unit address           */
 
-#if (CFG_I2C_SPEED == 400000)
+#if (CONFIG_SYS_I2C_SPEED == 400000)
 #define I2C_ICR_INIT	(ICR_FM | ICR_BEIE | ICR_IRFIE | ICR_ITEIE | ICR_GCD | ICR_SCLE)
 #else
 #define I2C_ICR_INIT	(ICR_BEIE | ICR_IRFIE | ICR_ITEIE | ICR_GCD | ICR_SCLE)
@@ -191,8 +191,8 @@ int i2c_transfer(struct i2c_msg *msg)
 		/* start receive */
 		ICR &= ~ICR_START;
 		ICR &= ~ICR_STOP;
-		if (msg->condition == I2C_COND_START) 	  ICR |= ICR_START;
-		if (msg->condition == I2C_COND_STOP)  	  ICR |= ICR_STOP;
+		if (msg->condition == I2C_COND_START)	  ICR |= ICR_START;
+		if (msg->condition == I2C_COND_STOP)	  ICR |= ICR_STOP;
 		if (msg->acknack   == I2C_ACKNAK_SENDNAK) ICR |=  ICR_ACKNAK;
 		if (msg->acknack   == I2C_ACKNAK_SENDACK) ICR &= ~ICR_ACKNAK;
 		ICR &= ~ICR_ALDIE;
@@ -254,7 +254,7 @@ i2c_transfer_finish:
 
 void i2c_init(int speed, int slaveaddr)
 {
-#ifdef CFG_I2C_INIT_BOARD
+#ifdef CONFIG_SYS_I2C_INIT_BOARD
 	/* call board specific i2c bus reset routine before accessing the   */
 	/* environment, which might be in a chip on that bus. For details   */
 	/* about this problem see doc/I2C_Edge_Conditions.                  */
@@ -267,7 +267,7 @@ void i2c_init(int speed, int slaveaddr)
  * i2c_probe: - Test if a chip answers for a given i2c address
  *
  * @chip:	address of the chip which is searched for
- * @return: 	0 if a chip was found, -1 otherwhise
+ * @return:	0 if a chip was found, -1 otherwhise
  */
 
 int i2c_probe(uchar chip)
@@ -329,7 +329,7 @@ int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len)
 	 * send memory address bytes;
 	 * alen defines how much bytes we have to send.
 	 */
-	/*addr &= ((1 << CFG_EEPROM_PAGE_WRITE_BITS)-1); */
+	/*addr &= ((1 << CONFIG_SYS_EEPROM_PAGE_WRITE_BITS)-1); */
 	addr_bytes[0] = (u8)((addr >>  0) & 0x000000FF);
 	addr_bytes[1] = (u8)((addr >>  8) & 0x000000FF);
 	addr_bytes[2] = (u8)((addr >> 16) & 0x000000FF);
@@ -453,21 +453,6 @@ int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len)
 
 	return 0;
 
-}
-
-uchar i2c_reg_read (uchar chip, uchar reg)
-{
-	char buf;
-
-	PRINTD(("i2c_reg_read(chip=0x%02x, reg=0x%02x)\n",chip,reg));
-	i2c_read(chip, reg, 1, &buf, 1);
-	return (buf);
-}
-
-void  i2c_reg_write(uchar chip, uchar reg, uchar val)
-{
-	PRINTD(("i2c_reg_write(chip=0x%02x, reg=0x%02x, val=0x%02x)\n",chip,reg,val));
-	i2c_write(chip, reg, 1, &val, 1);
 }
 
 #endif	/* CONFIG_HARD_I2C */

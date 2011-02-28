@@ -1,7 +1,7 @@
 /*
  * U-boot - types.h
  *
- * Copyright (c) 2005 blackfin.uclinux.org
+ * Copyright (c) 2005-2007 Analog Devices Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -18,8 +18,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  */
 
 #ifndef _BLACKFIN_TYPES_H
@@ -50,9 +50,9 @@ typedef __signed__ int __s32;
 typedef unsigned int __u32;
 
 /* HK0617   -- Changes to unsigned long temporarily */
-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
-typedef __signed__ long long __s64;
-typedef unsigned long long __u64;
+#if defined(__GNUC__)
+__extension__ typedef __signed__ long long __s64;
+__extension__ typedef unsigned long long __u64;
 #endif
 
 /*
@@ -77,6 +77,9 @@ typedef unsigned long long u64;
 /* Dma addresses are 32-bits wide. */
 
 typedef u32 dma_addr_t;
+
+typedef unsigned long phys_addr_t;
+typedef unsigned long phys_size_t;
 
 #endif
 

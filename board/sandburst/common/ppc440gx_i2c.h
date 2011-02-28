@@ -27,16 +27,12 @@
  */
 #include <common.h>
 #include <ppc4xx.h>
-#if defined(CONFIG_440)
-#   include <440_i2c.h>
-#else
-#   include <405gp_i2c.h>
-#endif
+#include <4xx_i2c.h>
 #include <i2c.h>
 
 #ifdef CONFIG_HARD_I2C
 
-#define I2C_BUS1_BASE_ADDR (CFG_PERIPHERAL_BASE + 0x00000500)
+#define I2C_BUS1_BASE_ADDR (CONFIG_SYS_PERIPHERAL_BASE + 0x00000500)
 #define	   I2C_REGISTERS_BUS1_BASE_ADDRESS I2C_BUS1_BASE_ADDR
 #define    IIC_MDBUF1	(I2C_REGISTERS_BUS1_BASE_ADDRESS+IICMDBUF)
 #define    IIC_SDBUF1	(I2C_REGISTERS_BUS1_BASE_ADDRESS+IICSDBUF)

@@ -34,14 +34,22 @@
 #include <command.h>
 #include <asm/processor.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+DECLARE_GLOBAL_DATA_PTR;
+
+#if defined(CONFIG_CMD_KGDB)
 int (*debugger_exception_handler)(struct pt_regs *) = 0;
 #endif
 
 /* Returns 0 if exception not found and fixup otherwise.  */
 extern unsigned long search_exception_table(unsigned long);
 
-#define END_OF_MEM (gd->bd->bi_memstart + gd->bd->bi_memsize)
+/*
+ * End of addressable memory.  This may be less than the actual
+ * amount of memory on the system if we're unable to keep all
+ * the memory mapped in.
+ */
+extern ulong get_effective_memsize(void);
+#define END_OF_MEM (gd->bd->bi_memstart + get_effective_memsize())
 
 /*
  * Trap & Exception support
@@ -50,8 +58,6 @@ extern unsigned long search_exception_table(unsigned long);
 void
 print_backtrace(unsigned long *sp)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	int cnt = 0;
 	unsigned long i;
 
@@ -122,7 +128,7 @@ MachineCheckException(struct pt_regs *regs)
 		return;
 	}
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler) (regs))
 		return;
 #endif
@@ -130,8 +136,11 @@ MachineCheckException(struct pt_regs *regs)
 	printf("Machine check in kernel mode.\n");
 	printf("Caused by (from msr): ");
 	printf("regs %p ", regs);
-	switch (regs->msr & 0x000F0000) {
-	case (0x80000000 >> 12):
+	switch ( regs->msr & 0x001F0000) {
+	case (0x80000000>>11):
+		printf("MSS error. MSSSR0: %08x\n", mfspr(SPRN_MSSSR0));
+		break;
+	case (0x80000000>>12):
 		printf("Machine check signal - probably due to mm fault\n"
 		       "with mmu off\n");
 		break;
@@ -155,7 +164,7 @@ MachineCheckException(struct pt_regs *regs)
 void
 AlignmentException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler) (regs))
 		return;
 #endif
@@ -170,7 +179,7 @@ ProgramCheckException(struct pt_regs *regs)
 	unsigned char *p = regs ? (unsigned char *)(regs->nip) : NULL;
 	int i, j;
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler) (regs))
 		return;
 #endif
@@ -193,7 +202,7 @@ ProgramCheckException(struct pt_regs *regs)
 void
 SoftEmuException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler) (regs))
 		return;
 #endif
@@ -205,10 +214,11 @@ SoftEmuException(struct pt_regs *regs)
 void
 UnknownException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler) (regs))
 		return;
 #endif
+	printf("UnknownException regs@%lx\n", (ulong)regs);
 	printf("Bad trap at PC: %lx, SR: %lx, vector=%lx\n",
 	       regs->nip, regs->msr, regs->trap);
 	_exception(0, regs);

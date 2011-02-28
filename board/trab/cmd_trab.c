@@ -32,7 +32,7 @@
  * TRAB board specific commands. Especially commands for burn-in and function
  * test.
  */
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 
 /* limits for valid range of VCC5V in mV  */
 #define VCC5V_MIN       4500
@@ -106,7 +106,7 @@ extern int i2c_write (uchar, uint, int , uchar* , int);
 extern int i2c_read (uchar, uint, int , uchar* , int);
 extern void tsc2000_reg_init (void);
 extern s32 tsc2000_contact_temp (void);
-extern void spi_init(void);
+extern void tsc2000_spi_init(void);
 
 /* function declarations */
 int do_dip (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
@@ -168,14 +168,14 @@ int do_burn_in (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int cycle_status;
 
 	if (argc > 1) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	led_init ();
 	global_vars_init ();
 	test_function_table_init ();
-	spi_init ();
+	tsc2000_spi_init ();
 
 	if (global_vars_write_to_eeprom () != 0) {
 		printf ("%s: error writing global_vars to eeprom\n",
@@ -258,11 +258,11 @@ int do_burn_in (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	burn_in,	1,	1,	do_burn_in,
-	"burn_in - start burn-in test application on TRAB\n",
+	"start burn-in test application on TRAB",
 	"\n"
 	"    -  start burn-in test application\n"
 	"       The burn-in test could took a while to finish!\n"
-	"       The content of the onboard EEPROM is modified!\n"
+	"       The content of the onboard EEPROM is modified!"
 );
 
 
@@ -271,7 +271,7 @@ int do_dip (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int i, dip;
 
 	if (argc > 1) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -292,10 +292,10 @@ int do_dip (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	dip,	1,	1,	do_dip,
-	"dip     - read dip switch on TRAB\n",
+	"read dip switch on TRAB",
 	"\n"
 	"    - read state of dip switch (S1) on TRAB board\n"
-	"      read sequence: 1-2-3-4; ON=1; OFF=0; e.g.: \"0100\"\n"
+	"      read sequence: 1-2-3-4; ON=1; OFF=0; e.g.: \"0100\""
 );
 
 
@@ -304,7 +304,7 @@ int do_vcc5v (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int vcc5v;
 
 	if (argc > 1) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -321,9 +321,9 @@ int do_vcc5v (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	vcc5v,	1,	1,	do_vcc5v,
-	"vcc5v   - read VCC5V on TRAB\n",
+	"read VCC5V on TRAB",
 	"\n"
-	"    - read actual value of voltage VCC5V\n"
+	"    - read actual value of voltage VCC5V"
 );
 
 
@@ -332,11 +332,11 @@ int do_contact_temp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int contact_temp;
 
 	if (argc > 1) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
-	spi_init ();
+	tsc2000_spi_init ();
 
 	contact_temp = tsc2000_contact_temp();
 	printf ("%d degree C * 100\n", contact_temp) ;
@@ -346,8 +346,8 @@ int do_contact_temp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	c_temp,	1,	1,	do_contact_temp,
-	"c_temp  - read contact temperature on TRAB\n",
-	"\n"
+	"read contact temperature on TRAB",
+	""
 	"    -  reads the onboard temperature (=contact temperature)\n"
 );
 
@@ -355,7 +355,7 @@ U_BOOT_CMD(
 int do_burn_in_status (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	if (argc > 1) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -398,10 +398,10 @@ int do_burn_in_status (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	bis,	1,	1,	do_burn_in_status,
-	"bis     - print burn in status on TRAB\n",
+	"print burn in status on TRAB",
 	"\n"
 	"    -  prints the status variables of the last burn in test\n"
-	"       stored in the onboard EEPROM on TRAB board\n"
+	"       stored in the onboard EEPROM on TRAB board"
 );
 
 static int read_dip (void)
@@ -846,12 +846,12 @@ int do_temp_log (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	int contact_temp;
 	int delay = 0;
-#if (CONFIG_COMMANDS & CFG_CMD_DATE)
+#if defined(CONFIG_CMD_DATE)
 	struct rtc_time tm;
 #endif
 
 	if (argc > 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -859,10 +859,10 @@ int do_temp_log (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		delay = simple_strtoul(argv[1], NULL, 10);
 	}
 
-	spi_init ();
+	tsc2000_spi_init ();
 	while (1) {
 
-#if (CONFIG_COMMANDS & CFG_CMD_DATE)
+#if defined(CONFIG_CMD_DATE)
 		rtc_get (&tm);
 		printf ("%4d-%02d-%02d %2d:%02d:%02d - ",
 			tm.tm_year, tm.tm_mon, tm.tm_mday,
@@ -886,11 +886,11 @@ int do_temp_log (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	tlog,	2,	1,	do_temp_log,
-	"tlog    - log contact temperature [1/100 C] to console (endlessly)\n",
+	"log contact temperature [1/100 C] to console (endlessly)",
 	"delay\n"
 	"    - contact temperature [1/100 C] is printed endlessly to console\n"
 	"      <delay> specifies the seconds to wait between two measurements\n"
-	"      For each measurment a timestamp is printeted\n"
+	"      For each measurment a timestamp is printeted"
 );
 
-#endif	/* CFG_CMD_BSP */
+#endif

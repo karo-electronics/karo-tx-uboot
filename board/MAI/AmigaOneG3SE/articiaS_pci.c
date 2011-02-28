@@ -313,7 +313,7 @@ void articiaS_pci_init (void)
 		   ARTICIAS_SYS_BUS,
 		   ARTICIAS_SYS_PHYS,
 		   ARTICIAS_SYS_MAXSIZE,
-		   PCI_REGION_MEM | PCI_REGION_MEMORY);
+		   PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
 
     /* PCI memory space */
     pci_set_region(articiaS_hose.regions + 1,
@@ -368,11 +368,11 @@ void articiaS_pci_init (void)
 	if (articiaS_init_vga() == -1)
 	{
 	    /* If the VGA didn't init and we have stdout set to VGA, reset to serial */
-/* 	    s = getenv("stdout"); */
-/* 	    if (s && strcmp(s, "vga") == 0) */
-/* 	    { */
-/* 		setenv("stdout", "serial"); */
-/* 	    } */
+/*	    s = getenv("stdout"); */
+/*	    if (s && strcmp(s, "vga") == 0) */
+/*	    { */
+/*		setenv("stdout", "serial"); */
+/*	    } */
 	}
     }
     pci_write_config_byte(PCI_BDF(0,1,0), PCI_INTERRUPT_LINE, 0xFF);

@@ -36,8 +36,6 @@ SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 OBJS_FKT := $(addprefix $(obj),$(COBJS_FKT))
 
-gcclibdir := $(shell dirname `$(CC) -print-libgcc-file-name`)
-
 LOAD_ADDR = 0xc100000
 
 #########################################################################
@@ -49,9 +47,9 @@ $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
 
 $(obj)trab_fkt.srec:	$(OBJS_FKT) $(LIB)
 	$(LD) -g -Ttext $(LOAD_ADDR) -o $(<:.o=) -e trab_fkt $^ $(LIB) \
-		-L$(obj)../../examples -lstubs \
+		-L$(obj)../../examples/standalone -lstubs \
 		-L$(obj)../../lib_generic -lgeneric \
-		-L$(gcclibdir) -lgcc
+		$(PLATFORM_LIBS)
 	$(OBJCOPY) -O srec $(<:.o=) $@
 
 $(obj)trab_fkt.bin:	$(obj)trab_fkt.srec
@@ -61,7 +59,7 @@ clean:
 	rm -f $(SOBJS) $(OBJS) $(OBJS_FKT)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

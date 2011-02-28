@@ -23,9 +23,7 @@
  */
 #include <config.h>
 
-#ifdef CONFIG_AU1X00
-
-#if defined(CFG_DISCOVER_PHY)
+#if defined(CONFIG_SYS_DISCOVER_PHY)
 #error "PHY not supported yet"
 /* We just assume that we are running 100FD for now */
 /* We all use switches, right? ;-) */
@@ -33,20 +31,20 @@
 
 /* I assume ethernet behaves like au1000 */
 
-#ifdef CONFIG_AU1000
+#ifdef CONFIG_SOC_AU1000
 /* Base address differ between cpu:s */
 #define ETH0_BASE AU1000_ETH0_BASE
 #define MAC0_ENABLE AU1000_MAC0_ENABLE
 #else
-#ifdef CONFIG_AU1100
+#ifdef CONFIG_SOC_AU1100
 #define ETH0_BASE AU1100_ETH0_BASE
 #define MAC0_ENABLE AU1100_MAC0_ENABLE
 #else
-#ifdef CONFIG_AU1500
+#ifdef CONFIG_SOC_AU1500
 #define ETH0_BASE AU1500_ETH0_BASE
 #define MAC0_ENABLE AU1500_MAC0_ENABLE
 #else
-#ifdef CONFIG_AU1550
+#ifdef CONFIG_SOC_AU1550
 #define ETH0_BASE AU1550_ETH0_BASE
 #define MAC0_ENABLE AU1550_MAC0_ENABLE
 #else
@@ -63,7 +61,7 @@
 #include <asm/io.h>
 #include <asm/au1x00.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_MII)
+#if defined(CONFIG_CMD_MII)
 #include <miiphy.h>
 #endif
 
@@ -89,6 +87,65 @@ typedef struct{
 mac_fifo_t mac_fifo[NO_OF_FIFOS];
 
 #define MAX_WAIT 1000
+
+#if defined(CONFIG_CMD_MII)
+int  au1x00_miiphy_read(char *devname, unsigned char addr,
+		unsigned char reg, unsigned short * value)
+{
+	volatile u32 *mii_control_reg = (volatile u32*)(ETH0_BASE+MAC_MII_CNTRL);
+	volatile u32 *mii_data_reg = (volatile u32*)(ETH0_BASE+MAC_MII_DATA);
+	u32 mii_control;
+	unsigned int timedout = 20;
+
+	while (*mii_control_reg & MAC_MII_BUSY) {
+		udelay(1000);
+		if (--timedout == 0) {
+			printf("au1x00_eth: miiphy_read busy timeout!!\n");
+			return -1;
+		}
+	}
+
+	mii_control = MAC_SET_MII_SELECT_REG(reg) |
+		MAC_SET_MII_SELECT_PHY(addr) | MAC_MII_READ;
+
+	*mii_control_reg = mii_control;
+
+	timedout = 20;
+	while (*mii_control_reg & MAC_MII_BUSY) {
+		udelay(1000);
+		if (--timedout == 0) {
+			printf("au1x00_eth: miiphy_read busy timeout!!\n");
+			return -1;
+		}
+	}
+	*value = *mii_data_reg;
+	return 0;
+}
+
+int  au1x00_miiphy_write(char *devname, unsigned char addr,
+		unsigned char reg, unsigned short value)
+{
+	volatile u32 *mii_control_reg = (volatile u32*)(ETH0_BASE+MAC_MII_CNTRL);
+	volatile u32 *mii_data_reg = (volatile u32*)(ETH0_BASE+MAC_MII_DATA);
+	u32 mii_control;
+	unsigned int timedout = 20;
+
+	while (*mii_control_reg & MAC_MII_BUSY) {
+		udelay(1000);
+		if (--timedout == 0) {
+			printf("au1x00_eth: miiphy_write busy timeout!!\n");
+			return -1;
+		}
+	}
+
+	mii_control = MAC_SET_MII_SELECT_REG(reg) |
+		MAC_SET_MII_SELECT_PHY(addr) | MAC_MII_WRITE;
+
+	*mii_data_reg = value;
+	*mii_control_reg = mii_control;
+	return 0;
+}
+#endif
 
 static int au1x00_send(struct eth_device* dev, volatile void *packet, int length){
 	volatile mac_fifo_t *fifo_tx =
@@ -219,6 +276,10 @@ static int au1x00_init(struct eth_device* dev, bd_t * bd){
 }
 
 static void au1x00_halt(struct eth_device* dev){
+	volatile u32 *macen = (volatile u32*)MAC0_ENABLE;
+
+	/* Put MAC0 in reset */
+	*macen = 0;
 }
 
 int au1x00_enet_initialize(bd_t *bis){
@@ -226,7 +287,7 @@ int au1x00_enet_initialize(bd_t *bis){
 
 	if ((dev = (struct eth_device*)malloc(sizeof *dev)) == NULL) {
 		puts ("malloc failed\n");
-		return 0;
+		return -1;
 	}
 
 	memset(dev, 0, sizeof *dev);
@@ -241,71 +302,10 @@ int au1x00_enet_initialize(bd_t *bis){
 
 	eth_register(dev);
 
-#if (CONFIG_COMMANDS & CFG_CMD_MII)
+#if defined(CONFIG_CMD_MII)
 	miiphy_register(dev->name,
 		au1x00_miiphy_read, au1x00_miiphy_write);
 #endif
 
 	return 1;
 }
-
-#if (CONFIG_COMMANDS & CFG_CMD_MII)
-int  au1x00_miiphy_read(char *devname, unsigned char addr,
-		unsigned char reg, unsigned short * value)
-{
-	volatile u32 *mii_control_reg = (volatile u32*)(ETH0_BASE+MAC_MII_CNTRL);
-	volatile u32 *mii_data_reg = (volatile u32*)(ETH0_BASE+MAC_MII_DATA);
-	u32 mii_control;
-	unsigned int timedout = 20;
-
-	while (*mii_control_reg & MAC_MII_BUSY) {
-		udelay(1000);
-		if (--timedout == 0) {
-			printf("au1x00_eth: miiphy_read busy timeout!!\n");
-			return -1;
-		}
-	}
-
-	mii_control = MAC_SET_MII_SELECT_REG(reg) |
-		MAC_SET_MII_SELECT_PHY(addr) | MAC_MII_READ;
-
-	*mii_control_reg = mii_control;
-
-	timedout = 20;
-	while (*mii_control_reg & MAC_MII_BUSY) {
-		udelay(1000);
-		if (--timedout == 0) {
-			printf("au1x00_eth: miiphy_read busy timeout!!\n");
-			return -1;
-		}
-	}
-	*value = *mii_data_reg;
-	return 0;
-}
-
-int  au1x00_miiphy_write(char *devname, unsigned char addr,
-		unsigned char reg, unsigned short value)
-{
-	volatile u32 *mii_control_reg = (volatile u32*)(ETH0_BASE+MAC_MII_CNTRL);
-	volatile u32 *mii_data_reg = (volatile u32*)(ETH0_BASE+MAC_MII_DATA);
-	u32 mii_control;
-	unsigned int timedout = 20;
-
-	while (*mii_control_reg & MAC_MII_BUSY) {
-		udelay(1000);
-		if (--timedout == 0) {
-			printf("au1x00_eth: miiphy_write busy timeout!!\n");
-			return;
-		}
-	}
-
-	mii_control = MAC_SET_MII_SELECT_REG(reg) |
-		MAC_SET_MII_SELECT_PHY(addr) | MAC_MII_WRITE;
-
-	*mii_data_reg = value;
-	*mii_control_reg = mii_control;
-	return 0;
-}
-#endif	/* CONFIG_COMMANDS & CFG_CMD_MII */
-
-#endif /* CONFIG_AU1X00 */

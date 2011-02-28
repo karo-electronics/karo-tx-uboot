@@ -37,7 +37,7 @@ extern void user_led0(int led_on);
 extern void user_led1(int led_on);
 
 /* ------------------------------------------------------------------------- */
-#if defined(CFG_PCI_CON_DEVICE)
+#if defined(CONFIG_SYS_PCI_CON_DEVICE)
 extern void pci_con_disc(void);
 extern void pci_con_connect(void);
 #endif
@@ -276,7 +276,7 @@ static int pati_pci_eeprom_write(unsigned short offset, unsigned long addr, unsi
 static int pati_pci_eeprom_read(unsigned short offset, unsigned long addr, unsigned short size)
 {
 	int i;
-	unsigned short value;
+	unsigned short value = 0;
 	unsigned short *buffer =(unsigned short *)addr;
 	if((offset + size) > PATI_EEPROM_LAST_OFFSET) {
 		size = PATI_EEPROM_LAST_OFFSET - offset;
@@ -360,12 +360,12 @@ int do_pati(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (strcmp(argv[1], "info") == 0)
 	{
 		show_pld_regs();
-	 	return 0;
+		return 0;
 	}
 	if (strcmp(argv[1], "pci") == 0)
 	{
 		display_pci_regs();
-	 	return 0;
+		return 0;
 	}
 	if (strcmp(argv[1], "led") == 0)
 	{
@@ -377,8 +377,8 @@ int do_pati(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		else
 			user_led1(led_on);
 		return 0;
-   	}
-#if defined(CFG_PCI_CON_DEVICE)
+	}
+#if defined(CONFIG_SYS_PCI_CON_DEVICE)
 	if (strcmp(argv[1], "con") == 0) {
 		pci_con_connect();
 		return 0;
@@ -427,7 +427,7 @@ int do_pati(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	pati,	8,	1,	do_pati,
-	"pati    - PATI specific Cmds\n",
+	"PATI specific Cmds",
 	"info - displays board information\n"
 	"pati pci  - displays PCI registers\n"
 	"pati led <nr> <on> \n"
@@ -443,7 +443,7 @@ U_BOOT_CMD(
 	"    era   - erase PCI EEPROM (write all word to 0xffff)\n"
 	"    reload- Reload PCI Bridge with EEPROM Values\n"
 	"    NOTE: <addr> must start on word boundary\n"
-	"          <offset> and <size> must be even byte values\n"
+	"          <offset> and <size> must be even byte values"
 );
 
 /* ------------------------------------------------------------------------- */

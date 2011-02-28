@@ -44,14 +44,12 @@
 
 #include <npe.h>
 
-#ifdef CONFIG_IXP4XX_NPE
-
 static IxQMgrDispatcherFuncPtr qDispatcherFunc = NULL;
 static int npe_exists[NPE_NUM_PORTS];
 static int npe_used[NPE_NUM_PORTS];
 
 /* A little extra so we can align to cacheline. */
-static u8 npe_alloc_pool[NPE_MEM_POOL_SIZE + CFG_CACHELINE_SIZE - 1];
+static u8 npe_alloc_pool[NPE_MEM_POOL_SIZE + CONFIG_SYS_CACHELINE_SIZE - 1];
 static u8 *npe_alloc_end;
 static u8 *npe_alloc_free;
 
@@ -60,14 +58,14 @@ static void *npe_alloc(int size)
 	static int count = 0;
 	void *p = NULL;
 
-	size = (size + (CFG_CACHELINE_SIZE-1)) & ~(CFG_CACHELINE_SIZE-1);
+	size = (size + (CONFIG_SYS_CACHELINE_SIZE-1)) & ~(CONFIG_SYS_CACHELINE_SIZE-1);
 	count++;
 
 	if ((npe_alloc_free + size) < npe_alloc_end) {
 		p = npe_alloc_free;
 		npe_alloc_free += size;
 	} else {
-		printf("%s: failed (count=%d, size=%d)!\n", count, size);
+		printf("npe_alloc: failed (count=%d, size=%d)!\n", count, size);
 	}
 	return p;
 }
@@ -399,7 +397,7 @@ static int npe_init(struct eth_device *dev, bd_t * bis)
 
 	npe_alloc_end = npe_alloc_pool + sizeof(npe_alloc_pool);
 	npe_alloc_free = (u8 *)(((unsigned)npe_alloc_pool +
-				 CFG_CACHELINE_SIZE - 1) & ~(CFG_CACHELINE_SIZE - 1));
+				 CONFIG_SYS_CACHELINE_SIZE - 1) & ~(CONFIG_SYS_CACHELINE_SIZE - 1));
 
 	/* initialize mbuf pool */
 	init_rx_mbufs(p_npe);
@@ -408,25 +406,25 @@ static int npe_init(struct eth_device *dev, bd_t * bis)
 	if (ixEthAccPortRxCallbackRegister(p_npe->eth_id, npe_rx_callback,
 					   (u32)p_npe) != IX_ETH_ACC_SUCCESS) {
 		printf("can't register RX callback!\n");
-		return 0;
+		return -1;
 	}
 
 	if (ixEthAccPortTxDoneCallbackRegister(p_npe->eth_id, npe_tx_callback,
 					       (u32)p_npe) != IX_ETH_ACC_SUCCESS) {
 		printf("can't register TX callback!\n");
-		return 0;
+		return -1;
 	}
 
 	npe_set_mac_address(dev);
 
 	if (ixEthAccPortEnable(p_npe->eth_id) != IX_ETH_ACC_SUCCESS) {
 		printf("can't enable port!\n");
-		return 0;
+		return -1;
 	}
 
 	p_npe->active = 1;
 
-	return 1;
+	return 0;
 }
 
 #if 0 /* test-only: probably have to deal with it when booting linux (for a clean state) */
@@ -567,25 +565,19 @@ int npe_initialize(bd_t * bis)
 	struct eth_device *dev;
 	int eth_num = 0;
 	struct npe *p_npe = NULL;
+	uchar enetaddr[6];
 
-	for (eth_num = 0; eth_num < CFG_NPE_NUMS; eth_num++) {
+	for (eth_num = 0; eth_num < CONFIG_SYS_NPE_NUMS; eth_num++) {
 
 		/* See if we can actually bring up the interface, otherwise, skip it */
-		switch (eth_num) {
-		default:		/* fall through */
-		case 0:
-			if (memcmp (bis->bi_enetaddr, "\0\0\0\0\0\0", 6) == 0) {
-				continue;
-			}
-			break;
 #ifdef CONFIG_HAS_ETH1
-		case 1:
-			if (memcmp (bis->bi_enet1addr, "\0\0\0\0\0\0", 6) == 0) {
+		if (eth_num == 1) {
+			if (!eth_getenv_enetaddr("eth1addr", enetaddr))
 				continue;
-			}
-			break;
+		} else
 #endif
-		}
+			if (!eth_getenv_enetaddr("ethaddr", enetaddr))
+				continue;
 
 		/* Allocate device structure */
 		dev = (struct eth_device *)malloc(sizeof(*dev));
@@ -605,22 +597,14 @@ int npe_initialize(bd_t * bis)
 		}
 		memset(p_npe, 0, sizeof(struct npe));
 
-		switch (eth_num) {
-		default:		/* fall through */
-		case 0:
-			memcpy(dev->enetaddr, bis->bi_enetaddr, 6);
-			p_npe->eth_id = 0;
-			p_npe->phy_no = CONFIG_PHY_ADDR;
-			break;
-
+		p_npe->eth_id = eth_num;
+		memcpy(dev->enetaddr, enetaddr, 6);
 #ifdef CONFIG_HAS_ETH1
-		case 1:
-			memcpy(dev->enetaddr, bis->bi_enet1addr, 6);
-			p_npe->eth_id = 1;
+		if (eth_num == 1)
 			p_npe->phy_no = CONFIG_PHY1_ADDR;
-			break;
+		else
 #endif
-		}
+			p_npe->phy_no = CONFIG_PHY_ADDR;
 
 		sprintf(dev->name, "NPE%d", eth_num);
 		dev->priv = (void *)p_npe;
@@ -673,8 +657,8 @@ int npe_initialize(bd_t * bis)
 
 			npe_alloc_end = npe_alloc_pool + sizeof(npe_alloc_pool);
 			npe_alloc_free = (u8 *)(((unsigned)npe_alloc_pool +
-						 CFG_CACHELINE_SIZE - 1)
-						& ~(CFG_CACHELINE_SIZE - 1));
+						 CONFIG_SYS_CACHELINE_SIZE - 1)
+						& ~(CONFIG_SYS_CACHELINE_SIZE - 1));
 
 			if (!npe_csr_load())
 				return 0;
@@ -682,7 +666,7 @@ int npe_initialize(bd_t * bis)
 
 		eth_register(dev);
 
-#if defined(CONFIG_MII) || (CONFIG_COMMANDS & CFG_CMD_MII)
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 		miiphy_register(dev->name, npe_miiphy_read, npe_miiphy_write);
 #endif
 
@@ -690,5 +674,3 @@ int npe_initialize(bd_t * bis)
 
 	return 1;
 }
-
-#endif /* CONFIG_IXP4XX_NPE */

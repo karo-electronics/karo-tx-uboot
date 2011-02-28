@@ -31,7 +31,7 @@ extern int  mem_test(unsigned long start, unsigned long ramsize,int mode);
 
 void print_vcma9_info(void);
 
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
+#if defined(CONFIG_CMD_NAND)
 typedef enum {
 	NFCE_LOW,
 	NFCE_HIGH
@@ -128,7 +128,7 @@ typedef struct {
 } /*__attribute__((__packed__))*/ VCMA9_PLD;
 
 #define VCMA9_PLD_BASE	0x2C000100
-static inline VCMA9_PLD * const VCMA9_GetBase_PLD(void)
+static inline VCMA9_PLD * VCMA9_GetBase_PLD(void)
 {
 	return (VCMA9_PLD * const)VCMA9_PLD_BASE;
 }

@@ -6,7 +6,7 @@
  *
  * Modified for the TRAB board by
  * (C) Copyright 2002-2003
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -128,7 +128,7 @@
 #define TREFMD	0x0	/* CBR(CAS before RAS)/auto refresh */
 #define Trp	0x0	/* 2 clk */
 #define Trc	0x3	/* 7 clk */
-#define Tchr	0x2 	/* 3 clk */
+#define Tchr	0x2	/* 3 clk */
 
 #ifdef CONFIG_TRAB_50MHZ
 #define REFCNT	1269	/* period=15.6 us, HCLK=50Mhz, (2048+1-15.6*50) */

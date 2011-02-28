@@ -1,7 +1,7 @@
 /*
  * U-boot - global_data.h Declarations for global data of u-boot
  *
- * Copyright (c) 2005 blackfin.uclinux.org
+ * Copyright (c) 2005-2007 Analog Devices Inc.
  *
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -21,14 +21,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  */
 
 #ifndef	__ASM_GBL_DATA_H
 #define __ASM_GBL_DATA_H
-
-#include <asm/irq.h>
 
 /*
  * The following data structure is placed in some memory wich is
@@ -37,7 +35,7 @@
  * global variables during system initialization (until we have set
  * up the memory controller so that we can use RAM).
  *
- * Keep it *SMALL* and remember to set CFG_GBL_DATA_SIZE > sizeof(gd_t)
+ * Keep it *SMALL* and remember to set CONFIG_SYS_GBL_DATA_SIZE > sizeof(gd_t)
  */
 typedef struct global_data {
 	bd_t *bd;
@@ -45,11 +43,16 @@ typedef struct global_data {
 	unsigned long board_type;
 	unsigned long baudrate;
 	unsigned long have_console;	/* serial_init() was called */
-	unsigned long ram_size;		/* RAM size */
+	phys_size_t ram_size;		/* RAM size */
 	unsigned long reloc_off;	/* Relocation Offset */
-	unsigned long env_addr;		/* Address  of Environment struct */
+	unsigned long env_addr;	/* Address  of Environment struct */
 	unsigned long env_valid;	/* Checksum of Environment valid? */
-	void **jt;			/* jump table */
+#if defined(CONFIG_POST) || defined(CONFIG_LOGBUFFER)
+	unsigned long post_log_word;	/* Record POST activities */
+	unsigned long post_init_f_time;	/* When post_init_f started */
+#endif
+
+	void **jt;		/* jump table */
 } gd_t;
 
 /*
@@ -58,7 +61,11 @@ typedef struct global_data {
 #define	GD_FLG_RELOC	0x00001	/* Code was relocated to RAM     */
 #define	GD_FLG_DEVINIT	0x00002	/* Devices have been initialized */
 #define	GD_FLG_SILENT	0x00004	/* Silent mode                   */
+#define	GD_FLG_POSTFAIL	0x00008	/* Critical POST test failed     */
+#define	GD_FLG_POSTSTOP	0x00010	/* POST seqeunce aborted	 */
+#define	GD_FLG_LOGINIT	0x00020	/* Log Buf has been initialized	 */
+#define GD_FLG_DISABLE_CONSOLE	0x00040		/* Disable console (in & out)	 */
 
-#define DECLARE_GLOBAL_DATA_PTR     register volatile gd_t *gd asm ("P5")
+#define DECLARE_GLOBAL_DATA_PTR     register gd_t * volatile gd asm ("P5")
 
 #endif

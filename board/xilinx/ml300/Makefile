@@ -28,9 +28,9 @@ $(shell mkdir -p $(obj)../xilinx_enet)
 $(shell mkdir -p $(obj)../xilinx_iic)
 endif
 
-INCS		:= -I../ml300 -I../common -I../xilinx_enet -I../xilinx_iic
+INCS		:= -I../common -I../xilinx_enet -I../xilinx_iic
 CFLAGS		+= $(INCS)
-HOST_CFLAGS	+= $(INCS)
+HOSTCFLAGS	+= $(INCS)
 
 LIB	= $(obj)lib$(BOARD).a
 
@@ -58,7 +58,7 @@ clean:
 	rm -f $(SOBJS) $(OBJS)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

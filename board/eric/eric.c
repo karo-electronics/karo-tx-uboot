@@ -31,6 +31,8 @@
 #define PPC405GP_GPIO0_ODR     0xef600718	/* GPIO Open Drain */
 #define PPC405GP_GPIO0_IR      0xef60071c	/* GPIO Input */
 
+void sdram_init(void);
+
 int board_early_init_f (void)
 {
 
@@ -119,7 +121,7 @@ int checkboard (void)
 */
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 #ifndef CONFIG_ERIC
 	int i;
@@ -127,6 +129,12 @@ long int initdram (int board_type)
 	int TotalSize;
 #endif
 
+	/*
+	 * ToDo: Move the asm init routine sdram_init() to this C file,
+	 * or even better use some common ppc4xx code available
+	 * in cpu/ppc4xx
+	 */
+	sdram_init();
 
 #ifdef CONFIG_ERIC
 	/*
@@ -134,7 +142,7 @@ long int initdram (int board_type)
 	 * so let init.S do the init job for SDRAM
 	 * and simply return 32MByte here
 	 */
-	return (CFG_SDRAM_SIZE * 1024 * 1024);
+	return (CONFIG_SYS_SDRAM_SIZE * 1024 * 1024);
 #else
 
 	/* Read Serial Presence Detect Information */

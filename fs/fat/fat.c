@@ -31,8 +31,6 @@
 #include <asm/byteorder.h>
 #include <part.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_FAT)
-
 /*
  * Convert a string to lowercase.
  */
@@ -59,7 +57,8 @@ int disk_read (__u32 startblock, __u32 getsize, __u8 * bufptr)
 	if (cur_dev == NULL)
 		return -1;
 	if (cur_dev->block_read) {
-		return cur_dev->block_read (cur_dev->dev, startblock, getsize, (unsigned long *)bufptr);
+		return cur_dev->block_read (cur_dev->dev
+			, startblock, getsize, (unsigned long *)bufptr);
 	}
 	return -1;
 }
@@ -69,10 +68,11 @@ int
 fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 {
 	unsigned char buffer[SECTOR_SIZE];
+	disk_partition_t info;
 
 	if (!dev_desc->block_read)
 		return -1;
-	cur_dev=dev_desc;
+	cur_dev = dev_desc;
 	/* check if we have a MBR (on floppies we have only a PBR) */
 	if (dev_desc->block_read (dev_desc->dev, 0, 1, (ulong *) buffer) != 1) {
 		printf ("** Can't read from device %d **\n", dev_desc->dev);
@@ -83,33 +83,43 @@ fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 		/* no signature found */
 		return -1;
 	}
-	if(!strncmp((char *)&buffer[DOS_FS_TYPE_OFFSET],"FAT",3)) {
+#if (defined(CONFIG_CMD_IDE) || \
+     defined(CONFIG_CMD_MG_DISK) || \
+     defined(CONFIG_CMD_SATA) || \
+     defined(CONFIG_CMD_SCSI) || \
+     defined(CONFIG_CMD_USB) || \
+     defined(CONFIG_MMC) || \
+     defined(CONFIG_SYSTEMACE) )
+	/* First we assume, there is a MBR */
+	if (!get_partition_info (dev_desc, part_no, &info)) {
+		part_offset = info.start;
+		cur_part = part_no;
+	} else if (!strncmp((char *)&buffer[DOS_FS_TYPE_OFFSET], "FAT", 3)) {
 		/* ok, we assume we are on a PBR only */
 		cur_part = 1;
-		part_offset=0;
+		part_offset = 0;
+	} else {
+		printf ("** Partition %d not valid on device %d **\n",
+				part_no, dev_desc->dev);
+		return -1;
 	}
-	else {
-#if (CONFIG_COMMANDS & CFG_CMD_IDE) || (CONFIG_COMMANDS & CFG_CMD_SCSI) || \
-    (CONFIG_COMMANDS & CFG_CMD_USB) || defined(CONFIG_SYSTEMACE)
-		disk_partition_t info;
-		if(!get_partition_info(dev_desc, part_no, &info)) {
-			part_offset = info.start;
-			cur_part = part_no;
-		}
-		else {
-			printf ("** Partition %d not valid on device %d **\n",part_no,dev_desc->dev);
-			return -1;
-		}
+
 #else
+	if (!strncmp((char *)&buffer[DOS_FS_TYPE_OFFSET],"FAT",3)) {
+		/* ok, we assume we are on a PBR only */
+		cur_part = 1;
+		part_offset = 0;
+		info.start = part_offset;
+	} else {
 		/* FIXME we need to determine the start block of the
 		 * partition where the DOS FS resides. This can be done
 		 * by using the get_partition_info routine. For this
 		 * purpose the libpart must be included.
 		 */
-		part_offset=32;
+		part_offset = 32;
 		cur_part = 1;
-#endif
 	}
+#endif
 	return 0;
 }
 
@@ -129,28 +139,6 @@ dirdelim(char *str)
 	}
 	return -1;
 }
-
-
-/*
- * Match volume_info fs_type strings.
- * Return 0 on match, -1 otherwise.
- */
-static int
-compare_sign(char *str1, char *str2)
-{
-	char *end = str1+SIGNLEN;
-
-	while (str1 != end) {
-		if (*str1 != *str2) {
-			return -1;
-		}
-		str1++;
-		str2++;
-	}
-
-	return 0;
-}
-
 
 /*
  * Extract zero terminated short name from a directory entry.
@@ -176,7 +164,7 @@ static void get_name (dir_entry *dirent, char *s_name)
 	if (*s_name == DELETED_FLAG)
 		*s_name = '\0';
 	else if (*s_name == aRING)
-		*s_name = 'å';
+		*s_name = DELETED_FLAG;
 	downcase (s_name);
 }
 
@@ -342,7 +330,7 @@ get_contents(fsdata *mydata, dir_entry *dentptr, __u8 *buffer,
 			newclust = get_fatent(mydata, endclust);
 			if((newclust -1)!=endclust)
 				goto getit;
-			if (newclust <= 0x0001 || newclust >= 0xfff0) {
+			if (CHECK_CLUST(newclust, mydata->fatsize)) {
 				FAT_DPRINT("curclust: 0x%x\n", newclust);
 				FAT_DPRINT("Invalid FAT entry\n");
 				return gotsize;
@@ -377,7 +365,7 @@ getit:
 		filesize -= actsize;
 		buffer += actsize;
 		curclust = get_fatent(mydata, endclust);
-		if (curclust <= 0x0001 || curclust >= 0xfff0) {
+		if (CHECK_CLUST(curclust, mydata->fatsize)) {
 			FAT_DPRINT("curclust: 0x%x\n", curclust);
 			FAT_ERROR("Invalid FAT entry\n");
 			return gotsize;
@@ -425,7 +413,8 @@ slot2str(dir_slot *slotptr, char *l_name, int *idx)
  * into 'retdent'
  * Return 0 on success, -1 otherwise.
  */
-__u8	 get_vfatname_block[MAX_CLUSTSIZE];
+__attribute__ ((__aligned__(__alignof__(dir_entry))))
+__u8 get_vfatname_block[MAX_CLUSTSIZE];
 static int
 get_vfatname(fsdata *mydata, int curclust, __u8 *cluster,
 	     dir_entry *retdent, char *l_name)
@@ -449,7 +438,7 @@ get_vfatname(fsdata *mydata, int curclust, __u8 *cluster,
 
 		slotptr--;
 		curclust = get_fatent(mydata, curclust);
-		if (curclust <= 0x0001 || curclust >= 0xfff0) {
+		if (CHECK_CLUST(curclust, mydata->fatsize)) {
 			FAT_DPRINT("curclust: 0x%x\n", curclust);
 			FAT_ERROR("Invalid FAT entry\n");
 			return -1;
@@ -481,7 +470,7 @@ get_vfatname(fsdata *mydata, int curclust, __u8 *cluster,
 
 	l_name[idx] = '\0';
 	if (*l_name == DELETED_FLAG) *l_name = '\0';
-	else if (*l_name == aRING) *l_name = 'å';
+	else if (*l_name == aRING) *l_name = DELETED_FLAG;
 	downcase(l_name);
 
 	/* Return the real directory entry */
@@ -511,6 +500,7 @@ mkcksum(const char *str)
  * Get the directory entry associated with 'filename' from the directory
  * starting at 'startsect'
  */
+__attribute__ ((__aligned__(__alignof__(dir_entry))))
 __u8 get_dentfromdir_block[MAX_CLUSTSIZE];
 static dir_entry *get_dentfromdir (fsdata * mydata, int startsect,
 				   char *filename, dir_entry * retdent,
@@ -642,7 +632,7 @@ static dir_entry *get_dentfromdir (fsdata * mydata, int startsect,
 	    return retdent;
 	}
 	curclust = get_fatent (mydata, curclust);
-	if (curclust <= 0x0001 || curclust >= 0xfff0) {
+	if (CHECK_CLUST(curclust, mydata->fatsize)) {
 	    FAT_DPRINT ("curclust: 0x%x\n", curclust);
 	    FAT_ERROR ("Invalid FAT entry\n");
 	    return NULL;
@@ -693,20 +683,16 @@ read_bootsectandvi(boot_sector *bs, volume_info *volinfo, int *fatsize)
 	}
 	memcpy(volinfo, vistart, sizeof(volume_info));
 
-	/* Terminate fs_type string. Writing past the end of vistart
-	   is ok - it's just the buffer. */
-	vistart->fs_type[8] = '\0';
-
 	if (*fatsize == 32) {
-		if (compare_sign(FAT32_SIGN, vistart->fs_type) == 0) {
+		if (strncmp(FAT32_SIGN, vistart->fs_type, SIGNLEN) == 0) {
 			return 0;
 		}
 	} else {
-		if (compare_sign(FAT12_SIGN, vistart->fs_type) == 0) {
+		if (strncmp(FAT12_SIGN, vistart->fs_type, SIGNLEN) == 0) {
 			*fatsize = 12;
 			return 0;
 		}
-		if (compare_sign(FAT16_SIGN, vistart->fs_type) == 0) {
+		if (strncmp(FAT16_SIGN, vistart->fs_type, SIGNLEN) == 0) {
 			*fatsize = 16;
 			return 0;
 		}
@@ -716,8 +702,8 @@ read_bootsectandvi(boot_sector *bs, volume_info *volinfo, int *fatsize)
 	return -1;
 }
 
-
-__u8 do_fat_read_block[MAX_CLUSTSIZE];  /* Block buffer */
+__attribute__ ((__aligned__(__alignof__(dir_entry))))
+__u8 do_fat_read_block[MAX_CLUSTSIZE];
 long
 do_fat_read (const char *filename, void *buffer, unsigned long maxsize,
 	     int dols)
@@ -971,11 +957,16 @@ file_fat_detectfs(void)
 		printf("No current device\n");
 		return 1;
 	}
-#if (CONFIG_COMMANDS & CFG_CMD_IDE) || (CONFIG_COMMANDS & CFG_CMD_SCSI) || \
-    (CONFIG_COMMANDS & CFG_CMD_USB) || (CONFIG_MMC)
+#if defined(CONFIG_CMD_IDE) || \
+    defined(CONFIG_CMD_MG_DISK) || \
+    defined(CONFIG_CMD_SATA) || \
+    defined(CONFIG_CMD_SCSI) || \
+    defined(CONFIG_CMD_USB) || \
+    defined(CONFIG_MMC)
 	printf("Interface:  ");
 	switch(cur_dev->if_type) {
 		case IF_TYPE_IDE :	printf("IDE"); break;
+		case IF_TYPE_SATA :	printf("SATA"); break;
 		case IF_TYPE_SCSI :	printf("SCSI"); break;
 		case IF_TYPE_ATAPI :	printf("ATAPI"); break;
 		case IF_TYPE_USB :	printf("USB"); break;
@@ -993,7 +984,8 @@ file_fat_detectfs(void)
 	memcpy (vol_label, volinfo.volume_label, 11);
 	vol_label[11] = '\0';
 	volinfo.fs_type[5]='\0';
-	printf("Partition %d: Filesystem: %s \"%s\"\n",cur_part,volinfo.fs_type,vol_label);
+	printf("Partition %d: Filesystem: %s \"%s\"\n"
+			,cur_part,volinfo.fs_type,vol_label);
 	return 0;
 }
 
@@ -1011,5 +1003,3 @@ file_fat_read(const char *filename, void *buffer, unsigned long maxsize)
 	printf("reading %s\n",filename);
 	return do_fat_read(filename, buffer, maxsize, LS_NO);
 }
-
-#endif /* #if (CONFIG_COMMANDS & CFG_CMD_FAT) */

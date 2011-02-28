@@ -50,17 +50,17 @@ int checkboard (void)
 	return 0;
 }
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	return (0);
 }
 
-#if (CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_IDE)
 int ide_preinit (void)
 {
-	nios_pio_t *present = (nios_pio_t *) CFG_CF_PRESENT;
-	nios_pio_t *power = (nios_pio_t *) CFG_CF_POWER;
-	nios_pio_t *atasel = (nios_pio_t *) CFG_CF_ATASEL;
+	nios_pio_t *present = (nios_pio_t *) CONFIG_SYS_CF_PRESENT;
+	nios_pio_t *power = (nios_pio_t *) CONFIG_SYS_CF_POWER;
+	nios_pio_t *atasel = (nios_pio_t *) CONFIG_SYS_CF_ATASEL;
 
 	/* setup data direction registers */
 	present->direction = NIOS_PIO_IN;
@@ -78,4 +78,4 @@ int ide_preinit (void)
 
 	return 0;
 }
-#endif /* CONFIG_COMMANDS & CFG_CMD_IDE */
+#endif

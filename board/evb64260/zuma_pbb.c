@@ -1,7 +1,7 @@
 #include <common.h>
 #include <malloc.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 #include <command.h>
 #endif
 
@@ -149,8 +149,10 @@ void zuma_init_pbb (void)
 
 	pci_read_config_dword (dev, PCI_BASE_ADDRESS_0, &iobase);
 
-	zuma_pbb_reg =
-			(PBB_DMA_REG_MAP *) (iobase & PCI_BASE_ADDRESS_MEM_MASK);
+	iobase &= PCI_BASE_ADDRESS_MEM_MASK;
+
+	zuma_pbb_reg = (PBB_DMA_REG_MAP *)iobase;
+
 
 	if (!zuma_pbb_reg) {
 		printf ("zuma pbb bar none! (hah hah, get it?)\n");
@@ -166,7 +168,7 @@ void zuma_init_pbb (void)
 
 }
 
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 
 static int last_cmd = 4;		/* write increment */
 static int last_size = 64;
@@ -200,21 +202,19 @@ do_zuma_init_mbox (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	zinit,	 1,	 0,	 do_zuma_init_pbb,
-	"zinit   - init zuma pbb\n",
+	"init zuma pbb",
 	"\n"
-	"    - init zuma pbb\n"
 );
 U_BOOT_CMD(
 	zdtest,	  3,	  1,	  do_zuma_test_dma,
-	"zdtest  - run dma test\n",
+	"run dma test",
 	"[cmd [count]]\n"
-	"    - run dma cmd (w=0,v=1,cp=2,cmp=3,wi=4,vi=5), count bytes\n"
+	"    - run dma cmd (w=0,v=1,cp=2,cmp=3,wi=4,vi=5), count bytes"
 );
 U_BOOT_CMD(
 	zminit,	  1,	  0,	  do_zuma_init_mbox,
-	"zminit  - init zuma mbox\n",
+	"init zuma mbox",
 	"\n"
-	"    - init zuma mbox\n"
 );
 
-#endif /* CFG_CMD_BSP */
+#endif

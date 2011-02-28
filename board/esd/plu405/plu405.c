@@ -23,13 +23,13 @@
 
 #include <common.h>
 #include <asm/processor.h>
+#include <asm/io.h>
 #include <command.h>
 #include <malloc.h>
 
+#undef FPGA_DEBUG
 
-#if 0
-#define FPGA_DEBUG
-#endif
+DECLARE_GLOBAL_DATA_PTR;
 
 extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 extern void lxt971_no_sleep(void);
@@ -44,7 +44,6 @@ const unsigned char fpgadata[] =
  * include common fpga code (for esd boards)
  */
 #include "../common/fpga.c"
-
 
 /*
  * include common auto-update code (for esd boards)
@@ -62,12 +61,10 @@ au_image_t au_image[] = {
 
 int N_AU_IMAGES = (sizeof(au_image) / sizeof(au_image[0]));
 
-
 /* Prototypes */
 int gunzip(void *, int, unsigned char *, unsigned long *);
 
-
-int board_early_init_f (void)
+int board_early_init_f(void)
 {
 	/*
 	 * IRQ 0-15  405GP internally generated; active high; level sensitive
@@ -86,38 +83,36 @@ int board_early_init_f (void)
 	mtdcr(uiccr, 0x00000000);       /* set all to be non-critical*/
 	mtdcr(uicpr, 0xFFFFFF99);       /* set int polarities */
 	mtdcr(uictr, 0x10000000);       /* set int trigger levels */
-	mtdcr(uicvcr, 0x00000001);      /* set vect base=0,INT0 highest priority*/
+	mtdcr(uicvcr, 0x00000001);      /* set vect base=0,INT0 highest prio */
 	mtdcr(uicsr, 0xFFFFFFFF);       /* clear all ints */
 
 	/*
-	 * EBC Configuration Register: set ready timeout to 512 ebc-clks -> ca. 15 us
+	 * EBC Configuration Register: set ready timeout to
+	 * 512 ebc-clks -> ca. 15 us
 	 */
-	mtebc (epcr, 0xa8400000); /* ebc always driven */
+	mtebc(epcr, 0xa8400000); /* ebc always driven */
 
 	return 0;
 }
 
-
-int misc_init_f (void)
+int misc_init_r(void)
 {
-	return 0;  /* dummy implementation */
-}
-
-
-int misc_init_r (void)
-{
-	volatile unsigned char *duart0_mcr = (unsigned char *)((ulong)DUART0_BA + 4);
-	volatile unsigned char *duart1_mcr = (unsigned char *)((ulong)DUART1_BA + 4);
 	unsigned char *dst;
+	unsigned char fctr;
 	ulong len = sizeof(fpgadata);
 	int status;
 	int index;
 	int i;
 
-	dst = malloc(CFG_FPGA_MAX_SIZE);
-	if (gunzip (dst, CFG_FPGA_MAX_SIZE, (uchar *)fpgadata, &len) != 0) {
-		printf ("GUNZIP ERROR - must RESET board to recover\n");
-		do_reset (NULL, 0, 0, NULL);
+	/* adjust flash start and offset */
+	gd->bd->bi_flashstart = 0 - gd->bd->bi_flashsize;
+	gd->bd->bi_flashoffset = 0;
+
+	dst = malloc(CONFIG_SYS_FPGA_MAX_SIZE);
+	if (gunzip(dst, CONFIG_SYS_FPGA_MAX_SIZE,
+		   (uchar *)fpgadata, &len) != 0) {
+		printf("GUNZIP ERROR - must RESET board to recover\n");
+		do_reset(NULL, 0, 0, NULL);
 	}
 
 	status = fpga_boot(dst, len);
@@ -125,13 +120,16 @@ int misc_init_r (void)
 		printf("\nFPGA: Booting failed ");
 		switch (status) {
 		case ERROR_FPGA_PRG_INIT_LOW:
-			printf("(Timeout: INIT not low after asserting PROGRAM*)\n ");
+			printf("(Timeout: INIT not low "
+			       "after asserting PROGRAM*)\n");
 			break;
 		case ERROR_FPGA_PRG_INIT_HIGH:
-			printf("(Timeout: INIT not high after deasserting PROGRAM*)\n ");
+			printf("(Timeout: INIT not high "
+			       "after deasserting PROGRAM*)\n");
 			break;
 		case ERROR_FPGA_PRG_DONE:
-			printf("(Timeout: DONE not high after programming FPGA)\n ");
+			printf("(Timeout: DONE not high "
+			       "after programming FPGA)\n");
 			break;
 		}
 
@@ -149,7 +147,7 @@ int misc_init_r (void)
 			for (index=0;index<1000;index++)
 				udelay(1000);
 		}
-		putc ('\n');
+		putc('\n');
 		do_reset(NULL, 0, 0, NULL);
 	}
 
@@ -162,7 +160,7 @@ int misc_init_r (void)
 		printf("%s ", &(dst[index+1]));
 		index += len+3;
 	}
-	putc ('\n');
+	putc('\n');
 
 	free(dst);
 
@@ -177,118 +175,171 @@ int misc_init_r (void)
 	/*
 	 * Reset external DUARTs
 	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_DUART_RST); /* set reset to high */
-	udelay(10); /* wait 10us */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~CFG_DUART_RST); /* set reset to low */
-	udelay(1000); /* wait 1ms */
+	out_be32((void*)GPIO0_OR,
+		 in_be32((void*)GPIO0_OR) | CONFIG_SYS_DUART_RST);
+	udelay(10);
+	out_be32((void*)GPIO0_OR,
+		 in_be32((void*)GPIO0_OR) & ~CONFIG_SYS_DUART_RST);
+	udelay(1000);
 
 	/*
 	 * Set NAND-FLASH GPIO signals to default
 	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~(CFG_NAND_CLE | CFG_NAND_ALE));
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_NAND_CE);
+	out_be32((void*)GPIO0_OR,
+		 in_be32((void*)GPIO0_OR) &
+		 ~(CONFIG_SYS_NAND_CLE | CONFIG_SYS_NAND_ALE));
+	out_be32((void*)GPIO0_OR,
+		 in_be32((void*)GPIO0_OR) | CONFIG_SYS_NAND_CE);
+
+	/*
+	 * Setup EEPROM write protection
+	 */
+	out_be32((void*)GPIO0_OR,
+		 in_be32((void*)GPIO0_OR) | CONFIG_SYS_EEPROM_WP);
+	out_be32((void*)GPIO0_TCR,
+		 in_be32((void*)GPIO0_TCR) | CONFIG_SYS_EEPROM_WP);
 
 	/*
 	 * Enable interrupts in exar duart mcr[3]
 	 */
-	*duart0_mcr = 0x08;
-	*duart1_mcr = 0x08;
+	out_8((void *)DUART0_BA + 4, 0x08);
+	out_8((void *)DUART1_BA + 4, 0x08);
 
-	return (0);
+	/*
+	 * Enable auto RS485 mode in 2nd external uart
+	 */
+	out_8((void *)DUART1_BA + 3, 0xbf); /* write LCR */
+	fctr = in_8((void *)DUART1_BA + 1); /* read FCTR */
+	fctr |= 0x08;                       /* enable RS485 mode */
+	out_8((void *)DUART1_BA + 1, fctr); /* write FCTR */
+	out_8((void *)DUART1_BA + 3, 0);    /* write LCR */
+
+	return 0;
 }
-
 
 /*
  * Check Board Identity:
  */
-int checkboard (void)
+int checkboard(void)
 {
 	char str[64];
-	int i = getenv_r ("serial#", str, sizeof(str));
+	int i = getenv_r("serial#", str, sizeof(str));
 
-	puts ("Board: ");
+	puts("Board: ");
 
-	if (i == -1) {
-		puts ("### No HW ID - assuming PLU405");
-	} else {
+	if (i == -1)
+		puts("### No HW ID - assuming PLU405");
+	else
 		puts(str);
-	}
 
-	putc ('\n');
+	putc('\n');
+	return 0;
+}
+
+#ifdef CONFIG_IDE_RESET
+#define FPGA_CTRL (CONFIG_SYS_FPGA_BASE_ADDR + CONFIG_SYS_FPGA_CTRL)
+void ide_set_reset(int on)
+{
+	/*
+	 * Assert or deassert CompactFlash Reset Pin
+	 */
+	if (on) {		/* assert RESET */
+		out_be16((void *)FPGA_CTRL,
+			 in_be16((void *)FPGA_CTRL) &
+			 ~CONFIG_SYS_FPGA_CTRL_CF_RESET);
+	} else {		/* release RESET */
+		out_be16((void *)FPGA_CTRL,
+			 in_be16((void *)FPGA_CTRL) |
+			 CONFIG_SYS_FPGA_CTRL_CF_RESET);
+	}
+}
+#endif /* CONFIG_IDE_RESET */
+
+void reset_phy(void)
+{
+#ifdef CONFIG_LXT971_NO_SLEEP
 
 	/*
 	 * Disable sleep mode in LXT971
 	 */
 	lxt971_no_sleep();
-
-	return 0;
-}
-
-
-long int initdram (int board_type)
-{
-	unsigned long val;
-
-	mtdcr(memcfga, mem_mb0cf);
-	val = mfdcr(memcfgd);
-
-#if 0
-	printf("\nmb0cf=%x\n", val); /* test-only */
-	printf("strap=%x\n", mfdcr(strap)); /* test-only */
 #endif
-
-	return (4*1024*1024 << ((val & 0x000e0000) >> 17));
 }
 
-
-int testdram (void)
+#if defined(CONFIG_SYS_EEPROM_WREN)
+/* Input: <dev_addr>  I2C address of EEPROM device to enable.
+ *	       <state> -1: deliver current state
+ *			0: disable write
+ *			1: enable write
+ *  Returns:	       -1: wrong device address
+ *			0: dis-/en- able done
+ *		      0/1: current state if <state> was -1.
+ */
+int eeprom_write_enable(unsigned dev_addr, int state)
 {
-	/* TODO: XXX XXX XXX */
-	printf ("test: 16 MB - ok\n");
-
-	return (0);
-}
-
-
-#ifdef CONFIG_IDE_RESET
-void ide_set_reset(int on)
-{
-	volatile unsigned short *fpga_mode =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL);
-
-	/*
-	 * Assert or deassert CompactFlash Reset Pin
-	 */
-	if (on) {		/* assert RESET */
-		*fpga_mode &= ~(CFG_FPGA_CTRL_CF_RESET);
-	} else {		/* release RESET */
-		*fpga_mode |= CFG_FPGA_CTRL_CF_RESET;
-	}
-}
-#endif /* CONFIG_IDE_RESET */
-
-
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-#include <linux/mtd/nand_legacy.h>
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
-
-void nand_init(void)
-{
-	nand_probe(CFG_NAND_BASE);
-	if (nand_dev_desc[0].ChipID != NAND_ChipID_UNKNOWN) {
-		print_size(nand_dev_desc[0].totlen, "\n");
-	}
-}
-#endif
-
-
-#ifdef CONFIG_AUTO_UPDATE_SHOW
-void board_auto_update_show(int au_active)
-{
-	if (au_active) {
-		printf("\n Dies ist die board-funktion: Updating!!!\n");
+	if (CONFIG_SYS_I2C_EEPROM_ADDR != dev_addr) {
+		return -1;
 	} else {
-		printf("\n Dies ist die board-funktion: Updating done!!!\n");
+		switch (state) {
+		case 1:
+			/* Enable write access, clear bit GPIO0. */
+			out_be32((void*)GPIO0_OR,
+				 in_be32((void*)GPIO0_OR) &
+				 ~CONFIG_SYS_EEPROM_WP);
+			state = 0;
+			break;
+		case 0:
+			/* Disable write access, set bit GPIO0. */
+			out_be32((void*)GPIO0_OR,
+				 in_be32((void*)GPIO0_OR) |
+				 CONFIG_SYS_EEPROM_WP);
+			state = 0;
+			break;
+		default:
+			/* Read current status back. */
+			state = ((in_be32((void*)GPIO0_OR) &
+				       CONFIG_SYS_EEPROM_WP) == 0);
+			break;
+		}
 	}
+	return state;
 }
-#endif
+
+int do_eep_wren(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	int query = argc == 1;
+	int state = 0;
+
+	if (query) {
+		/* Query write access state. */
+		state = eeprom_write_enable(CONFIG_SYS_I2C_EEPROM_ADDR, -1);
+		if (state < 0) {
+			puts("Query of write access state failed.\n");
+		} else {
+			printf("Write access for device 0x%0x is %sabled.\n",
+			       CONFIG_SYS_I2C_EEPROM_ADDR,
+			       state ? "en" : "dis");
+			state = 0;
+		}
+	} else {
+		if (argv[1][0] == '0') {
+			/* Disable write access. */
+			state = eeprom_write_enable(CONFIG_SYS_I2C_EEPROM_ADDR,
+						    0);
+		} else {
+			/* Enable write access. */
+			state = eeprom_write_enable(CONFIG_SYS_I2C_EEPROM_ADDR,
+						    1);
+		}
+		if (state < 0)
+			puts("Setup of write access state failed.\n");
+	}
+
+	return state;
+}
+
+U_BOOT_CMD(eepwren,	2,	0,	do_eep_wren,
+	"Enable / disable / query EEPROM write access",
+	""
+);
+#endif /* #if defined(CONFIG_SYS_EEPROM_WREN) */

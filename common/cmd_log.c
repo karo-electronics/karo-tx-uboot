@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2002
+ * (C) Copyright 2002-2007
  * Detlev Zundel, DENX Software Engineering, dzu@denx.de.
  *
  * Code used from linux/kernel/printk.c
@@ -42,13 +42,11 @@
 
 #include <common.h>
 #include <command.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <post.h>
 #include <logbuff.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#if defined(CONFIG_LOGBUFFER)
 
 /* Local prototypes */
 static void logbuff_putc (const char c);
@@ -60,55 +58,91 @@ static char buf[1024];
 /* This combination will not print messages with the default loglevel */
 static unsigned console_loglevel = 3;
 static unsigned default_message_loglevel = 4;
-static unsigned char *log_buf = NULL;
-static unsigned long *ext_log_size;
-static unsigned long *ext_log_start;
-static unsigned long *ext_logged_chars;
-#define log_size (*ext_log_size)
-#define log_start (*ext_log_start)
-#define logged_chars (*ext_logged_chars)
+static unsigned log_version = 1;
+#ifdef CONFIG_ALT_LB_ADDR
+static volatile logbuff_t *log;
+#else
+static logbuff_t *log;
+#endif
+static char *lbuf;
 
-/* Forced by code, eh! */
-#define LOGBUFF_MAGIC 0xc0de4ced
+unsigned long __logbuffer_base(void)
+{
+	return CONFIG_SYS_SDRAM_BASE + gd->bd->bi_memsize - LOGBUFF_LEN;
+}
+unsigned long logbuffer_base (void) __attribute__((weak, alias("__logbuffer_base")));
 
-/* The mapping used here has to be the same as in setup_ext_logbuff ()
-   in linux/kernel/printk */
 void logbuff_init_ptrs (void)
 {
-	unsigned long *ext_tag;
-	unsigned long post_word;
+	unsigned long tag, post_word;
 	char *s;
 
-	log_buf = (unsigned char *)(gd->bd->bi_memsize-LOGBUFF_LEN);
-	ext_tag = (unsigned long *)(log_buf)-4;
- 	ext_log_start = (unsigned long *)(log_buf)-3;
-	ext_log_size = (unsigned long *)(log_buf)-2;
-	ext_logged_chars = (unsigned long *)(log_buf)-1;
+#ifdef CONFIG_ALT_LB_ADDR
+	log = (logbuff_t *)CONFIG_ALT_LH_ADDR;
+	lbuf = (char *)CONFIG_ALT_LB_ADDR;
+#else
+	log = (logbuff_t *)(logbuffer_base ()) - 1;
+	lbuf = (char *)log->buf;
+#endif
+
+	/* Set up log version */
+	if ((s = getenv ("logversion")) != NULL)
+		log_version = (int)simple_strtoul (s, NULL, 10);
+
+	if (log_version == 2)
+		tag = log->v2.tag;
+	else
+		tag = log->v1.tag;
 	post_word = post_word_load();
 #ifdef CONFIG_POST
 	/* The post routines have setup the word so we can simply test it */
- 	if (post_word_load () & POST_COLDBOOT) {
- 		logged_chars = log_size = log_start = 0;
-		*ext_tag = LOGBUFF_MAGIC;
- 	}
+	if (tag != LOGBUFF_MAGIC || (post_word & POST_COLDBOOT)) {
+		logbuff_reset ();
+	}
 #else
 	/* No post routines, so we do our own checking                    */
- 	if (post_word != LOGBUFF_MAGIC) {
- 		logged_chars = log_size = log_start = 0;
+	if (tag != LOGBUFF_MAGIC || post_word != LOGBUFF_MAGIC) {
+		logbuff_reset ();
 		post_word_store (LOGBUFF_MAGIC);
-		*ext_tag = LOGBUFF_MAGIC;
- 	}
+	}
 #endif
+	if (log_version == 2 && (long)log->v2.start > (long)log->v2.con)
+		log->v2.start = log->v2.con;
+
 	/* Initialize default loglevel if present */
 	if ((s = getenv ("loglevel")) != NULL)
 		console_loglevel = (int)simple_strtoul (s, NULL, 10);
 
-	gd->post_log_word |= LOGBUFF_INITIALIZED;
+	gd->flags |= GD_FLG_LOGINIT;
+}
+
+void logbuff_reset (void)
+{
+#ifndef CONFIG_ALT_LB_ADDR
+	memset (log, 0, sizeof (logbuff_t));
+#endif
+	if (log_version == 2) {
+		log->v2.tag = LOGBUFF_MAGIC;
+#ifdef CONFIG_ALT_LB_ADDR
+		log->v2.start = 0;
+		log->v2.con = 0;
+		log->v2.end = 0;
+		log->v2.chars = 0;
+#endif
+	} else {
+		log->v1.tag = LOGBUFF_MAGIC;
+#ifdef CONFIG_ALT_LB_ADDR
+		log->v1.dummy = 0;
+		log->v1.start = 0;
+		log->v1.size = 0;
+		log->v1.chars = 0;
+#endif
+	}
 }
 
 int drv_logbuff_init (void)
 {
-	device_t logdev;
+	struct stdio_dev logdev;
 	int rc;
 
 	/* Device initialization */
@@ -120,7 +154,7 @@ int drv_logbuff_init (void)
 	logdev.putc  = logbuff_putc;		/* 'putc' function */
 	logdev.puts  = logbuff_puts;		/* 'puts' function */
 
-	rc = device_register (&logdev);
+	rc = stdio_register (&logdev);
 
 	return (rc == 0) ? 1 : rc;
 }
@@ -140,7 +174,7 @@ static void logbuff_puts (const char *s)
 
 void logbuff_log(char *msg)
 {
-	if ((gd->post_log_word & LOGBUFF_INITIALIZED)) {
+	if ((gd->flags & GD_FLG_LOGINIT)) {
 		logbuff_printk (msg);
 	} else {
 		/* Can happen only for pre-relocated errors as logging */
@@ -162,7 +196,7 @@ void logbuff_log(char *msg)
 int do_log (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	char *s;
-	unsigned long i;
+	unsigned long i, start, size;
 
 	if (strcmp(argv[1],"append") == 0) {
 		/* Log concatenation of all arguments separated by spaces */
@@ -177,41 +211,54 @@ int do_log (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	case 2:
 		if (strcmp(argv[1],"show") == 0) {
-			for (i=0; i < (log_size&LOGBUFF_MASK); i++) {
-				s = (char *)log_buf+((log_start+i)&LOGBUFF_MASK);
+			if (log_version == 2) {
+				start = log->v2.start;
+				size = log->v2.end - log->v2.start;
+			}
+			else {
+				start = log->v1.start;
+				size = log->v1.size;
+			}
+			for (i=0; i < (size&LOGBUFF_MASK); i++) {
+				s = lbuf+((start+i)&LOGBUFF_MASK);
 				putc (*s);
 			}
 			return 0;
 		} else if (strcmp(argv[1],"reset") == 0) {
-			log_start    = 0;
-			log_size     = 0;
-			logged_chars = 0;
+			logbuff_reset ();
 			return 0;
 		} else if (strcmp(argv[1],"info") == 0) {
-			printf ("Logbuffer   at  %08lx\n", (unsigned long)log_buf);
-			printf ("log_start    =  %08lx\n", log_start);
-			printf ("log_size     =  %08lx\n", log_size);
-			printf ("logged_chars =  %08lx\n", logged_chars);
+			printf ("Logbuffer   at  %08lx\n", (unsigned long)lbuf);
+			if (log_version == 2) {
+				printf ("log_start    =  %08lx\n", log->v2.start);
+				printf ("log_end      =  %08lx\n", log->v2.end);
+				printf ("logged_chars =  %08lx\n", log->v2.chars);
+			}
+			else {
+				printf ("log_start    =  %08lx\n", log->v1.start);
+				printf ("log_size     =  %08lx\n", log->v1.size);
+				printf ("logged_chars =  %08lx\n", log->v1.chars);
+			}
 			return 0;
 		}
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 }
-#if defined(CONFIG_LOGBUFFER)
+
 U_BOOT_CMD(
 	log,     255,	1,	do_log,
-	"log     - manipulate logbuffer\n",
+	"manipulate logbuffer",
 	"info   - show pointer details\n"
 	"log reset  - clear contents\n"
 	"log show   - show contents\n"
-	"log append <msg> - append <msg> to the logbuffer\n"
+	"log append <msg> - append <msg> to the logbuffer"
 );
-#endif	/* CONFIG_LOGBUFFER */
+
 static int logbuff_printk(const char *line)
 {
 	int i;
@@ -241,13 +288,22 @@ static int logbuff_printk(const char *line)
 		}
 		line_feed = 0;
 		for (; p < buf_end; p++) {
-			log_buf[(log_start+log_size) & LOGBUFF_MASK] = *p;
-			if (log_size < LOGBUFF_LEN)
-				log_size++;
-			else
-				log_start++;
-
-			logged_chars++;
+			if (log_version == 2) {
+				lbuf[log->v2.end & LOGBUFF_MASK] = *p;
+				log->v2.end++;
+				if (log->v2.end - log->v2.start > LOGBUFF_LEN)
+					log->v2.start++;
+				log->v2.chars++;
+			}
+			else {
+				lbuf[(log->v1.start + log->v1.size) &
+					 LOGBUFF_MASK] = *p;
+				if (log->v1.size < LOGBUFF_LEN)
+					log->v1.size++;
+				else
+					log->v1.start++;
+				log->v1.chars++;
+			}
 			if (*p == '\n') {
 				line_feed = 1;
 				break;
@@ -261,5 +317,3 @@ static int logbuff_printk(const char *line)
 	}
 	return i;
 }
-
-#endif /* (CONFIG_LOGBUFFER) */

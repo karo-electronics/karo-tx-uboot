@@ -25,14 +25,50 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(CPU).a
 
-START	= start.o resetvec.o kgdb.o
-SOBJS	= dcr.o
-COBJS	= 405gp_pci.o 4xx_enet.o \
-	  bedbug_405.o commproc.o \
-	  cpu.o cpu_init.o i2c.o interrupts.o \
-	  miiphy.o ndfc.o sdram.o serial.o \
-	  spd_sdram.o speed.o traps.o usb_ohci.o usbdev.o \
-	  440spe_pcie.o
+START	:= resetvec.o
+START	+= start.o
+
+SOBJS	:= cache.o
+SOBJS	+= dcr.o
+SOBJS	+= kgdb.o
+
+COBJS	:= 40x_spd_sdram.o
+COBJS	+= 44x_spd_ddr.o
+COBJS	+= 44x_spd_ddr2.o
+ifdef CONFIG_PPC4xx_DDR_AUTOCALIBRATION
+COBJS	+= 4xx_ibm_ddr2_autocalib.o
+endif
+COBJS	+= 4xx_pci.o
+COBJS	+= 4xx_pcie.o
+COBJS	+= bedbug_405.o
+ifdef CONFIG_CMD_CHIP_CONFIG
+COBJS	+= cmd_chip_config.o
+endif
+COBJS	+= commproc.o
+COBJS	+= cpu.o
+COBJS	+= cpu_init.o
+COBJS	+= denali_data_eye.o
+COBJS	+= denali_spd_ddr2.o
+COBJS	+= ecc.o
+COBJS	+= fdt.o
+COBJS	+= i2c.o
+COBJS	+= interrupts.o
+COBJS	+= iop480_uart.o
+COBJS	+= sdram.o
+COBJS	+= speed.o
+COBJS	+= tlb.o
+COBJS	+= traps.o
+COBJS	+= usb.o
+COBJS	+= usb_ohci.o
+COBJS	+= usbdev.o
+ifndef CONFIG_XILINX_440
+COBJS	+= 4xx_uart.o
+COBJS	+= gpio.o
+COBJS	+= miiphy.o
+COBJS	+= uic.o
+else
+COBJS	+= xilinx_irq.o
+endif
 
 SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))

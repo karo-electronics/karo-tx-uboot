@@ -38,7 +38,7 @@
 
 typedef struct bd_info {
 	unsigned long	bi_memstart;	/* start of DRAM memory */
-	unsigned long	bi_memsize;	/* size	 of DRAM memory in bytes */
+	phys_size_t	bi_memsize;	/* size	 of DRAM memory in bytes */
 	unsigned long	bi_flashstart;	/* start of FLASH memory */
 	unsigned long	bi_flashsize;	/* size	 of FLASH memory */
 	unsigned long	bi_flashoffset; /* reserved area for startup monitor */
@@ -46,7 +46,6 @@ typedef struct bd_info {
 	unsigned long	bi_sramsize;	/* size	 of SRAM memory */
 	unsigned long	bi_bootflags;	/* boot / reboot flag (for LynxOS) */
 	unsigned long	bi_ip_addr;	/* IP Address */
-	unsigned char	bi_enetaddr[6];	/* Ethernet adress */
 	unsigned short	bi_ethspeed;	/* Ethernet speed in Mbps */
 	unsigned long	bi_intfreq;	/* Internal Freq, in MHz */
 	unsigned long	bi_busfreq;	/* Bus Freq, in MHz */

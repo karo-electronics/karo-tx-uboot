@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1.1.1  2007-03-09 09:43:18  lothar
- * imported U-Boot 1.1.6
+ * Revision 1.1.1.2  2011-02-28 14:37:44  lothar
+ * imported U-Boot Release 2009.08 from Freescale BSP L2.6.31_10.08.01
  *
  * Revision 1.2  2005/02/21 12:48:58  mleeman
  * update of copyright years (feedback wd)
@@ -55,10 +55,10 @@
  * SPEED_TMR3_PS = (GCLK / (16 * SPEED_FCOUNT3)) - 1
  *
  * SPEED_FCOUNT2	timer 2 counting frequency
- * GCLK	      		CPU clock
+ * GCLK			CPU clock
  * SPEED_TMR2_PS	prescaler
  */
-#define SPEED_TMR2_PS  	(250 - 1)	/* divide by 250	*/
+#define SPEED_TMR2_PS	(250 - 1)	/* divide by 250	*/
 
 /*-----------------------------------------------------------------------
  * Timer value for PIT

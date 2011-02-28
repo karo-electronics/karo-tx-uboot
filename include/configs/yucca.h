@@ -38,245 +38,162 @@
 #define CONFIG_440			1	/* ... PPC440 family	*/
 #define CONFIG_440SPE			1	/* Specifc SPe support	*/
 #define CONFIG_BOARD_EARLY_INIT_F	1	/* Call board_pre_init	*/
-#undef	CFG_DRAM_TEST				/* Disable-takes long time */
 #define CONFIG_SYS_CLK_FREQ	33333333	/* external freq to pll	*/
 #define EXTCLK_33_33		33333333
 #define EXTCLK_66_66		66666666
 #define EXTCLK_50		50000000
 #define EXTCLK_83		83333333
 
-#define	CONFIG_IBM_EMAC4_V4		1
-#define	CONFIG_MISC_INIT_F		1	/* Use misc_init_f()	*/
+/*
+ * Include common defines/options for all AMCC eval boards
+ */
+#define CONFIG_HOSTNAME		yucca
+#include "amcc-common.h"
+
+#define	CONFIG_MISC_INIT_F	1	/* Use misc_init_f()		*/
 #undef  CONFIG_SHOW_BOOT_PROGRESS
 #undef  CONFIG_STRESS
-#undef  ENABLE_ECC
+
 /*-----------------------------------------------------------------------
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  *----------------------------------------------------------------------*/
-#define CFG_SDRAM_BASE		0x00000000	/* _must_ be 0		*/
-#define CFG_FLASH_BASE		0xfff00000	/* start of FLASH	*/
-#define CFG_MONITOR_BASE	0xfffb0000	/* start of monitor	*/
-#define CFG_PERIPHERAL_BASE	0xa0000000	/* internal peripherals	*/
-#define CFG_ISRAM_BASE		0x90000000	/* internal SRAM	*/
+#define CONFIG_SYS_FLASH_BASE		0xfff00000	/* start of FLASH	*/
+#define CONFIG_SYS_PERIPHERAL_BASE	0xa0000000	/* internal peripherals	*/
+#define CONFIG_SYS_ISRAM_BASE		0x90000000	/* internal SRAM	*/
 
-#define CFG_PCI_MEMBASE		0x80000000	/* mapped PCI memory	*/
-#define CFG_PCI_BASE		0xd0000000	/* internal PCI regs	*/
-#define CFG_PCI_TARGBASE	CFG_PCI_MEMBASE
+#define CONFIG_SYS_PCI_MEMBASE		0x80000000	/* mapped PCI memory	*/
+#define CONFIG_SYS_PCI_BASE		0xd0000000	/* internal PCI regs	*/
+#define CONFIG_SYS_PCI_TARGBASE	CONFIG_SYS_PCI_MEMBASE
 
-#define CFG_PCIE_MEMBASE	0xb0000000	/* mapped PCIe memory	*/
-#define CFG_PCIE_MEMSIZE	0x01000000
-#define CFG_PCIE_BASE		0xe0000000	/* PCIe UTL regs */
+#define CONFIG_SYS_PCIE_MEMBASE	0xb0000000	/* mapped PCIe memory	*/
+#define CONFIG_SYS_PCIE_MEMSIZE	0x08000000	/* smallest incr for PCIe port */
+#define CONFIG_SYS_PCIE_BASE		0xe0000000	/* PCIe UTL regs */
 
-#define CFG_PCIE0_CFGBASE	0xc0000000
-#define CFG_PCIE0_XCFGBASE	0xc0000400
-#define CFG_PCIE1_CFGBASE	0xc0001000
-#define CFG_PCIE1_XCFGBASE	0xc0001400
-#define CFG_PCIE2_CFGBASE	0xc0002000
-#define CFG_PCIE2_XCFGBASE	0xc0002400
+#define CONFIG_SYS_PCIE0_CFGBASE	0xc0000000
+#define CONFIG_SYS_PCIE1_CFGBASE	0xc1000000
+#define CONFIG_SYS_PCIE2_CFGBASE	0xc2000000
+#define CONFIG_SYS_PCIE0_XCFGBASE	0xc3000000
+#define CONFIG_SYS_PCIE1_XCFGBASE	0xc3001000
+#define CONFIG_SYS_PCIE2_XCFGBASE	0xc3002000
+
+/* base address of inbound PCIe window */
+#define CONFIG_SYS_PCIE_INBOUND_BASE	0x0000000400000000ULL
 
 /* System RAM mapped to PCI space */
-#define CONFIG_PCI_SYS_MEM_BUS	CFG_SDRAM_BASE
-#define CONFIG_PCI_SYS_MEM_PHYS	CFG_SDRAM_BASE
+#define CONFIG_PCI_SYS_MEM_BUS	CONFIG_SYS_SDRAM_BASE
+#define CONFIG_PCI_SYS_MEM_PHYS	CONFIG_SYS_SDRAM_BASE
 #define CONFIG_PCI_SYS_MEM_SIZE	(1024 * 1024 * 1024)
 
-#define CFG_FPGA_BASE		0xe2000000	/* epld			*/
-#define CFG_OPER_FLASH		0xe7000000	/* SRAM - OPER Flash	*/
+#define CONFIG_SYS_FPGA_BASE		0xe2000000	/* epld			*/
+#define CONFIG_SYS_OPER_FLASH		0xe7000000	/* SRAM - OPER Flash	*/
 
-/* #define CFG_NVRAM_BASE_ADDR 0x08000000 */
+/* #define CONFIG_SYS_NVRAM_BASE_ADDR 0x08000000 */
 /*-----------------------------------------------------------------------
  * Initial RAM & stack pointer (placed in internal SRAM)
  *----------------------------------------------------------------------*/
-#define CFG_TEMP_STACK_OCM	1
-#define CFG_OCM_DATA_ADDR	CFG_ISRAM_BASE
-#define CFG_INIT_RAM_ADDR	CFG_ISRAM_BASE	/* Initial RAM address	*/
-#define CFG_INIT_RAM_END	0x2000		/* End of used area in RAM */
-#define CFG_GBL_DATA_SIZE	128		/* num bytes initial data */
+#define CONFIG_SYS_TEMP_STACK_OCM	1
+#define CONFIG_SYS_OCM_DATA_ADDR	CONFIG_SYS_ISRAM_BASE
+#define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_ISRAM_BASE	/* Initial RAM address	*/
+#define CONFIG_SYS_INIT_RAM_END	0x2000		/* End of used area in RAM */
+#define CONFIG_SYS_GBL_DATA_SIZE	128		/* num bytes initial data */
 
-#define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
-#define CFG_POST_WORD_ADDR	(CFG_GBL_DATA_OFFSET - 0x4)
-#define CFG_INIT_SP_OFFSET	CFG_POST_WORD_ADDR
-
-#define CFG_MONITOR_LEN		(320 * 1024)	/* Reserve 320 kB for Mon */
-#define CFG_MALLOC_LEN		(512 * 1024)	/* Reserve 512 kB for malloc */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
+#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_POST_WORD_ADDR
 
 /*-----------------------------------------------------------------------
  * Serial Port
  *----------------------------------------------------------------------*/
-#define CONFIG_SERIAL_MULTI	1
 #undef CONFIG_UART1_CONSOLE
 
 #undef	CONFIG_SERIAL_SOFTWARE_FIFO
-#undef CFG_EXT_SERIAL_CLOCK
-/* #define CFG_EXT_SERIAL_CLOCK	(1843200 * 6) */ /* Ext clk @ 11.059 MHz */
-
-#define CONFIG_BAUDRATE		115200
-
-#define CFG_BAUDRATE_TABLE  \
-	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200}
+#undef CONFIG_SYS_EXT_SERIAL_CLOCK
+/* #define CONFIG_SYS_EXT_SERIAL_CLOCK	(1843200 * 6) */ /* Ext clk @ 11.059 MHz */
 
 /*-----------------------------------------------------------------------
  * DDR SDRAM
  *----------------------------------------------------------------------*/
-#undef CONFIG_SPD_EEPROM		/* Use SPD EEPROM for setup	*/
-#define SPD_EEPROM_ADDRESS {0x53, 0x52}	/* SPD i2c spd addresses	*/
-#define IIC0_DIMM0_ADDR		0x53
-#define IIC0_DIMM1_ADDR		0x52
+#define CONFIG_SPD_EEPROM	1	/* Use SPD EEPROM for setup	*/
+#define SPD_EEPROM_ADDRESS	{0x53, 0x52}	/* SPD i2c spd addresses*/
+#define CONFIG_DDR_ECC		1	/* with ECC support		*/
 
 /*-----------------------------------------------------------------------
  * I2C
  *----------------------------------------------------------------------*/
-#define CONFIG_HARD_I2C		1	/* I2C with hardware support	*/
-#undef	CONFIG_SOFT_I2C			/* I2C bit-banged		*/
-#define CFG_I2C_SPEED		400000	/* I2C speed and slave address	*/
-#define CFG_I2C_SLAVE		0x7F
+#define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address	*/
 
 #define IIC0_BOOTPROM_ADDR	0x50
 #define IIC0_ALT_BOOTPROM_ADDR	0x54
 
 /* Don't probe these addrs */
-#define CFG_I2C_NOPROBES	{0x50, 0x52, 0x53, 0x54}
+#define CONFIG_SYS_I2C_NOPROBES	{0x50, 0x52, 0x53, 0x54}
 
-/* #if (CONFIG_COMMANDS & CFG_CMD_EEPROM) */
-/* #define CFG_I2C_EEPROM_ADDR	0x50 */	/* I2C boot EEPROM		*/
-#define CFG_I2C_EEPROM_ADDR_LEN	2	/* Bytes of address		*/
+/* #if defined(CONFIG_CMD_EEPROM) */
+/* #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50 */	/* I2C boot EEPROM		*/
+#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2	/* Bytes of address		*/
 /* #endif */
 
 /*-----------------------------------------------------------------------
  * Environment
  *----------------------------------------------------------------------*/
-/* #define CFG_NVRAM_SIZE	(0x2000 - 8) */	/* NVRAM size(8k)- RTC regs */
+/* #define CONFIG_SYS_NVRAM_SIZE	(0x2000 - 8) */	/* NVRAM size(8k)- RTC regs */
 
-#undef  CFG_ENV_IS_IN_NVRAM		/* ... not in NVRAM		*/
-#define	CFG_ENV_IS_IN_FLASH	1	/* Environment uses flash	*/
-#undef	CFG_ENV_IS_IN_EEPROM		/* ... not in EEPROM		*/
+#undef  CONFIG_ENV_IS_IN_NVRAM		/* ... not in NVRAM		*/
+#define	CONFIG_ENV_IS_IN_FLASH	1	/* Environment uses flash	*/
+#undef	CONFIG_ENV_IS_IN_EEPROM		/* ... not in EEPROM		*/
 #define CONFIG_ENV_OVERWRITE	1
 
-#define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
-	"echo"
-
-#undef	CONFIG_BOOTARGS
-
+/*
+ * Default environment variables
+ */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
-	"netdev=eth0\0"							\
-	"hostname=yucca\0"						\
-	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
-		"nfsroot=${serverip}:${rootpath}\0"			\
-	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
-	"addip=setenv bootargs ${bootargs} "				\
-		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
-		":${hostname}:${netdev}:off panic=1\0"			\
-	"addtty=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
-	"flash_nfs=run nfsargs addip addtty;"				\
-		"bootm ${kernel_addr}\0"				\
-	"flash_self=run ramargs addip addtty;"				\
-		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
-	"net_nfs=tftp 200000 ${bootfile};run nfsargs addip addtty;"     \
-		"bootm\0"						\
-	"rootpath=/opt/eldk/ppc_4xx\0"				\
-	"bootfile=yucca/uImage\0"					\
+	CONFIG_AMCC_DEF_ENV						\
+	CONFIG_AMCC_DEF_ENV_PPC						\
+	CONFIG_AMCC_DEF_ENV_NOR_UPD					\
 	"kernel_addr=E7F10000\0"					\
 	"ramdisk_addr=E7F20000\0"					\
-	"load=tftp 100000 yuca/u-boot.bin\0"				\
-	"update=protect off 2:4-7;era 2:4-7;"				\
-		"cp.b ${fileaddr} FFFB0000 ${filesize};"		\
-		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"pciconfighost=1\0"						\
+	"pcie_mode=RP:EP:EP\0"						\
 	""
-#define CONFIG_BOOTCOMMAND	"run flash_self"
 
-#define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds	*/
+/*
+ * Commands additional to the ones defined in amcc-common.h
+ */
+#define CONFIG_CMD_PCI
+#define CONFIG_CMD_SDRAM
 
-#define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
-#define CFG_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
-
-#define CONFIG_COMMANDS	       (CONFIG_CMD_DFL	| \
-				CFG_CMD_ASKENV	| \
-				CFG_CMD_EEPROM	| \
-				CFG_CMD_DHCP	| \
-				CFG_CMD_DIAG	| \
-				CFG_CMD_ELF	| \
-				CFG_CMD_I2C	| \
-				CFG_CMD_IRQ	| \
-				CFG_CMD_MII	| \
-				CFG_CMD_NET	| \
-				CFG_CMD_NFS	| \
-				CFG_CMD_PCI	| \
-				CFG_CMD_PING	| \
-				CFG_CMD_REGINFO	| \
-				CFG_CMD_SDRAM	)
-
-/* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
-#include <cmd_confdefs.h>
-
-#define CONFIG_MII		1	/* MII PHY management		*/
-#undef CONFIG_NET_MULTI
+#define	CONFIG_IBM_EMAC4_V4	1
 #define CONFIG_PHY_ADDR		1	/* PHY address, See schematics	*/
 #define CONFIG_HAS_ETH0
 #define CONFIG_PHY_RESET        1	/* reset phy upon startup	*/
 #define CONFIG_PHY_RESET_DELAY	1000
 #define CONFIG_CIS8201_PHY	1	/* Enable 'special' RGMII mode for Cicada phy */
 #define CONFIG_PHY_GIGE		1	/* Include GbE speed/duplex detection */
-#define CFG_RX_ETH_BUFFER	32	/* Number of ethernet rx buffers & descriptors */
-
-#define CONFIG_NETCONSOLE		/* include NetConsole support	*/
-#define CONFIG_NET_MULTI		/* needed for NetConsole	*/
-
-#undef CONFIG_WATCHDOG			/* watchdog disabled		*/
-
-/*
- * Miscellaneous configurable options
- */
-#define CFG_LONGHELP				/* undef to save memory		*/
-#define CFG_PROMPT		"=> "		/* Monitor Command Prompt	*/
-
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
-#define CFG_CBSIZE		1024		/* Console I/O Buffer Size	*/
-#else
-#define CFG_CBSIZE		256		/* Console I/O Buffer Size	*/
-#endif
-#define CFG_PBSIZE		(CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
-#define CFG_MAXARGS		16		/* max number of command args	*/
-#define CFG_BARGSIZE		CFG_CBSIZE	/* Boot Argument Buffer Size	*/
-
-#define CFG_MEMTEST_START	0x0400000	/* memtest works on		*/
-#define CFG_MEMTEST_END		0x0C00000	/* 4 ... 12 MB in DRAM		*/
-
-#define CFG_LOAD_ADDR		0x100000	/* default load address		*/
-#define CFG_EXTBDINFO		1		/* To use extended board_into (bd_t) */
-
-#define CFG_HZ			1000		/* decrementer freq: 1 ms ticks */
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
-#define CONFIG_LOOPW            1       /* enable loopw command         */
-#define CONFIG_MX_CYCLIC        1       /* enable mdc/mwc commands      */
-#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check for keypress on bootdelay==0 */
-#define CONFIG_VERSION_VARIABLE 1	/* include version env variable */
 
 /*-----------------------------------------------------------------------
  * FLASH related
  *----------------------------------------------------------------------*/
-#define CFG_MAX_FLASH_BANKS	3	/* number of banks		*/
-#define CFG_MAX_FLASH_SECT	256	/* sectors per device		*/
+#define CONFIG_SYS_MAX_FLASH_BANKS	3	/* number of banks		*/
+#define CONFIG_SYS_MAX_FLASH_SECT	256	/* sectors per device		*/
 
-#undef	CFG_FLASH_CHECKSUM
-#define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms) */
-#define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms) */
+#undef	CONFIG_SYS_FLASH_CHECKSUM
+#define CONFIG_SYS_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms) */
+#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms) */
 
-#define CFG_FLASH_ADDR0		0x5555
-#define CFG_FLASH_ADDR1		0x2aaa
-#define CFG_FLASH_WORD_SIZE	unsigned char
+#define CONFIG_SYS_FLASH_ADDR0		0x5555
+#define CONFIG_SYS_FLASH_ADDR1		0x2aaa
+#define CONFIG_SYS_FLASH_WORD_SIZE	unsigned char
 
-#define CFG_FLASH_2ND_16BIT_DEV	1	/* evb440SPe has 8 and 16bit device */
-#define CFG_FLASH_2ND_ADDR	0xe7c00000 /* evb440SPe has 8 and 16bit device*/
+#define CONFIG_SYS_FLASH_2ND_16BIT_DEV	1	/* evb440SPe has 8 and 16bit device */
+#define CONFIG_SYS_FLASH_2ND_ADDR	0xe7c00000 /* evb440SPe has 8 and 16bit device*/
 
-#ifdef CFG_ENV_IS_IN_FLASH
-#define CFG_ENV_SECT_SIZE	0x10000	/* size of one complete sector	*/
-#define CFG_ENV_ADDR		0xfffa0000
-/* #define CFG_ENV_ADDR		(CFG_MONITOR_BASE-CFG_ENV_SECT_SIZE) */
-#define CFG_ENV_SIZE		0x10000	/* Size of Environment vars	*/
-#endif /* CFG_ENV_IS_IN_FLASH */
+#ifdef CONFIG_ENV_IS_IN_FLASH
+#define CONFIG_ENV_SECT_SIZE	0x10000	/* size of one complete sector	*/
+#define CONFIG_ENV_ADDR		0xfffa0000
+/* #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE-CONFIG_ENV_SECT_SIZE) */
+#define CONFIG_ENV_SIZE		0x10000	/* Size of Environment vars	*/
+#endif /* CONFIG_ENV_IS_IN_FLASH */
 /*-----------------------------------------------------------------------
  * PCI stuff
  *-----------------------------------------------------------------------
@@ -285,50 +202,21 @@
 #define CONFIG_PCI			/* include pci support		*/
 #define CONFIG_PCI_PNP		1	/* do pci plug-and-play		*/
 #define CONFIG_PCI_SCAN_SHOW	1	/* show pci devices on startup	*/
-#undef CONFIG_PCI_CONFIG_HOST_BRIDGE
+#define CONFIG_PCI_CONFIG_HOST_BRIDGE
 
 /* Board-specific PCI */
-#define CFG_PCI_PRE_INIT	1	/* enable board pci_pre_init()	*/
-#define CFG_PCI_TARGET_INIT		/* let board init pci target    */
-#undef	CFG_PCI_MASTER_INIT
+#define CONFIG_SYS_PCI_TARGET_INIT		/* let board init pci target    */
+#undef	CONFIG_SYS_PCI_MASTER_INIT
 
-#define CFG_PCI_SUBSYS_VENDORID 0x1014	/* IBM				*/
-#define CFG_PCI_SUBSYS_DEVICEID 0xcafe	/* Whatever			*/
-/* #define CFG_PCI_SUBSYS_ID	CFG_PCI_SUBSYS_DEVICEID */
+#define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x1014	/* IBM				*/
+#define CONFIG_SYS_PCI_SUBSYS_DEVICEID 0xcafe	/* Whatever			*/
+/* #define CONFIG_SYS_PCI_SUBSYS_ID	CONFIG_SYS_PCI_SUBSYS_DEVICEID */
 
 /*
  *  NETWORK Support (PCI):
  */
 /* Support for Intel 82557/82559/82559ER chips. */
 #define CONFIG_EEPRO100
-
-/*
- * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
- * the maximum mapped by the Linux kernel during initialization.
- */
-#define CFG_BOOTMAPSZ		(8 << 20)	/*Initial Memory map for Linux*/
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		8192	/* For AMCC 405 CPUs		*/
-#define CFG_CACHELINE_SIZE	32	/* ...				*/
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value */
-#endif
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM	0x02		/* Software reboot */
-
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
-#define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
-#endif
 
 /* FB Divisor selection */
 #define FPGA_FB_DIV_6		6
@@ -530,7 +418,5 @@
 #define PERIOD_50_00MHZ		20000	/* 20ns */
 #define PERIOD_33_33MHZ		30000	/* 30ns */
 #define PERIOD_25_00MHZ		40000	/* 40ns */
-
-/*---------------------------------------------------------------------------*/
 
 #endif	/* __CONFIG_H */

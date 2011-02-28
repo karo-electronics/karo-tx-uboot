@@ -86,7 +86,7 @@ const iop_conf_t iop_conf_tab[4][32] = {
 		{   1,  0,  0,  1,  0,  0   },	/* PA03: VM ENABLE */
 		{   1,  0,  0,  0,  1,  0   },	/* PA02: VM DONE */
 		{   1,  0,  0,  1,  1,  0   },	/* PA01: VM INIT */
-		{   1,  0,  0,  1,  0,  0   } 	/* PA00: VM ~PROG */
+		{   1,  0,  0,  1,  0,  0   }	/* PA00: VM ~PROG */
 	},
 
 	/* Port B configuration */
@@ -255,7 +255,7 @@ uchar fs6377_regs[16] = {
 int
 board_postclk_init (void)
 {
-	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 
 	/*
 	 * Initialise the FS6377 clock chip
@@ -347,16 +347,16 @@ uint upmc_table[] = {
 int
 misc_init_f (void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8260_t *memctl = &immap->im_memctl;
 
 	printf ("UPMs:  ");
 
 	upmconfig (UPMB, upmb_table, sizeof upmb_table / sizeof upmb_table[0]);
-	memctl->memc_mbmr = CFG_MBMR;
+	memctl->memc_mbmr = CONFIG_SYS_MBMR;
 
 	upmconfig (UPMC, upmc_table, sizeof upmc_table / sizeof upmc_table[0]);
-	memctl->memc_mcmr = CFG_MCMR;
+	memctl->memc_mcmr = CONFIG_SYS_MCMR;
 
 	printf ("configured\n");
 	return (0);
@@ -364,13 +364,13 @@ misc_init_f (void)
 
 /* ------------------------------------------------------------------------- */
 
-long
+phys_size_t
 initdram (int board_type)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8260_t *memctl = &immap->im_memctl;
-	volatile uchar c = 0, *ramaddr = (uchar *) (CFG_SDRAM_BASE + 0x8);
-	ulong psdmr = CFG_PSDMR;
+	volatile uchar c = 0, *ramaddr = (uchar *) (CONFIG_SYS_SDRAM_BASE + 0x8);
+	ulong psdmr = CONFIG_SYS_PSDMR;
 	int i;
 
 	/*
@@ -390,11 +390,11 @@ initdram (int board_type)
 	 *  accessing the SDRAM with a single-byte transaction."
 	 *
 	 * The appropriate BRx/ORx registers have already been set when we
-	 * get here. The SDRAM can be accessed at the address CFG_SDRAM_BASE.
+	 * get here. The SDRAM can be accessed at the address CONFIG_SYS_SDRAM_BASE.
 	 */
 
-	memctl->memc_psrt = CFG_PSRT;
-	memctl->memc_mptpr = CFG_MPTPR;
+	memctl->memc_psrt = CONFIG_SYS_PSRT;
+	memctl->memc_mptpr = CONFIG_SYS_MPTPR;
 
 	memctl->memc_psdmr = psdmr | PSDMR_OP_PREA;
 	*ramaddr = c;
@@ -409,15 +409,15 @@ initdram (int board_type)
 	memctl->memc_psdmr = psdmr | PSDMR_OP_NORM | PSDMR_RFEN;
 	*ramaddr = c;
 
-	return (CFG_SDRAM_SIZE << 20);
+	return (CONFIG_SYS_SDRAM_SIZE << 20);
 }
 
 /* ------------------------------------------------------------------------- */
 /* miscellaneous initialisations after relocation into ram (misc_init_r)     */
-/* 									     */
+/*									     */
 /* loads the data in the main board and mezzanine board eeproms into	     */
 /* the hymod configuration struct stored in the board information area.	     */
-/* 									     */
+/*									     */
 /* if the contents of either eeprom is invalid, prompts for a serial	     */
 /* number (and an ethernet address if required) then fetches a file	     */
 /* containing information to be stored in the eeprom from the tftp server    */
@@ -517,18 +517,18 @@ last_stage_init (void)
 #ifdef CONFIG_SHOW_ACTIVITY
 void board_show_activity (ulong timebase)
 {
-#ifdef CFG_HYMOD_DBLEDS
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+#ifdef CONFIG_SYS_HYMOD_DBLEDS
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile iop8260_t *iop = &immr->im_ioport;
 	static int shift = 0;
 
-	if ((timestamp % CFG_HZ) == 0) {
+	if ((timestamp % CONFIG_SYS_HZ) == 0) {
 		if (++shift > 3)
 			shift = 0;
 		iop->iop_pdatd =
 				(iop->iop_pdatd & ~0x0f000000) | (1 << (24 + shift));
 	}
-#endif /* CFG_HYMOD_DBLEDS */
+#endif /* CONFIG_SYS_HYMOD_DBLEDS */
 }
 
 void show_activity(int arg)

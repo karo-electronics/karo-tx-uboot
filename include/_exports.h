@@ -1,3 +1,7 @@
+/*
+ * You do not need to use #ifdef around functions that may not exist
+ * in the final configuration (such as i2c).
+ */
 EXPORT_FUNC(get_version)
 EXPORT_FUNC(getc)
 EXPORT_FUNC(tstc)
@@ -14,8 +18,15 @@ EXPORT_FUNC(vprintf)
 EXPORT_FUNC(do_reset)
 EXPORT_FUNC(getenv)
 EXPORT_FUNC(setenv)
+EXPORT_FUNC(forceenv)
 EXPORT_FUNC(simple_strtoul)
-#if (CONFIG_COMMANDS & CFG_CMD_I2C)
+EXPORT_FUNC(simple_strtol)
+EXPORT_FUNC(strcmp)
 EXPORT_FUNC(i2c_write)
 EXPORT_FUNC(i2c_read)
-#endif	/* CFG_CMD_I2C */
+EXPORT_FUNC(spi_init)
+EXPORT_FUNC(spi_setup_slave)
+EXPORT_FUNC(spi_free_slave)
+EXPORT_FUNC(spi_claim_bus)
+EXPORT_FUNC(spi_release_bus)
+EXPORT_FUNC(spi_xfer)

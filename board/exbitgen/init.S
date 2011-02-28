@@ -1,4 +1,6 @@
 /*----------------------------------------------------------------------+
+ *       This source code is dual-licensed.  You may use it under the terms of
+ *       the GNU General Public License version 2, or under the license below.
  *
  *       This source code has been made available to you by IBM on an AS-IS
  *       basis.  Anyone receiving this source is licensed under IBM
@@ -184,11 +186,11 @@ ext_bus_cntlr_init:
 	ori	r3, r3, HW_ID_ADDR@l
 	lbz     r3,0x0000(r3)
 	cmpi	0, r3, 1          /* if (HW_ID==1) */
-	beq 	setup_h2evalboard /* then jump */
+	beq	setup_h2evalboard /* then jump */
 	cmpi	0, r3, 2          /* if (HW_ID==2) */
-	beq 	setup_genieboard  /* then jump */
+	beq	setup_genieboard  /* then jump */
 	cmpi	0, r3, 3          /* if (HW_ID==3) */
-	beq 	setup_genieboard  /* then jump */
+	beq	setup_genieboard  /* then jump */
 
 setup_genieboard:
 	/*--------------------------------------------------------------- */
@@ -265,7 +267,7 @@ setup_continue:
 	.globl  sdram_init
 
 sdram_init:
-#if CFG_MONITOR_BASE < CFG_FLASH_BASE
+#if CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE
 	blr
 #else
 	mflr	r31
@@ -402,7 +404,7 @@ sdram_init:
 	addi	r9, 0, 13	/* bit offset of addressing mode in configuration register  */
 	slw	r29, r29, r9	/*  */
 	or	r3, r29, r3	/* merge size code and addressing mode */
-	ori	r6, r3, CFG_SDRAM_BASE + 1 /* insert base address and enable bank */
+	ori	r6, r3, CONFIG_SYS_SDRAM_BASE + 1 /* insert base address and enable bank */
 
 	/* Calculate banksize r15 = (density << 22) / 2 */
 	/*--------------------------------------------- */

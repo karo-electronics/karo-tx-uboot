@@ -1,7 +1,7 @@
 /*
  * U-boot - linkage.h
  *
- * Copyright (c) 2005 blackfin.uclinux.org
+ * Copyright (c) 2005-2007 Analog Devices Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -18,8 +18,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ * MA 02110-1301 USA
  */
 
 #ifndef _LINUX_LINKAGE_H
@@ -51,10 +51,24 @@
 #define ALIGN			__ALIGN
 #define ALIGN_STR		__ALIGN_STR
 
-#define ENTRY(name) \
-	.globl SYMBOL_NAME(name); \
+#define LENTRY(name) \
 	ALIGN; \
 	SYMBOL_NAME_LABEL(name)
+
+#define ENTRY(name) \
+	.globl SYMBOL_NAME(name); \
+	LENTRY(name)
+#endif
+
+#ifndef END
+#define END(name) \
+	.size name, .-name
+#endif
+
+#ifndef ENDPROC
+#define ENDPROC(name) \
+	.type name, @function; \
+	END(name)
 #endif
 
 #endif

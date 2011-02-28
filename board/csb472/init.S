@@ -1,4 +1,6 @@
 /******************************************************************************
+ *   This source code is dual-licensed.  You may use it under the terms of the
+ *   GNU General Public License version 2, or under the license below.
  *
  *	 This source code has been made available to you by IBM on an AS-IS
  *	 basis.	 Anyone receiving this source is licensed under IBM
@@ -82,11 +84,11 @@ ext_bus_cntlr_init:
 	mflr	r3			/* get address of ..getAddr */
 
 	/* Calculate number of cache lines for this function */
-	addi	r4, 0, (((.Lfe0 - ..getAddr) / CFG_CACHELINE_SIZE) + 2)
+	addi	r4, 0, (((.Lfe0 - ..getAddr) / CONFIG_SYS_CACHELINE_SIZE) + 2)
 	mtctr	r4
 ..ebcloop:
 	icbt	r0, r3			/* prefetch cache line for addr in r3*/
-	addi	r3, r3, CFG_CACHELINE_SIZE /* move to next cache line */
+	addi	r3, r3, CONFIG_SYS_CACHELINE_SIZE /* move to next cache line */
 	bdnz	..ebcloop		/* continue for $CTR cache lines */
 
 	/********************************************************************

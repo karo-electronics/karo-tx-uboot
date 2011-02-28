@@ -27,6 +27,7 @@
 #include <common.h>
 #include <mpc5xxx.h>
 #include <pci.h>
+#include <netdev.h>
 
 #include "sdram.h"
 
@@ -36,7 +37,7 @@
 #include "mt48lc16m16a2-75.h"
 #endif
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	sdram_conf_t sdram_conf;
 
@@ -67,18 +68,18 @@ int checkboard (void)
 	puts ("Board: Total5100 ");
 #endif
 
-/*
- * Retrieve FPGA Revision.
- */
-printf ("(FPGA %08X)\n", *(vu_long *) (CFG_FPGA_BASE + 0x400));
+	/*
+	 * Retrieve FPGA Revision.
+	 */
+	printf ("(FPGA %08lX)\n", *(vu_long *) (CONFIG_SYS_FPGA_BASE + 0x400));
 
-/*
- * Take all peripherals in power-up mode.
- */
+	/*
+	 * Take all peripherals in power-up mode.
+	 */
 #if CONFIG_TOTAL5200_REV==2
-	*(vu_char *) (CFG_CPLD_BASE + 0x46) = 0x70;
+	*(vu_char *) (CONFIG_SYS_CPLD_BASE + 0x46) = 0x70;
 #else
-	*(vu_long *) (CFG_CPLD_BASE + 0x400) = 0x70;
+	*(vu_long *) (CONFIG_SYS_CPLD_BASE + 0x400) = 0x70;
 #endif
 
 	return 0;
@@ -109,7 +110,7 @@ void pci_init_board(void)
 }
 #endif
 
-#if defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_RESET)
 
 /* IRDA_1 aka PSC6_3 (pin C13) */
 #define GPIO_IRDA_1	0x20000000UL
@@ -118,7 +119,7 @@ void init_ide_reset (void)
 {
 	debug ("init_ide_reset\n");
 
-    	/* Configure IRDA_1 (PSC6_3) as GPIO output for ATA reset */
+	/* Configure IRDA_1 (PSC6_3) as GPIO output for ATA reset */
 	*(vu_long *) MPC5XXX_GPIO_ENABLE |= GPIO_IRDA_1;
 	*(vu_long *) MPC5XXX_GPIO_DIR    |= GPIO_IRDA_1;
 }
@@ -133,7 +134,7 @@ void ide_set_reset (int idereset)
 		*(vu_long *) MPC5XXX_GPIO_DATA_O |=  GPIO_IRDA_1;
 	}
 }
-#endif /* defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET) */
+#endif
 
 #ifdef CONFIG_VIDEO_SED13806
 #include <sed13806.h>
@@ -283,7 +284,7 @@ void video_get_info_str (int line_number, char *info)
 /* Returns  SED13806 base address. First thing called in the driver. */
 unsigned int board_video_init (void)
 {
-	return CFG_LCD_BASE;
+	return CONFIG_SYS_LCD_BASE;
 }
 
 /* Called after initializing the SED13806 and before clearing the screen. */
@@ -308,3 +309,9 @@ int board_get_height (void)
 }
 
 #endif /* CONFIG_VIDEO_SED13806 */
+
+int board_eth_init(bd_t *bis)
+{
+	cpu_eth_init(bis); /* Built in FEC comes first */
+	return pci_eth_init(bis);
+}

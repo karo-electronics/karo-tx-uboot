@@ -1,4 +1,6 @@
 /*
+ * (C) Copyright 2006-2007
+ * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -22,11 +24,14 @@
 #include <common.h>
 #include <ppc4xx.h>
 #include <asm/processor.h>
+#include <asm/io.h>
 #include <spd_sdram.h>
+#include <libfdt.h>
+#include <fdt_support.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-extern flash_info_t flash_info[CFG_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
+extern flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
 
 int board_early_init_f(void)
 {
@@ -38,24 +43,6 @@ int board_early_init_f(void)
 	mtdcr(ebccfga, xbcfg);
 	reg = mfdcr(ebccfgd);
 	mtdcr(ebccfgd, reg | 0x04000000);	/* Set ATC */
-
-	mtebc(pb0ap, 0x03017300);	/* FLASH/SRAM */
-	mtebc(pb0cr, 0xfc0da000);	/* BAS=0xfc0 64MB r/w 16-bit */
-
-	mtebc(pb1ap, 0x00000000);
-	mtebc(pb1cr, 0x00000000);
-
-	mtebc(pb2ap, 0x04814500);
-	/*CPLD*/ mtebc(pb2cr, 0x80018000);	/*BAS=0x800 1MB r/w 8-bit */
-
-	mtebc(pb3ap, 0x00000000);
-	mtebc(pb3cr, 0x00000000);
-
-	mtebc(pb4ap, 0x00000000);
-	mtebc(pb4cr, 0x00000000);
-
-	mtebc(pb5ap, 0x00000000);
-	mtebc(pb5cr, 0x00000000);
 
 	/*--------------------------------------------------------------------
 	 * Setup the GPIO pins
@@ -83,12 +70,14 @@ int board_early_init_f(void)
 	out32(GPIO1_TSRL, in32(GPIO1_TSRL) & ~0x0000ff00);
 	out32(GPIO1_ISR1L, in32(GPIO1_ISR1L) | 0x00005500);
 
+#ifdef CONFIG_440EP
 	/*setup USB 2.0 */
 	out32(GPIO1_TCR, in32(GPIO1_TCR) | 0xc0000000);
 	out32(GPIO1_OSRL, in32(GPIO1_OSRL) | 0x50000000);
 	out32(GPIO0_TCR, in32(GPIO0_TCR) | 0xf);
 	out32(GPIO0_OSRH, in32(GPIO0_OSRH) | 0xaa);
 	out32(GPIO0_ISR2H, in32(GPIO0_ISR2H) | 0x00000500);
+#endif
 
 	/*--------------------------------------------------------------------
 	 * Setup the interrupt controller polarities, triggers, etc.
@@ -118,16 +107,18 @@ int board_early_init_f(void)
 	mtsdr(sdr_pfc1, 0x00048000);	/* Pin function: UART0 has 4 pins */
 
 	/*clear tmrclk divisor */
-	*(unsigned char *)(CFG_BCSR_BASE | 0x04) = 0x00;
+	*(unsigned char *)(CONFIG_SYS_BCSR_BASE | 0x04) = 0x00;
 
 	/*enable ethernet */
-	*(unsigned char *)(CFG_BCSR_BASE | 0x08) = 0xf0;
+	*(unsigned char *)(CONFIG_SYS_BCSR_BASE | 0x08) = 0xf0;
 
+#ifdef CONFIG_440EP
 	/*enable usb 1.1 fs device and remove usb 2.0 reset */
-	*(unsigned char *)(CFG_BCSR_BASE | 0x09) = 0x00;
+	*(unsigned char *)(CONFIG_SYS_BCSR_BASE | 0x09) = 0x00;
+#endif
 
 	/*get rid of flash write protect */
-	*(unsigned char *)(CFG_BCSR_BASE | 0x07) = 0x00;
+	*(unsigned char *)(CONFIG_SYS_BCSR_BASE | 0x07) = 0x00;
 
 	return 0;
 }
@@ -176,7 +167,7 @@ int misc_init_r (void)
 
 	/* Monitor protection ON by default */
 	(void)flash_protect(FLAG_PROTECT_SET,
-			    -CFG_MONITOR_LEN,
+			    -CONFIG_SYS_MONITOR_LEN,
 			    0xffffffff,
 			    &flash_info[0]);
 
@@ -186,8 +177,19 @@ int misc_init_r (void)
 int checkboard(void)
 {
 	char *s = getenv("serial#");
+	u8 rev;
+	u8 val;
 
+#ifdef CONFIG_440EP
 	printf("Board: Yosemite - AMCC PPC440EP Evaluation Board");
+#else
+	printf("Board: Yellowstone - AMCC PPC440GR Evaluation Board");
+#endif
+
+	rev = in_8((void *)(CONFIG_SYS_BCSR_BASE + 0));
+	val = in_8((void *)(CONFIG_SYS_BCSR_BASE + 5)) & CONFIG_SYS_BCSR5_PCI66EN;
+	printf(", Rev. %X, PCI=%d MHz", rev, val ? 66 : 33);
+
 	if (s != NULL) {
 		puts(", serial# ");
 		puts(s);
@@ -198,7 +200,7 @@ int checkboard(void)
 }
 
 /*************************************************************************
- *  sdram_init -- doesn't use serial presence detect.
+ *  initdram -- doesn't use serial presence detect.
  *
  *  Assumes:    256 MB, ECC, non-registered
  *              PLB @ 133 MHz
@@ -279,7 +281,7 @@ void sdram_tr1_set(int ram_address, int* tr1_value)
 	*tr1_value = (first_good + last_bad) / 2;
 }
 
-void sdram_init(void)
+phys_size_t initdram(int board)
 {
 	register uint reg;
 	int tr1_bank1, tr1_bank2;
@@ -325,56 +327,10 @@ void sdram_init(void)
 
 	sdram_tr1_set(0x00000000, &tr1_bank1);
 	sdram_tr1_set(0x08000000, &tr1_bank2);
-	mtsdram(mem_tr1, (((tr1_bank1+tr1_bank2)/2) | 0x80800800) );
+	mtsdram(mem_tr1, (((tr1_bank1+tr1_bank2)/2) | 0x80800800));
+
+	return CONFIG_SYS_SDRAM_BANKS * (CONFIG_SYS_KBYTES_SDRAM * 1024);	/* return bytes */
 }
-
-/*************************************************************************
- *  long int initdram
- *
- ************************************************************************/
-long int initdram(int board)
-{
-	sdram_init();
-	return CFG_SDRAM_BANKS * (CFG_KBYTES_SDRAM * 1024);	/* return bytes */
-}
-
-#if defined(CFG_DRAM_TEST)
-int testdram(void)
-{
-	unsigned long *mem = (unsigned long *)0;
-	const unsigned long kend = (1024 / sizeof(unsigned long));
-	unsigned long k, n;
-
-	mtmsr(0);
-
-	for (k = 0; k < CFG_KBYTES_SDRAM;
-	     ++k, mem += (1024 / sizeof(unsigned long))) {
-		if ((k & 1023) == 0) {
-			printf("%3d MB\r", k / 1024);
-		}
-
-		memset(mem, 0xaaaaaaaa, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0xaaaaaaaa) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-
-		memset(mem, 0x55555555, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0x55555555) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-	}
-	printf("SDRAM test passes\n");
-	return 0;
-}
-#endif
 
 /*************************************************************************
  *  pci_pre_init
@@ -388,7 +344,7 @@ int testdram(void)
  *	certain pre-initialization actions.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT)
+#if defined(CONFIG_PCI)
 int pci_pre_init(struct pci_controller *hose)
 {
 	unsigned long addr;
@@ -429,7 +385,7 @@ int pci_pre_init(struct pci_controller *hose)
 
 	return 1;
 }
-#endif				/* defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT) */
+#endif	/* defined(CONFIG_PCI) */
 
 /*************************************************************************
  *  pci_target_init
@@ -439,7 +395,7 @@ int pci_pre_init(struct pci_controller *hose)
  *	may not be sufficient for a given board.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT)
+#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
 void pci_target_init(struct pci_controller *hose)
 {
 	/*--------------------------------------------------------------------------+
@@ -453,14 +409,14 @@ void pci_target_init(struct pci_controller *hose)
 	  | Make this region non-prefetchable.
 	  +--------------------------------------------------------------------------*/
 	out32r(PCIX0_PMM0MA, 0x00000000);	/* PMM0 Mask/Attribute - disabled b4 setting */
-	out32r(PCIX0_PMM0LA, CFG_PCI_MEMBASE);	/* PMM0 Local Address */
-	out32r(PCIX0_PMM0PCILA, CFG_PCI_MEMBASE);	/* PMM0 PCI Low Address */
+	out32r(PCIX0_PMM0LA, CONFIG_SYS_PCI_MEMBASE);	/* PMM0 Local Address */
+	out32r(PCIX0_PMM0PCILA, CONFIG_SYS_PCI_MEMBASE);	/* PMM0 PCI Low Address */
 	out32r(PCIX0_PMM0PCIHA, 0x00000000);	/* PMM0 PCI High Address */
 	out32r(PCIX0_PMM0MA, 0xE0000001);	/* 512M + No prefetching, and enable region */
 
 	out32r(PCIX0_PMM1MA, 0x00000000);	/* PMM0 Mask/Attribute - disabled b4 setting */
-	out32r(PCIX0_PMM1LA, CFG_PCI_MEMBASE2);	/* PMM0 Local Address */
-	out32r(PCIX0_PMM1PCILA, CFG_PCI_MEMBASE2);	/* PMM0 PCI Low Address */
+	out32r(PCIX0_PMM1LA, CONFIG_SYS_PCI_MEMBASE2);	/* PMM0 Local Address */
+	out32r(PCIX0_PMM1PCILA, CONFIG_SYS_PCI_MEMBASE2);	/* PMM0 PCI Low Address */
 	out32r(PCIX0_PMM1PCIHA, 0x00000000);	/* PMM0 PCI High Address */
 	out32r(PCIX0_PMM1MA, 0xE0000001);	/* 512M + No prefetching, and enable region */
 
@@ -475,8 +431,8 @@ void pci_target_init(struct pci_controller *hose)
 
 	/* Program the board's subsystem id/vendor id */
 	pci_write_config_word(0, PCI_SUBSYSTEM_VENDOR_ID,
-			      CFG_PCI_SUBSYS_VENDORID);
-	pci_write_config_word(0, PCI_SUBSYSTEM_ID, CFG_PCI_SUBSYS_ID);
+			      CONFIG_SYS_PCI_SUBSYS_VENDORID);
+	pci_write_config_word(0, PCI_SUBSYSTEM_ID, CONFIG_SYS_PCI_SUBSYS_ID);
 
 	/* Configure command register as bus master */
 	pci_write_config_word(0, PCI_COMMAND, PCI_COMMAND_MASTER);
@@ -490,13 +446,13 @@ void pci_target_init(struct pci_controller *hose)
 	pci_write_config_dword(0, PCI_BRDGOPT2, 0x00000101);
 
 }
-#endif				/* defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT) */
+#endif				/* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
 
 /*************************************************************************
  *  pci_master_init
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_MASTER_INIT)
+#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT)
 void pci_master_init(struct pci_controller *hose)
 {
 	unsigned short temp_short;
@@ -511,7 +467,7 @@ void pci_master_init(struct pci_controller *hose)
 			      temp_short | PCI_COMMAND_MASTER |
 			      PCI_COMMAND_MEMORY);
 }
-#endif				/* defined(CONFIG_PCI) && defined(CFG_PCI_MASTER_INIT) */
+#endif				/* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT) */
 
 /*************************************************************************
  *  is_pci_host
@@ -548,3 +504,9 @@ void hw_watchdog_reset(void)
 
 }
 #endif
+
+void board_reset(void)
+{
+	/* give reset to BCSR */
+	*(unsigned char *)(CONFIG_SYS_BCSR_BASE | 0x06) = 0x09;
+}

@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2003-2004
+ * (C) Copyright 2003-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * (C) Copyright 2004
@@ -30,9 +30,10 @@
 #include <common.h>
 #include <mpc5xxx.h>
 #include <pci.h>
+#include <asm/processor.h>
 #include <malloc.h>
 
-#ifndef CFG_RAMBOOT
+#ifndef CONFIG_SYS_RAMBOOT
 static void sdram_start (int hi_addr)
 {
 	long hi_addr_bit = hi_addr ? 0x01000000 : 0;
@@ -75,15 +76,16 @@ static void sdram_start (int hi_addr)
 
 /*
  * ATTENTION: Although partially referenced initdram does NOT make real use
- *	      use of CFG_SDRAM_BASE. The code does not work if CFG_SDRAM_BASE
+ *	      use of CONFIG_SYS_SDRAM_BASE. The code does not work if CONFIG_SYS_SDRAM_BASE
  *	      is something else than 0x00000000.
  */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	ulong dramsize = 0;
-#ifndef CFG_RAMBOOT
+#ifndef CONFIG_SYS_RAMBOOT
 	ulong test1, test2;
+	uint svr, pvr;
 
 	/* setup SDRAM chip selects */
 	*(vu_long *)MPC5XXX_SDRAM_CS0CFG = 0x0000001c; /* 512MB at 0x0 */
@@ -103,9 +105,9 @@ long int initdram (int board_type)
 
 	/* find RAM size using SDRAM CS0 only */
 	sdram_start(0);
-	test1 = get_ram_size((ulong *)CFG_SDRAM_BASE, 0x20000000);
+	test1 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x20000000);
 	sdram_start(1);
-	test2 = get_ram_size((ulong *)CFG_SDRAM_BASE, 0x20000000);
+	test2 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x20000000);
 	if (test1 > test2) {
 		sdram_start(0);
 		dramsize = test1;
@@ -127,7 +129,7 @@ long int initdram (int board_type)
 	}
 
 	*(vu_long *)MPC5XXX_SDRAM_CS1CFG = dramsize; /* disabled */
-#else /* CFG_RAMBOOT */
+#else /* CONFIG_SYS_RAMBOOT */
 
 	/* retrieve size of memory connected to SDRAM CS0 */
 	dramsize = *(vu_long *)MPC5XXX_SDRAM_CS0CFG & 0xFF;
@@ -145,7 +147,25 @@ long int initdram (int board_type)
 		dramsize2 = 0;
 	}
 
-#endif /* CFG_RAMBOOT */
+#endif /* CONFIG_SYS_RAMBOOT */
+
+	/*
+	 * On MPC5200B we need to set the special configuration delay in the
+	 * DDR controller. Please refer to Freescale's AN3221 "MPC5200B SDRAM
+	 * Initialization and Configuration", 3.3.1 SDelay--MBAR + 0x0190:
+	 *
+	 * "The SDelay should be written to a value of 0x00000004. It is
+	 * required to account for changes caused by normal wafer processing
+	 * parameters."
+	 */
+	svr = get_svr();
+	pvr = get_pvr();
+	if ((SVR_MJREV(svr) >= 2) &&
+	    (PVR_MAJ(pvr) == 1) && (PVR_MIN(pvr) == 4)) {
+
+		*(vu_long *)MPC5XXX_SDRAM_SDELAY = 0x04;
+		__asm__ volatile ("sync");
+	}
 
 /*	return dramsize + dramsize2; */
 	return dramsize;
@@ -173,13 +193,13 @@ struct kbd_data_t {
 
 struct kbd_data_t* get_keys (struct kbd_data_t *kbd_data)
 {
-	kbd_data->s1 = *((volatile uchar*)(CFG_STATUS1_BASE));
-	kbd_data->s2 = *((volatile uchar*)(CFG_STATUS2_BASE));
+	kbd_data->s1 = *((volatile uchar*)(CONFIG_SYS_STATUS1_BASE));
+	kbd_data->s2 = *((volatile uchar*)(CONFIG_SYS_STATUS2_BASE));
 
 	return kbd_data;
 }
 
-static int compare_magic (const struct kbd_data_t *kbd_data, uchar *str)
+static int compare_magic (const struct kbd_data_t *kbd_data, char *str)
 {
 	char s1 = str[0];
 	char s2;
@@ -222,11 +242,11 @@ static int compare_magic (const struct kbd_data_t *kbd_data, uchar *str)
 	return 0;
 }
 
-static uchar *key_match (const struct kbd_data_t *kbd_data)
+static char *key_match (const struct kbd_data_t *kbd_data)
 {
-	uchar magic[sizeof (kbd_magic_prefix) + 1];
-	uchar *suffix;
-	uchar *kbd_magic_keys;
+	char magic[sizeof (kbd_magic_prefix) + 1];
+	char *suffix;
+	char *kbd_magic_keys;
 
 	/*
 	 * The following string defines the characters that can be appended
@@ -247,7 +267,7 @@ static uchar *key_match (const struct kbd_data_t *kbd_data)
 		sprintf (magic, "%s%c", kbd_magic_prefix, *suffix);
 
 		if (compare_magic(kbd_data, getenv(magic)) == 0) {
-			uchar cmd_name[sizeof (kbd_command_prefix) + 1];
+			char cmd_name[sizeof (kbd_command_prefix) + 1];
 			char *cmd;
 
 			sprintf (cmd_name, "%s%c", kbd_command_prefix, *suffix);
@@ -267,7 +287,7 @@ int misc_init_r (void)
 #ifdef CONFIG_PREBOOT
 	struct kbd_data_t kbd_data;
 	/* Decode keys */
-	uchar *str = strdup (key_match (get_keys (&kbd_data)));
+	char *str = strdup (key_match (get_keys (&kbd_data)));
 	/* Set or delete definition */
 	setenv ("preboot", str);
 	free (str);
@@ -280,9 +300,9 @@ int board_early_init_r (void)
 {
 	*(vu_long *)MPC5XXX_BOOTCS_CFG &= ~0x1; /* clear RO */
 	*(vu_long *)MPC5XXX_BOOTCS_START =
-	*(vu_long *)MPC5XXX_CS0_START = START_REG(CFG_FLASH_BASE);
+	*(vu_long *)MPC5XXX_CS0_START = START_REG(CONFIG_SYS_FLASH_BASE);
 	*(vu_long *)MPC5XXX_BOOTCS_STOP =
-	*(vu_long *)MPC5XXX_CS0_STOP = STOP_REG(CFG_FLASH_BASE, CFG_FLASH_SIZE);
+	*(vu_long *)MPC5XXX_CS0_STOP = STOP_REG(CONFIG_SYS_FLASH_BASE, CONFIG_SYS_FLASH_SIZE);
 	return 0;
 }
 #ifdef	CONFIG_PCI

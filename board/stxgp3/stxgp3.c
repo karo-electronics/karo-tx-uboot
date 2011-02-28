@@ -29,15 +29,15 @@
  */
 
 
-extern long int spd_sdram (void);
-
 #include <common.h>
 #include <pci.h>
 #include <asm/processor.h>
+#include <asm/mmu.h>
 #include <asm/immap_85xx.h>
+#include <asm/fsl_ddr_sdram.h>
 #include <ioports.h>
 #include <asm/io.h>
-#include <spd.h>
+#include <spd_sdram.h>
 #include <miiphy.h>
 
 long int fixed_sdram (void);
@@ -203,8 +203,7 @@ int
 board_early_init_f(void)
 {
 #if defined(CONFIG_PCI)
-    volatile immap_t *immr = (immap_t *)CFG_IMMR;
-    volatile ccsr_pcix_t *pci = &immr->im_pcix;
+    volatile ccsr_pcix_t *pci = (void *)(CONFIG_SYS_MPC85xx_PCIX_ADDR);
 
     pci->peer &= 0xfffffffdf; /* disable master abort */
 #endif
@@ -216,7 +215,7 @@ reset_phy(void)
 {
 	volatile uint *blatch;
 
-	blatch = (volatile uint *)CFG_LBC_LCLDEVS_BASE;
+	blatch = (volatile uint *)CONFIG_SYS_LBC_LCLDEVS_BASE;
 
 	/* reset Giga bit Ethernet port if needed here */
 
@@ -268,7 +267,7 @@ show_activity(int flag)
 	if (next_led_update > get_ticks())
 		return;
 
-	blatch = (volatile uint *)CFG_LBC_LCLDEVS_BASE;
+	blatch = (volatile uint *)CONFIG_SYS_LBC_LCLDEVS_BASE;
 
 	led_bit >>= 1;
 	if (led_bit == 0)
@@ -278,16 +277,14 @@ show_activity(int flag)
 	next_led_update += (get_tbclk() / 4);
 }
 
-long int
+phys_size_t
 initdram (int board_type)
 {
 	long dram_size = 0;
-	extern long spd_sdram (void);
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
 
 #if defined(CONFIG_DDR_DLL)
 	{
-		volatile ccsr_gur_t *gur= &immap->im_gur;
+		volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 		uint temp_ddrdll = 0;
 
 		/* Work around to stabilize DDR DLL */
@@ -297,7 +294,9 @@ initdram (int board_type)
 	}
 #endif
 
-	dram_size = spd_sdram ();
+	dram_size = fsl_ddr_sdram();
+	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
+	dram_size *= 0x100000;
 
 #if defined(CONFIG_DDR_ECC)
 	/* Initialize and enable DDR ECC.
@@ -309,11 +308,11 @@ initdram (int board_type)
 }
 
 
-#if defined(CFG_DRAM_TEST)
+#if defined(CONFIG_SYS_DRAM_TEST)
 int testdram (void)
 {
-	uint *pstart = (uint *) CFG_MEMTEST_START;
-	uint *pend = (uint *) CFG_MEMTEST_END;
+	uint *pstart = (uint *) CONFIG_SYS_MEMTEST_START;
+	uint *pend = (uint *) CONFIG_SYS_MEMTEST_END;
 	uint *p;
 
 	printf("SDRAM test phase 1:\n");

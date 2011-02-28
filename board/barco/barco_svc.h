@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1.1.1  2007-03-09 09:43:18  lothar
- * imported U-Boot 1.1.6
+ * Revision 1.1.1.2  2011-02-28 14:37:44  lothar
+ * imported U-Boot Release 2009.08 from Freescale BSP L2.6.31_10.08.01
  *
  * Revision 1.2  2005/02/21 12:48:58  mleeman
  * update of copyright years (feedback wd)
@@ -41,16 +41,16 @@
 #include <asm/io.h>
 
 /* Defines for the barcohydra board */
-#ifndef CFG_FLASH_ERASE_SECTOR_LENGTH
-#define CFG_FLASH_ERASE_SECTOR_LENGTH (0x10000)
+#ifndef CONFIG_SYS_FLASH_ERASE_SECTOR_LENGTH
+#define CONFIG_SYS_FLASH_ERASE_SECTOR_LENGTH (0x10000)
 #endif
 
-#ifndef CFG_DEFAULT_KERNEL_ADDRESS
-#define CFG_DEFAULT_KERNEL_ADDRESS (CFG_FLASH_BASE + 0x30000)
+#ifndef CONFIG_SYS_DEFAULT_KERNEL_ADDRESS
+#define CONFIG_SYS_DEFAULT_KERNEL_ADDRESS (CONFIG_SYS_FLASH_BASE + 0x30000)
 #endif
 
-#ifndef CFG_WORKING_KERNEL_ADDRESS
-#define CFG_WORKING_KERNEL_ADDRESS (0xFFE00000)
+#ifndef CONFIG_SYS_WORKING_KERNEL_ADDRESS
+#define CONFIG_SYS_WORKING_KERNEL_ADDRESS (0xFFE00000)
 #endif
 
 
@@ -62,7 +62,7 @@ typedef struct SBootInfo {
 
 /* barcohydra.c */
 int checkboard(void);
-long int initdram(int board_type);
+phys_size_t initdram(int board_type);
 void pci_init_board(void);
 void check_flash(void);
 int write_flash(char *addr, char value);

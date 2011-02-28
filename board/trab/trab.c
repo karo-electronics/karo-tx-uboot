@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2002
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -30,7 +30,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CFG_BRIGHTNESS
+#ifdef CONFIG_SYS_BRIGHTNESS
 static void spi_init(void);
 static void wait_transmit_done(void);
 static void tsc2000_write(unsigned int page, unsigned int reg,
@@ -89,7 +89,7 @@ int board_init ()
 	gpio->PBCON = 0xaaaaaaaa;
 	gpio->PBUP  = 0xffff;
 	/* INPUT nCTS0 nRTS0 TXD[1] TXD[0] RXD[1] RXD[0]	*/
-	/*  00,    10,      10,      10,      10,      10,      10 	*/
+	/*  00,    10,      10,      10,      10,      10,      10	*/
 	gpio->PFCON = (2<<0) | (2<<2) | (2<<4) | (2<<6) | (2<<8) | (2<<10);
 #ifdef CONFIG_HWFLOW
 	/* do not pull up RXD0, RXD1, TXD0, TXD1, CTS0, RTS0 */
@@ -130,7 +130,7 @@ int board_init ()
 
 #ifdef CONFIG_DRIVER_S3C24X0_I2C
 	/* Configure I/O ports PG5 und PG6 for I2C */
- 	gpio->PGCON = (gpio->PGCON & 0x003c00) | 0x003c00;
+	gpio->PGCON = (gpio->PGCON & 0x003c00) | 0x003c00;
 #endif /* CONFIG_DRIVER_S3C24X0_I2C */
 
 	return 0;
@@ -199,7 +199,7 @@ int misc_init_r (void)
 		free (str);
 	}
 
-#ifdef CFG_BRIGHTNESS
+#ifdef CONFIG_SYS_BRIGHTNESS
 	tsc2000_set_brightness();
 #endif
 	return (0);
@@ -321,9 +321,9 @@ int do_kbd (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(
- 	kbd,	1,	1,	do_kbd,
- 	"kbd     - read keyboard status\n",
- 	NULL
+	kbd,	1,	1,	do_kbd,
+	"read keyboard status",
+	""
 );
 
 #ifdef CONFIG_MODEM_SUPPORT
@@ -333,7 +333,7 @@ static int key_pressed(void)
 }
 #endif	/* CONFIG_MODEM_SUPPORT */
 
-#ifdef CFG_BRIGHTNESS
+#ifdef CONFIG_SYS_BRIGHTNESS
 
 static inline void SET_CS_TOUCH(void)
 {
@@ -356,7 +356,7 @@ static void spi_init(void)
 	int i;
 
 	/* Configure I/O ports. */
- 	gpio->PDCON = (gpio->PDCON & 0xF3FFFF) | 0x040000;
+	gpio->PDCON = (gpio->PDCON & 0xF3FFFF) | 0x040000;
 	gpio->PGCON = (gpio->PGCON & 0x0F3FFF) | 0x008000;
 	gpio->PGCON = (gpio->PGCON & 0x0CFFFF) | 0x020000;
 	gpio->PGCON = (gpio->PGCON & 0x03FFFF) | 0x080000;
@@ -415,7 +415,7 @@ static void tsc2000_set_brightness(void)
 	i = getenv_r("brightness", tmp, sizeof(tmp));
 	br = (i > 0)
 		? (int) simple_strtoul (tmp, NULL, 10)
-		: CFG_BRIGHTNESS;
+		: CONFIG_SYS_BRIGHTNESS;
 
 	tsc2000_write(0, 0xb, br & 0xff);
 }

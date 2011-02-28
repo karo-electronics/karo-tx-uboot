@@ -27,6 +27,7 @@
 #include <common.h>
 #include <mpc5xxx.h>
 #include <pci.h>
+#include <asm/processor.h>
 
 /* Two MT48LC8M32B2 for 32 MB */
 /* #include "mt48lc8m32b2-6-7.h" */
@@ -43,9 +44,10 @@ DECLARE_GLOBAL_DATA_PTR;
 
 extern flash_info_t flash_info[];	/* FLASH chips info */
 
+extern int do_auto_update(void);
 ulong flash_get_size (ulong base, int banknum);
 
-#ifndef CFG_RAMBOOT
+#ifndef CONFIG_SYS_RAMBOOT
 static void sdram_start (int hi_addr)
 {
 	long hi_addr_bit = hi_addr ? 0x01000000 : 0;
@@ -90,15 +92,16 @@ static void sdram_start (int hi_addr)
 
 /*
  * ATTENTION: Although partially referenced initdram does NOT make real use
- *            use of CFG_SDRAM_BASE. The code does not work if CFG_SDRAM_BASE
- *            is something else than 0x00000000.
+ *	      use of CONFIG_SYS_SDRAM_BASE. The code does not work if CONFIG_SYS_SDRAM_BASE
+ *	      is something else than 0x00000000.
  */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	ulong dramsize = 0;
 	ulong dramsize2 = 0;
-#ifndef CFG_RAMBOOT
+	uint svr, pvr;
+#ifndef CONFIG_SYS_RAMBOOT
 	ulong test1, test2;
 
 	/* setup SDRAM chip selects */
@@ -119,9 +122,9 @@ long int initdram (int board_type)
 
 	/* find RAM size using SDRAM CS0 only */
 	sdram_start(0);
-	test1 = get_ram_size((long *)CFG_SDRAM_BASE, 0x80000000);
+	test1 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	sdram_start(1);
-	test2 = get_ram_size((long *)CFG_SDRAM_BASE, 0x80000000);
+	test2 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	if (test1 > test2) {
 		sdram_start(0);
 		dramsize = test1;
@@ -147,10 +150,10 @@ long int initdram (int board_type)
 	/* find RAM size using SDRAM CS1 only */
 	if (!dramsize)
 		sdram_start(0);
-	test2 = test1 = get_ram_size((long *)(CFG_SDRAM_BASE + dramsize), 0x80000000);
+	test2 = test1 = get_ram_size((long *)(CONFIG_SYS_SDRAM_BASE + dramsize), 0x80000000);
 	if (!dramsize) {
 		sdram_start(1);
-		test2 = get_ram_size((long *)(CFG_SDRAM_BASE + dramsize), 0x80000000);
+		test2 = get_ram_size((long *)(CONFIG_SYS_SDRAM_BASE + dramsize), 0x80000000);
 	}
 	if (test1 > test2) {
 		sdram_start(0);
@@ -172,7 +175,7 @@ long int initdram (int board_type)
 		*(vu_long *)MPC5XXX_SDRAM_CS1CFG = dramsize; /* disabled */
 	}
 
-#else /* CFG_RAMBOOT */
+#else /* CONFIG_SYS_RAMBOOT */
 
 	/* retrieve size of memory connected to SDRAM CS0 */
 	dramsize = *(vu_long *)MPC5XXX_SDRAM_CS0CFG & 0xFF;
@@ -190,7 +193,23 @@ long int initdram (int board_type)
 		dramsize2 = 0;
 	}
 
-#endif /* CFG_RAMBOOT */
+#endif /* CONFIG_SYS_RAMBOOT */
+
+	/*
+	 * On MPC5200B we need to set the special configuration delay in the
+	 * DDR controller. Please refer to Freescale's AN3221 "MPC5200B SDRAM
+	 * Initialization and Configuration", 3.3.1 SDelay--MBAR + 0x0190:
+	 *
+	 * "The SDelay should be written to a value of 0x00000004. It is
+	 * required to account for changes caused by normal wafer processing
+	 * parameters."
+	 */
+	svr = get_svr();
+	pvr = get_pvr();
+	if ((SVR_MJREV(svr) >= 2) && (PVR_MAJ(pvr) == 1) && (PVR_MIN(pvr) == 4)) {
+		*(vu_long *)MPC5XXX_SDRAM_SDELAY = 0x04;
+		__asm__ volatile ("sync");
+	}
 
 	return dramsize + dramsize2;
 }
@@ -218,7 +237,7 @@ int misc_init_r (void)
 	/*
 	 * Check if boot FLASH isn't max size
 	 */
-	if (gd->bd->bi_flashsize < (0 - CFG_FLASH_BASE)) {
+	if (gd->bd->bi_flashsize < (0 - CONFIG_SYS_FLASH_BASE)) {
 		/* adjust mapping */
 		*(vu_long *)MPC5XXX_BOOTCS_START = *(vu_long *)MPC5XXX_CS0_START =
 			START_REG(gd->bd->bi_flashstart);
@@ -228,31 +247,31 @@ int misc_init_r (void)
 		/*
 		 * Re-check to get correct base address
 		 */
-		flash_get_size(gd->bd->bi_flashstart, CFG_MAX_FLASH_BANKS - 1);
+		flash_get_size(gd->bd->bi_flashstart, CONFIG_SYS_MAX_FLASH_BANKS - 1);
 
 		/*
 		 * Re-do flash protection upon new addresses
 		 */
 		flash_protect (FLAG_PROTECT_CLEAR,
 			       gd->bd->bi_flashstart, 0xffffffff,
-			       &flash_info[CFG_MAX_FLASH_BANKS - 1]);
+			       &flash_info[CONFIG_SYS_MAX_FLASH_BANKS - 1]);
 
 		/* Monitor protection ON by default */
 		flash_protect (FLAG_PROTECT_SET,
-			       CFG_MONITOR_BASE, CFG_MONITOR_BASE + monitor_flash_len - 1,
-			       &flash_info[CFG_MAX_FLASH_BANKS - 1]);
+			       CONFIG_SYS_MONITOR_BASE, CONFIG_SYS_MONITOR_BASE + monitor_flash_len - 1,
+			       &flash_info[CONFIG_SYS_MAX_FLASH_BANKS - 1]);
 
 		/* Environment protection ON by default */
 		flash_protect (FLAG_PROTECT_SET,
-			       CFG_ENV_ADDR,
-			       CFG_ENV_ADDR + CFG_ENV_SECT_SIZE - 1,
-			       &flash_info[CFG_MAX_FLASH_BANKS - 1]);
+			       CONFIG_ENV_ADDR,
+			       CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE - 1,
+			       &flash_info[CONFIG_SYS_MAX_FLASH_BANKS - 1]);
 
 		/* Redundant environment protection ON by default */
 		flash_protect (FLAG_PROTECT_SET,
-			       CFG_ENV_ADDR_REDUND,
-			       CFG_ENV_ADDR_REDUND + CFG_ENV_SIZE_REDUND - 1,
-			       &flash_info[CFG_MAX_FLASH_BANKS - 1]);
+			       CONFIG_ENV_ADDR_REDUND,
+			       CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SECT_SIZE - 1,
+			       &flash_info[CONFIG_SYS_MAX_FLASH_BANKS - 1]);
 	}
 
 	if (gd->bd->bi_flashsize > (32 << 20)) {
@@ -271,6 +290,9 @@ int misc_init_r (void)
 		flash_info[0].sector_count = snum;
 	}
 
+#ifdef CONFIG_AUTO_UPDATE
+	do_auto_update();
+#endif
 	return (0);
 }
 
@@ -285,7 +307,7 @@ void pci_init_board(void)
 }
 #endif
 
-#if defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_RESET)
 
 void init_ide_reset (void)
 {
@@ -298,12 +320,11 @@ void ide_set_reset (int idereset)
 	debug ("ide_reset(%d)\n", idereset);
 
 }
-#endif /* defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET) */
+#endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
-extern void doc_probe (ulong physadr);
+#if defined(CONFIG_CMD_DOC)
 void doc_init (void)
 {
-	doc_probe (CFG_DOC_BASE);
+	doc_probe (CONFIG_SYS_DOC_BASE);
 }
 #endif

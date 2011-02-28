@@ -22,6 +22,8 @@
 #ifndef __ASM_AVR32_IO_H
 #define __ASM_AVR32_IO_H
 
+#include <asm/types.h>
+
 #ifdef __KERNEL__
 
 /*
@@ -71,22 +73,21 @@ extern void __readwrite_bug(const char *fn);
 #define inw(p)	({ unsigned int __v = __le16_to_cpu(__raw_readw(p)); __v; })
 #define inl(p)	({ unsigned int __v = __le32_to_cpu(__raw_readl(p)); __v; })
 
-#include <asm/addrspace.h>
-
-/* virt_to_phys will only work when address is in P1 or P2 */
-static __inline__ unsigned long virt_to_phys(volatile void *address)
-{
-	return PHYSADDR(address);
-}
-
-static __inline__ void * phys_to_virt(unsigned long address)
-{
-	return (void *)P1SEGADDR(address);
-}
-
-#define cached(addr) ((void *)P1SEGADDR(addr))
-#define uncached(addr) ((void *)P2SEGADDR(addr))
+#include <asm/arch/addrspace.h>
+/* Provides virt_to_phys, phys_to_virt, cached, uncached, map_physmem */
 
 #endif /* __KERNEL__ */
+
+static inline void sync(void)
+{
+}
+
+/*
+ * Take down a mapping set up by map_physmem().
+ */
+static inline void unmap_physmem(void *vaddr, unsigned long len)
+{
+
+}
 
 #endif /* __ASM_AVR32_IO_H */

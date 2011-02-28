@@ -10,6 +10,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <netdev.h>
 
 
 /* Define some MPC107 (memory controller) registers */
@@ -29,9 +30,9 @@ extern void _start_warm(void);
  * the SDRAM was already initialised by board_asm_init (see init.S) so we just
  * return the size of RAM.
  */
-long initdram( int board_type )
+phys_size_t initdram( int board_type )
 {
-    return CFG_SDRAM_SIZE;
+    return CONFIG_SYS_SDRAM_SIZE;
 }
 
 
@@ -101,4 +102,9 @@ void do_reset( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] )
 
 	/* Should never get here */
 	while(1);
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }

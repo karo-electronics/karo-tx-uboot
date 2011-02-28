@@ -27,6 +27,7 @@
 #include <common.h>
 #include <mpc824x.h>
 #include <pci.h>
+#include <netdev.h>
 
 int checkboard (void)
 {
@@ -38,14 +39,14 @@ int checkboard (void)
 
 }
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long size;
 	long new_bank0_end;
 	long mear1;
 	long emear1;
 
-	size = get_ram_size(CFG_SDRAM_BASE, CFG_MAX_RAM_SIZE);
+	size = get_ram_size(CONFIG_SYS_SDRAM_BASE, CONFIG_SYS_MAX_RAM_SIZE);
 
 	new_bank0_end = size - 1;
 	mear1 = mpc824x_mpc107_getreg(MEAR1);
@@ -82,7 +83,7 @@ static struct pci_config_table pci_a3000_config_table[] = {
 				       PCI_COMMAND_MEMORY |
 				       PCI_COMMAND_MASTER }},
 	{ PCI_ANY_ID, PCI_ANY_ID, PCI_ANY_ID,
-	  PCI_ANY_ID, 0x15, PCI_ANY_ID, 	/* PCI slot2 */
+	  PCI_ANY_ID, 0x15, PCI_ANY_ID,		/* PCI slot2 */
 	  pci_cfgfunc_config_device, { PCI_ENET2_IOADDR,
 				       PCI_ENET2_MEMADDR,
 				       PCI_COMMAND_IO |
@@ -108,4 +109,9 @@ struct pci_controller hose = {
 void pci_init_board(void)
 {
 	pci_mpc824x_init(&hose);
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }

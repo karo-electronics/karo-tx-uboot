@@ -26,7 +26,7 @@
 
 typedef struct {
 	char signature[4];
-	char serial_name[17]; 	/* "MIP405_1000xxxxx" */
+	char serial_name[17];	/* "MIP405_1000xxxxx" */
 	char eth_addr[21];	/* "00:60:C2:0a:00:00" */
 } backup_t;
 
@@ -37,9 +37,8 @@ void get_backup_values(backup_t *buf);
 #define BOOT_PCI	0x02
 #endif
 
-void show_stdio_dev(void);
 void check_env(void);
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
+#if defined(CONFIG_CMD_DOC)
 void doc_init (void);
 #endif
 

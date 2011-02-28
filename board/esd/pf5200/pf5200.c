@@ -32,6 +32,7 @@
 #include <mpc5xxx.h>
 #include <pci.h>
 #include <command.h>
+#include <netdev.h>
 
 #include "mt46v16m16-75.h"
 
@@ -80,11 +81,11 @@ static void sdram_start(int hi_addr)
 
 /*
  * ATTENTION: Although partially referenced initdram does NOT make real use
- *            use of CFG_SDRAM_BASE. The code does not work if CFG_SDRAM_BASE
+ *            use of CONFIG_SYS_SDRAM_BASE. The code does not work if CONFIG_SYS_SDRAM_BASE
  *            is something else than 0x00000000.
  */
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	ulong dramsize = 0;
 	ulong test1, test2;
@@ -105,9 +106,9 @@ long int initdram(int board_type)
 
 	/* find RAM size using SDRAM CS0 only */
 	sdram_start(0);
-	test1 = get_ram_size((long *) CFG_SDRAM_BASE, 0x80000000);
+	test1 = get_ram_size((long *) CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	sdram_start(1);
-	test2 = get_ram_size((long *) CFG_SDRAM_BASE, 0x80000000);
+	test2 = get_ram_size((long *) CONFIG_SYS_SDRAM_BASE, 0x80000000);
 
 	if (test1 > test2) {
 		sdram_start(0);
@@ -143,9 +144,9 @@ long int initdram(int board_type)
 #if 0
 	/* find RAM size using SDRAM CS1 only */
 	sdram_start(0);
-	get_ram_size((ulong *) (CFG_SDRAM_BASE + dramsize), 0x80000000);
+	get_ram_size((ulong *) (CONFIG_SYS_SDRAM_BASE + dramsize), 0x80000000);
 	sdram_start(1);
-	get_ram_size((ulong *) (CFG_SDRAM_BASE + dramsize), 0x80000000);
+	get_ram_size((ulong *) (CONFIG_SYS_SDRAM_BASE + dramsize), 0x80000000);
 	sdram_start(0);
 #endif
 	/* set SDRAM CS1 size according to the amount of RAM found */
@@ -179,10 +180,10 @@ void flash_afterinit(ulong size)
 		/* adjust mapping */
 		*(vu_long *) MPC5XXX_BOOTCS_START =
 		    *(vu_long *) MPC5XXX_CS0_START =
-		    START_REG(CFG_BOOTCS_START | size);
+		    START_REG(CONFIG_SYS_BOOTCS_START | size);
 		*(vu_long *) MPC5XXX_BOOTCS_STOP =
 		    *(vu_long *) MPC5XXX_CS0_STOP =
-		    STOP_REG(CFG_BOOTCS_START | size, size);
+		    STOP_REG(CONFIG_SYS_BOOTCS_START | size, size);
 	}
 }
 
@@ -191,15 +192,12 @@ static struct pci_controller hose;
 
 extern void pci_mpc5xxx_init(struct pci_controller *);
 
-void pci_init_board(void
-    ) {
+void pci_init_board(void) {
 	pci_mpc5xxx_init(&hose);
 }
 #endif
 
-#if defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET)
-
-#define GPIO_PSC1_4	0x01000000UL
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_RESET)
 
 void init_ide_reset(void)
 {
@@ -215,12 +213,12 @@ void ide_set_reset(int idereset)
 	debug("ide_reset(%d)\n", idereset);
 
 	if (idereset) {
-		*(vu_long *) MPC5XXX_WU_GPIO_DATA &= ~GPIO_PSC1_4;
+		*(vu_long *) MPC5XXX_WU_GPIO_DATA_O &= ~GPIO_PSC1_4;
 	} else {
-		*(vu_long *) MPC5XXX_WU_GPIO_DATA |= GPIO_PSC1_4;
+		*(vu_long *) MPC5XXX_WU_GPIO_DATA_O |= GPIO_PSC1_4;
 	}
 }
-#endif				/* defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET) */
+#endif
 
 #define MPC5XXX_SIMPLEIO_GPIO_ENABLE       (MPC5XXX_GPIO + 0x0004)
 #define MPC5XXX_SIMPLEIO_GPIO_DIR          (MPC5XXX_GPIO + 0x000C)
@@ -242,7 +240,7 @@ void init_power_switch(void)
 	debug("init_power_switch\n");
 
 	/* Configure GPIO_WU6 as GPIO output for ATA reset */
-	*(vu_long *) MPC5XXX_WU_GPIO_DATA |= GPIO_WU6;
+	*(vu_long *) MPC5XXX_WU_GPIO_DATA_O |= GPIO_WU6;
 	*(vu_long *) MPC5XXX_WU_GPIO_ENABLE |= GPIO_WU6;
 	*(vu_long *) MPC5XXX_WU_GPIO_DIR |= GPIO_WU6;
 	__asm__ volatile ("sync");
@@ -260,11 +258,16 @@ void init_power_switch(void)
 		*(vu_long *) MPC5XXX_SIMPLEIO_GPIO_DATA_OUTPUT |= GPIO_USB0;
 		__asm__ volatile ("sync");
 	}
-	*(vu_char *) CFG_CS1_START = 0x02;	/* Red Power LED on */
+	*(vu_char *) CONFIG_SYS_CS1_START = 0x02;	/* Red Power LED on */
 	__asm__ volatile ("sync");
 
-	*(vu_char *) (CFG_CS1_START + 1) = 0x02;	/* Disable driver for KB11 */
+	*(vu_char *) (CONFIG_SYS_CS1_START + 1) = 0x02;	/* Disable driver for KB11 */
 	__asm__ volatile ("sync");
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }
 
 void power_set_reset(int power)
@@ -272,10 +275,10 @@ void power_set_reset(int power)
 	debug("ide_set_reset(%d)\n", power);
 
 	if (power) {
-		*(vu_long *) MPC5XXX_WU_GPIO_DATA &= ~GPIO_WU6;
+		*(vu_long *) MPC5XXX_WU_GPIO_DATA_O &= ~GPIO_WU6;
 		*(vu_long *) MPC5XXX_INTERRUPT_GPIO_DATA_OUTPUT &= ~GPIO_USB9;
 	} else {
-		*(vu_long *) MPC5XXX_WU_GPIO_DATA |= GPIO_WU6;
+		*(vu_long *) MPC5XXX_WU_GPIO_DATA_O |= GPIO_WU6;
 		if ((*(vu_long *) MPC5XXX_INTERRUPT_GPIO_STATUS & GPIO_USB9S) ==
 		    0) {
 			*(vu_long *) MPC5XXX_SIMPLEIO_GPIO_DATA_OUTPUT |=
@@ -291,7 +294,7 @@ int do_poweroff(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	return (0);
 }
 
-U_BOOT_CMD(poweroff, 1, 1, do_poweroff, "poweroff- Switch off power\n", NULL);
+U_BOOT_CMD(poweroff, 1, 1, do_poweroff, "Switch off power", "");
 
 int phypower(int flag)
 {
@@ -335,7 +338,7 @@ int do_phypower(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(phypower, 2, 2, do_phypower,
-	   "phypower- Switch power of ethernet phy\n", NULL);
+	   "Switch power of ethernet phy", "");
 
 int do_writepci(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
@@ -366,5 +369,7 @@ int do_writepci(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(writepci, 3, 1, do_writepci,
-	   "writepci- Write some data to pcibus\n",
-	   "<addr> <size>\n" "        - Write some data to pcibus.\n");
+	"Write some data to pcibus",
+	"<addr> <size>\n"
+	""
+);

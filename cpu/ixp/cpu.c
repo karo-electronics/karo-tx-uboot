@@ -32,13 +32,13 @@
 
 #include <common.h>
 #include <command.h>
+#include <netdev.h>
 #include <asm/arch/ixp425.h>
+#include <asm/system.h>
 
 ulong loops_per_jiffy;
 
-#ifdef CONFIG_USE_IRQ
-DECLARE_GLOBAL_DATA_PTR;
-#endif
+static void cache_flush(void);
 
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo (void)
@@ -75,22 +75,6 @@ int print_cpuinfo (void)
 }
 #endif /* CONFIG_DISPLAY_CPUINFO */
 
-int cpu_init (void)
-{
-	/*
-	 * setup up stacks if necessary
-	 */
-#ifdef CONFIG_USE_IRQ
-	IRQ_STACK_START = _armboot_start - CFG_MALLOC_LEN - CFG_GBL_DATA_SIZE - 4;
-	FIQ_STACK_START = IRQ_STACK_START - CONFIG_STACKSIZE_IRQ;
-#endif
-
-#if (CONFIG_COMMANDS & CFG_CMD_PCI) || defined (CONFIG_PCI)
-	pci_init();
-#endif
-	return 0;
-}
-
 int cleanup_before_linux (void)
 {
 	/*
@@ -100,90 +84,24 @@ int cleanup_before_linux (void)
 	 * just disable everything that can disturb booting linux
 	 */
 
-	unsigned long i;
-
 	disable_interrupts ();
 
 	/* turn off I-cache */
-	asm ("mrc p15, 0, %0, c1, c0, 0":"=r" (i));
-	i &= ~0x1000;
-	asm ("mcr p15, 0, %0, c1, c0, 0": :"r" (i));
+	icache_disable();
+	dcache_disable();
 
 	/* flush I-cache */
+	cache_flush();
+
+	return 0;
+}
+
+/* flush I/D-cache */
+static void cache_flush (void)
+{
+	unsigned long i = 0;
+
 	asm ("mcr p15, 0, %0, c7, c5, 0": :"r" (i));
-
-	return (0);
-}
-
-int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
-{
-	printf ("resetting ...\n");
-
-	udelay (50000);				/* wait 50 ms */
-	disable_interrupts ();
-	reset_cpu (0);
-
-	/*NOTREACHED*/
-	return (0);
-}
-
-/* taken from blob */
-void icache_enable (void)
-{
-	register u32 i;
-
-	/* read control register */
-	asm ("mrc p15, 0, %0, c1, c0, 0":"=r" (i));
-
-	/* set i-cache */
-	i |= 0x1000;
-
-	/* write back to control register */
-	asm ("mcr p15, 0, %0, c1, c0, 0": :"r" (i));
-}
-
-void icache_disable (void)
-{
-	register u32 i;
-
-	/* read control register */
-	asm ("mrc p15, 0, %0, c1, c0, 0":"=r" (i));
-
-	/* clear i-cache */
-	i &= ~0x1000;
-
-	/* write back to control register */
-	asm ("mcr p15, 0, %0, c1, c0, 0": :"r" (i));
-
-	/* flush i-cache */
-	asm ("mcr p15, 0, %0, c7, c5, 0": :"r" (i));
-}
-
-int icache_status (void)
-{
-	register u32 i;
-
-	/* read control register */
-	asm ("mrc p15, 0, %0, c1, c0, 0":"=r" (i));
-
-	/* return bit */
-	return (i & 0x1000);
-}
-
-/* we will never enable dcache, because we have to setup MMU first */
-void dcache_enable (void)
-{
-	return;
-}
-
-void dcache_disable (void)
-{
-	return;
-}
-
-int dcache_status (void)
-{
-	return 0;					/* always off */
 }
 
 /* FIXME */
@@ -198,7 +116,7 @@ void pci_init(void)
 
 void bootcount_store (ulong a)
 {
-	volatile ulong *save_addr = (volatile ulong *)(CFG_BOOTCOUNT_ADDR);
+	volatile ulong *save_addr = (volatile ulong *)(CONFIG_SYS_BOOTCOUNT_ADDR);
 
 	save_addr[0] = a;
 	save_addr[1] = BOOTCOUNT_MAGIC;
@@ -206,7 +124,7 @@ void bootcount_store (ulong a)
 
 ulong bootcount_load (void)
 {
-	volatile ulong *save_addr = (volatile ulong *)(CFG_BOOTCOUNT_ADDR);
+	volatile ulong *save_addr = (volatile ulong *)(CONFIG_SYS_BOOTCOUNT_ADDR);
 
 	if (save_addr[1] != BOOTCOUNT_MAGIC)
 		return 0;
@@ -215,3 +133,11 @@ ulong bootcount_load (void)
 }
 
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
+
+int cpu_eth_init(bd_t *bis)
+{
+#ifdef CONFIG_IXP4XX_NPE
+	npe_initialize(bis);
+#endif
+	return 0;
+}

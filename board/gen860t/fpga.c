@@ -34,7 +34,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if (CONFIG_FPGA)
+#if defined(CONFIG_FPGA)
 
 #if 0
 #define GEN860T_FPGA_DEBUG
@@ -161,7 +161,7 @@ int test_fpga_ibtr (void)
  */
 void fpga_reset (int assert)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 
 	PRINTF ("%s:%d: RESET ", __FUNCTION__, __LINE__);
 	if (assert) {
@@ -210,7 +210,7 @@ int gen860t_init_fpga (void)
  */
 int fpga_pgm_fn (int assert, int flush, int cookie)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 
 	PRINTF ("%s:%d: FPGA PROGRAM ", __FUNCTION__, __LINE__);
 
@@ -233,7 +233,7 @@ int fpga_pgm_fn (int assert, int flush, int cookie)
  */
 int fpga_init_fn (int cookie)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 
 	PRINTF ("%s:%d: INIT check... ", __FUNCTION__, __LINE__);
 	if (immap->im_cpm.cp_pbdat & (0x80000000 >> FPGA_INIT_BIT_NUM)) {
@@ -251,7 +251,7 @@ int fpga_init_fn (int cookie)
  */
 int fpga_done_fn (int cookie)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 
 	PRINTF ("%s:%d: DONE check... ", __FUNCTION__, __LINE__);
 	if (immap->im_cpm.cp_pbdat & (0x80000000 >> FPGA_DONE_BIT_NUM)) {
@@ -376,5 +376,3 @@ int fpga_busy_fn (int cookie)
 	return 0;
 }
 #endif
-
-/* vim: set ts=4 tw=78 sw=4: */

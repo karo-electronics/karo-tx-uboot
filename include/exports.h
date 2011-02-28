@@ -22,11 +22,18 @@ void vprintf(const char *, va_list);
 void do_reset (void);
 unsigned long simple_strtoul(const char *cp,char **endp,unsigned int base);
 char *getenv (char *name);
-void setenv (char *varname, char *varvalue);
-#if (CONFIG_COMMANDS & CFG_CMD_I2C)
+int setenv (char *varname, char *varvalue);
+long simple_strtol(const char *cp,char **endp,unsigned int base);
+int strcmp(const char * cs,const char * ct);
+int ustrtoul(const char *cp, char **endp, unsigned int base);
+#ifdef CONFIG_HAS_UID
+void forceenv (char *varname, char *varvalue);
+#endif
+#if defined(CONFIG_CMD_I2C)
 int i2c_write (uchar, uint, int , uchar* , int);
 int i2c_read (uchar, uint, int , uchar* , int);
-#endif	/* CFG_CMD_I2C */
+#endif
+#include <spi.h>
 
 void app_startup(char **);
 
@@ -40,7 +47,7 @@ enum {
 	XF_MAX
 };
 
-#define XF_VERSION	3
+#define XF_VERSION	5
 
 #if defined(CONFIG_I386)
 extern gd_t *global_data;

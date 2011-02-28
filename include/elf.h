@@ -33,20 +33,7 @@
 #ifndef _ELF_H
 #define _ELF_H
 
-#if defined(__BEOS__)	 || \
-    defined(__NetBSD__)  || \
-    defined(__FreeBSD__) || \
-    defined(__sun__)	 || \
-    defined(__APPLE__)
-#include <inttypes.h>
-#elif defined(__linux__) && defined(USE_HOSTCC)
-#include <stdint.h>
-#elif defined(__WIN32__)
-#include <unistd.h>
-typedef 	 unsigned char	 uint8_t;
-typedef 	 unsigned short  uint16_t;
-typedef 	 unsigned int	 uint32_t;
-#endif
+#include "compiler.h"
 
 /*
  *  This version doesn't work for 64-bit ABIs - Erik.
@@ -415,7 +402,7 @@ typedef struct
 /* Extract relocation info - r_info */
 #define ELF32_R_SYM(i)		((i) >> 8)
 #define ELF32_R_TYPE(i)		((unsigned char) (i))
-#define ELF32_R_INFO(s,t) 	(((s) << 8) + (unsigned char)(t))
+#define ELF32_R_INFO(s,t)	(((s) << 8) + (unsigned char)(t))
 
 /* Program Header */
 typedef struct {

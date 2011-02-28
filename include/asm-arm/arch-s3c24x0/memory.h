@@ -1,5 +1,5 @@
 /*
- * linux/include/asm-arm/arch-s3c2400/memory.h by gj@denx.de
+ * linux/include/asm-arm/arch-s3c2400/memory.h by garyj@denx.de
  * based on
  * linux/include/asm-arm/arch-sa1100/memory.h
  *
@@ -103,10 +103,10 @@ extern unsigned long __phys_to_virt(unsigned long ppage);
  * The nodes are matched with the physical memory bank addresses which are
  * incidentally the same as virtual addresses.
  *
- * 	node 0:  0xc0000000 - 0xc7ffffff
- * 	node 1:  0xc8000000 - 0xcfffffff
- * 	node 2:  0xd0000000 - 0xd7ffffff
- * 	node 3:  0xd8000000 - 0xdfffffff
+ *	node 0:  0xc0000000 - 0xc7ffffff
+ *	node 1:  0xc8000000 - 0xcfffffff
+ *	node 2:  0xd0000000 - 0xd7ffffff
+ *	node 3:  0xd8000000 - 0xdfffffff
  */
 
 #define NR_NODES	4

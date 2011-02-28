@@ -38,7 +38,7 @@
 
 typedef struct bd_info {
 	unsigned long	bi_memstart;	/* start of DRAM memory */
-	unsigned long	bi_memsize;	/* size	 of DRAM memory in bytes */
+	phys_size_t	bi_memsize;	/* size	 of DRAM memory in bytes */
 	unsigned long	bi_flashstart;	/* start of FLASH memory */
 	unsigned long	bi_flashsize;	/* size	 of FLASH memory */
 	unsigned long	bi_flashoffset; /* reserved area for startup monitor */
@@ -51,7 +51,7 @@ typedef struct bd_info {
 #if defined(CONFIG_MPC5xxx)
 	unsigned long	bi_mbar_base;	/* base of internal registers */
 #endif
-#if defined(CONFIG_MPC83XX)
+#if defined(CONFIG_MPC83xx)
 	unsigned long	bi_immrbar;
 #endif
 #if defined(CONFIG_MPC8220)
@@ -64,7 +64,7 @@ typedef struct bd_info {
 #endif
 	unsigned long	bi_bootflags;	/* boot / reboot flag (for LynxOS) */
 	unsigned long	bi_ip_addr;	/* IP Address */
-	unsigned char	bi_enetaddr[6];	/* Ethernet adress */
+	unsigned char	bi_enetaddr[6];	/* OLD: see README.enetaddr */
 	unsigned short	bi_ethspeed;	/* Ethernet speed in Mbps */
 	unsigned long	bi_intfreq;	/* Internal Freq, in MHz */
 	unsigned long	bi_busfreq;	/* Bus Freq, in MHz */
@@ -74,6 +74,9 @@ typedef struct bd_info {
 	unsigned long	bi_sccfreq;	/* SCC_CLK Freq, in MHz */
 	unsigned long	bi_vco;		/* VCO Out from PLL, in MHz */
 #endif
+#if defined(CONFIG_MPC512X)
+	unsigned long	bi_ipsfreq;	/* IPS Bus Freq, in MHz */
+#endif /* CONFIG_MPC512X */
 #if defined(CONFIG_MPC5xxx)
 	unsigned long	bi_ipbfreq;	/* IPB Bus Freq, in MHz */
 	unsigned long	bi_pcifreq;	/* PCI Bus Freq, in MHz */
@@ -83,6 +86,8 @@ typedef struct bd_info {
     defined(CONFIG_405GP) || \
     defined(CONFIG_405CR) || \
     defined(CONFIG_405EP) || \
+    defined(CONFIG_405EZ) || \
+    defined(CONFIG_405EX) || \
     defined(CONFIG_440)
 	unsigned char	bi_s_version[4];	/* Version of this structure */
 	unsigned char	bi_r_version[32];	/* Version of the ROM (AMCC) */
@@ -96,20 +101,26 @@ typedef struct bd_info {
 #endif
 
 #ifdef CONFIG_HAS_ETH1
-	/* second onboard ethernet port */
-	unsigned char   bi_enet1addr[6];
+	unsigned char   bi_enet1addr[6];	/* OLD: see README.enetaddr */
 #endif
 #ifdef CONFIG_HAS_ETH2
-	/* third onboard ethernet port */
-	unsigned char	bi_enet2addr[6];
+	unsigned char	bi_enet2addr[6];	/* OLD: see README.enetaddr */
 #endif
 #ifdef CONFIG_HAS_ETH3
-	unsigned char   bi_enet3addr[6];
+	unsigned char   bi_enet3addr[6];	/* OLD: see README.enetaddr */
+#endif
+#ifdef CONFIG_HAS_ETH4
+	unsigned char   bi_enet4addr[6];	/* OLD: see README.enetaddr */
+#endif
+#ifdef CONFIG_HAS_ETH5
+	unsigned char   bi_enet5addr[6];	/* OLD: see README.enetaddr */
 #endif
 
-#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || defined (CONFIG_440GX) || \
+#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || \
+    defined(CONFIG_405EZ) || defined(CONFIG_440GX) || \
     defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
-    defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT)
 	unsigned int	bi_opbfreq;		/* OPB clock in Hz */
 	int		bi_iic_fast[2];		/* Use fast i2c mode */
 #endif
@@ -117,15 +128,16 @@ typedef struct bd_info {
 	unsigned char	bi_sernum[8];
 #endif
 #if defined(CONFIG_4xx)
-#if defined(CONFIG_440GX)
-	int 		bi_phynum[4];           /* Determines phy mapping */
-	int 		bi_phymode[4];          /* Determines phy mode */
+#if defined(CONFIG_440GX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT)
+	int		bi_phynum[4];           /* Determines phy mapping */
+	int		bi_phymode[4];          /* Determines phy mode */
 #elif defined(CONFIG_405EP) || defined(CONFIG_440)
-	int 		bi_phynum[2];           /* Determines phy mapping */
-	int 		bi_phymode[2];          /* Determines phy mode */
+	int		bi_phynum[2];           /* Determines phy mapping */
+	int		bi_phymode[2];          /* Determines phy mode */
 #else
-	int 		bi_phynum[1];           /* Determines phy mapping */
-	int 		bi_phymode[1];          /* Determines phy mode */
+	int		bi_phynum[1];           /* Determines phy mapping */
+	int		bi_phymode[1];          /* Determines phy mode */
 #endif
 #endif /* defined(CONFIG_4xx) */
 } bd_t;

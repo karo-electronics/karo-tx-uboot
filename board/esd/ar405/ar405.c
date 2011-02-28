@@ -24,6 +24,7 @@
 #include <common.h>
 #include "ar405.h"
 #include <asm/processor.h>
+#include <asm/io.h>
 #include <command.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -137,18 +138,14 @@ int board_early_init_f (void)
 	mtdcr (uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
 	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
 
-	*(ushort *) 0xf03000ec = 0x0fff;	/* enable all interrupts in fpga */
+	out_be16((void *)0xf03000ec, 0x0fff); /* enable interrupts in fpga */
 
 	return 0;
 }
 
-
-/* ------------------------------------------------------------------------- */
-
 /*
  * Check Board Identity:
  */
-
 int checkboard (void)
 {
 	int index;
@@ -190,38 +187,17 @@ int checkboard (void)
 	return 0;
 }
 
-/* ------------------------------------------------------------------------- */
-
-long int initdram (int board_type)
-{
-	unsigned long val;
-
-	mtdcr(memcfga, mem_mb0cf);
-	val = mfdcr(memcfgd);
-
-	return (4*1024*1024 << ((val & 0x000e0000) >> 17));
-}
-
-/* ------------------------------------------------------------------------- */
-
-int testdram (void)
-{
-	/* TODO: XXX XXX XXX */
-	printf ("test: 16 MB - ok\n");
-
-	return (0);
-}
-
 
 #if 1 /* test-only: some internal test routines... */
+#define DIGEN	((void *)0xf03000b4) /* u8 */
+#define DIGOUT	((void *)0xf03000b0) /* u16 */
+#define DIGIN	((void *)0xf03000a0) /* u16 */
+
 /*
  * Some test routines
  */
 int do_digtest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-	volatile uchar *digen = (volatile uchar *)0xf03000b4;
-	volatile ushort *digout = (volatile ushort *)0xf03000b0;
-	volatile ushort *digin = (volatile ushort *)0xf03000a0;
 	int i;
 	int k;
 	int start;
@@ -238,7 +214,7 @@ int do_digtest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	/*
 	 * Enable digital outputs
 	 */
-	*digen = 0x08;
+	out_8(DIGEN, 0x08);
 
 	printf("\nStarting digital In-/Out Test from I/O %d to %d (Cntrl-C to abort)...\n",
 	       start, end);
@@ -248,12 +224,13 @@ int do_digtest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	for (;;) {
 		for (i=start; i<=end; i++) {
-			*digout = 0x0001 << i;
+			out_be16(DIGOUT, 0x0001 << i);
 			for (k=0; k<200; k++)
 				udelay(1000);
 
-			if (*digin != (0x0001 << i)) {
-				printf("ERROR: OUT=0x%04X, IN=0x%04X\n", 0x0001 << i, *digin);
+			if (in_be16(DIGIN) != (0x0001 << i)) {
+				printf("ERROR: OUT=0x%04X, IN=0x%04X\n",
+				       0x0001 << i, in_be16(DIGIN));
 				return 0;
 			}
 
@@ -269,21 +246,20 @@ int do_digtest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	digtest,	3,	1,	do_digtest,
-	"digtest - Test digital in-/output\n",
-	NULL
-	);
-
+	"Test digital in-/output",
+	""
+);
 
 #define ERROR_DELTA     256
 
 struct io {
-	volatile short val;
+	short val;
 	short dummy;
 };
 
 int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-	volatile short val;
+	short val;
 	int i;
 	int volt;
 	struct io *out;
@@ -296,9 +272,9 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	volt = 0;
 	printf("Setting Channel %d to %dV...\n", i, volt);
-	out[i].val = (volt * 0x7fff) / 10;
+	out_be16((void *)&(out[i].val), (volt * 0x7fff) / 10);
 	udelay(10000);
-	val = in[i*2].val;
+	val = in_be16((void *)&(in[i*2].val));
 	printf("-> InChannel %d: 0x%04x=%dV\n", i*2, val, (val * 4000) / 0x7fff);
 	if ((val < ((volt * 0x7fff) / 40) - ERROR_DELTA) ||
 	    (val > ((volt * 0x7fff) / 40) + ERROR_DELTA)) {
@@ -306,7 +282,7 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		       ((volt * 0x7fff) / 40) + ERROR_DELTA);
 		return -1;
 	}
-	val = in[i*2+1].val;
+	val = in_be16((void *)&(in[i*2+1].val));
 	printf("-> InChannel %d: 0x%04x=%dV\n", i*2+1, val, (val * 4000) / 0x7fff);
 	if ((val < ((volt * 0x7fff) / 40) - ERROR_DELTA) ||
 	    (val > ((volt * 0x7fff) / 40) + ERROR_DELTA)) {
@@ -317,9 +293,9 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	volt = 5;
 	printf("Setting Channel %d to %dV...\n", i, volt);
-	out[i].val = (volt * 0x7fff) / 10;
+	out_be16((void *)&(out[i].val), (volt * 0x7fff) / 10);
 	udelay(10000);
-	val = in[i*2].val;
+	val = in_be16((void *)&(in[i*2].val));
 	printf("-> InChannel %d: 0x%04x=%dV\n", i*2, val, (val * 4000) / 0x7fff);
 	if ((val < ((volt * 0x7fff) / 40) - ERROR_DELTA) ||
 	    (val > ((volt * 0x7fff) / 40) + ERROR_DELTA)) {
@@ -327,7 +303,7 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		       ((volt * 0x7fff) / 40) + ERROR_DELTA);
 		return -1;
 	}
-	val = in[i*2+1].val;
+	val = in_be16((void *)&(in[i*2+1].val));
 	printf("-> InChannel %d: 0x%04x=%dV\n", i*2+1, val, (val * 4000) / 0x7fff);
 	if ((val < ((volt * 0x7fff) / 40) - ERROR_DELTA) ||
 	    (val > ((volt * 0x7fff) / 40) + ERROR_DELTA)) {
@@ -338,9 +314,9 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	volt = 10;
 	printf("Setting Channel %d to %dV...\n", i, volt);
-	out[i].val = (volt * 0x7fff) / 10;
+	out_be16((void *)&(out[i].val), (volt * 0x7fff) / 10);
 	udelay(10000);
-	val = in[i*2].val;
+	val = in_be16((void *)&(in[i*2].val));
 	printf("-> InChannel %d: 0x%04x=%dV\n", i*2, val, (val * 4000) / 0x7fff);
 	if ((val < ((volt * 0x7fff) / 40) - ERROR_DELTA) ||
 	    (val > ((volt * 0x7fff) / 40) + ERROR_DELTA)) {
@@ -348,7 +324,7 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		       ((volt * 0x7fff) / 40) + ERROR_DELTA);
 		return -1;
 	}
-	val = in[i*2+1].val;
+	val = in_be16((void *)&(in[i*2+1].val));
 	printf("-> InChannel %d: 0x%04x=%dV\n", i*2+1, val, (val * 4000) / 0x7fff);
 	if ((val < ((volt * 0x7fff) / 40) - ERROR_DELTA) ||
 	    (val > ((volt * 0x7fff) / 40) + ERROR_DELTA)) {
@@ -363,37 +339,36 @@ int do_anatest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	anatest,	2,	1,	do_anatest,
-	"anatest - Test analog in-/output\n",
-	NULL
-	);
+	"Test analog in-/output",
+	""
+);
 
 
 int counter = 0;
 
 void cyclicInt(void *ptr)
 {
-	*(ushort *)0xf03000e8 = 0x0800; /* ack int */
+	out_be16((void *)0xf03000e8, 0x0800); /* ack int */
 	counter++;
 }
 
 
 int do_inctest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-	volatile uchar *digout = (volatile uchar *)0xf03000b4;
-	volatile ulong *incin;
+	ulong *incin;
 	int i;
 
-	incin = (volatile ulong *)0xf0300040;
+	incin = (ulong *)0xf0300040;
 
 	/*
 	 * Clear inc counter
 	 */
-	incin[0] = 0;
-	incin[1] = 0;
-	incin[2] = 0;
-	incin[3] = 0;
+	out_be32((void *)&incin[0], 0);
+	out_be32((void *)&incin[1], 0);
+	out_be32((void *)&incin[2], 0);
+	out_be32((void *)&incin[3], 0);
 
-	incin = (volatile ulong *)0xf0300050;
+	incin = (ulong *)0xf0300050;
 
 	/*
 	 * Inc a little
@@ -401,28 +376,29 @@ int do_inctest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	for (i=0; i<10000; i++) {
 		switch (i & 0x03) {
 		case 0:
-			*digout = 0x02;
+			out_8(DIGEN, 0x02);
 			break;
 		case 1:
-			*digout = 0x03;
+			out_8(DIGEN, 0x03);
 			break;
 		case 2:
-			*digout = 0x01;
+			out_8(DIGEN, 0x01);
 			break;
 		case 3:
-			*digout = 0x00;
+			out_8(DIGEN, 0x00);
 			break;
 		}
 		udelay(10);
 	}
 
-	printf("Inc 0 = %ld\n", incin[0]);
-	printf("Inc 1 = %ld\n", incin[1]);
-	printf("Inc 2 = %ld\n", incin[2]);
-	printf("Inc 3 = %ld\n", incin[3]);
+	printf("Inc 0 = %d\n", in_be32((void *)&incin[0]));
+	printf("Inc 1 = %d\n", in_be32((void *)&incin[1]));
+	printf("Inc 2 = %d\n", in_be32((void *)&incin[2]));
+	printf("Inc 3 = %d\n", in_be32((void *)&incin[3]));
 
-	*(ushort *)0xf03000e0 = 0x0c80-1; /* set counter */
-	*(ushort *)0xf03000ec |= 0x0800; /* enable int */
+	out_be16((void *)0xf03000e0, 0x0c80-1); /* set counter */
+	out_be16((void *)0xf03000ec,
+		 in_be16((void *)0xf03000ec) | 0x0800); /* enable int */
 	irq_install_handler (30, (interrupt_handler_t *) cyclicInt, NULL);
 	printf("counter=%d\n", counter);
 
@@ -430,7 +406,7 @@ int do_inctest(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	inctest,	3,	1,	do_inctest,
-	"inctest - Test incremental encoder inputs\n",
-	NULL
-	);
+	"Test incremental encoder inputs",
+	""
+);
 #endif

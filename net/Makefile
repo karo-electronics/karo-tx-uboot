@@ -23,12 +23,20 @@
 
 include $(TOPDIR)/config.mk
 
-# CFLAGS += -DET_DEBUG -DDEBUG
+# CFLAGS += -DDEBUG
 
 LIB	= $(obj)libnet.a
 
-COBJS	= net.o tftp.o bootp.o rarp.o eth.o nfs.o sntp.o
+COBJS-y += bootp.o
+COBJS-$(CONFIG_CMD_DNS)  += dns.o
+COBJS-y += eth.o
+COBJS-y += net.o
+COBJS-y += nfs.o
+COBJS-y += rarp.o
+COBJS-$(CONFIG_CMD_SNTP) += sntp.o
+COBJS-y += tftp.o
 
+COBJS	:= $(COBJS-y)
 SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 

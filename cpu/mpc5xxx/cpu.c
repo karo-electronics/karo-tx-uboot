@@ -28,8 +28,17 @@
 #include <common.h>
 #include <watchdog.h>
 #include <command.h>
+#include <net.h>
 #include <mpc5xxx.h>
+#include <netdev.h>
+#include <asm/io.h>
 #include <asm/processor.h>
+
+#if defined(CONFIG_OF_LIBFDT)
+#include <libfdt.h>
+#include <libfdt_env.h>
+#include <fdt_support.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -49,12 +58,16 @@ int checkcpu (void)
 #else
 	svr = get_svr();
 	pvr = get_pvr();
-	switch (SVR_VER (svr)) {
-	case SVR_MPC5200:
-		printf ("MPC5200");
+
+	switch (pvr) {
+	case PVR_5200:
+		printf("MPC5200");
+		break;
+	case PVR_5200B:
+		printf("MPC5200B");
 		break;
 	default:
-		printf ("MPC52??  (SVR %08x)", svr);
+		printf("Unknown MPC5xxx");
 		break;
 	}
 
@@ -102,3 +115,59 @@ unsigned long get_tbclk (void)
 }
 
 /* ------------------------------------------------------------------------- */
+
+#if defined(CONFIG_OF_LIBFDT) && defined (CONFIG_OF_BOARD_SETUP)
+void ft_cpu_setup(void *blob, bd_t *bd)
+{
+	int div = in_8((void*)CONFIG_SYS_MBAR + 0x204) & 0x0020 ? 8 : 4;
+	char * cpu_path = "/cpus/" OF_CPU;
+#ifdef CONFIG_MPC5xxx_FEC
+	uchar enetaddr[6];
+	char * eth_path = "/" OF_SOC "/ethernet@3000";
+#endif
+
+	do_fixup_by_path_u32(blob, cpu_path, "timebase-frequency", OF_TBCLK, 1);
+	do_fixup_by_path_u32(blob, cpu_path, "bus-frequency", bd->bi_busfreq, 1);
+	do_fixup_by_path_u32(blob, cpu_path, "clock-frequency", bd->bi_intfreq, 1);
+	do_fixup_by_path_u32(blob, "/" OF_SOC, "bus-frequency", bd->bi_ipbfreq, 1);
+	do_fixup_by_path_u32(blob, "/" OF_SOC, "system-frequency",
+				bd->bi_busfreq*div, 1);
+#ifdef CONFIG_MPC5xxx_FEC
+	eth_getenv_enetaddr("ethaddr", enetaddr);
+	do_fixup_by_path(blob, eth_path, "mac-address", enetaddr, 6, 0);
+	do_fixup_by_path(blob, eth_path, "local-mac-address", enetaddr, 6, 0);
+#endif
+}
+#endif
+
+#ifdef CONFIG_BOOTCOUNT_LIMIT
+
+void bootcount_store (ulong a)
+{
+	volatile ulong *save_addr = (volatile ulong *) (MPC5XXX_CDM_BRDCRMB);
+
+	*save_addr = (BOOTCOUNT_MAGIC & 0xffff0000) | a;
+}
+
+ulong bootcount_load (void)
+{
+	volatile ulong *save_addr = (volatile ulong *) (MPC5XXX_CDM_BRDCRMB);
+
+	if ((*save_addr & 0xffff0000) != (BOOTCOUNT_MAGIC & 0xffff0000))
+		return 0;
+	else
+		return (*save_addr & 0x0000ffff);
+}
+#endif /* CONFIG_BOOTCOUNT_LIMIT */
+
+#ifdef CONFIG_MPC5xxx_FEC
+/* Default initializations for FEC controllers.  To override,
+ * create a board-specific function called:
+ * 	int board_eth_init(bd_t *bis)
+ */
+
+int cpu_eth_init(bd_t *bis)
+{
+	return mpc5xxx_fec_initialize(bis);
+}
+#endif

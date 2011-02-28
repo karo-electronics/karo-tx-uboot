@@ -30,7 +30,7 @@
  * in lib_ppc/board.c to initialize the memory and return what I
  * found.
  */
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	/* Configure the SDRAMS */
 
@@ -151,7 +151,7 @@ int testdram (void)
 	/* Start memory test. */
 	printf ("test: %u MB - ", SDRAM_LEN / 1048576);
 
-	sdram = (unsigned long *) CFG_SDRAM_BASE;
+	sdram = (unsigned long *) CONFIG_SYS_SDRAM_BASE;
 
 	printf ("write - ");
 	for (idx = 2; idx < SDRAM_LEN / 4; idx += 2) {

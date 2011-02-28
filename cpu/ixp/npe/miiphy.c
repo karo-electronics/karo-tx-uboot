@@ -1,4 +1,6 @@
 /*-----------------------------------------------------------------------------+
+  |   This source code is dual-licensed.  You may use it under the terms of the
+  |   GNU General Public License version 2, or under the license below.
   |
   |	  This source code has been made available to you by IBM on an AS-IS
   |	  basis.  Anyone receiving this source is licensed under IBM
@@ -32,7 +34,7 @@
   |  Date	 Description of Change					     BY
   |  ---------	 ---------------------					     ---
   |  05-May-99	 Created						     MKW
-  |  01-Jul-99	 Changed clock setting of sta_reg from 66Mhz to 50Mhz to
+  |  01-Jul-99	 Changed clock setting of sta_reg from 66MHz to 50MHz to
   |		 better match OPB speed. Also modified delay times.	     JWB
   |  29-Jul-99	 Added Full duplex support				     MKW
   |  24-Aug-99	 Removed printf from dp83843_duplex()			     JWB

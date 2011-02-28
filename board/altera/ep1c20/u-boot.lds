@@ -34,8 +34,7 @@ SECTIONS
 	  *(.text)
 	  *(.text.*)
 	  *(.gnu.linkonce.t*)
-	  *(.rodata)
-	  *(.rodata.*)
+	  *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
 	  *(.gnu.linkonce.r*)
 	}
 	. = ALIGN (4);
@@ -87,7 +86,7 @@ SECTIONS
 	 * bss follows. We keep it adjacent to simplify init code.
 	 */
 	__bss_start = .;
-	.sbss :
+	.sbss (NOLOAD) :
 	{
 	  *(.sbss)
 	  *(.sbss.*)
@@ -95,7 +94,7 @@ SECTIONS
 	  *(.scommon)
 	}
 	. = ALIGN(4);
-	.bss :
+	.bss (NOLOAD) :
 	{
 	  *(.bss)
 	  *(.bss.*)

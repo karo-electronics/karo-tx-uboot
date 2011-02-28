@@ -34,7 +34,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * Board Special Commands: FPGA load/store, EEPROM erase
  */
 
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 
 #define LOAD_SUCCESS		0
 #define LOAD_FAIL_NOCONF	1
@@ -272,12 +272,12 @@ do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		break;
 	}
 
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 U_BOOT_CMD(
 	fpga,	6,	1,	do_fpga,
-	"fpga    - FPGA sub-system\n",
+	"FPGA sub-system",
 	"load [type] addr size\n"
 	"  - write the configuration data at memory address `addr',\n"
 	"    size `size' bytes, into the FPGA of type `type' (either\n"
@@ -297,14 +297,14 @@ U_BOOT_CMD(
 	"fpga info\n"
 	"  - print information about the Hymod FPGA, namely the\n"
 	"    memory addresses at which the four FPGA local bus\n"
-	"    address spaces appear in the physical address space\n"
+	"    address spaces appear in the physical address space"
 );
 /* ------------------------------------------------------------------------- */
 int
 do_eecl (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	uchar data[HYMOD_EEPROM_SIZE];
-	uint addr = CFG_I2C_EEPROM_ADDR;
+	uint addr = CONFIG_SYS_I2C_EEPROM_ADDR;
 
 	switch (argc) {
 
@@ -324,7 +324,7 @@ do_eecl (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		/* fall through ... */
 
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -336,11 +336,11 @@ do_eecl (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	eeclear,	1,	0,	do_eecl,
-	"eeclear - Clear the eeprom on a Hymod board \n",
+	"Clear the eeprom on a Hymod board",
 	"[type]\n"
 	"  - write zeroes into the EEPROM on the board of type `type'\n"
 	"    (`type' is either `main' or `mezz' - default `main')\n"
-	"    Note: the EEPROM write enable jumper must be installed\n"
+	"    Note: the EEPROM write enable jumper must be installed"
 );
 
 /* ------------------------------------------------------------------------- */
@@ -402,6 +402,4 @@ do_htest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
-#endif	/* CFG_CMD_BSP */
-
-/* ------------------------------------------------------------------------- */
+#endif

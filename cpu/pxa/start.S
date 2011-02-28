@@ -57,7 +57,7 @@ _fiq:			.word fiq
  * Startup Code (reset vector)
  *
  * do important init only if we don't start from RAM!
- * - relocate armboot to ram
+ * - relocate armboot to RAM
  * - setup stack
  * - jump to second stage
  */
@@ -90,7 +90,7 @@ IRQ_STACK_START:
 .globl FIQ_STACK_START
 FIQ_STACK_START:
 	.word 0x0badc0de
-#endif
+#endif /* CONFIG_USE_IRQ */
 
 
 /****************************************************************************/
@@ -100,18 +100,18 @@ FIQ_STACK_START:
 /****************************************************************************/
 
 reset:
-	mrs	r0,cpsr			/* set the cpu to SVC32 mode	    */
+	mrs	r0,cpsr			/* set the CPU to SVC32 mode	    */
 	bic	r0,r0,#0x1f		/* (superviser mode, M=10011)	    */
 	orr	r0,r0,#0x13
 	msr	cpsr,r0
 
 	/*
 	 * we do sys-critical inits only at reboot,
-	 * not when booting from ram!
+	 * not when booting from RAM!
 	 */
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
 	bl	cpu_init_crit		/* we do sys-critical inits	    */
-#endif
+#endif /* !CONFIG_SKIP_LOWLEVEL_INIT */
 
 #ifndef CONFIG_SKIP_RELOCATE_UBOOT
 relocate:				/* relocate U-Boot to RAM	    */
@@ -128,18 +128,18 @@ relocate:				/* relocate U-Boot to RAM	    */
 copy_loop:
 	ldmia	r0!, {r3-r10}		/* copy from source address [r0]    */
 	stmia	r1!, {r3-r10}		/* copy to   target address [r1]    */
-	cmp	r0, r2			/* until source end addreee [r2]    */
+	cmp	r0, r2			/* until source end address [r2]    */
 	ble	copy_loop
-#endif	/* CONFIG_SKIP_RELOCATE_UBOOT */
+#endif /* !CONFIG_SKIP_RELOCATE_UBOOT */
 
 	/* Set up the stack						    */
 stack_setup:
 	ldr	r0, _TEXT_BASE		/* upper 128 KiB: relocated uboot   */
-	sub	r0, r0, #CFG_MALLOC_LEN /* malloc area			    */
-	sub	r0, r0, #CFG_GBL_DATA_SIZE /* bdinfo			    */
+	sub	r0, r0, #CONFIG_SYS_MALLOC_LEN /* malloc area			    */
+	sub	r0, r0, #CONFIG_SYS_GBL_DATA_SIZE /* bdinfo			    */
 #ifdef CONFIG_USE_IRQ
 	sub	r0, r0, #(CONFIG_STACKSIZE_IRQ+CONFIG_STACKSIZE_FIQ)
-#endif
+#endif /* CONFIG_USE_IRQ */
 	sub	sp, r0, #12		/* leave 3 words for abort-stack    */
 
 clear_bss:
@@ -166,13 +166,13 @@ _start_armboot: .word start_armboot
 /*									    */
 /****************************************************************************/
 /* mk@tbd: Fix this! */
-#ifdef CONFIG_CPU_MONAHANS
+#undef RCSR
 #undef ICMR
 #undef OSMR3
 #undef OSCR
 #undef OWER
 #undef OIER
-#endif
+#undef CCCR
 
 /* Interrupt-Controller base address					    */
 IC_BASE:	   .word	   0x40d00000
@@ -191,20 +191,20 @@ OSTIMER_BASE:	.word	0x40a00000
 
 /* Clock Manager Registers						    */
 #ifdef CONFIG_CPU_MONAHANS
-# ifndef CFG_MONAHANS_RUN_MODE_OSC_RATIO
-#  error "You have to define CFG_MONAHANS_RUN_MODE_OSC_RATIO!!"
-# endif
-# ifndef CFG_MONAHANS_TURBO_RUN_MODE_RATIO
-#  define CFG_MONAHANS_TURBO_RUN_MODE_RATIO 0x1
-# endif
-#else /* ! CONFIG_CPU_MONAHANS */
-#ifdef CFG_CPUSPEED
+# ifndef CONFIG_SYS_MONAHANS_RUN_MODE_OSC_RATIO
+#  error "You have to define CONFIG_SYS_MONAHANS_RUN_MODE_OSC_RATIO!!"
+# endif /* !CONFIG_SYS_MONAHANS_RUN_MODE_OSC_RATIO */
+# ifndef CONFIG_SYS_MONAHANS_TURBO_RUN_MODE_RATIO
+#  define CONFIG_SYS_MONAHANS_TURBO_RUN_MODE_RATIO 0x1
+# endif /* !CONFIG_SYS_MONAHANS_TURBO_RUN_MODE_RATIO */
+#else /* !CONFIG_CPU_MONAHANS */
+#ifdef CONFIG_SYS_CPUSPEED
 CC_BASE:	.word	0x41300000
 #define CCCR	0x00
-cpuspeed:	.word	CFG_CPUSPEED
-#else
-#error "You have to define CFG_CPUSPEED!!"
-#endif
+cpuspeed:	.word	CONFIG_SYS_CPUSPEED
+#else /* !CONFIG_SYS_CPUSPEED */
+#error "You have to define CONFIG_SYS_CPUSPEED!!"
+#endif /* CONFIG_SYS_CPUSPEED */
 #endif /* CONFIG_CPU_MONAHANS */
 
 	/* takes care the CP15 update has taken place */
@@ -221,7 +221,7 @@ cpu_init_crit:
 	ldr	r0, IC_BASE
 	mov	r1, #0x00
 	str	r1, [r0, #ICMR]
-#else
+#else /* CONFIG_CPU_MONAHANS */
 	/* Step 1 - Enable CP6 permission */
 	mrc	p15, 0, r1, c15, c1, 0	@ read CPAR
 	orr	r1, r1, #0x40
@@ -240,15 +240,15 @@ cpu_init_crit:
 	ldr	r1, =CKENB
 	ldr	r2, =(CKENB_6_IRQ)
 	str	r2, [r1]
-#endif
+#endif /* !CONFIG_CPU_MONAHANS */
 
 	/* set clock speed */
 #ifdef CONFIG_CPU_MONAHANS
 	ldr	r0, =ACCR
-	ldr	r1, =(((CFG_MONAHANS_TURBO_RUN_MODE_RATIO<<8) & ACCR_XN_MASK) | (CFG_MONAHANS_RUN_MODE_OSC_RATIO & ACCR_XL_MASK))
+	ldr	r1, =(((CONFIG_SYS_MONAHANS_TURBO_RUN_MODE_RATIO<<8) & ACCR_XN_MASK) | (CONFIG_SYS_MONAHANS_RUN_MODE_OSC_RATIO & ACCR_XL_MASK))
 	str	r1, [r0]
-#else /* ! CONFIG_CPU_MONAHANS */
-#ifdef CFG_CPUSPEED
+#else /* !CONFIG_CPU_MONAHANS */
+#ifdef CONFIG_SYS_CPUSPEED
 	ldr	r0, CC_BASE
 	ldr	r1, cpuspeed
 	str	r1, [r0, #CCCR]
@@ -257,7 +257,7 @@ cpu_init_crit:
 
 setspeed_done:
 
-#endif /* CFG_CPUSPEED */
+#endif /* CONFIG_SYS_CPUSPEED */
 #endif /* CONFIG_CPU_MONAHANS */
 
 	/*
@@ -336,8 +336,8 @@ setspeed_done:
 	add	r8, sp, #S_PC
 
 	ldr	r2, _armboot_start
-	sub	r2, r2, #(CONFIG_STACKSIZE+CFG_MALLOC_LEN)
-	sub	r2, r2, #(CFG_GBL_DATA_SIZE+8)	@ set base 2 words into abort stack
+	sub	r2, r2, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
+	sub	r2, r2, #(CONFIG_SYS_GBL_DATA_SIZE+8)	@ set base 2 words into abort stack
 	ldmia	r2, {r2 - r4}			/* get pc, cpsr, old_r0	    */
 	add	r0, sp, #S_FRAME_SIZE		/* restore sp_SVC	    */
 
@@ -373,8 +373,8 @@ setspeed_done:
 
 	.macro get_bad_stack
 	ldr	r13, _armboot_start		@ setup our mode stack
-	sub	r13, r13, #(CONFIG_STACKSIZE+CFG_MALLOC_LEN)
-	sub	r13, r13, #(CFG_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
+	sub	r13, r13, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
+	sub	r13, r13, #(CONFIG_SYS_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
 
 	str	lr, [r13]			@ save caller lr / spsr
 	mrs	lr, spsr
@@ -447,7 +447,7 @@ fiq:
 	bl	do_fiq			/* effiction fiq_save_user_regs	    */
 	irq_restore_user_regs
 
-#else
+#else /* !CONFIG_USE_IRQ */
 
 	.align	5
 irq:
@@ -461,7 +461,7 @@ fiq:
 	bad_save_user_regs
 	bl	do_fiq
 
-#endif
+#endif /* CONFIG_USE_IRQ */
 
 /****************************************************************************/
 /*									    */
