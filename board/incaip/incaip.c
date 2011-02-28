@@ -23,31 +23,38 @@
 
 #include <common.h>
 #include <command.h>
+#include <netdev.h>
 #include <asm/addrspace.h>
 #include <asm/inca-ip.h>
-
+#include <asm/io.h>
+#include <asm/reboot.h>
 
 extern uint incaip_get_cpuclk(void);
+
+void _machine_restart(void)
+{
+	*INCA_IP_WDT_RST_REQ = 0x3f;
+}
 
 static ulong max_sdram_size(void)
 {
 	/* The only supported SDRAM data width is 16bit.
 	 */
-#define CFG_DW	2
+#define CONFIG_SYS_DW	2
 
 	/* The only supported number of SDRAM banks is 4.
 	 */
-#define CFG_NB	4
+#define CONFIG_SYS_NB	4
 
 	ulong cfgpb0 = *INCA_IP_SDRAM_MC_CFGPB0;
 	int   cols   = cfgpb0 & 0xF;
 	int   rows   = (cfgpb0 & 0xF0) >> 4;
-	ulong size   = (1 << (rows + cols)) * CFG_DW * CFG_NB;
+	ulong size   = (1 << (rows + cols)) * CONFIG_SYS_DW * CONFIG_SYS_NB;
 
 	return size;
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	int   rows, cols, best_val = *INCA_IP_SDRAM_MC_CFGPB0;
 	ulong size, max_size       = 0;
@@ -57,7 +64,7 @@ long int initdram(int board_type)
 
 		/* Can't probe for RAM size unless we are running from Flash.
 		 */
-	if (PHYSADDR(our_address) < PHYSADDR(PHYS_FLASH_1))
+	if (CPHYSADDR(our_address) < CPHYSADDR(PHYS_FLASH_1))
 	{
 		return max_sdram_size();
 	}
@@ -68,7 +75,7 @@ long int initdram(int board_type)
 		{
 			*INCA_IP_SDRAM_MC_CFGPB0 = (0x14 << 8) |
 			                           (rows << 4) | cols;
-			size = get_ram_size((long *)CFG_SDRAM_BASE,
+			size = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE,
 			                                     max_sdram_size());
 
 			if (size > max_size)
@@ -85,7 +92,6 @@ long int initdram(int board_type)
 
 int checkboard (void)
 {
-
 	unsigned long chipid = *INCA_IP_WDT_CHIPID;
 	int part_num;
 
@@ -107,5 +113,14 @@ int checkboard (void)
 
 	printf("CPU Speed %d MHz\n", incaip_get_cpuclk()/1000000);
 
+	set_io_port_base(0);
+
 	return 0;
 }
+
+#if defined(CONFIG_INCA_IP_SWITCH)
+int board_eth_init(bd_t *bis)
+{
+	return inca_switch_initialize(bis);
+}
+#endif

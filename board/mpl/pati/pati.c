@@ -46,7 +46,7 @@
 
 #include <common.h>
 #include <mpc5xx.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <pci_ids.h>
 #define PLX9056_LOC
 #include "plx9056.h"
@@ -149,7 +149,7 @@ extern void mem_test_reloc(void);
 /*
  * Get RAM size.
  */
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	unsigned char board_rev;
 	unsigned long reg;
@@ -224,7 +224,7 @@ long int initdram(int board_type)
 	/* rest standard operation programmed write burst length */
 	/* we have a x32 bit bus to the SDRAM, so shift the addr with 2 */
 	lmr<<=2;
-	in32(CFG_SDRAM_BASE + lmr);
+	in32(CONFIG_SYS_SDRAM_BASE + lmr);
 	/* ok, we're done, return SDRAM size */
 	return ((0x400000 << sdram_table[i].sz));		/* log2 value of 4MByte  */
 }
@@ -287,7 +287,7 @@ void show_pld_regs(void)
  ****************************************************************/
  void init_ios(void)
  {
-	volatile immap_t * immr = (immap_t *) CFG_IMMR;
+	volatile immap_t * immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile sysconf5xx_t *sysconf = &immr->im_siu_conf;
 	unsigned long reg;
 	reg=sysconf->sc_sgpiocr; /* Data direction register */
@@ -304,7 +304,7 @@ void show_pld_regs(void)
 
 void user_led0(int led_on)
 {
-	volatile immap_t * immr = (immap_t *) CFG_IMMR;
+	volatile immap_t * immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile sysconf5xx_t *sysconf = &immr->im_siu_conf;
 	unsigned long reg;
 	reg=sysconf->sc_sgpiodt2; /* Data register */
@@ -317,7 +317,7 @@ void user_led0(int led_on)
 
 void user_led1(int led_on)
 {
-	volatile immap_t * immr = (immap_t *) CFG_IMMR;
+	volatile immap_t * immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile sysconf5xx_t *sysconf = &immr->im_siu_conf;
 	unsigned long reg;
 	reg=sysconf->sc_sgpiodt2; /* Data register */
@@ -347,8 +347,8 @@ int last_stage_init (void)
 
 int checkboard (void)
 {
-	unsigned char s[50];
-	unsigned long reg;
+	char s[50];
+	ulong reg;
 	char rev;
 	int i;
 
@@ -370,7 +370,7 @@ int checkboard (void)
 }
 
 
-#ifdef CFG_PCI_CON_DEVICE
+#ifdef CONFIG_SYS_PCI_CON_DEVICE
 /************************************************************************
  * PCI Communication
  *
@@ -447,7 +447,7 @@ int checkboard (void)
 int recbuf[REC_BUFFER_SIZE];
 static int r_ptr = 0;
 int w_ptr;
-device_t pci_con_dev;
+struct stdio_dev pci_con_dev;
 int conn=0;
 int buff_full=0;
 
@@ -484,7 +484,7 @@ int pci_con_getc(void)
 	else
 		diff=r_ptr-w_ptr;
 	if((diff<(REC_BUFFER_SIZE-4)) && buff_full) {
-   		/* clear Mail box */
+		/* clear Mail box */
 			buff_full=0;
 			PCICON_SET_REG(PCICON_RECEIVE_REG,0L);
 	}
@@ -584,7 +584,7 @@ void pci_con_connect(void)
 	pci_con_dev.puts = pci_con_puts;
 	pci_con_dev.getc = pci_con_getc;
 	pci_con_dev.tstc = pci_con_tstc;
-	device_register (&pci_con_dev);
+	stdio_register (&pci_con_dev);
 	printf("PATI ready for PCI connection, type ctrl-c for exit\n");
 	do {
 		udelay(10);
@@ -610,9 +610,9 @@ void pci_con_disc(void)
 	irq_free_handler(0x02);
 	pci_con_connect();
 }
-#endif /* #ifdef CFG_PCI_CON_DEVICE */
+#endif /* #ifdef CONFIG_SYS_PCI_CON_DEVICE */
 
 /*
  * Absolute environment address for linker file.
  */
-GEN_ABS(env_start, CFG_ENV_OFFSET + CFG_FLASH_BASE);
+GEN_ABS(env_start, CONFIG_ENV_OFFSET + CONFIG_SYS_FLASH_BASE);

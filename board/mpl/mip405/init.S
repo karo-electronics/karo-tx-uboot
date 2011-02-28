@@ -1,4 +1,6 @@
 /*------------------------------------------------------------------------------+
+ *      This source code is dual-licensed.  You may use it under the terms of
+ *      the GNU General Public License version 2, or under the license below.
  *
  *      This source code has been made available to you by IBM on an AS-IS
  *      basis.  Anyone receiving this source is licensed under IBM
@@ -177,19 +179,6 @@ ext_bus_cntlr_init:
   mtdcr   ebccfgd,r4
   nop				/* pass2 DCR errata #8 */
   blr
-
-/*-----------------------------------------------------------------------------
- * Function:     sdram_init
- * Description:  Configures the internal SRAM memory. and setup the
- *               Stackpointer in it.
- *----------------------------------------------------------------------------- */
-	.globl  sdram_init
-
-sdram_init:
-
-
-  blr
-
 
 #if defined(CONFIG_BOOT_PCI)
     .section .bootpg,"ax"

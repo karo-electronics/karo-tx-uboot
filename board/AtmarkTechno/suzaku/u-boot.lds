@@ -38,7 +38,7 @@ SECTIONS
 	.rodata ALIGN(0x4):
 	{
 		__rodata_start = .;
-		*(.rodata)
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
 		__rodata_end = .;
 	}
 
@@ -61,6 +61,8 @@ SECTIONS
 	{
 		__bss_start = .;
 		*(.bss)
-		__bss_start = .;
+		. = ALIGN(4);
+		__bss_end = .;
 	}
+	__end = . ;
 }

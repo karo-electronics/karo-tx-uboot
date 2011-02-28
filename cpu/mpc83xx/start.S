@@ -2,7 +2,7 @@
  * Copyright (C) 1998  Dan Malek <dmalek@jlc.net>
  * Copyright (C) 1999  Magnus Damm <kieraypc01.p.y.kie.era.ericsson.se>
  * Copyright (C) 2000, 2001,2002 Wolfgang Denk <wd@denx.de>
- * Copyright 2004 Freescale Semiconductor, Inc.
+ * Copyright Freescale Semiconductor, Inc. 2004, 2006, 2008.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -29,6 +29,7 @@
 
 #include <config.h>
 #include <mpc83xx.h>
+#include <timestamp.h>
 #include <version.h>
 
 #define CONFIG_83XX	1		/* needed for Linux kernel header files*/
@@ -57,6 +58,10 @@
 #define MSR_KERNEL (MSR_FP|MSR_ME|MSR_RI)
 #endif
 
+#if !defined(CONFIG_NAND_SPL) && !defined(CONFIG_SYS_RAMBOOT)
+#define CONFIG_SYS_FLASHBOOT
+#endif
+
 /*
  * Set up GOT: Global Offset Table
  *
@@ -64,32 +69,24 @@
  */
 	START_GOT
 	GOT_ENTRY(_GOT2_TABLE_)
-	GOT_ENTRY(_FIXUP_TABLE_)
+	GOT_ENTRY(__bss_start)
+	GOT_ENTRY(_end)
 
+#ifndef CONFIG_NAND_SPL
+	GOT_ENTRY(_FIXUP_TABLE_)
 	GOT_ENTRY(_start)
 	GOT_ENTRY(_start_of_vectors)
 	GOT_ENTRY(_end_of_vectors)
 	GOT_ENTRY(transfer_to_handler)
-
-	GOT_ENTRY(__init_end)
-	GOT_ENTRY(_end)
-	GOT_ENTRY(__bss_start)
+#endif
 	END_GOT
 
 /*
- * Version string - must be in data segment because MPC83xx uses the
- * first 256 bytes for the Hard Reset Configuration Word table (see
- * below).  Similarly, can't have the U-Boot Magic Number as the first
- * thing in the image - don't know how this will affect the image tools,
- * but I guess I'll find out soon.
+ * The Hard Reset Configuration Word (HRCW) table is in the first 64
+ * (0x40) bytes of flash.  It has 8 bytes, but each byte is repeated 8
+ * times so the processor can fetch it out of flash whether the flash
+ * is 8, 16, 32, or 64 bits wide (hardware trickery).
  */
-	.data
-	.globl	version_string
-version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", __DATE__, " - ", __TIME__, ")"
-	.ascii " ", CONFIG_IDENT_STRING, "\0"
-
 	.text
 #define _HRCW_TABLE_ENTRY(w)		\
 	.fill	8,1,(((w)>>24)&0xff);	\
@@ -97,16 +94,67 @@ version_string:
 	.fill	8,1,(((w)>> 8)&0xff);	\
 	.fill	8,1,(((w)    )&0xff)
 
-	_HRCW_TABLE_ENTRY(CFG_HRCW_LOW)
-	_HRCW_TABLE_ENTRY(CFG_HRCW_HIGH)
+	_HRCW_TABLE_ENTRY(CONFIG_SYS_HRCW_LOW)
+	_HRCW_TABLE_ENTRY(CONFIG_SYS_HRCW_HIGH)
 
+/*
+ * Magic number and version string - put it after the HRCW since it
+ * cannot be first in flash like it is in many other processors.
+ */
+	.long	0x27051956		/* U-Boot Magic Number */
+
+	.globl	version_string
+version_string:
+	.ascii U_BOOT_VERSION
+	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
+	.ascii " ", CONFIG_IDENT_STRING, "\0"
+
+	.align 2
+
+	.globl enable_addr_trans
+enable_addr_trans:
+	/* enable address translation */
+	mfmsr	r5
+	ori	r5, r5, (MSR_IR | MSR_DR)
+	mtmsr	r5
+	isync
+	blr
+
+	.globl disable_addr_trans
+disable_addr_trans:
+	/* disable address translation */
+	mflr	r4
+	mfmsr	r3
+	andi.	r0, r3, (MSR_IR | MSR_DR)
+	beqlr
+	andc	r3, r3, r0
+	mtspr	SRR0, r4
+	mtspr	SRR1, r3
+	rfi
+
+	.globl get_pvr
+get_pvr:
+	mfspr	r3, PVR
+	blr
+
+	.globl	ppcDWstore
+ppcDWstore:
+	lfd	1, 0(r4)
+	stfd	1, 0(r3)
+	blr
+
+	.globl	ppcDWload
+ppcDWload:
+	lfd	1, 0(r3)
+	stfd	1, 0(r4)
+	blr
 
 #ifndef CONFIG_DEFAULT_IMMR
 #error CONFIG_DEFAULT_IMMR must be defined
-#endif /* CFG_DEFAULT_IMMR */
-#ifndef CFG_IMMRBAR
-#define CFG_IMMRBAR CONFIG_DEFAULT_IMMR
-#endif /* CFG_IMMRBAR */
+#endif /* CONFIG_SYS_DEFAULT_IMMR */
+#ifndef CONFIG_SYS_IMMR
+#define CONFIG_SYS_IMMR CONFIG_DEFAULT_IMMR
+#endif /* CONFIG_SYS_IMMR */
 
 /*
  * After configuration, a system reset exception is executed using the
@@ -152,24 +200,48 @@ boot_cold: /* time t 3 */
 	nop
 boot_warm: /* time t 5 */
 	mfmsr	r5			/* save msr contents	*/
-	lis	r3, CFG_IMMRBAR@h
-	ori	r3, r3, CFG_IMMRBAR@l
+
+	/* 83xx manuals prescribe a specific sequence for updating IMMRBAR. */
+	bl	1f
+1:	mflr	r7
+
+	lis	r3, CONFIG_SYS_IMMR@h
+	ori	r3, r3, CONFIG_SYS_IMMR@l
+
+	lwz	r6, IMMRBAR(r4)
+	isync
+
 	stw	r3, IMMRBAR(r4)
+	lwz	r6, 0(r7)		/* Arbitrary external load */
+	isync
+
+	lwz	r6, IMMRBAR(r3)
+	isync
 
 	/* Initialise the E300 processor core		*/
 	/*------------------------------------------*/
 
+#ifdef CONFIG_NAND_SPL
+	/* The FCM begins execution after only the first page
+	 * is loaded.  Wait for the rest before branching
+	 * to another flash page.
+	 */
+1:	lwz	r6, 0x50b0(r3)
+	andi.	r6, r6, 1
+	beq	1b
+#endif
+
 	bl	init_e300_core
 
-#ifndef CFG_RAMBOOT
+#ifdef CONFIG_SYS_FLASHBOOT
 
 	/* Inflate flash location so it appears everywhere, calculate */
 	/* the absolute address in final location of the FLASH, jump  */
 	/* there and deflate the flash size back to minimal size      */
 	/*------------------------------------------------------------*/
 	bl map_flash_by_law1
-	lis r4, (CFG_MONITOR_BASE)@h
-	ori r4, r4, (CFG_MONITOR_BASE)@l
+	lis r4, (CONFIG_SYS_MONITOR_BASE)@h
+	ori r4, r4, (CONFIG_SYS_MONITOR_BASE)@l
 	addi r5, r4, in_flash - _start + EXC_OFF_SYS_RESET
 	mtlr r5
 	blr
@@ -177,7 +249,7 @@ in_flash:
 #if 1 /* Remapping flash with LAW0. */
 	bl remap_flash_by_law0
 #endif
-#endif	/* CFG_RAMBOOT */
+#endif	/* CONFIG_SYS_FLASHBOOT */
 
 	/* setup the bats */
 	bl	setup_bats
@@ -200,18 +272,18 @@ in_flash:
 	bl	enable_addr_trans
 	sync
 
-	/* enable and invalidate the data cache */
+	/* enable the data cache */
 	bl	dcache_enable
 	sync
-#ifdef CFG_INIT_RAM_LOCK
+#ifdef CONFIG_SYS_INIT_RAM_LOCK
 	bl	lock_ram_in_cache
 	sync
 #endif
 
 	/* set up the stack pointer in our newly created
 	 * cache-ram (r1) */
-	lis	r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@h
-	ori	r1, r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@l
+	lis	r1, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@h
+	ori	r1, r1, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@l
 
 	li	r0, 0		/* Make room for stack frame header and	*/
 	stwu	r0, -4(r1)	/* clear final stack frame so that	*/
@@ -226,7 +298,7 @@ in_flash:
 	GET_GOT			/* initialize GOT access	*/
 
 	/* r3: IMMR */
-	lis	r3, CFG_IMMRBAR@h
+	lis	r3, CONFIG_SYS_IMMR@h
 	/* run low-level CPU init code (in Flash)*/
 	bl	cpu_init_f
 
@@ -235,6 +307,7 @@ in_flash:
 	/* run 1st part of board init code (in Flash)*/
 	bl	board_init_f
 
+#ifndef CONFIG_NAND_SPL
 /*
  * Vector Table
  */
@@ -259,7 +332,7 @@ _start_of_vectors:
 /* Alignment exception. */
 	. = 0x600
 Alignment:
-	EXCEPTION_PROLOG
+	EXCEPTION_PROLOG(SRR0, SRR1)
 	mfspr	r4,DAR
 	stw	r4,_DAR(r21)
 	mfspr	r5,DSISR
@@ -278,7 +351,7 @@ Alignment:
 /* Program check exception */
 	. = 0x700
 ProgramCheck:
-	EXCEPTION_PROLOG
+	EXCEPTION_PROLOG(SRR0, SRR1)
 	addi	r3,r1,STACK_FRAME_OVERHEAD
 	li	r20,MSR_KERNEL
 	rlwimi	r20,r23,0,16,16		/* copy EE bit from saved MSR */
@@ -424,6 +497,7 @@ int_return:
 	lwz	r1,GPR1(r1)
 	SYNC
 	rfi
+#endif /* !CONFIG_NAND_SPL */
 
 /*
  * This code initialises the E300 processor core
@@ -446,11 +520,11 @@ init_e300_core: /* time t 10 */
 	mtspr	SRR1, r3			/* Make SRR1 match MSR */
 
 
-	lis	r3, CFG_IMMRBAR@h
+	lis	r3, CONFIG_SYS_IMMR@h
 #if defined(CONFIG_WATCHDOG)
 	/* Initialise the Wathcdog values and reset it (if req) */
 	/*------------------------------------------------------*/
-	lis r4, CFG_WATCHDOG_VALUE
+	lis r4, CONFIG_SYS_WATCHDOG_VALUE
 	ori r4, r4, (SWCRR_SWEN | SWCRR_SWRI | SWCRR_SWPR)
 	stw r4, SWCRR(r3)
 
@@ -458,7 +532,7 @@ init_e300_core: /* time t 10 */
 
 	li	r4, 0x556C
 	sth	r4, SWSRR@l(r3)
-	li	r4, 0xAA39
+	li	r4, -0x55C7
 	sth	r4, SWSRR@l(r3)
 #else
 	/* Disable Wathcdog  */
@@ -473,46 +547,177 @@ init_e300_core: /* time t 10 */
 1:
 #endif /* CONFIG_WATCHDOG */
 
+#if defined(CONFIG_MASK_AER_AO)
+	/* Write the Arbiter Event Enable to mask Address Only traps. */
+	/* This prevents the dcbz instruction from being trapped when */
+	/* HID0_ABE Address Broadcast Enable is set and the MEMORY    */
+	/* COHERENCY bit is set in the WIMG bits, which is often      */
+	/* needed for PCI operation.                                  */
+	lwz	r4, 0x0808(r3)
+	rlwinm	r0, r4, 0, ~AER_AO
+	stw	r0, 0x0808(r3)
+#endif /* CONFIG_MASK_AER_AO */
+
 	/* Initialize the Hardware Implementation-dependent Registers */
 	/* HID0 also contains cache control			*/
+	/* - force invalidation of data and instruction caches  */
 	/*------------------------------------------------------*/
 
-	lis	r3, CFG_HID0_INIT@h
-	ori	r3, r3, CFG_HID0_INIT@l
+	lis	r3, CONFIG_SYS_HID0_INIT@h
+	ori	r3, r3, (CONFIG_SYS_HID0_INIT | HID0_ICFI | HID0_DCFI)@l
 	SYNC
 	mtspr	HID0, r3
 
-	lis	r3, CFG_HID0_FINAL@h
-	ori	r3, r3, CFG_HID0_FINAL@l
+	lis	r3, CONFIG_SYS_HID0_FINAL@h
+	ori	r3, r3, (CONFIG_SYS_HID0_FINAL & ~(HID0_ICFI | HID0_DCFI))@l
 	SYNC
 	mtspr	HID0, r3
 
-	lis	r3, CFG_HID2@h
-	ori	r3, r3, CFG_HID2@l
+	lis	r3, CONFIG_SYS_HID2@h
+	ori	r3, r3, CONFIG_SYS_HID2@l
 	SYNC
 	mtspr	HID2, r3
 
-	/* clear all BAT's					*/
-	/*----------------------------------*/
+	/* Done!						*/
+	/*------------------------------*/
+	blr
 
-	xor	r0, r0, r0
-	mtspr	DBAT0U, r0
-	mtspr	DBAT0L, r0
-	mtspr	DBAT1U, r0
-	mtspr	DBAT1L, r0
-	mtspr	DBAT2U, r0
-	mtspr	DBAT2L, r0
-	mtspr	DBAT3U, r0
-	mtspr	DBAT3L, r0
-	mtspr	IBAT0U, r0
-	mtspr	IBAT0L, r0
-	mtspr	IBAT1U, r0
-	mtspr	IBAT1L, r0
-	mtspr	IBAT2U, r0
-	mtspr	IBAT2L, r0
-	mtspr	IBAT3U, r0
-	mtspr	IBAT3L, r0
-	SYNC
+	/* setup_bats - set them up to some initial state */
+	.globl	setup_bats
+setup_bats:
+	addis	r0, r0, 0x0000
+
+	/* IBAT 0 */
+	addis	r4, r0, CONFIG_SYS_IBAT0L@h
+	ori	r4, r4, CONFIG_SYS_IBAT0L@l
+	addis	r3, r0, CONFIG_SYS_IBAT0U@h
+	ori	r3, r3, CONFIG_SYS_IBAT0U@l
+	mtspr	IBAT0L, r4
+	mtspr	IBAT0U, r3
+
+	/* DBAT 0 */
+	addis	r4, r0, CONFIG_SYS_DBAT0L@h
+	ori	r4, r4, CONFIG_SYS_DBAT0L@l
+	addis	r3, r0, CONFIG_SYS_DBAT0U@h
+	ori	r3, r3, CONFIG_SYS_DBAT0U@l
+	mtspr	DBAT0L, r4
+	mtspr	DBAT0U, r3
+
+	/* IBAT 1 */
+	addis	r4, r0, CONFIG_SYS_IBAT1L@h
+	ori	r4, r4, CONFIG_SYS_IBAT1L@l
+	addis	r3, r0, CONFIG_SYS_IBAT1U@h
+	ori	r3, r3, CONFIG_SYS_IBAT1U@l
+	mtspr	IBAT1L, r4
+	mtspr	IBAT1U, r3
+
+	/* DBAT 1 */
+	addis	r4, r0, CONFIG_SYS_DBAT1L@h
+	ori	r4, r4, CONFIG_SYS_DBAT1L@l
+	addis	r3, r0, CONFIG_SYS_DBAT1U@h
+	ori	r3, r3, CONFIG_SYS_DBAT1U@l
+	mtspr	DBAT1L, r4
+	mtspr	DBAT1U, r3
+
+	/* IBAT 2 */
+	addis	r4, r0, CONFIG_SYS_IBAT2L@h
+	ori	r4, r4, CONFIG_SYS_IBAT2L@l
+	addis	r3, r0, CONFIG_SYS_IBAT2U@h
+	ori	r3, r3, CONFIG_SYS_IBAT2U@l
+	mtspr	IBAT2L, r4
+	mtspr	IBAT2U, r3
+
+	/* DBAT 2 */
+	addis	r4, r0, CONFIG_SYS_DBAT2L@h
+	ori	r4, r4, CONFIG_SYS_DBAT2L@l
+	addis	r3, r0, CONFIG_SYS_DBAT2U@h
+	ori	r3, r3, CONFIG_SYS_DBAT2U@l
+	mtspr	DBAT2L, r4
+	mtspr	DBAT2U, r3
+
+	/* IBAT 3 */
+	addis	r4, r0, CONFIG_SYS_IBAT3L@h
+	ori	r4, r4, CONFIG_SYS_IBAT3L@l
+	addis	r3, r0, CONFIG_SYS_IBAT3U@h
+	ori	r3, r3, CONFIG_SYS_IBAT3U@l
+	mtspr	IBAT3L, r4
+	mtspr	IBAT3U, r3
+
+	/* DBAT 3 */
+	addis	r4, r0, CONFIG_SYS_DBAT3L@h
+	ori	r4, r4, CONFIG_SYS_DBAT3L@l
+	addis	r3, r0, CONFIG_SYS_DBAT3U@h
+	ori	r3, r3, CONFIG_SYS_DBAT3U@l
+	mtspr	DBAT3L, r4
+	mtspr	DBAT3U, r3
+
+#ifdef CONFIG_HIGH_BATS
+	/* IBAT 4 */
+	addis   r4, r0, CONFIG_SYS_IBAT4L@h
+	ori     r4, r4, CONFIG_SYS_IBAT4L@l
+	addis   r3, r0, CONFIG_SYS_IBAT4U@h
+	ori     r3, r3, CONFIG_SYS_IBAT4U@l
+	mtspr   IBAT4L, r4
+	mtspr   IBAT4U, r3
+
+	/* DBAT 4 */
+	addis   r4, r0, CONFIG_SYS_DBAT4L@h
+	ori     r4, r4, CONFIG_SYS_DBAT4L@l
+	addis   r3, r0, CONFIG_SYS_DBAT4U@h
+	ori     r3, r3, CONFIG_SYS_DBAT4U@l
+	mtspr   DBAT4L, r4
+	mtspr   DBAT4U, r3
+
+	/* IBAT 5 */
+	addis   r4, r0, CONFIG_SYS_IBAT5L@h
+	ori     r4, r4, CONFIG_SYS_IBAT5L@l
+	addis   r3, r0, CONFIG_SYS_IBAT5U@h
+	ori     r3, r3, CONFIG_SYS_IBAT5U@l
+	mtspr   IBAT5L, r4
+	mtspr   IBAT5U, r3
+
+	/* DBAT 5 */
+	addis   r4, r0, CONFIG_SYS_DBAT5L@h
+	ori     r4, r4, CONFIG_SYS_DBAT5L@l
+	addis   r3, r0, CONFIG_SYS_DBAT5U@h
+	ori     r3, r3, CONFIG_SYS_DBAT5U@l
+	mtspr   DBAT5L, r4
+	mtspr   DBAT5U, r3
+
+	/* IBAT 6 */
+	addis   r4, r0, CONFIG_SYS_IBAT6L@h
+	ori     r4, r4, CONFIG_SYS_IBAT6L@l
+	addis   r3, r0, CONFIG_SYS_IBAT6U@h
+	ori     r3, r3, CONFIG_SYS_IBAT6U@l
+	mtspr   IBAT6L, r4
+	mtspr   IBAT6U, r3
+
+	/* DBAT 6 */
+	addis   r4, r0, CONFIG_SYS_DBAT6L@h
+	ori     r4, r4, CONFIG_SYS_DBAT6L@l
+	addis   r3, r0, CONFIG_SYS_DBAT6U@h
+	ori     r3, r3, CONFIG_SYS_DBAT6U@l
+	mtspr   DBAT6L, r4
+	mtspr   DBAT6U, r3
+
+	/* IBAT 7 */
+	addis   r4, r0, CONFIG_SYS_IBAT7L@h
+	ori     r4, r4, CONFIG_SYS_IBAT7L@l
+	addis   r3, r0, CONFIG_SYS_IBAT7U@h
+	ori     r3, r3, CONFIG_SYS_IBAT7U@l
+	mtspr   IBAT7L, r4
+	mtspr   IBAT7U, r3
+
+	/* DBAT 7 */
+	addis   r4, r0, CONFIG_SYS_DBAT7L@h
+	ori     r4, r4, CONFIG_SYS_DBAT7L@l
+	addis   r3, r0, CONFIG_SYS_DBAT7U@h
+	ori     r3, r3, CONFIG_SYS_DBAT7U@l
+	mtspr   DBAT7L, r4
+	mtspr   DBAT7U, r3
+#endif
+
+	isync
 
 	/* invalidate all tlb's
 	 *
@@ -533,202 +738,6 @@ init_e300_core: /* time t 10 */
 	 * based on code in "flush_tlbs" from arch/ppc/kernel/head.S
 	 *
 	 */
-
-	li	r3, 32
-	mtctr	r3
-	li	r3, 0
-1:	tlbie	r3
-	addi	r3, r3, 0x1000
-	bdnz	1b
-	SYNC
-
-	/* Done!						*/
-	/*------------------------------*/
-	blr
-
-	.globl	invalidate_bats
-invalidate_bats:
-	/* invalidate BATs */
-	mtspr	IBAT0U, r0
-	mtspr	IBAT1U, r0
-	mtspr	IBAT2U, r0
-	mtspr	IBAT3U, r0
-#if (CFG_HID2 & HID2_HBE)
-	mtspr   IBAT4U, r0
-	mtspr   IBAT5U, r0
-	mtspr   IBAT6U, r0
-	mtspr   IBAT7U, r0
-#endif
-	isync
-	mtspr	DBAT0U, r0
-	mtspr	DBAT1U, r0
-	mtspr	DBAT2U, r0
-	mtspr	DBAT3U, r0
-#if (CFG_HID2 & HID2_HBE)
-	mtspr   DBAT4U, r0
-	mtspr   DBAT5U, r0
-	mtspr   DBAT6U, r0
-	mtspr   DBAT7U, r0
-#endif
-	isync
-	sync
-	blr
-
-	/* setup_bats - set them up to some initial state */
-	.globl	setup_bats
-setup_bats:
-	addis	r0, r0, 0x0000
-
-	/* IBAT 0 */
-	addis	r4, r0, CFG_IBAT0L@h
-	ori	r4, r4, CFG_IBAT0L@l
-	addis	r3, r0, CFG_IBAT0U@h
-	ori	r3, r3, CFG_IBAT0U@l
-	mtspr	IBAT0L, r4
-	mtspr	IBAT0U, r3
-	isync
-
-	/* DBAT 0 */
-	addis	r4, r0, CFG_DBAT0L@h
-	ori	r4, r4, CFG_DBAT0L@l
-	addis	r3, r0, CFG_DBAT0U@h
-	ori	r3, r3, CFG_DBAT0U@l
-	mtspr	DBAT0L, r4
-	mtspr	DBAT0U, r3
-	isync
-
-	/* IBAT 1 */
-	addis	r4, r0, CFG_IBAT1L@h
-	ori	r4, r4, CFG_IBAT1L@l
-	addis	r3, r0, CFG_IBAT1U@h
-	ori	r3, r3, CFG_IBAT1U@l
-	mtspr	IBAT1L, r4
-	mtspr	IBAT1U, r3
-	isync
-
-	/* DBAT 1 */
-	addis	r4, r0, CFG_DBAT1L@h
-	ori	r4, r4, CFG_DBAT1L@l
-	addis	r3, r0, CFG_DBAT1U@h
-	ori	r3, r3, CFG_DBAT1U@l
-	mtspr	DBAT1L, r4
-	mtspr	DBAT1U, r3
-	isync
-
-	/* IBAT 2 */
-	addis	r4, r0, CFG_IBAT2L@h
-	ori	r4, r4, CFG_IBAT2L@l
-	addis	r3, r0, CFG_IBAT2U@h
-	ori	r3, r3, CFG_IBAT2U@l
-	mtspr	IBAT2L, r4
-	mtspr	IBAT2U, r3
-	isync
-
-	/* DBAT 2 */
-	addis	r4, r0, CFG_DBAT2L@h
-	ori	r4, r4, CFG_DBAT2L@l
-	addis	r3, r0, CFG_DBAT2U@h
-	ori	r3, r3, CFG_DBAT2U@l
-	mtspr	DBAT2L, r4
-	mtspr	DBAT2U, r3
-	isync
-
-	/* IBAT 3 */
-	addis	r4, r0, CFG_IBAT3L@h
-	ori	r4, r4, CFG_IBAT3L@l
-	addis	r3, r0, CFG_IBAT3U@h
-	ori	r3, r3, CFG_IBAT3U@l
-	mtspr	IBAT3L, r4
-	mtspr	IBAT3U, r3
-	isync
-
-	/* DBAT 3 */
-	addis	r4, r0, CFG_DBAT3L@h
-	ori	r4, r4, CFG_DBAT3L@l
-	addis	r3, r0, CFG_DBAT3U@h
-	ori	r3, r3, CFG_DBAT3U@l
-	mtspr	DBAT3L, r4
-	mtspr	DBAT3U, r3
-	isync
-
-#if (CFG_HID2 & HID2_HBE)
-	/* IBAT 4 */
-	addis   r4, r0, CFG_IBAT4L@h
-	ori     r4, r4, CFG_IBAT4L@l
-	addis   r3, r0, CFG_IBAT4U@h
-	ori     r3, r3, CFG_IBAT4U@l
-	mtspr   IBAT4L, r4
-	mtspr   IBAT4U, r3
-	isync
-
-	/* DBAT 4 */
-	addis   r4, r0, CFG_DBAT4L@h
-	ori     r4, r4, CFG_DBAT4L@l
-	addis   r3, r0, CFG_DBAT4U@h
-	ori     r3, r3, CFG_DBAT4U@l
-	mtspr   DBAT4L, r4
-	mtspr   DBAT4U, r3
-	isync
-
-	/* IBAT 5 */
-	addis   r4, r0, CFG_IBAT5L@h
-	ori     r4, r4, CFG_IBAT5L@l
-	addis   r3, r0, CFG_IBAT5U@h
-	ori     r3, r3, CFG_IBAT5U@l
-	mtspr   IBAT5L, r4
-	mtspr   IBAT5U, r3
-	isync
-
-	/* DBAT 5 */
-	addis   r4, r0, CFG_DBAT5L@h
-	ori     r4, r4, CFG_DBAT5L@l
-	addis   r3, r0, CFG_DBAT5U@h
-	ori     r3, r3, CFG_DBAT5U@l
-	mtspr   DBAT5L, r4
-	mtspr   DBAT5U, r3
-	isync
-
-	/* IBAT 6 */
-	addis   r4, r0, CFG_IBAT6L@h
-	ori     r4, r4, CFG_IBAT6L@l
-	addis   r3, r0, CFG_IBAT6U@h
-	ori     r3, r3, CFG_IBAT6U@l
-	mtspr   IBAT6L, r4
-	mtspr   IBAT6U, r3
-	isync
-
-	/* DBAT 6 */
-	addis   r4, r0, CFG_DBAT6L@h
-	ori     r4, r4, CFG_DBAT6L@l
-	addis   r3, r0, CFG_DBAT6U@h
-	ori     r3, r3, CFG_DBAT6U@l
-	mtspr   DBAT6L, r4
-	mtspr   DBAT6U, r3
-	isync
-
-	/* IBAT 7 */
-	addis   r4, r0, CFG_IBAT7L@h
-	ori     r4, r4, CFG_IBAT7L@l
-	addis   r3, r0, CFG_IBAT7U@h
-	ori     r3, r3, CFG_IBAT7U@l
-	mtspr   IBAT7L, r4
-	mtspr   IBAT7U, r3
-	isync
-
-	/* DBAT 7 */
-	addis   r4, r0, CFG_DBAT7L@h
-	ori     r4, r4, CFG_DBAT7L@l
-	addis   r3, r0, CFG_DBAT7U@h
-	ori     r3, r3, CFG_DBAT7U@l
-	mtspr   DBAT7L, r4
-	mtspr   DBAT7U, r3
-	isync
-#endif
-
-	/* Invalidate TLBs.
-	 * -> for (val = 0; val < 0x20000; val+=0x1000)
-	 * ->   tlbie(val);
-	 */
 	lis	r3, 0
 	lis	r5, 2
 
@@ -740,27 +749,6 @@ setup_bats:
 
 	blr
 
-	.globl enable_addr_trans
-enable_addr_trans:
-	/* enable address translation */
-	mfmsr	r5
-	ori	r5, r5, (MSR_IR | MSR_DR)
-	mtmsr	r5
-	isync
-	blr
-
-	.globl disable_addr_trans
-disable_addr_trans:
-	/* disable address translation */
-	mflr	r4
-	mfmsr	r3
-	andi.	r0, r3, (MSR_IR | MSR_DR)
-	beqlr
-	andc	r3, r3, r0
-	mtspr	SRR0, r4
-	mtspr	SRR1, r3
-	rfi
-
 /* Cache functions.
  *
  * Note: requires that all cache bits in
@@ -770,8 +758,7 @@ disable_addr_trans:
 icache_enable:
 	mfspr	r3, HID0
 	ori	r3, r3, HID0_ICE
-	lis	r4, 0
-	ori	r4, r4, HID0_ILOCK
+	li	r4, HID0_ICFI|HID0_ILOCK
 	andc	r3, r3, r4
 	ori	r4, r3, HID0_ICFI
 	isync
@@ -784,13 +771,10 @@ icache_enable:
 icache_disable:
 	mfspr	r3, HID0
 	lis	r4, 0
-	ori	r4, r4, HID0_ICE|HID0_ILOCK
+	ori	r4, r4, HID0_ICE|HID0_ICFI|HID0_ILOCK
 	andc	r3, r3, r4
-	ori	r4, r3, HID0_ICFI
 	isync
-	mtspr	HID0, r4     /* sets invalidate, clears enable and lock*/
-	isync
-	mtspr	HID0, r3	/* clears invalidate */
+	mtspr	HID0, r3	/* clears invalidate, enable and lock */
 	blr
 
 	.globl	icache_status
@@ -804,25 +788,24 @@ dcache_enable:
 	mfspr	r3, HID0
 	li	r5, HID0_DCFI|HID0_DLOCK
 	andc	r3, r3, r5
-	mtspr	HID0, r3		/* no invalidate, unlock */
 	ori	r3, r3, HID0_DCE
-	ori	r5, r3, HID0_DCFI
-	mtspr	HID0, r5		/* enable + invalidate */
-	mtspr	HID0, r3		/* enable */
 	sync
+	mtspr	HID0, r3		/* enable, no invalidate */
 	blr
 
 	.globl	dcache_disable
 dcache_disable:
+	mflr	r4
+	bl	flush_dcache		/* uses r3 and r5 */
 	mfspr	r3, HID0
-	lis	r4, 0
-	ori	r4, r4, HID0_DCE|HID0_DLOCK
-	andc	r3, r3, r4
-	ori	r4, r3, HID0_DCI
+	li	r5, HID0_DCE|HID0_DLOCK
+	andc	r3, r3, r5
+	ori	r5, r3, HID0_DCFI
 	sync
-	mtspr	HID0, r4	/* sets invalidate, clears enable and lock */
+	mtspr	HID0, r5	/* sets invalidate, clears enable and lock */
 	sync
 	mtspr	HID0, r3	/* clears invalidate */
+	mtlr	r4
 	blr
 
 	.globl	dcache_status
@@ -831,44 +814,17 @@ dcache_status:
 	rlwinm	r3, r3, (31 - HID0_DCE_SHIFT + 1), 31, 31
 	blr
 
-	.globl get_pvr
-get_pvr:
-	mfspr	r3, PVR
-	blr
-
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcDcbf */
-/* Description:	 Data Cache block flush */
-/* Input:	 r3 = effective address */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcDcbf
-ppcDcbf:
-	dcbf	r0,r3
-	blr
-
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcDcbi */
-/* Description:	 Data Cache block Invalidate */
-/* Input:	 r3 = effective address */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcDcbi
-ppcDcbi:
-	dcbi	r0,r3
-	blr
-
-/*--------------------------------------------------------------------------
- * Function:	 ppcDcbz
- * Description:	 Data Cache block zero.
- * Input:	 r3 = effective address
- * Output:	 none.
- *-------------------------------------------------------------------------- */
-
-	.globl	ppcDcbz
-ppcDcbz:
-	dcbz	r0,r3
-	blr
+	.globl	flush_dcache
+flush_dcache:
+	lis	r3, 0
+	lis	r5, CONFIG_SYS_CACHELINE_SIZE
+1:	cmp	0, 1, r3, r5
+	bge	2f
+	lwz	r5, 0(r3)
+	lis	r5, CONFIG_SYS_CACHELINE_SIZE
+	addi	r3, r3, 0x4
+	b	1b
+2:	blr
 
 /*-------------------------------------------------------------------*/
 
@@ -890,16 +846,16 @@ relocate_code:
 	mr	r10, r5		/* Save copy of Destination Address */
 
 	mr	r3,  r5				/* Destination Address */
-	lis	r4, CFG_MONITOR_BASE@h		/* Source      Address */
-	ori	r4, r4, CFG_MONITOR_BASE@l
-	lwz	r5, GOT(__init_end)
+	lis	r4, CONFIG_SYS_MONITOR_BASE@h		/* Source      Address */
+	ori	r4, r4, CONFIG_SYS_MONITOR_BASE@l
+	lwz	r5, GOT(__bss_start)
 	sub	r5, r5, r4
-	li	r6, CFG_CACHELINE_SIZE		/* Cache Line Size */
+	li	r6, CONFIG_SYS_CACHELINE_SIZE		/* Cache Line Size */
 
 	/*
 	 * Fix GOT pointer:
 	 *
-	 * New GOT-PTR = (old GOT-PTR - CFG_MONITOR_BASE)
+	 * New GOT-PTR = (old GOT-PTR - CONFIG_SYS_MONITOR_BASE)
 	 *		+ Destination Address
 	 *
 	 * Offset:
@@ -1005,6 +961,7 @@ in_ram:
 	stw	r0,0(r3)
 	bdnz	1b
 
+#ifndef CONFIG_NAND_SPL
 	/*
 	 * Now adjust the fixups and the pointers to the fixups
 	 * in case we need to move ourselves again.
@@ -1022,6 +979,8 @@ in_ram:
 	stw	r0,0(r4)
 	bdnz	3b
 4:
+#endif
+
 clear_bss:
 	/*
 	 * Now clear BSS segment
@@ -1055,6 +1014,7 @@ clear_bss:
 	mr	r4, r10		/* Destination Address		*/
 	bl	board_init_r
 
+#ifndef CONFIG_NAND_SPL
 	/*
 	 * Copy exception vector code to low memory
 	 *
@@ -1137,16 +1097,17 @@ trap_reloc:
 	stw	r0, 4(r7)
 
 	blr
+#endif /* !CONFIG_NAND_SPL */
 
-#ifdef CFG_INIT_RAM_LOCK
+#ifdef CONFIG_SYS_INIT_RAM_LOCK
 lock_ram_in_cache:
 	/* Allocate Initial RAM in data cache.
 	 */
-	lis	r3, (CFG_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CFG_INIT_RAM_ADDR & ~31)@l
-	li	r2, ((CFG_INIT_RAM_END & ~31) + \
-		     (CFG_INIT_RAM_ADDR & 31) + 31) / 32
-	mtctr	r2
+	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@h
+	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@l
+	li	r4, ((CONFIG_SYS_INIT_RAM_END & ~31) + \
+		     (CONFIG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
+	mtctr	r4
 1:
 	dcbz	r0, r3
 	addi	r3, r3, 32
@@ -1154,19 +1115,21 @@ lock_ram_in_cache:
 
 	/* Lock the data cache */
 	mfspr	r0, HID0
-	ori	r0, r0, 0x1000
+	ori	r0, r0, HID0_DLOCK
 	sync
 	mtspr	HID0, r0
 	sync
 	blr
 
+#ifndef CONFIG_NAND_SPL
 .globl unlock_ram_in_cache
 unlock_ram_in_cache:
 	/* invalidate the INIT_RAM section */
-	lis	r3, (CFG_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CFG_INIT_RAM_ADDR & ~31)@l
-	li	r2,512
-	mtctr	r2
+	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@h
+	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@l
+	li	r4, ((CONFIG_SYS_INIT_RAM_END & ~31) + \
+		     (CONFIG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
+	mtctr	r4
 1:	icbi	r0, r3
 	dcbi	r0, r3
 	addi	r3, r3, 32
@@ -1179,17 +1142,20 @@ unlock_ram_in_cache:
 	li	r5, HID0_DLOCK|HID0_DCFI
 	andc	r3, r3, r5		/* no invalidate, unlock */
 	ori	r5, r3, HID0_DCFI	/* invalidate, unlock */
-	mtspr	HID0, r5		/* invalidate, unlock */
-	mtspr	HID0, r3		/* no invalidate, unlock */
 	sync
+	mtspr	HID0, r5		/* invalidate, unlock */
+	sync
+	mtspr	HID0, r3		/* no invalidate, unlock */
 	blr
-#endif
+#endif /* !CONFIG_NAND_SPL */
+#endif /* CONFIG_SYS_INIT_RAM_LOCK */
 
+#ifdef CONFIG_SYS_FLASHBOOT
 map_flash_by_law1:
 	/* When booting from ROM (Flash or EPROM), clear the  */
 	/* Address Mask in OR0 so ROM appears everywhere      */
 	/*----------------------------------------------------*/
-	lis	r3, (CFG_IMMRBAR)@h  /* r3 <= CFG_IMMRBAR    */
+	lis	r3, (CONFIG_SYS_IMMR)@h  /* r3 <= CONFIG_SYS_IMMR    */
 	lwz	r4, OR0@l(r3)
 	li	r5, 0x7fff        /* r5 <= 0x00007FFFF */
 	and	r4, r4, r5
@@ -1211,11 +1177,18 @@ map_flash_by_law1:
 	 * LBIU Local Access Widow 0 will not cover this memory space.  So, we
 	 * need another window to map in it.
 	 */
-	lis r4, (CFG_FLASH_BASE)@h
-	ori r4, r4, (CFG_FLASH_BASE)@l
-	stw r4, LBLAWBAR1(r3) /* LBLAWBAR1 <= CFG_FLASH_BASE */
-	lis r4, (0x80000016)@h
-	ori r4, r4, (0x80000016)@l
+	lis r4, (CONFIG_SYS_FLASH_BASE)@h
+	ori r4, r4, (CONFIG_SYS_FLASH_BASE)@l
+	stw r4, LBLAWBAR1(r3) /* LBLAWBAR1 <= CONFIG_SYS_FLASH_BASE */
+
+	/* Store 0x80000012 + log2(CONFIG_SYS_FLASH_SIZE) into LBLAWAR1 */
+	lis r4, (0x80000012)@h
+	ori r4, r4, (0x80000012)@l
+	li r5, CONFIG_SYS_FLASH_SIZE
+1:	srawi. r5, r5, 1	/* r5 = r5 >> 1 */
+	addi r4, r4, 1
+	bne 1b
+
 	stw r4, LBLAWAR1(r3) /* LBLAWAR1 <= 8MB Flash Size */
 	blr
 
@@ -1228,25 +1201,32 @@ remap_flash_by_law0:
 	lwz r4, BR0(r3)
 	li  r5, 0x7FFF
 	and r4, r4, r5
-	lis r5, (CFG_FLASH_BASE & 0xFFFF8000)@h
-	ori r5, r5, (CFG_FLASH_BASE & 0xFFFF8000)@l
+	lis r5, (CONFIG_SYS_FLASH_BASE & 0xFFFF8000)@h
+	ori r5, r5, (CONFIG_SYS_FLASH_BASE & 0xFFFF8000)@l
 	or  r5, r5, r4
-	stw r5, BR0(r3) /* r5 <= (CFG_FLASH_BASE & 0xFFFF8000) | (BR0 & 0x00007FFF) */
+	stw r5, BR0(r3) /* r5 <= (CONFIG_SYS_FLASH_BASE & 0xFFFF8000) | (BR0 & 0x00007FFF) */
 
 	lwz r4, OR0(r3)
-	lis r5, 0xFF80 /* 8M */
+	lis r5, ~((CONFIG_SYS_FLASH_SIZE << 4) - 1)
 	or r4, r4, r5
-	stw r4, OR0(r3) /* OR0 <= OR0 | 0xFF800000 */
+	stw r4, OR0(r3)
 
-	lis r4, (CFG_FLASH_BASE)@h
-	ori r4, r4, (CFG_FLASH_BASE)@l
-	stw r4, LBLAWBAR0(r3) /* LBLAWBAR0 <= CFG_FLASH_BASE */
+	lis r4, (CONFIG_SYS_FLASH_BASE)@h
+	ori r4, r4, (CONFIG_SYS_FLASH_BASE)@l
+	stw r4, LBLAWBAR0(r3) /* LBLAWBAR0 <= CONFIG_SYS_FLASH_BASE */
 
-	lis r4, (0x80000016)@h
-	ori r4, r4, (0x80000016)@l
-	stw r4, LBLAWAR0(r3) /* LBLAWAR0 <= 8MB Flash Size */
+	/* Store 0x80000012 + log2(CONFIG_SYS_FLASH_SIZE) into LBLAWAR0 */
+	lis r4, (0x80000012)@h
+	ori r4, r4, (0x80000012)@l
+	li r5, CONFIG_SYS_FLASH_SIZE
+1:	srawi. r5, r5, 1 /* r5 = r5 >> 1 */
+	addi r4, r4, 1
+	bne 1b
+	stw r4, LBLAWAR0(r3) /* LBLAWAR0 <= Flash Size */
+
 
 	xor r4, r4, r4
 	stw r4, LBLAWBAR1(r3)
 	stw r4, LBLAWAR1(r3) /* Off LBIU LAW1 */
 	blr
+#endif /* CONFIG_SYS_FLASHBOOT */

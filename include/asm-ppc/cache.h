@@ -8,15 +8,24 @@
 #include <asm/processor.h>
 
 /* bytes per L1 cache line */
-#if !defined(CONFIG_8xx) || defined(CONFIG_8260)
-#if defined(CONFIG_PPC64BRIDGE)
-#define L1_CACHE_BYTES	128
+#if defined(CONFIG_8xx) || defined(CONFIG_IOP480)
+#define	L1_CACHE_SHIFT	4
+#elif defined(CONFIG_PPC64BRIDGE)
+#define L1_CACHE_SHIFT	7
+#elif defined(CONFIG_E500MC)
+#define L1_CACHE_SHIFT	6
 #else
-#define	L1_CACHE_BYTES  32
-#endif /* PPC64 */
-#else
-#define	L1_CACHE_BYTES	16
-#endif /* !8xx || 8260 */
+#define	L1_CACHE_SHIFT	5
+#endif
+
+#define L1_CACHE_BYTES          (1 << L1_CACHE_SHIFT)
+
+/*
+ * For compatibility reasons support the CONFIG_SYS_CACHELINE_SIZE too
+ */
+#ifndef CONFIG_SYS_CACHELINE_SIZE
+#define CONFIG_SYS_CACHELINE_SIZE	L1_CACHE_BYTES
+#endif
 
 #define	L1_CACHE_ALIGN(x)       (((x)+(L1_CACHE_BYTES-1))&~(L1_CACHE_BYTES-1))
 #define	L1_CACHE_PAGES		8
@@ -35,9 +44,12 @@
 extern void flush_dcache_range(unsigned long start, unsigned long stop);
 extern void clean_dcache_range(unsigned long start, unsigned long stop);
 extern void invalidate_dcache_range(unsigned long start, unsigned long stop);
-#ifdef CFG_INIT_RAM_LOCK
+extern void flush_dcache(void);
+extern void invalidate_dcache(void);
+extern void invalidate_icache(void);
+#ifdef CONFIG_SYS_INIT_RAM_LOCK
 extern void unlock_ram_in_cache(void);
-#endif /* CFG_INIT_RAM_LOCK */
+#endif /* CONFIG_SYS_INIT_RAM_LOCK */
 #endif /* __ASSEMBLY__ */
 
 /* prep registers for L2 */

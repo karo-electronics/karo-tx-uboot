@@ -73,7 +73,7 @@ int board_init (void)
 	pioc->PIO_PPUDR = AT91C_PIO_PC0 | AT91C_PIO_PC1 |
 			AT91C_PIO_PC2 | AT91C_PIO_PC3;
 	pioc->PIO_PER = AT91C_PIO_PC0 | AT91C_PIO_PC1 |
-	        	AT91C_PIO_PC2 | AT91C_PIO_PC3;
+			AT91C_PIO_PC2 | AT91C_PIO_PC3;
 
 	/*
 	 * On CMC-PU2 board configure PB3-PB6 to input without pull ups to
@@ -155,7 +155,7 @@ int hw_detect (void)
 }
 
 #ifdef CONFIG_DRIVER_ETHER
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 
 /*
  * Name:
@@ -175,5 +175,5 @@ void at91rm9200_GetPhyInterface(AT91PS_PhyOps p_phyops)
 	p_phyops->AutoNegotiate = dm9161_AutoNegotiate;
 }
 
-#endif	/* CONFIG_COMMANDS & CFG_CMD_NET */
+#endif
 #endif	/* CONFIG_DRIVER_ETHER */

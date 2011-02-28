@@ -30,13 +30,6 @@
 #include <linux/stddef.h>
 #include <malloc.h>
 
-#ifdef CONFIG_SHOW_BOOT_PROGRESS
-# include <status_led.h>
-# define SHOW_BOOT_PROGRESS(arg)	show_boot_progress(arg)
-#else
-# define SHOW_BOOT_PROGRESS(arg)
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_AMIGAONEG3SE
@@ -57,7 +50,6 @@ extern void env_relocate_spec (void);
 extern uchar env_get_char_spec(int);
 
 static uchar env_get_char_init (int index);
-uchar (*env_get_char)(int) = env_get_char_init;
 
 /************************************************************************
  * Default settings to be used when no valid environment is found
@@ -99,14 +91,20 @@ uchar default_environment[] = {
 #ifdef	CONFIG_ETH3ADDR
 	"eth3addr="	MK_STR(CONFIG_ETH3ADDR)		"\0"
 #endif
+#ifdef	CONFIG_ETH4ADDR
+	"eth4addr="	MK_STR(CONFIG_ETH4ADDR)		"\0"
+#endif
+#ifdef	CONFIG_ETH5ADDR
+	"eth5addr="	MK_STR(CONFIG_ETH5ADDR)		"\0"
+#endif
 #ifdef	CONFIG_IPADDR
 	"ipaddr="	MK_STR(CONFIG_IPADDR)		"\0"
 #endif
 #ifdef	CONFIG_SERVERIP
 	"serverip="	MK_STR(CONFIG_SERVERIP)		"\0"
 #endif
-#ifdef	CFG_AUTOLOAD
-	"autoload="	CFG_AUTOLOAD			"\0"
+#ifdef	CONFIG_SYS_AUTOLOAD
+	"autoload="	CONFIG_SYS_AUTOLOAD			"\0"
 #endif
 #ifdef	CONFIG_PREBOOT
 	"preboot="	CONFIG_PREBOOT			"\0"
@@ -141,7 +139,9 @@ uchar default_environment[] = {
 	"\0"
 };
 
-#if defined(CFG_ENV_IS_IN_NAND)		/* Environment is in Nand Flash */
+#if defined(CONFIG_ENV_IS_IN_NAND)		/* Environment is in Nand Flash */ \
+	|| defined(CONFIG_ENV_IS_IN_SPI_FLASH) \
+	|| defined(CONFIG_ENV_IS_IN_MMC)
 int default_environment_size = sizeof(default_environment);
 #endif
 
@@ -189,6 +189,19 @@ uchar env_get_char_memory (int index)
 }
 #endif
 
+uchar env_get_char (int index)
+{
+	uchar c;
+
+	/* if relocated to RAM */
+	if (gd->flags & GD_FLG_RELOC)
+		c = env_get_char_memory(index);
+	else
+		c = env_get_char_init(index);
+
+	return (c);
+}
+
 uchar *env_get_addr (int index)
 {
 	if (gd->env_valid) {
@@ -196,6 +209,23 @@ uchar *env_get_addr (int index)
 	} else {
 		return (&default_environment[index]);
 	}
+}
+
+void set_default_env(void)
+{
+	if (sizeof(default_environment) > ENV_SIZE) {
+		puts ("*** Error - default environment is too large\n\n");
+		return;
+	}
+
+	memset(env_ptr, 0, sizeof(env_t));
+	memcpy(env_ptr->data, default_environment,
+	       sizeof(default_environment));
+#ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
+	env_ptr->flags = 0xFF;
+#endif
+	env_crc_update ();
+	gd->env_valid = 1;
 }
 
 void env_relocate (void)
@@ -218,38 +248,18 @@ void env_relocate (void)
 	/*
 	 * We must allocate a buffer for the environment
 	 */
-	env_ptr = (env_t *)malloc (CFG_ENV_SIZE);
+	env_ptr = (env_t *)malloc (CONFIG_ENV_SIZE);
 	DEBUGF ("%s[%d] malloced ENV at %p\n", __FUNCTION__,__LINE__,env_ptr);
 #endif
 
-	/*
-	 * After relocation to RAM, we can always use the "memory" functions
-	 */
-	env_get_char = env_get_char_memory;
-
 	if (gd->env_valid == 0) {
-#if defined(CONFIG_GTH)	|| defined(CFG_ENV_IS_NOWHERE)	/* Environment not changable */
+#if defined(CONFIG_GTH)	|| defined(CONFIG_ENV_IS_NOWHERE)	/* Environment not changable */
 		puts ("Using default environment\n\n");
 #else
 		puts ("*** Warning - bad CRC, using default environment\n\n");
-		SHOW_BOOT_PROGRESS (-1);
+		show_boot_progress (-60);
 #endif
-
-		if (sizeof(default_environment) > ENV_SIZE)
-		{
-			puts ("*** Error - default environment is too large\n\n");
-			return;
-		}
-
-		memset (env_ptr, 0, sizeof(env_t));
-		memcpy (env_ptr->data,
-			default_environment,
-			sizeof(default_environment));
-#ifdef CFG_REDUNDAND_ENVIRONMENT
-		env_ptr->flags = 0xFF;
-#endif
-		env_crc_update ();
-		gd->env_valid = 1;
+		set_default_env();
 	}
 	else {
 		env_relocate_spec ();

@@ -22,7 +22,6 @@
  */
 
 OUTPUT_ARCH(powerpc)
-SEARCH_DIR(/lib); SEARCH_DIR(/usr/lib); SEARCH_DIR(/usr/local/lib); SEARCH_DIR(/usr/local/powerpc-any-elf/lib);
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
@@ -32,11 +31,11 @@ SECTIONS
   .dynsym        : { *(.dynsym)		}
   .dynstr        : { *(.dynstr)		}
   .rel.text      : { *(.rel.text)		}
-  .rela.text     : { *(.rela.text) 	}
+  .rela.text     : { *(.rela.text)	}
   .rel.data      : { *(.rel.data)		}
-  .rela.data     : { *(.rela.data) 	}
-  .rel.rodata    : { *(.rel.rodata) 	}
-  .rela.rodata   : { *(.rela.rodata) 	}
+  .rela.data     : { *(.rela.data)	}
+  .rel.rodata    : { *(.rel.rodata)	}
+  .rela.rodata   : { *(.rela.rodata)	}
   .rel.got       : { *(.rel.got)		}
   .rela.got      : { *(.rela.got)		}
   .rel.ctors     : { *(.rel.ctors)	}
@@ -58,7 +57,7 @@ SECTIONS
 
     /* Align to next NAND block */
     . = ALIGN(0x4000);
-    common/environment.o  (.ppcenv)
+    common/env_embedded.o  (.ppcenv)
     /* Keep some space here for redundant env and potential bad env blocks */
     . = ALIGN(0x10000);
 
@@ -70,9 +69,7 @@ SECTIONS
   PROVIDE (etext = .);
   .rodata    :
   {
-    *(.rodata)
-    *(.rodata1)
-    *(.rodata.str1.4)
+    *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
   }
   .fini      : { *(.fini)    } =0
   .ctors     : { *(.ctors)   }
@@ -124,12 +121,13 @@ SECTIONS
   __init_end = .;
 
   __bss_start = .;
-  .bss       :
+  .bss (NOLOAD)       :
   {
    *(.sbss) *(.scommon)
    *(.dynbss)
    *(.bss)
    *(COMMON)
+   . = ALIGN(4);
   }
 
   _end = . ;

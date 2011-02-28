@@ -4,11 +4,11 @@
 
 #undef	CONFIG_PCMCIA
 
-#if	(CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 #define	CONFIG_PCMCIA
 #endif
 
-#if	(CONFIG_COMMANDS & CFG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
 #define	CONFIG_PCMCIA
 #endif
 
@@ -33,7 +33,7 @@ static const unsigned short vppd_masks[2] = { _BW(14), _BW(15) };
 
 static void cfg_vppd(int no)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask;
 
 	if ((unsigned int)no >= sizeof(vppd_masks)/sizeof(vppd_masks[0]))
@@ -48,7 +48,7 @@ static void cfg_vppd(int no)
 
 static void set_vppd(int no, int what)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask;
 
 	if ((unsigned int)no >= sizeof(vppd_masks)/sizeof(vppd_masks[0]))
@@ -66,7 +66,7 @@ static const unsigned short vccd_masks[2] = { _BW(10), _BW(6) };
 
 static void cfg_vccd(int no)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask;
 
 	if ((unsigned int)no >= sizeof(vccd_masks)/sizeof(vccd_masks[0]))
@@ -81,7 +81,7 @@ static void cfg_vccd(int no)
 
 static void set_vccd(int no, int what)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask;
 
 	if ((unsigned int)no >= sizeof(vccd_masks)/sizeof(vccd_masks[0]))
@@ -99,7 +99,7 @@ static const unsigned short oc_mask = _BW(8);
 
 static void cfg_oc(void)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask = oc_mask;
 
 	immap->im_ioport.iop_pcdir &= ~mask;
@@ -110,7 +110,7 @@ static void cfg_oc(void)
 
 static int get_oc(void)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask = oc_mask;
 	int what;
 
@@ -122,7 +122,7 @@ static const unsigned short shdn_mask = _BW(12);
 
 static void cfg_shdn(void)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask;
 
 	mask = shdn_mask;
@@ -134,7 +134,7 @@ static void cfg_shdn(void)
 
 static void set_shdn(int what)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	unsigned short mask;
 
 	mask = shdn_mask;
@@ -150,8 +150,8 @@ static void cfg_ports (void)
 	volatile immap_t	*immap;
 	volatile cpm8xx_t	*cp;
 
-	immap = (immap_t *)CFG_IMMR;
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 
 	cfg_vppd(0); cfg_vppd(1);	/* VPPD0,VPPD1 VAVPP => Hi-Z */
@@ -184,10 +184,10 @@ int pcmcia_hardware_enable(int slot)
 
 	udelay(10000);
 
-	immap = (immap_t *)CFG_IMMR;
-	sysp  = (sysconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_siu_conf));
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	sysp  = (sysconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_siu_conf));
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/* Configure Ports for TPS2211A PC-Card Power-Interface Switch */
 	cfg_ports ();
@@ -231,12 +231,12 @@ int pcmcia_hardware_enable(int slot)
 	       (reg&PCMCIA_VS2(slot))?"n":"ff");
 
 	if ((pipr & mask) == mask) {
-		set_vppd(0, 1); set_vppd(1, 1); 		/* VAVPP => Hi-Z */
-		set_vccd(0, 0); set_vccd(1, 1); 		/* 5V on, 3V off */
+		set_vppd(0, 1); set_vppd(1, 1);		/* VAVPP => Hi-Z */
+		set_vccd(0, 0); set_vccd(1, 1);		/* 5V on, 3V off */
 		puts (" 5.0V card found: ");
 	} else {
-		set_vppd(0, 1); set_vppd(1, 1); 		/* VAVPP => Hi-Z */
-		set_vccd(0, 1); set_vccd(1, 0); 		/* 5V off, 3V on */
+		set_vppd(0, 1); set_vppd(1, 1);		/* VAVPP => Hi-Z */
+		set_vccd(0, 1); set_vccd(1, 0);		/* 5V off, 3V on */
 		puts (" 3.3V card found: ");
 	}
 
@@ -244,7 +244,7 @@ int pcmcia_hardware_enable(int slot)
 	for (i=0; i<5000; ++i) {
 		if (!get_oc()) {
 			printf ("   *** Overcurrent - Safety shutdown ***\n");
-			set_vccd(0, 0); set_vccd(1, 0); 		/* VAVPP => Hi-Z */
+			set_vccd(0, 0); set_vccd(1, 0);		/* VAVPP => Hi-Z */
 			return (1);
 		}
 		udelay (100);
@@ -264,7 +264,7 @@ int pcmcia_hardware_enable(int slot)
 }
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 int pcmcia_hardware_disable(int slot)
 {
 	volatile immap_t	*immap;
@@ -273,8 +273,8 @@ int pcmcia_hardware_disable(int slot)
 
 	debug ("hardware_disable: " PCMCIA_BOARD_MSG " Slot %c\n", 'A'+slot);
 
-	immap = (immap_t *)CFG_IMMR;
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
 
 	/* Configure PCMCIA General Control Register */
 	debug ("Disable PCMCIA buffers and assert RESET\n");
@@ -291,7 +291,7 @@ int pcmcia_hardware_disable(int slot)
 
 	return (0);
 }
-#endif	/* CFG_CMD_PCMCIA */
+#endif
 
 
 int pcmcia_voltage_set(int slot, int vcc, int vpp)
@@ -307,9 +307,9 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 			" Slot %c, Vcc=%d.%d, Vpp=%d.%d\n",
 	'A'+slot, vcc/10, vcc%10, vpp/10, vcc%10);
 
-	immap = (immap_t *)CFG_IMMR;
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
 	/*
 	* Disable PCMCIA buffers (isolate the interface)
 	* and assert RESET signal

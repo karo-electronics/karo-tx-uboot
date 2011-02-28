@@ -31,18 +31,17 @@
 #include <dataflash.h>
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_FLASH)
-
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 #include <jffs2/jffs2.h>
 
 /* parition handling routines */
 int mtdparts_init(void);
-int id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
+int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
 int find_dev_and_part(const char *id, struct mtd_device **dev,
 		u8 *part_num, struct part_info **part);
 #endif
 
+#ifndef CONFIG_SYS_NO_FLASH
 extern flash_info_t flash_info[];	/* info for FLASH chips */
 
 /*
@@ -77,7 +76,7 @@ abbrev_spec (char *str, flash_info_t ** pinfo, int *psf, int *psl)
 
 	bank = simple_strtoul (str, &ep, 10);
 	if (ep == str || *ep != '\0' ||
-		bank < 1 || bank > CFG_MAX_FLASH_BANKS ||
+		bank < 1 || bank > CONFIG_SYS_MAX_FLASH_BANKS ||
 		(fp = &flash_info[bank - 1])->flash_id == FLASH_UNKNOWN)
 		return -1;
 
@@ -106,6 +105,47 @@ abbrev_spec (char *str, flash_info_t ** pinfo, int *psf, int *psl)
 }
 
 /*
+ * Take *addr in Flash and adjust it to fall on the end of its sector
+ */
+int flash_sect_roundb (ulong *addr)
+{
+	flash_info_t *info;
+	ulong bank, sector_end_addr;
+	char found;
+	int i;
+
+	/* find the end addr of the sector where the *addr is */
+	found = 0;
+	for (bank = 0; bank < CONFIG_SYS_MAX_FLASH_BANKS && !found; ++bank) {
+		info = &flash_info[bank];
+		for (i = 0; i < info->sector_count && !found; ++i) {
+			/* get the end address of the sector */
+			if (i == info->sector_count - 1) {
+				sector_end_addr = info->start[0] +
+								info->size - 1;
+			} else {
+				sector_end_addr = info->start[i+1] - 1;
+			}
+
+			if (*addr <= sector_end_addr &&
+						*addr >= info->start[i]) {
+				found = 1;
+				/* adjust *addr if necessary */
+				if (*addr < sector_end_addr)
+					*addr = sector_end_addr;
+			} /* sector */
+		} /* bank */
+	}
+	if (!found) {
+		/* error, addres not in flash */
+		printf("Error: end address (0x%08lx) not in flash!\n", *addr);
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
  * This function computes the start and end addresses for both
  * erase and protect commands. The range of the addresses on which
  * either of the commands is to operate can be given in two forms:
@@ -127,8 +167,6 @@ addr_spec(char *arg1, char *arg2, ulong *addr_first, ulong *addr_last)
 {
 	char *ep;
 	char len_used; /* indicates if the "start +length" form used */
-	char found;
-	ulong bank;
 
 	*addr_first = simple_strtoul(arg1, &ep, 16);
 	if (ep == arg1 || *ep != '\0')
@@ -158,38 +196,8 @@ addr_spec(char *arg1, char *arg2, ulong *addr_first, ulong *addr_last)
 		 * sector boundary, so that the commands don't fail later on.
 		 */
 
-		/* find the end addr of the sector where the *addr_last is */
-		found = 0;
-		for (bank = 0; bank < CFG_MAX_FLASH_BANKS && !found; ++bank){
-			int i;
-			flash_info_t *info = &flash_info[bank];
-			for (i = 0; i < info->sector_count && !found; ++i){
-				/* get the end address of the sector */
-				ulong sector_end_addr;
-				if (i == info->sector_count - 1){
-					sector_end_addr =
-						info->start[0] + info->size - 1;
-				} else {
-					sector_end_addr =
-						info->start[i+1] - 1;
-				}
-				if (*addr_last <= sector_end_addr &&
-						*addr_last >= info->start[i]){
-					/* sector found */
-					found = 1;
-					/* adjust *addr_last if necessary */
-					if (*addr_last < sector_end_addr){
-						*addr_last = sector_end_addr;
-					}
-				}
-			} /* sector */
-		} /* bank */
-		if (!found){
-			/* error, addres not in flash */
-			printf("Error: end address (0x%08lx) not in flash!\n",
-								*addr_last);
+		if (flash_sect_roundb(addr_last) > 0)
 			return -1;
-		}
 	} /* "start +length" from used */
 
 	return 1;
@@ -206,13 +214,13 @@ flash_fill_sect_ranges (ulong addr_first, ulong addr_last,
 
 	*s_count = 0;
 
-	for (bank=0; bank < CFG_MAX_FLASH_BANKS; ++bank) {
+	for (bank=0; bank < CONFIG_SYS_MAX_FLASH_BANKS; ++bank) {
 		s_first[bank] = -1;	/* first sector to erase	*/
 		s_last [bank] = -1;	/* last  sector to erase	*/
 	}
 
-	for (bank=0,info=&flash_info[0];
-	     (bank < CFG_MAX_FLASH_BANKS) && (addr_first <= addr_last);
+	for (bank=0,info = &flash_info[0];
+	     (bank < CONFIG_SYS_MAX_FLASH_BANKS) && (addr_first <= addr_last);
 	     ++bank, ++info) {
 		ulong b_end;
 		int sect;
@@ -277,17 +285,21 @@ flash_fill_sect_ranges (ulong addr_first, ulong addr_last,
 
 	return rcode;
 }
+#endif /* CONFIG_SYS_NO_FLASH */
 
 int do_flinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#ifndef CONFIG_SYS_NO_FLASH
 	ulong bank;
+#endif
 
 #ifdef CONFIG_HAS_DATAFLASH
 	dataflash_print_info();
 #endif
 
+#ifndef CONFIG_SYS_NO_FLASH
 	if (argc == 1) {	/* print info for all FLASH banks */
-		for (bank=0; bank <CFG_MAX_FLASH_BANKS; ++bank) {
+		for (bank=0; bank <CONFIG_SYS_MAX_FLASH_BANKS; ++bank) {
 			printf ("\nBank # %ld: ", bank+1);
 
 			flash_print_info (&flash_info[bank]);
@@ -296,22 +308,24 @@ int do_flinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 	bank = simple_strtoul(argv[1], NULL, 16);
-	if ((bank < 1) || (bank > CFG_MAX_FLASH_BANKS)) {
+	if ((bank < 1) || (bank > CONFIG_SYS_MAX_FLASH_BANKS)) {
 		printf ("Only FLASH Banks # 1 ... # %d supported\n",
-			CFG_MAX_FLASH_BANKS);
+			CONFIG_SYS_MAX_FLASH_BANKS);
 		return 1;
 	}
 	printf ("\nBank # %ld: ", bank);
 	flash_print_info (&flash_info[bank-1]);
+#endif /* CONFIG_SYS_NO_FLASH */
 	return 0;
 }
 
 int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#ifndef CONFIG_SYS_NO_FLASH
 	flash_info_t *info;
 	ulong bank, addr_first, addr_last;
 	int n, sect_first, sect_last;
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 dev_type, dev_num, pnum;
@@ -319,12 +333,12 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int rcode = 0;
 
 	if (argc < 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	if (strcmp(argv[1], "all") == 0) {
-		for (bank=1; bank<=CFG_MAX_FLASH_BANKS; ++bank) {
+		for (bank=1; bank<=CONFIG_SYS_MAX_FLASH_BANKS; ++bank) {
 			printf ("Erase Flash Bank # %ld ", bank);
 			info = &flash_info[bank-1];
 			rcode = flash_erase (info, 0, info->sector_count-1);
@@ -337,15 +351,15 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			puts ("Bad sector specification\n");
 			return 1;
 		}
-		printf ("Erase Flash Sectors %d-%d in Bank # %d ",
+		printf ("Erase Flash Sectors %d-%d in Bank # %zu ",
 			sect_first, sect_last, (info-flash_info)+1);
 		rcode = flash_erase(info, sect_first, sect_last);
 		return rcode;
 	}
 
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	/* erase <part-id> - erase partition */
-	if ((argc == 2) && (id_parse(argv[1], NULL, &dev_type, &dev_num) == 0)) {
+	if ((argc == 2) && (mtd_id_parse(argv[1], NULL, &dev_type, &dev_num) == 0)) {
 		mtdparts_init();
 		if (find_dev_and_part(argv[1], &dev, &pnum, &part) == 0) {
 			if (dev->id->type == MTD_DEV_TYPE_NOR) {
@@ -355,7 +369,7 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				addr_last = addr_first + part->size - 1;
 
 				printf ("Erase Flash Parition %s, "
-						"bank %d, 0x%08lx - 0x%08lx ",
+						"bank %ld, 0x%08lx - 0x%08lx ",
 						argv[1], bank, addr_first,
 						addr_last);
 
@@ -370,15 +384,15 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #endif
 
 	if (argc != 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	if (strcmp(argv[1], "bank") == 0) {
 		bank = simple_strtoul(argv[2], NULL, 16);
-		if ((bank < 1) || (bank > CFG_MAX_FLASH_BANKS)) {
+		if ((bank < 1) || (bank > CONFIG_SYS_MAX_FLASH_BANKS)) {
 			printf ("Only FLASH Banks # 1 ... # %d supported\n",
-				CFG_MAX_FLASH_BANKS);
+				CONFIG_SYS_MAX_FLASH_BANKS);
 			return 1;
 		}
 		printf ("Erase Flash Bank # %ld ", bank);
@@ -393,22 +407,26 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 	if (addr_first >= addr_last) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	rcode = flash_sect_erase(addr_first, addr_last);
 	return rcode;
+#else
+	return 0;
+#endif /* CONFIG_SYS_NO_FLASH */
 }
 
+#ifndef CONFIG_SYS_NO_FLASH
 int flash_sect_erase (ulong addr_first, ulong addr_last)
 {
 	flash_info_t *info;
 	ulong bank;
-#ifdef CFG_MAX_FLASH_BANKS_DETECT
-	int s_first[CFG_MAX_FLASH_BANKS_DETECT], s_last[CFG_MAX_FLASH_BANKS_DETECT];
+#ifdef CONFIG_SYS_MAX_FLASH_BANKS_DETECT
+	int s_first[CONFIG_SYS_MAX_FLASH_BANKS_DETECT], s_last[CONFIG_SYS_MAX_FLASH_BANKS_DETECT];
 #else
-	int s_first[CFG_MAX_FLASH_BANKS], s_last[CFG_MAX_FLASH_BANKS];
+	int s_first[CONFIG_SYS_MAX_FLASH_BANKS], s_last[CONFIG_SYS_MAX_FLASH_BANKS];
 #endif
 	int erased = 0;
 	int planned;
@@ -418,8 +436,8 @@ int flash_sect_erase (ulong addr_first, ulong addr_last)
 					s_first, s_last, &planned );
 
 	if (planned && (rcode == 0)) {
-		for (bank=0,info=&flash_info[0];
-		     (bank < CFG_MAX_FLASH_BANKS) && (rcode == 0);
+		for (bank=0,info = &flash_info[0];
+		     (bank < CONFIG_SYS_MAX_FLASH_BANKS) && (rcode == 0);
 		     ++bank, ++info) {
 			if (s_first[bank]>=0) {
 				erased += s_last[bank] - s_first[bank] + 1;
@@ -441,24 +459,31 @@ int flash_sect_erase (ulong addr_first, ulong addr_last)
 	}
 	return rcode;
 }
+#endif /* CONFIG_SYS_NO_FLASH */
 
 int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#ifndef CONFIG_SYS_NO_FLASH
 	flash_info_t *info;
-	ulong bank, addr_first, addr_last;
-	int i, p, n, sect_first, sect_last;
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+	ulong bank;
+	int i, n, sect_first, sect_last;
+#endif /* CONFIG_SYS_NO_FLASH */
+#if !defined(CONFIG_SYS_NO_FLASH) || defined(CONFIG_HAS_DATAFLASH)
+	ulong addr_first, addr_last;
+#endif
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 dev_type, dev_num, pnum;
 #endif
-	int rcode = 0;
 #ifdef CONFIG_HAS_DATAFLASH
 	int status;
 #endif
+	int p;
+	int rcode = 0;
 
 	if (argc < 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -467,7 +492,7 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	} else if (strcmp(argv[1], "on") == 0) {
 		p = 1;
 	} else {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -489,8 +514,9 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 #endif
 
+#ifndef CONFIG_SYS_NO_FLASH
 	if (strcmp(argv[2], "all") == 0) {
-		for (bank=1; bank<=CFG_MAX_FLASH_BANKS; ++bank) {
+		for (bank=1; bank<=CONFIG_SYS_MAX_FLASH_BANKS; ++bank) {
 			info = &flash_info[bank-1];
 			if (info->flash_id == FLASH_UNKNOWN) {
 				continue;
@@ -499,17 +525,17 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				p ? "" : "Un-", bank);
 
 			for (i=0; i<info->sector_count; ++i) {
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 				if (flash_real_protect(info, i, p))
 					rcode = 1;
 				putc ('.');
 #else
 				info->protect[i] = p;
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 			}
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 			if (!rcode) puts (" done\n");
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 		}
 		return rcode;
 	}
@@ -519,29 +545,29 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			puts ("Bad sector specification\n");
 			return 1;
 		}
-		printf("%sProtect Flash Sectors %d-%d in Bank # %d\n",
+		printf("%sProtect Flash Sectors %d-%d in Bank # %zu\n",
 			p ? "" : "Un-", sect_first, sect_last,
 			(info-flash_info)+1);
 		for (i = sect_first; i <= sect_last; i++) {
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 			if (flash_real_protect(info, i, p))
 				rcode =  1;
 			putc ('.');
 #else
 			info->protect[i] = p;
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 		}
 
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 		if (!rcode) puts (" done\n");
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 
 		return rcode;
 	}
 
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	/* protect on/off <part-id> */
-	if ((argc == 3) && (id_parse(argv[2], NULL, &dev_type, &dev_num) == 0)) {
+	if ((argc == 3) && (mtd_id_parse(argv[2], NULL, &dev_type, &dev_num) == 0)) {
 		mtdparts_init();
 		if (find_dev_and_part(argv[2], &dev, &pnum, &part) == 0) {
 			if (dev->id->type == MTD_DEV_TYPE_NOR) {
@@ -551,7 +577,7 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				addr_last = addr_first + part->size - 1;
 
 				printf ("%sProtect Flash Parition %s, "
-						"bank %d, 0x%08lx - 0x%08lx\n",
+						"bank %ld, 0x%08lx - 0x%08lx\n",
 						p ? "" : "Un", argv[1],
 						bank, addr_first, addr_last);
 
@@ -567,15 +593,15 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #endif
 
 	if (argc != 4) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	if (strcmp(argv[2], "bank") == 0) {
 		bank = simple_strtoul(argv[3], NULL, 16);
-		if ((bank < 1) || (bank > CFG_MAX_FLASH_BANKS)) {
+		if ((bank < 1) || (bank > CONFIG_SYS_MAX_FLASH_BANKS)) {
 			printf ("Only FLASH Banks # 1 ... # %d supported\n",
-				CFG_MAX_FLASH_BANKS);
+				CONFIG_SYS_MAX_FLASH_BANKS);
 			return 1;
 		}
 		printf ("%sProtect Flash Bank # %ld\n",
@@ -587,18 +613,18 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			return 1;
 		}
 		for (i=0; i<info->sector_count; ++i) {
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 			if (flash_real_protect(info, i, p))
 				rcode =  1;
 			putc ('.');
 #else
 			info->protect[i] = p;
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 		}
 
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 		if (!rcode) puts (" done\n");
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 
 		return rcode;
 	}
@@ -609,22 +635,23 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 	if (addr_first >= addr_last) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 	rcode = flash_sect_protect (p, addr_first, addr_last);
+#endif /* CONFIG_SYS_NO_FLASH */
 	return rcode;
 }
 
-
+#ifndef CONFIG_SYS_NO_FLASH
 int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 {
 	flash_info_t *info;
 	ulong bank;
-#ifdef CFG_MAX_FLASH_BANKS_DETECT
-	int s_first[CFG_MAX_FLASH_BANKS_DETECT], s_last[CFG_MAX_FLASH_BANKS_DETECT];
+#ifdef CONFIG_SYS_MAX_FLASH_BANKS_DETECT
+	int s_first[CONFIG_SYS_MAX_FLASH_BANKS_DETECT], s_last[CONFIG_SYS_MAX_FLASH_BANKS_DETECT];
 #else
-	int s_first[CFG_MAX_FLASH_BANKS], s_last[CFG_MAX_FLASH_BANKS];
+	int s_first[CONFIG_SYS_MAX_FLASH_BANKS], s_last[CONFIG_SYS_MAX_FLASH_BANKS];
 #endif
 	int protected, i;
 	int planned;
@@ -635,7 +662,7 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 	protected = 0;
 
 	if (planned && (rcode == 0)) {
-		for (bank=0,info=&flash_info[0]; bank < CFG_MAX_FLASH_BANKS; ++bank, ++info) {
+		for (bank=0,info = &flash_info[0]; bank < CONFIG_SYS_MAX_FLASH_BANKS; ++bank, ++info) {
 			if (info->flash_id == FLASH_UNKNOWN) {
 				continue;
 			}
@@ -646,19 +673,19 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 					s_first[bank], s_last[bank], bank+1);
 				protected += s_last[bank] - s_first[bank] + 1;
 				for (i=s_first[bank]; i<=s_last[bank]; ++i) {
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 					if (flash_real_protect(info, i, p))
 						rcode = 1;
 					putc ('.');
 #else
 					info->protect[i] = p;
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 				}
 			}
 		}
-#if defined(CFG_FLASH_PROTECTION)
+#if defined(CONFIG_SYS_FLASH_PROTECTION)
 		puts (" done\n");
-#endif	/* CFG_FLASH_PROTECTION */
+#endif	/* CONFIG_SYS_FLASH_PROTECTION */
 
 		printf ("%sProtected %d sectors\n",
 			p ? "" : "Un-", protected);
@@ -669,10 +696,11 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 	}
 	return rcode;
 }
+#endif /* CONFIG_SYS_NO_FLASH */
 
 
 /**************************************************/
-#if (CONFIG_COMMANDS & CFG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 # define TMP_ERASE	"erase <part-id>\n    - erase partition\n"
 # define TMP_PROT_ON	"protect on <part-id>\n    - protect partition\n"
 # define TMP_PROT_OFF	"protect off <part-id>\n    - make partition writable\n"
@@ -684,14 +712,14 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 
 U_BOOT_CMD(
 	flinfo,    2,    1,    do_flinfo,
-	"flinfo  - print FLASH memory information\n",
+	"print FLASH memory information",
 	"\n    - print information for all FLASH memory banks\n"
-	"flinfo N\n    - print information for FLASH memory bank # N\n"
+	"flinfo N\n    - print information for FLASH memory bank # N"
 );
 
 U_BOOT_CMD(
-	erase,   3,   1,  do_flerase,
-	"erase   - erase FLASH memory\n",
+	erase,   3,   0,  do_flerase,
+	"erase FLASH memory",
 	"start end\n"
 	"    - erase FLASH from addr 'start' to addr 'end'\n"
 	"erase start +len\n"
@@ -700,12 +728,12 @@ U_BOOT_CMD(
 	"erase N:SF[-SL]\n    - erase sectors SF-SL in FLASH bank # N\n"
 	"erase bank N\n    - erase FLASH bank # N\n"
 	TMP_ERASE
-	"erase all\n    - erase all FLASH banks\n"
+	"erase all\n    - erase all FLASH banks"
 );
 
 U_BOOT_CMD(
-	protect,  4,  1,   do_protect,
-	"protect - enable or disable FLASH write protection\n",
+	protect,  4,  0,   do_protect,
+	"enable or disable FLASH write protection",
 	"on  start end\n"
 	"    - protect FLASH from addr 'start' to addr 'end'\n"
 	"protect on start +len\n"
@@ -725,11 +753,9 @@ U_BOOT_CMD(
 	"    - make sectors SF-SL writable in FLASH bank # N\n"
 	"protect off bank N\n    - make FLASH bank # N writable\n"
 	TMP_PROT_OFF
-	"protect off all\n    - make all FLASH banks writable\n"
+	"protect off all\n    - make all FLASH banks writable"
 );
 
 #undef	TMP_ERASE
 #undef	TMP_PROT_ON
 #undef	TMP_PROT_OFF
-
-#endif	/* CFG_CMD_FLASH */

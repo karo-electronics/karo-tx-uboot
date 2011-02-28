@@ -38,11 +38,11 @@
  *
  */
 
+#include <config.h>
 #include <common.h>
 #include <asm/processor.h>
-#include "xparameters.h"
 
-#ifdef CFG_ENV_IS_IN_EEPROM
+#ifdef CONFIG_ENV_IS_IN_EEPROM
 extern void convert_env(void);
 #endif
 
@@ -79,7 +79,7 @@ checkboard(void)
 	return (0);
 }
 
-long int
+phys_size_t
 initdram(int board_type)
 {
 	return 128 * 1024 * 1024;
@@ -108,7 +108,7 @@ ulong
 get_PCI_freq(void)
 {
 	ulong val;
-	PPC405_SYS_INFO sys_info;
+	PPC4xx_SYS_INFO sys_info;
 
 	get_sys_info(&sys_info);
 	val = sys_info.freqPCI;

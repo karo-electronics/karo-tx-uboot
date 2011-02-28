@@ -253,7 +253,7 @@ next_mem_type:
 		a = H4_242x_SDRC_ACTIM_CTRLA_0_ES1;
 		b = H4_242x_SDRC_ACTIM_CTRLB_0_ES1;
 		r = H4_242x_SDRC_RFR_CTRL_ES1;
- 	}
+	}
 
 	if (cs0) {
 		__raw_writel(a, SDRC_ACTIM_CTRLA_0);
@@ -327,7 +327,7 @@ void gpmc_init(void)
 	__raw_writel(0x10, GPMC_SYSCONFIG);	/* smart idle */
 	__raw_writel(0x0, GPMC_IRQENABLE);	/* isr's sources masked */
 	__raw_writel(tval, GPMC_TIMEOUT_CONTROL);/* timeout disable */
-#ifdef CFG_NAND_BOOT
+#ifdef CONFIG_SYS_NAND_BOOT
 	__raw_writel(0x001, GPMC_CONFIG);	/* set nWP, disable limited addr */
 #else
 	__raw_writel(0x111, GPMC_CONFIG);	/* set nWP, disable limited addr */
@@ -343,7 +343,7 @@ void gpmc_init(void)
 	__raw_writel(0x0, GPMC_CONFIG7_0);	/* disable current map */
 	sdelay(1000);
 
-#ifdef CFG_NAND_BOOT
+#ifdef CONFIG_SYS_NAND_BOOT
 	__raw_writel(H4_24XX_GPMC_CONFIG1_0|mtype|mwidth, GPMC_CONFIG1_0);
 #else
 	__raw_writel(H4_24XX_GPMC_CONFIG1_0|mux|mtype|mwidth, GPMC_CONFIG1_0);

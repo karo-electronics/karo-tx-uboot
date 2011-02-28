@@ -31,7 +31,8 @@
 #include <common.h>
 #include <watchdog.h>
 #include <command.h>
-#include <devices.h>
+#include <stdio_dev.h>
+#include <timestamp.h>
 #include <version.h>
 #include <malloc.h>
 #include <net.h>
@@ -70,7 +71,7 @@ ulong i386boot_bios_size     = (ulong)&_i386boot_bios_size;     /* size of BIOS 
 
 
 const char version_string[] =
-	U_BOOT_VERSION" (" __DATE__ " - " __TIME__ ")";
+	U_BOOT_VERSION" (" U_BOOT_DATE " - " U_BOOT_TIME ")";
 
 
 /*
@@ -84,7 +85,7 @@ static int mem_malloc_init(void)
 {
 	/* start malloc area right after the stack */
 	mem_malloc_start = i386boot_bss_start +
-		i386boot_bss_size + CFG_STACK_SIZE;
+		i386boot_bss_size + CONFIG_SYS_STACK_SIZE;
 	mem_malloc_start = (mem_malloc_start+3)&~3;
 
 	/* Use all available RAM for malloc() */
@@ -106,19 +107,6 @@ void *sbrk (ptrdiff_t increment)
 	mem_malloc_brk = new;
 
 	return ((void *) old);
-}
-
-char *strmhz (char *buf, long hz)
-{
-	long l, n;
-	long m;
-
-	n = hz / 1000000L;
-	l = sprintf (buf, "%ld", n);
-	m = (hz % 1000000L) / 1000L;
-	if (m != 0)
-		sprintf (buf + l, ".%03ld", m);
-	return (buf);
 }
 
 /************************************************************************
@@ -150,7 +138,7 @@ static int display_banner (void)
 		i386boot_romdata_dest, i386boot_romdata_dest+i386boot_romdata_size-1,
 		i386boot_bss_start, i386boot_bss_start+i386boot_bss_size-1,
 		i386boot_bss_start+i386boot_bss_size,
-		i386boot_bss_start+i386boot_bss_size+CFG_STACK_SIZE-1);
+		i386boot_bss_start+i386boot_bss_size+CONFIG_SYS_STACK_SIZE-1);
 
 
 	return (0);
@@ -226,7 +214,7 @@ init_fnc_t *init_sequence[] = {
 	NULL,
 };
 
-gd_t *global_data;
+gd_t *gd;
 
 void start_i386boot (void)
 {
@@ -237,9 +225,12 @@ void start_i386boot (void)
 	static bd_t bd_data;
 	init_fnc_t **init_fnc_ptr;
 
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
+	cmd_tbl_t *p;
+#endif
 	show_boot_progress(0x21);
 
-	gd = global_data = &gd_data;
+	gd = &gd_data;
 	/* compiler optimization barrier needed for GCC >= 3.4 */
 	__asm__ __volatile__("": : :"memory");
 
@@ -250,6 +241,10 @@ void start_i386boot (void)
 
 	gd->baudrate =  CONFIG_BAUDRATE;
 
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
+	/* Need to set relocation offset here for interrupt initialization */
+	gd->reloc_off =  CONFIG_SYS_BL_START_RAM - TEXT_BASE;
+#endif
 	for (init_fnc_ptr = init_sequence, i=0; *init_fnc_ptr; ++init_fnc_ptr, i++) {
 		show_boot_progress(0xa130|i);
 
@@ -259,6 +254,26 @@ void start_i386boot (void)
 	}
 	show_boot_progress(0x23);
 
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
+	for (p = &__u_boot_cmd_start; p != &__u_boot_cmd_end; p++) {
+		ulong addr;
+		addr = (ulong) (p->cmd) + gd->reloc_off;
+		p->cmd = (int (*)(struct cmd_tbl_s *, int, int, char *[]))addr;
+		addr = (ulong)(p->name) + gd->reloc_off;
+		p->name = (char *)addr;
+
+		if (p->usage != NULL) {
+			addr = (ulong)(p->usage) + gd->reloc_off;
+			p->usage = (char *)addr;
+		}
+	#ifdef	CONFIG_SYS_LONGHELP
+		if (p->help != NULL) {
+			addr = (ulong)(p->help) + gd->reloc_off;
+			p->help = (char *)addr;
+		}
+	#endif
+	}
+#endif
 	/* configure available FLASH banks */
 	size = flash_init();
 	display_flash_config(size);
@@ -274,23 +289,6 @@ void start_i386boot (void)
 	/* IP Address */
 	bd_data.bi_ip_addr = getenv_IPaddr ("ipaddr");
 
-	/* MAC Address */
-	{
-		int i;
-		ulong reg;
-		char *s, *e;
-		uchar tmp[64];
-
-		i = getenv_r ("ethaddr", tmp, sizeof (tmp));
-		s = (i > 0) ? tmp : NULL;
-
-		for (reg = 0; reg < 6; ++reg) {
-			bd_data.bi_enetaddr[reg] = s ? simple_strtoul (s, &e, 16) : 0;
-			if (s)
-				s = (*e) ? e + 1 : e;
-		}
-	}
-
 #if defined(CONFIG_PCI)
 	/*
 	 * Do pci configuration
@@ -301,7 +299,7 @@ void start_i386boot (void)
 	show_boot_progress(0x27);
 
 
-	devices_init ();
+	stdio_init ();
 
 	jumptable_init ();
 
@@ -313,13 +311,13 @@ void start_i386boot (void)
 	misc_init_r();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA) && !(CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_PCMCIA) && !defined(CONFIG_CMD_IDE)
 	WATCHDOG_RESET();
 	puts ("PCMCIA:");
 	pcmcia_init();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	WATCHDOG_RESET();
 	puts("KGDB:  ");
 	kgdb_init();
@@ -348,33 +346,33 @@ void start_i386boot (void)
 	if ((s = getenv ("loadaddr")) != NULL) {
 		load_addr = simple_strtoul (s, NULL, 16);
 	}
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 	if ((s = getenv ("bootfile")) != NULL) {
 		copy_filename (BootFile, s, sizeof (BootFile));
 	}
-#endif /* CFG_CMD_NET */
+#endif
 
 	WATCHDOG_RESET();
 
-#if (CONFIG_COMMANDS & CFG_CMD_IDE)
+#if defined(CONFIG_CMD_IDE)
 	WATCHDOG_RESET();
 	puts("IDE:   ");
 	ide_init();
-#endif /* CFG_CMD_IDE */
+#endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_SCSI)
+#if defined(CONFIG_CMD_SCSI)
 	WATCHDOG_RESET();
 	puts("SCSI:  ");
 	scsi_init();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
+#if defined(CONFIG_CMD_DOC)
 	WATCHDOG_RESET();
 	puts("DOC:   ");
 	doc_init();
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 #if defined(CONFIG_NET_MULTI)
 	WATCHDOG_RESET();
 	puts("Net:   ");
@@ -382,7 +380,7 @@ void start_i386boot (void)
 	eth_initialize(gd->bd);
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET) && (0)
+#if ( defined(CONFIG_CMD_NET)) && (0)
 	WATCHDOG_RESET();
 # ifdef DEBUG
 	puts ("Reset Ethernet PHY\n");
@@ -420,4 +418,15 @@ void hang (void)
 {
 	puts ("### ERROR ### Please RESET the board ###\n");
 	for (;;);
+}
+
+unsigned long do_go_exec (ulong (*entry)(int, char *[]), int argc, char *argv[])
+{
+	/*
+	 * TODO: Test this function - changed to fix compiler error.
+	 * Original code was:
+	 *   return (entry >> 1) (argc, argv);
+	 * with a comment about Nios function pointers are address >> 1
+	 */
+	return (entry) (argc, argv);
 }

@@ -37,6 +37,8 @@
  * on our cache or tlb entries.
  */
 
+DECLARE_GLOBAL_DATA_PTR;
+
 struct exception_table_entry
 {
 	unsigned long insn, fixup;
@@ -50,18 +52,27 @@ search_one_table(const struct exception_table_entry *first,
 		 const struct exception_table_entry *last,
 		 unsigned long value)
 {
-	while (first <= last) {
-		const struct exception_table_entry *mid;
-		long diff;
-
-		mid = (last - first) / 2 + first;
-		diff = mid->insn - value;
-		if (diff == 0)
-			return mid->fixup;
-		else if (diff < 0)
-			first = mid+1;
-		else
-			last = mid-1;
+	long diff;
+	if ((ulong) first > CONFIG_SYS_MONITOR_BASE) {
+		/* exception occurs in FLASH, before u-boot relocation.
+		 * No relocation offset is needed.
+		 */
+		while (first <= last) {
+			diff = first->insn - value;
+			if (diff == 0)
+				return first->fixup;
+			first++;
+		}
+	} else {
+		/* exception occurs in RAM, after u-boot relocation.
+		 * A relocation offset should be added.
+		 */
+		while (first <= last) {
+			diff = (first->insn + gd->reloc_off) - value;
+			if (diff == 0)
+				return (first->fixup + gd->reloc_off);
+			first++;
+		}
 	}
 	return 0;
 }
@@ -75,8 +86,11 @@ search_exception_table(unsigned long addr)
 
 	/* There is only the kernel to search.  */
 	ret = search_one_table(__start___ex_table, __stop___ex_table-1, addr);
+	/* if the serial port does not hang in exception, printf can be used */
+#if !defined(CONFIG_SYS_SERIAL_HANG_IN_EXCEPTION)
 	if (ex_tab_message)
-		printf("Bus Fault @ 0x%08lx, fixup 0x%08lx\n", addr, ret);
+		debug("Bus Fault @ 0x%08lx, fixup 0x%08lx\n", addr, ret);
+#endif
 	if (ret) return ret;
 
 	return 0;

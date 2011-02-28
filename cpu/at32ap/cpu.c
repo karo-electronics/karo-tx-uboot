@@ -26,38 +26,44 @@
 #include <asm/sections.h>
 #include <asm/sysreg.h>
 
+#include <asm/arch/clk.h>
 #include <asm/arch/memory-map.h>
-#include <asm/arch/platform.h>
 
 #include "hsmc3.h"
+
+/* Sanity checks */
+#if (CONFIG_SYS_CLKDIV_CPU > CONFIG_SYS_CLKDIV_HSB)		\
+	|| (CONFIG_SYS_CLKDIV_HSB > CONFIG_SYS_CLKDIV_PBA)	\
+	|| (CONFIG_SYS_CLKDIV_HSB > CONFIG_SYS_CLKDIV_PBB)
+# error Constraint fCPU >= fHSB >= fPB{A,B} violated
+#endif
+#if defined(CONFIG_PLL) && ((CONFIG_SYS_PLL0_MUL < 1) || (CONFIG_SYS_PLL0_DIV < 1))
+# error Invalid PLL multiplier and/or divider
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
 int cpu_init(void)
 {
-	const struct device *hebi;
 	extern void _evba(void);
-	char *p;
 
-	gd->cpu_hz = CFG_OSC0_HZ;
+	gd->cpu_hz = CONFIG_SYS_OSC0_HZ;
 
-	/* fff03400: 00010001 04030402 00050005 10011103 */
-	hebi = get_device(DEVICE_HEBI);
-	hsmc3_writel(hebi, MODE0, 0x00031103);
-	hsmc3_writel(hebi, CYCLE0, 0x000c000d);
-	hsmc3_writel(hebi, PULSE0, 0x0b0a0906);
-	hsmc3_writel(hebi, SETUP0, 0x00010002);
+	/* TODO: Move somewhere else, but needs to be run before we
+	 * increase the clock frequency. */
+	hsmc3_writel(MODE0, 0x00031103);
+	hsmc3_writel(CYCLE0, 0x000c000d);
+	hsmc3_writel(PULSE0, 0x0b0a0906);
+	hsmc3_writel(SETUP0, 0x00010002);
 
-	pm_init();
+	clk_init();
 
+	/* Update the CPU speed according to the PLL configuration */
+	gd->cpu_hz = get_cpu_clk_rate();
+
+	/* Set up the exception handler table and enable exceptions */
 	sysreg_write(EVBA, (unsigned long)&_evba);
 	asm volatile("csrf	%0" : : "i"(SYSREG_EM_OFFSET));
-	gd->console_uart = get_device(CFG_CONSOLE_UART_DEV);
-
-	/* Lock everything that mess with the flash in the icache */
-	for (p = __flashprog_start; p <= (__flashprog_end + CFG_ICACHE_LINESZ);
-	     p += CFG_ICACHE_LINESZ)
-		asm volatile("cache %0, 0x02" : "=m"(*p) :: "memory");
 
 	return 0;
 }

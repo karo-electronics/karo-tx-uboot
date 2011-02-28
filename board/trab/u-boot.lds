@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2002
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -33,19 +33,18 @@ SECTIONS
 	.text      :
 	{
 	  cpu/arm920t/start.o	(.text)
-	  lib_arm/_umodsi3.o	(.text)
 	  lib_generic/zlib.o	(.text)
 	  lib_generic/crc32.o	(.text)
 	  lib_generic/string.o	(.text)
 
 	. = DEFINED(env_offset) ? env_offset : .;
-	  common/environment.o	(.ppcenv)
+	  common/env_embedded.o	(.ppcenv)
 
 	  *(.text)
 	}
 
 	. = ALIGN(4);
-	.rodata : { *(.rodata) }
+	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
 
 	. = ALIGN(4);
 	.data : { *(.data) }
@@ -60,6 +59,6 @@ SECTIONS
 
 	. = ALIGN(4);
 	__bss_start = .;
-	.bss : { *(.bss) }
+	.bss (NOLOAD) : { *(.bss) . = ALIGN(4); }
 	_end = .;
 }

@@ -25,11 +25,13 @@
 #include <command.h>
 #include "part_iso.h"
 
-#if ((CONFIG_COMMANDS & CFG_CMD_IDE)	|| \
-     (CONFIG_COMMANDS & CFG_CMD_SCSI)	|| \
-     (CONFIG_COMMANDS & CFG_CMD_USB)	|| \
-     defined(CONFIG_MMC) || \
-     defined(CONFIG_SYSTEMACE) ) && defined(CONFIG_ISO_PARTITION)
+#if defined(CONFIG_CMD_IDE) || \
+    defined(CONFIG_CMD_MG_DISK) || \
+    defined(CONFIG_CMD_SCSI) || \
+    defined(CONFIG_CMD_SATA) || \
+    defined(CONFIG_CMD_USB) || \
+    defined(CONFIG_MMC) || \
+    defined(CONFIG_SYSTEMACE)
 
 /* #define	ISO_PART_DEBUG */
 
@@ -80,7 +82,7 @@ int get_partition_info_iso_verb(block_dev_desc_t * dev_desc, int part_num, disk_
 	/* the first sector (sector 0x10) must be a primary volume desc */
 	blkaddr=PVD_OFFSET;
 	if (dev_desc->block_read (dev_desc->dev, PVD_OFFSET, 1, (ulong *) tmpbuf) != 1)
-   	return (-1);
+	return (-1);
 	if(ppr->desctype!=0x01) {
 		if(verb)
 			printf ("** First descriptor is NOT a primary desc on %d:%d **\n",
@@ -102,7 +104,7 @@ int get_partition_info_iso_verb(block_dev_desc_t * dev_desc, int part_num, disk_
 	for(i=blkaddr;i<lastsect;i++) {
 		PRINTF("Reading block %d\n", i);
 		if (dev_desc->block_read (dev_desc->dev, i, 1, (ulong *) tmpbuf) != 1)
-  	 	return (-1);
+		return (-1);
 		if(ppr->desctype==0x00)
 			break; /* boot entry found */
 		if(ppr->desctype==0xff) {
@@ -112,7 +114,7 @@ int get_partition_info_iso_verb(block_dev_desc_t * dev_desc, int part_num, disk_
 			return (-1);
 		}
 	}
- 	/* boot entry found */
+	/* boot entry found */
 	if(strncmp(pbr->ident_str,"EL TORITO SPECIFICATION",23)!=0) {
 		if(verb)
 			printf ("** Wrong El Torito ident: %s on %d:%d **\n",
@@ -157,20 +159,26 @@ int get_partition_info_iso_verb(block_dev_desc_t * dev_desc, int part_num, disk_
 	sprintf ((char *)info->type, "U-Boot");
 	switch(dev_desc->if_type) {
 		case IF_TYPE_IDE:
+		case IF_TYPE_SATA:
 		case IF_TYPE_ATAPI:
-			sprintf ((char *)info->name, "hd%c%d\n", 'a' + dev_desc->dev, part_num);
+			sprintf ((char *)info->name, "hd%c%d",
+				'a' + dev_desc->dev, part_num);
 			break;
 		case IF_TYPE_SCSI:
-			sprintf ((char *)info->name, "sd%c%d\n", 'a' + dev_desc->dev, part_num);
+			sprintf ((char *)info->name, "sd%c%d",
+				'a' + dev_desc->dev, part_num);
 			break;
 		case IF_TYPE_USB:
-			sprintf ((char *)info->name, "usbd%c%d\n", 'a' + dev_desc->dev, part_num);
+			sprintf ((char *)info->name, "usbd%c%d",
+				'a' + dev_desc->dev, part_num);
 			break;
 		case IF_TYPE_DOC:
-			sprintf ((char *)info->name, "docd%c%d\n", 'a' + dev_desc->dev, part_num);
+			sprintf ((char *)info->name, "docd%c%d",
+				'a' + dev_desc->dev, part_num);
 			break;
 		default:
-			sprintf ((char *)info->name, "xx%c%d\n", 'a' + dev_desc->dev, part_num);
+			sprintf ((char *)info->name, "xx%c%d",
+				'a' + dev_desc->dev, part_num);
 			break;
 	}
 	/* the bootcatalog (including validation Entry) is limited to 2048Bytes
@@ -257,4 +265,4 @@ int test_part_iso (block_dev_desc_t *dev_desc)
 	return(get_partition_info_iso_verb(dev_desc,0,&info,0));
 }
 
-#endif /* ((CONFIG_COMMANDS & CFG_CMD_IDE) || (CONFIG_COMMANDS & CFG_CMD_SCSI)) && defined(CONFIG_ISO_PARTITION) */
+#endif

@@ -29,12 +29,11 @@
 #include "nfs.h"
 #include "bootp.h"
 
-/*#define NFS_DEBUG*/
-
-#if ((CONFIG_COMMANDS & CFG_CMD_NET) && (CONFIG_COMMANDS & CFG_CMD_NFS))
+#if defined(CONFIG_CMD_NET) && defined(CONFIG_CMD_NFS)
 
 #define HASHES_PER_LINE 65	/* Number of "loading" hashes per line	*/
-#define NFS_TIMEOUT 60
+#define NFS_RETRY_COUNT 30
+#define NFS_TIMEOUT 2000UL
 
 static int fs_mounted = 0;
 static unsigned long rpc_id = 0;
@@ -68,10 +67,10 @@ static __inline__ int
 store_block (uchar * src, unsigned offset, unsigned len)
 {
 	ulong newsize = offset + len;
-#ifdef CFG_DIRECT_FLASH_NFS
+#ifdef CONFIG_SYS_DIRECT_FLASH_NFS
 	int i, rc = 0;
 
-	for (i=0; i<CFG_MAX_FLASH_BANKS; i++) {
+	for (i=0; i<CONFIG_SYS_MAX_FLASH_BANKS; i++) {
 		/* start address in flash? */
 		if (load_addr + offset >= flash_info[i].start[0]) {
 			rc = 1;
@@ -86,7 +85,7 @@ store_block (uchar * src, unsigned offset, unsigned len)
 			return -1;
 		}
 	} else
-#endif /* CFG_DIRECT_FLASH_NFS */
+#endif /* CONFIG_SYS_DIRECT_FLASH_NFS */
 	{
 		(void)memcpy ((void *)(load_addr + offset), src, len);
 	}
@@ -356,9 +355,7 @@ RPC request dispatcher
 static void
 NfsSend (void)
 {
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	switch (NfsState) {
 	case STATE_PRCLOOKUP_PROG_MOUNT_REQ:
@@ -396,16 +393,13 @@ rpc_lookup_reply (int prog, uchar *pkt, unsigned len)
 
 	memcpy ((unsigned char *)&rpc_pkt, pkt, len);
 
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	if (ntohl(rpc_pkt.u.reply.id) != rpc_id)
 		return -1;
 
 	if (rpc_pkt.u.reply.rstatus  ||
 	    rpc_pkt.u.reply.verifier ||
-	    rpc_pkt.u.reply.astatus  ||
 	    rpc_pkt.u.reply.astatus) {
 		return -1;
 	}
@@ -427,9 +421,7 @@ nfs_mount_reply (uchar *pkt, unsigned len)
 {
 	struct rpc_t rpc_pkt;
 
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	memcpy ((unsigned char *)&rpc_pkt, pkt, len);
 
@@ -454,9 +446,7 @@ nfs_umountall_reply (uchar *pkt, unsigned len)
 {
 	struct rpc_t rpc_pkt;
 
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	memcpy ((unsigned char *)&rpc_pkt, pkt, len);
 
@@ -480,9 +470,7 @@ nfs_lookup_reply (uchar *pkt, unsigned len)
 {
 	struct rpc_t rpc_pkt;
 
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	memcpy ((unsigned char *)&rpc_pkt, pkt, len);
 
@@ -507,9 +495,7 @@ nfs_readlink_reply (uchar *pkt, unsigned len)
 	struct rpc_t rpc_pkt;
 	int rlen;
 
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	memcpy ((unsigned char *)&rpc_pkt, pkt, len);
 
@@ -544,9 +530,7 @@ nfs_read_reply (uchar *pkt, unsigned len)
 	struct rpc_t rpc_pkt;
 	int rlen;
 
-#ifdef NFS_DEBUG_nop
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	memcpy ((uchar *)&rpc_pkt, pkt, sizeof(rpc_pkt.u.reply));
 
@@ -587,6 +571,10 @@ Interfaces of U-BOOT
 static void
 NfsTimeout (void)
 {
+	if ( NfsTimeoutCount++ < NFS_RETRY_COUNT ) {
+		NfsSend ();
+		return;
+	}
 	puts ("Timeout\n");
 	NetState = NETLOOP_FAIL;
 	return;
@@ -597,9 +585,7 @@ NfsHandler (uchar *pkt, unsigned dest, unsigned src, unsigned len)
 {
 	int rlen;
 
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 
 	if (dest != NfsOurPort) return;
 
@@ -657,9 +643,7 @@ NfsHandler (uchar *pkt, unsigned dest, unsigned src, unsigned len)
 			NfsState = STATE_UMOUNT_REQ;
 			NfsSend ();
 		} else {
-#ifdef NFS_DEBUG
-			printf ("Symlink --> %s\n", nfs_path);
-#endif
+			debug("Symlink --> %s\n", nfs_path);
 			nfs_filename = basename (nfs_path);
 			nfs_path     = dirname (nfs_path);
 
@@ -670,7 +654,7 @@ NfsHandler (uchar *pkt, unsigned dest, unsigned src, unsigned len)
 
 	case STATE_READ_REQ:
 		rlen = nfs_read_reply (pkt, len);
-		NetSetTimeout (NFS_TIMEOUT * CFG_HZ, NfsTimeout);
+		NetSetTimeout (NFS_TIMEOUT, NfsTimeout);
 		if (rlen > 0) {
 			nfs_offset += rlen;
 			NfsSend ();
@@ -692,9 +676,7 @@ NfsHandler (uchar *pkt, unsigned dest, unsigned src, unsigned len)
 void
 NfsStart (void)
 {
-#ifdef NFS_DEBUG
-	printf ("%s\n", __FUNCTION__);
-#endif
+	debug("%s\n", __func__);
 	NfsDownloadState = NETLOOP_FAIL;
 
 	NfsServerIP = NetServerIP;
@@ -737,18 +719,16 @@ NfsStart (void)
 	printf ("Using %s device\n", eth_get_name());
 #endif
 
-	puts ("File transfer via NFS from server "); print_IPaddr (NfsServerIP);
-	puts ("; our IP address is ");		    print_IPaddr (NetOurIP);
+	printf("File transfer via NFS from server %pI4"
+		"; our IP address is %pI4", &NfsServerIP, &NetOurIP);
 
 	/* Check if we need to send across this subnet */
 	if (NetOurGatewayIP && NetOurSubnetMask) {
 		IPaddr_t OurNet	    = NetOurIP	  & NetOurSubnetMask;
 		IPaddr_t ServerNet  = NetServerIP & NetOurSubnetMask;
 
-		if (OurNet != ServerNet) {
-			puts ("; sending through gateway ");
-			print_IPaddr (NetOurGatewayIP) ;
-		}
+		if (OurNet != ServerNet)
+			printf("; sending through gateway %pI4", &NetOurGatewayIP);
 	}
 	printf ("\nFilename '%s/%s'.", nfs_path, nfs_filename);
 
@@ -759,7 +739,7 @@ NfsStart (void)
 	printf ("\nLoad address: 0x%lx\n"
 		"Loading: *\b", load_addr);
 
-	NetSetTimeout (NFS_TIMEOUT * CFG_HZ, NfsTimeout);
+	NetSetTimeout (NFS_TIMEOUT, NfsTimeout);
 	NetSetHandler (NfsHandler);
 
 	NfsTimeoutCount = 0;
@@ -775,4 +755,4 @@ NfsStart (void)
 	NfsSend ();
 }
 
-#endif /* CONFIG_COMMANDS & CFG_CMD_NFS */
+#endif

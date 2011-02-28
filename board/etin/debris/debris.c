@@ -23,8 +23,10 @@
 
 #include <common.h>
 #include <mpc824x.h>
+#include <net.h>
 #include <pci.h>
 #include <i2c.h>
+#include <netdev.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -43,7 +45,7 @@ int checkboard (void)
 	return 0;
 }
 
-#if 0 	/* NOT USED */
+#if 0	/* NOT USED */
 int checkflash (void)
 {
 	/* TODO: XXX XXX XXX */
@@ -53,7 +55,7 @@ int checkflash (void)
 }
 #endif
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	int m, row, col, bank, i;
 	unsigned long start, end;
@@ -62,7 +64,7 @@ long int initdram (int board_type)
 	uint32_t mear2 = 0, emear2 = 0, msar2 = 0, emsar2 = 0;
 	uint8_t mber = 0;
 
-	i2c_init(CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 
 	if (i2c_reg_read (0x50, 2) != 0x04) return 0;	/* Memory type */
 	m = i2c_reg_read (0x50, 5);	/* # of physical banks */
@@ -73,7 +75,7 @@ long int initdram (int board_type)
 	CONFIG_READ_WORD(MCCR1, mccr1);
 	mccr1 &= 0xffff0000;
 
-	start = CFG_SDRAM_BASE;
+	start = CONFIG_SYS_SDRAM_BASE;
 	end = start + (1 << (col + row + 3) ) * bank - 1;
 
 	for (i = 0; i < m; i++) {
@@ -172,8 +174,17 @@ void nvram_write(long dest, const void *src, size_t count)
 
 int misc_init_r(void)
 {
-	/* Write ethernet addr in NVRAM for VxWorks */
-	nvram_write(CFG_ENV_ADDR + CFG_NVRAM_VXWORKS_OFFS,
-			(char*)&gd->bd->bi_enetaddr[0], 6);
+	uchar ethaddr[6];
+
+	if (eth_getenv_enetaddr("ethaddr", ethaddr))
+		/* Write ethernet addr in NVRAM for VxWorks */
+		nvram_write(CONFIG_ENV_ADDR + CONFIG_SYS_NVRAM_VXWORKS_OFFS,
+				ethaddr, 6);
+
 	return 0;
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }

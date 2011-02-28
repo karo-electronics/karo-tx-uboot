@@ -10,6 +10,10 @@
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
  *
+ * (C) Copyright 2007
+ * Sascha Hauer, Pengutronix
+ *
+ * (C) Copyright 2008-2009 Freescale Semiconductor, Inc.
  * (C) Copyright 2009
  * Ilya Yanok, Emcraft Systems Ltd, <yanok@emcraft.com>
  *
@@ -118,7 +122,6 @@ int timer_init(void)
 	writel(readl(&regs->gpt_tctl) | GPTCR_CLKSOURCE_32 | GPTCR_FRR,
 			&regs->gpt_tctl);
 	writel(readl(&regs->gpt_tctl) | GPTCR_TEN, &regs->gpt_tctl);
-
 	return 0;
 }
 

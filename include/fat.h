@@ -67,7 +67,7 @@
 #define ATTR_VFAT     (ATTR_RO | ATTR_HIDDEN | ATTR_SYS | ATTR_VOLUME)
 
 #define DELETED_FLAG	((char)0xe5) /* Marks deleted files when in name[0] */
-#define aRING		0x05	     /* Used to represent 'å' in name[0] */
+#define aRING		0x05	     /* Used as special character in name[0] */
 
 /* Indicates that the entry is the last long entry in a set of long
  * dir entries
@@ -101,7 +101,7 @@
 #else
 #define FAT2CPU16(x)	((((x) & 0x00ff) << 8) | (((x) & 0xff00) >> 8))
 #define FAT2CPU32(x)	((((x) & 0x000000ff) << 24)  |	\
-	 		 (((x) & 0x0000ff00) << 8)  |	\
+			 (((x) & 0x0000ff00) << 8)  |	\
 			 (((x) & 0x00ff0000) >> 8)  |	\
 			 (((x) & 0xff000000) >> 24))
 #endif
@@ -111,7 +111,8 @@
 #define START(dent)	(FAT2CPU16((dent)->start) \
 			+ (mydata->fatsize != 32 ? 0 : \
 			  (FAT2CPU16((dent)->starthi) << 16)))
-
+#define CHECK_CLUST(x, fatsize) ((x) <= 1 || \
+				(x) >= ((fatsize) != 32 ? 0xfff0 : 0xffffff0))
 
 typedef struct boot_sector {
 	__u8	ignored[3];	/* Bootstrap code */

@@ -27,11 +27,12 @@ Skeleton NIC driver for Etherboot
 #include <asm/cache.h>
 #include <miiphy.h>
 #include <net.h>
+#include <netdev.h>
 
 #include "eth.h"
 #include "eth_addrtbl.h"
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET) && defined(CONFIG_NET_MULTI)
+#if defined(CONFIG_CMD_NET) && defined(CONFIG_NET_MULTI)
 
 #define GT6426x_ETH_BUF_SIZE	1536
 
@@ -163,7 +164,7 @@ gt6426x_eth_receive(struct eth_dev_s *p,unsigned int icr)
 	int eth_len=0;
 	char *eth_data;
 
-	eth0_rx_desc_single *rx=&p->eth_rx_desc[(p->rdn)];
+	eth0_rx_desc_single *rx = &p->eth_rx_desc[(p->rdn)];
 
 	INVALIDATE_DCACHE((unsigned int)rx,(unsigned int)(rx+1));
 
@@ -252,7 +253,7 @@ gt6426x_eth_transmit(void *v, volatile char *p, unsigned int s)
 #ifdef DEBUG
 	unsigned int old_command_stat,old_psr;
 #endif
-	eth0_tx_desc_single *tx=&dev->eth_tx_desc[dev->tdn];
+	eth0_tx_desc_single *tx = &dev->eth_tx_desc[dev->tdn];
 
 	/* wait for tx to be ready */
 	INVALIDATE_DCACHE((unsigned int)tx,(unsigned int)(tx+1));
@@ -529,7 +530,7 @@ gt6426x_eth_probe(void *v, bd_t *bis)
 #endif
 
 	/* 31  28 27  24 23  20 19  16
-	 *  0000   0000   0000   0000 	[0004]
+	 *  0000   0000   0000   0000	[0004]
 	 * 15  12 11  8   7  4   3  0
 	 *  1000   1101   0000   0000	[4d00]
 	 *    20 - 0=MII 1=RMII
@@ -797,11 +798,11 @@ gt6426x_eth_initialize(bd_t *bis)
 
 
 		eth_register(dev);
-#if defined(CONFIG_MII) || (CONFIG_COMMANDS & CFG_CMD_MII)
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 		miiphy_register(dev->name,
 				gt6426x_miiphy_read, gt6426x_miiphy_write);
 #endif
 	}
 
 }
-#endif /* CFG_CMD_NET && CONFIG_NET_MULTI */
+#endif

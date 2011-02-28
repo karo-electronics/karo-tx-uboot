@@ -29,6 +29,7 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <74xx_7xx.h>
 #include "../../Marvell/include/memory.h"
 #include "../../Marvell/include/pci.h"
@@ -54,14 +55,80 @@
 #define DP(x)
 #endif
 
-extern void flush_data_cache (void);
-extern void invalidate_l1_instruction_cache (void);
+static char show_config_tab[][15] = {{"PCI0DLL_2     "},  /* 31 */
+				     {"PCI0DLL_1     "},  /* 30 */
+				     {"PCI0DLL_0     "},  /* 29 */
+				     {"PCI1DLL_2     "},  /* 28 */
+				     {"PCI1DLL_1     "},  /* 27 */
+				     {"PCI1DLL_0     "},  /* 26 */
+				     {"BbEP2En       "},  /* 25 */
+				     {"SDRAMRdDataDel"},  /* 24 */
+				     {"SDRAMRdDel    "},  /* 23 */
+				     {"SDRAMSync     "},  /* 22 */
+				     {"SDRAMPipeSel_1"},  /* 21 */
+				     {"SDRAMPipeSel_0"},  /* 20 */
+				     {"SDRAMAddDel   "},  /* 19 */
+				     {"SDRAMClkSel   "},  /* 18 */
+				     {"Reserved(1!)  "},  /* 17 */
+				     {"PCIRty        "},  /* 16 */
+				     {"BootCSWidth_1 "},  /* 15 */
+				     {"BootCSWidth_0 "},  /* 14 */
+				     {"PCI1PadsCal   "},  /* 13 */
+				     {"PCI0PadsCal   "},  /* 12 */
+				     {"MultiMVId_1   "},  /* 11 */
+				     {"MultiMVId_0   "},  /* 10 */
+				     {"MultiGTEn     "},  /* 09 */
+				     {"Int60xArb     "},  /* 08 */
+				     {"CPUBusConfig_1"},  /* 07 */
+				     {"CPUBusConfig_0"},  /* 06 */
+				     {"DefIntSpc     "},  /* 05 */
+				     {0               },  /* 04 */
+				     {"SROMAdd_1     "},  /* 03 */
+				     {"SROMAdd_0     "},  /* 02 */
+				     {"DRAMPadCal    "},  /* 01 */
+				     {"SInitEn       "},  /* 00 */
+				     {0               },  /* 31 */
+				     {0               },  /* 30 */
+				     {0               },  /* 29 */
+				     {0               },  /* 28 */
+				     {0               },  /* 27 */
+				     {0               },  /* 26 */
+				     {0               },  /* 25 */
+				     {0               },  /* 24 */
+				     {0               },  /* 23 */
+				     {0               },  /* 22 */
+				     {"JTAGCalBy     "},  /* 21 */
+				     {"GB2Sel        "},  /* 20 */
+				     {"GB1Sel        "},  /* 19 */
+				     {"DRAMPLL_MDiv_5"},  /* 18 */
+				     {"DRAMPLL_MDiv_4"},  /* 17 */
+				     {"DRAMPLL_MDiv_3"},  /* 16 */
+				     {"DRAMPLL_MDiv_2"},  /* 15 */
+				     {"DRAMPLL_MDiv_1"},  /* 14 */
+				     {"DRAMPLL_MDiv_0"},  /* 13 */
+				     {"GB0Sel        "},  /* 12 */
+				     {"DRAMPLLPU     "},  /* 11 */
+				     {"DRAMPLL_HIKVCO"},  /* 10 */
+				     {"DRAMPLLNP     "},  /* 09 */
+				     {"DRAMPLL_NDiv_7"},  /* 08 */
+				     {"DRAMPLL_NDiv_6"},  /* 07 */
+				     {"CPUPadCal     "},  /* 06 */
+				     {"DRAMPLL_NDiv_5"},  /* 05 */
+				     {"DRAMPLL_NDiv_4"},  /* 04 */
+				     {"DRAMPLL_NDiv_3"},  /* 03 */
+				     {"DRAMPLL_NDiv_2"},  /* 02 */
+				     {"DRAMPLL_NDiv_1"},  /* 01 */
+				     {"DRAMPLL_NDiv_0"}}; /* 00 */
+
 extern flash_info_t flash_info[];
+
+extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
+extern int do_bootvx (cmd_tbl_t *, int, int, char *[]);
 
 /* ------------------------------------------------------------------------- */
 
 /* this is the current GT register space location */
-/* it starts at CFG_DFL_GT_REGS but moves later to CFG_GT_REGS */
+/* it starts at CONFIG_SYS_DFL_GT_REGS but moves later to CONFIG_SYS_GT_REGS */
 
 /* Unfortunately, we cant change it while we are in flash, so we initialize it
  * to the "final" value. This means that any debug_led calls before
@@ -70,8 +137,17 @@ extern flash_info_t flash_info[];
  */
 
 void board_prebootm_init (void);
-unsigned int INTERNAL_REG_BASE_ADDR = CFG_GT_REGS;
+unsigned int INTERNAL_REG_BASE_ADDR = CONFIG_SYS_GT_REGS;
 int display_mem_map (void);
+
+/*
+ * Skip video initialization on slave variant.
+ * This function will overwrite the weak default in cfb_console.c
+ */
+int board_video_skip(void)
+{
+	return CPCI750_SLAVE_TEST;
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -120,6 +196,7 @@ original ppcboot 1.1.6 source end */
 static void gt_pci_config (void)
 {
 	unsigned int stat;
+	unsigned int data;
 	unsigned int val = 0x00fff864;	/* DINK32: BusNum 23:16,  DevNum 15:11, FuncNum 10:8, RegNum 7:2 */
 
 	/* In PCIX mode devices provide their own bus and device numbers. We query the Discovery II's
@@ -133,7 +210,7 @@ static void gt_pci_config (void)
 
 		GT_REG_WRITE (PCI_0_CONFIG_ADDR, BIT31 | val);
 		GT_REG_WRITE (PCI_0_CONFIG_DATA_VIRTUAL_REG,
-			      (stat & 0xffff0000) | CFG_PCI_IDSEL);
+			      (stat & 0xffff0000) | CONFIG_SYS_PCI_IDSEL);
 
 	}
 	if ((GTREGREAD (PCI_1_MODE) & (BIT4 | BIT5)) != 0) {	/*if  PCI-X */
@@ -142,7 +219,7 @@ static void gt_pci_config (void)
 
 		GT_REG_WRITE (PCI_1_CONFIG_ADDR, BIT31 | val);
 		GT_REG_WRITE (PCI_1_CONFIG_DATA_VIRTUAL_REG,
-			      (stat & 0xffff0000) | CFG_PCI_IDSEL);
+			      (stat & 0xffff0000) | CONFIG_SYS_PCI_IDSEL);
 	}
 
 	/* Enable master */
@@ -160,21 +237,21 @@ static void gt_pci_config (void)
 	/* ronen- add write to pci remap registers for 64460.
 	   in 64360 when writing to pci base go and overide remap automaticaly,
 	   in 64460 it doesn't */
-	GT_REG_WRITE (PCI_0_IO_BASE_ADDR, CFG_PCI0_IO_SPACE >> 16);
-	GT_REG_WRITE (PCI_0I_O_ADDRESS_REMAP, CFG_PCI0_IO_SPACE_PCI >> 16);
-	GT_REG_WRITE (PCI_0_IO_SIZE, (CFG_PCI0_IO_SIZE - 1) >> 16);
+	GT_REG_WRITE (PCI_0_IO_BASE_ADDR, CONFIG_SYS_PCI0_IO_SPACE >> 16);
+	GT_REG_WRITE (PCI_0I_O_ADDRESS_REMAP, CONFIG_SYS_PCI0_IO_SPACE_PCI >> 16);
+	GT_REG_WRITE (PCI_0_IO_SIZE, (CONFIG_SYS_PCI0_IO_SIZE - 1) >> 16);
 
-	GT_REG_WRITE (PCI_0_MEMORY0_BASE_ADDR, CFG_PCI0_MEM_BASE >> 16);
-	GT_REG_WRITE (PCI_0MEMORY0_ADDRESS_REMAP, CFG_PCI0_MEM_BASE >> 16);
-	GT_REG_WRITE (PCI_0_MEMORY0_SIZE, (CFG_PCI0_MEM_SIZE - 1) >> 16);
+	GT_REG_WRITE (PCI_0_MEMORY0_BASE_ADDR, CONFIG_SYS_PCI0_MEM_BASE >> 16);
+	GT_REG_WRITE (PCI_0MEMORY0_ADDRESS_REMAP, CONFIG_SYS_PCI0_MEM_BASE >> 16);
+	GT_REG_WRITE (PCI_0_MEMORY0_SIZE, (CONFIG_SYS_PCI0_MEM_SIZE - 1) >> 16);
 
-	GT_REG_WRITE (PCI_1_IO_BASE_ADDR, CFG_PCI1_IO_SPACE >> 16);
-	GT_REG_WRITE (PCI_1I_O_ADDRESS_REMAP, CFG_PCI1_IO_SPACE_PCI >> 16);
-	GT_REG_WRITE (PCI_1_IO_SIZE, (CFG_PCI1_IO_SIZE - 1) >> 16);
+	GT_REG_WRITE (PCI_1_IO_BASE_ADDR, CONFIG_SYS_PCI1_IO_SPACE >> 16);
+	GT_REG_WRITE (PCI_1I_O_ADDRESS_REMAP, CONFIG_SYS_PCI1_IO_SPACE_PCI >> 16);
+	GT_REG_WRITE (PCI_1_IO_SIZE, (CONFIG_SYS_PCI1_IO_SIZE - 1) >> 16);
 
-	GT_REG_WRITE (PCI_1_MEMORY0_BASE_ADDR, CFG_PCI1_MEM_BASE >> 16);
-	GT_REG_WRITE (PCI_1MEMORY0_ADDRESS_REMAP, CFG_PCI1_MEM_BASE >> 16);
-	GT_REG_WRITE (PCI_1_MEMORY0_SIZE, (CFG_PCI1_MEM_SIZE - 1) >> 16);
+	GT_REG_WRITE (PCI_1_MEMORY0_BASE_ADDR, CONFIG_SYS_PCI1_MEM_BASE >> 16);
+	GT_REG_WRITE (PCI_1MEMORY0_ADDRESS_REMAP, CONFIG_SYS_PCI1_MEM_BASE >> 16);
+	GT_REG_WRITE (PCI_1_MEMORY0_SIZE, (CONFIG_SYS_PCI1_MEM_SIZE - 1) >> 16);
 
 	/* PCI interface settings */
 	/* Timeout set to retry forever */
@@ -187,10 +264,15 @@ static void gt_pci_config (void)
 
 /*ronen update the pci internal registers base address.*/
 #ifdef MAP_PCI
-	for (stat = 0; stat <= PCI_HOST1; stat++)
+	for (stat = 0; stat <= PCI_HOST1; stat++) {
+		data = pciReadConfigReg(stat,
+					PCI_INTERNAL_REGISTERS_MEMORY_MAPPED_BASE_ADDRESS,
+					SELF);
+		data = (data & 0x0f) | CONFIG_SYS_GT_REGS;
 		pciWriteConfigReg (stat,
 				   PCI_INTERNAL_REGISTERS_MEMORY_MAPPED_BASE_ADDRESS,
-				   SELF, CFG_GT_REGS);
+				   SELF, data);
+	}
 #endif
 
 }
@@ -206,7 +288,7 @@ static void gt_cpu_config (void)
 	tmp = GTREGREAD (CPU_CONFIGURATION);
 
 	/* set the SINGLE_CPU bit  see MV64360 P.399 */
-#ifndef CFG_GT_DUAL_CPU		/* SINGLE_CPU seems to cause JTAG problems */
+#ifndef CONFIG_SYS_GT_DUAL_CPU		/* SINGLE_CPU seems to cause JTAG problems */
 	tmp |= CPU_CONF_SINGLE_CPU;
 #endif
 
@@ -256,7 +338,7 @@ int board_early_init_f (void)
 	 * it last time. (huber)
 	 */
 
-	my_remap_gt_regs (CFG_DFL_GT_REGS, CFG_GT_REGS);
+	my_remap_gt_regs (CONFIG_SYS_DFL_GT_REGS, CONFIG_SYS_GT_REGS);
 
 	/* No PCI in first release of Port To_do: enable it. */
 #ifdef CONFIG_PCI
@@ -300,45 +382,45 @@ int board_early_init_f (void)
 	 * registers to boot from the sram. (device0)
 	 */
 
-	memoryMapDeviceSpace (DEVICE0, CFG_DEV0_SPACE, CFG_DEV0_SIZE);
-	memoryMapDeviceSpace (DEVICE1, CFG_DEV1_SPACE, CFG_DEV1_SIZE);
-	memoryMapDeviceSpace (DEVICE2, CFG_DEV2_SPACE, CFG_DEV2_SIZE);
-	memoryMapDeviceSpace (DEVICE3, CFG_DEV3_SPACE, CFG_DEV3_SIZE);
+	memoryMapDeviceSpace (DEVICE0, CONFIG_SYS_DEV0_SPACE, CONFIG_SYS_DEV0_SIZE);
+	memoryMapDeviceSpace (DEVICE1, CONFIG_SYS_DEV1_SPACE, CONFIG_SYS_DEV1_SIZE);
+	memoryMapDeviceSpace (DEVICE2, CONFIG_SYS_DEV2_SPACE, CONFIG_SYS_DEV2_SIZE);
+	memoryMapDeviceSpace (DEVICE3, CONFIG_SYS_DEV3_SPACE, CONFIG_SYS_DEV3_SIZE);
 
 
 	/* configure device timing */
-	GT_REG_WRITE (DEVICE_BANK0PARAMETERS, CFG_DEV0_PAR);
-	GT_REG_WRITE (DEVICE_BANK1PARAMETERS, CFG_DEV1_PAR);
-	GT_REG_WRITE (DEVICE_BANK2PARAMETERS, CFG_DEV2_PAR);
-	GT_REG_WRITE (DEVICE_BANK3PARAMETERS, CFG_DEV3_PAR);
+	GT_REG_WRITE (DEVICE_BANK0PARAMETERS, CONFIG_SYS_DEV0_PAR);
+	GT_REG_WRITE (DEVICE_BANK1PARAMETERS, CONFIG_SYS_DEV1_PAR);
+	GT_REG_WRITE (DEVICE_BANK2PARAMETERS, CONFIG_SYS_DEV2_PAR);
+	GT_REG_WRITE (DEVICE_BANK3PARAMETERS, CONFIG_SYS_DEV3_PAR);
 
-#ifdef CFG_32BIT_BOOT_PAR	/* set port parameters for Flash device module access */
+#ifdef CONFIG_SYS_32BIT_BOOT_PAR	/* set port parameters for Flash device module access */
 	/* detect if we are booting from the 32 bit flash */
 	if (GTREGREAD (DEVICE_BOOT_BANK_PARAMETERS) & (0x3 << 20)) {
 		/* 32 bit boot flash */
-		GT_REG_WRITE (DEVICE_BANK3PARAMETERS, CFG_8BIT_BOOT_PAR);
+		GT_REG_WRITE (DEVICE_BANK3PARAMETERS, CONFIG_SYS_8BIT_BOOT_PAR);
 		GT_REG_WRITE (DEVICE_BOOT_BANK_PARAMETERS,
-			      CFG_32BIT_BOOT_PAR);
+			      CONFIG_SYS_32BIT_BOOT_PAR);
 	} else {
 		/* 8 bit boot flash */
-		GT_REG_WRITE (DEVICE_BANK3PARAMETERS, CFG_32BIT_BOOT_PAR);
-		GT_REG_WRITE (DEVICE_BOOT_BANK_PARAMETERS, CFG_8BIT_BOOT_PAR);
+		GT_REG_WRITE (DEVICE_BANK3PARAMETERS, CONFIG_SYS_32BIT_BOOT_PAR);
+		GT_REG_WRITE (DEVICE_BOOT_BANK_PARAMETERS, CONFIG_SYS_8BIT_BOOT_PAR);
 	}
 #else
 	/* 8 bit boot flash only */
-/*	GT_REG_WRITE(DEVICE_BOOT_BANK_PARAMETERS, CFG_8BIT_BOOT_PAR);*/
+/*	GT_REG_WRITE(DEVICE_BOOT_BANK_PARAMETERS, CONFIG_SYS_8BIT_BOOT_PAR);*/
 #endif
 
 
 	gt_cpu_config ();
 
 	/* MPP setup */
-	GT_REG_WRITE (MPP_CONTROL0, CFG_MPP_CONTROL_0);
-	GT_REG_WRITE (MPP_CONTROL1, CFG_MPP_CONTROL_1);
-	GT_REG_WRITE (MPP_CONTROL2, CFG_MPP_CONTROL_2);
-	GT_REG_WRITE (MPP_CONTROL3, CFG_MPP_CONTROL_3);
+	GT_REG_WRITE (MPP_CONTROL0, CONFIG_SYS_MPP_CONTROL_0);
+	GT_REG_WRITE (MPP_CONTROL1, CONFIG_SYS_MPP_CONTROL_1);
+	GT_REG_WRITE (MPP_CONTROL2, CONFIG_SYS_MPP_CONTROL_2);
+	GT_REG_WRITE (MPP_CONTROL3, CONFIG_SYS_MPP_CONTROL_3);
 
-	GT_REG_WRITE (GPP_LEVEL_CONTROL, CFG_GPP_LEVEL_CONTROL);
+	GT_REG_WRITE (GPP_LEVEL_CONTROL, CONFIG_SYS_GPP_LEVEL_CONTROL);
 	DEBUG_LED0_ON ();
 	DEBUG_LED1_ON ();
 	DEBUG_LED2_ON ();
@@ -351,7 +433,7 @@ int board_early_init_f (void)
 int misc_init_r ()
 {
 	icache_enable ();
-#ifdef CFG_L2
+#ifdef CONFIG_SYS_L2
 	l2cache_enable ();
 #endif
 #ifdef CONFIG_MPSC
@@ -364,19 +446,19 @@ int misc_init_r ()
 	/* disable the dcache and MMU */
 	dcache_lock ();
 #endif
-	if (flash_info[3].size < CFG_FLASH_INCREMENT) {
-	        unsigned int flash_offset;
+	if (flash_info[3].size < CONFIG_SYS_FLASH_INCREMENT) {
+		unsigned int flash_offset;
 		unsigned int l;
 
-		flash_offset =  CFG_FLASH_INCREMENT - flash_info[3].size;
-		for (l = 0; l < CFG_MAX_FLASH_SECT; l++) {
-		        if (flash_info[3].start[l] != 0) {
+		flash_offset =  CONFIG_SYS_FLASH_INCREMENT - flash_info[3].size;
+		for (l = 0; l < CONFIG_SYS_MAX_FLASH_SECT; l++) {
+			if (flash_info[3].start[l] != 0) {
 			      flash_info[3].start[l] += flash_offset;
 			}
 		}
 		flash_protect (FLAG_PROTECT_SET,
-			       CFG_MONITOR_BASE,
-			       CFG_MONITOR_BASE + monitor_flash_len  - 1,
+			       CONFIG_SYS_MONITOR_BASE,
+			       CONFIG_SYS_MONITOR_BASE + monitor_flash_len  - 1,
 			       &flash_info[3]);
 	}
 	return 0;
@@ -384,13 +466,16 @@ int misc_init_r ()
 
 void after_reloc (ulong dest_addr, gd_t * gd)
 {
+	memoryMapDeviceSpace (BOOT_DEVICE, CONFIG_SYS_BOOT_SPACE,
+			      CONFIG_SYS_BOOT_SIZE);
 
-  memoryMapDeviceSpace (BOOT_DEVICE, CFG_BOOT_SPACE, CFG_BOOT_SIZE);
+	display_mem_map ();
+	GT_REG_WRITE (PCI_0BASE_ADDRESS_REGISTERS_ENABLE, 0xfffffdfe);
+	GT_REG_WRITE (PCI_1BASE_ADDRESS_REGISTERS_ENABLE, 0xfffffdfe);
 
-  display_mem_map ();
-  /* now, jump to the main ppcboot board init code */
-  board_init_r (gd, dest_addr);
-  /* NOTREACHED */
+	/* now, jump to the main ppcboot board init code */
+	board_init_r (gd, dest_addr);
+	/* NOTREACHED */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -405,7 +490,7 @@ int checkboard (void)
 {
 	int l_type = 0;
 
-	printf ("BOARD: %s\n", CFG_BOARD_NAME);
+	printf ("BOARD: %s\n", CONFIG_SYS_BOARD_NAME);
 	return (l_type);
 }
 
@@ -474,9 +559,82 @@ int display_mem_map (void)
 	return (0);
 }
 
+/*
+ * Command loadpci: wait for signal from host and boot image.
+ */
+int do_loadpci(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	volatile unsigned int *ptr;
+	int count = 0;
+	int count2 = 0;
+	int status;
+	char addr[16];
+	char str[] = "\\|/-";
+	char *local_args[2];
+
+	/*
+	 * Mark sync address
+	 */
+	ptr = 0;
+	ptr[0] = 0xffffffff;
+	ptr[1] = 0xffffffff;
+	puts("\nWaiting for image from pci host -");
+
+	/*
+	 * Wait for host to write the start address
+	 */
+	while (*ptr == 0xffffffff) {
+		count++;
+		if (!(count % 100)) {
+			count2++;
+			putc(0x08); /* backspace */
+			putc(str[count2 % 4]);
+		}
+
+		/* Abort if ctrl-c was pressed */
+		if (ctrlc()) {
+			puts("\nAbort\n");
+			return 0;
+		}
+
+		udelay(1000);
+	}
+
+	sprintf(addr, "%08x", *ptr);
+	printf("\nBooting Image at addr 0x%s ...\n", addr);
+	setenv("loadaddr", addr);
+
+	switch (ptr[1] == 0) {
+	case 0:
+		/*
+		 * Boot image via bootm
+		 */
+		local_args[0] = argv[0];
+		local_args[1] = NULL;
+		status = do_bootm (cmdtp, 0, 1, local_args);
+		break;
+	case 1:
+		/*
+		 * Boot image via bootvx
+		 */
+		local_args[0] = argv[0];
+		local_args[1] = NULL;
+		status = do_bootvx (cmdtp, 0, 1, local_args);
+		break;
+	}
+
+	return 0;
+}
+
+U_BOOT_CMD(
+	loadpci,	1,	1,	do_loadpci,
+	"loadpci - Wait for pci-image and boot it\n",
+	NULL
+	);
+
 /* DRAM check routines copied from gw8260 */
 
-#if defined (CFG_DRAM_TEST)
+#if defined (CONFIG_SYS_DRAM_TEST)
 
 /*********************************************************************/
 /* NAME:  move64() -  moves a double word (64-bit)		     */
@@ -502,12 +660,12 @@ static void move64 (unsigned long long *src, unsigned long long *dest)
 {
 	asm ("lfd  0, 0(3)\n\t"	/* fpr0   =  *scr       */
 	     "stfd 0, 0(4)"	/* *dest  =  fpr0       */
-      : : : "fr0");		/* Clobbers fr0         */
+      : : : "fr0");		/* Clobbers fr0		*/
 	return;
 }
 
 
-#if defined (CFG_DRAM_TEST_DATA)
+#if defined (CONFIG_SYS_DRAM_TEST_DATA)
 
 unsigned long long pattern[] = {
 	0xaaaaaaaaaaaaaaaaLL,
@@ -570,7 +728,7 @@ unsigned long long pattern[] = {
 /*********************************************************************/
 int mem_test_data (void)
 {
-	unsigned long long *pmem = (unsigned long long *) CFG_MEMTEST_START;
+	unsigned long long *pmem = (unsigned long long *) CONFIG_SYS_MEMTEST_START;
 	unsigned long long temp64 = 0;
 	int num_patterns = sizeof (pattern) / sizeof (pattern[0]);
 	int i;
@@ -580,9 +738,9 @@ int mem_test_data (void)
 		move64 (&(pattern[i]), pmem);
 		move64 (pmem, &temp64);
 
-		/* hi = (temp64>>32) & 0xffffffff;          */
-		/* lo = temp64 & 0xffffffff;                */
-		/* printf("\ntemp64 = 0x%08x%08x", hi, lo); */
+		/* hi = (temp64>>32) & 0xffffffff;		*/
+		/* lo = temp64 & 0xffffffff;			*/
+		/* printf("\ntemp64 = 0x%08x%08x", hi, lo);	*/
 
 		hi = (pattern[i] >> 32) & 0xffffffff;
 		lo = pattern[i] & 0xffffffff;
@@ -597,9 +755,9 @@ int mem_test_data (void)
 
 	return 0;
 }
-#endif /* CFG_DRAM_TEST_DATA */
+#endif /* CONFIG_SYS_DRAM_TEST_DATA */
 
-#if defined (CFG_DRAM_TEST_ADDRESS)
+#if defined (CONFIG_SYS_DRAM_TEST_ADDRESS)
 /*********************************************************************/
 /* NAME:  mem_test_address() -	test address lines		     */
 /*								     */
@@ -624,8 +782,8 @@ int mem_test_data (void)
 int mem_test_address (void)
 {
 	volatile unsigned int *pmem =
-		(volatile unsigned int *) CFG_MEMTEST_START;
-	const unsigned int size = (CFG_MEMTEST_END - CFG_MEMTEST_START) / 4;
+		(volatile unsigned int *) CONFIG_SYS_MEMTEST_START;
+	const unsigned int size = (CONFIG_SYS_MEMTEST_END - CONFIG_SYS_MEMTEST_START) / 4;
 	unsigned int i;
 
 	/* write address to each location */
@@ -642,9 +800,9 @@ int mem_test_address (void)
 	}
 	return 0;
 }
-#endif /* CFG_DRAM_TEST_ADDRESS */
+#endif /* CONFIG_SYS_DRAM_TEST_ADDRESS */
 
-#if defined (CFG_DRAM_TEST_WALK)
+#if defined (CONFIG_SYS_DRAM_TEST_WALK)
 /*********************************************************************/
 /* NAME:   mem_march() -  memory march				     */
 /*								     */
@@ -702,7 +860,7 @@ int mem_march (volatile unsigned long long *base,
 	}
 	return 0;
 }
-#endif /* CFG_DRAM_TEST_WALK */
+#endif /* CONFIG_SYS_DRAM_TEST_WALK */
 
 /*********************************************************************/
 /* NAME:   mem_test_walk() -  a simple walking ones test	     */
@@ -734,8 +892,8 @@ int mem_test_walk (void)
 {
 	unsigned long long mask;
 	volatile unsigned long long *pmem =
-		(volatile unsigned long long *) CFG_MEMTEST_START;
-	const unsigned long size = (CFG_MEMTEST_END - CFG_MEMTEST_START) / 8;
+		(volatile unsigned long long *) CONFIG_SYS_MEMTEST_START;
+	const unsigned long size = (CONFIG_SYS_MEMTEST_END - CONFIG_SYS_MEMTEST_START) / 8;
 
 	unsigned int i;
 
@@ -801,23 +959,23 @@ int testdram (void)
 	int runaddress = 0;
 	int runwalk    = 0;
 
-#ifdef CFG_DRAM_TEST_DATA
+#ifdef CONFIG_SYS_DRAM_TEST_DATA
 	s = getenv ("testdramdata");
 	rundata = (s && (*s == 'y')) ? 1 : 0;
 #endif
-#ifdef CFG_DRAM_TEST_ADDRESS
+#ifdef CONFIG_SYS_DRAM_TEST_ADDRESS
 	s = getenv ("testdramaddress");
 	runaddress = (s && (*s == 'y')) ? 1 : 0;
 #endif
-#ifdef CFG_DRAM_TEST_WALK
+#ifdef CONFIG_SYS_DRAM_TEST_WALK
 	s = getenv ("testdramwalk");
 	runwalk = (s && (*s == 'y')) ? 1 : 0;
 #endif
 
 	if ((rundata == 1) || (runaddress == 1) || (runwalk == 1)) {
-		printf ("Testing RAM from 0x%08x to 0x%08x ...  (don't panic... that will take a moment !!!!)\n", CFG_MEMTEST_START, CFG_MEMTEST_END);
+		printf ("Testing RAM from 0x%08x to 0x%08x ...  (don't panic... that will take a moment !!!!)\n", CONFIG_SYS_MEMTEST_START, CONFIG_SYS_MEMTEST_END);
 	}
-#ifdef CFG_DRAM_TEST_DATA
+#ifdef CONFIG_SYS_DRAM_TEST_DATA
 	if (rundata == 1) {
 		printf ("Test DATA ...  ");
 		if (mem_test_data () == 1) {
@@ -827,7 +985,7 @@ int testdram (void)
 			printf ("ok \n");
 	}
 #endif
-#ifdef CFG_DRAM_TEST_ADDRESS
+#ifdef CONFIG_SYS_DRAM_TEST_ADDRESS
 	if (runaddress == 1) {
 		printf ("Test ADDRESS ...  ");
 		if (mem_test_address () == 1) {
@@ -837,7 +995,7 @@ int testdram (void)
 			printf ("ok \n");
 	}
 #endif
-#ifdef CFG_DRAM_TEST_WALK
+#ifdef CONFIG_SYS_DRAM_TEST_WALK
 	if (runwalk == 1) {
 		printf ("Test WALKING ONEs ...  ");
 		if (mem_test_walk () == 1) {
@@ -853,13 +1011,13 @@ int testdram (void)
 	return 0;
 
 }
-#endif /* CFG_DRAM_TEST */
+#endif /* CONFIG_SYS_DRAM_TEST */
 
-/* ronen - the below functions are used by the bootm function           */
+/* ronen - the below functions are used by the bootm function		*/
 /*  - we map the base register to fbe00000 (same mapping as in the LSP) */
 /*  - we turn off the RX gig dmas - to prevent the dma from overunning  */
-/*    the kernel data areas.                                            */
-/*  - we diable and invalidate the icache and dcache.                   */
+/*    the kernel data areas.						*/
+/*  - we diable and invalidate the icache and dcache.			*/
 void my_remap_gt_regs_bootm (u32 cur_loc, u32 new_loc)
 {
 	u32 temp;
@@ -892,10 +1050,43 @@ void board_prebootm_init ()
 /*      GV_REG_WRITE (MV64360_ETH_RECEIVE_QUEUE_COMMAND_REG (2), 0x0000ff00); */
 
 /* Relocate MV64360 internal regs */
-	my_remap_gt_regs_bootm (CFG_GT_REGS, CFG_DFL_GT_REGS);
+	my_remap_gt_regs_bootm (CONFIG_SYS_GT_REGS, CONFIG_SYS_DFL_GT_REGS);
 
 	icache_disable ();
-	invalidate_l1_instruction_cache ();
-	flush_data_cache ();
 	dcache_disable ();
 }
+
+int do_show_config(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+{
+	unsigned int reset_sample_low;
+	unsigned int reset_sample_high;
+	unsigned int l, l1, l2;
+
+	GT_REG_READ(0x3c4, &reset_sample_low);
+	GT_REG_READ(0x3d4, &reset_sample_high);
+	printf("Reset configuration 0x%08x 0x%08x\n", reset_sample_low, reset_sample_high);
+
+	l2 = 0;
+	for (l=0; l<63; l++) {
+		if (show_config_tab[l][0] != 0) {
+			printf("%14s:%1x ", show_config_tab[l],
+			       ((reset_sample_low >> (31 - (l & 0x1f)))) & 0x01);
+			l2++;
+			if ((l2 % 4) == 0)
+				printf("\n");
+		} else {
+			l1++;
+		}
+		if (l == 32)
+			reset_sample_low = reset_sample_high;
+	}
+	printf("\n");
+
+	return(0);
+}
+
+U_BOOT_CMD(
+	show_config,	1,	1,	do_show_config,
+	"Show Marvell strapping register",
+	"Show Marvell strapping register (ResetSampleLow ResetSampleHigh)"
+);

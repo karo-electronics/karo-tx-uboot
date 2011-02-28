@@ -27,6 +27,7 @@
 
 #include <common.h>
 #include <s3c2410.h>
+#include <stdio_dev.h>
 #include <i2c.h>
 
 #include "vcma9.h"
@@ -132,7 +133,7 @@ int board_init(void)
 /*
  * NAND flash initialization.
  */
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
+#if defined(CONFIG_CMD_NAND)
 extern ulong
 nand_probe(ulong physadr);
 
@@ -288,7 +289,7 @@ int dram_init(void)
 
 int checkboard(void)
 {
-	unsigned char s[50];
+	char s[50];
 	int i;
 	backup_t *b = (backup_t *) s;
 
@@ -316,7 +317,7 @@ int last_stage_init(void)
 {
 	mem_test_reloc();
 	checkboard();
-	show_stdio_dev();
+	stdio_print_current_devices();
 	check_env();
 	return 0;
 }
@@ -337,7 +338,7 @@ int overwrite_console(void)
 ************************************************************************/
 void print_vcma9_info(void)
 {
-	unsigned char s[50];
+	char s[50];
 	int i;
 
 	if ((i = getenv_r("serial#", s, 32)) < 0) {

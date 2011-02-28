@@ -37,7 +37,7 @@
 
 #include <version.h>
 #include <linux/types.h>
-#include <devices.h>
+#include <stdio_dev.h>
 
 #include <sed156x.h>
 
@@ -46,43 +46,43 @@
 #define ROWS	24
 #define COLS	80
 
-#define REFRESH_HZ		(CFG_HZ/50)	/* refresh every 20ms */
-#define BLINK_HZ		(CFG_HZ/2)	/* cursor blink every 500ms */
+#define REFRESH_HZ		(CONFIG_SYS_HZ/50)	/* refresh every 20ms */
+#define BLINK_HZ		(CONFIG_SYS_HZ/2)	/* cursor blink every 500ms */
 
 /*************************************************************************************************/
 
-#define DISPLAY_BACKLIT_PORT	((volatile immap_t *)CFG_IMMR)->im_ioport.iop_pcdat
+#define DISPLAY_BACKLIT_PORT	((volatile immap_t *)CONFIG_SYS_IMMR)->im_ioport.iop_pcdat
 #define DISPLAY_BACKLIT_MASK	0x0010
 
 /*************************************************************************************************/
 
-#define KP_STABLE_HZ		(CFG_HZ/100)	/* stable for 10ms */
-#define KP_REPEAT_DELAY_HZ	(CFG_HZ/4)	/* delay before repeat 250ms */
-#define KP_REPEAT_HZ		(CFG_HZ/20)	/* repeat every 50ms */
-#define KP_FORCE_DELAY_HZ	(CFG_HZ/2)	/* key was force pressed */
-#define KP_IDLE_DELAY_HZ	(CFG_HZ/2)	/* key was released and idle */
+#define KP_STABLE_HZ		(CONFIG_SYS_HZ/100)	/* stable for 10ms */
+#define KP_REPEAT_DELAY_HZ	(CONFIG_SYS_HZ/4)	/* delay before repeat 250ms */
+#define KP_REPEAT_HZ		(CONFIG_SYS_HZ/20)	/* repeat every 50ms */
+#define KP_FORCE_DELAY_HZ	(CONFIG_SYS_HZ/2)	/* key was force pressed */
+#define KP_IDLE_DELAY_HZ	(CONFIG_SYS_HZ/2)	/* key was released and idle */
 
 #if CONFIG_NETPHONE_VERSION == 1
-#define KP_SPI_RXD_PORT (((volatile immap_t *)CFG_IMMR)->im_ioport.iop_pcdat)
+#define KP_SPI_RXD_PORT (((volatile immap_t *)CONFIG_SYS_IMMR)->im_ioport.iop_pcdat)
 #define KP_SPI_RXD_MASK 0x0008
 
-#define KP_SPI_TXD_PORT (((volatile immap_t *)CFG_IMMR)->im_ioport.iop_pcdat)
+#define KP_SPI_TXD_PORT (((volatile immap_t *)CONFIG_SYS_IMMR)->im_ioport.iop_pcdat)
 #define KP_SPI_TXD_MASK 0x0004
 
-#define KP_SPI_CLK_PORT (((volatile immap_t *)CFG_IMMR)->im_ioport.iop_pcdat)
+#define KP_SPI_CLK_PORT (((volatile immap_t *)CONFIG_SYS_IMMR)->im_ioport.iop_pcdat)
 #define KP_SPI_CLK_MASK 0x0001
 #elif CONFIG_NETPHONE_VERSION == 2
-#define KP_SPI_RXD_PORT (((volatile immap_t *)CFG_IMMR)->im_cpm.cp_pbdat)
+#define KP_SPI_RXD_PORT (((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_pbdat)
 #define KP_SPI_RXD_MASK 0x00000008
 
-#define KP_SPI_TXD_PORT (((volatile immap_t *)CFG_IMMR)->im_cpm.cp_pbdat)
+#define KP_SPI_TXD_PORT (((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_pbdat)
 #define KP_SPI_TXD_MASK 0x00000004
 
-#define KP_SPI_CLK_PORT (((volatile immap_t *)CFG_IMMR)->im_cpm.cp_pbdat)
+#define KP_SPI_CLK_PORT (((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_pbdat)
 #define KP_SPI_CLK_MASK 0x00000002
 #endif
 
-#define KP_CS_PORT	(((volatile immap_t *)CFG_IMMR)->im_cpm.cp_pedat)
+#define KP_CS_PORT	(((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_pedat)
 #define KP_CS_MASK	0x00000010
 
 #define KP_SPI_RXD() (KP_SPI_RXD_PORT & KP_SPI_RXD_MASK)
@@ -325,7 +325,7 @@ int phone_getc(void)
 
 int drv_phone_init(void)
 {
-	device_t console_dev;
+	struct stdio_dev console_dev;
 
 	console_init();
 
@@ -340,7 +340,7 @@ int drv_phone_init(void)
 	console_dev.tstc = phone_tstc;	/* 'tstc' function */
 	console_dev.getc = phone_getc;	/* 'getc' function */
 
-	if (device_register(&console_dev) == 0)
+	if (stdio_register(&console_dev) == 0)
 		return 1;
 
 	return 0;
@@ -983,7 +983,7 @@ unsigned int kp_get_col_mask(unsigned int row_mask)
 #if CONFIG_NETPHONE_VERSION == 1
 	col_mask = kp_data_transfer(val) & 0x0F;
 #elif CONFIG_NETPHONE_VERSION == 2
-	col_mask = ((volatile immap_t *)CFG_IMMR)->im_cpm.cp_pedat & 0x0f;
+	col_mask = ((volatile immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_pedat & 0x0f;
 	/* XXX FUCK FUCK FUCK FUCK FUCK!!!! */
 	col_mask = ((col_mask & 0x08) >> 3) |	/* BKBR1 */
 		   ((col_mask & 0x04) << 1) |	/* BKBR2 */

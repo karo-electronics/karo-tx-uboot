@@ -25,6 +25,7 @@
 #include <common.h>
 #include <pci.h>
 #include <ssi.h>
+#include <netdev.h>
 #include <asm/io.h>
 #include <asm/pci.h>
 #include <asm/ic/sc520.h>
@@ -104,10 +105,10 @@ static void pci_sc520_spunk_fixup_irq(struct pci_controller *hose, pci_dev_t dev
 	 * when we need one (a board with more pci interrupt pins
 	 * would use a larger table */
 	static int irq_list[] = {
-		CFG_FIRST_PCI_IRQ,
-		CFG_SECOND_PCI_IRQ,
-		CFG_THIRD_PCI_IRQ,
-		CFG_FORTH_PCI_IRQ
+		CONFIG_SYS_FIRST_PCI_IRQ,
+		CONFIG_SYS_SECOND_PCI_IRQ,
+		CONFIG_SYS_THIRD_PCI_IRQ,
+		CONFIG_SYS_FORTH_PCI_IRQ
 	};
 	static int next_irq_index=0;
 
@@ -256,11 +257,11 @@ static void bus_init(void)
 
 	if (version) {
 		/* set up the GP IO pins (for the Spunk board) */
-		write_mmcr_word(SC520_PIOPFS31_16, 0xfff0); 	/* set the GPIO pin function 31-16 reg */
-		write_mmcr_word(SC520_PIOPFS15_0,  0x000f);  	/* set the GPIO pin function 15-0 reg */
-		write_mmcr_word(SC520_PIODIR31_16, 0x000f); 	/* set the GPIO direction 31-16 reg */
-		write_mmcr_word(SC520_PIODIR15_0,  0x1ff0);  	/* set the GPIO direction 15-0 reg */
-		write_mmcr_byte(SC520_CSPFS, 0xc0);  		/* set the CS pin function reg */
+		write_mmcr_word(SC520_PIOPFS31_16, 0xfff0);	/* set the GPIO pin function 31-16 reg */
+		write_mmcr_word(SC520_PIOPFS15_0,  0x000f);	/* set the GPIO pin function 15-0 reg */
+		write_mmcr_word(SC520_PIODIR31_16, 0x000f);	/* set the GPIO direction 31-16 reg */
+		write_mmcr_word(SC520_PIODIR15_0,  0x1ff0);	/* set the GPIO direction 15-0 reg */
+		write_mmcr_byte(SC520_CSPFS, 0xc0);		/* set the CS pin function reg */
 		write_mmcr_byte(SC520_CLKSEL, 0x70);
 
 		write_mmcr_word(SC520_PIOCLR31_16, 0x0003);     /* reset SSI chip-selects */
@@ -268,11 +269,11 @@ static void bus_init(void)
 
 	} else {
 		/* set up the GP IO pins (for the Hyglo board) */
-		write_mmcr_word(SC520_PIOPFS31_16, 0xffc0); 	/* set the GPIO pin function 31-16 reg */
-		write_mmcr_word(SC520_PIOPFS15_0, 0x1e7f);  	/* set the GPIO pin function 15-0 reg */
-		write_mmcr_word(SC520_PIODIR31_16, 0x003f); 	/* set the GPIO direction 31-16 reg */
-		write_mmcr_word(SC520_PIODIR15_0, 0xe180);  	/* set the GPIO direction 15-0 reg */
-		write_mmcr_byte(SC520_CSPFS, 0x00);  		/* set the CS pin function reg */
+		write_mmcr_word(SC520_PIOPFS31_16, 0xffc0);	/* set the GPIO pin function 31-16 reg */
+		write_mmcr_word(SC520_PIOPFS15_0, 0x1e7f);	/* set the GPIO pin function 15-0 reg */
+		write_mmcr_word(SC520_PIODIR31_16, 0x003f);	/* set the GPIO direction 31-16 reg */
+		write_mmcr_word(SC520_PIODIR15_0, 0xe180);	/* set the GPIO direction 15-0 reg */
+		write_mmcr_byte(SC520_CSPFS, 0x00);		/* set the CS pin function reg */
 		write_mmcr_byte(SC520_CLKSEL, 0x70);
 
 		write_mmcr_word(SC520_PIOCLR15_0, 0x0180);      /* reset SSI chip-selects */
@@ -507,6 +508,7 @@ void show_boot_progress(int val)
 {
 	int version = read_mmcr_byte(SC520_SYSINFO);
 
+	if (val < -32) val = -1;  /* let things compatible */
 	if (version == 0) {
 		/* PIO31-PIO16 Data */
 		write_mmcr_word(SC520_PIODATA31_16,
@@ -655,7 +657,7 @@ ssize_t spi_read(uchar *addr, int alen, uchar *buffer, int len)
 		offset |= addr[i];
 	}
 
-	return 	read_mmcr_byte(SC520_SYSINFO) ?
+	return	read_mmcr_byte(SC520_SYSINFO) ?
 		spi_eeprom_read(1, offset, buffer, len) :
 	mw_eeprom_read(1, offset, buffer, len);
 }
@@ -671,7 +673,12 @@ ssize_t spi_write(uchar *addr, int alen, uchar *buffer, int len)
 		offset |= addr[i];
 	}
 
-	return 	read_mmcr_byte(SC520_SYSINFO) ?
+	return	read_mmcr_byte(SC520_SYSINFO) ?
 		spi_eeprom_write(1, offset, buffer, len) :
 	mw_eeprom_write(1, offset, buffer, len);
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }

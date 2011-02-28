@@ -27,8 +27,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2011-02-28 14:37:53  lothar
- *	Initial revision
+ *	Revision 1.1.5.1  2011-02-28 14:42:34  lothar
+ *	imported Freescale specific U-Boot additions for i.MX28,... release L2.6.31_10.08.01
  *
  *	Revision 1.13  1999/11/22 13:31:12  cgoos
  *	Changed license header to GPL.

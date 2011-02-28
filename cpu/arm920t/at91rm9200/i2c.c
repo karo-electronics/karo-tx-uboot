@@ -120,7 +120,7 @@ int
 i2c_read (unsigned char chip, unsigned int addr, int alen,
 	  unsigned char *buffer, int len)
 {
-#ifdef CFG_I2C_EEPROM_ADDR_OVERFLOW
+#ifdef CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW
 	/* we only allow one address byte */
 	if (alen > 1)
 		return 1;
@@ -139,7 +139,7 @@ int
 i2c_write(unsigned char chip, unsigned int addr, int alen,
 	  unsigned char *buffer, int len)
 {
-#ifdef CFG_I2C_EEPROM_ADDR_OVERFLOW
+#ifdef CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW
 	int i;
 	unsigned char *buf;
 
@@ -187,20 +187,6 @@ i2c_init(int speed, int slaveaddr)
 
 	debug ("Found AT91 i2c\n");
 	return;
-}
-
-uchar i2c_reg_read(uchar i2c_addr, uchar reg)
-{
-	unsigned char buf;
-
-	i2c_read(i2c_addr, reg, 1, &buf, 1);
-
-	return(buf);
-}
-
-void i2c_reg_write(uchar i2c_addr, uchar reg, uchar val)
-{
-	i2c_write(i2c_addr, reg, 1, &val, 1);
 }
 
 #endif /* CONFIG_HARD_I2C */

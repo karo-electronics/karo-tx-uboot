@@ -25,9 +25,8 @@
  *
  */
 #include <common.h>
-#include <devices.h>
-
-#ifdef CONFIG_USB_KEYBOARD
+#include <stdio_dev.h>
+#include <asm/byteorder.h>
 
 #include <usb.h>
 
@@ -37,7 +36,7 @@
  * are switched to the serial port, else the settings in the
  * environment are used
  */
-#ifdef CFG_CONSOLE_OVERWRITE_ROUTINE
+#ifdef CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
 extern int overwrite_console (void);
 #else
 int overwrite_console (void)
@@ -84,6 +83,7 @@ int repeat_delay;
 static unsigned char num_lock = 0;
 static unsigned char caps_lock = 0;
 static unsigned char scroll_lock = 0;
+static unsigned char ctrl = 0;
 
 static unsigned char leds __attribute__ ((aligned (0x4)));
 
@@ -120,6 +120,9 @@ static void usb_kbd_put_queue(char data)
 /* test if a character is in the queue */
 static int usb_kbd_testc(void)
 {
+#ifdef CONFIG_SYS_USB_EVENT_POLL
+	usb_event_poll();
+#endif
 	if(usb_in_pointer==usb_out_pointer)
 		return(0); /* no data */
 	else
@@ -129,7 +132,11 @@ static int usb_kbd_testc(void)
 static int usb_kbd_getc(void)
 {
 	char c;
-	while(usb_in_pointer==usb_out_pointer);
+	while(usb_in_pointer==usb_out_pointer) {
+#ifdef CONFIG_SYS_USB_EVENT_POLL
+		usb_event_poll();
+#endif
+	}
 	if((usb_out_pointer+1)==USB_KBD_BUFFER_LEN)
 		usb_out_pointer=0;
 	else
@@ -145,8 +152,8 @@ static int usb_kbd_probe(struct usb_device *dev, unsigned int ifnum);
 /* search for keyboard and register it if found */
 int drv_usb_kbd_init(void)
 {
-	int error,i,index;
-	device_t usb_kbd_dev,*old_dev;
+	int error,i;
+	struct stdio_dev usb_kbd_dev,*old_dev;
 	struct usb_device *dev;
 	char *stdinname  = getenv ("stdin");
 
@@ -155,28 +162,29 @@ int drv_usb_kbd_init(void)
 	/* scan all USB Devices */
 	for(i=0;i<USB_MAX_DEVICE;i++) {
 		dev=usb_get_dev_index(i); /* get device */
+		if(dev == NULL)
+			return -1;
 		if(dev->devnum!=-1) {
 			if(usb_kbd_probe(dev,0)==1) { /* Ok, we found a keyboard */
 				/* check, if it is already registered */
 				USB_KBD_PRINTF("USB KBD found set up device.\n");
-				for (index=1; index<=ListNumItems(devlist); index++) {
-					old_dev = ListGetPtrToItem(devlist, index);
-					if(strcmp(old_dev->name,DEVNAME)==0) {
-						/* ok, already registered, just return ok */
-						USB_KBD_PRINTF("USB KBD is already registered.\n");
-						return 1;
-					}
+				old_dev = stdio_get_by_name(DEVNAME);
+				if(old_dev) {
+					/* ok, already registered, just return ok */
+					USB_KBD_PRINTF("USB KBD is already registered.\n");
+					return 1;
 				}
 				/* register the keyboard */
 				USB_KBD_PRINTF("USB KBD register.\n");
-				memset (&usb_kbd_dev, 0, sizeof(device_t));
+				memset (&usb_kbd_dev, 0, sizeof(struct stdio_dev));
 				strcpy(usb_kbd_dev.name, DEVNAME);
 				usb_kbd_dev.flags =  DEV_FLAGS_INPUT | DEV_FLAGS_SYSTEM;
 				usb_kbd_dev.putc = NULL;
 				usb_kbd_dev.puts = NULL;
 				usb_kbd_dev.getc = usb_kbd_getc;
 				usb_kbd_dev.tstc = usb_kbd_testc;
-				error = device_register (&usb_kbd_dev);
+				usb_kbd_dev.priv = (void *)dev;
+				error = stdio_register (&usb_kbd_dev);
 				if(error==0) {
 					/* check if this is the standard input device */
 					if(strcmp(stdinname,DEVNAME)==0) {
@@ -204,7 +212,11 @@ int drv_usb_kbd_init(void)
 /* deregistering the keyboard */
 int usb_kbd_deregister(void)
 {
-	return device_deregister(DEVNAME);
+#ifdef CONFIG_SYS_STDIO_DEREGISTER
+	return stdio_deregister(DEVNAME);
+#else
+	return 1;
+#endif
 }
 
 /**************************************************************************
@@ -230,7 +242,7 @@ static void usb_kbd_setled(struct usb_device *dev)
 		leds|=1;
 	usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 		USB_REQ_SET_REPORT, USB_TYPE_CLASS | USB_RECIP_INTERFACE,
- 		0x200, iface->bInterfaceNumber,(void *)&leds, 1, 0);
+		0x200, iface->bInterfaceNumber,(void *)&leds, 1, 0);
 
 }
 
@@ -243,7 +255,7 @@ static int usb_kbd_translate(unsigned char scancode,unsigned char modifier,int p
 
 	if(pressed==0) {
 		/* key released */
- 		repeat_delay=0;
+		repeat_delay=0;
 		return 0;
 	}
 	if(pressed==2) {
@@ -253,7 +265,7 @@ static int usb_kbd_translate(unsigned char scancode,unsigned char modifier,int p
 		repeat_delay=REPEAT_DELAY;
 	}
 	keycode=0;
-	if((scancode>3) && (scancode<0x1d)) { /* alpha numeric values */
+	if((scancode>3) && (scancode<=0x1d)) { /* alpha numeric values */
 		keycode=scancode-4 + 0x61;
 		if(caps_lock)
 			keycode&=~CAPITAL_MASK; /* switch to capital Letters */
@@ -270,6 +282,10 @@ static int usb_kbd_translate(unsigned char scancode,unsigned char modifier,int p
 		else /* non shifted */
 			keycode=usb_kbd_numkey[scancode-0x1e];
 	}
+
+	if (ctrl)
+		keycode = scancode - 0x3;
+
 	if(pressed==1) {
 		if(scancode==NUM_LOCK) {
 			num_lock=~num_lock;
@@ -302,6 +318,17 @@ static int usb_kbd_irq(struct usb_device *dev)
 		return 1;
 	}
 	res=0;
+
+	switch (new[0]) {
+	case 0x0:	/* No combo key pressed */
+		ctrl = 0;
+		break;
+	case 0x01:	/* Left Ctrl pressed */
+	case 0x10:	/* Right Ctrl pressed */
+		ctrl = 1;
+		break;
+	}
+
 	for (i = 2; i < 8; i++) {
 		if (old[i] > 3 && memscan(&new[2], old[i], 6) == &new[8]) {
 			res|=usb_kbd_translate(old[i],new[0],0);
@@ -452,14 +479,14 @@ static int fetch_item(unsigned char *start,unsigned char *end, struct hid_item *
 					break;
 				case 2:
 					if ((end - start) >= 2) {
-						item->data.u16 = swap_16((unsigned short *)start);
+						item->data.u16 = le16_to_cpu((unsigned short *)start);
 						start+=2;
 						return item->size;
 					}
 				case 3:
 					item->size++;
 					if ((end - start) >= 4) {
-						item->data.u32 = swap_32((unsigned long *)start);
+						item->data.u32 = le32_to_cpu((unsigned long *)start);
 						start+=4;
 						return item->size;
 					}
@@ -682,15 +709,15 @@ static int usb_kbd_get_hid_desc(struct usb_device *dev)
 	}
 	index=head->bLength;
 	config=(struct usb_config_descriptor *)&buffer[0];
-	len=swap_16(config->wTotalLength);
+	len=le16_to_cpu(config->wTotalLength);
 	/* Ok the first entry must be a configuration entry, now process the others */
 	head=(struct usb_descriptor_header *)&buffer[index];
 	while(index+1 < len) {
 		if(head->bDescriptorType==USB_DT_HID) {
 			printf("HID desc found\n");
 			memcpy(&usb_kbd_hid_desc,&buffer[index],buffer[index]);
-			usb_kbd_hid_desc.bcdHID=swap_16(usb_kbd_hid_desc.bcdHID);
-			usb_kbd_hid_desc.wDescriptorLength=swap_16(usb_kbd_hid_desc.wDescriptorLength);
+			le16_to_cpus(&usb_kbd_hid_desc.bcdHID);
+			le16_to_cpus(&usb_kbd_hid_desc.wDescriptorLength);
 			usb_kbd_display_hid(&usb_kbd_hid_desc);
 			len=0;
 			break;
@@ -706,8 +733,8 @@ static int usb_kbd_get_hid_desc(struct usb_device *dev)
 		return -1;
 	}
 	printf(" report descriptor (size %u, read %d)\n", len, index);
-	start=&buffer[0];
-	end=&buffer[len];
+	start = &buffer[0];
+	end = &buffer[len];
 	i=0;
 	do {
 		index=fetch_item(start,end,&item);
@@ -722,7 +749,4 @@ static int usb_kbd_get_hid_desc(struct usb_device *dev)
 
 }
 
-
 #endif
-
-#endif /* CONFIG_USB_KEYBOARD */

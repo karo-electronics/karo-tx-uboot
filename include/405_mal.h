@@ -1,5 +1,7 @@
 /* include/mal.h, openbios_walnut, walnut_bios 8/6/99 08:48:40 */
 /*----------------------------------------------------------------------------+
+|   This source code is dual-licensed.  You may use it under the terms of the
+|   GNU General Public License version 2, or under the license below.
 |
 |	This source code has been made available to you by IBM on an AS-IS
 |	basis.	Anyone receiving this source is licensed under IBM
@@ -92,7 +94,10 @@
 #define MAL_ESR_PBEI	  0x00000001
       /* ^^			 ^^   */
       /* Mal IER		      */
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440SPE) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 #define MAL_IER_PT	  0x00000080
 #define MAL_IER_PRE	  0x00000040
 #define MAL_IER_PWE	  0x00000020

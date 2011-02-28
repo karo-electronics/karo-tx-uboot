@@ -23,14 +23,13 @@
 *	512	512 Byte page size
 */
 struct nand_flash_dev nand_flash_ids[] = {
-
 #ifdef CONFIG_MTD_NAND_MUSEUM_IDS
-	{"NAND 1MiB 5V 8-bit",		0x6e, 256, 1, 0x1000, 0},
-	{"NAND 2MiB 5V 8-bit",		0x64, 256, 2, 0x1000, 0},
-	{"NAND 4MiB 5V 8-bit",		0x6b, 512, 4, 0x2000, 0},
-	{"NAND 1MiB 3,3V 8-bit",	0xe8, 256, 1, 0x1000, 0},
-	{"NAND 1MiB 3,3V 8-bit",	0xec, 256, 1, 0x1000, 0},
-	{"NAND 2MiB 3,3V 8-bit",	0xea, 256, 2, 0x1000, 0},
+	{"NAND 1MiB 5V 8-bit", 		0x6e, 256, 1, 0x1000, 0},
+	{"NAND 2MiB 5V 8-bit", 		0x64, 256, 2, 0x1000, 0},
+	{"NAND 4MiB 5V 8-bit", 		0x6b, 512, 4, 0x2000, 0},
+	{"NAND 1MiB 3,3V 8-bit", 	0xe8, 256, 1, 0x1000, 0},
+	{"NAND 1MiB 3,3V 8-bit", 	0xec, 256, 1, 0x1000, 0},
+	{"NAND 2MiB 3,3V 8-bit", 	0xea, 256, 2, 0x1000, 0},
 	{"NAND 4MiB 3,3V 8-bit", 	0xd5, 512, 4, 0x2000, 0},
 	{"NAND 4MiB 3,3V 8-bit",	0xe3, 512, 4, 0x2000, 0},
 	{"NAND 4MiB 3,3V 8-bit",	0xe5, 512, 4, 0x2000, 0},
@@ -41,7 +40,6 @@ struct nand_flash_dev nand_flash_ids[] = {
 	{"NAND 8MiB 1,8V 16-bit",	0x49, 512, 8, 0x2000, NAND_BUSWIDTH_16},
 	{"NAND 8MiB 3,3V 16-bit",	0x59, 512, 8, 0x2000, NAND_BUSWIDTH_16},
 #endif
-
 	{"NAND 16MiB 1,8V 8-bit",	0x33, 512, 16, 0x4000, 0},
 	{"NAND 16MiB 3,3V 8-bit",	0x73, 512, 16, 0x4000, 0},
 	{"NAND 16MiB 1,8V 16-bit",	0x43, 512, 16, 0x4000, NAND_BUSWIDTH_16},
@@ -110,6 +108,9 @@ struct nand_flash_dev nand_flash_ids[] = {
 	{"NAND 2GiB 1,8V 16-bit",	0xB5, 0, 2048, 0, LP_OPTIONS16},
 	{"NAND 2GiB 3,3V 16-bit",	0xC5, 0, 2048, 0, LP_OPTIONS16},
 
+	 /* 32 Gigabit ,only use 2G due to the linux mtd limitation*/
+	{"NAND 4GiB 3,3V 8-bit",        0xD7, 0, 2048, 0, LP_OPTIONS},
+
 	/*
 	 * Renesas AND 1 Gigabit. Those chips do not support extended id and
 	 * have a strange page/block layout !  The chosen minimum erasesize is
@@ -124,7 +125,6 @@ struct nand_flash_dev nand_flash_ids[] = {
 	 NAND_IS_AND | NAND_NO_AUTOINCR |NAND_NO_READRDY | NAND_4PAGE_ARRAY |
 	 BBT_AUTO_REFRESH
 	},
-
 	{NULL,}
 };
 
@@ -141,5 +141,8 @@ struct nand_manufacturers nand_manuf_ids[] = {
 	{NAND_MFR_HYNIX, "Hynix"},
 	{NAND_MFR_MICRON, "Micron"},
 	{NAND_MFR_AMD, "AMD"},
+	{NAND_MFR_SANDISK, "SanDisk"} ,
+	{NAND_MFR_INTEL, "Intel"} ,
+
 	{0x0, "Unknown"}
 };

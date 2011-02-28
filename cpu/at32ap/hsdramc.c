@@ -21,60 +21,41 @@
  */
 #include <common.h>
 
-#ifdef CFG_HSDRAMC
+#ifdef CONFIG_SYS_HSDRAMC
 #include <asm/io.h>
 #include <asm/sdram.h>
 
-#include <asm/arch/platform.h>
+#include <asm/arch/clk.h>
+#include <asm/arch/memory-map.h>
 
 #include "hsdramc1.h"
 
-struct hsdramc {
-	const struct device *hebi;
-	void *regs;
-};
-
-static struct hsdramc hsdramc;
-
-unsigned long sdram_init(const struct sdram_info *info)
+unsigned long sdram_init(void *sdram_base, const struct sdram_config *config)
 {
-	unsigned long *sdram = (unsigned long *)uncached(info->phys_addr);
 	unsigned long sdram_size;
-	unsigned long tmp;
-	unsigned long bus_hz;
+	uint32_t cfgreg;
 	unsigned int i;
 
-	hsdramc.hebi = get_device(DEVICE_HEBI);
-	if (!hsdramc.hebi)
-		return 0;
+	cfgreg = (HSDRAMC1_BF(NC, config->col_bits - 8)
+		       | HSDRAMC1_BF(NR, config->row_bits - 11)
+		       | HSDRAMC1_BF(NB, config->bank_bits - 1)
+		       | HSDRAMC1_BF(CAS, config->cas)
+		       | HSDRAMC1_BF(TWR, config->twr)
+		       | HSDRAMC1_BF(TRC, config->trc)
+		       | HSDRAMC1_BF(TRP, config->trp)
+		       | HSDRAMC1_BF(TRCD, config->trcd)
+		       | HSDRAMC1_BF(TRAS, config->tras)
+		       | HSDRAMC1_BF(TXSR, config->txsr));
 
-	/* FIXME: Both of these lines are complete hacks */
-	hsdramc.regs = hsdramc.hebi->regs + 0x400;
-	bus_hz = pm_get_clock_freq(hsdramc.hebi->resource[0].u.clock.id);
+	if (config->data_bits == SDRAM_DATA_16BIT)
+		cfgreg |= HSDRAMC1_BIT(DBW);
 
-	cpu_enable_sdram();
+	hsdramc1_writel(CR, cfgreg);
 
-	tmp = (HSDRAMC1_BF(NC, info->col_bits - 8)
-	       | HSDRAMC1_BF(NR, info->row_bits - 11)
-	       | HSDRAMC1_BF(NB, info->bank_bits - 1)
-	       | HSDRAMC1_BF(CAS, info->cas)
-	       | HSDRAMC1_BF(TWR, info->twr)
-	       | HSDRAMC1_BF(TRC, info->trc)
-	       | HSDRAMC1_BF(TRP, info->trp)
-	       | HSDRAMC1_BF(TRCD, info->trcd)
-	       | HSDRAMC1_BF(TRAS, info->tras)
-	       | HSDRAMC1_BF(TXSR, info->txsr));
-
-#ifdef CFG_SDRAM_16BIT
-	tmp |= HSDRAMC1_BIT(DBW);
-	sdram_size = 1 << (info->row_bits + info->col_bits
-			   + info->bank_bits + 1);
-#else
-	sdram_size = 1 << (info->row_bits + info->col_bits
-			   + info->bank_bits + 2);
-#endif
-
-	hsdramc1_writel(&hsdramc, CR, tmp);
+	/* Send a NOP to turn on the clock (necessary on some chips) */
+	hsdramc1_writel(MR, HSDRAMC1_MODE_NOP);
+	hsdramc1_readl(MR);
+	writel(0, sdram_base);
 
 	/*
 	 * Initialization sequence for SDRAM, from the data sheet:
@@ -87,69 +68,53 @@ unsigned long sdram_init(const struct sdram_info *info)
 	/*
 	 * 2. A Precharge All command is issued to the SDRAM
 	 */
-	hsdramc1_writel(&hsdramc, MR, HSDRAMC1_MODE_BANKS_PRECHARGE);
-	hsdramc1_readl(&hsdramc, MR);
-	writel(0, sdram);
+	hsdramc1_writel(MR, HSDRAMC1_MODE_BANKS_PRECHARGE);
+	hsdramc1_readl(MR);
+	writel(0, sdram_base);
 
 	/*
 	 * 3. Eight auto-refresh (CBR) cycles are provided
 	 */
-	hsdramc1_writel(&hsdramc, MR, HSDRAMC1_MODE_AUTO_REFRESH);
-	hsdramc1_readl(&hsdramc, MR);
+	hsdramc1_writel(MR, HSDRAMC1_MODE_AUTO_REFRESH);
+	hsdramc1_readl(MR);
 	for (i = 0; i < 8; i++)
-		writel(0, sdram);
+		writel(0, sdram_base);
 
 	/*
 	 * 4. A mode register set (MRS) cycle is issued to program
 	 *    SDRAM parameters, in particular CAS latency and burst
 	 *    length.
 	 *
-	 * CAS from info struct, burst length 1, serial burst type
+	 * The address will be chosen by the SDRAMC automatically; we
+	 * just have to make sure BA[1:0] are set to 0.
 	 */
-	hsdramc1_writel(&hsdramc, MR, HSDRAMC1_MODE_LOAD_MODE);
-	hsdramc1_readl(&hsdramc, MR);
-	writel(0, sdram + (info->cas << 4));
+	hsdramc1_writel(MR, HSDRAMC1_MODE_LOAD_MODE);
+	hsdramc1_readl(MR);
+	writel(0, sdram_base);
 
 	/*
-	 * 5. A Normal Mode command is provided, 3 clocks after tMRD
-	 *    is met.
-	 *
-	 * From the timing diagram, it looks like tMRD is 3
-	 * cycles...try a dummy read from the peripheral bus.
+	 * 5. The application must go into Normal Mode, setting Mode
+	 *    to 0 in the Mode Register and performing a write access
+	 *    at any location in the SDRAM.
 	 */
-	hsdramc1_readl(&hsdramc, MR);
-	hsdramc1_writel(&hsdramc, MR, HSDRAMC1_MODE_NORMAL);
-	hsdramc1_readl(&hsdramc, MR);
-	writel(0, sdram);
+	hsdramc1_writel(MR, HSDRAMC1_MODE_NORMAL);
+	hsdramc1_readl(MR);
+	writel(0, sdram_base);
 
 	/*
 	 * 6. Write refresh rate into SDRAMC refresh timer count
 	 *    register (refresh rate = timing between refresh cycles).
-	 *
-	 * 15.6 us is a typical value for a burst of length one
 	 */
-	hsdramc1_writel(&hsdramc, TR, (156 * (bus_hz / 1000)) / 10000);
+	hsdramc1_writel(TR, config->refresh_period);
 
-	printf("SDRAM: %u MB at address 0x%08lx\n",
-	       sdram_size >> 20, info->phys_addr);
-
-	printf("Testing SDRAM...");
-	for (i = 0; i < sdram_size / 4; i++)
-		sdram[i] = i;
-
-	for (i = 0; i < sdram_size / 4; i++) {
-		tmp = sdram[i];
-		if (tmp != i) {
-			printf("FAILED at address 0x%08lx\n",
-			       info->phys_addr + i * 4);
-			printf("SDRAM: read 0x%lx, expected 0x%lx\n", tmp, i);
-			return 0;
-		}
-	}
-
-	puts("OK\n");
+	if (config->data_bits == SDRAM_DATA_16BIT)
+		sdram_size = 1 << (config->row_bits + config->col_bits
+				   + config->bank_bits + 1);
+	else
+		sdram_size = 1 << (config->row_bits + config->col_bits
+				   + config->bank_bits + 2);
 
 	return sdram_size;
 }
 
-#endif /* CFG_HSDRAMC */
+#endif /* CONFIG_SYS_HSDRAMC */

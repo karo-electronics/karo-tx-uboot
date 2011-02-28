@@ -1,6 +1,6 @@
 #
 # (C) Copyright 2002
-# Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+# Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -25,3 +25,9 @@ PLATFORM_RELFLAGS += -fno-strict-aliasing  -fno-common -ffixed-r8 \
 	 -msoft-float
 
 PLATFORM_CPPFLAGS +=  -march=armv4
+# =========================================================================
+#
+# Supply options according to compiler version
+#
+# =========================================================================
+PLATFORM_RELFLAGS +=$(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))

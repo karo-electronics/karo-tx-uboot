@@ -50,7 +50,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_cpm.cp_pbdat
 
 # define STATUS_LED_BIT		0x00000001
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
@@ -65,7 +65,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_ioport.iop_pddat
 
 # define STATUS_LED_BIT		0x00000001
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
@@ -81,7 +81,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_ioport.iop_pddat
 
 # define STATUS_LED_BIT		0x00000001
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	0		/* LED on for bit == 0	*/
@@ -97,16 +97,16 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT			im_ioport.iop_padat
 
 # define STATUS_LED_BIT			0x0800	/* Red LED 0 is on PA.4	*/
-# define STATUS_LED_PERIOD		(CFG_HZ / 4)
+# define STATUS_LED_PERIOD		(CONFIG_SYS_HZ / 4)
 # define STATUS_LED_STATE		STATUS_LED_OFF
 # define STATUS_LED_BIT1		0x0400	/* Grn LED 1 is on PA.5	*/
-# define STATUS_LED_PERIOD1		(CFG_HZ / 8)
+# define STATUS_LED_PERIOD1		(CONFIG_SYS_HZ / 8)
 # define STATUS_LED_STATE1		STATUS_LED_BLINKING
 # define STATUS_LED_BIT2		0x0080	/* Red LED 2 is on PA.8	*/
-# define STATUS_LED_PERIOD2		(CFG_HZ / 4)
+# define STATUS_LED_PERIOD2		(CONFIG_SYS_HZ / 4)
 # define STATUS_LED_STATE2		STATUS_LED_OFF
 # define STATUS_LED_BIT3		0x0040	/* Grn LED 3 is on PA.9	*/
-# define STATUS_LED_PERIOD3		(CFG_HZ / 4)
+# define STATUS_LED_PERIOD3		(CONFIG_SYS_HZ / 4)
 # define STATUS_LED_STATE3		STATUS_LED_OFF
 
 # define STATUS_LED_ACTIVE		1	/* LED on for bit == 1	*/
@@ -121,21 +121,21 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_cpm.cp_pbdat
 
 # define STATUS_LED_BIT		0x00000010	/* LED 0 is on PB.27	*/
-# define STATUS_LED_PERIOD	(1 * CFG_HZ)
+# define STATUS_LED_PERIOD	(1 * CONFIG_SYS_HZ)
 # define STATUS_LED_STATE	STATUS_LED_OFF
 # define STATUS_LED_BIT1	0x00000020	/* LED 1 is on PB.26	*/
-# define STATUS_LED_PERIOD1	(1 * CFG_HZ)
+# define STATUS_LED_PERIOD1	(1 * CONFIG_SYS_HZ)
 # define STATUS_LED_STATE1	STATUS_LED_OFF
 /* IDE LED usable for other purposes, too */
 # define STATUS_LED_BIT2	0x00000008	/* LED 2 is on PB.28	*/
-# define STATUS_LED_PERIOD2	(1 * CFG_HZ)
+# define STATUS_LED_PERIOD2	(1 * CONFIG_SYS_HZ)
 # define STATUS_LED_STATE2	STATUS_LED_OFF
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
 
 # define STATUS_ILOCK_SWITCH	0x00800000	/* ILOCK switch in IRQ4	*/
 
-# define STATUS_ILOCK_PERIOD	(CFG_HZ / 10)	/* about every 100 ms	*/
+# define STATUS_ILOCK_PERIOD	(CONFIG_SYS_HZ / 10)	/* about every 100 ms	*/
 
 # define STATUS_LED_YELLOW	0
 # define STATUS_LED_GREEN	1
@@ -150,21 +150,21 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_cpm.cp_pbdat
 
 # define STATUS_LED_BIT		0x00000010	/* LED 0 is on PB.27	*/
-# define STATUS_LED_PERIOD	(1 * CFG_HZ)
+# define STATUS_LED_PERIOD	(1 * CONFIG_SYS_HZ)
 # define STATUS_LED_STATE	STATUS_LED_OFF
 # define STATUS_LED_BIT1	0x00000020	/* LED 1 is on PB.26	*/
-# define STATUS_LED_PERIOD1	(1 * CFG_HZ)
+# define STATUS_LED_PERIOD1	(1 * CONFIG_SYS_HZ)
 # define STATUS_LED_STATE1	STATUS_LED_OFF
 /* IDE LED usable for other purposes, too */
 # define STATUS_LED_BIT2	0x00000008	/* LED 2 is on PB.28	*/
-# define STATUS_LED_PERIOD2	(1 * CFG_HZ)
+# define STATUS_LED_PERIOD2	(1 * CONFIG_SYS_HZ)
 # define STATUS_LED_STATE2	STATUS_LED_OFF
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
 
 # define STATUS_ILOCK_SWITCH	0x00004000	/* ILOCK is on PB.17	*/
 
-# define STATUS_ILOCK_PERIOD	(CFG_HZ / 10)	/* about every 100 ms	*/
+# define STATUS_ILOCK_PERIOD	(CONFIG_SYS_HZ / 10)	/* about every 100 ms	*/
 
 # define STATUS_LED_YELLOW	0
 # define STATUS_LED_GREEN	1
@@ -183,7 +183,7 @@ void status_led_set  (int led, int state);
 # else
 #  define STATUS_LED_BIT	0x0800
 # endif
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	0		/* LED on for bit == 0 */
@@ -199,7 +199,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_cpm.cp_pbdat
 
 # define STATUS_LED_BIT		0x00010000	/* green LED is on PB.15 */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1 */
@@ -215,10 +215,10 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_ioport.iop_padat
 
 # define STATUS_LED_BIT		0x4000		/* LED 0 is on PA.1 */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 # define STATUS_LED_BIT1	0x1000		/* LED 1 is on PA.3 */
-# define STATUS_LED_PERIOD1	(CFG_HZ)
+# define STATUS_LED_PERIOD1	(CONFIG_SYS_HZ)
 # define STATUS_LED_STATE1	STATUS_LED_OFF
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
@@ -244,11 +244,11 @@ void status_led_set  (int led, int state);
 #define STATUS_LED_DAT		im_ioport.iop_pddat
 
 # define STATUS_LED_BIT		0x0080			/* PD.8 */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_BIT1	0x0040			/* PD.9 */
-# define STATUS_LED_PERIOD1	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD1	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE1	STATUS_LED_OFF
 
 # define STATUS_LED_ACTIVE	0		/* LED on for bit == 0	*/
@@ -263,7 +263,7 @@ void status_led_set  (int led, int state);
 
 # define STATUS_LED_BIT		0x2000		/* Select one of the 16 possible*/
 						/* MIOS outputs */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)	/* Blinking periode is 500 ms */
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)	/* Blinking periode is 500 ms */
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 0	*/
@@ -278,7 +278,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_ioport.iop_padat
 
 # define STATUS_LED_BIT		0x00000300  /*  green + red    PA[8]=yellow,  PA[7]=red,  PA[6]=green */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
@@ -292,7 +292,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT         im_cpm.cp_pbdat
 
 # define STATUS_LED_BIT         0x00000001
-# define STATUS_LED_PERIOD      (CFG_HZ / 2)
+# define STATUS_LED_PERIOD      (CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE       STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE      1               /* LED on for bit == 1  */
@@ -308,10 +308,10 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT         im_ioport.iop_pcdat
 
 # define STATUS_LED_BIT         0x0002          /* LED 0 is on PC.14 */
-# define STATUS_LED_PERIOD      (CFG_HZ / 2)
+# define STATUS_LED_PERIOD      (CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE       STATUS_LED_BLINKING
 # define STATUS_LED_BIT1        0x0004          /* LED 1 is on PC.13 */
-# define STATUS_LED_PERIOD1     (CFG_HZ)
+# define STATUS_LED_PERIOD1     (CONFIG_SYS_HZ)
 # define STATUS_LED_STATE1      STATUS_LED_OFF
 
 # define STATUS_LED_ACTIVE      1               /* LED on for bit == 1  */
@@ -326,7 +326,7 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_DAT		im_ioport.iop_padat
 
 # define STATUS_LED_BIT		0x00000001	/* LED is on PA15 */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	1		/* LED on for bit == 1	*/
@@ -346,15 +346,37 @@ void status_led_set  (int led, int state);
 #elif defined(CONFIG_NIOS2)
 /* XXX empty just to avoid the error */
 /************************************************************************/
+#elif defined(CONFIG_BLACKFIN)
+/* XXX empty just to avoid the error */
+/************************************************************************/
 #elif defined(CONFIG_V38B)
 
 # define STATUS_LED_BIT		0x0010			/* Timer7 GPIO */
-# define STATUS_LED_PERIOD	(CFG_HZ / 2)
+# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 # define STATUS_LED_STATE	STATUS_LED_BLINKING
 
 # define STATUS_LED_ACTIVE	0		/* LED on for bit == 0 */
 # define STATUS_LED_BOOT	0		/* LED 0 used for boot status */
 
+#elif defined(CONFIG_MOTIONPRO)
+
+#define STATUS_LED_BIT		((vu_long *) MPC5XXX_GPT6_ENABLE)
+#define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 10)
+#define STATUS_LED_STATE	STATUS_LED_BLINKING
+
+#define STATUS_LED_BIT1		((vu_long *) MPC5XXX_GPT7_ENABLE)
+#define STATUS_LED_PERIOD1	(CONFIG_SYS_HZ / 10)
+#define STATUS_LED_STATE1	STATUS_LED_OFF
+
+#define STATUS_LED_BOOT		0	/* LED 0 used for boot status */
+
+#elif defined(CONFIG_BOARD_SPECIFIC_LED)
+/* led_id_t is unsigned long mask */
+typedef unsigned long led_id_t;
+
+extern void __led_toggle (led_id_t mask);
+extern void __led_init (led_id_t mask, int state);
+extern void __led_set (led_id_t mask, int state);
 #else
 # error Status LED configuration missing
 #endif
@@ -362,6 +384,31 @@ void status_led_set  (int led, int state);
 
 #ifndef CONFIG_BOARD_SPECIFIC_LED
 # include <asm/status_led.h>
+#endif
+
+/*
+ * Coloured LEDs API
+ */
+#ifndef	__ASSEMBLY__
+extern void	coloured_LED_init (void);
+extern void	red_LED_on(void);
+extern void	red_LED_off(void);
+extern void	green_LED_on(void);
+extern void	green_LED_off(void);
+extern void	yellow_LED_on(void);
+extern void	yellow_LED_off(void);
+extern void	blue_LED_on(void);
+extern void	blue_LED_off(void);
+#else
+	.extern LED_init
+	.extern red_LED_on
+	.extern red_LED_off
+	.extern yellow_LED_on
+	.extern yellow_LED_off
+	.extern green_LED_on
+	.extern green_LED_off
+	.extern blue_LED_on
+	.extern blue_LED_off
 #endif
 
 #endif	/* CONFIG_STATUS_LED	*/

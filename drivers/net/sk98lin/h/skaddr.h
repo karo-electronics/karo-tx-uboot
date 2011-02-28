@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2011-02-28 14:37:53  lothar
- *	Initial revision
+ *	Revision 1.1.5.1  2011-02-28 14:42:35  lothar
+ *	imported Freescale specific U-Boot additions for i.MX28,... release L2.6.31_10.08.01
  *
  *	Revision 1.26  2002/11/15 07:24:42  tschilli
  *	SK_ADDR_EQUAL macro fixed.

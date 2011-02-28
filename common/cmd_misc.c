@@ -27,19 +27,17 @@
 #include <common.h>
 #include <command.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_MISC)
-
 int do_sleep (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	ulong start = get_timer(0);
 	ulong delay;
 
 	if (argc != 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
-	delay = simple_strtoul(argv[1], NULL, 10) * CFG_HZ;
+	delay = simple_strtoul(argv[1], NULL, 10) * CONFIG_SYS_HZ;
 
 	while (get_timer(start) < delay) {
 		if (ctrlc ()) {
@@ -52,21 +50,19 @@ int do_sleep (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 /* Implemented in $(CPU)/interrupts.c */
-#if (CONFIG_COMMANDS & CFG_CMD_IRQ)
+#if defined(CONFIG_CMD_IRQ)
 int do_irqinfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 
 U_BOOT_CMD(
 	irqinfo,    1,    1,     do_irqinfo,
-	"irqinfo - print information about IRQs\n",
-	NULL
+	"print information about IRQs",
+	""
 );
-#endif  /* CONFIG_COMMANDS & CFG_CMD_IRQ */
+#endif
 
 U_BOOT_CMD(
-	sleep ,    2,    2,     do_sleep,
-	"sleep   - delay execution for some time\n",
+	sleep ,    2,    1,     do_sleep,
+	"delay execution for some time",
 	"N\n"
-	"    - delay execution for N seconds (N is _decimal_ !!!)\n"
+	"    - delay execution for N seconds (N is _decimal_ !!!)"
 );
-
-#endif	/* CFG_CMD_MISC */

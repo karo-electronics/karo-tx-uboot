@@ -1,10 +1,6 @@
 /*
- * (C) Copyright 2002
- * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
- *
- * (C) Copyright 2002
- * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
- * Marius Groeger <mgroeger@sysgo.de>
+ * (C) Copyright 2006
+ * DENX Software Engineering
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -97,7 +93,6 @@ int board_late_init(void)
 	init_DA9030();
 	return 0;
 }
-
 
 /*
  * Magic Key Handling, mainly copied from board/lwmon/lwmon.c
@@ -264,8 +259,8 @@ int do_kbd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	   kbd,	1,	1,	do_kbd,
-	   "kbd     - read keyboard status\n",
-	   NULL
+	   "read keyboard status",
+	   ""
 );
 
 #endif /* DELTA_CHECK_KEYBD */
@@ -309,8 +304,8 @@ static void init_DA9030()
 	GPCR0 = (1<<17);	/* drive GPIO17 low */
 	GPSR0 = (1<<17);	/* drive GPIO17 high */
 
-#if CFG_DA9030_EXTON_DELAY
-	udelay((unsigned long) CFG_DA9030_EXTON_DELAY);	/* wait for DA9030 */
+#if CONFIG_SYS_DA9030_EXTON_DELAY
+	udelay((unsigned long) CONFIG_SYS_DA9030_EXTON_DELAY);	/* wait for DA9030 */
 #endif
 	GPCR0 = (1<<17);	/* drive GPIO17 low */
 
@@ -320,6 +315,12 @@ static void init_DA9030()
 	       SYS_CONTROL_A_WDOG_ACTION |
 	       SYS_CONTROL_A_WATCHDOG);
 	if(i2c_write(addr, SYS_CONTROL_A, 1, &val, 1)) {
+		printf("Error accessing DA9030 via i2c.\n");
+		return;
+	}
+
+	val = 0x80;
+	if(i2c_write(addr, IRQ_MASK_B, 1, &val, 1)) {
 		printf("Error accessing DA9030 via i2c.\n");
 		return;
 	}

@@ -5,7 +5,7 @@
  * (C) Copyright 2005
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * (C) Copyright 2006
+ * (C) Copyright 2006-2007
  * Matthias Fuchs, esd GmbH, matthias.fuchs@esd-electronics.com
  *
  * See file CREDITS for list of people who contributed to this
@@ -29,12 +29,33 @@
 
 #include <common.h>
 #include <asm/processor.h>
+#include <asm/io.h>
 #include <command.h>
 #include <malloc.h>
 #include <pci.h>
 #include <sm501.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+/* FPGA internal regs */
+#define FPGA_CTRL	((u16 *)(CONFIG_SYS_FPGA_BASE_ADDR + 0x000))
+#define FPGA_STATUS	((u16 *)(CONFIG_SYS_FPGA_BASE_ADDR + 0x002))
+#define FPGA_CTR	((u16 *)(CONFIG_SYS_FPGA_BASE_ADDR + 0x004))
+#define FPGA_BL		((u16 *)(CONFIG_SYS_FPGA_BASE_ADDR + 0x006))
+
+/* FPGA Control Reg */
+#define FPGA_CTRL_REV0      0x0001
+#define FPGA_CTRL_REV1      0x0002
+#define FPGA_CTRL_VGA0_BL   0x0004
+#define FPGA_CTRL_VGA0_BL_MODE 0x0008
+#define FPGA_CTRL_CF_RESET  0x0040
+#define FPGA_CTRL_PS2_PWR   0x0080
+#define FPGA_CTRL_CF_PWRN   0x0100      /* low active */
+#define FPGA_CTRL_CF_BUS_EN 0x0200
+#define FPGA_CTRL_LCD_CLK   0x7000      /* mask for lcd clock */
+#define FPGA_CTRL_OW_ENABLE 0x8000
+
+#define FPGA_STATUS_CF_DETECT 0x8000
 
 #ifdef CONFIG_VIDEO_SM501
 
@@ -297,22 +318,22 @@ int board_revision(void)
 	/*
 	 * Setup GPIO pins (BLAST/GPIO0 and GPIO9 as GPIO)
 	 */
-	osrh_reg = in32(GPIO0_OSRH);
-	isr1h_reg = in32(GPIO0_ISR1H);
-	tcr_reg = in32(GPIO0_TCR);
-	out32(GPIO0_OSRH, osrh_reg & ~0xC0003000);     /* output select */
-	out32(GPIO0_ISR1H, isr1h_reg | 0xC0003000);    /* input select  */
-	out32(GPIO0_TCR, tcr_reg & ~0x80400000);       /* select input  */
+	osrh_reg = in_be32((void *)GPIO0_OSRH);
+	isr1h_reg = in_be32((void *)GPIO0_ISR1H);
+	tcr_reg = in_be32((void *)GPIO0_TCR);
+	out_be32((void *)GPIO0_OSRH, osrh_reg & ~0xC0003000);     /* output select */
+	out_be32((void *)GPIO0_ISR1H, isr1h_reg | 0xC0003000);    /* input select  */
+	out_be32((void *)GPIO0_TCR, tcr_reg & ~0x80400000);       /* select input  */
 
 	udelay(1000);            /* wait some time before reading input */
-	value = in32(GPIO0_IR) & 0x80400000;         /* get config bits */
+	value = in_be32((void *)GPIO0_IR) & 0x80400000;         /* get config bits */
 
 	/*
 	 * Restore GPIO settings
 	 */
-	out32(GPIO0_OSRH, osrh_reg);                   /* output select */
-	out32(GPIO0_ISR1H, isr1h_reg);                 /* input select  */
-	out32(GPIO0_TCR, tcr_reg);  /* enable output driver for outputs */
+	out_be32((void *)GPIO0_OSRH, osrh_reg);                   /* output select */
+	out_be32((void *)GPIO0_ISR1H, isr1h_reg);                 /* input select  */
+	out_be32((void *)GPIO0_TCR, tcr_reg);  /* enable output driver for outputs */
 
 	if (value & 0x80000000) {
 		/* Revision 1.0 or 1.1 detected */
@@ -345,7 +366,7 @@ int board_early_init_f (void)
 	mtdcr(uicsr, 0xFFFFFFFF);       /* clear all ints */
 	mtdcr(uicer, 0x00000000);       /* disable all ints */
 	mtdcr(uiccr, 0x00000000);       /* set all to be non-critical*/
-	mtdcr(uicpr, CFG_UIC0_POLARITY);/* set int polarities */
+	mtdcr(uicpr, CONFIG_SYS_UIC0_POLARITY);/* set int polarities */
 	mtdcr(uictr, 0x10000000);       /* set int trigger levels */
 	mtdcr(uicvcr, 0x00000001);      /* set vect base=0,INT0 highest priority*/
 	mtdcr(uicsr, 0xFFFFFFFF);       /* clear all ints */
@@ -353,7 +374,7 @@ int board_early_init_f (void)
 	/*
 	 * EBC Configuration Register: set ready timeout to 512 ebc-clks -> ca. 15 us
 	 */
-	mtebc (epcr, 0xa8400000); /* ebc always driven */
+	mtebc(epcr, 0xa8400000); /* ebc always driven */
 
 	return 0;
 }
@@ -362,27 +383,26 @@ int cf_enable(void)
 {
 	int i;
 
-	volatile unsigned short *fpga_ctrl =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL);
-	volatile unsigned short *fpga_status =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL + 2);
-
 	if (gd->board_type >= 2) {
-		if (*fpga_status & CFG_FPGA_STATUS_CF_DETECT) {
-			if (!(*fpga_ctrl & CFG_FPGA_CTRL_CF_BUS_EN)) {
-				*fpga_ctrl &= ~CFG_FPGA_CTRL_CF_PWRN;
+		if (in_be16(FPGA_STATUS) & FPGA_STATUS_CF_DETECT) {
+			if (!(in_be16(FPGA_CTRL) & FPGA_CTRL_CF_BUS_EN)) {
+				out_be16(FPGA_CTRL,
+					 in_be16(FPGA_CTRL) & ~FPGA_CTRL_CF_PWRN);
 
 				for (i=0; i<300; i++)
 					udelay(1000);
 
-				*fpga_ctrl |= CFG_FPGA_CTRL_CF_BUS_EN;
+				out_be16(FPGA_CTRL,
+					 in_be16(FPGA_CTRL) | FPGA_CTRL_CF_BUS_EN);
 
 				for (i=0; i<20; i++)
 					udelay(1000);
 			}
 		} else {
-			*fpga_ctrl &= ~CFG_FPGA_CTRL_CF_BUS_EN;
-			*fpga_ctrl |= CFG_FPGA_CTRL_CF_PWRN;
+			out_be16(FPGA_CTRL,
+				 in_be16(FPGA_CTRL) & ~FPGA_CTRL_CF_BUS_EN);
+			out_be16(FPGA_CTRL,
+				 in_be16(FPGA_CTRL) | FPGA_CTRL_CF_PWRN);
 		}
 	}
 
@@ -391,12 +411,6 @@ int cf_enable(void)
 
 int misc_init_r (void)
 {
-	volatile unsigned short *fpga_ctrl =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL);
-	volatile unsigned short *lcd_contrast =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL + 4);
-	volatile unsigned short *lcd_backlight =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL + 6);
 	unsigned char *dst;
 	ulong len = sizeof(fpgadata);
 	int status;
@@ -405,8 +419,8 @@ int misc_init_r (void)
 	char *str;
 	unsigned long contrast0 = 0xffffffff;
 
-	dst = malloc(CFG_FPGA_MAX_SIZE);
-	if (gunzip (dst, CFG_FPGA_MAX_SIZE, (uchar *)fpgadata, &len) != 0) {
+	dst = malloc(CONFIG_SYS_FPGA_MAX_SIZE);
+	if (gunzip (dst, CONFIG_SYS_FPGA_MAX_SIZE, (uchar *)fpgadata, &len) != 0) {
 		printf ("GUNZIP ERROR - must RESET board to recover\n");
 		do_reset (NULL, 0, 0, NULL);
 	}
@@ -460,42 +474,43 @@ int misc_init_r (void)
 	/*
 	 * Reset FPGA via FPGA_INIT pin
 	 */
-	out32(GPIO0_TCR, in32(GPIO0_TCR) | FPGA_INIT); /* setup FPGA_INIT as output */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~FPGA_INIT);  /* reset low */
+	/* setup FPGA_INIT as output */
+	out_be32((void *)GPIO0_TCR,
+		 in_be32((void *)GPIO0_TCR) | FPGA_INIT);
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) & ~FPGA_INIT);  /* reset low */
 	udelay(1000); /* wait 1ms */
-	out32(GPIO0_OR, in32(GPIO0_OR) | FPGA_INIT);   /* reset high */
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) | FPGA_INIT);   /* reset high */
 	udelay(1000); /* wait 1ms */
 
 	/*
 	 * Write Board revision into FPGA
 	 */
-	*fpga_ctrl |= gd->board_type & 0x0003;
-
- 	/*
-	 * Setup and enable EEPROM write protection
-	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_EEPROM_WP);
+	out_be16(FPGA_CTRL, in_be16(FPGA_CTRL) | (gd->board_type & 0x0003));
 
 	/*
-	 * Set NAND-FLASH GPIO signals to default
+	 * Setup and enable EEPROM write protection
 	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~(CFG_NAND_CLE | CFG_NAND_ALE));
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_NAND_CE);
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) | CONFIG_SYS_EEPROM_WP);
 
 	/*
 	 * Reset touch-screen controller
 	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~CFG_TOUCH_RST);
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) & ~CONFIG_SYS_TOUCH_RST);
 	udelay(1000);
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_TOUCH_RST);
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) | CONFIG_SYS_TOUCH_RST);
 
 	/*
 	 * Enable power on PS/2 interface (with reset)
 	 */
-	*fpga_ctrl &= ~(CFG_FPGA_CTRL_PS2_PWR);
+	out_be16(FPGA_CTRL, in_be16(FPGA_CTRL) & ~FPGA_CTRL_PS2_PWR);
 	for (i=0;i<500;i++)
 		udelay(1000);
-	*fpga_ctrl |= (CFG_FPGA_CTRL_PS2_PWR);
+	out_be16(FPGA_CTRL, in_be16(FPGA_CTRL) | FPGA_CTRL_PS2_PWR);
 
 	/*
 	 * Get contrast value from environment variable
@@ -504,7 +519,8 @@ int misc_init_r (void)
 	if (str) {
 		contrast0 = simple_strtol(str, NULL, 16);
 		if (contrast0 > 255) {
-			printf("ERROR: contrast0 value too high (0x%lx)!\n", contrast0);
+			printf("ERROR: contrast0 value too high (0x%lx)!\n",
+			       contrast0);
 			contrast0 = 0xffffffff;
 		}
 	}
@@ -518,11 +534,12 @@ int misc_init_r (void)
 		/*
 		 * Switch backlight on
 		 */
-		*fpga_ctrl |= CFG_FPGA_CTRL_VGA0_BL;
-		*lcd_backlight = 0x0000;
+		out_be16(FPGA_CTRL,
+			 in_be16(FPGA_CTRL) | FPGA_CTRL_VGA0_BL);
+		out_be16(FPGA_BL, 0x0000);
 
 		lcd_setup(1, 0);
-		lcd_init((uchar *)CFG_LCD_BIG_REG, (uchar *)CFG_LCD_BIG_MEM,
+		lcd_init((uchar *)CONFIG_SYS_LCD_BIG_REG, (uchar *)CONFIG_SYS_LCD_BIG_MEM,
 			 regs_13806_1024_768_8bpp,
 			 sizeof(regs_13806_1024_768_8bpp)/sizeof(regs_13806_1024_768_8bpp[0]),
 			 logo_bmp_1024, sizeof(logo_bmp_1024));
@@ -530,11 +547,12 @@ int misc_init_r (void)
 		/*
 		 * Switch backlight on
 		 */
-		*fpga_ctrl &= ~CFG_FPGA_CTRL_VGA0_BL;
-		*lcd_backlight = 0x0000;
+		out_be16(FPGA_CTRL,
+			 in_be16(FPGA_CTRL) & ~FPGA_CTRL_VGA0_BL);
+		out_be16(FPGA_BL, 0x0000);
 
 		lcd_setup(1, 0);
-		lcd_init((uchar *)CFG_LCD_BIG_REG, (uchar *)CFG_LCD_BIG_MEM,
+		lcd_init((uchar *)CONFIG_SYS_LCD_BIG_REG, (uchar *)CONFIG_SYS_LCD_BIG_MEM,
 			 regs_13806_640_480_16bpp,
 			 sizeof(regs_13806_640_480_16bpp)/sizeof(regs_13806_640_480_16bpp[0]),
 			 logo_bmp_640, sizeof(logo_bmp_640));
@@ -543,23 +561,26 @@ int misc_init_r (void)
 		 * Set default display contrast voltage
 		 */
 		if (contrast0 == 0xffffffff) {
-			*lcd_contrast = 0x0082;
+			out_be16(FPGA_CTR, 0x0082);
 		} else {
-			*lcd_contrast = contrast0;
+			out_be16(FPGA_CTR, contrast0);
 		}
-		*lcd_backlight = 0xffff;
+		out_be16(FPGA_BL, 0xffff);
 		/*
 		 * Switch backlight on
 		 */
-		*fpga_ctrl |= CFG_FPGA_CTRL_VGA0_BL | CFG_FPGA_CTRL_VGA0_BL_MODE;
+		out_be16(FPGA_CTRL,
+			 in_be16(FPGA_CTRL) |
+			 FPGA_CTRL_VGA0_BL |
+			 FPGA_CTRL_VGA0_BL_MODE);
 		/*
 		 * Set lcd clock (small epson)
 		 */
-		*fpga_ctrl |= LCD_CLK_06250;
+		out_be16(FPGA_CTRL, in_be16(FPGA_CTRL) | LCD_CLK_06250);
 		udelay(100);               /* wait for 100 us */
 
 		lcd_setup(0, 1);
-		lcd_init((uchar *)CFG_LCD_SMALL_REG, (uchar *)CFG_LCD_SMALL_MEM,
+		lcd_init((uchar *)CONFIG_SYS_LCD_SMALL_REG, (uchar *)CONFIG_SYS_LCD_SMALL_MEM,
 			 regs_13705_320_240_8bpp,
 			 sizeof(regs_13705_320_240_8bpp)/sizeof(regs_13705_320_240_8bpp[0]),
 			 logo_bmp_320_8bpp, sizeof(logo_bmp_320_8bpp));
@@ -568,22 +589,28 @@ int misc_init_r (void)
 		 * Set default display contrast voltage
 		 */
 		if (contrast0 == 0xffffffff) {
-			*lcd_contrast = 0x0060;
+			out_be16(FPGA_CTR, 0x0060);
 		} else {
-			*lcd_contrast = contrast0;
+			out_be16(FPGA_CTR, contrast0);
 		}
-		*lcd_backlight = 0xffff;
+		out_be16(FPGA_BL, 0xffff);
 		/*
 		 * Switch backlight on
 		 */
-		*fpga_ctrl |= CFG_FPGA_CTRL_VGA0_BL | CFG_FPGA_CTRL_VGA0_BL_MODE;
+		out_be16(FPGA_CTRL,
+			 in_be16(FPGA_CTRL) |
+			 FPGA_CTRL_VGA0_BL |
+			 FPGA_CTRL_VGA0_BL_MODE);
 		/*
 		 * Set lcd clock (small epson), enable 1-wire interface
 		 */
-		*fpga_ctrl |= LCD_CLK_08330 | CFG_FPGA_CTRL_OW_ENABLE;
+		out_be16(FPGA_CTRL,
+			 in_be16(FPGA_CTRL) |
+			 LCD_CLK_08330 |
+			 FPGA_CTRL_OW_ENABLE);
 
 		lcd_setup(0, 1);
-		lcd_init((uchar *)CFG_LCD_SMALL_REG, (uchar *)CFG_LCD_SMALL_MEM,
+		lcd_init((uchar *)CONFIG_SYS_LCD_SMALL_REG, (uchar *)CONFIG_SYS_LCD_SMALL_MEM,
 			 regs_13704_320_240_4bpp,
 			 sizeof(regs_13704_320_240_4bpp)/sizeof(regs_13704_320_240_4bpp[0]),
 			 logo_bmp_320, sizeof(logo_bmp_320));
@@ -599,10 +626,10 @@ int misc_init_r (void)
 			puts("VGA:   SM501 with 8 MB ");
 			if (strcmp(str, "ppc221") == 0) {
 				printf("(800*600, %dbpp)\n", BPP);
-				*lcd_backlight = 0x002d; /* max. allowed brightness */
+				out_be16(FPGA_BL, 0x002d); /* max. allowed brightness */
 			} else if (strcmp(str, "ppc231") == 0) {
 				printf("(1024*768, %dbpp)\n", BPP);
-				*lcd_backlight = 0x0000;
+				out_be16(FPGA_BL, 0x0000);
 			} else {
 				printf("Unsupported bd_type defined (%s) -> No display configured!\n", str);
 				return 0;
@@ -649,62 +676,31 @@ int checkboard (void)
 	return 0;
 }
 
-
-long int initdram (int board_type)
-{
-	unsigned long val;
-
-	mtdcr(memcfga, mem_mb0cf);
-	val = mfdcr(memcfgd);
-
-#if 0
-	printf("\nmb0cf=%x\n", val); /* test-only */
-	printf("strap=%x\n", mfdcr(strap)); /* test-only */
-#endif
-
-	return (4*1024*1024 << ((val & 0x000e0000) >> 17));
-}
-
-
 #ifdef CONFIG_IDE_RESET
 void ide_set_reset(int on)
 {
-	volatile unsigned short *fpga_mode =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL);
-	volatile unsigned short *fpga_status =
-		(unsigned short *)((ulong)CFG_FPGA_BASE_ADDR + CFG_FPGA_CTRL + 2);
-
-	if (((gd->board_type >= 2) && (*fpga_status & CFG_FPGA_STATUS_CF_DETECT)) ||
+	if (((gd->board_type >= 2) &&
+	     (in_be16(FPGA_STATUS) & FPGA_STATUS_CF_DETECT)) ||
 	    (gd->board_type < 2)) {
 		/*
 		 * Assert or deassert CompactFlash Reset Pin
 		 */
 		if (on) {		/* assert RESET */
 			cf_enable();
-			*fpga_mode &= ~(CFG_FPGA_CTRL_CF_RESET);
+			out_be16(FPGA_CTRL,
+				 in_be16(FPGA_CTRL) &
+				 ~FPGA_CTRL_CF_RESET);
 		} else {		/* release RESET */
-			*fpga_mode |= CFG_FPGA_CTRL_CF_RESET;
+			out_be16(FPGA_CTRL,
+				 in_be16(FPGA_CTRL) |
+				 FPGA_CTRL_CF_RESET);
 		}
 	}
 }
 #endif /* CONFIG_IDE_RESET */
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-#include <linux/mtd/nand_legacy.h>
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
-
-void nand_init(void)
-{
-	nand_probe(CFG_NAND_BASE);
-	if (nand_dev_desc[0].ChipID != NAND_ChipID_UNKNOWN) {
-		print_size(nand_dev_desc[0].totlen, "\n");
-	}
-}
-#endif
-
-
-#if defined(CFG_EEPROM_WREN)
+#if defined(CONFIG_SYS_EEPROM_WREN)
 /* Input: <dev_addr>  I2C address of EEPROM device to enable.
  *         <state>     -1: deliver current state
  *	               0: disable write
@@ -715,23 +711,26 @@ void nand_init(void)
  */
 int eeprom_write_enable (unsigned dev_addr, int state)
 {
-	if (CFG_I2C_EEPROM_ADDR != dev_addr) {
+	if (CONFIG_SYS_I2C_EEPROM_ADDR != dev_addr) {
 		return -1;
 	} else {
 		switch (state) {
 		case 1:
 			/* Enable write access, clear bit GPIO_SINT2. */
-			out32(GPIO0_OR, in32(GPIO0_OR) & ~CFG_EEPROM_WP);
+			out_be32((void *)GPIO0_OR,
+				 in_be32((void *)GPIO0_OR) & ~CONFIG_SYS_EEPROM_WP);
 			state = 0;
 			break;
 		case 0:
 			/* Disable write access, set bit GPIO_SINT2. */
-			out32(GPIO0_OR, in32(GPIO0_OR) | CFG_EEPROM_WP);
+			out_be32((void *)GPIO0_OR,
+				 in_be32((void *)GPIO0_OR) | CONFIG_SYS_EEPROM_WP);
 			state = 0;
 			break;
 		default:
 			/* Read current status back. */
-			state = (0 == (in32(GPIO0_OR) & CFG_EEPROM_WP));
+			state = (0 == (in_be32((void *)GPIO0_OR) &
+				       CONFIG_SYS_EEPROM_WP));
 			break;
 		}
 	}
@@ -745,21 +744,21 @@ int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	if (query) {
 		/* Query write access state. */
-		state = eeprom_write_enable (CFG_I2C_EEPROM_ADDR, -1);
+		state = eeprom_write_enable (CONFIG_SYS_I2C_EEPROM_ADDR, -1);
 		if (state < 0) {
 			puts ("Query of write access state failed.\n");
 		} else {
 			printf ("Write access for device 0x%0x is %sabled.\n",
-				CFG_I2C_EEPROM_ADDR, state ? "en" : "dis");
+				CONFIG_SYS_I2C_EEPROM_ADDR, state ? "en" : "dis");
 			state = 0;
 		}
 	} else {
 		if ('0' == argv[1][0]) {
 			/* Disable write access. */
-			state = eeprom_write_enable (CFG_I2C_EEPROM_ADDR, 0);
+			state = eeprom_write_enable (CONFIG_SYS_I2C_EEPROM_ADDR, 0);
 		} else {
 			/* Enable write access. */
-			state = eeprom_write_enable (CFG_I2C_EEPROM_ADDR, 1);
+			state = eeprom_write_enable (CONFIG_SYS_I2C_EEPROM_ADDR, 1);
 		}
 		if (state < 0) {
 			puts ("Setup of write access state failed.\n");
@@ -770,9 +769,10 @@ int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(eepwren,	2,	0,	do_eep_wren,
-	   "eepwren - Enable / disable / query EEPROM write access\n",
-	   NULL);
-#endif /* #if defined(CFG_EEPROM_WREN) */
+	"Enable / disable / query EEPROM write access",
+	""
+);
+#endif /* #if defined(CONFIG_SYS_EEPROM_WREN) */
 
 
 #ifdef CONFIG_VIDEO_SM501

@@ -26,16 +26,36 @@
 #include <watchdog.h>
 #include <command.h>
 #include <asm/cache.h>
+#include <asm/mmu.h>
 #include <mpc86xx.h>
+#include <tsec.h>
+#include <asm/fsl_law.h>
 
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-#endif
+struct cpu_type cpu_type_list [] = {
+	CPU_TYPE_ENTRY(8610, 8610),
+	CPU_TYPE_ENTRY(8641, 8641),
+	CPU_TYPE_ENTRY(8641D, 8641D),
+};
 
-#ifdef CONFIG_MPC8641HPCN
-extern void mpc8641_reset_board(cmd_tbl_t *cmdtp, int flag,
-				int argc, char *argv[]);
-#endif
+struct cpu_type *identify_cpu(u32 ver)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(cpu_type_list); i++)
+		if (cpu_type_list[i].soc_ver == ver)
+			return &cpu_type_list[i];
+
+	return NULL;
+}
+
+/*
+ * Default board reset function
+ */
+static void
+__board_reset(void)
+{
+	/* Do nothing */
+}
+void board_reset(void) __attribute__((weak, alias("__board_reset")));
 
 
 int
@@ -45,151 +65,90 @@ checkcpu(void)
 	uint pvr, svr;
 	uint ver;
 	uint major, minor;
-	uint lcrr;		/* local bus clock ratio register */
-	uint clkdiv;		/* clock divider portion of lcrr */
-
-	puts("Freescale PowerPC\n");
-
-	pvr = get_pvr();
-	ver = PVR_VER(pvr);
-	major = PVR_MAJ(pvr);
-	minor = PVR_MIN(pvr);
-
-	puts("CPU:\n");
-	puts("    Core: ");
-
-	switch (ver) {
-	case PVR_VER(PVR_86xx):
-		puts("E600");
-		break;
-	default:
-		puts("Unknown");
-		break;
-	}
-	printf(", Version: %d.%d, (0x%08x)\n", major, minor, pvr);
+	char buf1[32], buf2[32];
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
+	volatile ccsr_gur_t *gur = &immap->im_gur;
+	struct cpu_type *cpu;
+	uint msscr0 = mfspr(MSSCR0);
 
 	svr = get_svr();
-	ver = SVR_VER(svr);
+	ver = SVR_SOC_VER(svr);
 	major = SVR_MAJ(svr);
 	minor = SVR_MIN(svr);
 
-	puts("    System: ");
-	switch (ver) {
-	case SVR_8641:
-	    if (SVR_SUBVER(svr) == 1) {
-		puts("8641D");
-	    } else {
-		puts("8641");
-	    }
-	    break;
-	default:
+	puts("CPU:   ");
+
+	cpu = identify_cpu(ver);
+	if (cpu) {
+		puts(cpu->name);
+	} else {
 		puts("Unknown");
-		break;
 	}
+
 	printf(", Version: %d.%d, (0x%08x)\n", major, minor, svr);
+	puts("Core:  ");
+
+	pvr = get_pvr();
+	ver = PVR_E600_VER(pvr);
+	major = PVR_E600_MAJ(pvr);
+	minor = PVR_E600_MIN(pvr);
+
+	printf("E600 Core %d", (msscr0 & 0x20) ? 1 : 0 );
+	if (gur->pordevsr & MPC86xx_PORDEVSR_CORE1TE)
+		puts("\n    Core1Translation Enabled");
+	debug(" (MSSCR0=%x, PORDEVSR=%x)", msscr0, gur->pordevsr);
+
+	printf(", Version: %d.%d, (0x%08x)\n", major, minor, pvr);
 
 	get_sys_info(&sysinfo);
 
-	puts("    Clocks: ");
-	printf("CPU:%4lu MHz, ", sysinfo.freqProcessor / 1000000);
-	printf("MPX:%4lu MHz, ", sysinfo.freqSystemBus / 1000000);
-	printf("DDR:%4lu MHz, ", sysinfo.freqSystemBus / 2000000);
+	puts("Clock Configuration:\n");
+	printf("       CPU:%-4s MHz, ", strmhz(buf1, sysinfo.freqProcessor));
+	printf("MPX:%-4s MHz\n", strmhz(buf1, sysinfo.freqSystemBus));
+	printf("       DDR:%-4s MHz (%s MT/s data rate), ",
+		strmhz(buf1, sysinfo.freqSystemBus / 2),
+		strmhz(buf2, sysinfo.freqSystemBus));
 
-#if defined(CFG_LBC_LCRR)
-	lcrr = CFG_LBC_LCRR;
-#else
-	{
-		volatile immap_t *immap = (immap_t *) CFG_IMMR;
-		volatile ccsr_lbc_t *lbc = &immap->im_lbc;
-
-		lcrr = lbc->lcrr;
-	}
-#endif
-	clkdiv = lcrr & 0x0f;
-	if (clkdiv == 2 || clkdiv == 4 || clkdiv == 8) {
-		printf("LBC:%4lu MHz\n",
-		       sysinfo.freqSystemBus / 1000000 / clkdiv);
+	if (sysinfo.freqLocalBus > LCRR_CLKDIV) {
+		printf("LBC:%-4s MHz\n", strmhz(buf1, sysinfo.freqLocalBus));
 	} else {
-		printf("    LBC: unknown (lcrr: 0x%08x)\n", lcrr);
+		printf("LBC: unknown (LCRR[CLKDIV] = 0x%02lx)\n",
+		       sysinfo.freqLocalBus);
 	}
 
-	puts("    L2: ");
-	if (get_l2cr() & 0x80000000)
-		puts("Enabled\n");
-	else
+	puts("L1:    D-cache 32 KB enabled\n");
+	puts("       I-cache 32 KB enabled\n");
+
+	puts("L2:    ");
+	if (get_l2cr() & 0x80000000) {
+#if defined(CONFIG_MPC8610)
+		puts("256");
+#elif defined(CONFIG_MPC8641)
+		puts("512");
+#endif
+		puts(" KB enabled\n");
+	} else {
 		puts("Disabled\n");
+	}
 
 	return 0;
 }
 
 
-static inline void
-soft_restart(unsigned long addr)
-{
-#ifndef CONFIG_MPC8641HPCN
-
-	/*
-	 * SRR0 has system reset vector, SRR1 has default MSR value
-	 * rfi restores MSR from SRR1 and sets the PC to the SRR0 value
-	 */
-
-	__asm__ __volatile__ ("mtspr	26, %0"		:: "r" (addr));
-	__asm__ __volatile__ ("li	4, (1 << 6)"	::: "r4");
-	__asm__ __volatile__ ("mtspr	27, 4");
-	__asm__ __volatile__ ("rfi");
-
-#else /* CONFIG_MPC8641HPCN */
-
-	out8(PIXIS_BASE + PIXIS_RST, 0);
-
-#endif /* !CONFIG_MPC8641HPCN */
-
-	while (1) ;		/* not reached */
-}
-
-
-/*
- * No generic way to do board reset. Simply call soft_reset.
- */
 void
 do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-#ifndef CONFIG_MPC8641HPCN
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
+	volatile ccsr_gur_t *gur = &immap->im_gur;
 
-#ifdef CFG_RESET_ADDRESS
-	ulong addr = CFG_RESET_ADDRESS;
-#else
-	/*
-	 * note: when CFG_MONITOR_BASE points to a RAM address,
-	 * CFG_MONITOR_BASE - sizeof (ulong) is usually a valid
-	 * address. Better pick an address known to be invalid on your
-	 * system and assign it to CFG_RESET_ADDRESS.
-	 */
-	ulong addr = CFG_MONITOR_BASE - sizeof(ulong);
-#endif
+	/* Attempt board-specific reset */
+	board_reset();
 
-	/* flush and disable I/D cache */
-	__asm__ __volatile__ ("mfspr	3, 1008"	::: "r3");
-	__asm__ __volatile__ ("ori	5, 5, 0xcc00"	::: "r5");
-	__asm__ __volatile__ ("ori	4, 3, 0xc00"	::: "r4");
-	__asm__ __volatile__ ("andc	5, 3, 5"	::: "r5");
-	__asm__ __volatile__ ("sync");
-	__asm__ __volatile__ ("mtspr	1008, 4");
-	__asm__ __volatile__ ("isync");
-	__asm__ __volatile__ ("sync");
-	__asm__ __volatile__ ("mtspr	1008, 5");
-	__asm__ __volatile__ ("isync");
-	__asm__ __volatile__ ("sync");
+	/* Next try asserting HRESET_REQ */
+	out_be32(&gur->rstcr, MPC86xx_RSTCR_HRST_REQ);
 
-	soft_restart(addr);
-
-#else /* CONFIG_MPC8641HPCN */
-
-	mpc8641_reset_board(cmdtp, flag, argc, argv);
-
-#endif /* !CONFIG_MPC8641HPCN */
-
-	while (1) ;		/* not reached */
+	while (1)
+		;
 }
 
 
@@ -210,99 +169,56 @@ get_tbclk(void)
 void
 watchdog_reset(void)
 {
+#if defined(CONFIG_MPC8610)
+	/*
+	 * This actually feed the hard enabled watchdog.
+	 */
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
+	volatile ccsr_wdt_t *wdt = &immap->im_wdt;
+	volatile ccsr_gur_t *gur = &immap->im_gur;
+	u32 tmp = gur->pordevsr;
+
+	if (tmp & 0x4000) {
+		wdt->swsrr = 0x556c;
+		wdt->swsrr = 0xaa39;
+	}
+#endif
 }
 #endif	/* CONFIG_WATCHDOG */
 
-
-#if defined(CONFIG_DDR_ECC)
-void
-dma_init(void)
+/*
+ * Print out the state of various machine registers.
+ * Currently prints out LAWs, BR0/OR0, and BATs
+ */
+void mpc86xx_reginfo(void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
-	volatile ccsr_dma_t *dma = &immap->im_dma;
+	immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
+	ccsr_lbc_t *lbc = &immap->im_lbc;
 
-	dma->satr0 = 0x00040000;
-	dma->datr0 = 0x00040000;
-	asm("sync; isync");
+	print_bats();
+	print_laws();
+
+	printf ("Local Bus Controller Registers\n"
+		"\tBR0\t0x%08X\tOR0\t0x%08X \n", in_be32(&lbc->br0), in_be32(&lbc->or0));
+	printf("\tBR1\t0x%08X\tOR1\t0x%08X \n", in_be32(&lbc->br1), in_be32(&lbc->or1));
+	printf("\tBR2\t0x%08X\tOR2\t0x%08X \n", in_be32(&lbc->br2), in_be32(&lbc->or2));
+	printf("\tBR3\t0x%08X\tOR3\t0x%08X \n", in_be32(&lbc->br3), in_be32(&lbc->or3));
+	printf("\tBR4\t0x%08X\tOR4\t0x%08X \n", in_be32(&lbc->br4), in_be32(&lbc->or4));
+	printf("\tBR5\t0x%08X\tOR5\t0x%08X \n", in_be32(&lbc->br5), in_be32(&lbc->or5));
+	printf("\tBR6\t0x%08X\tOR6\t0x%08X \n", in_be32(&lbc->br6), in_be32(&lbc->or6));
+	printf("\tBR7\t0x%08X\tOR7\t0x%08X \n", in_be32(&lbc->br7), in_be32(&lbc->or7));
+
 }
 
-uint
-dma_check(void)
+/*
+ * Initializes on-chip ethernet controllers.
+ * to override, implement board_eth_init()
+ */
+int cpu_eth_init(bd_t *bis)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
-	volatile ccsr_dma_t *dma = &immap->im_dma;
-	volatile uint status = dma->sr0;
+#if defined(CONFIG_TSEC_ENET)
+	tsec_standard_init(bis);
+#endif
 
-	/* While the channel is busy, spin */
-	while ((status & 4) == 4) {
-		status = dma->sr0;
-	}
-
-	if (status != 0) {
-		printf("DMA Error: status = %x\n", status);
-	}
-	return status;
+	return 0;
 }
-
-int
-dma_xfer(void *dest, uint count, void *src)
-{
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
-	volatile ccsr_dma_t *dma = &immap->im_dma;
-
-	dma->dar0 = (uint) dest;
-	dma->sar0 = (uint) src;
-	dma->bcr0 = count;
-	dma->mr0 = 0xf000004;
-	asm("sync;isync");
-	dma->mr0 = 0xf000005;
-	asm("sync;isync");
-	return dma_check();
-}
-
-#endif	/* CONFIG_DDR_ECC */
-
-
-#ifdef CONFIG_OF_FLAT_TREE
-void
-ft_cpu_setup(void *blob, bd_t *bd)
-{
-	u32 *p;
-	ulong clock;
-	int len;
-
-	clock = bd->bi_busfreq;
-	p = ft_get_prop(blob, "/cpus/" OF_CPU "/bus-frequency", &len);
-	if (p != NULL)
-		*p = cpu_to_be32(clock);
-
-	p = ft_get_prop(blob, "/" OF_SOC "/serial@4500/clock-frequency", &len);
-	if (p != NULL)
-		*p = cpu_to_be32(clock);
-
-	p = ft_get_prop(blob, "/" OF_SOC "/serial@4600/clock-frequency", &len);
-	if (p != NULL)
-		*p = cpu_to_be32(clock);
-
-#if defined(CONFIG_MPC86XX_TSEC1)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@24000/mac-address", &len);
-	memcpy(p, bd->bi_enetaddr, 6);
-#endif
-
-#if defined(CONFIG_MPC86XX_TSEC2)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@25000/mac-address", &len);
-	memcpy(p, bd->bi_enet1addr, 6);
-#endif
-
-#if defined(CONFIG_MPC86XX_TSEC3)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@26000/mac-address", &len);
-	memcpy(p, bd->bi_enet2addr, 6);
-#endif
-
-#if defined(CONFIG_MPC86XX_TSEC4)
-	p = ft_get_prop(blob, "/" OF_SOC "/ethernet@27000/mac-address", &len);
-	memcpy(p, bd->bi_enet3addr, 6);
-#endif
-
-}
-#endif

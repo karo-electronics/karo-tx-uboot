@@ -43,12 +43,12 @@
 #define CONFIG_BAUDRATE		115200
 
 /* valid baudrates */
-#define CFG_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 #define	CONFIG_TIMESTAMP		/* Print image info with timestamp */
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -81,64 +81,80 @@
 	""
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
-#define CONFIG_COMMANDS	       (CONFIG_CMD_DFL	| \
-				CFG_CMD_ASKENV	| \
-				CFG_CMD_DHCP	| \
-				CFG_CMD_ELF	| \
-				CFG_CMD_JFFS2	| \
-				CFG_CMD_NFS	| \
-				CFG_CMD_PING	| \
-				CFG_CMD_SNTP	)
-#include <cmd_confdefs.h>
+
+/*
+ * BOOTP options
+ */
+#define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
+
+
+/*
+ * Command line configuration.
+ */
+#include <config_cmd_default.h>
+
+#define CONFIG_CMD_ASKENV
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_ELF
+#define CONFIG_CMD_JFFS2
+#define CONFIG_CMD_NFS
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_SNTP
+
 
 /*
  * Miscellaneous configurable options
  */
-#define	CFG_LONGHELP				/* undef to save memory      */
-#define	CFG_PROMPT		"INCA-IP # "	/* Monitor Command Prompt    */
-#define	CFG_CBSIZE		256		/* Console I/O Buffer Size   */
-#define	CFG_PBSIZE (CFG_CBSIZE+sizeof(CFG_PROMPT)+16)  /* Print Buffer Size */
-#define	CFG_MAXARGS		16		/* max number of command args*/
+#define	CONFIG_SYS_LONGHELP				/* undef to save memory      */
+#define	CONFIG_SYS_PROMPT		"INCA-IP # "	/* Monitor Command Prompt    */
+#define	CONFIG_SYS_CBSIZE		256		/* Console I/O Buffer Size   */
+#define	CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)  /* Print Buffer Size */
+#define	CONFIG_SYS_MAXARGS		16		/* max number of command args*/
 
-#define CFG_MALLOC_LEN		128*1024
+#define CONFIG_SYS_MALLOC_LEN		128*1024
 
-#define CFG_BOOTPARAMS_LEN	128*1024
+#define CONFIG_SYS_BOOTPARAMS_LEN	128*1024
 
-#define CFG_HZ			(incaip_get_cpuclk() / 2)
+#define CONFIG_SYS_MIPS_TIMER_FREQ	(incaip_get_cpuclk() / 2)
 
-#define CFG_SDRAM_BASE		0x80000000
+#define CONFIG_SYS_HZ			1000
 
-#define	CFG_LOAD_ADDR		0x80100000	/* default load address	*/
+#define CONFIG_SYS_SDRAM_BASE		0x80000000
 
-#define CFG_MEMTEST_START	0x80100000
-#define CFG_MEMTEST_END		0x80800000
+#define	CONFIG_SYS_LOAD_ADDR		0x80100000	/* default load address	*/
+
+#define CONFIG_SYS_MEMTEST_START	0x80100000
+#define CONFIG_SYS_MEMTEST_END		0x80800000
 
 /*-----------------------------------------------------------------------
  * FLASH and environment organization
  */
-#define CFG_MAX_FLASH_BANKS	2	/* max number of memory banks */
-#define CFG_MAX_FLASH_SECT	(128)	/* max number of sectors on one chip */
+#define CONFIG_SYS_MAX_FLASH_BANKS	2	/* max number of memory banks */
+#define CONFIG_SYS_MAX_FLASH_SECT	(128)	/* max number of sectors on one chip */
 
 #define PHYS_FLASH_1		0xb0000000 /* Flash Bank #1 */
 #define PHYS_FLASH_2		0xb0800000 /* Flash Bank #2 */
 
 /* The following #defines are needed to get flash environment right */
-#define	CFG_MONITOR_BASE	TEXT_BASE
-#define	CFG_MONITOR_LEN		(192 << 10)
+#define	CONFIG_SYS_MONITOR_BASE	TEXT_BASE
+#define	CONFIG_SYS_MONITOR_LEN		(192 << 10)
 
-#define CFG_INIT_SP_OFFSET	0x400000
+#define CONFIG_SYS_INIT_SP_OFFSET	0x400000
 
-#define CFG_FLASH_BASE		PHYS_FLASH_1
+#define CONFIG_SYS_FLASH_BASE		PHYS_FLASH_1
 
 /* timeout values are in ticks */
-#define CFG_FLASH_ERASE_TOUT	(2 * CFG_HZ) /* Timeout for Flash Erase */
-#define CFG_FLASH_WRITE_TOUT	(2 * CFG_HZ) /* Timeout for Flash Write */
+#define CONFIG_SYS_FLASH_ERASE_TOUT	(2 * CONFIG_SYS_HZ) /* Timeout for Flash Erase */
+#define CONFIG_SYS_FLASH_WRITE_TOUT	(2 * CONFIG_SYS_HZ) /* Timeout for Flash Write */
 
-#define	CFG_ENV_IS_IN_FLASH	1
+#define	CONFIG_ENV_IS_IN_FLASH	1
 
 /* Address and size of Primary Environment Sector	*/
-#define CFG_ENV_ADDR		0xB0030000
-#define CFG_ENV_SIZE		0x10000
+#define CONFIG_ENV_ADDR		0xB0030000
+#define CONFIG_ENV_SIZE		0x10000
 
 #define CONFIG_FLASH_16BIT
 
@@ -152,14 +168,14 @@
  * JFFS2 partitions
  */
 /* No command line, one static partition, use all space on the device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor1"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
 
 /* mtdparts command line support */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor0=INCA-IP Bank 0"
 #define MTDPARTS_DEFAULT	"mtdparts=INCA-IP Bank 0:192k(uboot)," \
 							"64k(env)," \
@@ -172,8 +188,8 @@
 /*-----------------------------------------------------------------------
  * Cache Configuration
  */
-#define CFG_DCACHE_SIZE		4096
-#define CFG_ICACHE_SIZE		4096
-#define CFG_CACHELINE_SIZE	16
+#define CONFIG_SYS_DCACHE_SIZE		4096
+#define CONFIG_SYS_ICACHE_SIZE		4096
+#define CONFIG_SYS_CACHELINE_SIZE	16
 
 #endif	/* __CONFIG_H */

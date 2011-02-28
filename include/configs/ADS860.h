@@ -27,26 +27,32 @@
 #define CONFIG_BAUDRATE		38400	/* Console baudrate */
 
 #if 0
-#define CFG_8XX_FACT		1526	/* 32.768 kHz crystal on XTAL/EXTAL */
+#define CONFIG_SYS_8XX_FACT		1526	/* 32.768 kHz crystal on XTAL/EXTAL */
 #else
-#define CFG_8XX_FACT		12	/* 4 MHz oscillator on EXTCLK */
+#define CONFIG_SYS_8XX_FACT		12	/* 4 MHz oscillator on EXTCLK */
 #endif
 
-#define CFG_PLPRCR  (((CFG_8XX_FACT-1) << PLPRCR_MF_SHIFT) |	\
+#define CONFIG_SYS_PLPRCR  (((CONFIG_SYS_8XX_FACT-1) << PLPRCR_MF_SHIFT) |	\
 		PLPRCR_SPLSS | PLPRCR_TEXPS | PLPRCR_TMIST)
 
 #define CONFIG_DRAM_50MHZ		1
 
-#define CONFIG_COMMANDS (CONFIG_CMD_DFL   \
-			 | CFG_CMD_DHCP   \
-			 | CFG_CMD_IMMAP  \
-			 | CFG_CMD_PCMCIA \
-			 | CFG_CMD_PING   \
-			)
 
+/*
+ * Command line configuration.
+ */
+#include <config_cmd_default.h>
 
-#include "fads.h"
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_IMMAP
+#define CONFIG_CMD_PCMCIA
+#define CONFIG_CMD_PING
 
-#define CFG_PC_IDE_RESET	((ushort)0x0008)    /* PC 12	*/
+/* This is picked up again in fads.h */
+#define FADS_COMMANDS_ALREADY_DEFINED
+
+#include "../../board/fads/fads.h"
+
+#define CONFIG_SYS_PC_IDE_RESET	((ushort)0x0008)    /* PC 12	*/
 
 #endif	/* __CONFIG_H */

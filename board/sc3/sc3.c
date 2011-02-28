@@ -28,8 +28,8 @@
  * MA 02111-1307 USA
  *
  * $Log$
- * Revision 1.1  2011-02-28 14:37:17  lothar
- * Initial revision
+ * Revision 1.1.5.1  2011-02-28 14:41:31  lothar
+ * imported Freescale specific U-Boot additions for i.MX28,... release L2.6.31_10.08.01
  *
  */
 

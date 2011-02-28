@@ -58,7 +58,6 @@ const unsigned char fpgadata[] = {
 int board_early_init_f (void)
 {
 	int index, len, i;
-	volatile unsigned char dummy;
 	int status;
 
 #ifdef FPGA_DEBUG
@@ -116,7 +115,7 @@ int board_early_init_f (void)
 	/*
 	 * Init FPGA via RESET (read access on CS3)
 	 */
-	dummy = *(unsigned char *) 0xf0200000;
+	in_8((void *)0xf0200000);
 
 	/*
 	 * IRQ 0-15  405GP internally generated; active high; level sensitive
@@ -183,22 +182,3 @@ int checkboard (void)
 
 	return 0;
 }
-
-/* ------------------------------------------------------------------------- */
-
-long int initdram (int board_type)
-{
-	return (16 * 1024 * 1024);
-}
-
-/* ------------------------------------------------------------------------- */
-
-int testdram (void)
-{
-	/* TODO: XXX XXX XXX */
-	printf ("test: 16 MB - ok\n");
-
-	return (0);
-}
-
-/* ------------------------------------------------------------------------- */

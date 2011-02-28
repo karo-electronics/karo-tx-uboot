@@ -25,12 +25,17 @@
 #include <command.h>
 #include "metrobox.h"
 #include "metrobox_version.h"
+#include <timestamp.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <spd_sdram.h>
 #include <i2c.h>
 #include "../common/ppc440gx_i2c.h"
 #include "../common/sb_common.h"
+#if defined(CONFIG_HAS_ETH0) || defined(CONFIG_HAS_ETH1) || \
+    defined(CONFIG_HAS_ETH2) || defined(CONFIG_HAS_ETH3)
+#include <net.h>
+#endif
 
 void fpga_init (void);
 
@@ -55,7 +60,7 @@ int board_early_init_f (void)
 	mtsdr(sdr_pfc0, 0x00103E00);
 
 	/* Setup access for LEDs, and system topology info */
-	gpio_regs = (ppc440_gpio_regs_t *)CFG_GPIO_BASE;
+	gpio_regs = (ppc440_gpio_regs_t *)CONFIG_SYS_GPIO_BASE;
 	gpio_regs->open_drain = SBCOMMON_GPIO_SYS_LEDS;
 	gpio_regs->tri_state  = SBCOMMON_GPIO_DBGLEDS;
 
@@ -83,7 +88,7 @@ int board_early_init_f (void)
 	      EBC_BXAP_RE_DISABLED  | EBC_BXAP_BEM_WRITEONLY |
 	      EBC_BXAP_PEN_DISABLED);
 
-	mtebc(pb0cr, EBC_BXCR_BAS_ENCODE(CFG_FLASH_BASE) |
+	mtebc(pb0cr, EBC_BXCR_BAS_ENCODE(CONFIG_SYS_FLASH_BASE) |
 	      EBC_BXCR_BS_1MB | EBC_BXCR_BU_RW | EBC_BXCR_BW_8BIT);
 	/*--------------------------------------------------------------------+
 	  | 8KB NVRAM/RTC. Initialize bank 1 with default values.
@@ -185,36 +190,48 @@ int board_early_init_f (void)
 	/*--------------------------------------------------------------------+
 	 * Setup the interrupt controller polarities, triggers, etc.
 	 +-------------------------------------------------------------------*/
-	mtdcr (uic0sr, 0xffffffff);	/* clear all */
-	mtdcr (uic0er, 0x00000000);	/* disable all */
-	mtdcr (uic0cr, 0x00000000);	/* all non- critical */
-	mtdcr (uic0pr, 0xfffffe03);	/* polarity */
-	mtdcr (uic0tr, 0x01c00000);	/* trigger edge vs level */
-	mtdcr (uic0vr, 0x00000001);	/* int31 highest, base=0x000 */
-	mtdcr (uic0sr, 0xffffffff);	/* clear all */
-
+	/*
+	 * Because of the interrupt handling rework to handle 440GX interrupts
+	 * with the common code, we needed to change names of the UIC registers.
+	 * Here the new relationship:
+	 *
+	 * U-Boot name	440GX name
+	 * -----------------------
+	 * UIC0		UICB0
+	 * UIC1		UIC0
+	 * UIC2		UIC1
+	 * UIC3		UIC2
+	 */
 	mtdcr (uic1sr, 0xffffffff);	/* clear all */
 	mtdcr (uic1er, 0x00000000);	/* disable all */
-	mtdcr (uic1cr, 0x00000000);	/* all non-critical */
-	mtdcr (uic1pr, 0xffffc8ff);	/* polarity */
-	mtdcr (uic1tr, 0x00ff0000);	/* trigger edge vs level */
+	mtdcr (uic1cr, 0x00000000);	/* all non- critical */
+	mtdcr (uic1pr, 0xfffffe03);	/* polarity */
+	mtdcr (uic1tr, 0x01c00000);	/* trigger edge vs level */
 	mtdcr (uic1vr, 0x00000001);	/* int31 highest, base=0x000 */
 	mtdcr (uic1sr, 0xffffffff);	/* clear all */
 
 	mtdcr (uic2sr, 0xffffffff);	/* clear all */
 	mtdcr (uic2er, 0x00000000);	/* disable all */
 	mtdcr (uic2cr, 0x00000000);	/* all non-critical */
-	mtdcr (uic2pr, 0xffff83ff);	/* polarity */
-	mtdcr (uic2tr, 0x00ff8c0f);	/* trigger edge vs level */
+	mtdcr (uic2pr, 0xffffc8ff);	/* polarity */
+	mtdcr (uic2tr, 0x00ff0000);	/* trigger edge vs level */
 	mtdcr (uic2vr, 0x00000001);	/* int31 highest, base=0x000 */
 	mtdcr (uic2sr, 0xffffffff);	/* clear all */
 
-	mtdcr (uicb0sr, 0xfc000000);	/* clear all */
-	mtdcr (uicb0er, 0x00000000);	/* disable all */
-	mtdcr (uicb0cr, 0x00000000);	/* all non-critical */
-	mtdcr (uicb0pr, 0xfc000000);
-	mtdcr (uicb0tr, 0x00000000);
-	mtdcr (uicb0vr, 0x00000001);
+	mtdcr (uic3sr, 0xffffffff);	/* clear all */
+	mtdcr (uic3er, 0x00000000);	/* disable all */
+	mtdcr (uic3cr, 0x00000000);	/* all non-critical */
+	mtdcr (uic3pr, 0xffff83ff);	/* polarity */
+	mtdcr (uic3tr, 0x00ff8c0f);	/* trigger edge vs level */
+	mtdcr (uic3vr, 0x00000001);	/* int31 highest, base=0x000 */
+	mtdcr (uic3sr, 0xffffffff);	/* clear all */
+
+	mtdcr (uic0sr, 0xfc000000);	/* clear all */
+	mtdcr (uic0er, 0x00000000);	/* disable all */
+	mtdcr (uic0cr, 0x00000000);	/* all non-critical */
+	mtdcr (uic0pr, 0xfc000000);
+	mtdcr (uic0tr, 0x00000000);
+	mtdcr (uic0vr, 0x00000001);
 
 	fpga_init();
 
@@ -234,7 +251,7 @@ int checkboard (void)
 	unsigned char opto_rev, opto_id;
 	OPTO_FPGA_REGS_ST *opto_ps;
 
-	opto_ps = (OPTO_FPGA_REGS_ST *)CFG_FPGA_BASE;
+	opto_ps = (OPTO_FPGA_REGS_ST *)CONFIG_SYS_FPGA_BASE;
 
 	opto_rev = (unsigned char)((opto_ps->revision_ul &
 				    SAND_HAL_XC_XCVR_CNTL_REVISION_REVISION_MASK)
@@ -258,7 +275,7 @@ int checkboard (void)
 	printf ("Board: Sandburst Corporation MetroBox Serial Number: %d\n", sernum);
 	printf ("%s\n", METROBOX_U_BOOT_REL_STR);
 
-	printf ("Built %s %s by %s\n", __DATE__, __TIME__, BUILDUSER);
+	printf ("Built %s %s by %s\n", U_BOOT_DATE, U_BOOT_TIME, BUILDUSER);
 	if (sbcommon_get_master()) {
 		printf("Slot 0 - Master\nSlave board");
 		if (sbcommon_secondary_present())
@@ -270,11 +287,11 @@ int checkboard (void)
 	}
 
 	printf ("OptoFPGA ID:\t0x%02X\tRev:  0x%02X\n", opto_id, opto_rev);
-	printf ("Board Rev:\t0x%02X\tID:  %s\n", brd_rev, board_id_as[brd_id]);
+	printf ("Board Rev:\t0x%02X\tID:  %s\n", brd_rev, board_id_as[brd_id].name);
 
 	/* Fix the ack in the bme 32 */
 	udelay(5000);
-	out32(CFG_BME32_BASE + 0x0000000C, 0x00000001);
+	out32(CONFIG_SYS_BME32_BASE + 0x0000000C, 0x00000001);
 	asm("eieio");
 
 
@@ -290,7 +307,7 @@ int misc_init_f (void)
 {
 	/* Turn on i2c bus 1 */
 	puts ("I2C1:  ");
-	i2c1_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c1_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 	puts ("ready\n");
 
 	/* Turn on fans */
@@ -308,10 +325,11 @@ int misc_init_r (void)
 {
 	unsigned short sernum;
 	char envstr[255];
+	uchar enetaddr[6];
 	unsigned char opto_rev;
 	OPTO_FPGA_REGS_ST *opto_ps;
 
-	opto_ps = (OPTO_FPGA_REGS_ST *)CFG_FPGA_BASE;
+	opto_ps = (OPTO_FPGA_REGS_ST *)CONFIG_SYS_FPGA_BASE;
 
 	if(NULL != getenv("secondserial")) {
 	    puts("secondserial is set, switching to second serial port\n");
@@ -323,7 +341,8 @@ int misc_init_r (void)
 	setenv("ubrelver", METROBOX_U_BOOT_REL_STR);
 
 	memset(envstr, 0, 255);
-	sprintf (envstr, "Built %s %s by %s", __DATE__, __TIME__, BUILDUSER);
+	sprintf (envstr, "Built %s %s by %s",
+		 U_BOOT_DATE, U_BOOT_TIME, BUILDUSER);
 	setenv("bldstr", envstr);
 	saveenv();
 
@@ -365,6 +384,34 @@ int misc_init_r (void)
 		}
 	}
 
+#ifdef CONFIG_HAS_ETH0
+	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
+		board_get_enetaddr(0, enetaddr);
+		eth_setenv_enetaddr("ethaddr", enetaddr);
+	}
+#endif
+
+#ifdef CONFIG_HAS_ETH1
+	if (!eth_getenv_enetaddr("eth1addr", enetaddr)) {
+		board_get_enetaddr(1, enetaddr);
+		eth_setenv_enetaddr("eth1addr", enetaddr);
+	}
+#endif
+
+#ifdef CONFIG_HAS_ETH2
+	if (!eth_getenv_enetaddr("eth2addr", enetaddr)) {
+		board_get_enetaddr(2, enetaddr);
+		eth_setenv_enetaddr("eth2addr", enetaddr);
+	}
+#endif
+
+#ifdef CONFIG_HAS_ETH3
+	if (!eth_getenv_enetaddr("eth3addr", enetaddr)) {
+		board_get_enetaddr(3, enetaddr);
+		eth_setenv_enetaddr("eth3addr", enetaddr);
+	}
+#endif
+
 	return (0);
 }
 
@@ -375,7 +422,7 @@ int misc_init_r (void)
 void ide_set_reset(int on)
 {
 	OPTO_FPGA_REGS_ST *opto_ps;
-	opto_ps = (OPTO_FPGA_REGS_ST *)CFG_FPGA_BASE;
+	opto_ps = (OPTO_FPGA_REGS_ST *)CONFIG_SYS_FPGA_BASE;
 
 	if (on) {		/* assert RESET */
 	    opto_ps->reset_ul &= ~SAND_HAL_XC_XCVR_CNTL_RESET_CF_RESET_N_MASK;
@@ -400,7 +447,7 @@ void fpga_init(void)
 	/*
 	 * Take appropriate hw bits out of reset
 	 */
-	opto_ps = (OPTO_FPGA_REGS_ST *)CFG_FPGA_BASE;
+	opto_ps = (OPTO_FPGA_REGS_ST *)CONFIG_SYS_FPGA_BASE;
 
 	tmp =
 	    SAND_HAL_XC_XCVR_CNTL_RESET_MAC1_RESET_N_MASK |
@@ -530,7 +577,7 @@ int metroboxRecover(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(mbsetup, 1, 1, metroboxSetupVars,
-	   "mbsetup - Set environment to factory defaults\n", NULL);
+	   "Set environment to factory defaults", "");
 
 U_BOOT_CMD(mbrecover, 1, 1, metroboxRecover,
-	   "mbrecover - Set environment to allow for fs recovery\n", NULL);
+	   "Set environment to allow for fs recovery", "");

@@ -33,9 +33,10 @@
 #include <common.h>
 #include <config.h>
 #include <version.h>
+#include <timestamp.h>
 #include <i2c.h>
 #include <linux/types.h>
-#include <devices.h>
+#include <stdio_dev.h>
 
 #ifdef CONFIG_VIDEO
 
@@ -115,9 +116,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define VIDEO_BURST_LEN		(VIDEO_COLS/8)
 
 #ifdef VIDEO_MODE_YUYV
-#define VIDEO_BG_COL 	0x80D880D8	/* Background color in YUYV format */
+#define VIDEO_BG_COL	0x80D880D8	/* Background color in YUYV format */
 #else
-#define VIDEO_BG_COL 	0xF8F8F8F8	/* Background color in RGB format */
+#define VIDEO_BG_COL	0xF8F8F8F8	/* Background color in RGB format */
 #endif
 
 /************************************************************************/
@@ -517,7 +518,7 @@ static void inline video_mode_addentry (VRAM * vr,
 
 static int video_mode_generate (void)
 {
-	immap_t *immap = (immap_t *) CFG_IMMR;
+	immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	VRAM *vr = (VRAM *) (((void *) immap) + 0xb00);	/* Pointer to the VRAM table */
 	int DX, X1, X2, DY, Y1, Y2, entry = 0, fifo;
 
@@ -808,7 +809,7 @@ static void video_encoder_init (void)
 
 	/* Initialize the I2C */
 	debug ("[VIDEO ENCODER] Initializing I2C bus...\n");
-	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 
 #ifdef CONFIG_FADS
 	/* Reset ADV7176 chip */
@@ -833,10 +834,10 @@ static void video_encoder_init (void)
 
 		puts ("[VIDEO ENCODER] Configuring the encoder...\n");
 
-		printf ("Sending %d bytes (@ %08lX) to I2C 0x%X:\n   ",
+		printf ("Sending %zu bytes (@ %08lX) to I2C 0x%lX:\n   ",
 			sizeof(video_encoder_data),
 			(ulong)video_encoder_data,
-			VIDEO_I2C_ADDR);
+			(ulong)VIDEO_I2C_ADDR);
 		for (i=0; i<sizeof(video_encoder_data); ++i) {
 			printf(" %02X", video_encoder_data[i]);
 		}
@@ -856,7 +857,7 @@ static void video_encoder_init (void)
 
 static void video_ctrl_init (void *memptr)
 {
-	immap_t *immap = (immap_t *) CFG_IMMR;
+	immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 
 	video_fb_address = memptr;
 
@@ -1174,7 +1175,8 @@ static void *video_logo (void)
 	easylogo_plot (VIDEO_LOGO_ADDR, screen, width, 0, 0);
 
 #ifdef VIDEO_INFO
-	sprintf (info, "%s (%s - %s) ", U_BOOT_VERSION, __DATE__, __TIME__);
+	sprintf (info, "%s (%s - %s) ",
+		 U_BOOT_VERSION, U_BOOT_DATE, U_BOOT_TIME);
 	video_drawstring (VIDEO_INFO_X, VIDEO_INFO_Y, info);
 
 	sprintf (info, "(C) 2002 DENX Software Engineering");
@@ -1235,13 +1237,13 @@ static int video_init (void *videobase)
 	video_setpalette  (CONSOLE_COLOR_GREY2,	  0xF8, 0xF8, 0xF8);
 	video_setpalette  (CONSOLE_COLOR_WHITE,	  0xFF, 0xFF, 0xFF);
 
-#ifndef CFG_WHITE_ON_BLACK
+#ifndef CONFIG_SYS_WHITE_ON_BLACK
 	video_setfgcolor (CONSOLE_COLOR_BLACK);
 	video_setbgcolor (CONSOLE_COLOR_GREY2);
 #else
 	video_setfgcolor (CONSOLE_COLOR_GREY2);
 	video_setbgcolor (CONSOLE_COLOR_BLACK);
-#endif	/* CFG_WHITE_ON_BLACK */
+#endif	/* CONFIG_SYS_WHITE_ON_BLACK */
 
 #ifdef CONFIG_VIDEO_LOGO
 	/* Paint the logo and retrieve tv base address */
@@ -1285,7 +1287,7 @@ int drv_video_init (void)
 {
 	int error, devices = 1;
 
-	device_t videodev;
+	struct stdio_dev videodev;
 
 	video_init ((void *)(gd->fb_base));	/* Video initialization */
 
@@ -1299,7 +1301,7 @@ int drv_video_init (void)
 	videodev.putc = video_putc;	/* 'putc' function */
 	videodev.puts = video_puts;	/* 'puts' function */
 
-	error = device_register (&videodev);
+	error = stdio_register (&videodev);
 
 	return (error == 0) ? devices : error;
 }

@@ -536,11 +536,11 @@ void usb_check_int_chain(void)
 	uhci_td_t *td,*prevtd;
 
 	for(i=0;i<8;i++) {
-		prevtd=&td_int[i]; /* the first previous td is the skeleton td */
+		prevtd = &td_int[i]; /* the first previous td is the skeleton td */
 		link=swap_32(td_int[i].link) & 0xfffffff0; /* next in chain */
 		td=(uhci_td_t *)link; /* assign it */
 		/* all interrupt TDs are finally linked to the td_int[0].
- 		 * so we process all until we find the td_int[0].
+		 * so we process all until we find the td_int[0].
 		 * if int0 chain points to a QH, we're also done
 	   */
 		while(((i>0) && (link != (unsigned long)&td_int[0])) ||
@@ -621,7 +621,7 @@ int usb_lowlevel_init(void)
 	pci_read_config_dword(busdevfunc,PCI_BASE_ADDRESS_4,&usb_base_addr);
 	USB_UHCI_PRINTF("IO Base Address = 0x%lx\n",usb_base_addr);
 	usb_base_addr&=0xFFFFFFF0;
-	usb_base_addr+=CFG_ISA_IO_BASE_ADDRESS;
+	usb_base_addr+=CONFIG_SYS_ISA_IO_BASE_ADDRESS;
 	rh.devnum = 0;
 	usb_init_skel();
 	reset_hc();
@@ -638,7 +638,7 @@ int usb_lowlevel_stop(void)
 		return 1;
 	irq_free_handler(irqvec);
 	reset_hc();
-	irqvec=-1;
+	irqvec = -1;
 	return 0;
 }
 
@@ -792,7 +792,7 @@ int uhci_submit_rh_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 	unsigned short wIndex;
 	unsigned short wLength;
 
-	if ((pipe & PIPE_INTERRUPT) == PIPE_INTERRUPT) {
+	if (usb_pipeint(pipe)) {
 		printf("Root-Hub submit IRQ: NOT implemented\n");
 #if 0
 		uhci->rh.urb = urb;

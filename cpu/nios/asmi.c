@@ -27,8 +27,8 @@
 #include <command.h>
 #include <nios-io.h>
 
-#if !defined(CFG_NIOS_ASMIBASE)
-#error "*** CFG_NIOS_ASMIBASE not defined ***"
+#if !defined(CONFIG_SYS_NIOS_ASMIBASE)
+#error "*** CONFIG_SYS_NIOS_ASMIBASE not defined ***"
 #endif
 
 /*-----------------------------------------------------------------------*/
@@ -48,7 +48,7 @@
 	"asmi write addr offset count\n"\
 	"    - write count bytes to offset from addr.\n"\
 	"asmi verify addr offset count\n"\
-	"    - verify count bytes at offset from addr.\n"
+	"    - verify count bytes at offset from addr."
 
 
 /*-----------------------------------------------------------------------*/
@@ -69,7 +69,7 @@
 #define ASMI_STATUS_WIP		(1<<0)	/* Write in progress */
 #define ASMI_STATUS_WEL		(1<<1)	/* Write enable latch */
 
-static nios_asmi_t *asmi = (nios_asmi_t *)CFG_NIOS_ASMIBASE;
+static nios_asmi_t *asmi = (nios_asmi_t *)CONFIG_SYS_NIOS_ASMIBASE;
 
 /***********************************************************************
  * Device access
@@ -183,7 +183,7 @@ static void asmi_status_wr (unsigned char status)
  * Device information
  ***********************************************************************/
 typedef struct asmi_devinfo_t {
-	const char 	*name;		/* Device name */
+	const char	*name;		/* Device name */
 	unsigned char	id;		/* Device silicon id */
 	unsigned char	size;		/* Total size log2(bytes)*/
 	unsigned char	num_sects;	/* Number of sectors */

@@ -29,7 +29,7 @@
 #include <command.h>
 #include "pn62.h"
 
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 
 extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
 
@@ -41,7 +41,7 @@ int do_led (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
     unsigned int number, function;
 
     if (argc != 3) {
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
     }
     number = simple_strtoul(argv[1], NULL, 10);
@@ -53,9 +53,9 @@ int do_led (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	led    ,	3,	1,	do_led,
-	"led     - set LED 0..11 on the PN62 board\n",
-	"i fun\n"
-	"    - set 'i'th LED to function 'fun'\n"
+	"set LED 0..11 on the PN62 board",
+	"i fun"
+	"    - set 'i'th LED to function 'fun'"
 );
 
 /*
@@ -83,7 +83,7 @@ int do_loadpci (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	addr = simple_strtoul(argv[1], NULL, 16);
 	break;
     default:
-       printf ("Usage:\n%s\n", cmdtp->usage);
+       cmd_usage(cmdtp);
 	return 1;
     }
 
@@ -152,13 +152,21 @@ int do_loadpci (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	rcode = do_bootm (cmdtp, 0, 1, local_args);
     }
 
-#ifdef CONFIG_AUTOSCRIPT
+#ifdef CONFIG_SOURCE
     if (load_addr) {
 	char *s;
 
 	if (((s = getenv("autoscript")) != NULL) && (strcmp(s,"yes") == 0)) {
-	    printf("Running autoscript at addr 0x%08lX ...\n", load_addr);
-	    rcode = autoscript (bd, load_addr);
+		printf ("Running \"source\" command at addr 0x%08lX",
+			load_addr);
+
+		s = getenv ("autoscript_uname");
+		if (s)
+			printf (":%s ...\n", s);
+		else
+			puts (" ...\n");
+
+		rcode = source (load_addr, s);
 	}
     }
 #endif
@@ -167,9 +175,9 @@ int do_loadpci (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	loadpci,	2,	1,	do_loadpci,
-	"loadpci - load binary file over PCI\n",
+	"load binary file over PCI",
 	"[addr]\n"
-	"    - load binary file over PCI to address 'addr'\n"
+	"    - load binary file over PCI to address 'addr'"
 );
 
 #endif

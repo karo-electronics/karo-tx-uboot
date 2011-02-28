@@ -61,7 +61,7 @@
 
 /* -------------------------------------------------------------------- */
 
-#if	(CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 
 extern int pcmcia_on (void);
 extern int pcmcia_off (void);
@@ -87,19 +87,19 @@ int do_pinit (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(
-	pinit,	2,	1,	do_pinit,
-	"pinit   - PCMCIA sub-system\n",
+	pinit,	2,	0,	do_pinit,
+	"PCMCIA sub-system",
 	"on  - power on PCMCIA socket\n"
-			"pinit off - power off PCMCIA socket\n"
-	  );
+	"pinit off - power off PCMCIA socket"
+);
 
-#endif	/* CONFIG_COMMANDS & CFG_CMD_PCMCIA */
+#endif
 
 /* -------------------------------------------------------------------- */
 
 #undef	CHECK_IDE_DEVICE
 
-#if	(CONFIG_COMMANDS & CFG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
 #define	CHECK_IDE_DEVICE
 #endif
 
@@ -278,8 +278,8 @@ int check_ide_device (int slot)
 	int found = 0;
 	int i;
 
-	addr = (volatile uchar *)(CFG_PCMCIA_MEM_ADDR +
-				  CFG_PCMCIA_MEM_SIZE * (slot * 4));
+	addr = (volatile uchar *)(CONFIG_SYS_PCMCIA_MEM_ADDR +
+				  CONFIG_SYS_PCMCIA_MEM_SIZE * (slot * 4));
 	debug ("PCMCIA MEM: %08lX\n", (ulong)addr);
 
 	start = p = (volatile uchar *) addr;

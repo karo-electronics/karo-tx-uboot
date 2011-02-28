@@ -245,9 +245,9 @@ int checkboard(void)
 #define MCR_MCLF(x)		((unsigned long)((x) & 15) << (31 - 23))
 #define MCR_MCLF_MASK		MCR_MCLF(15)
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
 	long int size;
 
@@ -256,17 +256,17 @@ long int initdram(int board_type)
 	/*
 	 * Preliminary prescaler for refresh
 	 */
-	memctl->memc_mptpr = CFG_MPTPR_1BK_8K;
+	memctl->memc_mptpr = CONFIG_SYS_MPTPR_1BK_8K;
 
 	memctl->memc_mar = MAR_SDRAM_INIT;	/* 32-bit address to be output on the address bus if AMX = 0b11 */
 
     /*
      * Map controller bank 3 to the SDRAM bank at preliminary address.
      */
-	memctl->memc_or3 = CFG_OR3_PRELIM;
-	memctl->memc_br3 = CFG_BR3_PRELIM;
+	memctl->memc_or3 = CONFIG_SYS_OR3_PRELIM;
+	memctl->memc_br3 = CONFIG_SYS_BR3_PRELIM;
 
-	memctl->memc_mamr = CFG_MAMR_9COL & ~MAMR_PTAE;	/* no refresh yet */
+	memctl->memc_mamr = CONFIG_SYS_MAMR_9COL & ~MAMR_PTAE;	/* no refresh yet */
 
 	udelay(200);
 
@@ -282,7 +282,7 @@ long int initdram(int board_type)
 
 	udelay(1000);
 
-	memctl->memc_mamr = CFG_MAMR_9COL;
+	memctl->memc_mamr = CONFIG_SYS_MAMR_9COL;
 
 	size = SDRAM_MAX_SIZE;
 
@@ -358,7 +358,7 @@ int misc_init_r(void)
 
 int board_early_init_f(void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile iop8xx_t *ioport = &immap->im_ioport;
 	volatile cpm8xx_t *cpm = &immap->im_cpm;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
@@ -415,18 +415,3 @@ int board_early_init_f(void)
 
 	return 0;
 }
-
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-
-#include <linux/mtd/nand_legacy.h>
-
-extern ulong nand_probe(ulong physadr);
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
-
-void nand_init(void)
-{
-	unsigned long totlen = nand_probe(CFG_NAND_BASE);
-
-	printf ("%4lu MB\n", totlen >> 20);
-}
-#endif

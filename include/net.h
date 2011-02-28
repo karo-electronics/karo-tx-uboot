@@ -38,16 +38,16 @@
 #define CONFIG_NET_MULTI
 #if (CONFIG_ETHER_INDEX == 1)
 #define	CONFIG_ETHER_ON_FCC1
-# define CFG_CMXFCR_MASK1	CFG_CMXFCR_MASK
-# define CFG_CMXFCR_VALUE1	CFG_CMXFCR_VALUE
+# define CONFIG_SYS_CMXFCR_MASK1	CONFIG_SYS_CMXFCR_MASK
+# define CONFIG_SYS_CMXFCR_VALUE1	CONFIG_SYS_CMXFCR_VALUE
 #elif (CONFIG_ETHER_INDEX == 2)
 #define	CONFIG_ETHER_ON_FCC2
-# define CFG_CMXFCR_MASK2	CFG_CMXFCR_MASK
-# define CFG_CMXFCR_VALUE2	CFG_CMXFCR_VALUE
+# define CONFIG_SYS_CMXFCR_MASK2	CONFIG_SYS_CMXFCR_MASK
+# define CONFIG_SYS_CMXFCR_VALUE2	CONFIG_SYS_CMXFCR_VALUE
 #elif (CONFIG_ETHER_INDEX == 3)
 #define	CONFIG_ETHER_ON_FCC3
-# define CFG_CMXFCR_MASK3	CFG_CMXFCR_MASK
-# define CFG_CMXFCR_VALUE3	CFG_CMXFCR_VALUE
+# define CONFIG_SYS_CMXFCR_MASK3	CONFIG_SYS_CMXFCR_MASK
+# define CONFIG_SYS_CMXFCR_VALUE3	CONFIG_SYS_CMXFCR_VALUE
 #endif /* CONFIG_ETHER_INDEX */
 #endif /* CONFIG_ETHER_ON_FCC */
 #endif /* !CONFIG_NET_MULTI && CONFIG_8260 */
@@ -61,8 +61,8 @@
  *
  */
 
-#ifdef CFG_RX_ETH_BUFFER
-# define PKTBUFSRX	CFG_RX_ETH_BUFFER
+#ifdef CONFIG_SYS_RX_ETH_BUFFER
+# define PKTBUFSRX	CONFIG_SYS_RX_ETH_BUFFER
 #else
 # define PKTBUFSRX	4
 #endif
@@ -99,30 +99,45 @@ struct eth_device {
 	int state;
 
 	int  (*init) (struct eth_device*, bd_t*);
-	int  (*send) (struct eth_device*, volatile void* pachet, int length);
+	int  (*send) (struct eth_device*, volatile void* packet, int length);
 	int  (*recv) (struct eth_device*);
 	void (*halt) (struct eth_device*);
-
+#ifdef CONFIG_MCAST_TFTP
+	int (*mcast) (struct eth_device*, u32 ip, u8 set);
+#endif
+	int  (*write_hwaddr) (struct eth_device *);
 	struct eth_device *next;
 	void *priv;
 };
 
-extern int eth_initialize(bd_t *bis);		/* Initialize network subsystem */
-extern int eth_register(struct eth_device* dev);/* Register network device	*/
-extern void eth_try_another(int first_restart);	/* Change the device		*/
+extern int eth_initialize(bd_t *bis);	/* Initialize network subsystem */
+extern int eth_register(struct eth_device* dev);/* Register network device */
+extern void eth_try_another(int first_restart);	/* Change the device */
 #ifdef CONFIG_NET_MULTI
-extern void eth_set_current(void);		/* set nterface to ethcur var.  */
+extern void eth_set_current(void);		/* set nterface to ethcur var */
 #endif
-extern struct eth_device *eth_get_dev(void);	/* get the current device MAC	*/
-extern struct eth_device *eth_get_dev_by_name(char *devname); /* get device	*/
-extern int eth_get_dev_index (void);		/* get the device index         */
-extern void eth_set_enetaddr(int num, char* a);	/* Set new MAC address		*/
+extern struct eth_device *eth_get_dev(void);	/* get the current device MAC */
+extern struct eth_device *eth_get_dev_by_name(char *devname); /* get device */
+extern struct eth_device *eth_get_dev_by_index(int index); /* get dev @ index */
+extern int eth_get_dev_index (void);		/* get the device index */
+extern void eth_parse_enetaddr(const char *addr, uchar *enetaddr);
+extern int eth_getenv_enetaddr(char *name, uchar *enetaddr);
+extern int eth_setenv_enetaddr(char *name, const uchar *enetaddr);
+extern int eth_getenv_enetaddr_by_index(int index, uchar *enetaddr);
 
-extern int eth_init(bd_t *bis);			/* Initialize the device	*/
-extern int eth_send(volatile void *packet, int length);	   /* Send a packet	*/
-extern int eth_rx(void);			/* Check for received packets	*/
-extern void eth_halt(void);			/* stop SCC			*/
-extern char *eth_get_name(void);		/* get name of current device	*/
+extern int eth_init(bd_t *bis);			/* Initialize the device */
+extern int eth_send(volatile void *packet, int length);	   /* Send a packet */
+#ifdef CONFIG_API
+extern int eth_receive(volatile void *packet, int length); /* Receive a packet*/
+#endif
+extern int eth_rx(void);			/* Check for received packets */
+extern void eth_halt(void);			/* stop SCC */
+extern char *eth_get_name(void);		/* get name of current device */
+
+#ifdef CONFIG_MCAST_TFTP
+int eth_mcast_join( IPaddr_t mcast_addr, u8 join);
+u32 ether_crc (size_t len, unsigned char const *p);
+#endif
 
 
 /**********************************************************************/
@@ -190,6 +205,12 @@ typedef struct {
 	ushort		udp_xsum;	/* Checksum			*/
 } IP_t;
 
+#define IP_OFFS		0x1fff /* ip offset *= 8 */
+#define IP_FLAGS	0xe000 /* first 3 bits */
+#define IP_FLAGS_RES	0x8000 /* reserved */
+#define IP_FLAGS_DFRAG	0x4000 /* don't fragments */
+#define IP_FLAGS_MFRAG	0x2000 /* more fragments */
+
 #define IP_HDR_SIZE_NO_UDP	(sizeof (IP_t) - 8)
 #define IP_HDR_SIZE		(sizeof (IP_t))
 
@@ -230,7 +251,7 @@ typedef struct
 /*
  * ICMP stuff (just enough to handle (host) redirect messages)
  */
-#define ICMP_ECHO_REPLY		0	/* Echo reply 			*/
+#define ICMP_ECHO_REPLY		0	/* Echo reply			*/
 #define ICMP_REDIRECT		5	/* Redirect (change route)	*/
 #define ICMP_ECHO_REQUEST	8	/* Echo request			*/
 
@@ -296,7 +317,7 @@ typedef struct icmphdr {
 extern IPaddr_t		NetOurGatewayIP;	/* Our gateway IP addresse	*/
 extern IPaddr_t		NetOurSubnetMask;	/* Our subnet mask (0 = unknown)*/
 extern IPaddr_t		NetOurDNSIP;	 /* Our Domain Name Server (0 = unknown)*/
-#if (CONFIG_BOOTP_MASK & CONFIG_BOOTP_DNS2)
+#if defined(CONFIG_BOOTP_DNS2)
 extern IPaddr_t		NetOurDNS2IP;	 /* Our 2nd Domain Name Server (0 = unknown)*/
 #endif
 extern char		NetOurNISDomain[32];	/* Our NIS domain		*/
@@ -311,18 +332,18 @@ extern IPaddr_t		NetOurIP;		/* Our    IP addr (0 = unknown)	*/
 extern IPaddr_t		NetServerIP;		/* Server IP addr (0 = unknown)	*/
 extern volatile uchar * NetTxPacket;		/* THE transmit packet		*/
 extern volatile uchar * NetRxPackets[PKTBUFSRX];/* Receive packets		*/
-extern volatile uchar * NetRxPkt;		/* Current receive packet	*/
-extern int		NetRxPktLen;		/* Current rx packet length	*/
+extern volatile uchar * NetRxPacket;		/* Current receive packet	*/
+extern int		NetRxPacketLen;		/* Current rx packet length	*/
 extern unsigned		NetIPID;		/* IP ID (counting)		*/
 extern uchar		NetBcastAddr[6];	/* Ethernet boardcast address	*/
 extern uchar		NetEtherNullAddr[6];
 
-#define VLAN_NONE	4095			/* untagged 			*/
-#define VLAN_IDMASK	0x0fff			/* mask of valid vlan id 	*/
-extern ushort		NetOurVLAN;		/* Our VLAN 			*/
-extern ushort		NetOurNativeVLAN;	/* Our Native VLAN 		*/
+#define VLAN_NONE	4095			/* untagged			*/
+#define VLAN_IDMASK	0x0fff			/* mask of valid vlan id	*/
+extern ushort		NetOurVLAN;		/* Our VLAN			*/
+extern ushort		NetOurNativeVLAN;	/* Our Native VLAN		*/
 
-extern uchar		NetCDPAddr[6]; 		/* Ethernet CDP address		*/
+extern uchar		NetCDPAddr[6];		/* Ethernet CDP address		*/
 extern ushort		CDPNativeVLAN;		/* CDP returned native VLAN	*/
 extern ushort		CDPApplianceVLAN;	/* CDP returned appliance VLAN	*/
 
@@ -341,18 +362,23 @@ typedef enum { BOOTP, RARP, ARP, TFTP, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP 
 /* from net/net.c */
 extern char	BootFile[128];			/* Boot File name		*/
 
-#if (CONFIG_COMMANDS & CFG_CMD_PING)
-extern IPaddr_t	NetPingIP;			/* the ip address to ping 		*/
+#if defined(CONFIG_CMD_DNS)
+extern char *NetDNSResolve;		/* The host to resolve  */
+extern char *NetDNSenvvar;		/* the env var to put the ip into */
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_CDP)
+#if defined(CONFIG_CMD_PING)
+extern IPaddr_t	NetPingIP;			/* the ip address to ping		*/
+#endif
+
+#if defined(CONFIG_CMD_CDP)
 /* when CDP completes these hold the return values */
 extern ushort CDPNativeVLAN;
 extern ushort CDPApplianceVLAN;
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_SNTP)
-extern IPaddr_t	NetNtpServerIP;			/* the ip address to NTP 	*/
+#if defined(CONFIG_CMD_SNTP)
+extern IPaddr_t	NetNtpServerIP;			/* the ip address to NTP	*/
 extern int NetTimeOffset;			/* offset time from UTC		*/
 #endif
 
@@ -366,7 +392,7 @@ extern void	NetStop(void);
 extern void	NetStartAgain(void);
 
 /* Get size of the ethernet header when we send */
-extern int 	NetEthHdrSize(void);
+extern int	NetEthHdrSize(void);
 
 /* Set ethernet header; returns the size of the header */
 extern int	NetSetEther(volatile uchar *, uchar *, uint);
@@ -391,9 +417,6 @@ extern int	NetSendUDPPacket(uchar *ether, IPaddr_t dest, int dport, int sport, i
 /* Processes a received packet */
 extern void	NetReceive(volatile uchar *, int);
 
-/* Print an IP address on the console */
-extern void	print_IPaddr (IPaddr_t);
-
 /*
  * The following functions are a bit ugly, but necessary to deal with
  * alignment restrictions on ARM.
@@ -402,10 +425,10 @@ extern void	print_IPaddr (IPaddr_t);
  * footprint in our tests.
  */
 /* return IP *in network byteorder* */
-static inline IPaddr_t NetReadIP(void *from)
+static inline IPaddr_t NetReadIP(volatile void *from)
 {
 	IPaddr_t ip;
-	memcpy((void*)&ip, from, sizeof(ip));
+	memcpy((void*)&ip, (void*)from, sizeof(ip));
 	return ip;
 }
 
@@ -424,15 +447,54 @@ static inline void NetWriteIP(void *to, IPaddr_t ip)
 }
 
 /* copy IP */
-static inline void NetCopyIP(void *to, void *from)
+static inline void NetCopyIP(volatile void *to, void *from)
 {
-	memcpy(to, from, sizeof(IPaddr_t));
+	memcpy((void*)to, from, sizeof(IPaddr_t));
 }
 
 /* copy ulong */
 static inline void NetCopyLong(ulong *to, ulong *from)
 {
 	memcpy((void*)to, (void*)from, sizeof(ulong));
+}
+
+/**
+ * is_zero_ether_addr - Determine if give Ethernet address is all zeros.
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Return true if the address is all zeroes.
+ */
+static inline int is_zero_ether_addr(const u8 *addr)
+{
+	return !(addr[0] | addr[1] | addr[2] | addr[3] | addr[4] | addr[5]);
+}
+
+/**
+ * is_multicast_ether_addr - Determine if the Ethernet address is a multicast.
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Return true if the address is a multicast address.
+ * By definition the broadcast address is also a multicast address.
+ */
+static inline int is_multicast_ether_addr(const u8 *addr)
+{
+	return (0x01 & addr[0]);
+}
+
+/**
+ * is_valid_ether_addr - Determine if the given Ethernet address is valid
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Check that the Ethernet address (MAC) is not 00:00:00:00:00:00, is not
+ * a multicast address, and is not FF:FF:FF:FF:FF:FF.
+ *
+ * Return true if the address is valid.
+ */
+static inline int is_valid_ether_addr(const u8 * addr)
+{
+	/* FF:FF:FF:FF:FF:FF is a multicast address so we don't need to
+	 * explicitly check for it here. */
+	return !is_multicast_ether_addr(addr) && !is_zero_ether_addr(addr);
 }
 
 /* Convert an IP address to a string */

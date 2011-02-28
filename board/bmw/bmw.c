@@ -26,9 +26,9 @@
 #include <watchdog.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <net.h>
-#include <version.h>
+#include <timestamp.h>
 #include <dtt.h>
 #include <mpc824x.h>
 #include <asm/processor.h>
@@ -45,13 +45,13 @@ int checkboard(void)
     char  buf[32];
 
     puts ("Board: BMW MPC8245/KAHLUA2 - CHRP (MAP B)\n");
-    printf("Built: %s at %s\n", __DATE__ , __TIME__ );
+    printf("Built: %s at %s\n", U_BOOT_DATE, U_BOOT_TIME);
     /* printf("MPLD:  Revision %d\n", SYS_REVID_GET()); */
     printf("Local Bus at %s MHz\n", strmhz(buf, busfreq));
     return 0;
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
     return 64*1024*1024;
 }
@@ -117,6 +117,7 @@ sys_led_msg(char* msg)
     LED_REG(3) = msg[0];
 }
 
+#ifdef CONFIG_CMD_DOC
 /*
  * Map onboard TSOP-16MB DOC FLASH chip.
  */
@@ -124,8 +125,9 @@ void doc_init (void)
 {
     doc_probe(DOC_BASE_ADDR);
 }
+#endif
 
-#define NV_ADDR	((volatile unsigned char *) CFG_ENV_ADDR)
+#define NV_ADDR	((volatile unsigned char *) CONFIG_ENV_ADDR)
 
 /* Read from NVRAM */
 void*

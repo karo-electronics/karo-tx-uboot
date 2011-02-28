@@ -25,11 +25,11 @@ include $(TOPDIR)/config.mk
 
 LIB := $(obj)libnpe.a
 
-LOCAL_CFLAGS  += -I$(TOPDIR)/cpu/ixp/npe/include -DCONFIG_IXP425_COMPONENT_ETHDB
+LOCAL_CFLAGS  += -I$(TOPDIR)/cpu/ixp/npe/include -DCONFIG_IXP425_COMPONENT_ETHDB -D__linux
 CFLAGS  += $(LOCAL_CFLAGS)
-HOST_CFLAGS  += $(LOCAL_CFLAGS)
+HOSTCFLAGS  += $(LOCAL_CFLAGS)
 
-COBJS := npe.o \
+COBJS-$(CONFIG_IXP4XX_NPE) := npe.o \
 	miiphy.o \
 	IxOsalBufferMgt.o \
 	IxOsalIoMem.o \
@@ -72,7 +72,6 @@ COBJS := npe.o \
 	IxNpeDlImageMgr.o \
 	IxNpeDlNpeMgr.o \
 	IxNpeDlNpeMgrUtils.o \
-	IxNpeMicrocode.o \
 	IxNpeMh.o \
 	IxNpeMhConfig.o \
 	IxNpeMhReceive.o \
@@ -80,10 +79,9 @@ COBJS := npe.o \
 	IxNpeMhSolicitedCbMgr.o \
 	IxNpeMhUnsolicitedCbMgr.o
 
-
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
-START	:= $(addprefix $(obj),$(START))
+SRCS	:= $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
+OBJS	:= $(addprefix $(obj),$(COBJS-y))
+SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 all:	$(LIB)
 

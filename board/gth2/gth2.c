@@ -26,18 +26,17 @@
 #include <asm/au1x00.h>
 #include <asm/addrspace.h>
 #include <asm/mipsregs.h>
+#include <asm/io.h>
 #include <watchdog.h>
 
 #include "ee_access.h"
 
 static int wdi_status = 0;
 
-unsigned long mips_io_port_base = 0;
-
 #define SDRAM_SIZE ((64*1024*1024)-(12*4096))
 
 
-#define SERIAL_LOG_BUFFER KSEG1ADDR(SDRAM_SIZE + (8*4096))
+#define SERIAL_LOG_BUFFER CKSEG1ADDR(SDRAM_SIZE + (8*4096))
 
 void inline log_serial_char(char c){
 	char *serial_log_buffer = (char*)SERIAL_LOG_BUFFER;
@@ -84,7 +83,7 @@ void hw_watchdog_reset(void){
 	}
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	/* Sdram is setup by assembler code */
 	/* If memory could be changed, we should return the true value here */
@@ -136,7 +135,7 @@ int checkboard (void)
 
 	*sys_counter = 0x100; /* Enable 32 kHz oscillator for RTC/TOY */
 
-	proc_id = read_32bit_cp0_register(CP0_PRID);
+	proc_id = read_c0_prid();
 
 	switch (proc_id >> 24) {
 	case 0:
@@ -147,24 +146,27 @@ int checkboard (void)
 	default:
 		printf ("Unsupported cpu %d, proc_id=0x%x\n", proc_id >> 24, proc_id);
 	}
+
+	set_io_port_base(0);
+
 #ifdef CONFIG_IDE_PCMCIA
 	/* PCMCIA is on a 36 bit physical address.
 	   We need to map it into a 32 bit addresses */
 	write_one_tlb(20,                 /* index */
 		      0x01ffe000,         /* Pagemask, 16 MB pages */
-		      CFG_PCMCIA_IO_BASE, /* Hi */
+		      CONFIG_SYS_PCMCIA_IO_BASE, /* Hi */
 		      0x3C000017,         /* Lo0 */
 		      0x3C200017);        /* Lo1 */
 
 	write_one_tlb(21,                   /* index */
 		      0x01ffe000,           /* Pagemask, 16 MB pages */
-		      CFG_PCMCIA_ATTR_BASE, /* Hi */
+		      CONFIG_SYS_PCMCIA_ATTR_BASE, /* Hi */
 		      0x3D000017,           /* Lo0 */
 		      0x3D200017);          /* Lo1 */
 
 	write_one_tlb(22,                   /* index */
 		      0x01ffe000,           /* Pagemask, 16 MB pages */
-		      CFG_PCMCIA_MEM_ADDR,  /* Hi */
+		      CONFIG_SYS_PCMCIA_MEM_ADDR,  /* Hi */
 		      0x3E000017,           /* Lo0 */
 		      0x3E200017);          /* Lo1 */
 
@@ -207,7 +209,7 @@ do                              \
 static void write_bootdata (volatile u16 * addr, u8 System, u8 Count)
 {
 	u16 data;
-	volatile u16 *flash = (u16 *) (CFG_FLASH_BASE);
+	volatile u16 *flash = (u16 *) (CONFIG_SYS_FLASH_BASE);
 
 	switch(System){
 	case FAILSAFE_BOOT:
@@ -300,7 +302,7 @@ static void check_boot_tries (void)
 	u8 system = FAILSAFE_BOOT;
 	u8 count;
 
-	addr = (u16 *) (CFG_FLASH_BASE + BOOTDATA_OFFSET);
+	addr = (u16 *) (CONFIG_SYS_FLASH_BASE + BOOTDATA_OFFSET);
 
 	if (*addr == 0xFFFF) {
 		printf ("*** No bootdata exists. ***\n");
@@ -429,7 +431,7 @@ int misc_init_r(void){
 	    (Rx[8] != ':') | (Rx[11] != ':') | (Rx[14] != ':')) {
 		printf ("*** ethernet addr invalid, using default ***\n");
 	} else {
-		setenv ("ethaddr", Rx);
+		setenv ("ethaddr", (char *)Rx);
 	}
 	return (0);
 }

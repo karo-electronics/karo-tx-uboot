@@ -28,12 +28,22 @@ void jumptable_init (void)
 	gd->jt[XF_get_timer] = (void *) get_timer;
 	gd->jt[XF_simple_strtoul] = (void *) simple_strtoul;
 	gd->jt[XF_udelay] = (void *) udelay;
+	gd->jt[XF_simple_strtol] = (void *) simple_strtol;
+	gd->jt[XF_strcmp] = (void *) strcmp;
 #if defined(CONFIG_I386) || defined(CONFIG_PPC)
 	gd->jt[XF_install_hdlr] = (void *) irq_install_handler;
 	gd->jt[XF_free_hdlr] = (void *) irq_free_handler;
 #endif	/* I386 || PPC */
-#if (CONFIG_COMMANDS & CFG_CMD_I2C)
+#if defined(CONFIG_CMD_I2C)
 	gd->jt[XF_i2c_write] = (void *) i2c_write;
 	gd->jt[XF_i2c_read] = (void *) i2c_read;
-#endif	/* CFG_CMD_I2C */
+#endif
+#ifdef CONFIG_CMD_SPI
+	gd->jt[XF_spi_init] = (void *) spi_init;
+	gd->jt[XF_spi_setup_slave] = (void *) spi_setup_slave;
+	gd->jt[XF_spi_free_slave] = (void *) spi_free_slave;
+	gd->jt[XF_spi_claim_bus] = (void *) spi_claim_bus;
+	gd->jt[XF_spi_release_bus] = (void *) spi_release_bus;
+	gd->jt[XF_spi_xfer] = (void *) spi_xfer;
+#endif
 }

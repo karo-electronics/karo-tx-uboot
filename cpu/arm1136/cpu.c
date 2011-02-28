@@ -6,7 +6,9 @@
  * Marius Groeger <mgroeger@sysgo.de>
  *
  * (C) Copyright 2002
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+ *
+ * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -33,69 +35,65 @@
 
 #include <common.h>
 #include <command.h>
-#if !defined(CONFIG_INTEGRATOR) && ! defined(CONFIG_ARCH_CINTEGRATOR)
-#include <asm/arch/omap2420.h>
-#endif
+#include <asm/system.h>
+#include <asm/cache-cp15.h>
+#include <asm/mmu.h>
 
-#ifdef CONFIG_USE_IRQ
-DECLARE_GLOBAL_DATA_PTR;
-#endif
-
-/* read co-processor 15, register #1 (control register) */
-static unsigned long read_p15_c1 (void)
-{
-	unsigned long value;
-
-	__asm__ __volatile__(
-						"mrc	p15, 0, %0, c1, c0, 0   @ read control reg\n"
-						: "=r" (value)
-						:
-						: "memory");
-	return value;
+#define dcache_invalidate_all_l1()	\
+{	\
+	int i = 0;	\
+	/* Clean and Invalidate Entire Data Cache */       \
+	asm volatile ("mcr p15, 0, %0, c7, c14, 0;"	\
+			:	\
+			: "r"(i)	\
+			: "memory");	\
+	asm volatile ("mcr p15, 0, %0, c8, c7, 0;"	\
+			:	\
+			: "r"(i)	\
+			: "memory"); /* Invalidate i+d-TLBs */	\
 }
 
-/* write to co-processor 15, register #1 (control register) */
-static void write_p15_c1 (unsigned long value)
-{
-	__asm__ __volatile__(
-						"mcr	p15, 0, %0, c1, c0, 0   @ write it back\n"
-						:
-						: "r" (value)
-						: "memory");
-
-	read_p15_c1 ();
+#define dcache_disable_l1()	\
+{	\
+	int i = 0;	\
+	asm volatile ("mcr p15, 0, %0, c7, c6, 0;"	\
+			:	\
+			: "r"(i)); /* clear data cache */	\
+	asm volatile ("mrc p15, 0, %0, c1, c0, 0;"	\
+			: "=r"(i));	\
+	i &= (~0x0004);	/* disable DCache */	\
+			/* but not MMU and alignment faults */     \
+	asm volatile ("mcr p15, 0, %0, c1, c0, 0;"	\
+			:	\
+			: "r"(i));	\
 }
 
-static void cp_delay (void)
-{
-	volatile int i;
-
-	/* Many OMAP regs need at least 2 nops  */
-	for (i = 0; i < 100; i++);
+#define icache_invalidate_all_l1()        \
+{	\
+	/* this macro can discard dirty cache lines (N/A for ICache) */	\
+	int i = 0;	\
+	asm volatile ("mcr p15, 0, %0, c7, c5, 0;"	\
+			:	\
+			: "r"(i)); /* flush ICache */	\
+	asm volatile ("mcr p15, 0, %0, c8, c5, 0;"	\
+			:	\
+			: "r"(i)); /* flush ITLB only */	\
+	asm volatile ("mcr p15, 0, %0, c7, c5, 4;"	\
+			:	\
+			: "r"(i)); /* flush prefetch buffer */	\
+	asm (	\
+	"nop;" /* next few instructions may be via cache */	\
+	"nop;"	\
+	"nop;"	\
+	"nop;"	\
+	"nop;"	\
+	"nop;");	\
 }
 
-/* See also ARM Ref. Man. */
-#define C1_MMU		(1<<0)		/* mmu off/on */
-#define C1_ALIGN	(1<<1)		/* alignment faults off/on */
-#define C1_DC		(1<<2)		/* dcache off/on */
-#define C1_WB		(1<<3)		/* merging write buffer on/off */
-#define C1_BIG_ENDIAN	(1<<7)	/* big endian off/on */
-#define C1_SYS_PROT	(1<<8)		/* system protection */
-#define C1_ROM_PROT	(1<<9)		/* ROM protection */
-#define C1_IC		(1<<12)		/* icache off/on */
-#define C1_HIGH_VECTORS	(1<<13)	/* location of vectors: low/high addresses */
-#define RESERVED_1	(0xf << 3)	/* must be 111b for R/W */
-
-int cpu_init (void)
-{
-	/*
-	 * setup up stacks if necessary
-	 */
-#ifdef CONFIG_USE_IRQ
-	IRQ_STACK_START = _armboot_start - CFG_MALLOC_LEN - CFG_GBL_DATA_SIZE - 4;
-	FIQ_STACK_START = IRQ_STACK_START - CONFIG_STACKSIZE_IRQ;
-#endif
-	return 0;
+#define cache_flush()	\
+{	\
+	dcache_invalidate_all_l1();	\
+	icache_invalidate_all_l1();	\
 }
 
 int cleanup_before_linux (void)
@@ -106,8 +104,6 @@ int cleanup_before_linux (void)
 	 *
 	 * we turn off caches etc ...
 	 */
-
-	unsigned long i;
 
 	disable_interrupts ();
 
@@ -120,46 +116,20 @@ int cleanup_before_linux (void)
 		lcd_panel_disable();
 	}
 #endif
+	/* flush I/D-cache */
+	cache_flush();
 
 	/* turn off I/D-cache */
-	asm ("mrc p15, 0, %0, c1, c0, 0":"=r" (i));
-	i &= ~(C1_DC | C1_IC);
-	asm ("mcr p15, 0, %0, c1, c0, 0": :"r" (i));
+	icache_disable();
+	dcache_disable();
 
-	/* flush I/D-cache */
-	i = 0;
-	asm ("mcr p15, 0, %0, c7, c7, 0": :"r" (i));  /* invalidate both caches and flush btb */
-	asm ("mcr p15, 0, %0, c7, c10, 4": :"r" (i)); /* mem barrier to sync things */
-	return(0);
+	/* MMU Off */
+	MMU_OFF();
+
+/*Workaround to enable L2CC during kernel decompressing*/
+#ifdef fixup_before_linux
+	fixup_before_linux;
+#endif
+	return 0;
 }
 
-int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
-{
-	disable_interrupts ();
-	reset_cpu (0);
-	/*NOTREACHED*/
-	return(0);
-}
-
-void icache_enable (void)
-{
-	ulong reg;
-
-	reg = read_p15_c1 ();	/* get control reg. */
-	cp_delay ();
-	write_p15_c1 (reg | C1_IC);
-}
-
-void icache_disable (void)
-{
-	ulong reg;
-
-	reg = read_p15_c1 ();
-	cp_delay ();
-	write_p15_c1 (reg & ~C1_IC);
-}
-
-int icache_status (void)
-{
-	return(read_p15_c1 () & C1_IC) != 0;
-}

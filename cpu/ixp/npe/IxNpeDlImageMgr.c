@@ -133,13 +133,15 @@ typedef struct
  */
 static IxNpeDlImageMgrStats ixNpeDlImageMgrStats;
 
-/* default image */
-#ifdef IX_NPEDL_READ_MICROCODE_FROM_FILE
-static UINT32 *IxNpeMicroCodeImageLibrary = NULL;  /* Gets set to proper value at runtime */
-#else
-static UINT32 *IxNpeMicroCodeImageLibrary = (UINT32 *)IxNpeMicrocode_array;
-#endif
+static UINT32* getIxNpeMicroCodeImageLibrary(void)
+{
+	char *s;
 
+	if ((s = getenv("npe_ucode")) != NULL)
+		return (UINT32*) simple_strtoul(s, NULL, 16);
+	else
+		return NULL;
+}
 
 /*
  * static function prototypes.
@@ -156,8 +158,9 @@ ixNpeDlImageMgrImageIdCompare (IxNpeDlImageId *imageIdA,
 				 
 PRIVATE BOOL
 ixNpeDlImageMgrNpeFunctionIdCompare (IxNpeDlImageId *imageIdA,
-    				       IxNpeDlImageId *imageIdB);
+				       IxNpeDlImageId *imageIdB);
 
+#if 0
 PRIVATE IX_STATUS
 ixNpeDlImageMgrImageFind_legacy (UINT32 *imageLibrary,
                                  UINT32 imageId,
@@ -195,7 +198,7 @@ ixNpeDlImageMgrMicrocodeImageLibraryOverride (
 		     status);
     return status;
 }
-
+#endif
 
 /*
  * Function definition: ixNpeDlImageMgrImageListExtract
@@ -217,9 +220,9 @@ ixNpeDlImageMgrImageListExtract (
     IX_NPEDL_TRACE0 (IX_NPEDL_FN_ENTRY_EXIT, 
 		     "Entering ixNpeDlImageMgrImageListExtract\n");
 
-    header = (IxNpeDlImageMgrImageLibraryHeader *) IxNpeMicroCodeImageLibrary;
+    header = (IxNpeDlImageMgrImageLibraryHeader *) getIxNpeMicroCodeImageLibrary();
 
-    if (ixNpeDlImageMgrSignatureCheck (IxNpeMicroCodeImageLibrary))
+    if (ixNpeDlImageMgrSignatureCheck (getIxNpeMicroCodeImageLibrary()))
     {
 	/* for each image entry in the image header ... */
 	while (header->entry[imageCount].eohMarker !=
@@ -290,9 +293,9 @@ ixNpeDlImageMgrImageLocate (
     IX_NPEDL_TRACE0 (IX_NPEDL_FN_ENTRY_EXIT,
 		     "Entering ixNpeDlImageMgrImageLocate\n");
 
-    header = (IxNpeDlImageMgrImageLibraryHeader *) IxNpeMicroCodeImageLibrary;
+    header = (IxNpeDlImageMgrImageLibraryHeader *) getIxNpeMicroCodeImageLibrary();
 
-    if (ixNpeDlImageMgrSignatureCheck (IxNpeMicroCodeImageLibrary))
+    if (ixNpeDlImageMgrSignatureCheck (getIxNpeMicroCodeImageLibrary()))
     {
 	/* for each image entry in the image library header ... */
 	while (header->entry[imageCount].eohMarker !=
@@ -307,8 +310,9 @@ ixNpeDlImageMgrImageLocate (
 		 * get pointer to the image in the image library using offset from
 		 * 1st word in image library
 		 */
+		UINT32 *tmp=getIxNpeMicroCodeImageLibrary();
 		imageOffset = header->entry[imageCount].image.offset;
-		*imagePtr = &IxNpeMicroCodeImageLibrary[imageOffset];
+		*imagePtr = &tmp[imageOffset];
 		/* get the image size */
 		*imageSize = header->entry[imageCount].image.size;
 		status = IX_SUCCESS;
@@ -353,9 +357,9 @@ ixNpeDlImageMgrLatestImageExtract (IxNpeDlImageId *imageId)
     IX_NPEDL_TRACE0 (IX_NPEDL_FN_ENTRY_EXIT,
 		     "Entering ixNpeDlImageMgrLatestImageExtract\n");
 		     
-    header = (IxNpeDlImageMgrImageLibraryHeader *) IxNpeMicroCodeImageLibrary;
+    header = (IxNpeDlImageMgrImageLibraryHeader *) getIxNpeMicroCodeImageLibrary();
     
-    if (ixNpeDlImageMgrSignatureCheck (IxNpeMicroCodeImageLibrary))
+    if (ixNpeDlImageMgrSignatureCheck (getIxNpeMicroCodeImageLibrary()))
     {
 	/* for each image entry in the image library header ... */
 	while (header->entry[imageCount].eohMarker !=
@@ -412,7 +416,7 @@ ixNpeDlImageMgrSignatureCheck (UINT32 *microCodeImageLibrary)
 	(IxNpeDlImageMgrImageLibraryHeader *) microCodeImageLibrary;
     BOOL result = TRUE;
 
-    if (header->signature != IX_NPEDL_IMAGEMGR_SIGNATURE)
+    if (!header || header->signature != IX_NPEDL_IMAGEMGR_SIGNATURE)
     {
 	result = FALSE;
 	ixNpeDlImageMgrStats.invalidSignature++;
@@ -527,6 +531,7 @@ ixNpeDlImageMgrStatsReset (void)
 }
 
 
+#if 0
 /*
  * Function definition: ixNpeDlImageMgrImageFind_legacy
  *
@@ -600,7 +605,7 @@ ixNpeDlImageMgrImageFind_legacy (
 		     "Exiting ixNpeDlImageMgrImageFind: status = %d\n", status);
     return status;
 }
-
+#endif
 
 /*
  * Function definition: ixNpeDlImageMgrImageFind
@@ -631,10 +636,16 @@ ixNpeDlImageMgrImageFind (
 	    imageLibrary = ixNpeMicrocode_binaryArray;
 	}
 #else
-	imageLibrary = IxNpeMicroCodeImageLibrary;
+	imageLibrary = getIxNpeMicroCodeImageLibrary();
+	if (imageLibrary == NULL)
+        {
+	    printf ("npe:  ERROR, no Microcode found in memory\n");
+	    return IX_FAIL;
+	}
 #endif /* IX_NPEDL_READ_MICROCODE_FROM_FILE */
     }
 
+#if 0
     /* For backward's compatibility with previous image format */
     if (ixNpeDlImageMgrSignatureCheck(imageLibrary))
     {
@@ -643,6 +654,7 @@ ixNpeDlImageMgrImageFind (
                                                imagePtr,
                                                imageSize);
     }
+#endif
 
     while (*(imageLibrary+offset) == NPE_IMAGE_MARKER)
     {

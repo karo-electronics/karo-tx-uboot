@@ -27,9 +27,9 @@
 #include <common.h>
 #include <mpc8xx.h>
 #include "pld.h"
+#include "hpi.h"
 
 #define	_NOT_USED_	0xFFFFFFFF
-/* #define debug(fmt,args...)     printf (fmt ,##args) */
 
 static long int dram_size (long int, long int *, long int);
 
@@ -82,11 +82,11 @@ const uint sdram_table[] = {
 	_NOT_USED_, _NOT_USED_, _NOT_USED_,
 };
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8xx_t *memctl = &immr->im_memctl;
-	/* volatile spc1920_pld_t *pld = (spc1920_pld_t *) CFG_SPC1920_PLD_BASE; */
+	/* volatile spc1920_pld_t *pld = (spc1920_pld_t *) CONFIG_SYS_SPC1920_PLD_BASE; */
 
 	long int size_b0;
 	long int size8, size9;
@@ -99,19 +99,19 @@ long int initdram (int board_type)
 
 	udelay(100);
 
-	memctl->memc_mptpr = CFG_MPTPR;
+	memctl->memc_mptpr = CONFIG_SYS_MPTPR;
 
 	/* burst length=4, burst type=sequential, CAS latency=2 */
-	memctl->memc_mar = CFG_MAR;
+	memctl->memc_mar = CONFIG_SYS_MAR;
 
 	/*
 	 * Map controller bank 1 to the SDRAM bank at preliminary address.
 	 */
-	memctl->memc_or1 = CFG_OR1_PRELIM;
-	memctl->memc_br1 = CFG_BR1_PRELIM;
+	memctl->memc_or1 = CONFIG_SYS_OR1_PRELIM;
+	memctl->memc_br1 = CONFIG_SYS_BR1_PRELIM;
 
 	/* initialize memory address register */
-	memctl->memc_mbmr = CFG_MBMR_8COL; /* refresh not enabled yet */
+	memctl->memc_mbmr = CONFIG_SYS_MBMR_8COL; /* refresh not enabled yet */
 
 	/* mode initialization (offset 5) */
 	udelay (200);				/* 0x80006105 */
@@ -132,7 +132,7 @@ long int initdram (int board_type)
 	/* Need at least 10 DRAM accesses to stabilize */
 	for (i = 0; i < 10; ++i) {
 		volatile unsigned long *addr =
-			(volatile unsigned long *) CFG_SDRAM_BASE;
+			(volatile unsigned long *) CONFIG_SYS_SDRAM_BASE;
 		unsigned long val;
 
 		val = *(addr + i);
@@ -144,22 +144,22 @@ long int initdram (int board_type)
 	 *
 	 * try 8 column mode
 	 */
-	size8 = dram_size (CFG_MBMR_8COL, (long *)CFG_SDRAM_BASE, SDRAM_MAX_SIZE);
+	size8 = dram_size (CONFIG_SYS_MBMR_8COL, (long *)CONFIG_SYS_SDRAM_BASE, SDRAM_MAX_SIZE);
 
 	udelay (1000);
 
 	/*
 	 * try 9 column mode
 	 */
-	size9 = dram_size (CFG_MBMR_9COL, (long *)CFG_SDRAM_BASE, SDRAM_MAX_SIZE);
+	size9 = dram_size (CONFIG_SYS_MBMR_9COL, (long *)CONFIG_SYS_SDRAM_BASE, SDRAM_MAX_SIZE);
 
 	if (size8 < size9) {		/* leave configuration at 9 columns */
 		size_b0 = size9;
-		memctl->memc_mbmr = CFG_MBMR_9COL | MBMR_PTBE;
+		memctl->memc_mbmr = CONFIG_SYS_MBMR_9COL | MBMR_PTBE;
 		udelay (500);
 	} else {			/* back to 8 columns            */
 		size_b0 = size8;
-		memctl->memc_mbmr = CFG_MBMR_8COL | MBMR_PTBE;
+		memctl->memc_mbmr = CONFIG_SYS_MBMR_8COL | MBMR_PTBE;
 		udelay (500);
 	}
 
@@ -169,13 +169,15 @@ long int initdram (int board_type)
 
 	memctl->memc_or1 = ((-size_b0) & 0xFFFF0000) |
 			OR_CSNT_SAM | OR_G5LS | SDRAM_TIMING;
-	memctl->memc_br1 = (CFG_SDRAM_BASE & BR_BA_MSK) | BR_MS_UPMB | BR_V;
+	memctl->memc_br1 = (CONFIG_SYS_SDRAM_BASE & BR_BA_MSK) | BR_MS_UPMB | BR_V;
 	udelay (1000);
 
+	/* initalize the DSP Host Port Interface */
+	hpi_init();
 
-	/* PLD Setup */
-	memctl->memc_or5 = CFG_OR5_PRELIM;
-	memctl->memc_br5 = CFG_BR5_PRELIM;
+	/* FRAM Setup */
+	memctl->memc_or4 = CONFIG_SYS_OR4;
+	memctl->memc_br4 = CONFIG_SYS_BR4;
 	udelay(1000);
 
 	return (size_b0);
@@ -191,7 +193,7 @@ long int initdram (int board_type)
 static long int dram_size (long int mbmr_value, long int *base,
 			   long int maxsize)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
 
 	memctl->memc_mbmr = mbmr_value;
@@ -205,22 +207,40 @@ static long int dram_size (long int mbmr_value, long int *base,
 
 int board_early_init_f(void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 
+	/* Set Go/NoGo led (PA15) to color red */
+	immap->im_ioport.iop_papar &= ~0x1;
+	immap->im_ioport.iop_paodr &= ~0x1;
+	immap->im_ioport.iop_padir |= 0x1;
+	immap->im_ioport.iop_padat |= 0x1;
 
+#if 0
 	/* Turn on LED PD9 */
 	immap->im_ioport.iop_pdpar &= ~(0x0040);
 	immap->im_ioport.iop_pddir |= 0x0040;
 	immap->im_ioport.iop_pddat |= 0x0040;
+#endif
 
-	/* Enable PD10 (COM2_EN) */
+	/*
+	 * Enable console on SMC1. This requires turning on
+	 * the com2_en signal and SMC1_DISABLE
+	 */
+
+	/* SMC1_DISABLE: PB17 */
+	immap->im_cpm.cp_pbodr &= ~0x4000;
+	immap->im_cpm.cp_pbpar &= ~0x4000;
+	immap->im_cpm.cp_pbdir |= 0x4000;
+	immap->im_cpm.cp_pbdat &= ~0x4000;
+
+	/* COM2_EN: PD10 */
 	immap->im_ioport.iop_pdpar &= ~0x0020;
 	immap->im_ioport.iop_pddir &= ~0x4000;
 	immap->im_ioport.iop_pddir |= 0x0020;
 	immap->im_ioport.iop_pddat |= 0x0020;
 
 
-#ifdef CFG_SMC1_PLD_CLK4 /* SMC1 uses CLK4 from PLD */
+#ifdef CONFIG_SYS_SMC1_PLD_CLK4 /* SMC1 uses CLK4 from PLD */
 	immap->im_cpm.cp_simode |= 0x7000;
 	immap->im_cpm.cp_simode &= ~(0x8000);
 #endif
@@ -228,6 +248,14 @@ int board_early_init_f(void)
 	return 0;
 }
 
+int last_stage_init(void)
+{
+#ifdef CONFIG_SPC1920_HPI_TEST
+	printf("CMB1920 Host Port Interface Test: %s\n",
+	       hpi_test() ? "Failed!" : "OK");
+#endif
+	return 0;
+}
 
 int checkboard (void)
 {

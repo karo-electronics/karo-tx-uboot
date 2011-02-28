@@ -26,6 +26,9 @@
 /*------------------------------------------------------------------------------+ */
 
 /*
+ * This source code is dual-licensed.  You may use it under the terms of the
+ * GNU General Public License version 2, or under the license below.
+ *
  * This source code has been made available to you by IBM on an AS-IS
  * basis.  Anyone receiving this source is licensed under IBM
  * copyrights to use it in any way he or she deems fit, including
@@ -394,7 +397,7 @@ int serial_buffered_tstc(void)
 #endif	/* CONFIG_SERIAL_SOFTWARE_FIFO */
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 /*
   AS HARNOIS : according to CONFIG_KGDB_SER_INDEX kgdb uses serial port
   number 0 or number 1
@@ -413,8 +416,8 @@ void kgdb_serial_init(void)
 	 * Init onboard 16550 UART
 	 */
 	outb(0x80, UART1_BASE + UART_LCR);	/* set DLAB bit */
-	outb(bdiv & 0xff), UART1_BASE + UART_DLL);	/* set divisor for 9600 baud */
-	outb(bdiv >> 8), UART1_BASE + UART_DLM);	/* set divisor for 9600 baud */
+	outb((bdiv & 0xff), UART1_BASE + UART_DLL);	/* set divisor for 9600 baud */
+	outb((bdiv >> 8  ), UART1_BASE + UART_DLM);	/* set divisor for 9600 baud */
 	outb(0x03, UART1_BASE + UART_LCR);	/* line control 8 bits no parity */
 	outb(0x00, UART1_BASE + UART_FCR);	/* disable FIFO */
 	outb(0x00, UART1_BASE + UART_MCR);	/* no modem control DTR RTS */
@@ -500,4 +503,4 @@ void kgdb_interruptible(int yes)
 	return;
 }
 #endif	/* (CONFIG_KGDB_SER_INDEX & 2) */
-#endif	/* CFG_CMD_KGDB */
+#endif

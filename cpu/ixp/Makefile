@@ -26,10 +26,13 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(CPU).a
 
 START	= start.o
-COBJS	= serial.o interrupts.o cpu.o timer.o pci.o
 
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
+COBJS-y	+= cpu.o
+COBJS-$(CONFIG_USE_IRQ)	+= interrupts.o
+COBJS-y	+= timer.o
+
+SRCS	:= $(START:.o=.S) $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
+OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
 START	:= $(addprefix $(obj),$(START))
 
 all:	$(obj).depend $(START) $(LIB)

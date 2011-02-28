@@ -155,7 +155,7 @@
 #include <post.h>
 #include <watchdog.h>
 
-/* #if CONFIG_POST & CFG_POST_MEMORY */
+/* #if CONFIG_POST & CONFIG_SYS_POST_MEMORY */
 
 /*
  * Define INJECT_*_ERRORS for testing error detection in the presence of
@@ -184,7 +184,7 @@
  *
  * For other processors, let the compiler generate the best code it can.
  */
-static void move64(unsigned long long *src, unsigned long long *dest)
+static void move64(const unsigned long long *src, unsigned long long *dest)
 {
 #if defined(CONFIG_MPC8260) || defined(CONFIG_MPC824X)
 	asm ("lfd  0, 0(3)\n\t" /* fpr0	  =  *scr	*/
@@ -231,12 +231,12 @@ static int memory_post_dataline(unsigned long long * pmem)
 	int ret = 0;
 
 	for ( i = 0; i < num_patterns; i++) {
-		move64((unsigned long long *)&(pattern[i]), pmem++);
+		move64(&(pattern[i]), pmem++);
 		/*
 		 * Put a different pattern on the data lines: otherwise they
 		 * may float long enough to read back what we wrote.
 		 */
-		move64((unsigned long long *)&otherpattern, pmem--);
+		move64(&otherpattern, pmem--);
 		move64(pmem, &temp64);
 
 #ifdef INJECT_DATA_ERRORS
@@ -282,7 +282,7 @@ static int memory_post_addrline(ulong *testaddr, ulong *base, ulong size)
 #endif
 			if(readback == *testaddr) {
 				printf ("Memory (address line) error at %08lx<->%08lx, "
-				  	"XOR value %08lx !\n",
+					"XOR value %08lx !\n",
 					(ulong)testaddr, (ulong)target,
 					xor);
 				ret = -1;
@@ -460,12 +460,12 @@ int memory_post_test (int flags)
 {
 	int ret = 0;
 	bd_t *bd = gd->bd;
-	unsigned long memsize = (bd->bi_memsize >= 256 << 20 ?
+	phys_size_t memsize = (bd->bi_memsize >= 256 << 20 ?
 				 256 << 20 : bd->bi_memsize) - (1 << 20);
 
 
 	if (flags & POST_SLOWTEST) {
-		ret = memory_post_tests (CFG_SDRAM_BASE, memsize);
+		ret = memory_post_tests (CONFIG_SYS_SDRAM_BASE, memsize);
 	} else {			/* POST_NORMAL */
 
 		unsigned long i;
@@ -482,5 +482,5 @@ int memory_post_test (int flags)
 }
 #endif /* 0 */
 
-/* #endif */ /* CONFIG_POST & CFG_POST_MEMORY */
+/* #endif */ /* CONFIG_POST & CONFIG_SYS_POST_MEMORY */
 /* #endif */ /* CONFIG_POST */

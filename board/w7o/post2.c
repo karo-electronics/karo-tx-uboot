@@ -29,10 +29,16 @@
 #include "errors.h"
 #include "dtt.h"
 
+/* for LM75 DTT POST test */
+#define DTT_READ_TEMP		0x0
+#define DTT_CONFIG		0x1
+#define DTT_TEMP_HYST		0x2
+#define DTT_TEMP_SET		0x3
+
 #if defined(CONFIG_RTC_M48T35A)
 void rtctest(void)
 {
-    volatile uchar *tchar = (uchar*)(CFG_NVRAM_BASE_ADDR + CFG_NVRAM_SIZE - 9);
+    volatile uchar *tchar = (uchar*)(CONFIG_SYS_NVRAM_BASE_ADDR + CONFIG_SYS_NVRAM_SIZE - 9);
     struct rtc_time tmp;
 
     /* set up led code for RTC tests */
@@ -83,9 +89,9 @@ int dtt_test(int sensor)
     hyst = dtt_read(sensor, DTT_TEMP_HYST) / 256;
 
     /* check values */
-    if ((hyst != (CFG_DTT_MAX_TEMP - CFG_DTT_HYSTERESIS)) ||
-	(trip != CFG_DTT_MAX_TEMP) ||
-	(temp < CFG_DTT_LOW_TEMP) || (temp > CFG_DTT_MAX_TEMP))
+    if ((hyst != (CONFIG_SYS_DTT_MAX_TEMP - CONFIG_SYS_DTT_HYSTERESIS)) ||
+	(trip != CONFIG_SYS_DTT_MAX_TEMP) ||
+	(temp < CONFIG_SYS_DTT_LOW_TEMP) || (temp > CONFIG_SYS_DTT_MAX_TEMP))
 	return 1;
 
     return 0;

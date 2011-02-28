@@ -26,8 +26,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1  2011-02-28 14:37:53  lothar
- *	Initial revision
+ *	Revision 1.1.5.1  2011-02-28 14:42:34  lothar
+ *	imported Freescale specific U-Boot additions for i.MX28,... release L2.6.31_10.08.01
  *
  *	Revision 1.7  2002/12/16 09:04:34  tschilli
  *	Code for VCT handling added.

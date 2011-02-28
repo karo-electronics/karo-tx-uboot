@@ -27,7 +27,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if !defined(CONFIG_8xx_CPUCLK_DEFAULT) || defined(CFG_MEASURE_CPUCLK) || defined(DEBUG)
+#if !defined(CONFIG_8xx_CPUCLK_DEFAULT) || defined(CONFIG_SYS_MEASURE_CPUCLK) || defined(DEBUG)
 
 #define PITC_SHIFT 16
 #define PITR_SHIFT 16
@@ -87,12 +87,12 @@ static __inline__ void set_msr(unsigned long msr)
 
 unsigned long measure_gclk(void)
 {
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile cpmtimer8xx_t *timerp = &immr->im_cpmtimer;
 	ulong timer2_val;
 	ulong msr_val;
 
-#ifdef CFG_8XX_XIN
+#ifdef CONFIG_SYS_8XX_XIN
 	/* dont use OSCM, only use EXTCLK/512 */
 	immr->im_clkrst.car_sccr |= SCCR_RTSEL | SCCR_RTDIV;
 #else
@@ -137,7 +137,7 @@ unsigned long measure_gclk(void)
 	immr->im_sit.sit_pitc = SPEED_PITC_INIT;
 
 	immr->im_sitk.sitk_piscrk = KAPWR_KEY;
-	immr->im_sit.sit_piscr = CFG_PISCR;
+	immr->im_sit.sit_piscr = CONFIG_SYS_PISCR;
 
 	/*
 	 * Start measurement - disable interrupts, just in case
@@ -164,15 +164,36 @@ unsigned long measure_gclk(void)
 	timerp->cpmt_tgcr &= ~(TGCR_RST2 | TGCR_FRZ2 | TGCR_STP2);
 	immr->im_sit.sit_piscr &= ~PISCR_PTE;
 
-#if defined(CFG_8XX_XIN)
+#if defined(CONFIG_SYS_8XX_XIN)
 	/* not using OSCM, using XIN, so scale appropriately */
-	return (((timer2_val + 2) / 4) * (CFG_8XX_XIN/512))/8192 * 100000L;
+	return (((timer2_val + 2) / 4) * (CONFIG_SYS_8XX_XIN/512))/8192 * 100000L;
 #else
 	return ((timer2_val + 2) / 4) * 100000L;	/* convert to Hz	*/
 #endif
 }
 
 #endif
+
+void get_brgclk(uint sccr)
+{
+	uint divider = 0;
+
+	switch((sccr&SCCR_DFBRG11)>>11){
+		case 0:
+			divider = 1;
+			break;
+		case 1:
+			divider = 4;
+			break;
+		case 2:
+			divider = 16;
+			break;
+		case 3:
+			divider = 64;
+			break;
+	}
+	gd->brg_clk = gd->cpu_clk/divider;
+}
 
 #if !defined(CONFIG_8xx_CPUCLK_DEFAULT)
 
@@ -223,6 +244,8 @@ int get_clocks (void)
 		gd->bus_clk = gd->cpu_clk / 2;
 	}
 
+	get_brgclk(sccr);
+
 	return (0);
 }
 
@@ -238,7 +261,7 @@ static long init_pll_866 (long clk);
  */
 int get_clocks_866 (void)
 {
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	char		  tmp[64];
 	long		  cpuclk = 0;
 	long		  sccr_reg;
@@ -246,24 +269,23 @@ int get_clocks_866 (void)
 	if (getenv_r ("cpuclk", tmp, sizeof (tmp)) > 0)
 		cpuclk = simple_strtoul (tmp, NULL, 10) * 1000000;
 
-	if ((CFG_8xx_CPUCLK_MIN > cpuclk) || (CFG_8xx_CPUCLK_MAX < cpuclk))
+	if ((CONFIG_SYS_8xx_CPUCLK_MIN > cpuclk) || (CONFIG_SYS_8xx_CPUCLK_MAX < cpuclk))
 		cpuclk = CONFIG_8xx_CPUCLK_DEFAULT;
 
 	gd->cpu_clk = init_pll_866 (cpuclk);
-#if defined(CFG_MEASURE_CPUCLK)
+#if defined(CONFIG_SYS_MEASURE_CPUCLK)
 	gd->cpu_clk = measure_gclk ();
 #endif
+
+	get_brgclk(immr->im_clkrst.car_sccr);
 
 	/* if cpu clock <= 66 MHz then set bus division factor to 1,
 	 * otherwise set it to 2
 	 */
 	sccr_reg = immr->im_clkrst.car_sccr;
 	sccr_reg &= ~SCCR_EBDF11;
-#if defined(CONFIG_TQM885D)
-	if (gd->cpu_clk <= 80000000) {
-#else
+
 	if (gd->cpu_clk <= 66000000) {
-#endif
 		sccr_reg |= SCCR_EBDF00;	/* bus division factor = 1 */
 		gd->bus_clk = gd->cpu_clk;
 	} else {
@@ -279,12 +301,12 @@ int get_clocks_866 (void)
  */
 int sdram_adjust_866 (void)
 {
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	long		  mamr;
 
 	mamr = immr->im_memctl.memc_mamr;
 	mamr &= ~MAMR_PTA_MSK;
-	mamr |= ((gd->cpu_clk / CFG_PTA_PER_CLK) << MAMR_PTA_SHIFT);
+	mamr |= ((gd->cpu_clk / CONFIG_SYS_PTA_PER_CLK) << MAMR_PTA_SHIFT);
 	immr->im_memctl.memc_mamr = mamr;
 
 	return (0);
@@ -298,7 +320,7 @@ static long init_pll_866 (long clk)
 {
 	extern void plprcr_write_866 (long);
 
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	long		  n, plprcr;
 	char		  mfi, mfn, mfd, s, pdf;
 	long		  step_mfi, step_mfn;
@@ -372,13 +394,13 @@ static long init_pll_866 (long clk)
  */
 int adjust_sdram_tbs_8xx (void)
 {
-	volatile immap_t *immr = (immap_t *) CFG_IMMR;
+	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	long		  mamr;
 	long              sccr;
 
 	mamr = immr->im_memctl.memc_mamr;
 	mamr &= ~MAMR_PTA_MSK;
-	mamr |= ((gd->cpu_clk / CFG_PTA_PER_CLK) << MAMR_PTA_SHIFT);
+	mamr |= ((gd->cpu_clk / CONFIG_SYS_PTA_PER_CLK) << MAMR_PTA_SHIFT);
 	immr->im_memctl.memc_mamr = mamr;
 
 	if (gd->cpu_clk < 67000000) {

@@ -27,11 +27,12 @@
 
 #include <common.h>
 #include <command.h>
+#include <net.h>
 #include "vcma9.h"
 #include "../common/common_util.h"
 
 #if defined(CONFIG_DRIVER_CS8900)
-#include <../drivers/cs8900.h>
+#include <../drivers/net/cs8900.h>
 
 static uchar cs8900_chksum(ushort data)
 {
@@ -39,6 +40,8 @@ static uchar cs8900_chksum(ushort data)
 }
 
 #endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 extern void print_vcma9_info(void);
 extern int vcma9_cantest(int);
@@ -53,13 +56,11 @@ extern int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 
 int do_vcma9(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	if (strcmp(argv[1], "info") == 0)
 	{
 		print_vcma9_info();
-	 	return 0;
-   	}
+		return 0;
+	}
 #if defined(CONFIG_DRIVER_CS8900)
 	if (strcmp(argv[1], "cs8900") == 0) {
 		if (strcmp(argv[2], "read") == 0) {
@@ -76,21 +77,18 @@ int do_vcma9(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			cs8900_e2prom_write(addr, data);
 		} else if (strcmp(argv[2], "setaddr") == 0) {
 			uchar addr, i, csum; ushort data;
+			uchar ethaddr[6];
 
 			/* check for valid ethaddr */
-			for (i = 0; i < 6; i++)
-				if (gd->bd->bi_enetaddr[i] != 0)
-					break;
-
-			if (i < 6) {
+			if (eth_getenv_enetaddr("ethaddr", ethaddr)) {
 				addr = 1;
 				data = 0x2158;
 				cs8900_e2prom_write(addr, data);
 				csum = cs8900_chksum(data);
 				addr++;
 				for (i = 0; i < 6; i+=2) {
-					data = gd->bd->bi_enetaddr[i+1] << 8 |
-					       gd->bd->bi_enetaddr[i];
+					data = ethaddr[i+1] << 8 |
+					       ethaddr[i];
 					cs8900_e2prom_write(addr, data);
 					csum += cs8900_chksum(data);
 					addr++;
@@ -175,6 +173,6 @@ int do_vcma9(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	vcma9, 6, 1, do_vcma9,
-	"vcma9   - VCMA9 specific commands\n",
-	"flash mem [SrcAddr]\n    - updates U-Boot with image in memory\n"
+	"VCMA9 specific commands",
+	"flash mem [SrcAddr]\n    - updates U-Boot with image in memory"
 );

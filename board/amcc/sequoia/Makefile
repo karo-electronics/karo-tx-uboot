@@ -25,7 +25,7 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	= $(BOARD).o sdram.o
+COBJS	= $(BOARD).o cmd_sequoia.o sdram.o
 SOBJS	= init.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
@@ -39,7 +39,7 @@ clean:
 	rm -f $(SOBJS) $(OBJS)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

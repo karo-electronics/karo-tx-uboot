@@ -34,6 +34,7 @@
  */
 #include <config.h>
 #include <74xx_7xx.h>
+#include <timestamp.h>
 #include <version.h>
 
 #include <ppc_asm.tmpl>
@@ -44,7 +45,8 @@
 
 #if !defined(CONFIG_DB64360) && \
     !defined(CONFIG_DB64460) && \
-    !defined(CONFIG_CPCI750)
+    !defined(CONFIG_CPCI750) && \
+    !defined(CONFIG_P3Mx)
 #include <galileo/gt64260R.h>
 #endif
 
@@ -86,7 +88,7 @@
 	.globl	version_string
 version_string:
 	.ascii	U_BOOT_VERSION
-	.ascii	" (", __DATE__, " - ", __TIME__, ")"
+	.ascii	" (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
 	.ascii	CONFIG_IDENT_STRING, "\0"
 
 	. = EXC_OFF_SYS_RESET
@@ -124,7 +126,7 @@ _start_of_vectors:
 /* Alignment exception. */
 	. = 0x600
 Alignment:
-	EXCEPTION_PROLOG
+	EXCEPTION_PROLOG(SRR0, SRR1)
 	mfspr	r4,DAR
 	stw	r4,_DAR(r21)
 	mfspr	r5,DSISR
@@ -142,7 +144,7 @@ Alignment:
 /* Program check exception */
 	. = 0x700
 ProgramCheck:
-	EXCEPTION_PROLOG
+	EXCEPTION_PROLOG(SRR0, SRR1)
 	addi	r3,r1,STACK_FRAME_OVERHEAD
 	li	r20,MSR_KERNEL
 	rlwimi	r20,r23,0,16,16		/* copy EE bit from saved MSR */
@@ -208,7 +210,7 @@ boot_warm:
 	bl	invalidate_bats
 	sync
 
-#ifdef CFG_L2
+#ifdef CONFIG_SYS_L2
 	/* init the L2 cache */
 	addis	r3, r0, L2_INIT@h
 	ori	r3, r3, L2_INIT@l
@@ -224,12 +226,12 @@ boot_warm:
 		 */
 #endif
 
-#ifdef CFG_L2
+#ifdef CONFIG_SYS_L2
 	/* invalidate the L2 cache */
 	bl	l2cache_invalidate
 	sync
 #endif
-#ifdef CFG_BOARD_ASM_INIT
+#ifdef CONFIG_SYS_BOARD_ASM_INIT
 	/* do early init */
 	bl	board_asm_init
 #endif
@@ -237,8 +239,8 @@ boot_warm:
 	/*
 	 * Calculate absolute address in FLASH and jump there
 	 *------------------------------------------------------*/
-	lis	r3, CFG_MONITOR_BASE@h
-	ori	r3, r3, CFG_MONITOR_BASE@l
+	lis	r3, CONFIG_SYS_MONITOR_BASE@h
+	ori	r3, r3, CONFIG_SYS_MONITOR_BASE@l
 	addi	r3, r3, in_flash - _start + EXC_OFF_SYS_RESET
 	mtlr	r3
 	blr
@@ -270,7 +272,7 @@ in_flash:
 	 * gt-regs BAT can be reused after board_init_f calls
 	 * board_early_init_f (EVB only).
 	 */
-#if !defined(CONFIG_BAB7xx) && !defined(CONFIG_ELPPC)
+#if !defined(CONFIG_BAB7xx) && !defined(CONFIG_ELPPC) && !defined(CONFIG_P3Mx)
 	/* enable address translation */
 	bl	enable_addr_trans
 	sync
@@ -279,15 +281,15 @@ in_flash:
 	bl	l1dcache_enable
 	sync
 #endif
-#ifdef CFG_INIT_RAM_LOCK
+#ifdef CONFIG_SYS_INIT_RAM_LOCK
 	bl	lock_ram_in_cache
 	sync
 #endif
 
 	/* set up the stack pointer in our newly created
 	 * cache-ram (r1) */
-	lis	r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@h
-	ori	r1, r1, (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET)@l
+	lis	r1, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@h
+	ori	r1, r1, (CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET)@l
 
 	li	r0, 0		/* Make room for stack frame header and	*/
 	stwu	r0, -4(r1)	/* clear final stack frame so that	*/
@@ -315,7 +317,7 @@ invalidate_bats:
 	mtspr	IBAT1U, r0
 	mtspr	IBAT2U, r0
 	mtspr	IBAT3U, r0
-#ifdef CONFIG_750FX
+#ifdef CONFIG_HIGH_BATS
 	mtspr   IBAT4U, r0
 	mtspr   IBAT5U, r0
 	mtspr   IBAT6U, r0
@@ -326,7 +328,7 @@ invalidate_bats:
 	mtspr	DBAT1U, r0
 	mtspr	DBAT2U, r0
 	mtspr	DBAT3U, r0
-#ifdef CONFIG_750FX
+#ifdef CONFIG_HIGH_BATS
 	mtspr   DBAT4U, r0
 	mtspr   DBAT5U, r0
 	mtspr   DBAT6U, r0
@@ -342,146 +344,146 @@ setup_bats:
 	addis	r0, r0, 0x0000
 
 	/* IBAT 0 */
-	addis	r4, r0, CFG_IBAT0L@h
-	ori	r4, r4, CFG_IBAT0L@l
-	addis	r3, r0, CFG_IBAT0U@h
-	ori	r3, r3, CFG_IBAT0U@l
+	addis	r4, r0, CONFIG_SYS_IBAT0L@h
+	ori	r4, r4, CONFIG_SYS_IBAT0L@l
+	addis	r3, r0, CONFIG_SYS_IBAT0U@h
+	ori	r3, r3, CONFIG_SYS_IBAT0U@l
 	mtspr	IBAT0L, r4
 	mtspr	IBAT0U, r3
 	isync
 
 	/* DBAT 0 */
-	addis	r4, r0, CFG_DBAT0L@h
-	ori	r4, r4, CFG_DBAT0L@l
-	addis	r3, r0, CFG_DBAT0U@h
-	ori	r3, r3, CFG_DBAT0U@l
+	addis	r4, r0, CONFIG_SYS_DBAT0L@h
+	ori	r4, r4, CONFIG_SYS_DBAT0L@l
+	addis	r3, r0, CONFIG_SYS_DBAT0U@h
+	ori	r3, r3, CONFIG_SYS_DBAT0U@l
 	mtspr	DBAT0L, r4
 	mtspr	DBAT0U, r3
 	isync
 
 	/* IBAT 1 */
-	addis	r4, r0, CFG_IBAT1L@h
-	ori	r4, r4, CFG_IBAT1L@l
-	addis	r3, r0, CFG_IBAT1U@h
-	ori	r3, r3, CFG_IBAT1U@l
+	addis	r4, r0, CONFIG_SYS_IBAT1L@h
+	ori	r4, r4, CONFIG_SYS_IBAT1L@l
+	addis	r3, r0, CONFIG_SYS_IBAT1U@h
+	ori	r3, r3, CONFIG_SYS_IBAT1U@l
 	mtspr	IBAT1L, r4
 	mtspr	IBAT1U, r3
 	isync
 
 	/* DBAT 1 */
-	addis	r4, r0, CFG_DBAT1L@h
-	ori	r4, r4, CFG_DBAT1L@l
-	addis	r3, r0, CFG_DBAT1U@h
-	ori	r3, r3, CFG_DBAT1U@l
+	addis	r4, r0, CONFIG_SYS_DBAT1L@h
+	ori	r4, r4, CONFIG_SYS_DBAT1L@l
+	addis	r3, r0, CONFIG_SYS_DBAT1U@h
+	ori	r3, r3, CONFIG_SYS_DBAT1U@l
 	mtspr	DBAT1L, r4
 	mtspr	DBAT1U, r3
 	isync
 
 	/* IBAT 2 */
-	addis	r4, r0, CFG_IBAT2L@h
-	ori	r4, r4, CFG_IBAT2L@l
-	addis	r3, r0, CFG_IBAT2U@h
-	ori	r3, r3, CFG_IBAT2U@l
+	addis	r4, r0, CONFIG_SYS_IBAT2L@h
+	ori	r4, r4, CONFIG_SYS_IBAT2L@l
+	addis	r3, r0, CONFIG_SYS_IBAT2U@h
+	ori	r3, r3, CONFIG_SYS_IBAT2U@l
 	mtspr	IBAT2L, r4
 	mtspr	IBAT2U, r3
 	isync
 
 	/* DBAT 2 */
-	addis	r4, r0, CFG_DBAT2L@h
-	ori	r4, r4, CFG_DBAT2L@l
-	addis	r3, r0, CFG_DBAT2U@h
-	ori	r3, r3, CFG_DBAT2U@l
+	addis	r4, r0, CONFIG_SYS_DBAT2L@h
+	ori	r4, r4, CONFIG_SYS_DBAT2L@l
+	addis	r3, r0, CONFIG_SYS_DBAT2U@h
+	ori	r3, r3, CONFIG_SYS_DBAT2U@l
 	mtspr	DBAT2L, r4
 	mtspr	DBAT2U, r3
 	isync
 
 	/* IBAT 3 */
-	addis	r4, r0, CFG_IBAT3L@h
-	ori	r4, r4, CFG_IBAT3L@l
-	addis	r3, r0, CFG_IBAT3U@h
-	ori	r3, r3, CFG_IBAT3U@l
+	addis	r4, r0, CONFIG_SYS_IBAT3L@h
+	ori	r4, r4, CONFIG_SYS_IBAT3L@l
+	addis	r3, r0, CONFIG_SYS_IBAT3U@h
+	ori	r3, r3, CONFIG_SYS_IBAT3U@l
 	mtspr	IBAT3L, r4
 	mtspr	IBAT3U, r3
 	isync
 
 	/* DBAT 3 */
-	addis	r4, r0, CFG_DBAT3L@h
-	ori	r4, r4, CFG_DBAT3L@l
-	addis	r3, r0, CFG_DBAT3U@h
-	ori	r3, r3, CFG_DBAT3U@l
+	addis	r4, r0, CONFIG_SYS_DBAT3L@h
+	ori	r4, r4, CONFIG_SYS_DBAT3L@l
+	addis	r3, r0, CONFIG_SYS_DBAT3U@h
+	ori	r3, r3, CONFIG_SYS_DBAT3U@l
 	mtspr	DBAT3L, r4
 	mtspr	DBAT3U, r3
 	isync
 
-#ifdef CONFIG_750FX
+#ifdef CONFIG_HIGH_BATS
 	/* IBAT 4 */
-	addis   r4, r0, CFG_IBAT4L@h
-	ori     r4, r4, CFG_IBAT4L@l
-	addis   r3, r0, CFG_IBAT4U@h
-	ori     r3, r3, CFG_IBAT4U@l
+	addis   r4, r0, CONFIG_SYS_IBAT4L@h
+	ori     r4, r4, CONFIG_SYS_IBAT4L@l
+	addis   r3, r0, CONFIG_SYS_IBAT4U@h
+	ori     r3, r3, CONFIG_SYS_IBAT4U@l
 	mtspr   IBAT4L, r4
 	mtspr   IBAT4U, r3
 	isync
 
 	/* DBAT 4 */
-	addis   r4, r0, CFG_DBAT4L@h
-	ori     r4, r4, CFG_DBAT4L@l
-	addis   r3, r0, CFG_DBAT4U@h
-	ori     r3, r3, CFG_DBAT4U@l
+	addis   r4, r0, CONFIG_SYS_DBAT4L@h
+	ori     r4, r4, CONFIG_SYS_DBAT4L@l
+	addis   r3, r0, CONFIG_SYS_DBAT4U@h
+	ori     r3, r3, CONFIG_SYS_DBAT4U@l
 	mtspr   DBAT4L, r4
 	mtspr   DBAT4U, r3
 	isync
 
 	/* IBAT 5 */
-	addis   r4, r0, CFG_IBAT5L@h
-	ori     r4, r4, CFG_IBAT5L@l
-	addis   r3, r0, CFG_IBAT5U@h
-	ori     r3, r3, CFG_IBAT5U@l
+	addis   r4, r0, CONFIG_SYS_IBAT5L@h
+	ori     r4, r4, CONFIG_SYS_IBAT5L@l
+	addis   r3, r0, CONFIG_SYS_IBAT5U@h
+	ori     r3, r3, CONFIG_SYS_IBAT5U@l
 	mtspr   IBAT5L, r4
 	mtspr   IBAT5U, r3
 	isync
 
 	/* DBAT 5 */
-	addis   r4, r0, CFG_DBAT5L@h
-	ori     r4, r4, CFG_DBAT5L@l
-	addis   r3, r0, CFG_DBAT5U@h
-	ori     r3, r3, CFG_DBAT5U@l
+	addis   r4, r0, CONFIG_SYS_DBAT5L@h
+	ori     r4, r4, CONFIG_SYS_DBAT5L@l
+	addis   r3, r0, CONFIG_SYS_DBAT5U@h
+	ori     r3, r3, CONFIG_SYS_DBAT5U@l
 	mtspr   DBAT5L, r4
 	mtspr   DBAT5U, r3
 	isync
 
 	/* IBAT 6 */
-	addis   r4, r0, CFG_IBAT6L@h
-	ori     r4, r4, CFG_IBAT6L@l
-	addis   r3, r0, CFG_IBAT6U@h
-	ori     r3, r3, CFG_IBAT6U@l
+	addis   r4, r0, CONFIG_SYS_IBAT6L@h
+	ori     r4, r4, CONFIG_SYS_IBAT6L@l
+	addis   r3, r0, CONFIG_SYS_IBAT6U@h
+	ori     r3, r3, CONFIG_SYS_IBAT6U@l
 	mtspr   IBAT6L, r4
 	mtspr   IBAT6U, r3
 	isync
 
 	/* DBAT 6 */
-	addis   r4, r0, CFG_DBAT6L@h
-	ori     r4, r4, CFG_DBAT6L@l
-	addis   r3, r0, CFG_DBAT6U@h
-	ori     r3, r3, CFG_DBAT6U@l
+	addis   r4, r0, CONFIG_SYS_DBAT6L@h
+	ori     r4, r4, CONFIG_SYS_DBAT6L@l
+	addis   r3, r0, CONFIG_SYS_DBAT6U@h
+	ori     r3, r3, CONFIG_SYS_DBAT6U@l
 	mtspr   DBAT6L, r4
 	mtspr   DBAT6U, r3
 	isync
 
 	/* IBAT 7 */
-	addis   r4, r0, CFG_IBAT7L@h
-	ori     r4, r4, CFG_IBAT7L@l
-	addis   r3, r0, CFG_IBAT7U@h
-	ori     r3, r3, CFG_IBAT7U@l
+	addis   r4, r0, CONFIG_SYS_IBAT7L@h
+	ori     r4, r4, CONFIG_SYS_IBAT7L@l
+	addis   r3, r0, CONFIG_SYS_IBAT7U@h
+	ori     r3, r3, CONFIG_SYS_IBAT7U@l
 	mtspr   IBAT7L, r4
 	mtspr   IBAT7U, r3
 	isync
 
 	/* DBAT 7 */
-	addis   r4, r0, CFG_DBAT7L@h
-	ori     r4, r4, CFG_DBAT7L@l
-	addis   r3, r0, CFG_DBAT7U@h
-	ori     r3, r3, CFG_DBAT7U@l
+	addis   r4, r0, CONFIG_SYS_DBAT7L@h
+	ori     r4, r4, CONFIG_SYS_DBAT7L@l
+	addis   r3, r0, CONFIG_SYS_DBAT7U@h
+	ori     r3, r3, CONFIG_SYS_DBAT7U@l
 	mtspr   DBAT7L, r4
 	mtspr   DBAT7U, r3
 	isync
@@ -611,16 +613,16 @@ relocate_code:
 	mr	r10, r5		/* Save copy of Destination Address	*/
 
 	mr	r3,  r5				/* Destination Address	*/
-	lis	r4, CFG_MONITOR_BASE@h		/* Source      Address	*/
-	ori	r4, r4, CFG_MONITOR_BASE@l
+	lis	r4, CONFIG_SYS_MONITOR_BASE@h		/* Source      Address	*/
+	ori	r4, r4, CONFIG_SYS_MONITOR_BASE@l
 	lwz	r5, GOT(__init_end)
 	sub	r5, r5, r4
-	li	r6, CFG_CACHELINE_SIZE		/* Cache Line Size	*/
+	li	r6, CONFIG_SYS_CACHELINE_SIZE		/* Cache Line Size	*/
 
 	/*
 	 * Fix GOT pointer:
 	 *
-	 * New GOT-PTR = (old GOT-PTR - CFG_MONITOR_BASE) + Destination Address
+	 * New GOT-PTR = (old GOT-PTR - CONFIG_SYS_MONITOR_BASE) + Destination Address
 	 *
 	 * Offset:
 	 */
@@ -638,11 +640,11 @@ relocate_code:
 	bl	board_relocate_rom
 	sync
 	mr	r3, r10				/* Destination Address	*/
-	lis	r4, CFG_MONITOR_BASE@h		/* Source      Address	*/
-	ori	r4, r4, CFG_MONITOR_BASE@l
+	lis	r4, CONFIG_SYS_MONITOR_BASE@h		/* Source      Address	*/
+	ori	r4, r4, CONFIG_SYS_MONITOR_BASE@l
 	lwz	r5, GOT(__init_end)
 	sub	r5, r5, r4
-	li	r6, CFG_CACHELINE_SIZE		/* Cache Line Size	*/
+	li	r6, CONFIG_SYS_CACHELINE_SIZE		/* Cache Line Size	*/
 #else
 	cmplw	cr1,r3,r4
 	addi	r0,r5,3
@@ -757,7 +759,8 @@ in_ram:
     defined(CONFIG_DB64360)	 || \
     defined(CONFIG_DB64460)      || \
     defined(CONFIG_CPCI750)	|| \
-    defined(CONFIG_PPMC7XX)
+    defined(CONFIG_PPMC7XX)     || \
+    defined(CONFIG_P3Mx)
 	mr	r4, r9		/* Use RAM copy of the global data */
 #endif
 	bl	after_reloc
@@ -849,15 +852,15 @@ trap_reloc:
 
 	blr
 
-#ifdef CFG_INIT_RAM_LOCK
+#ifdef CONFIG_SYS_INIT_RAM_LOCK
 lock_ram_in_cache:
 	/* Allocate Initial RAM in data cache.
 	 */
-	lis	r3, (CFG_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CFG_INIT_RAM_ADDR & ~31)@l
-	li	r2, ((CFG_INIT_RAM_END & ~31) + \
-		     (CFG_INIT_RAM_ADDR & 31) + 31) / 32
-	mtctr	r2
+	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@h
+	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@l
+	li	r4, ((CONFIG_SYS_INIT_RAM_END & ~31) + \
+		     (CONFIG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
+	mtctr	r4
 1:
 	dcbz	r0, r3
 	addi	r3, r3, 32
@@ -874,11 +877,11 @@ lock_ram_in_cache:
 .globl unlock_ram_in_cache
 unlock_ram_in_cache:
 	/* invalidate the INIT_RAM section */
-	lis	r3, (CFG_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CFG_INIT_RAM_ADDR & ~31)@l
-	li	r2, ((CFG_INIT_RAM_END & ~31) + \
-		     (CFG_INIT_RAM_ADDR & 31) + 31) / 32
-	mtctr	r2
+	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@h
+	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@l
+	li	r4, ((CONFIG_SYS_INIT_RAM_END & ~31) + \
+		     (CONFIG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
+	mtctr	r4
 1:	icbi	r0, r3
 	addi	r3, r3, 32
 	bdnz	1b

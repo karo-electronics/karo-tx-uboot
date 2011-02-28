@@ -22,14 +22,16 @@
 
 #include <common.h>
 #include <mpc824x.h>
+#include <net.h>
 #include <pci.h>
+#include <netdev.h>
 
 #include "pn62.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
 static int get_serial_number (char *string, int size);
-static int get_mac_address (int id, u8 * mac, char *string, int size);
+static void get_mac_address(int id, u8 *mac);
 
 #ifdef CONFIG_SHOW_BOOT_PROGRESS
 void show_boot_progress (int phase)
@@ -75,7 +77,7 @@ int checkboard (void)
 	return 0;
 }
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long size;
 	long new_bank0_end;
@@ -84,7 +86,7 @@ long int initdram (int board_type)
 
 	show_startup_phase (2);
 
-	size = get_ram_size(CFG_SDRAM_BASE, CFG_MAX_RAM_SIZE);
+	size = get_ram_size(CONFIG_SYS_SDRAM_BASE, CONFIG_SYS_MAX_RAM_SIZE);
 
 	new_bank0_end = size - 1;
 	mear1 = mpc824x_mpc107_getreg (MEAR1);
@@ -137,18 +139,16 @@ int misc_init_r (void)
 	}
 	show_startup_phase (9);
 
-	if (getenv ("ethaddr") == NULL &&
-		get_mac_address (0, mac, str, sizeof (str)) > 0) {
-		setenv ("ethaddr", str);
-		memcpy (gd->bd->bi_enetaddr, mac, 6);
+	if (!eth_getenv_enetaddr("ethaddr", mac)) {
+		get_mac_address(0, mac);
+		eth_setenv_enetaddr("ethaddr", mac);
 	}
 	show_startup_phase (10);
 
 #ifdef CONFIG_HAS_ETH1
-	if (getenv ("eth1addr") == NULL &&
-		get_mac_address (1, mac, str, sizeof (str)) > 0) {
-		setenv ("eth1addr", str);
-		memcpy (gd->bd->bi_enet1addr, mac, 6);
+	if (!eth_getenv_enetaddr("eth1addr", mac)) {
+		get_mac_address(1, mac);
+		eth_setenv_enetaddr("eth1addr", mac);
 	}
 #endif /* CONFIG_HAS_ETH1 */
 	show_startup_phase (11);
@@ -176,13 +176,12 @@ static int get_serial_number (char *string, int size)
 	return i;
 }
 
-static int get_mac_address (int id, u8 * mac, char *string, int size)
+static void get_mac_address(int id, u8 *mac)
 {
-	if (size < 6 * 3)
-		return -1;
-
 	i2155x_read_vpd (I2155X_VPD_MAC0_START + 6 * id, 6, mac);
-	return sprintf (string, "%02x:%02x:%02x:%02x:%02x:%02x",
-				mac[0], mac[1], mac[2],
-				mac[3], mac[4], mac[5]);
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }

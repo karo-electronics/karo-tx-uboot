@@ -44,6 +44,11 @@
 #include <74xx_7xx.h>
 #include <asm/cache.h>
 
+#if defined(CONFIG_OF_LIBFDT)
+#include <libfdt.h>
+#include <fdt_support.h>
+#endif
+
 #ifdef CONFIG_AMIGAONEG3SE
 #include "../board/MAI/AmigaOneG3SE/via686.h"
 #include "../board/MAI/AmigaOneG3SE/memio.h"
@@ -101,6 +106,14 @@ get_cpu_type(void)
 		type = CPU_7457;
 		break;
 
+	case 0x8003:
+		type = CPU_7447A;
+		break;
+
+	case 0x8004:
+		type = CPU_7448;
+		break;
+
 	default:
 		break;
 	}
@@ -150,6 +163,14 @@ int checkcpu (void)
 
 	case CPU_7410:
 		str = "MPC7410";
+		break;
+
+	case CPU_7447A:
+		str = "MPC7447A";
+		break;
+
+	case CPU_7448:
+		str = "MPC7448";
 		break;
 
 	case CPU_7450:
@@ -221,7 +242,7 @@ soft_restart(unsigned long addr)
 void
 do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-    	ulong addr;
+	ulong addr;
 	/* flush and disable I/D cache */
 	__asm__ __volatile__ ("mfspr	3, 1008"	::: "r3");
 	__asm__ __volatile__ ("ori	5, 5, 0xcc00"	::: "r5");
@@ -235,16 +256,16 @@ do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	__asm__ __volatile__ ("isync");
 	__asm__ __volatile__ ("sync");
 
-#ifdef CFG_RESET_ADDRESS
-	addr = CFG_RESET_ADDRESS;
+#ifdef CONFIG_SYS_RESET_ADDRESS
+	addr = CONFIG_SYS_RESET_ADDRESS;
 #else
 	/*
-	 * note: when CFG_MONITOR_BASE points to a RAM address,
-	 * CFG_MONITOR_BASE - sizeof (ulong) is usually a valid
+	 * note: when CONFIG_SYS_MONITOR_BASE points to a RAM address,
+	 * CONFIG_SYS_MONITOR_BASE - sizeof (ulong) is usually a valid
 	 * address. Better pick an address known to be invalid on your
-	 * system and assign it to CFG_RESET_ADDRESS.
+	 * system and assign it to CONFIG_SYS_RESET_ADDRESS.
 	 */
-	addr = CFG_MONITOR_BASE - sizeof (ulong);
+	addr = CONFIG_SYS_MONITOR_BASE - sizeof (ulong);
 #endif
 	soft_restart(addr);
 	while(1);	/* not reached */
@@ -256,20 +277,19 @@ do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 /*
  * For the 7400 the TB clock runs at 1/4 the cpu bus speed.
  */
-#ifdef CONFIG_AMIGAONEG3SE
+#if defined(CONFIG_AMIGAONEG3SE) || defined(CONFIG_SYS_CONFIG_BUS_CLK)
 unsigned long get_tbclk(void)
 {
 	return (gd->bus_clk / 4);
 }
-#else	/* ! CONFIG_AMIGAONEG3SE */
+#else	/* ! CONFIG_AMIGAONEG3SE and !CONFIG_SYS_CONFIG_BUS_CLK*/
 
 unsigned long get_tbclk (void)
 {
-	return CFG_BUS_HZ / 4;
+	return CONFIG_SYS_BUS_HZ / 4;
 }
-#endif	/* CONFIG_AMIGAONEG3SE */
+#endif	/* CONFIG_AMIGAONEG3SE or CONFIG_SYS_CONFIG_BUS_CLK*/
 /* ------------------------------------------------------------------------- */
-
 #if defined(CONFIG_WATCHDOG)
 #if !defined(CONFIG_PCIPPC2) && !defined(CONFIG_BAB7xx)
 void
@@ -280,4 +300,21 @@ watchdog_reset(void)
 #endif  /* !CONFIG_PCIPPC2 && !CONFIG_BAB7xx */
 #endif	/* CONFIG_WATCHDOG */
 
+/* ------------------------------------------------------------------------- */
+
+#ifdef CONFIG_OF_LIBFDT
+void ft_cpu_setup(void *blob, bd_t *bd)
+{
+	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
+			     "timebase-frequency", bd->bi_busfreq / 4, 1);
+	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
+			     "bus-frequency", bd->bi_busfreq, 1);
+	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
+			     "clock-frequency", bd->bi_intfreq, 1);
+
+	fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
+
+	fdt_fixup_ethernet(blob);
+}
+#endif
 /* ------------------------------------------------------------------------- */

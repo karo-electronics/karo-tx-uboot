@@ -22,31 +22,28 @@
 
 #include <common.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-#ifdef CONFIG_NEW_NAND_CODE
+#if defined(CONFIG_CMD_NAND)
 
 #include <nand.h>
 #include <asm/arch/pxa-regs.h>
 
-#ifdef CFG_DFC_DEBUG1
+#ifdef CONFIG_SYS_DFC_DEBUG1
 # define DFC_DEBUG1(fmt, args...) printf(fmt, ##args)
 #else
 # define DFC_DEBUG1(fmt, args...)
 #endif
 
-#ifdef CFG_DFC_DEBUG2
+#ifdef CONFIG_SYS_DFC_DEBUG2
 # define DFC_DEBUG2(fmt, args...) printf(fmt, ##args)
 #else
 # define DFC_DEBUG2(fmt, args...)
 #endif
 
-#ifdef CFG_DFC_DEBUG3
+#ifdef CONFIG_SYS_DFC_DEBUG3
 # define DFC_DEBUG3(fmt, args...) printf(fmt, ##args)
 #else
 # define DFC_DEBUG3(fmt, args...)
 #endif
-
-#define MIN(x, y)		((x < y) ? x : y)
 
 /* These really don't belong here, as they are specific to the NAND Model */
 static uint8_t scan_ff_pattern[] = { 0xff, 0xff };
@@ -58,18 +55,16 @@ static struct nand_bbt_descr delta_bbt_descr = {
 	.pattern = scan_ff_pattern
 };
 
-static struct nand_oobinfo delta_oob = {
-	.useecc = MTD_NANDECC_AUTOPL_USR, /* MTD_NANDECC_PLACEONLY, */
+static struct nand_ecclayout delta_oob = {
 	.eccbytes = 6,
 	.eccpos = {2, 3, 4, 5, 6, 7},
 	.oobfree = { {8, 2}, {12, 4} }
 };
 
-
 /*
  * not required for Monahans DFC
  */
-static void dfc_hwcontrol(struct mtd_info *mtdinfo, int cmd)
+static void dfc_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 {
 	return;
 }
@@ -110,25 +105,6 @@ static void dfc_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 }
 
 
-/*
- * These functions are quite problematic for the DFC. Luckily they are
- * not used in the current nand code, except for nand_command, which
- * we've defined our own anyway. The problem is, that we always need
- * to write 4 bytes to the DFC Data Buffer, but in these functions we
- * don't know if to buffer the bytes/half words until we've gathered 4
- * bytes or if to send them straight away.
- *
- * Solution: Don't use these with Mona's DFC and complain loudly.
- */
-static void dfc_write_word(struct mtd_info *mtd, u16 word)
-{
-	printf("dfc_write_word: WARNING, this function does not work with the Monahans DFC!\n");
-}
-static void dfc_write_byte(struct mtd_info *mtd, u_char byte)
-{
-	printf("dfc_write_byte: WARNING, this function does not work with the Monahans DFC!\n");
-}
-
 /* The original:
  * static void dfc_read_buf(struct mtd_info *mtd, const u_char *buf, int len)
  *
@@ -168,7 +144,7 @@ static void dfc_read_buf(struct mtd_info *mtd, u_char* const buf, int len)
  */
 static u16 dfc_read_word(struct mtd_info *mtd)
 {
-	printf("dfc_write_byte: UNIMPLEMENTED.\n");
+	printf("dfc_read_word: UNIMPLEMENTED.\n");
 	return 0;
 }
 
@@ -222,7 +198,7 @@ static unsigned long get_delta(unsigned long start)
 static void wait_us(unsigned long us)
 {
 	unsigned long start = OSCR;
-	us *= OSCR_CLK_FREQ;
+	us = DIV_ROUND_UP(us * OSCR_CLK_FREQ, 1000);
 
 	while (get_delta(start) < us) {
 		/* do nothing */
@@ -232,7 +208,7 @@ static void wait_us(unsigned long us)
 static void dfc_clear_nddb(void)
 {
 	NDCR &= ~NDCR_ND_RUN;
-	wait_us(CFG_NAND_OTHER_TO);
+	wait_us(CONFIG_SYS_NAND_OTHER_TO);
 }
 
 /* wait_event with timeout */
@@ -243,9 +219,11 @@ static unsigned long dfc_wait_event(unsigned long event)
 	if(!event)
 		return 0xff000000;
 	else if(event & (NDSR_CS0_CMDD | NDSR_CS0_BBD))
-		timeout = CFG_NAND_PROG_ERASE_TO * OSCR_CLK_FREQ;
+		timeout = DIV_ROUND_UP(CONFIG_SYS_NAND_PROG_ERASE_TO
+					* OSCR_CLK_FREQ, 1000);
 	else
-		timeout = CFG_NAND_OTHER_TO * OSCR_CLK_FREQ;
+		timeout = DIV_ROUND_UP(CONFIG_SYS_NAND_OTHER_TO
+					* OSCR_CLK_FREQ, 1000);
 
 	while(1) {
 		ndsr = NDSR;
@@ -254,7 +232,7 @@ static unsigned long dfc_wait_event(unsigned long event)
 			break;
 		}
 		if(get_delta(start) > timeout) {
-			DFC_DEBUG1("dfc_wait_event: TIMEOUT waiting for event: 0x%x.\n", event);
+			DFC_DEBUG1("dfc_wait_event: TIMEOUT waiting for event: 0x%lx.\n", event);
 			return 0xff000000;
 		}
 
@@ -268,7 +246,7 @@ static void dfc_new_cmd(void)
 	int retry = 0;
 	unsigned long status;
 
-	while(retry++ <= CFG_NAND_SENDCMD_RETRY) {
+	while(retry++ <= CONFIG_SYS_NAND_SENDCMD_RETRY) {
 		/* Clear NDSR */
 		NDSR = 0xFFF;
 
@@ -289,9 +267,10 @@ static void dfc_new_cmd(void)
 
 /* this function is called after Programm and Erase Operations to
  * check for success or failure */
-static int dfc_wait(struct mtd_info *mtd, struct nand_chip *this, int state)
+static int dfc_wait(struct mtd_info *mtd, struct nand_chip *this)
 {
 	unsigned long ndsr=0, event=0;
+	int state = this->state;
 
 	if(state == FL_WRITING) {
 		event = NDSR_CS0_CMDD | NDSR_CS0_BBD;
@@ -435,11 +414,11 @@ static void dfc_gpio_init(void)
  * argument are board-specific (per include/linux/mtd/nand_new.h):
  * - IO_ADDR_R?: address to read the 8 I/O lines of the flash device
  * - IO_ADDR_W?: address to write the 8 I/O lines of the flash device
- * - hwcontrol: hardwarespecific function for accesing control-lines
+ * - cmd_ctrl: hardwarespecific function for accesing control-lines
  * - dev_ready: hardwarespecific function for  accesing device ready/busy line
  * - enable_hwecc?: function to enable (reset)  hardware ecc generator. Must
  *   only be provided if a hardware ECC is available
- * - eccmode: mode of ecc, see defines
+ * - ecc.mode: mode of ecc, see defines
  * - chip_delay: chip dependent delay for transfering data from array to
  *   read regs (tR)
  * - options: various chip options. They can partly be set to inform
@@ -448,7 +427,7 @@ static void dfc_gpio_init(void)
  * Members with a "?" were not set in the merged testing-NAND branch,
  * so they are not set here either.
  */
-void board_nand_init(struct nand_chip *nand)
+int board_nand_init(struct nand_chip *nand)
 {
 	unsigned long tCH, tCS, tWH, tWP, tRH, tRP, tRP_high, tR, tWHR, tAR;
 
@@ -458,8 +437,8 @@ void board_nand_init(struct nand_chip *nand)
 	/* turn on the NAND Controller Clock (104 MHz @ D0) */
 	CKENA |= (CKENA_4_NAND | CKENA_9_SMC);
 
-#undef CFG_TIMING_TIGHT
-#ifndef CFG_TIMING_TIGHT
+#undef CONFIG_SYS_TIMING_TIGHT
+#ifndef CONFIG_SYS_TIMING_TIGHT
 	tCH = MIN(((unsigned long) (NAND_TIMING_tCH * DFC_CLK_PER_US) + 1),
 		  DFC_MAX_tCH);
 	tCS = MIN(((unsigned long) (NAND_TIMING_tCS * DFC_CLK_PER_US) + 1),
@@ -498,7 +477,7 @@ void board_nand_init(struct nand_chip *nand)
 		   DFC_MAX_tWHR);
 	tAR = MIN(((unsigned long) (NAND_TIMING_tAR * DFC_CLK_PER_US) - 2),
 		  DFC_MAX_tAR);
-#endif /* CFG_TIMING_TIGHT */
+#endif /* CONFIG_SYS_TIMING_TIGHT */
 
 
 	DFC_DEBUG2("tCH=%u, tCS=%u, tWH=%u, tWP=%u, tRH=%u, tRP=%u, tR=%u, tWHR=%u, tAR=%u.\n", tCH, tCS, tWH, tWP, tRH, tRP, tR, tWHR, tAR);
@@ -560,25 +539,20 @@ void board_nand_init(struct nand_chip *nand)
 	/* wait 10 us due to cmd buffer clear reset */
 	/*	wait(10); */
 
-
-	nand->hwcontrol = dfc_hwcontrol;
+	nand->cmd_ctrl = dfc_hwcontrol;
 /*	nand->dev_ready = dfc_device_ready; */
-	nand->eccmode = NAND_ECC_SOFT;
+	nand->ecc.mode = NAND_ECC_SOFT;
+	nand->ecc.layout = &delta_oob;
 	nand->options = NAND_BUSWIDTH_16;
 	nand->waitfunc = dfc_wait;
 	nand->read_byte = dfc_read_byte;
-	nand->write_byte = dfc_write_byte;
 	nand->read_word = dfc_read_word;
-	nand->write_word = dfc_write_word;
 	nand->read_buf = dfc_read_buf;
 	nand->write_buf = dfc_write_buf;
 
 	nand->cmdfunc = dfc_cmdfunc;
-	nand->autooob = &delta_oob;
 	nand->badblock_pattern = &delta_bbt_descr;
+	return 0;
 }
 
-#else
- #error "U-Boot legacy NAND support not available for Monahans DFC."
-#endif
 #endif

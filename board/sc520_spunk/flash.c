@@ -33,7 +33,6 @@
 #define PROBE_BUFFER_SIZE 1024
 static unsigned char buffer[PROBE_BUFFER_SIZE];
 
-
 #define SC520_MAX_FLASH_BANKS  1
 #define SC520_FLASH_BANK0_BASE 0x38000000  /* BOOTCS */
 #define SC520_FLASH_BANKSIZE   0x8000000
@@ -61,7 +60,6 @@ flash_info_t    flash_info[SC520_MAX_FLASH_BANKS];
 
 /*-----------------------------------------------------------------------
  */
-
 
 static u32 _probe_flash(u32 addr, u32 bw, int il)
 {
@@ -180,7 +178,6 @@ static u32 _probe_flash(u32 addr, u32 bw, int il)
 		break;
 	}
 
-
 	return result;
 }
 
@@ -215,10 +212,8 @@ static int identify_flash(unsigned address, int width)
 		enable_interrupts();
 	}
 
-
 	vendor = res >> 16;
 	device = res & 0xffff;
-
 
 	return res;
 }
@@ -233,7 +228,7 @@ ulong flash_init(void)
 		ulong flashbase = 0;
 		int sectsize = 0;
 
-		memset(flash_info[i].protect, 0, CFG_MAX_FLASH_SECT);
+		memset(flash_info[i].protect, 0, CONFIG_SYS_MAX_FLASH_SECT);
 		switch (i) {
 		case 0:
 			flashbase = SC520_FLASH_BANK0_BASE;
@@ -328,10 +323,10 @@ ulong flash_init(void)
 		      i386boot_start,
 		      i386boot_end,
 		      &flash_info[0]);
-#ifdef CFG_ENV_ADDR
+#ifdef CONFIG_ENV_ADDR
 	flash_protect(FLAG_PROTECT_SET,
-		      CFG_ENV_ADDR,
-		      CFG_ENV_ADDR + CFG_ENV_SIZE - 1,
+		      CONFIG_ENV_ADDR,
+		      CONFIG_ENV_ADDR + CONFIG_ENV_SIZE - 1,
 		      &flash_info[0]);
 #endif
 	return size;
@@ -385,7 +380,6 @@ void flash_print_info(flash_info_t *info)
 		break;
 	}
 
-
 	printf("  Size: %ld MB in %d Sectors\n",
 	       info->size >> 20, info->sector_count);
 
@@ -399,12 +393,12 @@ void flash_print_info(flash_info_t *info)
 	}
 	printf ("\n");
 
-	done:
+done:
+	return;
 }
 
 /*-----------------------------------------------------------------------
  */
-
 
 static u32 _amd_erase_flash(u32 addr, u32 sector)
 {
@@ -425,7 +419,7 @@ static u32 _amd_erase_flash(u32 addr, u32 sector)
 	while (((*(volatile u16*)(addr + sector)) & 0x0080) != 0x0080) {
 
 		elapsed += *(volatile u16*)(0xfffef000+SC520_SWTMRMILLI);
-		if (elapsed > ((CFG_FLASH_ERASE_TOUT/CFG_HZ) * 1000)) {
+		if (elapsed > ((CONFIG_SYS_FLASH_ERASE_TOUT/CONFIG_SYS_HZ) * 1000)) {
 			*(volatile u16*)(addr) = 0x00f0;
 			return 1;
 		}
@@ -467,14 +461,13 @@ static u32 _intel_erase_flash(u32 addr, u32 sector)
 	*(volatile u16*)(addr + sector) = 0x0020;   /* erase setup */
 	*(volatile u16*)(addr + sector) = 0x00D0;   /* erase confirm */
 
-
 	/* Wait at least 80us - let's wait 1 ms */
 	__udelay(1000);
 
 	elapsed = 0;
 	while (((*(volatile u16*)(addr + sector)) & 0x0080) != 0x0080) {
 		elapsed += *(volatile u16*)(0xfffef000+SC520_SWTMRMILLI);
-		if (elapsed > ((CFG_FLASH_ERASE_TOUT/CFG_HZ) * 1000)) {
+		if (elapsed > ((CONFIG_SYS_FLASH_ERASE_TOUT/CONFIG_SYS_HZ) * 1000)) {
 			*(volatile u16*)(addr + sector) = 0x00B0;  /* suspend erase      */
 			*(volatile u16*)(addr + sector) = 0x00FF;  /* reset to read mode */
 			return 1;
@@ -485,7 +478,6 @@ static u32 _intel_erase_flash(u32 addr, u32 sector)
 
 	return 0;
 }
-
 
 extern int _intel_erase_flash_end;
 asm ("_intel_erase_flash_end:\n"
@@ -548,7 +540,6 @@ int flash_erase(flash_info_t *info, int s_first, int s_last)
 		printf ("\n");
 	}
 
-
 	/* Start erase on unprotected sectors */
 	for (sect = s_first; sect<=s_last; sect++) {
 
@@ -566,7 +557,6 @@ int flash_erase(flash_info_t *info, int s_first, int s_last)
 				enable_interrupts();
 			}
 
-
 			if (res) {
 				printf("Erase timed out, sector %d\n", sect);
 				return res;
@@ -575,7 +565,6 @@ int flash_erase(flash_info_t *info, int s_first, int s_last)
 			putc('.');
 		}
 	}
-
 
 	return 0;
 }
@@ -586,11 +575,11 @@ int flash_erase(flash_info_t *info, int s_first, int s_last)
  * 1 - write timeout
  * 2 - Flash not erased
  */
-static int _amd_write_word(unsigned start, unsigned dest, unsigned data)
+static int _amd_write_word(unsigned start, unsigned dest, u16 data)
 {
-	volatile u16 *addr2 = (u16*)start;
-	volatile u16 *dest2 = (u16*)dest;
-	volatile u16 *data2 = (u16*)&data;
+	volatile u16 *addr2 = (volatile u16*)start;
+	volatile u16 *dest2 = (volatile u16*)dest;
+	volatile u16 *data2 = (volatile u16*)&data;
 	int i;
 	unsigned elapsed;
 
@@ -600,7 +589,6 @@ static int _amd_write_word(unsigned start, unsigned dest, unsigned data)
 	}
 
 	for (i = 0; i < 2; i++) {
-
 
 		addr2[0x5555] = 0x00AA;
 		addr2[0x2aaa] = 0x0055;
@@ -614,7 +602,7 @@ static int _amd_write_word(unsigned start, unsigned dest, unsigned data)
 		/* data polling for D7 */
 		while ((dest2[i] & 0x0080) != (data2[i] & 0x0080)) {
 			elapsed += *(volatile u16*)(0xfffef000+SC520_SWTMRMILLI);
-			if (elapsed > ((CFG_FLASH_WRITE_TOUT/CFG_HZ) * 1000)) {
+			if (elapsed > ((CONFIG_SYS_FLASH_WRITE_TOUT/CONFIG_SYS_HZ) * 1000)) {
 				addr2[i] = 0x00f0;
 				return 1;
 			}
@@ -629,7 +617,6 @@ static int _amd_write_word(unsigned start, unsigned dest, unsigned data)
 extern int _amd_write_word_end;
 asm ("_amd_write_word_end:\n"
      ".long 0\n");
-
 
 static int _intel_write_word(unsigned start, unsigned dest, unsigned data)
 {
@@ -652,7 +639,7 @@ static int _intel_write_word(unsigned start, unsigned dest, unsigned data)
 		/* data polling for D7 */
 		while ((*(volatile u16*)dest & 0x0080) != 0x0080) {
 			elapsed += *(volatile u16*)(0xfffef000+SC520_SWTMRMILLI);
-			if (elapsed > ((CFG_FLASH_WRITE_TOUT/CFG_HZ) * 1000)) {
+			if (elapsed > ((CONFIG_SYS_FLASH_WRITE_TOUT/CONFIG_SYS_HZ) * 1000)) {
 				*(volatile u16*)dest = 0x00ff;
 				return 1;
 			}
@@ -663,13 +650,11 @@ static int _intel_write_word(unsigned start, unsigned dest, unsigned data)
 
 
 	return 0;
-
 }
 
 extern int _intel_write_word_end;
 asm ("_intel_write_word_end:\n"
      ".long 0\n");
-
 
 /*-----------------------------------------------------------------------
  * Copy memory to flash, returns:
@@ -715,9 +700,7 @@ int write_buff(flash_info_t *info, uchar *src, ulong addr, ulong cnt)
 		return 3;
 	}
 
-
 	wp = (addr & ~3);	/* get lower word aligned address */
-
 
 	/*
 	 * handle unaligned start bytes
@@ -805,5 +788,4 @@ int write_buff(flash_info_t *info, uchar *src, ulong addr, ulong cnt)
 	}
 
 	return rc;
-
 }

@@ -4,11 +4,11 @@
 
 #undef	CONFIG_PCMCIA
 
-#if	(CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 #define	CONFIG_PCMCIA
 #endif
 
-#if	(CONFIG_COMMANDS & CFG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
 #define	CONFIG_PCMCIA
 #endif
 
@@ -30,10 +30,10 @@ int pcmcia_hardware_enable(int slot)
 
 	udelay(10000);
 
-	immap = (immap_t *)CFG_IMMR;
-	sysp  = (sysconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_siu_conf));
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	sysp  = (sysconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_siu_conf));
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/*
 	* Configure SIUMCR to enable PCMCIA port B
@@ -115,7 +115,7 @@ int pcmcia_hardware_enable(int slot)
 }
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 int pcmcia_hardware_disable(int slot)
 {
 	volatile immap_t	*immap;
@@ -125,9 +125,9 @@ int pcmcia_hardware_disable(int slot)
 
 	debug ("hardware_disable: " PCMCIA_BOARD_MSG " Slot %c\n", 'A'+slot);
 
-	immap = (immap_t *)CFG_IMMR;
-	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/* remove all power */
 	if (slot)
@@ -144,7 +144,7 @@ int pcmcia_hardware_disable(int slot)
 
 	return (0);
 }
-#endif	/* CFG_CMD_PCMCIA */
+#endif
 
 
 int pcmcia_voltage_set(int slot, int vcc, int vpp)
@@ -162,9 +162,9 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 	if (!slot) /* Slot A is not configurable */
 		return 0;
 
-	immap = (immap_t *)CFG_IMMR;
-	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/*
 	* Disable PCMCIA buffers (isolate the interface)
@@ -188,7 +188,7 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 	cp->cp_pbdat |=  KUP4K_PCMCIA_B_3V3; /* active low */
 
 	switch(vcc) {
-		case  0: 		break;
+		case  0:		break;
 		case 33:
 			cp->cp_pbdat &= ~KUP4K_PCMCIA_B_3V3;
 			debug ("PCMCIA powered at 3.3V\n");
