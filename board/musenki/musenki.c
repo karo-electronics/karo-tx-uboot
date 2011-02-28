@@ -24,6 +24,7 @@
 #include <common.h>
 #include <mpc824x.h>
 #include <pci.h>
+#include <netdev.h>
 
 int checkboard (void)
 {
@@ -35,7 +36,7 @@ int checkboard (void)
 
 }
 
-#if 0 	/* NOT USED */
+#if 0	/* NOT USED */
 int checkflash (void)
 {
 	/* TODO: XXX XXX XXX */
@@ -45,14 +46,14 @@ int checkflash (void)
 }
 #endif
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long size;
 	long new_bank0_end;
 	long mear1;
 	long emear1;
 
-	size = get_ram_size(CFG_SDRAM_BASE, CFG_MAX_RAM_SIZE);
+	size = get_ram_size(CONFIG_SYS_SDRAM_BASE, CONFIG_SYS_MAX_RAM_SIZE);
 
 	new_bank0_end = size - 1;
 	mear1 = mpc824x_mpc107_getreg(MEAR1);
@@ -101,4 +102,9 @@ struct pci_controller hose = {
 void pci_init_board(void)
 {
 	pci_mpc824x_init(&hose);
+}
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
 }

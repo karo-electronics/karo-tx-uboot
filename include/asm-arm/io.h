@@ -29,6 +29,39 @@
 #include <asm/arch/hardware.h>
 #endif	/* XXX###XXX */
 
+static inline void sync(void)
+{
+}
+
+/*
+ * Given a physical address and a length, return a virtual address
+ * that can be used to access the memory range with the caching
+ * properties specified by "flags".
+ */
+#define MAP_NOCACHE	(0)
+#define MAP_WRCOMBINE	(0)
+#define MAP_WRBACK	(0)
+#define MAP_WRTHROUGH	(0)
+
+static inline void *
+map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
+{
+	return (void *)paddr;
+}
+
+/*
+ * Take down a mapping set up by map_physmem().
+ */
+static inline void unmap_physmem(void *vaddr, unsigned long flags)
+{
+
+}
+
+static inline phys_addr_t virt_to_phys(void * vaddr)
+{
+	return (phys_addr_t)(vaddr);
+}
+
 /*
  * Generic virtual read/write.  Note that we don't support half-word
  * read/writes.  We define __arch_*[bl] here, and leave __arch_*w
@@ -95,7 +128,7 @@ extern void __raw_readsl(unsigned int addr, void *data, int longlen);
  * only.  Their primary purpose is to access PCI and ISA peripherals.
  *
  * Note that for a big endian machine, this implies that the following
- * big endian mode connectivity is in place, as described by numerious
+ * big endian mode connectivity is in place, as described by numerous
  * ARM documents:
  *
  *    PCI:  D0-D7   D8-D15 D16-D23 D24-D31
@@ -165,7 +198,7 @@ extern void __iounmap(void *addr);
 	unsigned long _off = (off), _size = (sz);		\
 	void *_ret = (void *)0;					\
 	if (iomem_valid_addr(_off, _size))			\
-		_ret = __ioremap(iomem_to_phys(_off),_size,0);	\
+		_ret = __ioremap(iomem_to_phys(_off), _size, nocache);	\
 	_ret;							\
  })
 

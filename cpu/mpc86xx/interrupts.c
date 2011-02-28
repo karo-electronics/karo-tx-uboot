@@ -8,7 +8,7 @@
  * (C) Copyright 2003 Motorola Inc. (MPC85xx port)
  * Xianghua Xiao (X.Xiao@motorola.com)
  *
- * (C) Copyright 2004 Freescale Semiconductor. (MPC86xx Port)
+ * (C) Copyright 2004, 2007 Freescale Semiconductor. (MPC86xx Port)
  * Jeff Brown
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
  *
@@ -35,90 +35,46 @@
 #include <mpc86xx.h>
 #include <command.h>
 #include <asm/processor.h>
-#include <ppc_asm.tmpl>
 
-unsigned long decrementer_count;    /* count value for 1e6/HZ microseconds */
-unsigned long timestamp;
-
-
-static __inline__ unsigned long get_msr(void)
+int interrupt_init_cpu(unsigned long *decrementer_count)
 {
-	unsigned long msr;
+	volatile immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
+	volatile ccsr_pic_t *pic = &immr->im_pic;
 
-	asm volatile ("mfmsr %0":"=r" (msr):);
+	pic->gcr = MPC86xx_PICGCR_RST;
+	while (pic->gcr & MPC86xx_PICGCR_RST)
+		;
+	pic->gcr = MPC86xx_PICGCR_MODE;
 
-	return msr;
-}
-
-static __inline__ void set_msr(unsigned long msr)
-{
-	asm volatile ("mtmsr %0"::"r" (msr));
-}
-
-static __inline__ unsigned long get_dec(void)
-{
-	unsigned long val;
-
-	asm volatile ("mfdec %0":"=r" (val):);
-
-	return val;
-}
-
-static __inline__ void set_dec(unsigned long val)
-{
-	if (val)
-		asm volatile ("mtdec %0"::"r" (val));
-}
-
-/* interrupt is not supported yet */
-int interrupt_init_cpu(unsigned *decrementer_count)
-{
-	return 0;
-}
-
-int interrupt_init(void)
-{
-	int ret;
-
-	/* call cpu specific function from $(CPU)/interrupts.c */
-	ret = interrupt_init_cpu(&decrementer_count);
-
-	if (ret)
-		return ret;
-
-	decrementer_count = get_tbclk() / CFG_HZ;
-	debug("interrupt init: tbclk() = %d MHz, decrementer_count = %d\n",
+	*decrementer_count = get_tbclk() / CONFIG_SYS_HZ;
+	debug("interrupt init: tbclk() = %d MHz, decrementer_count = %ld\n",
 	      (get_tbclk() / 1000000),
-	      decrementer_count);
+	      *decrementer_count);
 
-	set_dec(decrementer_count);
+#ifdef CONFIG_INTERRUPTS
 
-	set_msr(get_msr() | MSR_EE);
+	pic->iivpr1 = 0x810001;	/* 50220 enable mcm interrupts */
+	debug("iivpr1@%x = %x\n", &pic->iivpr1, pic->iivpr1);
 
-	debug("MSR = 0x%08lx, Decrementer reg = 0x%08lx\n",
-	      get_msr(),
-	      get_dec());
+	pic->iivpr2 = 0x810002;	/* 50240 enable ddr interrupts */
+	debug("iivpr2@%x = %x\n", &pic->iivpr2, pic->iivpr2);
+
+	pic->iivpr3 = 0x810003;	/* 50260 enable lbc interrupts */
+	debug("iivpr3@%x = %x\n", &pic->iivpr3, pic->iivpr3);
+
+#if defined(CONFIG_PCI1) || defined(CONFIG_PCIE1)
+	pic->iivpr8 = 0x810008;	/* enable pcie1 interrupts */
+	debug("iivpr8@%x = %x\n", &pic->iivpr8, pic->iivpr8);
+#endif
+#if defined(CONFIG_PCI2) || defined(CONFIG_PCIE2)
+	pic->iivpr9 = 0x810009;	/* enable pcie2 interrupts */
+	debug("iivpr9@%x = %x\n", &pic->iivpr9, pic->iivpr9);
+#endif
+
+	pic->ctpr = 0;	/* 40080 clear current task priority register */
+#endif
 
 	return 0;
-}
-
-void enable_interrupts(void)
-{
-	set_msr(get_msr() | MSR_EE);
-}
-
-/* returns flag if MSR_EE was set before */
-int disable_interrupts(void)
-{
-	ulong msr = get_msr();
-
-	set_msr(msr & ~MSR_EE);
-	return (msr & MSR_EE) != 0;
-}
-
-void increment_timestamp(void)
-{
-	timestamp++;
 }
 
 /*
@@ -131,52 +87,9 @@ void timer_interrupt_cpu(struct pt_regs *regs)
 	/* nothing to do here */
 }
 
-void timer_interrupt(struct pt_regs *regs)
-{
-	/* call cpu specific function from $(CPU)/interrupts.c */
-	timer_interrupt_cpu(regs);
-
-	timestamp++;
-
-	ppcDcbf(&timestamp);
-
-	/* Restore Decrementer Count */
-	set_dec(decrementer_count);
-
-#if defined(CONFIG_WATCHDOG) || defined (CONFIG_HW_WATCHDOG)
-	if ((timestamp % (CFG_WATCHDOG_FREQ)) == 0)
-		WATCHDOG_RESET();
-#endif /* CONFIG_WATCHDOG || CONFIG_HW_WATCHDOG */
-
-#ifdef CONFIG_STATUS_LED
-	status_led_tick(timestamp);
-#endif /* CONFIG_STATUS_LED */
-
-#ifdef CONFIG_SHOW_ACTIVITY
-	board_show_activity(timestamp);
-#endif /* CONFIG_SHOW_ACTIVITY */
-
-}
-
-void reset_timer(void)
-{
-	timestamp = 0;
-}
-
-ulong get_timer(ulong base)
-{
-	return timestamp - base;
-}
-
-void set_timer(ulong t)
-{
-	timestamp = t;
-}
-
 /*
  * Install and free a interrupt handler. Not implemented yet.
  */
-
 void irq_install_handler(int vec, interrupt_handler_t *handler, void *arg)
 {
 }
@@ -190,8 +103,6 @@ void irq_free_handler(int vec)
  */
 int do_irqinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
-	printf("\nInterrupt-unsupported:\n");
-
 	return 0;
 }
 

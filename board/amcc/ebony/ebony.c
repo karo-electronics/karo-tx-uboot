@@ -35,7 +35,7 @@ long int fixed_sdram(void);
 int board_early_init_f(void)
 {
 	uint reg;
-	unsigned char *fpga_base = (unsigned char *)CFG_FPGA_BASE;
+	unsigned char *fpga_base = (unsigned char *)CONFIG_SYS_FPGA_BASE;
 	unsigned char status;
 
 	/*--------------------------------------------------------------------
@@ -104,7 +104,7 @@ int checkboard(void)
 	return (0);
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	long dram_size = 0;
 
@@ -115,36 +115,6 @@ long int initdram(int board_type)
 #endif
 	return dram_size;
 }
-
-#if defined(CFG_DRAM_TEST)
-int testdram(void)
-{
-	uint *pstart = (uint *) 0x00000000;
-	uint *pend = (uint *) 0x08000000;
-	uint *p;
-
-	for (p = pstart; p < pend; p++)
-		*p = 0xaaaaaaaa;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0xaaaaaaaa) {
-			printf("SDRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-
-	for (p = pstart; p < pend; p++)
-		*p = 0x55555555;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0x55555555) {
-			printf("SDRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-	return 0;
-}
-#endif
 
 #if !defined(CONFIG_SPD_EEPROM)
 /*************************************************************************
@@ -207,14 +177,14 @@ long int fixed_sdram(void)
  *	certain pre-initialization actions.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT)
+#if defined(CONFIG_PCI)
 int pci_pre_init(struct pci_controller *hose)
 {
 	unsigned long strap;
 
 	/*--------------------------------------------------------------------------+
-     *	The ebony board is always configured as the host & requires the
-     *	PCI arbiter to be enabled.
+	 * The ebony board is always configured as the host & requires the
+	 * PCI arbiter to be enabled.
 	 *--------------------------------------------------------------------------*/
 	strap = mfdcr(cpc0_strp1);
 	if ((strap & 0x00100000) == 0) {
@@ -224,7 +194,7 @@ int pci_pre_init(struct pci_controller *hose)
 
 	return 1;
 }
-#endif				/* defined(CONFIG_PCI) && defined(CFG_PCI_PRE_INIT) */
+#endif	/* defined(CONFIG_PCI) */
 
 /*************************************************************************
  *  pci_target_init
@@ -234,7 +204,7 @@ int pci_pre_init(struct pci_controller *hose)
  *	may not be sufficient for a given board.
  *
  ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT)
+#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
 void pci_target_init(struct pci_controller *hose)
 {
 	/*--------------------------------------------------------------------------+
@@ -249,7 +219,7 @@ void pci_target_init(struct pci_controller *hose)
 	 * Map all of SDRAM to PCI address 0x0000_0000. Note that the 440 strapping
      * options to not support sizes such as 128/256 MB.
 	 *--------------------------------------------------------------------------*/
-	out32r(PCIX0_PIM0LAL, CFG_SDRAM_BASE);
+	out32r(PCIX0_PIM0LAL, CONFIG_SYS_SDRAM_BASE);
 	out32r(PCIX0_PIM0LAH, 0);
 	out32r(PCIX0_PIM0SA, ~(gd->ram_size - 1) | 1);
 
@@ -258,12 +228,12 @@ void pci_target_init(struct pci_controller *hose)
 	/*--------------------------------------------------------------------------+
 	 * Program the board's subsystem id/vendor id
 	 *--------------------------------------------------------------------------*/
-	out16r(PCIX0_SBSYSVID, CFG_PCI_SUBSYS_VENDORID);
-	out16r(PCIX0_SBSYSID, CFG_PCI_SUBSYS_DEVICEID);
+	out16r(PCIX0_SBSYSVID, CONFIG_SYS_PCI_SUBSYS_VENDORID);
+	out16r(PCIX0_SBSYSID, CONFIG_SYS_PCI_SUBSYS_DEVICEID);
 
 	out16r(PCIX0_CMD, in16r(PCIX0_CMD) | PCI_COMMAND_MEMORY);
 }
-#endif				/* defined(CONFIG_PCI) && defined(CFG_PCI_TARGET_INIT) */
+#endif				/* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
 
 /*************************************************************************
  *  is_pci_host

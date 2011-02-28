@@ -47,12 +47,12 @@
 #if defined(CONFIG_PIP405)
 #include "../pip405/pip405.h"
 #endif
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 #else /* defined(CONFIG_PATI) */
 #include <mpc5xx.h>
 #endif
 
-flash_info_t	flash_info[CFG_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
+flash_info_t	flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
 /*-----------------------------------------------------------------------
  * Functions
  */
@@ -89,7 +89,7 @@ void unlock_intel_sectors(flash_info_t *info,ulong addr,ulong cnt);
  * The board_init_r will fill in wrong values in the board init structure,
  * but this will be fixed in the misc_init_r routine:
  * bd->bi_flashstart=0-flash_info[0].size
- * bd->bi_flashsize=flash_info[0].size-CFG_MONITOR_LEN
+ * bd->bi_flashsize=flash_info[0].size-CONFIG_SYS_MONITOR_LEN
  * bd->bi_flashoffset=0
  *
  */
@@ -160,7 +160,7 @@ unsigned long flash_init (void)
 	unsigned long size_b1,flashcr,size_reg;
 	int mode;
 	extern char version_string;
-	char *p=&version_string;
+	char *p = &version_string;
 
 	/* Since we are relocated, we can set-up the CS finally */
 	setup_cs_reloc();
@@ -174,13 +174,13 @@ unsigned long flash_init (void)
 			"MPS" : "Flash");
 #endif /* #if !defined(CONFIG_PATI) */
 	/* Init: no FLASHes known */
-	for (i=0; i<CFG_MAX_FLASH_BANKS; ++i) {
+	for (i=0; i<CONFIG_SYS_MAX_FLASH_BANKS; ++i) {
 		flash_info[i].flash_id = FLASH_UNKNOWN;
 	}
 
 	/* Static FLASH Bank configuration here - FIXME XXX */
 
-	size_b0 = flash_get_size((vu_long *)CFG_MONITOR_BASE, &flash_info[0]);
+	size_b0 = flash_get_size((vu_long *)CONFIG_SYS_MONITOR_BASE, &flash_info[0]);
 
 	if (flash_info[0].flash_id == FLASH_UNKNOWN) {
 		printf ("## Unknown FLASH on Bank 0 - Size = 0x%08lx = %ld MB\n",
@@ -188,10 +188,10 @@ unsigned long flash_init (void)
 	}
 	/* protect the bootloader */
 	/* Monitor protection ON by default */
-#if CFG_MONITOR_BASE >= CFG_FLASH_BASE
+#if CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE
 	flash_protect(FLAG_PROTECT_SET,
-			CFG_MONITOR_BASE,
-			CFG_MONITOR_BASE+monitor_flash_len-1,
+			CONFIG_SYS_MONITOR_BASE,
+			CONFIG_SYS_MONITOR_BASE+monitor_flash_len-1,
 			&flash_info[0]);
 #endif
 #if !defined(CONFIG_PATI)
@@ -256,11 +256,11 @@ unsigned long flash_init (void)
 		p++;
 	}
 #else /* #if !defined(CONFIG_PATI) */
-#ifdef	CFG_ENV_IS_IN_FLASH
+#ifdef	CONFIG_ENV_IS_IN_FLASH
 	/* ENV protection ON by default */
 	flash_protect(FLAG_PROTECT_SET,
-		      CFG_ENV_ADDR,
-		      CFG_ENV_ADDR+CFG_ENV_SECT_SIZE-1,
+		      CONFIG_ENV_ADDR,
+		      CONFIG_ENV_ADDR+CONFIG_ENV_SECT_SIZE-1,
 		      &flash_info[0]);
 #endif
 #endif /* #if !defined(CONFIG_PATI) */
@@ -398,7 +398,7 @@ static ulong flash_get_size (vu_long *addr, flash_info_t *info)
 		return (0);			/* no or unknown flash	*/
 	}
 	value = addr2[1];			/* device ID		*/
-	/*	printf("Device value %x\n",value); 		    */
+	/*	printf("Device value %x\n",value);		    */
 	switch (value) {
 	case (FLASH_WORD_SIZE)AMD_ID_F040B:
 		info->flash_id += FLASH_AM040;
@@ -555,7 +555,7 @@ int wait_for_DQ7(flash_info_t *info, int sect)
 	start = get_timer (0);
 	last  = start;
 	while ((addr[0] & (FLASH_WORD_SIZE)0x00800080) != (FLASH_WORD_SIZE)0x00800080) {
-		if ((now = get_timer(start)) > CFG_FLASH_ERASE_TOUT) {
+		if ((now = get_timer(start)) > CONFIG_SYS_FLASH_ERASE_TOUT) {
 			printf ("Timeout\n");
 			return ERR_TIMOUT;
 		}
@@ -576,7 +576,7 @@ int intel_wait_for_DQ7(flash_info_t *info, int sect)
 	start = get_timer (0);
 	last  = start;
 	while ((addr[0] & (FLASH_WORD_SIZE)0x00800080) != (FLASH_WORD_SIZE)0x00800080) {
-		if ((now = get_timer(start)) > CFG_FLASH_ERASE_TOUT) {
+		if ((now = get_timer(start)) > CONFIG_SYS_FLASH_ERASE_TOUT) {
 			printf ("Timeout\n");
 			return ERR_TIMOUT;
 		}
@@ -819,12 +819,16 @@ static FLASH_WORD_SIZE *read_val = (FLASH_WORD_SIZE *)0x200000;
 
 static int write_word (flash_info_t *info, ulong dest, ulong data)
 {
-	volatile FLASH_WORD_SIZE *addr2 = (FLASH_WORD_SIZE *)(info->start[0]);
-	volatile FLASH_WORD_SIZE *dest2 = (FLASH_WORD_SIZE *)dest;
-	volatile FLASH_WORD_SIZE *data2 = (FLASH_WORD_SIZE *)&data;
+	volatile FLASH_WORD_SIZE *addr2 = (volatile FLASH_WORD_SIZE *)(info->start[0]);
+	volatile FLASH_WORD_SIZE *dest2 = (volatile FLASH_WORD_SIZE *)dest;
+	volatile FLASH_WORD_SIZE *data2;
 	ulong start;
+	ulong *data_p;
 	int flag;
 	int i;
+
+	data_p = &data;
+	data2 = (volatile FLASH_WORD_SIZE *)data_p;
 
 	/* Check if Flash is (sufficiently) erased */
 	if ((*((volatile FLASH_WORD_SIZE *)dest) &
@@ -848,7 +852,7 @@ static int write_word (flash_info_t *info, ulong dest, ulong data)
 			udelay(10);
 			while ((dest2[i] & (FLASH_WORD_SIZE)0x00800080) != (FLASH_WORD_SIZE)0x00800080)
 			{
-				if (get_timer(start) > CFG_FLASH_WRITE_TOUT)
+				if (get_timer(start) > CONFIG_SYS_FLASH_WRITE_TOUT)
 					return (1);
 			}
 			dest2[i] = (FLASH_WORD_SIZE)0x00FF00FF; /* return to read mode */
@@ -869,7 +873,7 @@ static int write_word (flash_info_t *info, ulong dest, ulong data)
 			start = get_timer (0);
 			while ((dest2[i] & (FLASH_WORD_SIZE)0x00800080) !=
 				(data2[i] & (FLASH_WORD_SIZE)0x00800080)) {
-				if (get_timer(start) > CFG_FLASH_WRITE_TOUT) {
+				if (get_timer(start) > CONFIG_SYS_FLASH_WRITE_TOUT) {
 					return (1);
 				}
 			}

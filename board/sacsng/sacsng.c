@@ -22,8 +22,8 @@
  * MA 02111-1307 USA
  */
 
-#include <asm/u-boot.h>
 #include <common.h>
+#include <asm/u-boot.h>
 #include <ioports.h>
 #include <mpc8260.h>
 #include <i2c.h>
@@ -159,18 +159,18 @@ int checkboard(void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
-    volatile immap_t *immap  = (immap_t *)CFG_IMMR;
+    volatile immap_t *immap  = (immap_t *)CONFIG_SYS_IMMR;
     volatile memctl8260_t *memctl = &immap->im_memctl;
     volatile uchar c = 0;
-    volatile uchar *ramaddr = (uchar *)(CFG_SDRAM_BASE + 0x8);
-    uint  psdmr = CFG_PSDMR;
+    volatile uchar *ramaddr = (uchar *)(CONFIG_SYS_SDRAM_BASE + 0x8);
+    uint  psdmr = CONFIG_SYS_PSDMR;
     int   i;
     uint   psrt = 14;					/* for no SPD */
     uint   chipselects = 1;				/* for no SPD */
-    uint   sdram_size = CFG_SDRAM0_SIZE * 1024 * 1024;	/* for no SPD */
-    uint   or = CFG_OR2_PRELIM;				/* for no SPD */
+    uint   sdram_size = CONFIG_SYS_SDRAM0_SIZE * 1024 * 1024;	/* for no SPD */
+    uint   or = CONFIG_SYS_OR2_PRELIM;				/* for no SPD */
 #ifdef SDRAM_SPD_ADDR
     uint   data_width;
     uint   rows;
@@ -383,10 +383,10 @@ long int initdram(int board_type)
      *  accessing the SDRAM with a single-byte transaction."
      *
      * The appropriate BRx/ORx registers have already been set when we
-     * get here. The SDRAM can be accessed at the address CFG_SDRAM_BASE.
+     * get here. The SDRAM can be accessed at the address CONFIG_SYS_SDRAM_BASE.
      */
 
-    memctl->memc_mptpr = CFG_MPTPR;
+    memctl->memc_mptpr = CONFIG_SYS_MPTPR;
     memctl->memc_psrt  = psrt;
 
     memctl->memc_psdmr = psdmr | PSDMR_OP_PREA;
@@ -409,7 +409,7 @@ long int initdram(int board_type)
     if(chipselects > 1) {
 	ramaddr += sdram_size;
 
-	memctl->memc_br3 = CFG_BR3_PRELIM + sdram_size;
+	memctl->memc_br3 = CONFIG_SYS_BR3_PRELIM + sdram_size;
 	memctl->memc_or3 = or;
 
 	memctl->memc_psdmr = psdmr | PSDMR_OP_PREA;
@@ -446,8 +446,8 @@ int misc_init_r(void)
     /*
      * Note: iop is used by the I2C macros, and iopa by the ADC/DAC initialization.
      */
-    volatile ioport_t *iopa = ioport_addr((immap_t *)CFG_IMMR, 0 /* port A */);
-    volatile ioport_t *iop  = ioport_addr((immap_t *)CFG_IMMR, I2C_PORT);
+    volatile ioport_t *iopa = ioport_addr((immap_t *)CONFIG_SYS_IMMR, 0 /* port A */);
+    volatile ioport_t *iop  = ioport_addr((immap_t *)CONFIG_SYS_IMMR, I2C_PORT);
 
     int  reg;          /* I2C register value */
     char *ep;          /* Environment pointer */
@@ -837,43 +837,36 @@ void show_boot_progress (int status)
 /*
  * The following are used to control the SPI chip selects for the SPI command.
  */
-#if (CONFIG_COMMANDS & CFG_CMD_SPI)
+#if defined(CONFIG_CMD_SPI)
 
 #define SPI_ADC_CS_MASK	0x00000800
 #define SPI_DAC_CS_MASK	0x00001000
 
-void spi_adc_chipsel(int cs)
-{
-    volatile ioport_t *iopd = ioport_addr((immap_t *)CFG_IMMR, 3 /* port D */);
-
-    if(cs)
-	iopd->pdat &= ~SPI_ADC_CS_MASK;	/* activate the chip select */
-    else
-	iopd->pdat |=  SPI_ADC_CS_MASK;	/* deactivate the chip select */
-}
-
-void spi_dac_chipsel(int cs)
-{
-    volatile ioport_t *iopd = ioport_addr((immap_t *)CFG_IMMR, 3 /* port D */);
-
-    if(cs)
-	iopd->pdat &= ~SPI_DAC_CS_MASK;	/* activate the chip select */
-    else
-	iopd->pdat |=  SPI_DAC_CS_MASK;	/* deactivate the chip select */
-}
-
-/*
- * The SPI command uses this table of functions for controlling the SPI
- * chip selects: it calls the appropriate function to control the SPI
- * chip selects.
- */
-spi_chipsel_type spi_chipsel[] = {
-	spi_adc_chipsel,
-	spi_dac_chipsel
+static const u32 cs_mask[] = {
+    SPI_ADC_CS_MASK,
+    SPI_DAC_CS_MASK,
 };
-int spi_chipsel_cnt = sizeof(spi_chipsel) / sizeof(spi_chipsel[0]);
 
-#endif /* CFG_CMD_SPI */
+int spi_cs_is_valid(unsigned int bus, unsigned int cs)
+{
+    return bus == 0 && cs < sizeof(cs_mask) / sizeof(cs_mask[0]);
+}
+
+void spi_cs_activate(struct spi_slave *slave)
+{
+    volatile ioport_t *iopd = ioport_addr((immap_t *)CONFIG_SYS_IMMR, 3 /* port D */);
+
+    iopd->pdat &= ~cs_mask[slave->cs];
+}
+
+void spi_cs_deactivate(struct spi_slave *slave)
+{
+    volatile ioport_t *iopd = ioport_addr((immap_t *)CONFIG_SYS_IMMR, 3 /* port D */);
+
+    iopd->pdat |= cs_mask[slave->cs];
+}
+
+#endif
 
 #endif /* CONFIG_MISC_INIT_R */
 

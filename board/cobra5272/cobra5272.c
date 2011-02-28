@@ -22,8 +22,7 @@
  */
 
 #include <common.h>
-#include <asm/m5272.h>
-#include <asm/immap_5272.h>
+#include <asm/immap.h>
 
 
 int checkboard (void)
@@ -33,9 +32,9 @@ int checkboard (void)
 	return 0;
 };
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
-	volatile sdramctrl_t *sdp = (sdramctrl_t *) (CFG_MBAR + MCFSIM_SDCR);
+	volatile sdramctrl_t *sdp = (sdramctrl_t *) (MMAP_SDRAM);
 
 	sdp->sdram_sdtr = 0xf539;
 	sdp->sdram_sdcr = 0x4211;
@@ -43,7 +42,7 @@ long int initdram (int board_type)
 	/* Dummy write to start SDRAM */
 	*((volatile unsigned long *) 0) = 0;
 
-	return CFG_SDRAM_SIZE * 1024 * 1024;
+	return CONFIG_SYS_SDRAM_SIZE * 1024 * 1024;
 };
 
 int testdram (void)

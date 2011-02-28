@@ -28,6 +28,8 @@
 #include <mpc5xxx.h>
 #include <pci.h>
 #include <asm/processor.h>
+#include <libfdt.h>
+#include <netdev.h>
 
 #if defined(CONFIG_LITE5200B)
 #include "mt46v32m16.h"
@@ -38,7 +40,54 @@
 #include "mt48lc16m16a2-75.h"
 # endif
 #endif
-#ifndef CFG_RAMBOOT
+
+#ifdef CONFIG_LITE5200B_PM
+/* u-boot part of low-power mode implementation */
+#define SAVED_ADDR (*(void **)0x00000000)
+#define PSC2_4 0x02
+
+void lite5200b_wakeup(void)
+{
+	unsigned char wakeup_pin;
+	void (*linux_wakeup)(void);
+
+	/* check PSC2_4, if it's down "QT" is signaling we have a wakeup
+	 * from low power mode */
+	*(vu_char *)MPC5XXX_WU_GPIO_ENABLE = PSC2_4;
+	__asm__ volatile ("sync");
+
+	wakeup_pin = *(vu_char *)MPC5XXX_WU_GPIO_DATA_I;
+	if (wakeup_pin & PSC2_4)
+		return;
+
+	/* acknowledge to "QT"
+	 * by holding pin at 1 for 10 uS */
+	*(vu_char *)MPC5XXX_WU_GPIO_DIR = PSC2_4;
+	__asm__ volatile ("sync");
+	*(vu_char *)MPC5XXX_WU_GPIO_DATA_O = PSC2_4;
+	__asm__ volatile ("sync");
+	udelay(10);
+
+	/* put ram out of self-refresh */
+	*(vu_long *)MPC5XXX_SDRAM_CTRL |= 0x80000000;	/* mode_en */
+	__asm__ volatile ("sync");
+	*(vu_long *)MPC5XXX_SDRAM_CTRL |= 0x50000000;	/* cke ref_en */
+	__asm__ volatile ("sync");
+	*(vu_long *)MPC5XXX_SDRAM_CTRL &= ~0x80000000;	/* !mode_en */
+	__asm__ volatile ("sync");
+	udelay(10); /* wait a bit */
+
+	/* jump back to linux kernel code */
+	linux_wakeup = SAVED_ADDR;
+	printf("\n\nLooks like we just woke, transferring control to 0x%08lx\n",
+			linux_wakeup);
+	linux_wakeup();
+}
+#else
+#define lite5200b_wakeup()
+#endif
+
+#ifndef CONFIG_SYS_RAMBOOT
 static void sdram_start (int hi_addr)
 {
 	long hi_addr_bit = hi_addr ? 0x01000000 : 0;
@@ -81,18 +130,18 @@ static void sdram_start (int hi_addr)
 
 /*
  * ATTENTION: Although partially referenced initdram does NOT make real use
- *            use of CFG_SDRAM_BASE. The code does not work if CFG_SDRAM_BASE
+ *            use of CONFIG_SYS_SDRAM_BASE. The code does not work if CONFIG_SYS_SDRAM_BASE
  *            is something else than 0x00000000.
  */
 
 #if defined(CONFIG_MPC5200)
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	ulong dramsize = 0;
 	ulong dramsize2 = 0;
 	uint svr, pvr;
 
-#ifndef CFG_RAMBOOT
+#ifndef CONFIG_SYS_RAMBOOT
 	ulong test1, test2;
 
 	/* setup SDRAM chip selects */
@@ -113,9 +162,9 @@ long int initdram (int board_type)
 
 	/* find RAM size using SDRAM CS0 only */
 	sdram_start(0);
-	test1 = get_ram_size((long *)CFG_SDRAM_BASE, 0x80000000);
+	test1 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	sdram_start(1);
-	test2 = get_ram_size((long *)CFG_SDRAM_BASE, 0x80000000);
+	test2 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	if (test1 > test2) {
 		sdram_start(0);
 		dramsize = test1;
@@ -141,10 +190,10 @@ long int initdram (int board_type)
 	/* find RAM size using SDRAM CS1 only */
 	if (!dramsize)
 		sdram_start(0);
-	test2 = test1 = get_ram_size((long *)(CFG_SDRAM_BASE + dramsize), 0x80000000);
+	test2 = test1 = get_ram_size((long *)(CONFIG_SYS_SDRAM_BASE + dramsize), 0x80000000);
 	if (!dramsize) {
 		sdram_start(1);
-		test2 = get_ram_size((long *)(CFG_SDRAM_BASE + dramsize), 0x80000000);
+		test2 = get_ram_size((long *)(CONFIG_SYS_SDRAM_BASE + dramsize), 0x80000000);
 	}
 	if (test1 > test2) {
 		sdram_start(0);
@@ -166,7 +215,7 @@ long int initdram (int board_type)
 		*(vu_long *)MPC5XXX_SDRAM_CS1CFG = dramsize; /* disabled */
 	}
 
-#else /* CFG_RAMBOOT */
+#else /* CONFIG_SYS_RAMBOOT */
 
 	/* retrieve size of memory connected to SDRAM CS0 */
 	dramsize = *(vu_long *)MPC5XXX_SDRAM_CS0CFG & 0xFF;
@@ -184,7 +233,7 @@ long int initdram (int board_type)
 		dramsize2 = 0;
 	}
 
-#endif /* CFG_RAMBOOT */
+#endif /* CONFIG_SYS_RAMBOOT */
 
 	/*
 	 * On MPC5200B we need to set the special configuration delay in the
@@ -204,15 +253,17 @@ long int initdram (int board_type)
 		__asm__ volatile ("sync");
 	}
 
+	lite5200b_wakeup();
+
 	return dramsize + dramsize2;
 }
 
 #elif defined(CONFIG_MGT5100)
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	ulong dramsize = 0;
-#ifndef CFG_RAMBOOT
+#ifndef CONFIG_SYS_RAMBOOT
 	ulong test1, test2;
 
 	/* setup and enable SDRAM chip selects */
@@ -231,9 +282,9 @@ long int initdram (int board_type)
 
 	/* find RAM size */
 	sdram_start(0);
-	test1 = get_ram_size((long *)CFG_SDRAM_BASE, 0x80000000);
+	test1 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	sdram_start(1);
-	test2 = get_ram_size((long *)CFG_SDRAM_BASE, 0x80000000);
+	test2 = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE, 0x80000000);
 	if (test1 > test2) {
 		sdram_start(0);
 		dramsize = test1;
@@ -244,12 +295,12 @@ long int initdram (int board_type)
 	/* set SDRAM end address according to size */
 	*(vu_long *)MPC5XXX_SDRAM_STOP = ((dramsize - 1) >> 15);
 
-#else /* CFG_RAMBOOT */
+#else /* CONFIG_SYS_RAMBOOT */
 
 	/* Retrieve amount of SDRAM available */
 	dramsize = ((*(vu_long *)MPC5XXX_SDRAM_STOP + 1) << 15);
 
-#endif /* CFG_RAMBOOT */
+#endif /* CONFIG_SYS_RAMBOOT */
 
 	return dramsize;
 }
@@ -289,9 +340,9 @@ void flash_afterinit(ulong size)
 {
 	if (size == 0x800000) { /* adjust mapping */
 		*(vu_long *)MPC5XXX_BOOTCS_START = *(vu_long *)MPC5XXX_CS0_START =
-			START_REG(CFG_BOOTCS_START | size);
+			START_REG(CONFIG_SYS_BOOTCS_START | size);
 		*(vu_long *)MPC5XXX_BOOTCS_STOP = *(vu_long *)MPC5XXX_CS0_STOP =
-			STOP_REG(CFG_BOOTCS_START | size, size);
+			STOP_REG(CONFIG_SYS_BOOTCS_START | size, size);
 	}
 }
 
@@ -306,19 +357,17 @@ void pci_init_board(void)
 }
 #endif
 
-#if defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET)
-
-#define GPIO_PSC1_4	0x01000000UL
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_RESET)
 
 void init_ide_reset (void)
 {
 	debug ("init_ide_reset\n");
 
-    	/* Configure PSC1_4 as GPIO output for ATA reset */
+	/* Configure PSC1_4 as GPIO output for ATA reset */
 	*(vu_long *) MPC5XXX_WU_GPIO_ENABLE |= GPIO_PSC1_4;
 	*(vu_long *) MPC5XXX_WU_GPIO_DIR    |= GPIO_PSC1_4;
 	/* Deassert reset */
-	*(vu_long *) MPC5XXX_WU_GPIO_DATA   |= GPIO_PSC1_4;
+	*(vu_long *) MPC5XXX_WU_GPIO_DATA_O   |= GPIO_PSC1_4;
 }
 
 void ide_set_reset (int idereset)
@@ -326,11 +375,25 @@ void ide_set_reset (int idereset)
 	debug ("ide_reset(%d)\n", idereset);
 
 	if (idereset) {
-		*(vu_long *) MPC5XXX_WU_GPIO_DATA &= ~GPIO_PSC1_4;
+		*(vu_long *) MPC5XXX_WU_GPIO_DATA_O &= ~GPIO_PSC1_4;
 		/* Make a delay. MPC5200 spec says 25 usec min */
 		udelay(500000);
 	} else {
-		*(vu_long *) MPC5XXX_WU_GPIO_DATA |=  GPIO_PSC1_4;
+		*(vu_long *) MPC5XXX_WU_GPIO_DATA_O |=  GPIO_PSC1_4;
 	}
 }
-#endif /* defined (CFG_CMD_IDE) && defined (CONFIG_IDE_RESET) */
+#endif
+
+#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+void
+ft_board_setup(void *blob, bd_t *bd)
+{
+	ft_cpu_setup(blob, bd);
+}
+#endif
+
+int board_eth_init(bd_t *bis)
+{
+	cpu_eth_init(bis); /* Built in FEC comes first */
+	return pci_eth_init(bis);
+}

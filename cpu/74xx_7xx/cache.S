@@ -52,7 +52,7 @@ _GLOBAL(invalidate_l1_data_cache)
 /*
  * Flush data cache.
  */
-_GLOBAL(flush_data_cache)
+_GLOBAL(flush_dcache)
 	lis	r3,0
 	lis	r5,CACHE_LINE_SIZE
 flush:
@@ -245,6 +245,10 @@ _GLOBAL(icache_enable)
  * Disable L1 Instruction cache
  */
 _GLOBAL(icache_disable)
+	mflr	r4
+	bl	invalidate_l1_instruction_cache		/* uses r3 */
+	sync
+	mtlr	r4
 	mfspr	r3, HID0
 	li	r5, 0
 	ori	r5, r5, HID0_ICE
@@ -288,7 +292,7 @@ _GLOBAL(dcache_enable)
 	mtspr	HID0, r5		/* enable + invalidate */
 	mtspr	HID0, r3		/* enable */
 	sync
-#ifdef CFG_L2
+#ifdef CONFIG_SYS_L2
 	mflr	r5
 	bl	l2cache_enable		/* uses r3 and r4 */
 	sync
@@ -299,12 +303,12 @@ _GLOBAL(dcache_enable)
 
 /*
  * Disable data cache(s) - L1 and optionally L2
- * Calls flush_data_cache and l2cache_disable_no_flush.
+ * Calls flush_dcache and l2cache_disable_no_flush.
  * LR saved in r4
  */
 _GLOBAL(dcache_disable)
 	mflr	r4			/* save link register */
-	bl	flush_data_cache	/* uses r3 and r5 */
+	bl	flush_dcache	/* uses r3 and r5 */
 	sync
 	mfspr	r3, HID0
 	li	r5, HID0_DCFI|HID0_DLOCK
@@ -314,7 +318,7 @@ _GLOBAL(dcache_disable)
 	andc	r3, r3, r5		/* no enable, no invalidate */
 	mtspr	HID0, r3
 	sync
-#ifdef CFG_L2
+#ifdef CONFIG_SYS_L2
 	bl	l2cache_disable_no_flush /* uses r3 */
 #endif
 	mtlr	r4			/* restore link register */
@@ -329,14 +333,28 @@ _GLOBAL(dcache_status)
 	blr
 
 /*
- * Invalidate L2 cache using L2I and polling L2IP
+ * Invalidate L2 cache using L2I and polling L2IP or L2I
  */
 _GLOBAL(l2cache_invalidate)
 	sync
+	mfspr r3, l2cr
 	oris	r3, r3, L2CR_L2I@h
 	sync
 	mtspr	l2cr, r3
 	sync
+	mfspr r3, PVR
+	sync
+	rlwinm r3, r3, 16,16,31
+	cmpli 0,r3,0x8000  /* 7451, 7441 */
+	beq 0,inv_7450
+	cmpli 0,r3,0x8001  /* 7455, 7445 */
+	beq 0,inv_7450
+	cmpli 0,r3,0x8002  /* 7457, 7447 */
+	beq 0,inv_7450
+	cmpli 0,r3,0x8003  /* 7447A */
+	beq 0,inv_7450
+	cmpli 0,r3,0x8004  /* 7448 */
+	beq 0,inv_7450
 invl2:
 	mfspr	r3, l2cr
 	andi.	r3, r3, L2CR_L2IP
@@ -347,6 +365,11 @@ invl2:
 	sync
 	mtspr	l2cr, r3
 	sync
+	blr
+inv_7450:
+	mfspr	r3, l2cr
+	andis. r3, r3, L2CR_L2I@h
+	bne inv_7450
 	blr
 
 /*
@@ -366,11 +389,11 @@ _GLOBAL(l2cache_enable)
 
 /*
  * Disable L2 cache
- * Calls flush_data_cache. LR is saved in r4
+ * Calls flush_dcache. LR is saved in r4
  */
 _GLOBAL(l2cache_disable)
 	mflr	r4			/* save link register */
-	bl	flush_data_cache	/* uses r3 and r5 */
+	bl	flush_dcache		/* uses r3 and r5 */
 	sync
 	mtlr	r4			/* restore link register */
 l2cache_disable_no_flush:		/* provide way to disable L2 w/o flushing */

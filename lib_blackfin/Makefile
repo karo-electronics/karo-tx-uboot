@@ -1,7 +1,7 @@
 #
 # U-boot Makefile
 #
-# Copyright (c) 2005 blackfin.uclinux.org
+# Copyright (c) 2005-2008 Analog Devices Inc.
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -21,20 +21,32 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+# MA 02110-1301 USA
 #
 
 include $(TOPDIR)/config.mk
 
+CFLAGS += -DBFIN_BOARD_NAME='"$(BOARD)"'
+
 LIB	= $(obj)lib$(ARCH).a
 
-SOBJS	=
+SOBJS-y	+= memcmp.o
+SOBJS-y	+= memcpy.o
+SOBJS-y	+= memmove.o
+SOBJS-y	+= memset.o
 
-COBJS	= board.o bf533_linux.o bf533_string.o cache.o muldi3.o
+COBJS-y	+= board.o
+COBJS-y	+= boot.o
+COBJS-y	+= cache.o
+COBJS-y	+= clocks.o
+COBJS-$(CONFIG_CMD_CACHE_DUMP) += cmd_cache_dump.o
+COBJS-y	+= muldi3.o
+COBJS-$(CONFIG_POST) += post.o tests.o
+COBJS-y	+= string.o
 
-SRCS 	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
+SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
+OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
 
 $(LIB):	$(obj).depend $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)

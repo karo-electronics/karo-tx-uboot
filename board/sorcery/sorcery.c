@@ -26,14 +26,15 @@
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <pci.h>
+#include <netdev.h>
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	ulong size;
 
 	size = dramSetup ();
 
-	return get_ram_size(CFG_SDRAM_BASE, size);
+	return get_ram_size(CONFIG_SYS_SDRAM_BASE, size);
 }
 
 int checkboard (void)
@@ -57,4 +58,11 @@ void pci_init_board (void)
 	extern void pci_mpc8220_init (struct pci_controller *hose);
 	pci_mpc8220_init (&hose);
 #endif /* CONFIG_PCI */
+}
+
+int board_eth_init(bd_t *bis)
+{
+	/* Initialize built-in FEC first */
+	cpu_eth_init(bis);
+	return pci_eth_init(bis);
 }

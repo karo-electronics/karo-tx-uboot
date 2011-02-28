@@ -65,16 +65,14 @@
 #include <common.h>
 #include "mip405.h"
 #include <asm/processor.h>
-#include <405gp_i2c.h>
+#include <4xx_i2c.h>
 #include <miiphy.h>
 #include "../common/common_util.h"
+#include <stdio_dev.h>
 #include <i2c.h>
 #include <rtc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-extern block_dev_desc_t * scsi_get_dev(int dev);
-extern block_dev_desc_t * ide_get_dev(int dev);
 
 #undef SDRAM_DEBUG
 #define ENABLE_ECC /* for ecc boards */
@@ -92,12 +90,12 @@ extern ldiv_t ldiv (long int __numer, long int __denom);
 #endif
 
 
-#define PLD_PART_REG 		PER_PLD_ADDR + 0
-#define PLD_VERS_REG 		PER_PLD_ADDR + 1
-#define PLD_BOARD_CFG_REG 	PER_PLD_ADDR + 2
-#define PLD_IRQ_REG 		PER_PLD_ADDR + 3
-#define PLD_COM_MODE_REG 	PER_PLD_ADDR + 4
-#define PLD_EXT_CONF_REG 	PER_PLD_ADDR + 5
+#define PLD_PART_REG		PER_PLD_ADDR + 0
+#define PLD_VERS_REG		PER_PLD_ADDR + 1
+#define PLD_BOARD_CFG_REG	PER_PLD_ADDR + 2
+#define PLD_IRQ_REG		PER_PLD_ADDR + 3
+#define PLD_COM_MODE_REG	PER_PLD_ADDR + 4
+#define PLD_EXT_CONF_REG	PER_PLD_ADDR + 5
 
 #define MEGA_BYTE (1024*1024)
 
@@ -253,7 +251,7 @@ int init_sdram (void)
 	unsigned char	bc;
 	unsigned long	sdram_tim, sdram_bank;
 
-	/*i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);*/
+	/*i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);*/
 	(void) get_clocks ();
 	gd->baudrate = 9600;
 	serial_init ();
@@ -323,7 +321,7 @@ int init_sdram (void)
 	serial_puts ("\n");
 #endif
 	i = 0;
-	baseaddr = CFG_SDRAM_BASE;
+	baseaddr = CONFIG_SYS_SDRAM_BASE;
 	while (sdram_table[i].sz != 0xff) {
 		if (sdram_table[i].boardtype == bc)
 			break;
@@ -623,7 +621,7 @@ int checkboard (void)
 /* ------------------------------------------------------------------------- */
 static int test_dram (unsigned long ramsize);
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 
 	unsigned long bank_reg[4], tmp, bank_size;
@@ -682,7 +680,7 @@ int misc_init_r (void)
 {
 	/* adjust flash start and size as well as the offset */
 	gd->bd->bi_flashstart=0-flash_info[0].size;
-	gd->bd->bi_flashsize=flash_info[0].size-CFG_MONITOR_LEN;
+	gd->bd->bi_flashsize=flash_info[0].size-CONFIG_SYS_MONITOR_LEN;
 	gd->bd->bi_flashoffset=0;
 
 	/* check, if RTC is running */
@@ -690,7 +688,7 @@ int misc_init_r (void)
 	start=get_timer(0);
 	/* if MIP405 has booted from PCI, reset CCR0[24] as described in errata PCI_18 */
 	if (mfdcr(strap) & PSR_ROM_LOC)
-	       mtspr(ccr0, (mfspr(ccr0) & ~0x80));
+	       mtspr(SPRN_CCR0, (mfspr(SPRN_CCR0) & ~0x80));
 
 	return (0);
 }
@@ -738,7 +736,7 @@ int last_stage_init (void)
 		printf ("Error writing to the PHY\n");
 	}
 	print_mip405_rev ();
-	show_stdio_dev ();
+	stdio_print_current_devices ();
 	check_env ();
 	/* check if RTC time is valid */
 	stop=get_timer(start);

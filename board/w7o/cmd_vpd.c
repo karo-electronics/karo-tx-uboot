@@ -24,7 +24,7 @@
 #include <common.h>
 #include <command.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 
 #include "vpd.h"
 
@@ -35,11 +35,11 @@
 int do_vpd (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	VPD vpd;			/* Board specific data struct */
-	uchar dev_addr = CFG_DEF_EEPROM_ADDR;
+	uchar dev_addr = CONFIG_SYS_DEF_EEPROM_ADDR;
 
 	/* Validate usage */
 	if (argc > 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -58,9 +58,9 @@ int do_vpd (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	  vpd,	2,	1,	do_vpd,
-	  "vpd     - Read Vital Product Data\n",
+	  "Read Vital Product Data",
 	  "[dev_addr]\n"
-	  "        - Read VPD Data from default address, or device address 'dev_addr'.\n"
+	  "        - Read VPD Data from default address, or device address 'dev_addr'."
 );
 
-#endif /* (CONFIG_COMMANDS & CFG_CMD_BSP) */
+#endif

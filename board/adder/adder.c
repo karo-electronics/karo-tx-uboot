@@ -26,6 +26,9 @@
 
 #include <common.h>
 #include <mpc8xx.h>
+#if defined(CONFIG_OF_LIBFDT)
+	#include <libfdt.h>
+#endif
 
 /*
  * SDRAM is single Samsung K4S643232F-T70   chip (8MB)
@@ -62,10 +65,10 @@ static uint sdram_table[] = {
 	0xfffffc27, 0xfffffc04, 0xfffffc04, 0xfffffc04
 };
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long int msize;
-	volatile immap_t     *immap  = (volatile immap_t *)CFG_IMMR;
+	volatile immap_t     *immap  = (volatile immap_t *)CONFIG_SYS_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
 
 	upmconfig(UPMA, sdram_table, sizeof(sdram_table) / sizeof(uint));
@@ -73,7 +76,7 @@ long int initdram (int board_type)
 	/* Configure SDRAM refresh */
 	memctl->memc_mptpr = MPTPR_PTP_DIV32; /* BRGCLK/32 */
 
-	memctl->memc_mamr = (94 << 24) | CFG_MAMR; /* No refresh */
+	memctl->memc_mamr = (94 << 24) | CONFIG_SYS_MAMR; /* No refresh */
 	udelay(200);
 
 	/* Run precharge from location 0x15 */
@@ -91,10 +94,10 @@ long int initdram (int board_type)
 	udelay(200);
 
 	memctl->memc_mamr |=  MAMR_PTAE; /* Enable refresh */
-	memctl->memc_or1   = ~(CFG_SDRAM_MAX_SIZE - 1) | OR_CSNT_SAM;
-	memctl->memc_br1   =  CFG_SDRAM_BASE | BR_PS_32 | BR_MS_UPMA | BR_V;
+	memctl->memc_or1   = ~(CONFIG_SYS_SDRAM_MAX_SIZE - 1) | OR_CSNT_SAM;
+	memctl->memc_br1   =  CONFIG_SYS_SDRAM_BASE | BR_PS_32 | BR_MS_UPMA | BR_V;
 
-	msize = get_ram_size(CFG_SDRAM_BASE, CFG_SDRAM_MAX_SIZE);
+	msize = get_ram_size(CONFIG_SYS_SDRAM_BASE, CONFIG_SYS_SDRAM_MAX_SIZE);
 	memctl->memc_or1  |= ~(msize - 1);
 
 	return msize;
@@ -111,3 +114,11 @@ int checkboard( void )
 
 	return 0;
 }
+
+#if defined(CONFIG_OF_BOARD_SETUP)
+void ft_board_setup(void *blob, bd_t *bd)
+{
+	ft_cpu_setup(blob, bd);
+
+}
+#endif

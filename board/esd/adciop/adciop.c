@@ -22,6 +22,7 @@
  */
 
 #include <common.h>
+#include <netdev.h>
 #include "adciop.h"
 
 /* ------------------------------------------------------------------------- */
@@ -79,7 +80,7 @@ int checkboard (void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	return (16 * 1024 * 1024);
 }
@@ -95,3 +96,8 @@ int testdram (void)
 }
 
 /* ------------------------------------------------------------------------- */
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
+}

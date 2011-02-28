@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1.3.1  2007-05-22 16:58:58  lothar
- * imported KARO specific modifications
+ * Revision 1.1.3.2  2011-02-28 14:52:53  lothar
+ * imported Ka-Ro specific additions to U-Boot 2009.08 for TX28
  *
  * Revision 1.4  2005/03/02 16:40:20  mleeman
  * remove empty labels (3.4 complains)
@@ -86,14 +86,14 @@ int checkboard (void)
 	return 0;
 }
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long size;
 	long new_bank0_end;
 	long mear1;
 	long emear1;
 
-	size = get_ram_size (CFG_SDRAM_BASE, CFG_MAX_RAM_SIZE);
+	size = get_ram_size (CONFIG_SYS_SDRAM_BASE, CONFIG_SYS_MAX_RAM_SIZE);
 
 	new_bank0_end = size - 1;
 	mear1 = mpc824x_mpc107_getreg (MEAR1);
@@ -180,7 +180,7 @@ unsigned update_flash (unsigned char *buf)
 		write_flash ((char *)buf, (*buf) & 0xFE);
 		*((unsigned char *)0xFF800000) = 0xF0;
 		udelay (100);
-		printf ("buf [%#010x] %#010x\n", buf, (*buf));
+		printf ("buf [%#010x] %#010x\n", (unsigned)buf, (*buf));
 		/* XXX - fall through??? */
 	case BOOT_WORKING :
 		return BOOT_WORKING;
@@ -191,14 +191,14 @@ unsigned update_flash (unsigned char *buf)
 unsigned scan_flash (void)
 {
 	char section[] =  "kernel";
-	int cfgFileLen  =  (CFG_FLASH_ERASE_SECTOR_LENGTH >> 1);
+	int cfgFileLen  =  (CONFIG_SYS_FLASH_ERASE_SECTOR_LENGTH >> 1);
 	int sectionPtr  = 0;
 	int foundItem   = 0; /* 0: None, 1: section found, 2: "=" found */
 	int bufPtr;
 	unsigned char *buf;
 
-	buf = (unsigned char*)(CFG_FLASH_RANGE_BASE + CFG_FLASH_RANGE_SIZE \
-			- CFG_FLASH_ERASE_SECTOR_LENGTH);
+	buf = (unsigned char*)(CONFIG_SYS_FLASH_RANGE_BASE + CONFIG_SYS_FLASH_RANGE_SIZE \
+			- CONFIG_SYS_FLASH_ERASE_SECTOR_LENGTH);
 	for (bufPtr = 0; bufPtr < cfgFileLen; ++bufPtr) {
 		if ((buf[bufPtr]==0xFF) && (*(int*)(buf+bufPtr)==0xFFFFFFFF)) {
 			return BOOT_DEFAULT;
@@ -239,14 +239,14 @@ TSBootInfo* find_boot_info (void)
 
 	switch (bootimage) {
 	case TRY_WORKING:
-		info->address = CFG_WORKING_KERNEL_ADDRESS;
+		info->address = CONFIG_SYS_WORKING_KERNEL_ADDRESS;
 		break;
 	case BOOT_WORKING :
-		info->address = CFG_WORKING_KERNEL_ADDRESS;
+		info->address = CONFIG_SYS_WORKING_KERNEL_ADDRESS;
 		break;
 	case BOOT_DEFAULT:
 	default:
-		info->address= CFG_DEFAULT_KERNEL_ADDRESS;
+		info->address= CONFIG_SYS_DEFAULT_KERNEL_ADDRESS;
 
 	}
 	info->size = *((unsigned int *)(info->address ));
@@ -276,10 +276,10 @@ void barcobcd_boot (void)
 	/* give length of the kernel image to bootm */
 	sprintf (bootm_args[0],"%x",start->size);
 	/* give address of the kernel image to bootm */
-	sprintf (bootm_args[1],"%x",buf);
+	sprintf (bootm_args[1],"%x",(unsigned)buf);
 
 	printf ("flash address: %#10x\n",start->address+8);
-	printf ("buf address: %#10x\n",buf);
+	printf ("buf address: %#10x\n",(unsigned)buf);
 
 	/* aha, we reserve 8 bytes here... */
 	for (cnt = 0; cnt < start->size ; cnt++) {
@@ -295,7 +295,7 @@ int barcobcd_boot_image (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 #if 0
 	if (argc > 1) {
-		printf ("Usage:\n (%d) %s\n", argc, cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 #endif
@@ -309,20 +309,20 @@ int barcobcd_boot_image (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD (
 		try_working, 1, 1, barcobcd_boot_image,
-		" try_working - check flash value and boot the appropriate image\n",
-		"\n"
+		"check flash value and boot the appropriate image",
+		""
 	  );
 
 U_BOOT_CMD (
 		boot_working, 1, 1, barcobcd_boot_image,
-		" boot_working - check flash value and boot the appropriate image\n",
-		"\n"
+		"check flash value and boot the appropriate image",
+		""
 	  );
 
 U_BOOT_CMD (
 		boot_default, 1, 1, barcobcd_boot_image,
-		" boot_default - check flash value and boot the appropriate image\n",
-		"\n"
+		"check flash value and boot the appropriate image",
+		""
 	  );
 /*
  * We are not using serial communication, so just provide empty functions

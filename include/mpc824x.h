@@ -88,7 +88,7 @@
 #define	PREP_PCI_MEMORY_BUS	0x80000000
 #define	PREP_PCI_MEMORY_SIZE	0x80000000
 #define MPC107_PCI_CMD		0x80000004	/* MPC107 PCI cmd reg */
-#define MPC107_PCI_STAT 	0x80000006	/* MPC107 PCI status reg */
+#define MPC107_PCI_STAT		0x80000006	/* MPC107 PCI status reg */
 #define PROC_INT1_ADR		0x800000a8	/* MPC107 Processor i/f cfg1 */
 #define PROC_INT2_ADR		0x800000ac	/* MPC107 Processor i/f cfg2 */
 #define MEM_CONT1_ADR		0x800000f0	/* MPC107 Memory control config. 1 */
@@ -98,8 +98,8 @@
 #define MEM_ERREN1_ADR		0x800000c0	/* MPC107 Memory error enable 1 */
 #define MEM_START1_ADR		0x80000080	/* MPC107 Memory starting addr */
 #define MEM_START2_ADR		0x80000084	/* MPC107 Memory starting addr-lo */
-#define XMEM_START1_ADR 	0x80000088	/* MPC107 Extended mem. start addr-hi*/
-#define XMEM_START2_ADR 	0x8000008c	/* MPC107 Extended mem. start addr-lo*/
+#define XMEM_START1_ADR		0x80000088	/* MPC107 Extended mem. start addr-hi*/
+#define XMEM_START2_ADR		0x8000008c	/* MPC107 Extended mem. start addr-lo*/
 #define MEM_END1_ADR		0x80000090	/* MPC107 Memory ending address */
 #define MEM_END2_ADR		0x80000094	/* MPC107 Memory ending addr-lo */
 #define XMEM_END1_ADR		0x80000098	/* MPC107 Extended mem. end addrs-hi */
@@ -142,6 +142,8 @@
 #define EXC_OFF_JMDDI		0x1600	/* Java Mode denorm detect Interr -- WTF??*/
 #define EXC_OFF_RMTE		0x2000	/* Run Mode or Trace Exception */
 
+#define _START_OFFSET		EXC_OFF_SYS_RESET
+
 #define MAP_A_CONFIG_ADDR_HIGH	0x8000	/* Upper half of CONFIG_ADDR for Map A */
 #define MAP_A_CONFIG_ADDR_LOW	0x0CF8	/* Lower half of CONFIG_ADDR for Map A */
 #define MAP_A_CONFIG_DATA_HIGH	0x8000	/* Upper half of CONFIG_DAT for Map A */
@@ -152,7 +154,7 @@
 #define MAP_B_CONFIG_DATA_LOW	0x0000	/* Lower half of CONFIG_DAT for Map B */
 
 
-#if defined(CFG_ADDR_MAP_A)
+#if defined(CONFIG_SYS_ADDR_MAP_A)
 #define CONFIG_ADDR_HIGH    MAP_A_CONFIG_ADDR_HIGH  /* Upper half of CONFIG_ADDR */
 #define CONFIG_ADDR_LOW	    MAP_A_CONFIG_ADDR_LOW   /* Lower half of CONFIG_ADDR */
 #define CONFIG_DATA_HIGH    MAP_A_CONFIG_DATA_HIGH  /* Upper half of CONFIG_DAT */
@@ -448,45 +450,6 @@
 #define MICR_ADDR_SHIFT		20
 #define MICR_EADDR_MASK		0x30000000
 #define MICR_EADDR_SHIFT	28
-
-#define BATU_BEPI_MSK		0xfffe0000
-#define BATU_BL_MSK		0x00001ffc
-
-#define BATU_BL_128K		0x00000000
-#define BATU_BL_256K		0x00000004
-#define BATU_BL_512K		0x0000000c
-#define BATU_BL_1M		0x0000001c
-#define BATU_BL_2M		0x0000003c
-#define BATU_BL_4M		0x0000007c
-#define BATU_BL_8M		0x000000fc
-#define BATU_BL_16M		0x000001fc
-#define BATU_BL_32M		0x000003fc
-#define BATU_BL_64M		0x000007fc
-#define BATU_BL_128M		0x00000ffc
-#define BATU_BL_256M		0x00001ffc
-
-#define BATU_VS			0x00000002
-#define BATU_VP			0x00000001
-
-#define BATL_BRPN_MSK		0xfffe0000
-#define BATL_WIMG_MSK		0x00000078
-
-#define BATL_WRITETHROUGH	0x00000040
-#define BATL_CACHEINHIBIT	0x00000020
-#define BATL_MEMCOHERENCE	0x00000010
-#define BATL_GUARDEDSTORAGE	0x00000008
-
-#define BATL_PP_MSK		0x00000003
-#define BATL_PP_00		0x00000000 /* No access */
-#define BATL_PP_01		0x00000001 /* Read-only */
-#define BATL_PP_10		0x00000002 /* Read-write */
-#define BATL_PP_11		0x00000003
-
-/*
- * I'd attempt to do defines for the PP bits, but it's use is a bit
- * too complex, see the PowerPC Operating Environment Architecture
- * section in the PowerPc arch book, chapter 4.
- */
 
 /*eumb and epic config*/
 

@@ -35,11 +35,13 @@
 #include <ide.h>
 #include "part_dos.h"
 
-#if ((CONFIG_COMMANDS & CFG_CMD_IDE)	|| \
-     (CONFIG_COMMANDS & CFG_CMD_SCSI)	|| \
-     (CONFIG_COMMANDS & CFG_CMD_USB)	|| \
-     defined(CONFIG_MMC) || \
-     defined(CONFIG_SYSTEMACE) ) && defined(CONFIG_DOS_PARTITION)
+#if defined(CONFIG_CMD_IDE) || \
+    defined(CONFIG_CMD_MG_DISK) || \
+    defined(CONFIG_CMD_SATA) || \
+    defined(CONFIG_CMD_SCSI) || \
+    defined(CONFIG_CMD_USB) || \
+    defined(CONFIG_MMC) || \
+    defined(CONFIG_SYSTEMACE)
 
 /* Convert char[4] in little endian format to the host format integer
  */
@@ -194,20 +196,26 @@ static int get_partition_info_extended (block_dev_desc_t *dev_desc, int ext_part
 			info->size  = le32_to_int (pt->size4);
 			switch(dev_desc->if_type) {
 				case IF_TYPE_IDE:
+				case IF_TYPE_SATA:
 				case IF_TYPE_ATAPI:
-					sprintf ((char *)info->name, "hd%c%d\n", 'a' + dev_desc->dev, part_num);
+					sprintf ((char *)info->name, "hd%c%d",
+						'a' + dev_desc->dev, part_num);
 					break;
 				case IF_TYPE_SCSI:
-					sprintf ((char *)info->name, "sd%c%d\n", 'a' + dev_desc->dev, part_num);
+					sprintf ((char *)info->name, "sd%c%d",
+						'a' + dev_desc->dev, part_num);
 					break;
 				case IF_TYPE_USB:
-					sprintf ((char *)info->name, "usbd%c%d\n", 'a' + dev_desc->dev, part_num);
+					sprintf ((char *)info->name, "usbd%c%d",
+						'a' + dev_desc->dev, part_num);
 					break;
 				case IF_TYPE_DOC:
-					sprintf ((char *)info->name, "docd%c%d\n", 'a' + dev_desc->dev, part_num);
+					sprintf ((char *)info->name, "docd%c%d",
+						'a' + dev_desc->dev, part_num);
 					break;
 				default:
-					sprintf ((char *)info->name, "xx%c%d\n", 'a' + dev_desc->dev, part_num);
+					sprintf ((char *)info->name, "xx%c%d",
+						'a' + dev_desc->dev, part_num);
 					break;
 			}
 			/* sprintf(info->type, "%d, pt->sys_ind); */
@@ -248,4 +256,4 @@ int get_partition_info_dos (block_dev_desc_t *dev_desc, int part, disk_partition
 }
 
 
-#endif	/* (CONFIG_COMMANDS & CFG_CMD_IDE) && CONFIG_DOS_PARTITION */
+#endif

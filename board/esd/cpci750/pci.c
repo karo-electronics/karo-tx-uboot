@@ -66,13 +66,13 @@ static void gt_pci_bus_mode_display (PCI_HOST host)
 		printf ("PCI %d bus mode: Conventional PCI\n", host);
 		break;
 	case 1:
-		printf ("PCI %d bus mode: 66 Mhz PCIX\n", host);
+		printf ("PCI %d bus mode: 66 MHz PCIX\n", host);
 		break;
 	case 2:
-		printf ("PCI %d bus mode: 100 Mhz PCIX\n", host);
+		printf ("PCI %d bus mode: 100 MHz PCIX\n", host);
 		break;
 	case 3:
-		printf ("PCI %d bus mode: 133 Mhz PCIX\n", host);
+		printf ("PCI %d bus mode: 133 MHz PCIX\n", host);
 		break;
 	default:
 		printf ("Unknown BUS %d\n", mode);
@@ -768,11 +768,12 @@ static int gt_read_config_dword (struct pci_controller *hose,
 	int bus = PCI_BUS (dev);
 
 	if ((bus == local_buses[0]) || (bus == local_buses[1])) {
-		*value = pciReadConfigReg ((PCI_HOST) hose->cfg_addr, offset,
+	        *value = pciReadConfigReg ((PCI_HOST) hose->cfg_addr,
+					   offset | (PCI_FUNC(dev) << 8),
 					   PCI_DEV (dev));
 	} else {
-		*value = pciOverBridgeReadConfigReg ((PCI_HOST) hose->
-						     cfg_addr, offset,
+		*value = pciOverBridgeReadConfigReg ((PCI_HOST) hose->cfg_addr,
+						     offset | (PCI_FUNC(dev) << 8),
 						     PCI_DEV (dev), bus);
 	}
 
@@ -785,11 +786,13 @@ static int gt_write_config_dword (struct pci_controller *hose,
 	int bus = PCI_BUS (dev);
 
 	if ((bus == local_buses[0]) || (bus == local_buses[1])) {
-		pciWriteConfigReg ((PCI_HOST) hose->cfg_addr, offset,
+		pciWriteConfigReg ((PCI_HOST) hose->cfg_addr,
+				   offset | (PCI_FUNC(dev) << 8),
 				   PCI_DEV (dev), value);
 	} else {
 		pciOverBridgeWriteConfigReg ((PCI_HOST) hose->cfg_addr,
-					     offset, PCI_DEV (dev), bus,
+					     offset | (PCI_FUNC(dev) << 8),
+					     PCI_DEV (dev), bus,
 					     value);
 	}
 	return 0;
@@ -802,6 +805,9 @@ static void gt_setup_ide (struct pci_controller *hose,
 	static const int ide_bar[] = { 8, 4, 8, 4, 0, 0 };
 	u32 bar_response, bar_value;
 	int bar;
+
+	if (CPCI750_SLAVE_TEST != 0)
+		return;
 
 	for (bar = 0; bar < 6; bar++) {
 		/*ronen different function for 3rd bank. */
@@ -828,6 +834,9 @@ static void gt_setup_cpcidvi (struct pci_controller *hose,
 			      pci_dev_t dev, struct pci_config_table *entry)
 {
 	u32		  bar_value, pci_response;
+
+	if (CPCI750_SLAVE_TEST != 0)
+		return;
 
 	pci_hose_read_config_dword (hose, dev, PCI_COMMAND, &pci_response);
 	pci_hose_write_config_dword (hose, dev, PCI_BASE_ADDRESS_0, 0xffffffff);
@@ -907,6 +916,7 @@ struct pci_controller pci1_hose = {
 void pci_init_board (void)
 {
 	unsigned int command;
+	unsigned int slave;
 #ifdef CONFIG_PCI_PNP
 	unsigned int bar;
 #endif
@@ -917,6 +927,8 @@ void pci_init_board (void)
 	gt_cpcidvi_rom.init = 0;
 	gt_cpcidvi_rom.base = 0;
 #endif
+
+	slave = CPCI750_SLAVE_TEST;
 
 	pci0_hose.config_table = gt_config_table;
 	pci1_hose.config_table = gt_config_table;
@@ -932,14 +944,14 @@ void pci_init_board (void)
 
 	/* PCI memory space */
 	pci_set_region (pci0_hose.regions + 0,
-			CFG_PCI0_0_MEM_SPACE,
-			CFG_PCI0_0_MEM_SPACE,
-			CFG_PCI0_MEM_SIZE, PCI_REGION_MEM);
+			CONFIG_SYS_PCI0_0_MEM_SPACE,
+			CONFIG_SYS_PCI0_0_MEM_SPACE,
+			CONFIG_SYS_PCI0_MEM_SIZE, PCI_REGION_MEM);
 
 	/* PCI I/O space */
 	pci_set_region (pci0_hose.regions + 1,
-			CFG_PCI0_IO_SPACE_PCI,
-			CFG_PCI0_IO_SPACE, CFG_PCI0_IO_SIZE, PCI_REGION_IO);
+			CONFIG_SYS_PCI0_IO_SPACE_PCI,
+			CONFIG_SYS_PCI0_IO_SPACE, CONFIG_SYS_PCI0_IO_SIZE, PCI_REGION_IO);
 
 	pci_set_ops (&pci0_hose,
 		     pci_hose_read_config_byte_via_dword,
@@ -953,27 +965,40 @@ void pci_init_board (void)
 	pci0_hose.cfg_addr = (unsigned int *) PCI_HOST0;
 
 	pci_register_hose (&pci0_hose);
-	pciArbiterEnable (PCI_HOST0);
-	pciParkingDisable (PCI_HOST0, 1, 1, 1, 1, 1, 1, 1);
-	command = pciReadConfigReg (PCI_HOST0, PCI_COMMAND, SELF);
-	command |= PCI_COMMAND_MASTER;
-	pciWriteConfigReg (PCI_HOST0, PCI_COMMAND, SELF, command);
-	command = pciReadConfigReg (PCI_HOST0, PCI_COMMAND, SELF);
-	command |= PCI_COMMAND_MEMORY;
-	pciWriteConfigReg (PCI_HOST0, PCI_COMMAND, SELF, command);
+	if (slave == 0) {
+		pciArbiterEnable (PCI_HOST0);
+		pciParkingDisable (PCI_HOST0, 1, 1, 1, 1, 1, 1, 1);
+		command = pciReadConfigReg (PCI_HOST0, PCI_COMMAND, SELF);
+		command |= PCI_COMMAND_MASTER;
+		pciWriteConfigReg (PCI_HOST0, PCI_COMMAND, SELF, command);
+		command = pciReadConfigReg (PCI_HOST0, PCI_COMMAND, SELF);
+		command |= PCI_COMMAND_MEMORY;
+		pciWriteConfigReg (PCI_HOST0, PCI_COMMAND, SELF, command);
 
 #ifdef CONFIG_PCI_PNP
-	pciauto_config_init(&pci0_hose);
-	pciauto_region_allocate(pci0_hose.pci_io, 0x400, &bar);
+		pciauto_config_init(&pci0_hose);
+		pciauto_region_allocate(pci0_hose.pci_io, 0x400, &bar);
 #endif
 #ifdef CONFIG_PCI_SCAN_SHOW
-	printf("PCI:   Bus Dev VenId DevId Class Int\n");
+		printf("PCI:   Bus Dev VenId DevId Class Int\n");
 #endif
-	pci0_hose.last_busno = pci_hose_scan_bus (&pci0_hose, pci0_hose.first_busno);
+		pci0_hose.last_busno = pci_hose_scan_bus (&pci0_hose,
+							  pci0_hose.first_busno);
 
 #ifdef DEBUG
-	gt_pci_bus_mode_display (PCI_HOST1);
+		gt_pci_bus_mode_display (PCI_HOST1);
 #endif
+	} else {
+		pciArbiterDisable (PCI_HOST0);
+		pciParkingDisable (PCI_HOST0, 1, 1, 1, 1, 1, 1, 1);
+		command = pciReadConfigReg (PCI_HOST0, PCI_COMMAND, SELF);
+		command |= PCI_COMMAND_MASTER;
+		pciWriteConfigReg (PCI_HOST0, PCI_COMMAND, SELF, command);
+		command = pciReadConfigReg (PCI_HOST0, PCI_COMMAND, SELF);
+		command |= PCI_COMMAND_MEMORY;
+		pciWriteConfigReg (PCI_HOST0, PCI_COMMAND, SELF, command);
+		pci0_hose.last_busno = pci0_hose.first_busno;
+	}
 	pci1_hose.first_busno = pci0_hose.last_busno + 1;
 	pci1_hose.last_busno = 0xff;
 	pci1_hose.current_busno = pci1_hose.first_busno;
@@ -981,14 +1006,14 @@ void pci_init_board (void)
 
 	/* PCI memory space */
 	pci_set_region (pci1_hose.regions + 0,
-			CFG_PCI1_0_MEM_SPACE,
-			CFG_PCI1_0_MEM_SPACE,
-			CFG_PCI1_MEM_SIZE, PCI_REGION_MEM);
+			CONFIG_SYS_PCI1_0_MEM_SPACE,
+			CONFIG_SYS_PCI1_0_MEM_SPACE,
+			CONFIG_SYS_PCI1_MEM_SIZE, PCI_REGION_MEM);
 
 	/* PCI I/O space */
 	pci_set_region (pci1_hose.regions + 1,
-			CFG_PCI1_IO_SPACE_PCI,
-			CFG_PCI1_IO_SPACE, CFG_PCI1_IO_SIZE, PCI_REGION_IO);
+			CONFIG_SYS_PCI1_IO_SPACE_PCI,
+			CONFIG_SYS_PCI1_IO_SPACE, CONFIG_SYS_PCI1_IO_SIZE, PCI_REGION_IO);
 
 	pci_set_ops (&pci1_hose,
 		     pci_hose_read_config_byte_via_dword,

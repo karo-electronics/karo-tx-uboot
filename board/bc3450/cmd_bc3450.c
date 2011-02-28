@@ -30,7 +30,7 @@
 /*
  * BC3450 specific commands
  */
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 
 #undef DEBUG
 #ifdef DEBUG
@@ -52,9 +52,9 @@
 #define THERM_WRITE_TL		0x02
 #define THERM_WRITE_TH		0x01
 
-#define CFG_CPU			2
-#define CFG_1SHOT		1
-#define CFG_STANDALONE		0
+#define CONFIG_SYS_CPU			2
+#define CONFIG_SYS_1SHOT		1
+#define CONFIG_SYS_STANDALONE		0
 
 struct therm {
 	int hi;
@@ -69,7 +69,7 @@ struct therm {
 #define SM501_POWER_MODE0_GATE		0x00000040UL
 #define SM501_POWER_MODE1_GATE		0x00000048UL
 #define POWER_MODE_GATE_GPIO_PWM_I2C	0x00000040UL
-#define SM501_GPIO_DATA_LOW 		0x00010000UL
+#define SM501_GPIO_DATA_LOW		0x00010000UL
 #define SM501_GPIO_DATA_HIGH		0x00010004UL
 #define SM501_GPIO_DATA_DIR_LOW		0x00010008UL
 #define SM501_GPIO_DATA_DIR_HIGH	0x0001000CUL
@@ -189,16 +189,16 @@ int cmd_dip (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	if (rc > 0x0F)
 		return -1;
 
-	printf ("0x%x\n", rc);
+	printf ("0x%lx\n", rc);
 	return 0;
 }
 
 U_BOOT_CMD (dip, 1, 1, cmd_dip,
-	    "dip     - read dip switch and config inputs\n",
+	    "read dip switch and config inputs",
 	    "\n"
 	    "     - prints the state of the dip switch and/or\n"
 	    "       external configuration inputs as hex value.\n"
-	    "     - \"Config 1\" is the LSB\n");
+	    "     - \"Config 1\" is the LSB");
 
 
 /*
@@ -228,8 +228,8 @@ static int cmd_buz (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD (buz, 2, 1, cmd_buz,
-	    "buz     - turns buzzer on/off\n",
-	    "\n" "buz <on/off>\n" "     - turns the buzzer on or off\n");
+	    "turns buzzer on/off",
+	    "\n" "buz <on/off>\n" "     - turns the buzzer on or off");
 #endif /* CONFIG_BC3450_BUZZER */
 
 
@@ -322,17 +322,17 @@ static int cmd_fp (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD (fp, 3, 1, cmd_fp,
-	    "fp      - front panes access functions\n",
+	    "front panes access functions",
 	    "\n"
 	    "fp bl <on/off>\n"
 	    "     - turns the CCFL backlight of the display on/off\n"
-	    "fp <on/off>\n" "     - turns the whole display on/off\n"
+	    "fp <on/off>\n" "     - turns the whole display on/off"
 #ifdef CONFIG_BC3450_CRT
+	    "\n"
 	    "fp crt <on/off>\n"
-	    "     - enables/disables the crt output (debug only)\n"
+	    "     - enables/disables the crt output (debug only)"
 #endif /* CONFIG_BC3450_CRT */
 	);
-
 
 /*
  * temp - DS1620 thermometer
@@ -513,7 +513,7 @@ static int cmd_temp (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			therm.hi <<= 1;
 			therm.lo <<= 1;
 			ds1620_write_state (&therm);
-			ds1620_out (THERM_WRITE_CONFIG, 8, CFG_STANDALONE);
+			ds1620_out (THERM_WRITE_CONFIG, 8, CONFIG_SYS_STANDALONE);
 			return 0;
 		}
 	}
@@ -523,8 +523,8 @@ static int cmd_temp (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD (temp, 3, 1, cmd_temp,
-	    "temp    - print current temperature\n",
-	    "\n" "temp\n" "     - print current temperature\n");
+	    "print current temperature",
+	    "\n" "temp\n" "     - print current temperature");
 
 #ifdef CONFIG_BC3450_CAN
 /*
@@ -538,9 +538,9 @@ int can_init (void)
 	static int init_done = 0;
 	int i;
 	struct mpc5xxx_mscan *can1 =
-		(struct mpc5xxx_mscan *) (CFG_MBAR + 0x0900);
+		(struct mpc5xxx_mscan *) (CONFIG_SYS_MBAR + 0x0900);
 	struct mpc5xxx_mscan *can2 =
-		(struct mpc5xxx_mscan *) (CFG_MBAR + 0x0980);
+		(struct mpc5xxx_mscan *) (CONFIG_SYS_MBAR + 0x0980);
 
 	/* GPIO configuration of the CAN pins is done in BC3450.h */
 
@@ -686,9 +686,9 @@ int do_can (char *argv[])
 {
 	int i;
 	struct mpc5xxx_mscan *can1 =
-		(struct mpc5xxx_mscan *) (CFG_MBAR + 0x0900);
+		(struct mpc5xxx_mscan *) (CONFIG_SYS_MBAR + 0x0900);
 	struct mpc5xxx_mscan *can2 =
-		(struct mpc5xxx_mscan *) (CFG_MBAR + 0x0980);
+		(struct mpc5xxx_mscan *) (CONFIG_SYS_MBAR + 0x0980);
 
 	/* send a message on CAN1 */
 	can1->cantbsel = 0x01;
@@ -816,12 +816,13 @@ int cmd_test (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	return 1;
 }
 
-U_BOOT_CMD (test, 2, 1, cmd_test, "test    - unit test routines\n", "\n"
+U_BOOT_CMD (test, 2, 1, cmd_test, "unit test routines", "\n"
 #ifdef CONFIG_BC3450_CAN
-	    "test can\n"
-	    "     - connect CAN1 (X8) with CAN2 (X9) for this test\n"
+	"test can\n"
+	"     - connect CAN1 (X8) with CAN2 (X9) for this test\n"
 #endif /* CONFIG_BC3450_CAN */
-	    "test unit-off\n"
-	    "     - turns off the BC3450 unit\n"
-	    "       WARNING: Unsaved environment variables will be lost!\n");
-#endif /* CFG_CMD_BSP */
+	"test unit-off\n"
+	"     - turns off the BC3450 unit\n"
+	"       WARNING: Unsaved environment variables will be lost!"
+);
+#endif

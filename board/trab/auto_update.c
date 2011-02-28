@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2003
- * Gary Jennejohn, DENX Software Engineering, gj@denx.de.
+ * Gary Jennejohn, DENX Software Engineering, garyj@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -28,13 +28,13 @@
 #include <asm/byteorder.h>
 #include <usb.h>
 
-#ifdef CFG_HUSH_PARSER
+#ifdef CONFIG_SYS_HUSH_PARSER
 #include <hush.h>
 #endif
 
 #ifdef CONFIG_AUTO_UPDATE
 
-#ifndef CONFIG_USB_OHCI
+#ifndef CONFIG_USB_OHCI_NEW
 #error "must define CONFIG_USB_OHCI"
 #endif
 
@@ -42,12 +42,12 @@
 #error "must define CONFIG_USB_STORAGE"
 #endif
 
-#ifndef CFG_HUSH_PARSER
-#error "must define CFG_HUSH_PARSER"
+#ifndef CONFIG_SYS_HUSH_PARSER
+#error "must define CONFIG_SYS_HUSH_PARSER"
 #endif
 
-#if !(CONFIG_COMMANDS & CFG_CMD_FAT)
-#error "must define CFG_CMD_FAT"
+#if !defined(CONFIG_CMD_FAT)
+#error "must define CONFIG_CMD_FAT"
 #endif
 
 /*
@@ -203,28 +203,27 @@ extern int flash_write (char *, ulong, ulong);
 /* change char* to void* to shutup the compiler */
 extern int i2c_write_multiple (uchar, uint, int, void *, int);
 extern int i2c_read_multiple (uchar, uint, int, void *, int);
-extern block_dev_desc_t *get_dev (char*, int);
 extern int u_boot_hush_start(void);
 
 int
 au_check_cksum_valid(int idx, long nbytes)
 {
 	image_header_t *hdr;
-	unsigned long checksum;
 
 	hdr = (image_header_t *)LOAD_ADDR;
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
 
-	if (nbytes != (sizeof(*hdr) + ntohl(hdr->ih_size)))
-	{
+	if (nbytes != image_get_image_size (hdr)) {
 		printf ("Image %s bad total SIZE\n", aufile[idx]);
 		return -1;
 	}
 	/* check the data CRC */
-	checksum = ntohl(hdr->ih_dcrc);
-
-	if (crc32 (0, (uchar *)(LOAD_ADDR + sizeof(*hdr)), ntohl(hdr->ih_size))
-		!= checksum)
-	{
+	if (!image_check_dcrc (hdr)) {
 		printf ("Image %s bad data checksum\n", aufile[idx]);
 		return -1;
 	}
@@ -239,54 +238,55 @@ au_check_header_valid(int idx, long nbytes)
 	unsigned char buf[4];
 
 	hdr = (image_header_t *)LOAD_ADDR;
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
+
 	/* check the easy ones first */
 #undef CHECK_VALID_DEBUG
 #ifdef CHECK_VALID_DEBUG
-	printf("magic %#x %#x ", ntohl(hdr->ih_magic), IH_MAGIC);
-	printf("arch %#x %#x ", hdr->ih_arch, IH_CPU_ARM);
-	printf("size %#x %#lx ", ntohl(hdr->ih_size), nbytes);
-	printf("type %#x %#x ", hdr->ih_type, IH_TYPE_KERNEL);
+	printf("magic %#x %#x ", image_get_magic (hdr), IH_MAGIC);
+	printf("arch %#x %#x ", image_get_arch (hdr), IH_ARCH_ARM);
+	printf("size %#x %#lx ", image_get_data_size (hdr), nbytes);
+	printf("type %#x %#x ", image_get_type (hdr), IH_TYPE_KERNEL);
 #endif
-	if (nbytes < sizeof(*hdr))
-	{
+	if (nbytes < image_get_header_size ()) {
 		printf ("Image %s bad header SIZE\n", aufile[idx]);
 		return -1;
 	}
-	if (ntohl(hdr->ih_magic) != IH_MAGIC || hdr->ih_arch != IH_CPU_ARM)
-	{
+	if (!image_check_magic (hdr) || !image_check_arch (hdr, IH_ARCH_ARM)) {
 		printf ("Image %s bad MAGIC or ARCH\n", aufile[idx]);
 		return -1;
 	}
 	/* check the hdr CRC */
-	checksum = ntohl(hdr->ih_hcrc);
-	hdr->ih_hcrc = 0;
-
-	if (crc32 (0, (uchar *)hdr, sizeof(*hdr)) != checksum) {
+	if (!image_check_hcrc (hdr)) {
 		printf ("Image %s bad header checksum\n", aufile[idx]);
 		return -1;
 	}
-	hdr->ih_hcrc = htonl(checksum);
 	/* check the type - could do this all in one gigantic if() */
-	if ((idx == IDX_FIRMWARE) && (hdr->ih_type != IH_TYPE_FIRMWARE)) {
+	if ((idx == IDX_FIRMWARE) &&
+		!image_check_type (hdr, IH_TYPE_FIRMWARE)) {
 		printf ("Image %s wrong type\n", aufile[idx]);
 		return -1;
 	}
-	if ((idx == IDX_KERNEL) && (hdr->ih_type != IH_TYPE_KERNEL)) {
+	if ((idx == IDX_KERNEL) && !image_check_type (hdr, IH_TYPE_KERNEL)) {
 		printf ("Image %s wrong type\n", aufile[idx]);
 		return -1;
 	}
-	if ((idx == IDX_DISK) && (hdr->ih_type != IH_TYPE_FILESYSTEM)) {
+	if ((idx == IDX_DISK) && !image_check_type (hdr, IH_TYPE_FILESYSTEM)) {
 		printf ("Image %s wrong type\n", aufile[idx]);
 		return -1;
 	}
-	if ((idx == IDX_APP) && (hdr->ih_type != IH_TYPE_RAMDISK)
-	    && (hdr->ih_type != IH_TYPE_FILESYSTEM)) {
+	if ((idx == IDX_APP) && !image_check_type (hdr, IH_TYPE_RAMDISK)
+		&& !image_check_type (hdr, IH_TYPE_FILESYSTEM)) {
 		printf ("Image %s wrong type\n", aufile[idx]);
 		return -1;
 	}
 	if ((idx == IDX_PREPARE || idx == IDX_PREINST || idx == IDX_POSTINST)
-		&& (hdr->ih_type != IH_TYPE_SCRIPT))
-	{
+		&& !image_check_type (hdr, IH_TYPE_SCRIPT)) {
 		printf ("Image %s wrong type\n", aufile[idx]);
 		return -1;
 	}
@@ -294,10 +294,10 @@ au_check_header_valid(int idx, long nbytes)
 	if (idx == IDX_PREPARE)
 		return 0;
 	/* recycle checksum */
-	checksum = ntohl(hdr->ih_size);
+	checksum = image_get_data_size (hdr);
 	/* for kernel and app the image header must also fit into flash */
 	if ((idx != IDX_DISK) && (idx != IDX_FIRMWARE))
-		checksum += sizeof(*hdr);
+		checksum += image_get_header_size ();
 	/* check the size does not exceed space in flash. HUSH scripts */
 	/* all have ausize[] set to 0 */
 	if ((ausize[idx] != 0) && (ausize[idx] < checksum)) {
@@ -311,10 +311,10 @@ au_check_header_valid(int idx, long nbytes)
 	printf ("buf[0] %#x buf[1] %#x buf[2] %#x buf[3] %#x "
 		"as int %#x time %#x\n",
 		buf[0], buf[1], buf[2], buf[3],
-		*((unsigned int *)buf), ntohl(hdr->ih_time));
+		*((unsigned int *)buf), image_get_time (hdr));
 #endif
 	/* check it */
-	if (*((unsigned int *)buf) >= ntohl(hdr->ih_time)) {
+	if (*((unsigned int *)buf) >= image_get_time (hdr)) {
 		printf ("Image %s is too old\n", aufile[idx]);
 		return -1;
 	}
@@ -336,16 +336,22 @@ au_do_update(int idx, long sz)
 	uint nbytes;
 
 	hdr = (image_header_t *)LOAD_ADDR;
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
 
 	/* disable the power switch */
 	*CPLD_VFD_BK |= POWER_OFF;
 
 	/* execute a script */
-	if (hdr->ih_type == IH_TYPE_SCRIPT) {
-		addr = (char *)((char *)hdr + sizeof(*hdr));
+	if (image_check_type (hdr, IH_TYPE_SCRIPT)) {
+		addr = (char *)((char *)hdr + image_get_header_size ());
 		/* stick a NULL at the end of the script, otherwise */
 		/* parse_string_outer() runs off the end. */
-		addr[ntohl(hdr->ih_size)] = 0;
+		addr[image_get_data_size (hdr)] = 0;
 		addr += 8;
 		parse_string_outer(addr, FLAG_PARSE_SEMICOLON);
 		return 0;
@@ -373,19 +379,20 @@ au_do_update(int idx, long sz)
 	flash_sect_erase(start, end);
 	wait_ms(100);
 	/* strip the header - except for the kernel and ramdisk */
-	if (hdr->ih_type == IH_TYPE_KERNEL || hdr->ih_type == IH_TYPE_RAMDISK) {
+	if (image_check_type (hdr, IH_TYPE_KERNEL) ||
+			image_check_type (hdr, IH_TYPE_RAMDISK)) {
 		addr = (char *)hdr;
-		off = sizeof(*hdr);
-		nbytes = sizeof(*hdr) + ntohl(hdr->ih_size);
+		off = image_get_header_size ();
+		nbytes = image_get_image_size (hdr);
 	} else {
-		addr = (char *)((char *)hdr + sizeof(*hdr));
+		addr = (char *)((char *)hdr + image_get_header_size ());
 #ifdef AU_UPDATE_TEST
 		/* copy it to where Linux goes */
 		if (idx == IDX_FIRMWARE)
 			start = aufl_layout[1].start;
 #endif
 		off = 0;
-		nbytes = ntohl(hdr->ih_size);
+		nbytes = image_get_data_size (hdr);
 	}
 
 	/* copy the data from RAM to FLASH */
@@ -397,7 +404,8 @@ au_do_update(int idx, long sz)
 	}
 
 	/* check the dcrc of the copy */
-	if (crc32 (0, (uchar *)(start + off), ntohl(hdr->ih_size)) != ntohl(hdr->ih_dcrc)) {
+	if (crc32 (0, (uchar *)(start + off), image_get_data_size (hdr)) !=
+	    image_get_dcrc (hdr)) {
 		printf ("Image %s Bad Data Checksum After COPY\n", aufile[idx]);
 		return -1;
 	}
@@ -424,17 +432,24 @@ au_update_eeprom(int idx)
 	}
 
 	hdr = (image_header_t *)LOAD_ADDR;
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
+
 	/* write the time field into EEPROM */
 	off = auee_off[idx].time;
-	val = ntohl(hdr->ih_time);
+	val = image_get_time (hdr);
 	i2c_write_multiple(0x54, off, 1, &val, sizeof(val));
 	/* write the size field into EEPROM */
 	off = auee_off[idx].size;
-	val = ntohl(hdr->ih_size);
+	val = image_get_data_size (hdr);
 	i2c_write_multiple(0x54, off, 1, &val, sizeof(val));
 	/* write the dcrc field into EEPROM */
 	off = auee_off[idx].dcrc;
-	val = ntohl(hdr->ih_dcrc);
+	val = image_get_dcrc (hdr);
 	i2c_write_multiple(0x54, off, 1, &val, sizeof(val));
 	/* enable the power switch */
 	*CPLD_VFD_BK &= ~POWER_OFF;
@@ -451,7 +466,7 @@ do_auto_update(void)
 {
 	block_dev_desc_t *stor_dev;
 	long sz;
-	int i, res, bitmap_first, cnt, old_ctrlc, got_ctrlc;
+	int i, res = 0, bitmap_first, cnt, old_ctrlc, got_ctrlc;
 	char *env;
 	long start, end;
 
@@ -478,18 +493,21 @@ do_auto_update(void)
 	au_usb_stor_curr_dev = usb_stor_scan(0);
 	if (au_usb_stor_curr_dev == -1) {
 		debug ("No device found. Not initialized?\n");
-		return -1;
+		res = -1;
+		goto xit;
 	}
 	/* check whether it has a partition table */
 	stor_dev = get_dev("usb", 0);
 	if (stor_dev == NULL) {
 		debug ("uknown device type\n");
-		return -1;
+		res = -1;
+		goto xit;
 	}
 	if (fat_register_device(stor_dev, 1) != 0) {
 		debug ("Unable to use USB %d:%d for fatls\n",
 			au_usb_stor_curr_dev, 1);
-		return -1;
+		res = -1;
+		goto xit;
 	}
 	if (file_fat_detectfs() != 0) {
 		debug ("file_fat_detectfs failed\n");
@@ -575,10 +593,10 @@ do_auto_update(void)
 	/* just loop thru all the possible files */
 	for (i = 0; i < AU_MAXFILES; i++) {
 		/* just read the header */
-		sz = file_fat_read(aufile[i], LOAD_ADDR, sizeof(image_header_t));
+		sz = file_fat_read(aufile[i], LOAD_ADDR, image_get_header_size ());
 		debug ("read %s sz %ld hdr %d\n",
-			aufile[i], sz, sizeof(image_header_t));
-		if (sz <= 0 || sz < sizeof(image_header_t)) {
+			aufile[i], sz, image_get_header_size ());
+		if (sz <= 0 || sz < image_get_header_size ()) {
 			debug ("%s not found\n", aufile[i]);
 			continue;
 		}
@@ -588,8 +606,8 @@ do_auto_update(void)
 		}
 		sz = file_fat_read(aufile[i], LOAD_ADDR, MAX_LOADSZ);
 		debug ("read %s sz %ld hdr %d\n",
-			aufile[i], sz, sizeof(image_header_t));
-		if (sz <= 0 || sz <= sizeof(image_header_t)) {
+			aufile[i], sz, image_get_header_size ());
+		if (sz <= 0 || sz <= image_get_header_size ()) {
 			debug ("%s not found\n", aufile[i]);
 			continue;
 		}
@@ -649,9 +667,10 @@ do_auto_update(void)
 			/* enable the power switch */
 			*CPLD_VFD_BK &= ~POWER_OFF;
 	}
-	usb_stop();
 	/* restore the old state */
 	disable_ctrlc(old_ctrlc);
-	return 0;
+xit:
+	usb_stop();
+	return res;
 }
 #endif /* CONFIG_AUTO_UPDATE */

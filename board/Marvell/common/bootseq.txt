@@ -56,7 +56,7 @@ in_flash:
     setup stack pointer (r1)
     setup GOT
     call cpu_init_f
-    	debug leds
+	debug leds
     board_init_f: (common/board.c)
 	board_early_init_f:
 	    remap gt regs?
@@ -74,7 +74,7 @@ in_flash:
 		dram_size()
 		setup PCI slave memory mappings
 		setup SCS
-   	setup monitor
+	setup monitor
 	alloc board info struct
 	init bd struct
 	relocate_code: (cpu/mpc7xxx/start.S)
@@ -88,7 +88,7 @@ in_flash:
 		    nothing
 		mem_malloc_init
 		malloc_bin_reloc
-		spi_init (r or f)??? (CFG_ENV_IS_IN_EEPROM)
+		spi_init (r or f)??? (CONFIG_ENV_IS_IN_EEPROM)
 		env_relocated
 		misc_init_r(bd): (board/evb64260/evb64260.c)
 		    mpsc_init2

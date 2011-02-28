@@ -2,7 +2,7 @@
  * URB OHCI HCD (Host Controller Driver) for USB on the PPC440EP.
  *
  * (C) Copyright 2003-2004
- * Gary Jennejohn, DENX Software Engineering <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering <garyj@denx.de>
  *
  * (C) Copyright 2004
  * Pierre Aubert, Staubli Faverges <p.aubert@staubli.com>
@@ -56,8 +56,8 @@
 #define OHCI_CONTROL_INIT \
 	(OHCI_CTRL_CBSR & 0x3) | OHCI_CTRL_IE | OHCI_CTRL_PLE
 
-#define readl(a) (*((vu_long *)(a)))
-#define writel(a, b) (*((vu_long *)(b)) = ((vu_long)a))
+#define readl(a) (*((volatile u32 *)(a)))
+#define writel(a, b) (*((volatile u32 *)(b)) = ((volatile u32)a))
 
 #define min_t(type,x,y) ({ type __x = (x); type __y = (y); __x < __y ? __x: __y; })
 
@@ -76,7 +76,7 @@
 #define m16_swap(x) swap_16(x)
 #define m32_swap(x) swap_32(x)
 
-#if defined(CONFIG_440EP) || defined(CONFIG_440EPX)
+#if defined(CONFIG_405EZ) || defined(CONFIG_440EP) || defined(CONFIG_440EPX)
 #define ohci_cpu_to_le16(x) (x)
 #define ohci_cpu_to_le32(x) (x)
 #else
@@ -660,7 +660,7 @@ static void td_fill (ohci_t *ohci, unsigned int info,
 	td->index = index;
 	td->data = (__u32)data;
 #ifdef OHCI_FILL_TRACE
-	if ((usb_pipetype(urb_priv->pipe) == PIPE_BULK) && usb_pipeout(urb_priv->pipe)) {
+	if (usb_pipebulk(urb_priv->pipe) && usb_pipeout(urb_priv->pipe)) {
 		for (i = 0; i < len; i++)
 		printf("td->data[%d] %#2x ",i, ((unsigned char *)td->data)[i]);
 		printf("\n");
@@ -761,7 +761,7 @@ static void dl_transfer_length(td_t * td)
 	tdCBP  = ohci_cpu_to_le32 (td->hwCBP);
 
 
-	if (!(usb_pipetype (lurb_priv->pipe) == PIPE_CONTROL &&
+	if (!(usb_pipecontrol(lurb_priv->pipe) &&
 	    ((td->index == 0) || (td->index == lurb_priv->length - 1)))) {
 		if (tdBE != 0) {
 			if (td->hwCBP == 0)
@@ -1023,7 +1023,7 @@ static int ohci_submit_rh_msg(struct usb_device *dev, unsigned long pipe,
 urb_priv.actual_length = 0;
 pkt_print(dev, pipe, buffer, transfer_len, cmd, "SUB(rh)", usb_pipein(pipe));
 #endif
-	if ((pipe & PIPE_INTERRUPT) == PIPE_INTERRUPT) {
+	if (usb_pipeint(pipe)) {
 		info("Root-Hub submit IRQ: NOT implemented");
 		return 0;
 	}
@@ -1248,7 +1248,7 @@ int submit_common_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 
 	/* allow more time for a BULK device to react - some are slow */
 #define BULK_TO	 5000	/* timeout in milliseconds */
-	if (usb_pipetype (pipe) == PIPE_BULK)
+	if (usb_pipebulk(pipe))
 		timeout = BULK_TO;
 	else
 		timeout = 100;
@@ -1600,9 +1600,9 @@ int usb_lowlevel_init(void)
 	gohci.sleeping = 0;
 	gohci.irq = -1;
 #if defined(CONFIG_440EP)
- 	gohci.regs = (struct ohci_regs *)(CFG_PERIPHERAL_BASE | 0x1000);
-#elif defined(CONFIG_440EPX)
-	gohci.regs = (struct ohci_regs *)(CFG_USB_HOST);
+	gohci.regs = (struct ohci_regs *)(CONFIG_SYS_PERIPHERAL_BASE | 0x1000);
+#elif defined(CONFIG_440EPX) || defined(CONFIG_SYS_USB_HOST)
+	gohci.regs = (struct ohci_regs *)(CONFIG_SYS_USB_HOST);
 #endif
 
 	gohci.flags = 0;
@@ -1625,8 +1625,10 @@ int usb_lowlevel_init(void)
 	ohci_inited = 1;
 	urb_finished = 1;
 
+#if defined(CONFIG_440EP) || defined(CONFIG_440EPX)
 	/* init the device driver */
 	usb_dev_init();
+#endif
 
 	return 0;
 }

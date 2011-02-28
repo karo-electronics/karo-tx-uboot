@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2005-2006
+ * (C) Copyright 2005-2007
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * (C) Copyright 2006
@@ -31,12 +31,13 @@
 #include <ppc4xx.h>
 #include <asm/processor.h>
 #include "sdram.h"
-
+#include "ecc.h"
 
 #ifdef CONFIG_SDRAM_BANK0
 
+#ifndef CONFIG_440
 
-#ifndef CFG_SDRAM_TABLE
+#ifndef CONFIG_SYS_SDRAM_TABLE
 sdram_conf_t mb0cf[] = {
 	{(128 << 20), 13, 0x000A4001},	    /* (0-128MB) Address Mode 3, 13x10(4) */
 	{(64 << 20),  13, 0x00084001},	    /* (0-64MB) Address Mode 3, 13x9(4)	  */
@@ -45,75 +46,72 @@ sdram_conf_t mb0cf[] = {
 	{(4 << 20),   11, 0x00008001},	    /* (0-4MB) Address Mode 5, 11x8(2)	  */
 };
 #else
-sdram_conf_t mb0cf[] = CFG_SDRAM_TABLE;
+sdram_conf_t mb0cf[] = CONFIG_SYS_SDRAM_TABLE;
 #endif
 
 #define N_MB0CF (sizeof(mb0cf) / sizeof(mb0cf[0]))
 
-
-#ifndef CONFIG_440
-
-#ifdef CFG_SDRAM_CASL
+#ifdef CONFIG_SYS_SDRAM_CASL
 static ulong ns2clks(ulong ns)
 {
 	ulong bus_period_x_10 = ONE_BILLION / (get_bus_freq(0) / 10);
 
 	return ((ns * 10) + bus_period_x_10) / bus_period_x_10;
 }
-#endif /* CFG_SDRAM_CASL */
+#endif /* CONFIG_SYS_SDRAM_CASL */
 
 static ulong compute_sdtr1(ulong speed)
 {
-#ifdef CFG_SDRAM_CASL
+#ifdef CONFIG_SYS_SDRAM_CASL
 	ulong tmp;
 	ulong sdtr1 = 0;
 
 	/* CASL */
-	if (CFG_SDRAM_CASL < 2)
+	if (CONFIG_SYS_SDRAM_CASL < 2)
 		sdtr1 |= (1 << SDRAM0_TR_CASL);
 	else
-		if (CFG_SDRAM_CASL > 4)
+		if (CONFIG_SYS_SDRAM_CASL > 4)
 			sdtr1 |= (3 << SDRAM0_TR_CASL);
 		else
-			sdtr1 |= ((CFG_SDRAM_CASL-1) << SDRAM0_TR_CASL);
+			sdtr1 |= ((CONFIG_SYS_SDRAM_CASL-1) << SDRAM0_TR_CASL);
 
 	/* PTA */
-	tmp = ns2clks(CFG_SDRAM_PTA);
+	tmp = ns2clks(CONFIG_SYS_SDRAM_PTA);
 	if ((tmp >= 2) && (tmp <= 4))
 		sdtr1 |= ((tmp-1) << SDRAM0_TR_PTA);
 	else
 		sdtr1 |= ((4-1) << SDRAM0_TR_PTA);
 
 	/* CTP */
-	tmp = ns2clks(CFG_SDRAM_CTP);
+	tmp = ns2clks(CONFIG_SYS_SDRAM_CTP);
 	if ((tmp >= 2) && (tmp <= 4))
 		sdtr1 |= ((tmp-1) << SDRAM0_TR_CTP);
 	else
 		sdtr1 |= ((4-1) << SDRAM0_TR_CTP);
 
 	/* LDF */
-	tmp = ns2clks(CFG_SDRAM_LDF);
+	tmp = ns2clks(CONFIG_SYS_SDRAM_LDF);
 	if ((tmp >= 2) && (tmp <= 4))
 		sdtr1 |= ((tmp-1) << SDRAM0_TR_LDF);
 	else
 		sdtr1 |= ((2-1) << SDRAM0_TR_LDF);
 
 	/* RFTA */
-	tmp = ns2clks(CFG_SDRAM_RFTA);
+	tmp = ns2clks(CONFIG_SYS_SDRAM_RFTA);
 	if ((tmp >= 4) && (tmp <= 10))
 		sdtr1 |= ((tmp-4) << SDRAM0_TR_RFTA);
 	else
 		sdtr1 |= ((10-4) << SDRAM0_TR_RFTA);
 
 	/* RCD */
-	tmp = ns2clks(CFG_SDRAM_RCD);
+	tmp = ns2clks(CONFIG_SYS_SDRAM_RCD);
 	if ((tmp >= 2) && (tmp <= 4))
 		sdtr1 |= ((tmp-1) << SDRAM0_TR_RCD);
 	else
 		sdtr1 |= ((4-1) << SDRAM0_TR_RCD);
 
 	return sdtr1;
-#else /* CFG_SDRAM_CASL */
+#else /* CONFIG_SYS_SDRAM_CASL */
 	/*
 	 * If no values are configured in the board config file
 	 * use the default values, which seem to be ok for most
@@ -135,20 +133,20 @@ static ulong compute_sdtr1(ulong speed)
 		 */
 		return 0x0086400d;
 	}
-#endif /* CFG_SDRAM_CASL */
+#endif /* CONFIG_SYS_SDRAM_CASL */
 }
 
 /* refresh is expressed in ms */
 static ulong compute_rtr(ulong speed, ulong rows, ulong refresh)
 {
-#ifdef CFG_SDRAM_CASL
+#ifdef CONFIG_SYS_SDRAM_CASL
 	ulong tmp;
 
 	tmp = ((refresh*1000*1000) / (1 << rows)) * (speed / 1000);
 	tmp /= 1000000;
 
 	return ((tmp & 0x00003FF8) << 16);
-#else /* CFG_SDRAM_CASL */
+#else /* CONFIG_SYS_SDRAM_CASL */
 	if (speed > 100000000) {
 		/*
 		 * 133 MHz SDRAM
@@ -160,13 +158,13 @@ static ulong compute_rtr(ulong speed, ulong rows, ulong refresh)
 		 */
 		return 0x05f00000;
 	}
-#endif /* CFG_SDRAM_CASL */
+#endif /* CONFIG_SYS_SDRAM_CASL */
 }
 
 /*
  * Autodetect onboard SDRAM on 405 platforms
  */
-void sdram_init(void)
+phys_size_t initdram(int board_type)
 {
 	ulong speed;
 	ulong sdtr1;
@@ -190,14 +188,14 @@ void sdram_init(void)
 		/*
 		 * Disable memory controller.
 		 */
-		mtsdram0(mem_mcopt1, 0x00000000);
+		mtsdram(mem_mcopt1, 0x00000000);
 
 		/*
 		 * Set MB0CF for bank 0.
 		 */
-		mtsdram0(mem_mb0cf, mb0cf[i].reg);
-		mtsdram0(mem_sdtr1, sdtr1);
-		mtsdram0(mem_rtr, compute_rtr(speed, mb0cf[i].rows, 64));
+		mtsdram(mem_mb0cf, mb0cf[i].reg);
+		mtsdram(mem_sdtr1, sdtr1);
+		mtsdram(mem_rtr, compute_rtr(speed, mb0cf[i].rows, 64));
 
 		udelay(200);
 
@@ -206,20 +204,85 @@ void sdram_init(void)
 		 * Set DC_EN to '1' and BRD_PRF to '01' for 16 byte PLB Burst
 		 * read/prefetch.
 		 */
-		mtsdram0(mem_mcopt1, 0x80800000);
+		mtsdram(mem_mcopt1, 0x80800000);
 
 		udelay(10000);
 
 		if (get_ram_size(0, mb0cf[i].size) == mb0cf[i].size) {
+			phys_size_t size = mb0cf[i].size;
+
+			/*
+			 * OK, size detected.  Enable second bank if
+			 * defined (assumes same type as bank 0)
+			 */
+#ifdef CONFIG_SDRAM_BANK1
+			mtsdram(mem_mcopt1, 0x00000000);
+			mtsdram(mem_mb1cf, mb0cf[i].size | mb0cf[i].reg);
+			mtsdram(mem_mcopt1, 0x80800000);
+			udelay(10000);
+
+			/*
+			 * Check if 2nd bank is really available.
+			 * If the size not equal to the size of the first
+			 * bank, then disable the 2nd bank completely.
+			 */
+			if (get_ram_size((long *)mb0cf[i].size, mb0cf[i].size) !=
+			    mb0cf[i].size) {
+				mtsdram(mem_mb1cf, 0);
+				mtsdram(mem_mcopt1, 0);
+			} else {
+				/*
+				 * We have two identical banks, so the size
+				 * is twice the bank size
+				 */
+				size = 2 * size;
+			}
+#endif
+
 			/*
 			 * OK, size detected -> all done
 			 */
-			return;
+			return size;
 		}
 	}
+
+	return 0;
 }
 
 #else /* CONFIG_440 */
+
+/*
+ * Define some default values. Those can be overwritten in the
+ * board config file.
+ */
+
+#ifndef CONFIG_SYS_SDRAM_TABLE
+sdram_conf_t mb0cf[] = {
+	{(256 << 20), 13, 0x000C4001},	/* 256MB mode 3, 13x10(4)	*/
+	{(128 << 20), 13, 0x000A4001},	/* 128MB mode 3, 13x10(4)	*/
+	{(64 << 20),  12, 0x00082001}	/* 64MB mode 2, 12x9(4)		*/
+};
+#else
+sdram_conf_t mb0cf[] = CONFIG_SYS_SDRAM_TABLE;
+#endif
+
+#ifndef CONFIG_SYS_SDRAM0_TR0
+#define	CONFIG_SYS_SDRAM0_TR0		0x41094012
+#endif
+
+#ifndef CONFIG_SYS_SDRAM0_WDDCTR
+#define CONFIG_SYS_SDRAM0_WDDCTR	0x00000000  /* wrcp=0 dcd=0	*/
+#endif
+
+#ifndef CONFIG_SYS_SDRAM0_RTR
+#define CONFIG_SYS_SDRAM0_RTR 		0x04100000 /* 7.8us @ 133MHz PLB */
+#endif
+
+#ifndef CONFIG_SYS_SDRAM0_CFG0
+#define CONFIG_SYS_SDRAM0_CFG0		0x82000000 /* DCEN=1, PMUD=0, 64-bit */
+#endif
+
+#define N_MB0CF (sizeof(mb0cf) / sizeof(mb0cf[0]))
 
 #define NUM_TRIES 64
 #define NUM_READS 10
@@ -295,50 +358,6 @@ static void sdram_tr1_set(int ram_address, int* tr1_value)
 	*tr1_value = (first_good + last_bad) / 2;
 }
 
-
-#ifdef CONFIG_SDRAM_ECC
-static void ecc_init(ulong start, ulong size)
-{
-	ulong	current_addr;		/* current byte address */
-	ulong	end_addr;		/* end of memory region */
-	ulong	addr_inc;		/* address skip between writes */
-	ulong	cfg0_reg;		/* for restoring ECC state */
-
-	/*
-	 * TODO: Enable dcache before running this test (speedup)
-	 */
-
-	mfsdram(mem_cfg0, cfg0_reg);
-	mtsdram(mem_cfg0, (cfg0_reg & ~SDRAM_CFG0_MEMCHK) | SDRAM_CFG0_MEMCHK_GEN);
-
-	/*
-	 * look at geometry of SDRAM (data width) to determine whether we
-	 * can skip words when writing
-	 */
-	if ((cfg0_reg & SDRAM_CFG0_DRAMWDTH) == SDRAM_CFG0_DRAMWDTH_32)
-		addr_inc = 4;
-	else
-		addr_inc = 8;
-
-	current_addr = start;
-	end_addr = start + size;
-
-	while (current_addr < end_addr) {
-		*((ulong *)current_addr) = 0x00000000;
-		current_addr += addr_inc;
-	}
-
-	/*
-	 * TODO: Flush dcache and disable it again
-	 */
-
-	/*
-	 * Enable ecc checking and parity errors
-	 */
-	mtsdram(mem_cfg0, (cfg0_reg & ~SDRAM_CFG0_MEMCHK) | SDRAM_CFG0_MEMCHK_CHK);
-}
-#endif
-
 /*
  * Autodetect onboard DDR SDRAM on 440 platforms
  *
@@ -346,10 +365,19 @@ static void ecc_init(ulong start, ulong size)
  *	 so this should be extended for other future boards
  *	 using this routine!
  */
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	int i;
 	int tr1_bank1;
+
+#if defined(CONFIG_440GX) || defined(CONFIG_440EP) || \
+    defined(CONFIG_440GR) || defined(CONFIG_440SP)
+	/*
+	 * Soft-reset SDRAM controller.
+	 */
+	mtsdr(sdr_srst, SDR0_SRST_DMC);
+	mtsdr(sdr_srst, 0x00000000);
+#endif
 
 	for (i=0; i<N_MB0CF; i++) {
 		/*
@@ -363,40 +391,72 @@ long int initdram(int board_type)
 		mtsdram(mem_uabba, 0x00000000); /* ubba=0 (default)		*/
 		mtsdram(mem_slio, 0x00000000);	/* rdre=0 wrre=0 rarw=0		*/
 		mtsdram(mem_devopt, 0x00000000); /* dll=0 ds=0 (normal)		*/
-		mtsdram(mem_wddctr, 0x00000000); /* wrcp=0 dcd=0		*/
+		mtsdram(mem_wddctr, CONFIG_SYS_SDRAM0_WDDCTR);
 		mtsdram(mem_clktr, 0x40000000); /* clkp=1 (90 deg wr) dcdt=0	*/
 
 		/*
 		 * Following for CAS Latency = 2.5 @ 133 MHz PLB
 		 */
 		mtsdram(mem_b0cr, mb0cf[i].reg);
-		mtsdram(mem_tr0, 0x41094012);
+		mtsdram(mem_tr0, CONFIG_SYS_SDRAM0_TR0);
 		mtsdram(mem_tr1, 0x80800800);	/* SS=T2 SL=STAGE 3 CD=1 CT=0x00*/
-		mtsdram(mem_rtr, 0x7e000000);	/* Interval 15.20µs @ 133MHz PLB*/
+		mtsdram(mem_rtr, CONFIG_SYS_SDRAM0_RTR);
 		mtsdram(mem_cfg1, 0x00000000);	/* Self-refresh exit, disable PM*/
 		udelay(400);			/* Delay 200 usecs (min)	*/
 
 		/*
 		 * Enable the controller, then wait for DCEN to complete
 		 */
-		mtsdram(mem_cfg0, 0x82000000);	/* DCEN=1, PMUD=0, 64-bit	*/
+		mtsdram(mem_cfg0, CONFIG_SYS_SDRAM0_CFG0);
 		udelay(10000);
 
 		if (get_ram_size(0, mb0cf[i].size) == mb0cf[i].size) {
+			phys_size_t size = mb0cf[i].size;
 			/*
 			 * Optimize TR1 to current hardware environment
 			 */
 			sdram_tr1_set(0x00000000, &tr1_bank1);
 			mtsdram(mem_tr1, (tr1_bank1 | 0x80800800));
 
+
+			/*
+			 * OK, size detected.  Enable second bank if
+			 * defined (assumes same type as bank 0)
+			 */
+#ifdef CONFIG_SDRAM_BANK1
+			mtsdram(mem_cfg0, 0);
+			mtsdram(mem_b1cr, mb0cf[i].size | mb0cf[i].reg);
+			mtsdram(mem_cfg0, CONFIG_SYS_SDRAM0_CFG0);
+			udelay(10000);
+
+			/*
+			 * Check if 2nd bank is really available.
+			 * If the size not equal to the size of the first
+			 * bank, then disable the 2nd bank completely.
+			 */
+			if (get_ram_size((long *)mb0cf[i].size, mb0cf[i].size)
+			    != mb0cf[i].size) {
+				mtsdram(mem_cfg0, 0);
+				mtsdram(mem_b1cr, 0);
+				mtsdram(mem_cfg0, CONFIG_SYS_SDRAM0_CFG0);
+				udelay(10000);
+			} else {
+				/*
+				 * We have two identical banks, so the size
+				 * is twice the bank size
+				 */
+				size = 2 * size;
+			}
+#endif
+
 #ifdef CONFIG_SDRAM_ECC
-			ecc_init(0, mb0cf[i].size);
+			ecc_init(0, size);
 #endif
 
 			/*
 			 * OK, size detected -> all done
 			 */
-			return mb0cf[i].size;
+			return size;
 		}
 	}
 

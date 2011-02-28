@@ -44,60 +44,9 @@ PLATFORM_RELFLAGS =
 PLATFORM_CPPFLAGS =
 PLATFORM_LDFLAGS =
 
-#
-# When cross-compiling on NetBSD, we have to define __PPC__ or else we
-# will pick up a va_list declaration that is incompatible with the
-# actual argument lists emitted by the compiler.
-#
-# [Tested on NetBSD/i386 1.5 + cross-powerpc-netbsd-1.3]
-
-ifeq ($(ARCH),ppc)
-ifeq ($(CROSS_COMPILE),powerpc-netbsd-)
-PLATFORM_CPPFLAGS+= -D__PPC__
-endif
-ifeq ($(CROSS_COMPILE),powerpc-openbsd-)
-PLATFORM_CPPFLAGS+= -D__PPC__
-endif
-endif
-
-ifeq ($(ARCH),arm)
-ifeq ($(CROSS_COMPILE),powerpc-netbsd-)
-PLATFORM_CPPFLAGS+= -D__ARM__
-endif
-ifeq ($(CROSS_COMPILE),powerpc-openbsd-)
-PLATFORM_CPPFLAGS+= -D__ARM__
-endif
-endif
-
-ifeq ($(ARCH),blackfin)
-PLATFORM_CPPFLAGS+= -D__BLACKFIN__ -mno-underscore
-endif
-
-ifdef	ARCH
-sinclude $(TOPDIR)/$(ARCH)_config.mk	# include architecture dependend rules
-endif
-ifdef	CPU
-sinclude $(TOPDIR)/cpu/$(CPU)/config.mk	# include  CPU	specific rules
-endif
-ifdef	SOC
-sinclude $(TOPDIR)/cpu/$(CPU)/$(SOC)/config.mk	# include  SoC	specific rules
-endif
-ifdef	VENDOR
-BOARDDIR = $(VENDOR)/$(BOARD)
-else
-BOARDDIR = $(BOARD)
-endif
-ifdef	BOARD
-sinclude $(TOPDIR)/board/$(BOARDDIR)/config.mk	# include board specific rules
-endif
-
 #########################################################################
 
-CONFIG_SHELL	:= $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
-		    else if [ -x /bin/bash ]; then echo /bin/bash; \
-		    else echo sh; fi ; fi)
-
-ifeq ($(HOSTOS)-$(HOSTARCH),darwin-ppc)
+ifeq ($(HOSTOS),darwin)
 HOSTCC		= cc
 else
 HOSTCC		= gcc
@@ -122,10 +71,36 @@ CC	= $(CROSS_COMPILE)gcc
 CPP	= $(CC) -E
 AR	= $(CROSS_COMPILE)ar
 NM	= $(CROSS_COMPILE)nm
+LDR	= $(CROSS_COMPILE)ldr
 STRIP	= $(CROSS_COMPILE)strip
 OBJCOPY = $(CROSS_COMPILE)objcopy
 OBJDUMP = $(CROSS_COMPILE)objdump
 RANLIB	= $(CROSS_COMPILE)RANLIB
+
+#########################################################################
+
+# Load generated board configuration
+sinclude $(OBJTREE)/include/autoconf.mk
+
+ifdef	ARCH
+sinclude $(TOPDIR)/lib_$(ARCH)/config.mk	# include architecture dependend rules
+endif
+ifdef	CPU
+sinclude $(TOPDIR)/cpu/$(CPU)/config.mk		# include  CPU	specific rules
+endif
+ifdef	SOC
+sinclude $(TOPDIR)/cpu/$(CPU)/$(SOC)/config.mk	# include  SoC	specific rules
+endif
+ifdef	VENDOR
+BOARDDIR = $(VENDOR)/$(BOARD)
+else
+BOARDDIR = $(BOARD)
+endif
+ifdef	BOARD
+sinclude $(TOPDIR)/board/$(BOARDDIR)/config.mk	# include board specific rules
+endif
+
+#########################################################################
 
 ifneq (,$(findstring s,$(MAKEFLAGS)))
 ARFLAGS = cr
@@ -148,14 +123,23 @@ OBJCFLAGS += --gap-fill=0xff
 gccincdir := $(shell $(CC) -print-file-name=include)
 
 CPPFLAGS := $(DBGFLAGS) $(OPTFLAGS) $(RELFLAGS)		\
-	-D__KERNEL__ -DTEXT_BASE=$(TEXT_BASE)		\
+	-D__KERNEL__
+
+ifneq ($(BOOT_MEDIA),)
+	BOOT_MEDIA_MACRO = BOOT_MEDIA_$(shell echo $(BOOT_MEDIA) | tr '[a-z]' '[A-Z]')
+	CPPFLAGS += -D$(BOOT_MEDIA_MACRO)
+endif
+
+ifneq ($(TEXT_BASE),)
+CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE)
+endif
 
 ifneq ($(OBJTREE),$(SRCTREE))
 CPPFLAGS += -I$(OBJTREE)/include2 -I$(OBJTREE)/include
 endif
 
 CPPFLAGS += -I$(TOPDIR)/include
-CPPFLAGS += -fno-builtin -ffreestanding -nostdinc 	\
+CPPFLAGS += -fno-builtin -ffreestanding -nostdinc	\
 	-isystem $(gccincdir) -pipe $(PLATFORM_CPPFLAGS)
 
 ifdef BUILD_TAG
@@ -164,6 +148,8 @@ CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes \
 else
 CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
 endif
+
+CFLAGS += $(call cc-option,-fno-stack-protector)
 
 # avoid trigraph warnings while parsing pci.h (produced by NIOS gcc-2.9)
 # this option have to be placed behind -Wall -- that's why it is here
@@ -186,7 +172,10 @@ endif
 
 AFLAGS := $(AFLAGS_DEBUG) -D__ASSEMBLY__ $(CPPFLAGS)
 
-LDFLAGS += -Bstatic -T $(LDSCRIPT) -Ttext $(TEXT_BASE) $(PLATFORM_LDFLAGS)
+LDFLAGS += -Bstatic -T $(obj)u-boot.lds $(PLATFORM_LDFLAGS)
+ifneq ($(TEXT_BASE),)
+LDFLAGS += -Ttext $(TEXT_BASE)
+endif
 
 # Location of a usable BFD library, where we define "usable" as
 # "built for ${HOST}, supports ${TARGET}".  Sensible values are
@@ -198,7 +187,7 @@ LDFLAGS += -Bstatic -T $(LDSCRIPT) -Ttext $(TEXT_BASE) $(PLATFORM_LDFLAGS)
 #
 # So far, this is used only by tools/gdb/Makefile.
 
-ifeq ($(HOSTOS)-$(HOSTARCH),darwin-ppc)
+ifeq ($(HOSTOS),darwin)
 BFD_ROOT_DIR =		/usr/local/tools
 else
 ifeq ($(HOSTARCH),$(ARCH))
@@ -211,36 +200,25 @@ BFD_ROOT_DIR =		/opt/powerpc
 endif
 endif
 
-ifeq ($(PCI_CLOCK),PCI_66M)
-CFLAGS := $(CFLAGS) -DPCI_66M
-endif
-
 #########################################################################
 
-export	CONFIG_SHELL HPATH HOSTCC HOSTCFLAGS CROSS_COMPILE \
-	AS LD CC CPP AR NM STRIP OBJCOPY OBJDUMP \
-	MAKE
+export	HOSTCC HOSTCFLAGS CROSS_COMPILE \
+	AS LD CC CPP AR NM STRIP OBJCOPY OBJDUMP MAKE
 export	TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS AFLAGS
 
 #########################################################################
 
-ifndef REMOTE_BUILD
-
-%.s:	%.S
-	$(CPP) $(AFLAGS) -o $@ $<
-%.o:	%.S
-	$(CC) $(AFLAGS) -c -o $@ $<
-%.o:	%.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-else
-
+# Allow boards to use custom optimize flags on a per dir/file basis
+BCURDIR := $(notdir $(CURDIR))
 $(obj)%.s:	%.S
-	$(CPP) $(AFLAGS) -o $@ $<
+	$(CPP) $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $<
 $(obj)%.o:	%.S
-	$(CC) $(AFLAGS) -c -o $@ $<
+	$(CC)  $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $< -c
 $(obj)%.o:	%.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-endif
+	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
+$(obj)%.i:	%.c
+	$(CPP) $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
+$(obj)%.s:	%.c
+	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c -S
 
 #########################################################################

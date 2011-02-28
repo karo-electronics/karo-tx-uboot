@@ -1,5 +1,8 @@
 /*
- * linux/arch/ppc/kernel/traps.c
+ * (C) Copyright 2000
+ * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ *
+ * Copyright (C) 1995-1996  Gary Thomas (gdt@linuxppc.org)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -15,19 +18,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
- *
- * Change log:
- *
- * Copyright (C) 1995-1996  Gary Thomas (gdt@linuxppc.org)
- *
- * Modified by Cort Dougan (cort@cs.nmt.edu)
- * and Paul Mackerras (paulus@cs.anu.edu.au)
- *
- * (C) Copyright 2000
- * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * 20050101: Eran Liberty (liberty@freescale.com)
- *           Initial file creating (porting from 85XX & 8260)
  */
 
 /*
@@ -110,7 +100,7 @@ _exception(int signr, struct pt_regs *regs)
 void dump_pci (void)
 {
 /*
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	printf ("PCI: err status %x err mask %x err ctrl %x\n",
 		le32_to_cpu (immap->im_pci.pci_esr),
 		le32_to_cpu (immap->im_pci.pci_emr),
@@ -134,7 +124,7 @@ MachineCheckException(struct pt_regs *regs)
 	 */
 #ifdef CONFIG_PCI
 #if 0
-	volatile immap_t *immap  = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap  = (immap_t *)CONFIG_SYS_IMMR;
 #ifdef DEBUG
 	dump_pci();
 #endif
@@ -150,7 +140,7 @@ MachineCheckException(struct pt_regs *regs)
 		return;
 	}
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler)(regs))
 		return;
 #endif
@@ -186,7 +176,7 @@ MachineCheckException(struct pt_regs *regs)
 void
 AlignmentException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler)(regs))
 		return;
 #endif
@@ -198,7 +188,7 @@ AlignmentException(struct pt_regs *regs)
 void
 ProgramCheckException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler)(regs))
 		return;
 #endif
@@ -210,7 +200,7 @@ ProgramCheckException(struct pt_regs *regs)
 void
 SoftEmuException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler)(regs))
 		return;
 #endif
@@ -223,7 +213,7 @@ SoftEmuException(struct pt_regs *regs)
 void
 UnknownException(struct pt_regs *regs)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 	if (debugger_exception_handler && (*debugger_exception_handler)(regs))
 		return;
 #endif
@@ -232,7 +222,7 @@ UnknownException(struct pt_regs *regs)
 	_exception(0, regs);
 }
 
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG)
+#if defined(CONFIG_CMD_BEDBUG)
 extern void do_bedbug_breakpoint(struct pt_regs *);
 #endif
 
@@ -241,7 +231,7 @@ DebugException(struct pt_regs *regs)
 {
 	printf("Debugger trap at @ %lx\n", regs->nip );
 	show_regs(regs);
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG)
+#if defined(CONFIG_CMD_BEDBUG)
 	do_bedbug_breakpoint( regs );
 #endif
 }

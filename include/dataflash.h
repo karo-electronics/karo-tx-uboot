@@ -38,13 +38,43 @@
 #include "config.h"
 
 /*number of protected area*/
-#define NB_DATAFLASH_AREA	4
+#define NB_DATAFLASH_AREA		5
+
+#ifdef CONFIG_SYS_NO_FLASH
+
+/*-----------------------------------------------------------------------
+ * return codes from flash_write():
+ */
+# define ERR_OK				0
+# define ERR_TIMOUT			1
+# define ERR_NOT_ERASED			2
+# define ERR_PROTECTED			4
+# define ERR_INVAL			8
+# define ERR_ALIGN			16
+# define ERR_UNKNOWN_FLASH_VENDOR	32
+# define ERR_UNKNOWN_FLASH_TYPE		64
+# define ERR_PROG_ERROR			128
+
+/*-----------------------------------------------------------------------
+ * Protection Flags for flash_protect():
+ */
+# define FLAG_PROTECT_SET		0x01
+# define FLAG_PROTECT_CLEAR		0x02
+# define FLAG_PROTECT_INVALID		0x03
+
+/*-----------------------------------------------------------------------
+ * Set Environment according to label:
+ */
+# define	FLAG_SETENV		0x80
+#endif /* CONFIG_SYS_NO_FLASH */
 
 /*define the area structure*/
 typedef struct {
 	unsigned long start;
 	unsigned long end;
 	unsigned char protected;
+	unsigned char setenv;
+	unsigned char label[20];
 } dataflash_protect_t;
 
 typedef unsigned int AT91S_DataFlashStatus;
@@ -96,16 +126,22 @@ typedef struct _AT91S_DATAFLASH_INFO {
 	AT91S_DataflashDesc Desc;
 	AT91S_DataflashFeatures Device; /* Pointer on a dataflash features array */
 	unsigned long logical_address;
+	unsigned long end_address;
 	unsigned int id;			/* device id */
 } AT91S_DATAFLASH_INFO, *AT91PS_DATAFLASH_INFO;
 
-
+struct dataflash_addr {
+	unsigned long addr;
+	int cs;
+};
 /*-------------------------------------------------------------------------------------------------*/
-
 #define AT45DB161	0x2c
+#define AT45DB021	0x14
+#define AT45DB081	0x24
 #define AT45DB321	0x34
 #define AT45DB642	0x3c
 #define AT45DB128	0x10
+#define	PAGES_PER_BLOCK	8
 
 #define AT91C_DATAFLASH_TIMEOUT		10000	/* For AT91F_DataFlashWaitReady */
 
@@ -168,11 +204,16 @@ typedef struct _AT91S_DATAFLASH_INFO {
 
 extern int size_dataflash (AT91PS_DataFlash pdataFlash, unsigned long addr, unsigned long size);
 extern int prot_dataflash (AT91PS_DataFlash pdataFlash, unsigned long addr);
+extern int addr2ram(ulong addr);
 extern int dataflash_real_protect (int flag, unsigned long start_addr, unsigned long end_addr);
 extern int addr_dataflash (unsigned long addr);
 extern int read_dataflash (unsigned long addr, unsigned long size, char *result);
 extern int write_dataflash (unsigned long addr, unsigned long dest, unsigned long size);
 extern void dataflash_print_info (void);
 extern void dataflash_perror (int err);
+extern void AT91F_DataflashSetEnv (void);
 
+extern struct dataflash_addr cs[CONFIG_SYS_MAX_DATAFLASH_BANKS];
+extern dataflash_protect_t area_list[NB_DATAFLASH_AREA];
+extern AT91S_DATAFLASH_INFO dataflash_info[];
 #endif

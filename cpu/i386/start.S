@@ -34,8 +34,8 @@
 .globl _i386boot_start
 _i386boot_start:
 _start:
-	movl    $0x18,%eax         	/* Load our segement registes, the
-					 * gdt have already been loaded by start16.S */
+	movl    $0x18,%eax	/* Load our segement registes, the
+				 * gdt have already been loaded by start16.S */
 	movw    %ax,%fs
 	movw	%ax,%ds
 	movw    %ax,%gs
@@ -55,7 +55,7 @@ early_board_init_ret:
 	/* so we try to indicate progress */
 	movw	$0x01, %ax
 	movl	$.progress0, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress0:
 
 	/* size memory */
@@ -67,28 +67,28 @@ mem_init_ret:
 	 * (we need atleast bss start+bss size+stack size) */
 	movl	$_i386boot_bss_start, %ecx        /* BSS start */
 	addl	$_i386boot_bss_size, %ecx         /* BSS size */
-	addl	$CFG_STACK_SIZE, %ecx
+	addl	$CONFIG_SYS_STACK_SIZE, %ecx
 	cmpl	%ecx, %eax
 	jae	mem_ok
 
 	/* indicate (lack of) progress */
 	movw	$0x81, %ax
 	movl	$.progress0a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress0a:
-	jmp 	die
+	jmp	die
 mem_ok:
 
 	/* indicate progress */
 	movw	$0x02, %ax
 	movl	$.progress1, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress1:
 
 	/* create a stack after the bss */
 	movl    $_i386boot_bss_start, %eax
 	addl	$_i386boot_bss_size, %eax
-	addl	$CFG_STACK_SIZE, %eax
+	addl	$CONFIG_SYS_STACK_SIZE, %eax
 	movl    %eax, %esp
 
 	pushl	$0
@@ -104,7 +104,7 @@ no_stack:
 	/* indicate (lack of) progress */
 	movw	$0x82, %ax
 	movl	$.progress1a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress1a:
 	jmp die
 
@@ -113,7 +113,7 @@ stack_ok:
 	/* indicate progress */
 	movw	$0x03, %ax
 	movl	$.progress2, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress2:
 
 	/* copy data section to ram, size must be 4-byte aligned */
@@ -136,20 +136,20 @@ data_fail:
 	/* indicate (lack of) progress */
 	movw	$0x83, %ax
 	movl	$.progress2a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress2a:
-	jmp 	die
+	jmp	die
 
 data_ok:
 
 	/* indicate progress */
 	movw	$0x04, %ax
 	movl	$.progress3, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress3:
 
 	/* clear bss section in ram, size must be 4-byte aligned  */
-	movl	$_i386boot_bss_start, %eax        /* BSS start */
+	movl	$_i386boot_bss_start, %edi        /* MK_CHG BSS start */
 	movl	$_i386boot_bss_size, %ecx         /* BSS size */
 	movl	%ecx, %eax
 	andl	$3, %eax
@@ -162,33 +162,74 @@ bss:
 	movl	$0, (%edi)
 	add	$4, %edi
 	loop	bss
-	jmp 	bss_ok
+	jmp	bss_ok
 
 bss_fail:
 	/* indicate (lack of) progress */
 	movw	$0x84, %ax
 	movl	$.progress3a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress3a:
-	jmp 	die
+	jmp	die
 
 bss_ok:
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
+	/* indicate progress */
+	movw	$0x06, %ax
+	movl	$.progress6, %ebp
+	jmp	show_boot_progress_asm
+.progress6:
 
+	/* copy text section to ram, size must be 4-byte aligned */
+	movl	$CONFIG_SYS_BL_START_RAM, %edi		/* destination address */
+	movl	$TEXT_BASE, %esi		/* source address */
+	movl	$_i386boot_text_size, %ecx	/* number of bytes to copy */
+	movl	%ecx, %eax
+	andl	$3, %eax
+	jz	text_copy			/* Already 4-byte aligned */
+	subl    $4, %eax			/* Add extra bytes to size */
+	addl	%eax, %ecx
+text_copy:
+	shrl	$2, %ecx			/* copy 4 byte each time */
+	cld
+	cmpl	$0, %ecx
+	je	text_ok
+text_segment:
+	movsl
+	loop	text_segment
+	jmp	text_ok
+text_fail:
+	/* indicate (lack of) progress */
+	movw	$0x86, %ax
+	movl	$.progress5a, %ebp
+	jmp	show_boot_progress_asm
+.progress5a:
+	jmp	die
+
+text_ok:
+#endif
 	wbinvd
 
 
 	/* indicate progress */
 	movw	$0x05, %ax
 	movl	$.progress4, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress4:
 
+#ifndef CONFIG_SKIP_RELOCATE_UBOOT
+	/* Jump to the RAM copy of start_i386boot */
+	movl	$start_i386boot, %ebp
+	addl	$(CONFIG_SYS_BL_START_RAM - TEXT_BASE), %ebp
+	call	*%ebp		/* Enter, U-boot! */
+#else
 	call	start_i386boot  /* Enter, U-boot! */
+#endif
 
 	/* indicate (lack of) progress */
 	movw	$0x85, %ax
 	movl	$.progress4a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress_asm
 .progress4a:
 
 die:	hlt

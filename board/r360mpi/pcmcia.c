@@ -4,11 +4,11 @@
 
 #undef	CONFIG_PCMCIA
 
-#if	(CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 #define	CONFIG_PCMCIA
 #endif
 
-#if	(CONFIG_COMMANDS & CFG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
+#if defined(CONFIG_CMD_IDE) && defined(CONFIG_IDE_8xx_PCCARD)
 #define	CONFIG_PCMCIA
 #endif
 
@@ -28,10 +28,10 @@ int pcmcia_hardware_enable(int slot)
 
 	udelay(10000);
 
-	immap = (immap_t *)CFG_IMMR;
-	sysp  = (sysconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_siu_conf));
-	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
-	cp    = (cpm8xx_t *)(&(((immap_t *)CFG_IMMR)->im_cpm));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	sysp  = (sysconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_siu_conf));
+	pcmp  = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
+	cp    = (cpm8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_cpm));
 
 	/*
 	* Configure SIUMCR to enable PCMCIA port B
@@ -123,7 +123,7 @@ int pcmcia_hardware_enable(int slot)
 }
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCMCIA)
+#if defined(CONFIG_CMD_PCMCIA)
 int pcmcia_hardware_disable(int slot)
 {
 	volatile immap_t	*immap;
@@ -132,8 +132,8 @@ int pcmcia_hardware_disable(int slot)
 
 	debug ("hardware_disable: " PCMCIA_BOARD_MSG " Slot %c\n", 'A'+slot);
 
-	immap = (immap_t *)CFG_IMMR;
-	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
 
 	/* remove all power */
 	immap->im_ioport.iop_pcdat |= 0x0400;
@@ -150,7 +150,7 @@ int pcmcia_hardware_disable(int slot)
 
 	return (0);
 }
-#endif	/* CFG_CMD_PCMCIA */
+#endif
 
 
 int pcmcia_voltage_set(int slot, int vcc, int vpp)
@@ -164,8 +164,8 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 			" Slot %c, Vcc=%d.%d, Vpp=%d.%d\n",
 	'A'+slot, vcc/10, vcc%10, vpp/10, vcc%10);
 
-	immap = (immap_t *)CFG_IMMR;
-	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CFG_IMMR)->im_pcmcia));
+	immap = (immap_t *)CONFIG_SYS_IMMR;
+	pcmp = (pcmconf8xx_t *)(&(((immap_t *)CONFIG_SYS_IMMR)->im_pcmcia));
 	/*
 	* Disable PCMCIA buffers (isolate the interface)
 	* and assert RESET signal
@@ -195,10 +195,10 @@ int pcmcia_voltage_set(int slot, int vcc, int vpp)
 
 	reg = 0;
 	switch(vcc) {
-		case  0: 		break;
+		case  0:		break;
 		case 33: reg |= 0x0200;	break;
 		case 50: reg |= 0x0400;	break;
-		default: 		goto done;
+		default:		goto done;
 	}
 
 	/* Checking supported voltages */

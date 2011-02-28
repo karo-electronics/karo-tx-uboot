@@ -23,17 +23,15 @@
 
 #include <common.h>
 #include <serial.h>
-#include <devices.h>
+#include <stdio_dev.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#if defined(CONFIG_SERIAL_MULTI)
 
 static struct serial_device *serial_devices = NULL;
 static struct serial_device *serial_current = NULL;
 
-#ifndef CONFIG_LWMON
-struct serial_device *default_serial_console (void)
+#if !defined(CONFIG_LWMON) && !defined(CONFIG_PXA27X)
+struct serial_device *__default_serial_console (void)
 {
 #if defined(CONFIG_8xx_CONS_SMC1) || defined(CONFIG_8xx_CONS_SMC2)
 	return &serial_smc_device;
@@ -41,8 +39,10 @@ struct serial_device *default_serial_console (void)
    || defined(CONFIG_8xx_CONS_SCC3) || defined(CONFIG_8xx_CONS_SCC4)
 	return &serial_scc_device;
 #elif defined(CONFIG_405GP) || defined(CONFIG_405CR) || defined(CONFIG_440) \
-   || defined(CONFIG_405EP) || defined(CONFIG_MPC5xxx)
-#if defined(CONFIG_CONS_INDEX) && defined(CFG_NS16550_SERIAL)
+   || defined(CONFIG_405EP) || defined(CONFIG_405EZ) || defined(CONFIG_405EX) \
+   || defined(CONFIG_MPC5xxx) || defined(CONFIG_MPC83xx) \
+   || defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
+#if defined(CONFIG_CONS_INDEX) && defined(CONFIG_SYS_NS16550_SERIAL)
 #if (CONFIG_CONS_INDEX==1)
 	return &eserial1_device;
 #elif (CONFIG_CONS_INDEX==2)
@@ -59,13 +59,27 @@ struct serial_device *default_serial_console (void)
 #else
 		return &serial0_device;
 #endif
+#elif defined(CONFIG_S3C2410)
+#if defined(CONFIG_SERIAL1)
+	return &s3c24xx_serial0_device;
+#elif defined(CONFIG_SERIAL2)
+	return &s3c24xx_serial1_device;
+#elif defined(CONFIG_SERIAL3)
+	return &s3c24xx_serial2_device;
+#else
+#error "CONFIG_SERIAL? missing."
+#endif
+#elif defined(CONFIG_OMAP3_ZOOM2)
+		return ZOOM2_DEFAULT_SERIAL_DEVICE;
 #else
 #error No default console
 #endif
 }
+
+struct serial_device *default_serial_console(void) __attribute__((weak, alias("__default_serial_console")));
 #endif
 
-static int serial_register (struct serial_device *dev)
+int serial_register (struct serial_device *dev)
 {
 	dev->init += gd->reloc_off;
 	dev->setbrg += gd->reloc_off;
@@ -91,31 +105,46 @@ void serial_initialize (void)
 #endif
 
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || defined(CONFIG_440) \
- || defined(CONFIG_405EP) || defined(CONFIG_MPC5xxx)
+ || defined(CONFIG_405EP) || defined(CONFIG_405EZ) || defined(CONFIG_405EX) \
+ || defined(CONFIG_MPC5xxx)
 	serial_register(&serial0_device);
 	serial_register(&serial1_device);
 #endif
 
-#if defined(CFG_NS16550_SERIAL)
-#if defined(CFG_NS16550_COM1)
+#if defined(CONFIG_SYS_NS16550_SERIAL)
+#if defined(CONFIG_SYS_NS16550_COM1)
 	serial_register(&eserial1_device);
 #endif
-#if defined(CFG_NS16550_COM2)
+#if defined(CONFIG_SYS_NS16550_COM2)
 	serial_register(&eserial2_device);
 #endif
-#if defined(CFG_NS16550_COM3)
+#if defined(CONFIG_SYS_NS16550_COM3)
 	serial_register(&eserial3_device);
 #endif
-#if defined(CFG_NS16550_COM4)
+#if defined(CONFIG_SYS_NS16550_COM4)
 	serial_register(&eserial4_device);
 #endif
-#endif /* CFG_NS16550_SERIAL */
+#endif /* CONFIG_SYS_NS16550_SERIAL */
+#if defined (CONFIG_FFUART)
+	serial_register(&serial_ffuart_device);
+#endif
+#if defined (CONFIG_BTUART)
+	serial_register(&serial_btuart_device);
+#endif
+#if defined (CONFIG_STUART)
+	serial_register(&serial_stuart_device);
+#endif
+#if defined(CONFIG_S3C2410)
+	serial_register(&s3c24xx_serial0_device);
+	serial_register(&s3c24xx_serial1_device);
+	serial_register(&s3c24xx_serial2_device);
+#endif
 	serial_assign (default_serial_console ()->name);
 }
 
-void serial_devices_init (void)
+void serial_stdio_init (void)
 {
-	device_t dev;
+	struct stdio_dev dev;
 	struct serial_device *s = serial_devices;
 
 	while (s) {
@@ -130,7 +159,7 @@ void serial_devices_init (void)
 		dev.getc = s->getc;
 		dev.tstc = s->tstc;
 
-		device_register (&dev);
+		stdio_register (&dev);
 
 		s = s->next;
 	}
@@ -227,5 +256,3 @@ void serial_puts (const char *s)
 
 	serial_current->puts (s);
 }
-
-#endif /* CONFIG_SERIAL_MULTI */

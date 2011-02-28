@@ -18,19 +18,40 @@
 #include <linux/ctype.h>
 #include <net.h>
 #include <elf.h>
+#include <vxworks.h>
 
-#if defined(CONFIG_WALNUT) || defined(CFG_VXWORKS_MAC_PTR)
+#if defined(CONFIG_WALNUT) || defined(CONFIG_SYS_VXWORKS_MAC_PTR)
 DECLARE_GLOBAL_DATA_PTR;
-#endif
-
-#if (CONFIG_COMMANDS & CFG_CMD_ELF)
-
-#ifndef MAX
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
 int valid_elf_image (unsigned long addr);
 unsigned long load_elf_image (unsigned long addr);
+
+/* Allow ports to override the default behavior */
+__attribute__((weak))
+unsigned long do_bootelf_exec (ulong (*entry)(int, char *[]), int argc, char *argv[])
+{
+	unsigned long ret;
+
+	/*
+	 * QNX images require the data cache is disabled.
+	 * Data cache is already flushed, so just turn it off.
+	 */
+	int dcache = dcache_status ();
+	if (dcache)
+		dcache_disable ();
+
+	/*
+	 * pass address parameter as argv[0] (aka command name),
+	 * and all remaining args
+	 */
+	ret = entry (argc, argv);
+
+	if (dcache)
+		dcache_enable ();
+
+	return ret;
+}
 
 /* ======================================================================
  * Interpreter command to boot an arbitrary ELF image from memory.
@@ -56,17 +77,10 @@ int do_bootelf (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	printf ("## Starting application at 0x%08lx ...\n", addr);
 
 	/*
-	 * QNX images require the data cache is disabled.
-	 * Data cache is already flushed, so just turn it off.
-	 */
-	if (dcache_status ())
-		dcache_disable ();
-
-	/*
 	 * pass address parameter as argv[0] (aka command name),
 	 * and all remaining args
 	 */
-	rc = ((ulong (*)(int, char *[])) addr) (--argc, &argv[1]);
+	rc = do_bootelf_exec ((void *)addr, argc - 1, argv + 1);
 	if (rc != 0)
 		rcode = 1;
 
@@ -79,37 +93,33 @@ int do_bootelf (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
  * be either an ELF image or a raw binary.  Will attempt to setup the
  * bootline and other parameters correctly.
  * ====================================================================== */
-int do_bootvx ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_bootvx (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	unsigned long addr;		/* Address of image            */
 	unsigned long bootaddr;		/* Address to put the bootline */
 	char *bootline;			/* Text of the bootline        */
 	char *tmp;			/* Temporary char pointer      */
+	char build_buf[128];		/* Buffer for building the bootline */
 
-#if defined(CONFIG_4xx) || defined(CONFIG_IOP480)
-	char build_buf[80];		/* Buffer for building the bootline */
-#endif
-	/* -------------------------------------------------- */
-
-	/*
+	/* ---------------------------------------------------
+	 *
 	 * Check the loadaddr variable.
 	 * If we don't know where the image is then we're done.
 	 */
 
-	if ((tmp = getenv ("loadaddr")) != NULL) {
-		addr = simple_strtoul (tmp, NULL, 16);
-	} else {
-		puts ("No load address provided\n");
-		return 1;
-	}
+	if (argc < 2)
+		addr = load_addr;
+	else
+		addr = simple_strtoul (argv[1], NULL, 16);
 
-#if (CONFIG_COMMANDS & CFG_CMD_NET)
+#if defined(CONFIG_CMD_NET)
 	/* Check to see if we need to tftp the image ourselves before starting */
 
 	if ((argc == 2) && (strcmp (argv[1], "tftp") == 0)) {
 		if (NetLoop (TFTP) <= 0)
 			return 1;
-		printf ("Automatic boot of VxWorks image at address 0x%08lx ... \n", addr);
+		printf ("Automatic boot of VxWorks image at address 0x%08lx ... \n",
+		     addr);
 	}
 #endif
 
@@ -120,11 +130,13 @@ int do_bootvx ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 
 #if defined(CONFIG_WALNUT)
-	tmp = (char *) CFG_NVRAM_BASE_ADDR + 0x500;
-	memcpy ((char *) tmp, (char *) &gd->bd->bi_enetaddr[3], 3);
-#elif defined(CFG_VXWORKS_MAC_PTR)
-	tmp = (char *) CFG_VXWORKS_MAC_PTR;
-	memcpy ((char *) tmp, (char *) &gd->bd->bi_enetaddr[0], 6);
+	tmp = (char *) CONFIG_SYS_NVRAM_BASE_ADDR + 0x500;
+	eth_getenv_enetaddr("ethaddr", (uchar *)build_buf);
+	memcpy(tmp, &build_buf[3], 3);
+#elif defined(CONFIG_SYS_VXWORKS_MAC_PTR)
+	tmp = (char *) CONFIG_SYS_VXWORKS_MAC_PTR;
+	eth_getenv_enetaddr("ethaddr", (uchar *)build_buf);
+	memcpy(tmp, build_buf, 6);
 #else
 	puts ("## Ethernet MAC address not copied to NV RAM\n");
 #endif
@@ -137,7 +149,7 @@ int do_bootvx ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 
 	if ((tmp = getenv ("bootaddr")) == NULL)
-		bootaddr = 0x4200;
+		bootaddr = CONFIG_SYS_VXWORKS_BOOT_ADDR;
 	else
 		bootaddr = simple_strtoul (tmp, NULL, 16);
 
@@ -148,54 +160,40 @@ int do_bootvx ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 
 	if ((bootline = getenv ("bootargs")) != NULL) {
-		memcpy ((void *) bootaddr, bootline, MAX(strlen(bootline), 255));
-		flush_cache (bootaddr, MAX(strlen(bootline), 255));
+		memcpy ((void *) bootaddr, bootline,
+			max (strlen (bootline), 255));
+		flush_cache (bootaddr, max (strlen (bootline), 255));
 	} else {
-#if defined(CONFIG_4xx)
-		sprintf (build_buf, "ibmEmac(0,0)");
 
-		if ((tmp = getenv ("hostname")) != NULL) {
-			sprintf (&build_buf[strlen (build_buf - 1)],
-				"host:%s ", tmp);
+
+		sprintf (build_buf, CONFIG_SYS_VXWORKS_BOOT_DEVICE);
+		if ((tmp = getenv ("bootfile")) != NULL) {
+			sprintf (&build_buf[strlen (build_buf)],
+				 "%s:%s ", CONFIG_SYS_VXWORKS_SERVERNAME, tmp);
 		} else {
-			sprintf (&build_buf[strlen (build_buf - 1)],
-				": ");
+			sprintf (&build_buf[strlen (build_buf)],
+				 "%s:file ", CONFIG_SYS_VXWORKS_SERVERNAME);
 		}
 
 		if ((tmp = getenv ("ipaddr")) != NULL) {
-			sprintf (&build_buf[strlen (build_buf - 1)],
-				"e=%s ", tmp);
+			sprintf (&build_buf[strlen (build_buf)], "e=%s ", tmp);
 		}
-		memcpy ((void *)bootaddr, build_buf, MAX(strlen(build_buf), 255));
-		flush_cache (bootaddr, MAX(strlen(build_buf), 255));
-#elif defined(CONFIG_IOP480)
-		sprintf (build_buf, "dc(0,0)");
+
+		if ((tmp = getenv ("serverip")) != NULL) {
+			sprintf (&build_buf[strlen (build_buf)], "h=%s ", tmp);
+		}
 
 		if ((tmp = getenv ("hostname")) != NULL) {
-			sprintf (&build_buf[strlen (build_buf - 1)],
-				"host:%s ", tmp);
-		} else {
-			sprintf (&build_buf[strlen (build_buf - 1)],
-				": ");
+			sprintf (&build_buf[strlen (build_buf)], "tn=%s ", tmp);
 		}
-
-		if ((tmp = getenv ("ipaddr")) != NULL) {
-			sprintf (&build_buf[strlen (build_buf - 1)],
-				"e=%s ", tmp);
-		}
-		memcpy ((void *) bootaddr, build_buf, MAX(strlen(build_buf), 255));
-		flush_cache (bootaddr, MAX(strlen(build_buf), 255));
-#else
-
-		/*
-		 * I'm not sure what the device should be for other
-		 * PPC flavors, the hostname and ipaddr should be ok
-		 * to just copy
-		 */
-
-		puts ("No bootargs defined\n");
-		return 1;
+#ifdef CONFIG_SYS_VXWORKS_ADD_PARAMS
+		sprintf (&build_buf[strlen (build_buf)],
+			 CONFIG_SYS_VXWORKS_ADD_PARAMS);
 #endif
+
+		memcpy ((void *) bootaddr, build_buf,
+			max (strlen (build_buf), 255));
+		flush_cache (bootaddr, max (strlen (build_buf), 255));
 	}
 
 	/*
@@ -240,8 +238,7 @@ int valid_elf_image (unsigned long addr)
 	}
 
 	if (ehdr->e_type != ET_EXEC) {
-		printf ("## Not a 32-bit elf image at address 0x%08lx\n",
-			addr);
+		printf ("## Not a 32-bit elf image at address 0x%08lx\n", addr);
 		return 0;
 	}
 
@@ -255,7 +252,6 @@ int valid_elf_image (unsigned long addr)
 
 	return 1;
 }
-
 
 /* ======================================================================
  * A very simple elf loader, assumes the image is valid, returns the
@@ -291,7 +287,7 @@ unsigned long load_elf_image (unsigned long addr)
 		}
 
 		if (strtab) {
-			printf ("%sing %s @ 0x%08lx (%ld bytes)\n",
+			debug("%sing %s @ 0x%08lx (%ld bytes)\n",
 				(shdr->sh_type == SHT_NOBITS) ?
 					"Clear" : "Load",
 				&strtab[shdr->sh_name],
@@ -316,14 +312,12 @@ unsigned long load_elf_image (unsigned long addr)
 /* ====================================================================== */
 U_BOOT_CMD(
 	bootelf,      2,      0,      do_bootelf,
-	"bootelf - Boot from an ELF image in memory\n",
-	" [address] - load address of ELF image.\n"
+	"Boot from an ELF image in memory",
+	" [address] - load address of ELF image."
 );
 
 U_BOOT_CMD(
 	bootvx,      2,      0,      do_bootvx,
-	"bootvx  - Boot vxWorks from an ELF image\n",
-	" [address] - load address of vxWorks ELF image.\n"
+	"Boot vxWorks from an ELF image",
+	" [address] - load address of vxWorks ELF image."
 );
-
-#endif	/* CFG_CMD_ELF */

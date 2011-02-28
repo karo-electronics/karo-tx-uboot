@@ -112,7 +112,7 @@ void hw_watchdog_reset(void)
 		enable_interrupts ();
 }
 
-#if (CONFIG_COMMANDS & CFG_CMD_BSP)
+#if defined(CONFIG_CMD_BSP)
 int do_wd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	nios_pio_t *ena_piop	 = (nios_pio_t*)CONFIG_HW_WDENA_BASE;
@@ -145,16 +145,16 @@ int do_wd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	default:
 		break;
 	}
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(
 	wd,	2,	1,	do_wd,
-	"wd      - check and set watchdog\n",
+	"check and set watchdog",
 	"on   - switch watchDog on\n"
 	"wd off  - switch watchdog off\n"
-	"wd      - print current status\n"
+	"wd      - print current status"
 );
-#endif	/* CFG_CMD_BSP */
+#endif
 #endif	/* CONFIG_HW_WATCHDOG */

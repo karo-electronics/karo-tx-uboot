@@ -140,7 +140,7 @@ reset:
 	CPWAIT	r0
 
 	/* invalidate I & Data TLB */
-	mcr 	p15, 0, r0, c8, c7, 0
+	mcr	p15, 0, r0, c8, c7, 0
 	CPWAIT r0
 
 	/* drain write and fill buffers */
@@ -154,34 +154,34 @@ reset:
 	CPWAIT	r0
 
 	/* set EXP CS0 to the optimum timing */
-	ldr	r1, =CFG_EXP_CS0
+	ldr	r1, =CONFIG_SYS_EXP_CS0
 	ldr     r2, =IXP425_EXP_CS0
 	str     r1, [r2]
 
 	/* make sure flash is visible at 0 */
 #if 0
-	ldr 	r2, =IXP425_EXP_CFG0
+	ldr	r2, =IXP425_EXP_CFG0
 	ldr     r1, [r2]
 	orr     r1, r1, #0x80000000
 	str     r1, [r2]
 #endif
-	mov 	r1, #CFG_SDR_CONFIG
+	mov	r1, #CONFIG_SYS_SDR_CONFIG
 	ldr     r2, =IXP425_SDR_CONFIG
 	str     r1, [r2]
 
 	/* disable refresh cycles */
-	mov 	r1, #0
+	mov	r1, #0
 	ldr     r3, =IXP425_SDR_REFRESH
 	str	r1, [r3]
 
 	/* send nop command */
-	mov 	r1, #3
+	mov	r1, #3
 	ldr	r4, =IXP425_SDR_IR
 	str	r1, [r4]
 	DELAY_FOR 0x4000, r0
 
 	/* set SDRAM internal refresh val */
-	ldr	r1, =CFG_SDRAM_REFRESH_CNT
+	ldr	r1, =CONFIG_SYS_SDRAM_REFRESH_CNT
 	str     r1, [r3]
 	DELAY_FOR 0x4000, r0
 
@@ -199,7 +199,7 @@ reset:
 	bne	111b
 
 	/* set mode register in sdram */
-	mov	r1, #CFG_SDR_MODE_CONFIG
+	mov	r1, #CONFIG_SYS_SDR_MODE_CONFIG
 	str	r1, [r4]
 	DELAY_FOR 0x4000, r0
 
@@ -211,7 +211,7 @@ reset:
 	/* copy */
 	mov     r0, #0
 	mov     r4, r0
-	add     r2, r0, #CFG_MONITOR_LEN
+	add     r2, r0, #CONFIG_SYS_MONITOR_LEN
 	mov     r1, #0x10000000
 	mov     r5, r1
 
@@ -226,7 +226,7 @@ reset:
 	CPWAIT	r0
 
 	/* invalidate I & Data TLB */
-	mcr 	p15, 0, r0, c8, c7, 0
+	mcr	p15, 0, r0, c8, c7, 0
 	CPWAIT r0
 
 	/* drain write and fill buffers */
@@ -234,7 +234,7 @@ reset:
 	CPWAIT	r0
 
 	/* move flash to 0x50000000 */
-	ldr 	r2, =IXP425_EXP_CFG0
+	ldr	r2, =IXP425_EXP_CFG0
 	ldr     r1, [r2]
 	bic     r1, r1, #0x80000000
 	str     r1, [r2]
@@ -247,7 +247,7 @@ reset:
 	nop
 
 	/* invalidate I & Data TLB */
-	mcr 	p15, 0, r0, c8, c7, 0
+	mcr	p15, 0, r0, c8, c7, 0
 	CPWAIT r0
 
 	/* enable I cache */
@@ -283,8 +283,8 @@ copy_loop:
 	/* Set up the stack						    */
 stack_setup:
 	ldr	r0, _TEXT_BASE		/* upper 128 KiB: relocated uboot   */
-	sub	r0, r0, #CFG_MALLOC_LEN	/* malloc area                      */
-	sub	r0, r0, #CFG_GBL_DATA_SIZE /* bdinfo                        */
+	sub	r0, r0, #CONFIG_SYS_MALLOC_LEN	/* malloc area                      */
+	sub	r0, r0, #CONFIG_SYS_GBL_DATA_SIZE /* bdinfo                        */
 #ifdef CONFIG_USE_IRQ
 	sub	r0, r0, #(CONFIG_STACKSIZE_IRQ+CONFIG_STACKSIZE_FIQ)
 #endif
@@ -293,7 +293,7 @@ stack_setup:
 clear_bss:
 	ldr	r0, _bss_start		/* find start of bss segment        */
 	ldr	r1, _bss_end		/* stop here                        */
-	mov 	r2, #0x00000000		/* clear                            */
+	mov	r2, #0x00000000		/* clear                            */
 
 clbss_l:str	r2, [r0]		/* clear loop...                    */
 	add	r0, r0, #4
@@ -345,8 +345,8 @@ _start_armboot: .word start_armboot
 	add	r8, sp, #S_PC
 
 	ldr	r2, _armboot_start
-	sub	r2, r2, #(CONFIG_STACKSIZE+CFG_MALLOC_LEN)
-	sub	r2, r2, #(CFG_GBL_DATA_SIZE+8)  @ set base 2 words into abort stack
+	sub	r2, r2, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
+	sub	r2, r2, #(CONFIG_SYS_GBL_DATA_SIZE+8)  @ set base 2 words into abort stack
 	ldmia	r2, {r2 - r4}			/* get pc, cpsr, old_r0	    */
 	add	r0, sp, #S_FRAME_SIZE		/* restore sp_SVC	    */
 
@@ -382,8 +382,8 @@ _start_armboot: .word start_armboot
 
 	.macro get_bad_stack
 	ldr	r13, _armboot_start		@ setup our mode stack
-	sub	r13, r13, #(CONFIG_STACKSIZE+CFG_MALLOC_LEN)
-	sub	r13, r13, #(CFG_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
+	sub	r13, r13, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
+	sub	r13, r13, #(CONFIG_SYS_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
 
 	str	lr, [r13]			@ save caller lr / spsr
 	mrs	lr, spsr
@@ -482,13 +482,13 @@ fiq:
 .globl reset_cpu
 
 reset_cpu:
-	ldr 	r1, =0x482e
+	ldr	r1, =0x482e
 	ldr     r2, =IXP425_OSWK
 	str     r1, [r2]
-	ldr 	r1, =0x0fff
+	ldr	r1, =0x0fff
 	ldr     r2, =IXP425_OSWT
 	str     r1, [r2]
-	ldr 	r1, =0x5
+	ldr	r1, =0x5
 	ldr     r2, =IXP425_OSWE
 	str     r1, [r2]
 	b	reset_endless

@@ -25,8 +25,9 @@
 #include <command.h>
 #include <asm/au1x00.h>
 #include <asm/mipsregs.h>
+#include <asm/io.h>
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	/* Sdram is setup by assembler code */
 	/* If memory could be changed, we should return the true value here */
@@ -41,14 +42,16 @@ void write_one_tlb( int index, u32 pagemask, u32 hi, u32 low0, u32 low1 );
 
 int checkboard (void)
 {
+#if defined(CONFIG_IDE_PCMCIA) && 0
 	u16 status;
+#endif
 	/* volatile u32 *pcmcia_bcsr = (u32*)(DB1000_BCSR_ADDR+0x10); */
 	volatile u32 *sys_counter = (volatile u32*)SYS_COUNTER_CNTRL;
 	u32 proc_id;
 
 	*sys_counter = 0x100; /* Enable 32 kHz oscillator for RTC/TOY */
 
-	proc_id = read_32bit_cp0_register(CP0_PRID);
+	proc_id = read_c0_prid();
 
 	switch (proc_id >> 24) {
 	case 0:
@@ -69,6 +72,9 @@ int checkboard (void)
 	default:
 		printf ("Unsupported cpu %d, proc_id=0x%x\n", proc_id >> 24, proc_id);
 	}
+
+	set_io_port_base(0);
+
 #if defined(CONFIG_IDE_PCMCIA) && 0
 	/* Enable 3.3 V on slot 0 ( VCC )
 	   No 5V */
@@ -94,19 +100,19 @@ int checkboard (void)
 	/* We dont need theese unless we run whole pcmcia package */
 	write_one_tlb(20,                 /* index */
 		      0x01ffe000,         /* Pagemask, 16 MB pages */
-		      CFG_PCMCIA_IO_BASE, /* Hi */
+		      CONFIG_SYS_PCMCIA_IO_BASE, /* Hi */
 		      0x3C000017,         /* Lo0 */
 		      0x3C200017);        /* Lo1 */
 
 	write_one_tlb(21,                   /* index */
 		      0x01ffe000,           /* Pagemask, 16 MB pages */
-		      CFG_PCMCIA_ATTR_BASE, /* Hi */
+		      CONFIG_SYS_PCMCIA_ATTR_BASE, /* Hi */
 		      0x3D000017,           /* Lo0 */
 		      0x3D200017);          /* Lo1 */
 #endif	/* 0 */
 	write_one_tlb(22,                   /* index */
 		      0x01ffe000,           /* Pagemask, 16 MB pages */
-		      CFG_PCMCIA_MEM_ADDR,  /* Hi */
+		      CONFIG_SYS_PCMCIA_MEM_ADDR,  /* Hi */
 		      0x3E000017,           /* Lo0 */
 		      0x3E200017);          /* Lo1 */
 #endif	/* CONFIG_IDE_PCMCIA */

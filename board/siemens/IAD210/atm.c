@@ -1,4 +1,3 @@
-
 #include <common.h>
 #include <mpc8xx.h>
 #include <commproc.h>
@@ -7,7 +6,7 @@
 #include <linux/stddef.h>
 
 #define SYNC __asm__("sync")
-#define ALIGN(p, a) ((char *)(((uint32)(p)+(a)-1) & ~((uint32)(a)-1)))
+#define MY_ALIGN(p, a) ((char *)(((uint32)(p)+(a)-1) & ~((uint32)(a)-1)))
 
 #define FALSE  1
 #define TRUE   0
@@ -58,7 +57,7 @@ void   atmUtpInit(void);
  ****************************************************************************/
 int atmLoad()
 {
-  volatile immap_t       *immap  = (immap_t *)CFG_IMMR;
+  volatile immap_t       *immap  = (immap_t *)CONFIG_SYS_IMMR;
   volatile cpmtimer8xx_t *timers = &immap->im_cpmtimer;
   volatile iop8xx_t      *iop    = &immap->im_ioport;
 
@@ -92,7 +91,7 @@ int atmLoad()
  ****************************************************************************/
 void atmUnload()
 {
-  volatile immap_t       *immap  = (immap_t *)CFG_IMMR;
+  volatile immap_t       *immap  = (immap_t *)CONFIG_SYS_IMMR;
   volatile cpmtimer8xx_t *timers = &immap->im_cpmtimer;
   volatile iop8xx_t      *iop    = &immap->im_ioport;
 
@@ -142,11 +141,11 @@ void atmUnload()
 int atmMemInit()
 {
   int i;
-  unsigned immr = CFG_IMMR;
+  unsigned immr = CONFIG_SYS_IMMR;
   int total_num_rbd = 0;
   int total_num_tbd = 0;
 
-  memset((char *)CFG_IMMR + 0x2000 + ATM_DPRAM_BEGIN, 0x00, ATM_DPRAM_SIZE);
+  memset((char *)CONFIG_SYS_IMMR + 0x2000 + ATM_DPRAM_BEGIN, 0x00, ATM_DPRAM_SIZE);
 
   g_atm.csram_size = NUM_INT_ENTRIES * SIZE_OF_INT_ENTRY;
 
@@ -160,7 +159,7 @@ int atmMemInit()
   g_atm.csram = &csram[0];
   memset(&(g_atm.csram), 0x00, g_atm.csram_size);
 
-  g_atm.int_reload_ptr = (uint32 *)ALIGN(g_atm.csram, 4);
+  g_atm.int_reload_ptr = (uint32 *)MY_ALIGN(g_atm.csram, 4);
   g_atm.rbd_base_ptr = (struct atm_bd_t *)(g_atm.int_reload_ptr + NUM_INT_ENTRIES);
   g_atm.tbd_base_ptr = (struct atm_bd_t *)(g_atm.rbd_base_ptr + total_num_rbd);
 
@@ -227,11 +226,11 @@ void atmIntInit()
 void atmApcInit()
 {
   int i;
-  /* unsigned immr = CFG_IMMR; */
-  uint16 * mphypt_ptr = MPHYPT_PTR(CFG_IMMR);
-  struct apc_params_t * apcp_ptr = APCP_PTR(CFG_IMMR);
-  uint16 * apct_prio1_ptr = APCT1_PTR(CFG_IMMR);
-  uint16 * tq_ptr = TQ_PTR(CFG_IMMR);
+  /* unsigned immr = CONFIG_SYS_IMMR; */
+  uint16 * mphypt_ptr = MPHYPT_PTR(CONFIG_SYS_IMMR);
+  struct apc_params_t * apcp_ptr = APCP_PTR(CONFIG_SYS_IMMR);
+  uint16 * apct_prio1_ptr = APCT1_PTR(CONFIG_SYS_IMMR);
+  uint16 * tq_ptr = TQ_PTR(CONFIG_SYS_IMMR);
   /***************************************************/
   /* Initialize MPHY Pointing Table (only one entry) */
   /***************************************************/
@@ -291,7 +290,7 @@ void atmApcInit()
  ****************************************************************************/
 void atmAmtInit()
 {
-  unsigned immr = CFG_IMMR;
+  unsigned immr = CONFIG_SYS_IMMR;
 
   g_atm.am_top = AM_PTR(immr);
   g_atm.ap_top = AP_PTR(immr);
@@ -316,7 +315,7 @@ void atmAmtInit()
  ****************************************************************************/
 void atmCpmInit()
 {
-  unsigned immr = CFG_IMMR;
+  unsigned immr = CONFIG_SYS_IMMR;
 
   memset((char *)immr + 0x3F00, 0x00, 0xC0);
 
@@ -552,7 +551,7 @@ void atmCpmInit()
  ****************************************************************************/
 void atmUtpInit()
 {
-  volatile immap_t       *immap  = (immap_t *)CFG_IMMR;
+  volatile immap_t       *immap  = (immap_t *)CONFIG_SYS_IMMR;
   volatile iop8xx_t      *iop    = &immap->im_ioport;
   volatile car8xx_t	 *car    = &immap->im_clkrst;
   volatile cpm8xx_t	 *cpm    = &immap->im_cpm;
@@ -580,7 +579,7 @@ void atmUtpInit()
   /*                    11 = divide by 7                             */
   /*                                                                 */
   /* Note that the UTOPIA clock must be programmed as to operate     */
-  /* within the range SYSCLK/10 .. 50Mhz.                            */
+  /* within the range SYSCLK/10 .. 50MHz.                            */
   /*-----------------------------------------------------------------*/
   car->car_sccr &= 0xFFFFFFE0;
   car->car_sccr |= 0x00000008; /* UTPCLK = SYSCLK / 4 */

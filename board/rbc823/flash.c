@@ -24,7 +24,7 @@
 #include <common.h>
 #include <mpc8xx.h>
 
-flash_info_t	flash_info[CFG_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
+flash_info_t	flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
 
 /*-----------------------------------------------------------------------
  * Functions
@@ -42,20 +42,20 @@ unsigned long flash_init (void)
 	int i;
 
 	/* Init: no FLASHes known */
-	for (i=0; i < CFG_MAX_FLASH_BANKS; ++i)
+	for (i=0; i < CONFIG_SYS_MAX_FLASH_BANKS; ++i)
 	    flash_info[i].flash_id = FLASH_UNKNOWN;
 
 	/* Detect size */
-	size_b0 = flash_get_size((vu_long *)CFG_FLASH_BASE, &flash_info[0]);
+	size_b0 = flash_get_size((vu_long *)CONFIG_SYS_FLASH_BASE, &flash_info[0]);
 
 	/* Setup offsets */
-	flash_get_offsets (CFG_FLASH_BASE, &flash_info[0]);
+	flash_get_offsets (CONFIG_SYS_FLASH_BASE, &flash_info[0]);
 
-#if CFG_MONITOR_BASE >= CFG_FLASH_BASE
+#if CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE
 	/* Monitor protection ON by default */
 	flash_protect(FLAG_PROTECT_SET,
-		      CFG_MONITOR_BASE,
-		      CFG_MONITOR_BASE+monitor_flash_len-1,
+		      CONFIG_SYS_MONITOR_BASE,
+		      CONFIG_SYS_MONITOR_BASE+monitor_flash_len-1,
 		      &flash_info[0]);
 #endif
 
@@ -131,11 +131,11 @@ void flash_print_info  (flash_info_t *info)
 
 	if (info->size >> 20) {
 	    printf ("  Size: %ld MB in %d Sectors\n",
-	    	info->size >> 20,
+		info->size >> 20,
 		info->sector_count);
 	} else {
 	    printf ("  Size: %ld KB in %d Sectors\n",
-	    	info->size >> 10,
+		info->size >> 10,
 		info->sector_count);
 	}
 
@@ -213,7 +213,7 @@ static ulong flash_get_size (vu_long *addr, flash_info_t *info)
 			info->flash_id += FLASH_AM040;
 			info->sector_count = 8;
 			info->size = 0x00080000;
-			break;				/* => 512Kb 		*/
+			break;				/* => 512Kb		*/
 
 		default:
 			info->flash_id = FLASH_UNKNOWN;
@@ -322,7 +322,7 @@ int	flash_erase (flash_info_t *info, int s_first, int s_last)
 
 	while ((addr[0] & 0xFF) != 0xFF)
 	{
-		if ((now = get_timer(start)) > CFG_FLASH_ERASE_TOUT) {
+		if ((now = get_timer(start)) > CONFIG_SYS_FLASH_ERASE_TOUT) {
 			printf ("Timeout\n");
 			return 1;
 		}
@@ -448,13 +448,13 @@ static int write_word (flash_info_t *info, ulong dest, ulong data)
 
 	    /* re-enable interrupts if necessary */
 	    if (flag)
-	    	enable_interrupts();
+		enable_interrupts();
 
 	    /* data polling for D7 */
 	    start = get_timer (0);
 	    while ((*cdest ^ *cdata) & 0x80)
 	    {
-		if (get_timer(start) > CFG_FLASH_WRITE_TOUT) {
+		if (get_timer(start) > CONFIG_SYS_FLASH_WRITE_TOUT) {
 			return (1);
 		}
 	    }

@@ -44,10 +44,10 @@ all:	$(obj).depend $(LIB) $(obj)eeprom.srec $(obj)eeprom.bin
 $(LIB):	$(OBJS) $(SOBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS) $(SOBJS)
 
-$(obj)eeprom.srec:	$(obj)eeprom.o $(obj)eeprom_start.o
-	cd $(lnk) && $(LD) -T $(LDSCRIPT) -g -Ttext $(LOAD_ADDR) \
+$(obj)eeprom.srec:	$(obj)eeprom.o $(obj)eeprom_start.o $(obj)u-boot.lds
+	cd $(lnk) && $(LD) -T $(obj)u-boot.lds -g -Ttext $(LOAD_ADDR) \
 		-o $(<:.o=) -e eeprom eeprom.o eeprom_start.o \
-		-L$(obj)../../examples -lstubs \
+		-L$(obj)../../examples/standalone -lstubs \
 		-L$(obj)../../lib_generic -lgeneric \
 		-L$(gcclibdir) -lgcc
 	$(OBJCOPY) -O srec $(<:.o=) $@
@@ -55,14 +55,17 @@ $(obj)eeprom.srec:	$(obj)eeprom.o $(obj)eeprom_start.o
 $(obj)eeprom.bin:	$(obj)eeprom.srec
 	$(OBJCOPY) -I srec -O binary $< $@ 2>/dev/null
 
+$(obj)u-boot.lds: $(LDSCRIPT)
+	$(CPP) $(CPPFLAGS) $(LDPPFLAGS) -ansi -D__ASSEMBLY__ -P - <$^ >$@
+
 clean:
 	rm -f $(SOBJS) $(OBJS) $(obj)eeprom \
 		$(obj)eeprom.srec $(obj)eeprom.bin \
-		$(obj)eeprom.o $(obj)eeprom_start.o
-
+		$(obj)eeprom.o $(obj)eeprom_start.o \
+		 $(obj)u-boot.lds
 
 distclean:	clean
-	rm -f $(LIB) core config.tmp *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

@@ -33,119 +33,211 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define	CONFIG_MCF52x2			/* define processor family */
-#define CONFIG_M5282			/* define processor type */
+#define	CONFIG_MCF52x2		/* define processor family */
+#define CONFIG_M5282		/* define processor type */
 
-#define FEC_ENET
+#define CONFIG_MCFTMR
 
-#define CONFIG_BAUDRATE 19200
-#define CFG_BAUDRATE_TABLE { 9600 , 19200 , 38400 , 57600, 115200 }
+#define CONFIG_MCFUART
+#define CONFIG_SYS_UART_PORT		(0)
+#define CONFIG_BAUDRATE		115200
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600 , 19200 , 38400 , 57600, 115200 }
 
-#define	CONFIG_MONITOR_IS_IN_RAM	/* define if monitor is started from a pre-loader */
+#undef	CONFIG_MONITOR_IS_IN_RAM	/* define if monitor is started from a pre-loader */
 
 /* Configuration for environment
  * Environment is embedded in u-boot in the second sector of the flash
  */
-#define CFG_ENV_ADDR		0xffe04000
-#define CFG_ENV_SIZE		0x2000
-#define CFG_ENV_IS_IN_FLASH	1
+#define CONFIG_ENV_ADDR		0xffe04000
+#define CONFIG_ENV_SIZE		0x2000
+#define CONFIG_ENV_IS_IN_FLASH	1
 
+/*
+ * BOOTP options
+ */
+#define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
-#define CONFIG_COMMANDS  ( CONFIG_CMD_DFL & ~(CFG_CMD_LOADS | CFG_CMD_LOADB) )
+/*
+ * Command line configuration.
+ */
+#include <config_cmd_default.h>
+#define CONFIG_CMD_NET
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_MII
 
-/* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
-#include <cmd_confdefs.h>
-#define CONFIG_BOOTDELAY	5
+#undef CONFIG_CMD_LOADS
+#undef CONFIG_CMD_LOADB
 
-#define CFG_PROMPT		"-> "
-#define	CFG_LONGHELP				/* undef to save memory		*/
+#define CONFIG_MCFFEC
+#ifdef CONFIG_MCFFEC
+#	define CONFIG_NET_MULTI		1
+#	define CONFIG_MII		1
+#	define CONFIG_MII_INIT		1
+#	define CONFIG_SYS_DISCOVER_PHY
+#	define CONFIG_SYS_RX_ETH_BUFFER	8
+#	define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
-#define	CFG_CBSIZE		1024		/* Console I/O Buffer Size	*/
-#else
-#define	CFG_CBSIZE		256		/* Console I/O Buffer Size	*/
+#	define CONFIG_SYS_FEC0_PINMUX		0
+#	define CONFIG_SYS_FEC0_MIIBASE		CONFIG_SYS_FEC0_IOBASE
+#	define MCFFEC_TOUT_LOOP		50000
+/* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
+#	ifndef CONFIG_SYS_DISCOVER_PHY
+#		define FECDUPLEX	FULL
+#		define FECSPEED		_100BASET
+#	else
+#		ifndef CONFIG_SYS_FAULT_ECHO_LINK_DOWN
+#			define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
+#		endif
+#	endif			/* CONFIG_SYS_DISCOVER_PHY */
 #endif
-#define	CFG_PBSIZE (CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
-#define	CFG_MAXARGS		16		/* max number of command args	*/
-#define CFG_BARGSIZE		CFG_CBSIZE	/* Boot Argument Buffer Size	*/
 
-#define CFG_LOAD_ADDR		0x20000
+#define CONFIG_BOOTDELAY	5
+#ifdef CONFIG_MCFFEC
+#	define CONFIG_ETHADDR	00:e0:0c:bc:e5:60
+#	define CONFIG_IPADDR	192.162.1.2
+#	define CONFIG_NETMASK	255.255.255.0
+#	define CONFIG_SERVERIP	192.162.1.1
+#	define CONFIG_GATEWAYIP	192.162.1.1
+#	define CONFIG_OVERWRITE_ETHADDR_ONCE
+#endif				/* CONFIG_MCFFEC */
 
-#define CFG_MEMTEST_START	0x400
-#define CFG_MEMTEST_END		0x380000
+#define CONFIG_HOSTNAME		M5282EVB
+#define CONFIG_EXTRA_ENV_SETTINGS		\
+	"netdev=eth0\0"				\
+	"loadaddr=10000\0"			\
+	"u-boot=u-boot.bin\0"			\
+	"load=tftp ${loadaddr) ${u-boot}\0"	\
+	"upd=run load; run prog\0"		\
+	"prog=prot off ffe00000 ffe3ffff;"	\
+	"era ffe00000 ffe3ffff;"		\
+	"cp.b ${loadaddr} ffe00000 ${filesize};"\
+	"save\0"				\
+	""
 
-#define CFG_HZ			1000000
-#define	CFG_CLK			64000000
+#define CONFIG_SYS_PROMPT		"-> "
+#define	CONFIG_SYS_LONGHELP		/* undef to save memory         */
 
+#if defined(CONFIG_CMD_KGDB)
+#define	CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size      */
+#else
+#define	CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size      */
+#endif
+#define	CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)	/* Print Buffer Size */
+#define	CONFIG_SYS_MAXARGS		16	/* max number of command args   */
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size    */
+
+#define CONFIG_SYS_LOAD_ADDR		0x20000
+
+#define CONFIG_SYS_MEMTEST_START	0x400
+#define CONFIG_SYS_MEMTEST_END		0x380000
+
+#define CONFIG_SYS_HZ			1000
+#define	CONFIG_SYS_CLK			64000000
+
+/* PLL Configuration: Ext Clock * 6 (see table 9-4 of MCF user manual) */
+
+#define CONFIG_SYS_MFD			0x02	/* PLL Multiplication Factor Devider */
+#define CONFIG_SYS_RFD			0x00	/* PLL Reduce Frecuency Devider */
 
 /*
  * Low Level Configuration Settings
  * (address mappings, register initial values, etc.)
  * You should know what you are doing if you make changes here.
  */
-#define	CFG_MBAR		0x40000000
-
-#undef	CFG_DISCOVER_PHY
-#define	CFG_ENET_BD_BASE	0x380000
+#define	CONFIG_SYS_MBAR		0x40000000
 
 /*-----------------------------------------------------------------------
  * Definitions for initial stack pointer and data area (in DPRAM)
  */
-#define CFG_INIT_RAM_ADDR       0x20000000
-#define CFG_INIT_RAM_END	0x10000		/* End of used area in internal SRAM	*/
-#define CFG_GBL_DATA_SIZE	64      	/* size in bytes reserved for initial data */
-#define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
-#define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
+#define CONFIG_SYS_INIT_RAM_ADDR	0x20000000
+#define CONFIG_SYS_INIT_RAM_END	0x10000	/* End of used area in internal SRAM    */
+#define CONFIG_SYS_GBL_DATA_SIZE	64	/* size in bytes reserved for initial data */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
  * Start addresses for the final memory configuration
  * (Set up by the startup code)
- * Please note that CFG_SDRAM_BASE _must_ start at 0
+ * Please note that CONFIG_SYS_SDRAM_BASE _must_ start at 0
  */
-#define CFG_SDRAM_BASE		0x00000000
-#define	CFG_SDRAM_SIZE		4		/* SDRAM size in MB */
-#define CFG_FLASH_BASE		0xffe00000
-#define	CFG_INT_FLASH_BASE	0xf0000000
+#define CONFIG_SYS_SDRAM_BASE		0x00000000
+#define	CONFIG_SYS_SDRAM_SIZE		16	/* SDRAM size in MB */
+#define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_CS0_BASE
+#define	CONFIG_SYS_INT_FLASH_BASE	0xf0000000
+#define CONFIG_SYS_INT_FLASH_ENABLE	0x21
 
 /* If M5282 port is fully implemented the monitor base will be behind
  * the vector table. */
-/* #define CFG_MONITOR_BASE	(CFG_FLASH_BASE + 0x400) */
-#define CFG_MONITOR_BASE	0x20000
+#if (TEXT_BASE != CONFIG_SYS_INT_FLASH_BASE)
+#define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_FLASH_BASE + 0x400)
+#else
+#define CONFIG_SYS_MONITOR_BASE	(TEXT_BASE + 0x418)	/* 24 Byte for CFM-Config */
+#endif
 
-#define CFG_MONITOR_LEN		0x20000
-#define CFG_MALLOC_LEN		(256 << 10)
-#define CFG_BOOTPARAMS_LEN	64*1024
-
+#define CONFIG_SYS_MONITOR_LEN		0x20000
+#define CONFIG_SYS_MALLOC_LEN		(256 << 10)
+#define CONFIG_SYS_BOOTPARAMS_LEN	64*1024
 
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization ??
  */
-#define	CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux	*/
-
+#define CONFIG_SYS_BOOTMAPSZ		(CONFIG_SYS_SDRAM_BASE + (CONFIG_SYS_SDRAM_SIZE << 20))
 
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define	CFG_MAX_FLASH_SECT	35
-#define	CFG_MAX_FLASH_BANKS	1
-#define	CFG_FLASH_ERASE_TOUT	10000000
+#define CONFIG_SYS_FLASH_CFI
+#ifdef CONFIG_SYS_FLASH_CFI
+
+#	define CONFIG_FLASH_CFI_DRIVER	1
+#	define CONFIG_SYS_FLASH_SIZE		0x1000000	/* Max size that the board might have */
+#	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
+#	define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
+#	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */
+#	define CONFIG_SYS_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
+#	define CONFIG_SYS_FLASH_CHECKSUM
+#	define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE }
+#endif
 
 /*-----------------------------------------------------------------------
  * Cache Configuration
  */
-#define CFG_CACHELINE_SIZE	16
-
+#define CONFIG_SYS_CACHELINE_SIZE	16
 
 /*-----------------------------------------------------------------------
  * Memory bank definitions
  */
-
+#define CONFIG_SYS_CS0_BASE		0xFFE00000
+#define CONFIG_SYS_CS0_CTRL		0x00001980
+#define CONFIG_SYS_CS0_MASK		0x001F0001
 
 /*-----------------------------------------------------------------------
  * Port configuration
  */
+#define CONFIG_SYS_PACNT		0x0000000	/* Port A D[31:24] */
+#define CONFIG_SYS_PADDR		0x0000000
+#define CONFIG_SYS_PADAT		0x0000000
 
+#define CONFIG_SYS_PBCNT		0x0000000	/* Port B D[23:16] */
+#define CONFIG_SYS_PBDDR		0x0000000
+#define CONFIG_SYS_PBDAT		0x0000000
 
-#endif	/* _CONFIG_M5282EVB_H */
+#define CONFIG_SYS_PCCNT		0x0000000	/* Port C D[15:08] */
+#define CONFIG_SYS_PCDDR		0x0000000
+#define CONFIG_SYS_PCDAT		0x0000000
+
+#define CONFIG_SYS_PDCNT		0x0000000	/* Port D D[07:00] */
+#define CONFIG_SYS_PCDDR		0x0000000
+#define CONFIG_SYS_PCDAT		0x0000000
+
+#define CONFIG_SYS_PEHLPAR		0xC0
+#define CONFIG_SYS_PUAPAR		0x0F	/* UA0..UA3 = Uart 0 +1 */
+#define CONFIG_SYS_DDRUA		0x05
+#define CONFIG_SYS_PJPAR		0xFF
+
+#endif				/* _CONFIG_M5282EVB_H */

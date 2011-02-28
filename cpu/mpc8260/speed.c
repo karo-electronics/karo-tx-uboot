@@ -25,6 +25,10 @@
 #include <mpc8260.h>
 #include <asm/processor.h>
 
+#if defined(CONFIG_BOARD_GET_CPU_CLK_F)
+extern unsigned long board_get_cpu_clk_f (void);
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /* ------------------------------------------------------------------------- */
@@ -103,7 +107,7 @@ corecnf_t corecnf_tab[] = {
 
 int get_clocks (void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	ulong clkin;
 	ulong sccr, dfbrg;
 	ulong scmr, corecnf, busdf, cpmdf, plldf, pllmf;
@@ -112,7 +116,11 @@ int get_clocks (void)
 #if !defined(CONFIG_8260_CLKIN)
 #error clock measuring not implemented yet - define CONFIG_8260_CLKIN
 #else
+#if defined(CONFIG_BOARD_GET_CPU_CLK_F)
+	clkin = board_get_cpu_clk_f ();
+#else
 	clkin = CONFIG_8260_CLKIN;
+#endif
 #endif
 
 	sccr = immap->im_clkrst.car_sccr;
@@ -154,12 +162,36 @@ int get_clocks (void)
 		gd->cpu_clk = clkin;
 	}
 
+#ifdef CONFIG_PCI
+	gd->pci_clk = clkin;
+
+	if (sccr & SCCR_PCI_MODE) {
+		uint pci_div;
+		uint pcidf = (sccr & SCCR_PCIDF_MSK) >> SCCR_PCIDF_SHIFT;
+
+		if (sccr & SCCR_PCI_MODCK) {
+			pci_div = 2;
+			if (pcidf == 9) {
+				pci_div *= 5;
+			} else if (pcidf == 0xB) {
+				pci_div *= 6;
+			} else {
+				pci_div *= (pcidf + 1);
+			}
+		} else {
+			pci_div = pcidf + 1;
+		}
+
+		gd->pci_clk = (gd->cpm_clk * 2) / pci_div;
+	}
+#endif
+
 	return (0);
 }
 
 int prt_8260_clks (void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	ulong sccr, dfbrg;
 	ulong scmr, corecnf, busdf, cpmdf, plldf, pllmf, pcidf;
 	corecnf_t *cp;
@@ -212,26 +244,9 @@ int prt_8260_clks (void)
 
 	printf (" - cpu_clk %10ld, cpm_clk %10ld, bus_clk %10ld\n",
 			gd->cpu_clk, gd->cpm_clk, gd->bus_clk);
-
-	if (sccr & SCCR_PCI_MODE) {
-		uint pci_div;
-		uint pcidf = (sccr & SCCR_PCIDF_MSK) >> SCCR_PCIDF_SHIFT;
-
-		if (sccr & SCCR_PCI_MODCK) {
-			pci_div = 2;
-			if (pcidf == 9) {
-				pci_div *= 5;
-			} else if (pcidf == 0xB) {
-				pci_div *= 6;
-			} else {
-				pci_div *= (pcidf + 1);
-			}
-		} else {
-			pci_div = pcidf + 1;
-		}
-
-		printf (" - pci_clk %10ld\n", (gd->cpm_clk * 2) / pci_div);
-	}
+#ifdef CONFIG_PCI
+	printf (" - pci_clk %10ld\n", gd->pci_clk);
+#endif
 	putc ('\n');
 
 	return (0);

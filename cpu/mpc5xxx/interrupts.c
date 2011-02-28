@@ -229,7 +229,7 @@ int mpc5xxx_get_irq(struct pt_regs *regs)
 
 int interrupt_init_cpu(ulong * decrementer_count)
 {
-	*decrementer_count = get_tbclk() / CFG_HZ;
+	*decrementer_count = get_tbclk() / CONFIG_SYS_HZ;
 
 	mpc5xxx_init_irq();
 
@@ -310,7 +310,7 @@ void irq_free_handler(int irq)
 
 /****************************************************************************/
 
-#if (CONFIG_COMMANDS & CFG_CMD_IRQ)
+#if defined(CONFIG_CMD_IRQ)
 void do_irqinfo(cmd_tbl_t * cmdtp, bd_t * bd, int flag, int argc, char *argv[])
 {
 	int irq, re_enable;

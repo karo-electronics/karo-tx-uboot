@@ -1,5 +1,8 @@
 /*
- * Copyright (C) Freescale Semiconductor, Inc. 2006. All rights reserved.
+ * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
+ * Terry Lv <r65388@freescale.com>
+ *
+ * Copyright (C) Freescale Semiconductor, Inc. 2006.
  * Author: Jason Jin<Jason.jin@freescale.com>
  *         Zhang Wei<wei.zhang@freescale.com>
  *
@@ -25,15 +28,18 @@
 #ifndef _AHCI_H_
 #define _AHCI_H_
 
+#include <pci.h>
+
 #define AHCI_PCI_BAR		0x24
 #define AHCI_MAX_SG		56 /* hardware max is 64K */
+#define AHCI_MAX_CMD_SLOT	32
 #define AHCI_CMD_SLOT_SZ	32
 #define AHCI_RX_FIS_SZ		256
 #define AHCI_CMD_TBL_HDR	0x80
 #define AHCI_CMD_TBL_CDB	0x40
-#define AHCI_CMD_TBL_SZ		AHCI_CMD_TBL_HDR + (AHCI_MAX_SG * 16)
-#define AHCI_PORT_PRIV_DMA_SZ	AHCI_CMD_SLOT_SZ + AHCI_CMD_TBL_SZ	\
-				+ AHCI_RX_FIS_SZ
+#define AHCI_CMD_TBL_SZ		(AHCI_CMD_TBL_HDR + (AHCI_MAX_SG * 16))
+#define AHCI_PORT_PRIV_DMA_SZ	(AHCI_CMD_SLOT_SZ * AHCI_MAX_CMD_SLOT + \
+				AHCI_CMD_TBL_SZ	+ AHCI_RX_FIS_SZ)
 #define AHCI_CMD_ATAPI		(1 << 5)
 #define AHCI_CMD_WRITE		(1 << 6)
 #define AHCI_CMD_PREFETCH	(1 << 7)
@@ -91,12 +97,12 @@
 #define PORT_IRQ_PIOS_FIS	(1 << 1) /* PIO Setup FIS rx'd */
 #define PORT_IRQ_D2H_REG_FIS	(1 << 0) /* D2H Register FIS rx'd */
 
-#define PORT_IRQ_FATAL		PORT_IRQ_TF_ERR | PORT_IRQ_HBUS_ERR 	\
+#define PORT_IRQ_FATAL		PORT_IRQ_TF_ERR | PORT_IRQ_HBUS_ERR	\
 				| PORT_IRQ_HBUS_DATA_ERR | PORT_IRQ_IF_ERR
 
-#define DEF_PORT_IRQ		PORT_IRQ_FATAL | PORT_IRQ_PHYRDY 	\
-				| PORT_IRQ_CONNECT | PORT_IRQ_SG_DONE 	\
-				| PORT_IRQ_UNK_FIS | PORT_IRQ_SDB_FIS 	\
+#define DEF_PORT_IRQ		PORT_IRQ_FATAL | PORT_IRQ_PHYRDY	\
+				| PORT_IRQ_CONNECT | PORT_IRQ_SG_DONE	\
+				| PORT_IRQ_UNK_FIS | PORT_IRQ_SDB_FIS	\
 				| PORT_IRQ_DMAS_FIS | PORT_IRQ_PIOS_FIS	\
 				| PORT_IRQ_D2H_REG_FIS
 
@@ -172,14 +178,14 @@ struct ahci_ioports {
 };
 
 struct ahci_probe_ent {
-	pci_dev_t 	dev;
+	pci_dev_t	dev;
 	struct ahci_ioports	port[AHCI_MAX_PORTS];
 	u32	n_ports;
 	u32	hard_port_no;
 	u32	host_flags;
 	u32	host_set_flags;
 	u32	mmio_base;
-	u32     pio_mask;
+	u32	pio_mask;
 	u32	udma_mask;
 	u32	flags;
 	u32	cap;	/* cache of HOST_CAP register */

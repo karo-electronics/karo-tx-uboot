@@ -29,18 +29,17 @@
 #include <asm/processor.h>
 #include <asm/byteorder.h>
 #include <i2c.h>
-#include <devices.h>
 #include <pci.h>
 #include <malloc.h>
 #include <bzlib.h>
 
 #ifdef CONFIG_PIP405
 #include "../pip405/pip405.h"
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 #endif
 #ifdef CONFIG_MIP405
 #include "../mip405/mip405.h"
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -53,12 +52,9 @@ extern int gunzip(void *, int, uchar *, unsigned long *);
 extern int mem_test(ulong start, ulong ramsize, int quiet);
 
 #define I2C_BACKUP_ADDR 0x7C00		/* 0x200 bytes for backup */
-#define IMAGE_SIZE CFG_MONITOR_LEN	/* ugly, but it works for now */
+#define IMAGE_SIZE CONFIG_SYS_MONITOR_LEN	/* ugly, but it works for now */
 
 extern flash_info_t flash_info[];	/* info for FLASH chips */
-
-static image_header_t header;
-
 
 static int
 mpl_prg(uchar *src, ulong size)
@@ -77,7 +73,7 @@ mpl_prg(uchar *src, ulong size)
 	info = &flash_info[0];
 
 #if defined(CONFIG_PIP405) || defined(CONFIG_MIP405) || defined(CONFIG_PATI)
-	if (ntohl(magic[0]) != IH_MAGIC) {
+	if (uimage_to_cpu (magic[0]) != IH_MAGIC) {
 		puts("Bad Magic number\n");
 		return -1;
 	}
@@ -179,52 +175,54 @@ mpl_prg(uchar *src, ulong size)
 static int
 mpl_prg_image(uchar *ld_addr)
 {
-	unsigned long len, checksum;
+	unsigned long len;
 	uchar *data;
-	image_header_t *hdr = &header;
+	image_header_t *hdr = (image_header_t *)ld_addr;
 	int rc;
 
-	/* Copy header so we can blank CRC field for re-calculation */
-	memcpy (&header, (char *)ld_addr, sizeof(image_header_t));
-	if (ntohl(hdr->ih_magic)  != IH_MAGIC) {
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
+
+	if (!image_check_magic (hdr)) {
 		puts("Bad Magic Number\n");
 		return 1;
 	}
-	print_image_hdr(hdr);
-	if (hdr->ih_os  != IH_OS_U_BOOT) {
+	image_print_contents (hdr);
+	if (!image_check_os (hdr, IH_OS_U_BOOT)) {
 		puts("No U-Boot Image\n");
 		return 1;
 	}
-	if (hdr->ih_type  != IH_TYPE_FIRMWARE) {
+	if (!image_check_type (hdr, IH_TYPE_FIRMWARE)) {
 		puts("No Firmware Image\n");
 		return 1;
 	}
-	data = (uchar *)&header;
-	len  = sizeof(image_header_t);
-	checksum = ntohl(hdr->ih_hcrc);
-	hdr->ih_hcrc = 0;
-	if (crc32 (0, (uchar *)data, len) != checksum) {
+	if (!image_check_hcrc (hdr)) {
 		puts("Bad Header Checksum\n");
 		return 1;
 	}
-	data = ld_addr + sizeof(image_header_t);
-	len  = ntohl(hdr->ih_size);
 	puts("Verifying Checksum ... ");
-	if (crc32 (0, (uchar *)data, len) != ntohl(hdr->ih_dcrc)) {
+	if (!image_check_dcrc (hdr)) {
 		puts("Bad Data CRC\n");
 		return 1;
 	}
 	puts("OK\n");
 
-	if (hdr->ih_comp != IH_COMP_NONE) {
+	data = (uchar *)image_get_data (hdr);
+	len = image_get_data_size (hdr);
+
+	if (image_get_comp (hdr) != IH_COMP_NONE) {
 		uchar *buf;
 		/* reserve space for uncompressed image */
 		if ((buf = malloc(IMAGE_SIZE)) == NULL) {
-		    	puts("Insufficient space for decompression\n");
+			puts("Insufficient space for decompression\n");
 			return 1;
 		}
 
-		switch (hdr->ih_comp) {
+		switch (image_get_comp (hdr)) {
 		case IH_COMP_GZIP:
 			puts("Uncompressing (GZIP) ... ");
 			rc = gunzip ((void *)(buf), IMAGE_SIZE, data, &len);
@@ -253,7 +251,8 @@ mpl_prg_image(uchar *ld_addr)
 			break;
 #endif
 		default:
-			printf ("Unimplemented compression type %d\n", hdr->ih_comp);
+			printf ("Unimplemented compression type %d\n",
+				image_get_comp (hdr));
 			free(buf);
 			return 1;
 		}
@@ -270,7 +269,7 @@ mpl_prg_image(uchar *ld_addr)
 #if !defined(CONFIG_PATI)
 void get_backup_values(backup_t *buf)
 {
-	i2c_read(CFG_DEF_EEPROM_ADDR, I2C_BACKUP_ADDR,2,(void *)buf,sizeof(backup_t));
+	i2c_read(CONFIG_SYS_DEF_EEPROM_ADDR, I2C_BACKUP_ADDR,2,(void *)buf,sizeof(backup_t));
 }
 
 void set_backup_values(int overwrite)
@@ -298,7 +297,7 @@ void set_backup_values(int overwrite)
 		return;
 	}
 	back.eth_addr[20]=0;
-	i2c_write(CFG_DEF_EEPROM_ADDR, I2C_BACKUP_ADDR,2,(void *)&back,sizeof(backup_t));
+	i2c_write(CONFIG_SYS_DEF_EEPROM_ADDR, I2C_BACKUP_ADDR,2,(void *)&back,sizeof(backup_t));
 }
 
 void clear_env_values(void)
@@ -308,8 +307,8 @@ void clear_env_values(void)
 
 	memset(&back,0xff,sizeof(backup_t));
 	memset(env_crc,0x00,4);
-	i2c_write(CFG_DEF_EEPROM_ADDR,I2C_BACKUP_ADDR,2,(void *)&back,sizeof(backup_t));
-	i2c_write(CFG_DEF_EEPROM_ADDR,CFG_ENV_OFFSET,2,(void *)env_crc,4);
+	i2c_write(CONFIG_SYS_DEF_EEPROM_ADDR,I2C_BACKUP_ADDR,2,(void *)&back,sizeof(backup_t));
+	i2c_write(CONFIG_SYS_DEF_EEPROM_ADDR,CONFIG_ENV_OFFSET,2,(void *)env_crc,4);
 }
 
 /*
@@ -322,8 +321,8 @@ int check_env_old_size(ulong oldsize)
 	uchar buf[64];
 
 	/* read old CRC */
-	eeprom_read (CFG_DEF_EEPROM_ADDR,
-		     CFG_ENV_OFFSET,
+	eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR,
+		     CONFIG_ENV_OFFSET,
 		     (uchar *)&crc, sizeof(ulong));
 
 	new = 0;
@@ -333,7 +332,7 @@ int check_env_old_size(ulong oldsize)
 	while (len > 0) {
 		int n = (len > sizeof(buf)) ? sizeof(buf) : len;
 
-		eeprom_read (CFG_DEF_EEPROM_ADDR, CFG_ENV_OFFSET+off, buf, n);
+		eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR, CONFIG_ENV_OFFSET+off, buf, n);
 		new = crc32 (new, buf, n);
 		len -= n;
 		off += n;
@@ -357,12 +356,12 @@ void copy_old_env(ulong size)
 	unsigned off;
 	uchar *name, *value;
 
-	name=&name_buf[0];
-	value=&value_buf[0];
+	name = &name_buf[0];
+	value = &value_buf[0];
 	len=size;
 	off = sizeof(long);
 	while (len > off) {
-		eeprom_read (CFG_DEF_EEPROM_ADDR, CFG_ENV_OFFSET+off, &c, 1);
+		eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR, CONFIG_ENV_OFFSET+off, &c, 1);
 		if(c != '=') {
 			*name++=c;
 			off++;
@@ -371,14 +370,14 @@ void copy_old_env(ulong size)
 			*name++='\0';
 			off++;
 			do {
-				eeprom_read (CFG_DEF_EEPROM_ADDR, CFG_ENV_OFFSET+off, &c, 1);
+				eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR, CONFIG_ENV_OFFSET+off, &c, 1);
 				*value++=c;
 				off++;
 				if(c == '\0')
 					break;
 			} while(len > off);
-			name=&name_buf[0];
-			value=&value_buf[0];
+			name = &name_buf[0];
+			value = &value_buf[0];
 			if(strncmp((char *)name,"baudrate",8)!=0) {
 				setenv((char *)name,(char *)value);
 			}
@@ -428,40 +427,11 @@ void check_env(void)
 	}
 }
 
-
-extern device_t *stdio_devices[];
-extern char *stdio_names[];
-
-void show_stdio_dev(void)
-{
-	/* Print information */
-	puts("In:    ");
-	if (stdio_devices[stdin] == NULL) {
-		puts("No input devices available!\n");
-	} else {
-		printf ("%s\n", stdio_devices[stdin]->name);
-	}
-
-	puts("Out:   ");
-	if (stdio_devices[stdout] == NULL) {
-		puts("No output devices available!\n");
-	} else {
-		printf ("%s\n", stdio_devices[stdout]->name);
-	}
-
-	puts("Err:   ");
-	if (stdio_devices[stderr] == NULL) {
-		puts("No error devices available!\n");
-	} else {
-		printf ("%s\n", stdio_devices[stderr]->name);
-	}
-}
-
 #endif /* #if !defined(CONFIG_PATI) */
 
 int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
- 	ulong size,src,ld_addr;
+	ulong size,src,ld_addr;
 	int result;
 #if !defined(CONFIG_PATI)
 	backup_t back;
@@ -471,13 +441,13 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	if (strcmp(argv[1], "flash") == 0)
 	{
-#if (CONFIG_COMMANDS & CFG_CMD_FDC)
+#if defined(CONFIG_CMD_FDC)
 		if (strcmp(argv[2], "floppy") == 0) {
- 			char *local_args[3];
+			char *local_args[3];
 			extern int do_fdcboot (cmd_tbl_t *, int, int, char *[]);
 			puts("\nupdating bootloader image from floppy\n");
 			local_args[0] = argv[0];
-	    		if(argc==4) {
+			if(argc==4) {
 				local_args[1] = argv[3];
 				local_args[2] = NULL;
 				ld_addr=simple_strtoul(argv[3], NULL, 16);
@@ -485,15 +455,15 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			else {
 				local_args[1] = NULL;
-				ld_addr=CFG_LOAD_ADDR;
+				ld_addr=CONFIG_SYS_LOAD_ADDR;
 				result=do_fdcboot(cmdtp, 0, 1, local_args);
 			}
 			result=mpl_prg_image((uchar *)ld_addr);
 			return result;
 		}
-#endif /* (CONFIG_COMMANDS & CFG_CMD_FDC) */
+#endif
 		if (strcmp(argv[2], "mem") == 0) {
-	    		if(argc==4) {
+			if(argc==4) {
 				ld_addr=simple_strtoul(argv[3], NULL, 16);
 			}
 			else {
@@ -519,14 +489,14 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			result = (int)simple_strtol(argv[2], NULL, 16);
 	    }
 	    src=(unsigned long)&result;
-	    src-=CFG_MEMTEST_START;
+	    src-=CONFIG_SYS_MEMTEST_START;
 	    src-=(100*1024); /* - 100k */
 	    src&=0xfff00000;
 	    size=0;
 	    do {
-	    	size++;
+		size++;
 			printf("\n\nPass %ld\n",size);
-			mem_test(CFG_MEMTEST_START,src,1);
+			mem_test(CONFIG_SYS_MEMTEST_START,src,1);
 			if(ctrlc())
 				break;
 			if(result>0)
@@ -538,7 +508,7 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #if !defined(CONFIG_PATI)
 	if (strcmp(argv[1], "clearenvvalues") == 0)
 	{
- 		if (strcmp(argv[2], "yes") == 0)
+		if (strcmp(argv[2], "yes") == 0)
 		{
 			clear_env_values();
 			return 0;
@@ -559,13 +529,12 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return 0;
 	}
 #endif
-	printf("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 
-#if (CONFIG_COMMANDS & CFG_CMD_DOC)
-extern void doc_probe(ulong physadr);
+#if defined(CONFIG_CMD_DOC)
 void doc_init (void)
 {
   doc_probe(MULTI_PURPOSE_SOCKET_ADDR);
@@ -587,12 +556,12 @@ extern int get_boot_mode(void);
 void video_get_info_str (int line_number, char *info)
 {
 	/* init video info strings for graphic console */
-	PPC405_SYS_INFO sys_info;
+	PPC4xx_SYS_INFO sys_info;
 	char rev;
 	int i,boot;
 	unsigned long pvr;
 	char buf[64];
-	char tmp[16];
+	char buf1[32], buf2[32], buf3[32], buf4[32];
 	char cpustr[16];
 	char *s, *e, bc;
 	switch (line_number)
@@ -636,20 +605,21 @@ void video_get_info_str (int line_number, char *info)
 					++s;
 					break;
 				}
-				buf[i++]=*s;
+				buf[i++] = *s;
 			}
 			sprintf(&buf[i]," SN ");
 			i+=4;
 			for (; s < e; ++s) {
-				buf[i++]=*s;
+				buf[i++] = *s;
 			}
 			buf[i++]=0;
 		}
-		sprintf (info," %s %s %s MHz (%lu/%lu/%lu MHz)",
+		sprintf (info," %s %s %s MHz (%s/%s/%s MHz)",
 			buf, cpustr,
-			strmhz (tmp, gd->cpu_clk), sys_info.freqPLB / 1000000,
-			sys_info.freqPLB / sys_info.pllOpbDiv / 1000000,
-			sys_info.freqPLB / sys_info.pllExtBusDiv / 1000000);
+			strmhz (buf1, gd->cpu_clk),
+			strmhz (buf2, sys_info.freqPLB),
+			strmhz (buf3, sys_info.freqPLB / sys_info.pllOpbDiv),
+			strmhz (buf4, sys_info.freqPLB / sys_info.pllExtBusDiv));
 		return;
 	case 3:
 		/* Memory Info */

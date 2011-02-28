@@ -25,7 +25,7 @@
 #include "du405.h"
 #include <asm/processor.h>
 #include <ppc4xx.h>
-#include <405gp_i2c.h>
+#include <4xx_i2c.h>
 #include <command.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -188,28 +188,19 @@ int checkboard (void)
 	/*
 	 * Reset external DUART via FPGA
 	 */
-	*(volatile unsigned char *) FPGA_MODE_REG = 0xff;	/* reset high active */
-	*(volatile unsigned char *) FPGA_MODE_REG = 0x00;	/* low again */
+	out_8((void *)FPGA_MODE_REG, 0xff); /* reset high active */
+	out_8((void *)FPGA_MODE_REG, 0x00); /* low again */
+
+	return 0;
+}
+
+void reset_phy(void)
+{
+#if defined(CONFIG_LXT971_NO_SLEEP)
 
 	/*
 	 * Disable sleep mode in LXT971
 	 */
 	lxt971_no_sleep();
-
-	return 0;
-}
-
-
-long int initdram (int board_type)
-{
-	return (16 * 1024 * 1024);
-}
-
-
-int testdram (void)
-{
-	/* TODO: XXX XXX XXX */
-	printf ("test: 16 MB - ok\n");
-
-	return (0);
+#endif
 }

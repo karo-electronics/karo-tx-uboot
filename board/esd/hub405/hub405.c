@@ -23,6 +23,7 @@
 
 #include <common.h>
 #include <asm/processor.h>
+#include <asm/io.h>
 #include <command.h>
 #include <malloc.h>
 
@@ -44,22 +45,22 @@ int board_revision(void)
 	/*
 	 * Setup GPIO pin(s) (IRQ6/GPIO23)
 	 */
-	osrl_reg = in32(GPIO0_OSRH);
-	isr1l_reg = in32(GPIO0_ISR1H);
-	tcr_reg = in32(GPIO0_TCR);
-	out32(GPIO0_OSRH, osrl_reg & ~0x00030000);     /* output select */
-	out32(GPIO0_ISR1H, isr1l_reg | 0x00030000);    /* input select  */
-	out32(GPIO0_TCR, tcr_reg & ~0x00000100);       /* select input  */
+	osrl_reg = in_be32((void *)GPIO0_OSRH);
+	isr1l_reg = in_be32((void *)GPIO0_ISR1H);
+	tcr_reg = in_be32((void *)GPIO0_TCR);
+	out_be32((void *)GPIO0_OSRH, osrl_reg & ~0x00030000);     /* output select */
+	out_be32((void *)GPIO0_ISR1H, isr1l_reg | 0x00030000);    /* input select  */
+	out_be32((void *)GPIO0_TCR, tcr_reg & ~0x00000100);       /* select input  */
 
 	udelay(1000);            /* wait some time before reading input */
-	value = in32(GPIO0_IR) & 0x00000100;         /* get config bits */
+	value = in_be32((void *)GPIO0_IR) & 0x00000100;         /* get config bits */
 
 	/*
 	 * Restore GPIO settings
 	 */
-	out32(GPIO0_OSRH, osrl_reg);                   /* output select */
-	out32(GPIO0_ISR1H, isr1l_reg);                 /* input select  */
-	out32(GPIO0_TCR, tcr_reg);  /* enable output driver for outputs */
+	out_be32((void *)GPIO0_OSRH, osrl_reg);                   /* output select */
+	out_be32((void *)GPIO0_ISR1H, isr1l_reg);                 /* input select  */
+	out_be32((void *)GPIO0_TCR, tcr_reg);  /* enable output driver for outputs */
 
 	if (value & 0x00000100) {
 		/* Revision 1.1 or 1.2 detected */
@@ -101,20 +102,9 @@ int board_early_init_f (void)
 	return 0;
 }
 
-
-int misc_init_f (void)
-{
-	return 0;  /* dummy implementation */
-}
-
-
+#define LED_REG (DUART0_BA + 0x20)
 int misc_init_r (void)
 {
-	volatile unsigned char *duart0_mcr = (unsigned char *)((ulong)DUART0_BA + 4);
-	volatile unsigned char *duart1_mcr = (unsigned char *)((ulong)DUART1_BA + 4);
-	volatile unsigned char *duart2_mcr = (unsigned char *)((ulong)DUART2_BA + 4);
-	volatile unsigned char *duart3_mcr = (unsigned char *)((ulong)DUART3_BA + 4);
-	volatile unsigned char *led_reg    = (unsigned char *)((ulong)DUART0_BA + 0x20);
 	unsigned long val;
 	int delay, flashcnt;
 	char *str;
@@ -123,40 +113,35 @@ int misc_init_r (void)
 	/*
 	 * Enable interrupts in exar duart mcr[3]
 	 */
-	*duart0_mcr = 0x08;
-	*duart1_mcr = 0x08;
-	*duart2_mcr = 0x08;
-	*duart3_mcr = 0x08;
+	out_8((void *)(DUART0_BA + 4), 0x08);
+	out_8((void *)(DUART1_BA + 4), 0x08);
+	out_8((void *)(DUART2_BA + 4), 0x08);
+	out_8((void *)(DUART3_BA + 4), 0x08);
 
 	/*
 	 * Set RS232/RS422 control (RS232 = high on GPIO)
 	 */
-	val = in32(GPIO0_OR);
-	val &= ~(CFG_UART2_RS232 | CFG_UART3_RS232 | CFG_UART4_RS232 | CFG_UART5_RS232);
+	val = in_be32((void *)GPIO0_OR);
+	val &= ~(CONFIG_SYS_UART2_RS232 | CONFIG_SYS_UART3_RS232 |
+		 CONFIG_SYS_UART4_RS232 | CONFIG_SYS_UART5_RS232);
 
 	str = getenv("phys0");
 	if (!str || (str && (str[0] == '0')))
-		val |= CFG_UART2_RS232;
+		val |= CONFIG_SYS_UART2_RS232;
 
 	str = getenv("phys1");
 	if (!str || (str && (str[0] == '0')))
-		val |= CFG_UART3_RS232;
+		val |= CONFIG_SYS_UART3_RS232;
 
 	str = getenv("phys2");
 	if (!str || (str && (str[0] == '0')))
-		val |= CFG_UART4_RS232;
+		val |= CONFIG_SYS_UART4_RS232;
 
 	str = getenv("phys3");
 	if (!str || (str && (str[0] == '0')))
-		val |= CFG_UART5_RS232;
+		val |= CONFIG_SYS_UART5_RS232;
 
-	out32(GPIO0_OR, val);
-
-	/*
-	 * Set NAND-FLASH GPIO signals to default
-	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~(CFG_NAND_CLE | CFG_NAND_ALE));
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_NAND_CE);
+	out_be32((void *)GPIO0_OR, val);
 
 	/*
 	 * check board type and setup AP power
@@ -173,23 +158,27 @@ int misc_init_r (void)
 			 * Flash LEDs
 			 */
 			for (flashcnt = 0; flashcnt < 3; flashcnt++) {
-				*led_reg = led_reg_default;        /* LED_A..D off */
+				/* LED_A..D off */
+				out_8((void *)LED_REG, led_reg_default);
 				for (delay = 0; delay < 100; delay++)
 					udelay(1000);
-				*led_reg = led_reg_default | 0xf0; /* LED_A..D on */
+				/* LED_A..D on */
+				out_8((void *)LED_REG, led_reg_default | 0xf0);
 				for (delay = 0; delay < 50; delay++)
 					udelay(1000);
 			}
-			*led_reg = led_reg_default;
+			out_8((void *)LED_REG, led_reg_default);
 		}
 	}
 
 	/*
 	 * Reset external DUARTs
 	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_DUART_RST); /* set reset to high */
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) | CONFIG_SYS_DUART_RST); /* set reset to high */
 	udelay(10); /* wait 10us */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~CFG_DUART_RST); /* set reset to low */
+	out_be32((void *)GPIO0_OR,
+		 in_be32((void *)GPIO0_OR) & ~CONFIG_SYS_DUART_RST); /* set reset to low */
 	udelay(1000); /* wait 1ms */
 
 	/*
@@ -233,42 +222,3 @@ int checkboard (void)
 
 	return 0;
 }
-
-
-long int initdram (int board_type)
-{
-	unsigned long val;
-
-	mtdcr(memcfga, mem_mb0cf);
-	val = mfdcr(memcfgd);
-
-#if 0
-	printf("\nmb0cf=%x\n", val); /* test-only */
-	printf("strap=%x\n", mfdcr(strap)); /* test-only */
-#endif
-
-	return (4*1024*1024 << ((val & 0x000e0000) >> 17));
-}
-
-
-int testdram (void)
-{
-	/* TODO: XXX XXX XXX */
-	printf ("test: 16 MB - ok\n");
-
-	return (0);
-}
-
-
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-#include <linux/mtd/nand_legacy.h>
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
-
-void nand_init(void)
-{
-	nand_probe(CFG_NAND_BASE);
-	if (nand_dev_desc[0].ChipID != NAND_ChipID_UNKNOWN) {
-		print_size(nand_dev_desc[0].totlen, "\n");
-	}
-}
-#endif

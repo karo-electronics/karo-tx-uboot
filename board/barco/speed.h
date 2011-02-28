@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1.3.1  2007-05-22 16:58:59  lothar
- * imported KARO specific modifications
+ * Revision 1.1.3.2  2011-02-28 14:52:53  lothar
+ * imported Ka-Ro specific additions to U-Boot 2009.08 for TX28
  *
  * Revision 1.2  2005/02/21 12:48:58  mleeman
  * update of copyright years (feedback wd)
@@ -55,10 +55,10 @@
  * SPEED_TMR3_PS = (GCLK / (16 * SPEED_FCOUNT3)) - 1
  *
  * SPEED_FCOUNT2	timer 2 counting frequency
- * GCLK	      		CPU clock
+ * GCLK			CPU clock
  * SPEED_TMR2_PS	prescaler
  */
-#define SPEED_TMR2_PS  	(250 - 1)	/* divide by 250	*/
+#define SPEED_TMR2_PS	(250 - 1)	/* divide by 250	*/
 
 /*-----------------------------------------------------------------------
  * Timer value for PIT

@@ -46,13 +46,88 @@
  */
 #define I2C_RXTX_LEN	128	/* maximum tx/rx buffer length */
 
+#if defined(CONFIG_I2C_MULTI_BUS)
+#if !defined(CONFIG_SYS_MAX_I2C_BUS)
+#define CONFIG_SYS_MAX_I2C_BUS		2
+#endif
+#define I2C_GET_BUS()		i2c_get_bus_num()
+#define I2C_SET_BUS(a)		i2c_set_bus_num(a)
+#else
+#define CONFIG_SYS_MAX_I2C_BUS		1
+#define I2C_GET_BUS()		0
+#define I2C_SET_BUS(a)
+#endif
+
+/* define the I2C bus number for RTC and DTT if not already done */
+#if !defined(CONFIG_SYS_RTC_BUS_NUM)
+#define CONFIG_SYS_RTC_BUS_NUM		0
+#endif
+#if !defined(CONFIG_SYS_DTT_BUS_NUM)
+#define CONFIG_SYS_DTT_BUS_NUM		0
+#endif
+#if !defined(CONFIG_SYS_SPD_BUS_NUM)
+#define CONFIG_SYS_SPD_BUS_NUM		0
+#endif
+
+#ifndef I2C_SOFT_DECLARATIONS
+# if defined(CONFIG_MPC8260)
+#  define I2C_SOFT_DECLARATIONS volatile ioport_t *iop = ioport_addr((immap_t *)CONFIG_SYS_IMMR, I2C_PORT);
+# elif defined(CONFIG_8xx)
+#  define I2C_SOFT_DECLARATIONS	volatile immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
+# else
+#  define I2C_SOFT_DECLARATIONS
+# endif
+#endif
+
+#ifdef CONFIG_8xx
+/* Set default value for the I2C bus speed on 8xx. In the
+ * future, we'll define these in all 8xx board config files.
+ */
+#ifndef	CONFIG_SYS_I2C_SPEED
+#define	CONFIG_SYS_I2C_SPEED	50000
+#endif
+#endif
+
+/*
+ * Many boards/controllers/drivers don't support an I2C slave interface so
+ * provide a default slave address for them for use in common code.  A real
+ * value for CONFIG_SYS_I2C_SLAVE should be defined for any board which does
+ * support a slave interface.
+ */
+#ifndef	CONFIG_SYS_I2C_SLAVE
+#define	CONFIG_SYS_I2C_SLAVE	0xfe
+#endif
+
 /*
  * Initialization, must be called once on start up, may be called
  * repeatedly to change the speed and slave addresses.
  */
 void i2c_init(int speed, int slaveaddr);
-#ifdef CFG_I2C_INIT_BOARD
+#ifdef CONFIG_SYS_I2C_INIT_BOARD
 void i2c_init_board(void);
+#endif
+
+#if defined(CONFIG_I2C_MUX)
+
+typedef struct _mux {
+	uchar	chip;
+	uchar	channel;
+	char	*name;
+	struct _mux	*next;
+} I2C_MUX;
+
+typedef struct _mux_device {
+	int	busid;
+	I2C_MUX	*mux;	/* List of muxes, to reach the device */
+	struct _mux_device	*next;
+} I2C_MUX_DEVICE;
+
+int	i2c_mux_add_device(I2C_MUX_DEVICE *dev);
+
+I2C_MUX_DEVICE	*i2c_mux_search_device(int id);
+I2C_MUX_DEVICE *i2c_mux_ident_muxstring (uchar *buf);
+int i2x_mux_select_mux(int bus);
+int i2c_mux_ident_muxstring_f (uchar *buf);
 #endif
 
 /*
@@ -79,7 +154,82 @@ int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len);
 /*
  * Utility routines to read/write registers.
  */
-uchar i2c_reg_read (uchar chip, uchar reg);
-void  i2c_reg_write(uchar chip, uchar reg, uchar val);
+static inline u8 i2c_reg_read(u8 addr, u8 reg)
+{
+	u8 buf;
+
+#ifdef CONFIG_8xx
+	/* MPC8xx needs this.  Maybe one day we can get rid of it. */
+	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+#endif
+
+#ifdef DEBUG
+	printf("%s: addr=0x%02x, reg=0x%02x\n", __func__, addr, reg);
+#endif
+
+	i2c_read(addr, reg, 1, &buf, 1);
+
+	return buf;
+}
+
+static inline void i2c_reg_write(u8 addr, u8 reg, u8 val)
+{
+#ifdef CONFIG_8xx
+	/* MPC8xx needs this.  Maybe one day we can get rid of it. */
+	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+#endif
+
+#ifdef DEBUG
+	printf("%s: addr=0x%02x, reg=0x%02x, val=0x%02x\n",
+	       __func__, addr, reg, val);
+#endif
+
+	i2c_write(addr, reg, 1, &val, 1);
+}
+
+/*
+ * Functions for setting the current I2C bus and its speed
+ */
+
+/*
+ * i2c_set_bus_num:
+ *
+ *  Change the active I2C bus.  Subsequent read/write calls will
+ *  go to this one.
+ *
+ *	bus - bus index, zero based
+ *
+ *	Returns: 0 on success, not 0 on failure
+ *
+ */
+int i2c_set_bus_num(unsigned int bus);
+
+/*
+ * i2c_get_bus_num:
+ *
+ *  Returns index of currently active I2C bus.  Zero-based.
+ */
+
+unsigned int i2c_get_bus_num(void);
+
+/*
+ * i2c_set_bus_speed:
+ *
+ *  Change the speed of the active I2C bus
+ *
+ *	speed - bus speed in Hz
+ *
+ *	Returns: 0 on success, not 0 on failure
+ *
+ */
+int i2c_set_bus_speed(unsigned int);
+
+/*
+ * i2c_get_bus_speed:
+ *
+ *  Returns speed of currently active I2C bus in Hz
+ */
+
+unsigned int i2c_get_bus_speed(void);
 
 #endif	/* _I2C_H_ */

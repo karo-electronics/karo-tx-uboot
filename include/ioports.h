@@ -26,7 +26,7 @@ typedef struct {
  * a 0x20 byte boundary
  */
 #ifdef CONFIG_MPC85xx
-#define ioport_addr(im, idx) (ioport_t *)((uint)&((im)->im_cpm.im_cpm_iop) + ((idx)*0x20))
+#define ioport_addr(im, idx) (ioport_t *)((uint)&(im->im_cpm_iop) + ((idx)*0x20))
 #else
 #define ioport_addr(im, idx) (ioport_t *)((uint)&(im)->im_ioport + ((idx)*0x20))
 #endif
@@ -53,3 +53,13 @@ typedef struct {
  * like the table in the 8260UM (and in the hymod manuals).
  */
 extern const iop_conf_t iop_conf_tab[4][32];
+
+typedef struct {
+	unsigned char	port;
+	unsigned char	pin;
+	int		dir;
+	int		open_drain;
+	int		assign;
+} qe_iop_conf_t;
+
+#define QE_IOP_TAB_END	(-1)

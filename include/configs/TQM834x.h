@@ -28,19 +28,17 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define DEBUG
-#undef DEBUG
-
 /*
  * High Level Configuration Options
  */
 #define CONFIG_E300		1	/* E300 Family */
-#define CONFIG_MPC83XX		1	/* MPC83XX family */
-#define CONFIG_MPC834X		1	/* MPC834X specific */
+#define CONFIG_MPC83xx		1	/* MPC83xx family */
+#define CONFIG_MPC834x		1	/* MPC834x specific */
+#define CONFIG_MPC8349		1	/* MPC8349 specific */
 #define CONFIG_TQM834X		1	/* TQM834X board specific */
 
 /* IMMR Base Addres Register, use Freescale default: 0xff400000 */
-#define CFG_IMMRBAR		0xff400000
+#define CONFIG_SYS_IMMR		0xff400000
 
 /* System clock. Primary input clock when in PCI host mode */
 #define CONFIG_83XX_CLKIN	66666000	/* 66,666 MHz */
@@ -54,7 +52,7 @@
  * External Local Bus rate is
  *    CLKIN * HRCWL_CSB_TO_CLKIN / HRCWL_LCL_BUS_TO_SCB_CLK / LCRR_CLKDIV
  */
-#define CFG_LCRR		(LCRR_DBYP | LCRR_CLKDIV_8)
+#define CONFIG_SYS_LCRR		(LCRR_DBYP | LCRR_CLKDIV_8)
 
 /* board pre init: do not call, nothing to do */
 #undef CONFIG_BOARD_EARLY_INIT_F
@@ -65,179 +63,158 @@
 /*
  * DDR Setup
  */
-#define CFG_DDR_BASE		0x00000000	/* DDR is system memory*/
-#define CFG_SDRAM_BASE		CFG_DDR_BASE
-#define CFG_DDR_SDRAM_BASE	CFG_DDR_BASE
+#define CONFIG_SYS_DDR_BASE		0x00000000	/* DDR is system memory*/
+#define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_BASE
+#define CONFIG_SYS_DDR_SDRAM_BASE	CONFIG_SYS_DDR_BASE
 #define DDR_CASLAT_25				/* CASLAT set to 2.5 */
 #undef CONFIG_DDR_ECC				/* only for ECC DDR module */
 #undef CONFIG_SPD_EEPROM			/* do not use SPD EEPROM for DDR setup */
 
-#undef CFG_DRAM_TEST				/* memory test, takes time */
-#define CFG_MEMTEST_START	0x00000000	/* memtest region */
-#define CFG_MEMTEST_END		0x00100000
+#undef CONFIG_SYS_DRAM_TEST				/* memory test, takes time */
+#define CONFIG_SYS_MEMTEST_START	0x00000000	/* memtest region */
+#define CONFIG_SYS_MEMTEST_END		0x00100000
 
 /*
  * FLASH on the Local Bus
  */
-#define CFG_FLASH_CFI				/* use the Common Flash Interface */
-#define CFG_FLASH_CFI_DRIVER			/* use the CFI driver */
-#undef CFG_FLASH_CHECKSUM
-#define CFG_FLASH_BASE		0x80000000	/* start of FLASH   */
-
-/* buffered writes in the AMD chip set is not supported yet */
-#undef CFG_FLASH_USE_BUFFER_WRITE
+#define CONFIG_SYS_FLASH_CFI				/* use the Common Flash Interface */
+#define CONFIG_FLASH_CFI_DRIVER				/* use the CFI driver */
+#undef CONFIG_SYS_FLASH_CHECKSUM
+#define CONFIG_SYS_FLASH_BASE		0x80000000	/* start of FLASH   */
+#define CONFIG_SYS_FLASH_SIZE		8		/* FLASH size in MB */
+#define CONFIG_SYS_FLASH_EMPTY_INFO			/* print 'E' for empty sectors */
+#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 
 /*
  * FLASH bank number detection
  */
 
 /*
- * When CFG_MAX_FLASH_BANKS_DETECT is defined, the actual number of Flash
+ * When CONFIG_SYS_MAX_FLASH_BANKS_DETECT is defined, the actual number of Flash
  * banks has to be determined at runtime and stored in a gloabl variable
- * tqm834x_num_flash_banks. The value of CFG_MAX_FLASH_BANKS_DETECT is only
- * used instead of CFG_MAX_FLASH_BANKS to allocate the array flash_info, and
+ * tqm834x_num_flash_banks. The value of CONFIG_SYS_MAX_FLASH_BANKS_DETECT is only
+ * used instead of CONFIG_SYS_MAX_FLASH_BANKS to allocate the array flash_info, and
  * should be made sufficiently large to accomodate the number of banks that
  * might actually be detected.  Since most (all?) Flash related functions use
- * CFG_MAX_FLASH_BANKS as the number of actual banks on the board, it is
+ * CONFIG_SYS_MAX_FLASH_BANKS as the number of actual banks on the board, it is
  * defined as tqm834x_num_flash_banks.
  */
-#define CFG_MAX_FLASH_BANKS_DETECT	2
+#define CONFIG_SYS_MAX_FLASH_BANKS_DETECT	2
 #ifndef __ASSEMBLY__
 extern int tqm834x_num_flash_banks;
 #endif
-#define CFG_MAX_FLASH_BANKS (tqm834x_num_flash_banks)
+#define CONFIG_SYS_MAX_FLASH_BANKS (tqm834x_num_flash_banks)
 
-#define CFG_MAX_FLASH_SECT		512	/* max sectors per device */
+#define CONFIG_SYS_MAX_FLASH_SECT		512	/* max sectors per device */
 
 /* 32 bit device at 0x80000000 via GPCM (0x8000_1801) */
-#define CFG_BR0_PRELIM		((CFG_FLASH_BASE & BR_BA) | \
+#define CONFIG_SYS_BR0_PRELIM		((CONFIG_SYS_FLASH_BASE & BR_BA) | \
 					BR_MS_GPCM | BR_PS_32 | BR_V)
 
 /* FLASH timing (0x0000_0c54) */
-#define CFG_OR_TIMING_FLASH	(OR_GPCM_CSNT | OR_GPCM_ACS_0b10 | \
+#define CONFIG_SYS_OR_TIMING_FLASH	(OR_GPCM_CSNT | OR_GPCM_ACS_DIV4 | \
 					OR_GPCM_SCY_5 | OR_GPCM_TRLX)
 
-#define CFG_PRELIM_OR_AM	0xc0000000	/* OR addr mask: 1 GiB */
+#define CONFIG_SYS_PRELIM_OR_AM	0xc0000000	/* OR addr mask: 1 GiB */
 
-#define CFG_OR0_PRELIM		(CFG_PRELIM_OR_AM  | CFG_OR_TIMING_FLASH)
+#define CONFIG_SYS_OR0_PRELIM		(CONFIG_SYS_PRELIM_OR_AM  | CONFIG_SYS_OR_TIMING_FLASH)
 
-#define CFG_LBLAWAR0_PRELIM	0x8000001D	/* 1 GiB window size (2^(size + 1)) */
+#define CONFIG_SYS_LBLAWAR0_PRELIM	0x8000001D	/* 1 GiB window size (2^(size + 1)) */
 
-#define CFG_LBLAWBAR0_PRELIM	CFG_FLASH_BASE	/* Window base at flash base */
+#define CONFIG_SYS_LBLAWBAR0_PRELIM	CONFIG_SYS_FLASH_BASE	/* Window base at flash base */
 
 /* disable remaining mappings */
-#define CFG_BR1_PRELIM		0x00000000
-#define CFG_OR1_PRELIM		0x00000000
-#define CFG_LBLAWBAR1_PRELIM	0x00000000
-#define CFG_LBLAWAR1_PRELIM	0x00000000
+#define CONFIG_SYS_BR1_PRELIM		0x00000000
+#define CONFIG_SYS_OR1_PRELIM		0x00000000
+#define CONFIG_SYS_LBLAWBAR1_PRELIM	0x00000000
+#define CONFIG_SYS_LBLAWAR1_PRELIM	0x00000000
 
-#define CFG_BR2_PRELIM		0x00000000
-#define CFG_OR2_PRELIM		0x00000000
-#define CFG_LBLAWBAR2_PRELIM	0x00000000
-#define CFG_LBLAWAR2_PRELIM	0x00000000
+#define CONFIG_SYS_BR2_PRELIM		0x00000000
+#define CONFIG_SYS_OR2_PRELIM		0x00000000
+#define CONFIG_SYS_LBLAWBAR2_PRELIM	0x00000000
+#define CONFIG_SYS_LBLAWAR2_PRELIM	0x00000000
 
-#define CFG_BR3_PRELIM		0x00000000
-#define CFG_OR3_PRELIM		0x00000000
-#define CFG_LBLAWBAR3_PRELIM	0x00000000
-#define CFG_LBLAWAR3_PRELIM	0x00000000
-
-#define CFG_BR4_PRELIM		0x00000000
-#define CFG_OR4_PRELIM		0x00000000
-#define CFG_LBLAWBAR4_PRELIM	0x00000000
-#define CFG_LBLAWAR4_PRELIM	0x00000000
-
-#define CFG_BR5_PRELIM		0x00000000
-#define CFG_OR5_PRELIM		0x00000000
-#define CFG_LBLAWBAR5_PRELIM	0x00000000
-#define CFG_LBLAWAR5_PRELIM	0x00000000
-
-#define CFG_BR6_PRELIM		0x00000000
-#define CFG_OR6_PRELIM		0x00000000
-#define CFG_LBLAWBAR6_PRELIM	0x00000000
-#define CFG_LBLAWAR6_PRELIM	0x00000000
-
-#define CFG_BR7_PRELIM		0x00000000
-#define CFG_OR7_PRELIM		0x00000000
-#define CFG_LBLAWBAR7_PRELIM	0x00000000
-#define CFG_LBLAWAR7_PRELIM	0x00000000
+#define CONFIG_SYS_BR3_PRELIM		0x00000000
+#define CONFIG_SYS_OR3_PRELIM		0x00000000
+#define CONFIG_SYS_LBLAWBAR3_PRELIM	0x00000000
+#define CONFIG_SYS_LBLAWAR3_PRELIM	0x00000000
 
 /*
  * Monitor config
  */
-#define CFG_MONITOR_BASE	TEXT_BASE	/* start of monitor */
+#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE	/* start of monitor */
 
-#if (CFG_MONITOR_BASE < CFG_FLASH_BASE)
-#define CFG_RAMBOOT
+#if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
+# define CONFIG_SYS_RAMBOOT
 #else
-#undef  CFG_RAMBOOT
+# undef  CONFIG_SYS_RAMBOOT
 #endif
 
-#define CONFIG_L1_INIT_RAM
-#define CFG_INIT_RAM_LOCK	1
-#define CFG_INIT_RAM_ADDR	0x20000000	/* Initial RAM address */
-#define CFG_INIT_RAM_END	0x1000		/* End of used area in RAM*/
+#define CONFIG_SYS_INIT_RAM_LOCK	1
+#define CONFIG_SYS_INIT_RAM_ADDR	0x20000000	/* Initial RAM address */
+#define CONFIG_SYS_INIT_RAM_END	0x1000		/* End of used area in RAM*/
 
-#define CFG_GBL_DATA_SIZE  	0x100		/* num bytes initial data */
-#define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
-#define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
+#define CONFIG_SYS_GBL_DATA_SIZE	0x100		/* num bytes initial data */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CFG_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
-#define CFG_MALLOC_LEN		(128 * 1024) /* Reserved for malloc */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024) /* Reserve 384 kB = 3 sect. for Mon */
+#define CONFIG_SYS_MALLOC_LEN		(512 * 1024) /* Reserve 512 kB for malloc */
 
 /*
  * Serial Port
  */
 #define CONFIG_CONS_INDEX	1
 #undef CONFIG_SERIAL_SOFTWARE_FIFO
-#define CFG_NS16550
-#define CFG_NS16550_SERIAL
-#define CFG_NS16550_REG_SIZE	1
-#define CFG_NS16550_CLK		get_bus_freq(0)
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	1
+#define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
 
-#define CFG_BAUDRATE_TABLE  \
+#define CONFIG_SYS_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
 
-#define CFG_NS16550_COM1	(CFG_IMMRBAR + 0x4500)
-#define CFG_NS16550_COM2	(CFG_IMMRBAR + 0x4600)
+#define CONFIG_SYS_NS16550_COM1	(CONFIG_SYS_IMMR + 0x4500)
+#define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_IMMR + 0x4600)
 
 /*
  * I2C
  */
 #define CONFIG_HARD_I2C				/* I2C with hardware support	*/
 #undef CONFIG_SOFT_I2C				/* I2C bit-banged		*/
-#define CFG_I2C_SPEED			400000	/* I2C speed: 400KHz		*/
-#define CFG_I2C_SLAVE			0x7F	/* slave address		*/
-#define CFG_I2C_OFFSET			0x3000
+#define CONFIG_FSL_I2C
+#define CONFIG_SYS_I2C_SPEED			400000	/* I2C speed: 400KHz		*/
+#define CONFIG_SYS_I2C_SLAVE			0x7F	/* slave address		*/
+#define CONFIG_SYS_I2C_OFFSET			0x3000
 
 /* I2C EEPROM, configuration for onboard EEPROMs 24C256 and 24C32 */
-#define CFG_I2C_EEPROM_ADDR		0x50	/* 1010000x			*/
-#define CFG_I2C_EEPROM_ADDR_LEN		2	/* 16 bit			*/
-#define CFG_EEPROM_PAGE_WRITE_BITS	5	/* 32 bytes per write		*/
-#define CFG_EEPROM_PAGE_WRITE_ENABLE
-#define CFG_EEPROM_PAGE_WRITE_DELAY_MS	12	/* 10ms +/- 20%			*/
-#define CFG_I2C_MULTI_EEPROMS		1       /* more than one eeprom		*/
+#define CONFIG_SYS_I2C_EEPROM_ADDR		0x50	/* 1010000x			*/
+#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		2	/* 16 bit			*/
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	5	/* 32 bytes per write		*/
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	12	/* 10ms +/- 20%			*/
+#define CONFIG_SYS_I2C_MULTI_EEPROMS		1       /* more than one eeprom		*/
 
 /* I2C RTC */
 #define CONFIG_RTC_DS1337			/* use ds1337 rtc via i2c	*/
-#define CFG_I2C_RTC_ADDR		0x68	/* at address 0x68		*/
+#define CONFIG_SYS_I2C_RTC_ADDR		0x68	/* at address 0x68		*/
 
 /* I2C SYSMON (LM75) */
 #define CONFIG_DTT_LM75			1	/* ON Semi's LM75		*/
 #define CONFIG_DTT_SENSORS		{0}	/* Sensor addresses		*/
-#define CFG_DTT_MAX_TEMP		70
-#define CFG_DTT_LOW_TEMP		-30
-#define CFG_DTT_HYSTERESIS		3
+#define CONFIG_SYS_DTT_MAX_TEMP		70
+#define CONFIG_SYS_DTT_LOW_TEMP		-30
+#define CONFIG_SYS_DTT_HYSTERESIS		3
 
 /*
  * TSEC
  */
-#define CONFIG_TSEC_ENET 		/* tsec ethernet support */
+#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_MII
 
-#define CFG_TSEC1_OFFSET	0x24000
-#define CFG_TSEC1		(CFG_IMMRBAR + CFG_TSEC1_OFFSET)
-#define CFG_TSEC2_OFFSET	0x25000
-#define CFG_TSEC2		(CFG_IMMRBAR + CFG_TSEC2_OFFSET)
+#define CONFIG_SYS_TSEC1_OFFSET	0x24000
+#define CONFIG_SYS_TSEC1		(CONFIG_SYS_IMMR + CONFIG_SYS_TSEC1_OFFSET)
+#define CONFIG_SYS_TSEC2_OFFSET	0x25000
+#define CONFIG_SYS_TSEC2		(CONFIG_SYS_IMMR + CONFIG_SYS_TSEC2_OFFSET)
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -245,14 +222,16 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_NET_MULTI
 #endif
 
-#define CONFIG_MPC83XX_TSEC1		1
-#define CONFIG_MPC83XX_TSEC1_NAME	"TSEC0"
-#define CONFIG_MPC83XX_TSEC2		1
-#define CONFIG_MPC83XX_TSEC2_NAME	"TSEC1"
+#define CONFIG_TSEC1		1
+#define CONFIG_TSEC1_NAME	"TSEC0"
+#define CONFIG_TSEC2		1
+#define CONFIG_TSEC2_NAME	"TSEC1"
 #define TSEC1_PHY_ADDR			2
 #define TSEC2_PHY_ADDR			1
 #define TSEC1_PHYIDX			0
 #define TSEC2_PHYIDX			0
+#define TSEC1_FLAGS		TSEC_GIGABIT
+#define TSEC2_FLAGS		TSEC_GIGABIT
 
 /* Options are: TSEC[0-1] */
 #define CONFIG_ETHPRIME			"TSEC0"
@@ -271,124 +250,118 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_PCI_SCAN_SHOW            /* show pci devices on startup */
 
 /* PCI1 host bridge */
-#define CFG_PCI1_MEM_BASE       0xc0000000
-#define CFG_PCI1_MEM_PHYS       CFG_PCI1_MEM_BASE
-#define CFG_PCI1_MEM_SIZE       0x20000000      /* 512M */
-#define CFG_PCI1_IO_BASE        0xe2000000
-#define CFG_PCI1_IO_PHYS        CFG_PCI1_IO_BASE
-#define CFG_PCI1_IO_SIZE        0x1000000       /* 16M */
-
+#define CONFIG_SYS_PCI1_MEM_BASE       0x90000000
+#define CONFIG_SYS_PCI1_MEM_PHYS       CONFIG_SYS_PCI1_MEM_BASE
+#define CONFIG_SYS_PCI1_MEM_SIZE       0x10000000      /* 256M */
+#define CONFIG_SYS_PCI1_MMIO_BASE      (CONFIG_SYS_PCI1_MEM_BASE + CONFIG_SYS_PCI1_MEM_SIZE)
+#define CONFIG_SYS_PCI1_MMIO_PHYS      CONFIG_SYS_PCI1_MMIO_BASE
+#define CONFIG_SYS_PCI1_MMIO_SIZE      0x10000000     /* 256M */
+#define CONFIG_SYS_PCI1_IO_BASE        0xe2000000
+#define CONFIG_SYS_PCI1_IO_PHYS        CONFIG_SYS_PCI1_IO_BASE
+#define CONFIG_SYS_PCI1_IO_SIZE        0x1000000       /* 16M */
 
 #undef CONFIG_EEPRO100
 #define CONFIG_EEPRO100
 #undef CONFIG_TULIP
 
 #if !defined(CONFIG_PCI_PNP)
-	#define PCI_ENET0_IOADDR	CFG_PCI1_IO_BASE
-	#define PCI_ENET0_MEMADDR	CFG_PCI1_MEM_BASE
+	#define PCI_ENET0_IOADDR	CONFIG_SYS_PCI1_IO_BASE
+	#define PCI_ENET0_MEMADDR	CONFIG_SYS_PCI1_MEM_BASE
 	#define PCI_IDSEL_NUMBER	0x1c    /* slot0 (IDSEL) = 28 */
 #endif
 
-#define CFG_PCI_SUBSYS_VENDORID		0x1957  /* Freescale */
+#define CONFIG_SYS_PCI_SUBSYS_VENDORID		0x1957  /* Freescale */
 
 #endif	/* CONFIG_PCI */
 
 /*
  * Environment
  */
-#define CONFIG_ENV_OVERWRITE
-
-#ifndef CFG_RAMBOOT
-	#define CFG_ENV_IS_IN_FLASH	1
-	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + 0x40000)
-	#define CFG_ENV_SECT_SIZE	0x20000	/* 256K(one sector) for env */
-	#define CFG_ENV_SIZE		0x2000
-#else
-	#define CFG_NO_FLASH		1	/* Flash is not usable now */
-	#define CFG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
-	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE - 0x1000)
-	#define CFG_ENV_SIZE		0x2000
-#endif
+#define CONFIG_ENV_IS_IN_FLASH		1
+#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
+#define CONFIG_ENV_SECT_SIZE		0x20000	/* 128K (one sector) for env */
+#define CONFIG_ENV_SIZE			0x8000	/*  32K max size */
+#define CONFIG_ENV_ADDR_REDUND	(CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE)
+#define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #define CONFIG_LOADS_ECHO		1	/* echo on for serial download */
-#define CFG_LOADS_BAUD_CHANGE		1	/* allow baudrate change */
+#define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
 
-/* Common commands */
-#define CFG_CMD_TQM8349_COMMON	CFG_CMD_DATE | CFG_CMD_I2C | CFG_CMD_DTT\
-				| CFG_CMD_PING | CFG_CMD_EEPROM		\
-				| CFG_CMD_MII | CFG_CMD_JFFS2
+/*
+ * BOOTP options
+ */
+#define CONFIG_BOOTP_BOOTFILESIZE
+#define CONFIG_BOOTP_BOOTPATH
+#define CONFIG_BOOTP_GATEWAY
+#define CONFIG_BOOTP_HOSTNAME
 
-#if defined(CFG_RAMBOOT)
+
+/*
+ * Command line configuration.
+ */
+#include <config_cmd_default.h>
+
+#define CONFIG_CMD_ASKENV
+#define CONFIG_CMD_DATE
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_DTT
+#define CONFIG_CMD_EEPROM
+#define CONFIG_CMD_I2C
+#define CONFIG_CMD_NFS
+#define CONFIG_CMD_JFFS2
+#define CONFIG_CMD_MII
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_REGINFO
+#define CONFIG_CMD_SNTP
 
 #if defined(CONFIG_PCI)
-#define  CONFIG_COMMANDS	((CONFIG_CMD_DFL | CFG_CMD_PCI	\
-				| CFG_CMD_TQM8349_COMMON)	\
-				&				\
-				~(CFG_CMD_ENV | CFG_CMD_LOADS))
-#else
-#define  CONFIG_COMMANDS	((CONFIG_CMD_DFL		\
-				| CFG_CMD_TQM8349_COMMON)	\
-				&				\
-				~(CFG_CMD_ENV | CFG_CMD_LOADS))
+    #define CONFIG_CMD_PCI
 #endif
 
-#else /* CFG_RAMBOOT */
-
-#if defined(CONFIG_PCI)
-#define  CONFIG_COMMANDS	(CONFIG_CMD_DFL | CFG_CMD_PCI	\
-				| CFG_CMD_TQM8349_COMMON)
-#else
-#define  CONFIG_COMMANDS	(CONFIG_CMD_DFL			\
-				| CFG_CMD_TQM8349_COMMON)
+#if defined(CONFIG_SYS_RAMBOOT)
+    #undef CONFIG_CMD_SAVEENV
+    #undef CONFIG_CMD_LOADS
 #endif
-
-#endif /* CFG_RAMBOOT */
-
-#include <cmd_confdefs.h>
 
 /*
  * Miscellaneous configurable options
  */
-#define CFG_LONGHELP				/* undef to save memory	*/
-#define CFG_LOAD_ADDR		0x2000000	/* default load address */
-#define CFG_PROMPT		"=> "		/* Monitor Command Prompt */
+#define CONFIG_SYS_LONGHELP				/* undef to save memory	*/
+#define CONFIG_SYS_LOAD_ADDR		0x2000000	/* default load address */
+#define CONFIG_SYS_PROMPT		"=> "		/* Monitor Command Prompt */
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
-#define CFG_HUSH_PARSER		1	/* Use the HUSH parser		*/
-#ifdef	CFG_HUSH_PARSER
-#define	CFG_PROMPT_HUSH_PS2	"> "
+#define CONFIG_SYS_HUSH_PARSER		1	/* Use the HUSH parser		*/
+#ifdef	CONFIG_SYS_HUSH_PARSER
+#define	CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #endif
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
-	#define CFG_CBSIZE	1024		/* Console I/O Buffer Size */
+#if defined(CONFIG_CMD_KGDB)
+	#define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #else
-	#define CFG_CBSIZE	256		/* Console I/O Buffer Size */
+	#define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
 #endif
 
-#define CFG_PBSIZE (CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
-#define CFG_MAXARGS		16		/* max number of command args */
-#define CFG_BARGSIZE		CFG_CBSIZE	/* Boot Argument Buffer Size */
-#define CFG_HZ			1000		/* decrementer freq: 1ms ticks */
+#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
+#define CONFIG_SYS_MAXARGS		16		/* max number of command args */
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
+#define CONFIG_SYS_HZ			1000		/* decrementer freq: 1ms ticks */
 
 #undef CONFIG_WATCHDOG				/* watchdog disabled */
+
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
 
-/*
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value*/
-#endif
-
-#define CFG_HRCW_LOW (\
+#define CONFIG_SYS_HRCW_LOW (\
 	HRCWL_LCL_BUS_TO_SCB_CLK_1X1 |\
 	HRCWL_DDR_TO_SCB_CLK_1X1 |\
 	HRCWL_CSB_TO_CLKIN_4X1 |\
@@ -396,7 +369,7 @@ extern int tqm834x_num_flash_banks;
 	HRCWL_CORE_TO_CSB_2X1)
 
 #if defined(PCI_64BIT)
-#define CFG_HRCW_HIGH (\
+#define CONFIG_SYS_HRCW_HIGH (\
 	HRCWH_PCI_HOST |\
 	HRCWH_64_BIT_PCI |\
 	HRCWH_PCI1_ARBITER_ENABLE |\
@@ -409,7 +382,7 @@ extern int tqm834x_num_flash_banks;
 	HRCWH_TSEC1M_IN_GMII |\
 	HRCWH_TSEC2M_IN_GMII )
 #else
-#define CFG_HRCW_HIGH (\
+#define CONFIG_SYS_HRCW_HIGH (\
 	HRCWH_PCI_HOST |\
 	HRCWH_32_BIT_PCI |\
 	HRCWH_PCI1_ARBITER_ENABLE |\
@@ -424,65 +397,67 @@ extern int tqm834x_num_flash_banks;
 #endif
 
 /* System IO Config */
-#define CFG_SICRH	SICRH_TSOBI1
-#define CFG_SICRL	SICRL_LDP_A
+#define CONFIG_SYS_SICRH	0
+#define CONFIG_SYS_SICRL	SICRL_LDP_A
 
 /* i-cache and d-cache disabled */
-#define CFG_HID0_INIT	0x000000000
-#define CFG_HID0_FINAL	CFG_HID0_INIT
-#define CFG_HID2	HID2_HBE
+#define CONFIG_SYS_HID0_INIT	0x000000000
+#define CONFIG_SYS_HID0_FINAL	CONFIG_SYS_HID0_INIT
+#define CONFIG_SYS_HID2	HID2_HBE
+
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /* DDR 0 - 512M */
-#define CFG_IBAT0L	(CFG_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
-#define CFG_IBAT0U	(CFG_SDRAM_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
-#define CFG_IBAT1L	(CFG_SDRAM_BASE + 0x10000000 | BATL_PP_10 | BATL_MEMCOHERENCE)
-#define CFG_IBAT1U	(CFG_SDRAM_BASE + 0x10000000 | BATU_BL_256M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT0L	(CONFIG_SYS_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
+#define CONFIG_SYS_IBAT0U	(CONFIG_SYS_SDRAM_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT1L	(CONFIG_SYS_SDRAM_BASE + 0x10000000 | BATL_PP_10 | BATL_MEMCOHERENCE)
+#define CONFIG_SYS_IBAT1U	(CONFIG_SYS_SDRAM_BASE + 0x10000000 | BATU_BL_256M | BATU_VS | BATU_VP)
 
 /* stack in DCACHE @ 512M (no backing mem) */
-#define CFG_IBAT2L	(CFG_INIT_RAM_ADDR | BATL_PP_10 | BATL_MEMCOHERENCE)
-#define CFG_IBAT2U	(CFG_INIT_RAM_ADDR | BATU_BL_128K | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT2L	(CONFIG_SYS_INIT_RAM_ADDR | BATL_PP_10 | BATL_MEMCOHERENCE)
+#define CONFIG_SYS_IBAT2U	(CONFIG_SYS_INIT_RAM_ADDR | BATU_BL_128K | BATU_VS | BATU_VP)
 
 /* PCI */
 #ifdef CONFIG_PCI
-#define CFG_IBAT3L	(CFG_PCI1_MEM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
-#define CFG_IBAT3U	(CFG_PCI1_MEM_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
-#define CFG_IBAT4L	(CFG_PCI1_MEM_BASE + 0x10000000 | BATL_PP_10 | BATL_MEMCOHERENCE)
-#define CFG_IBAT4U	(CFG_PCI1_MEM_BASE + 0x10000000 | BATU_BL_256M | BATU_VS | BATU_VP)
-#define CFG_IBAT5L	(CFG_PCI1_IO_BASE | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CFG_IBAT5U	(CFG_PCI1_IO_BASE + 0x10000000 | BATU_BL_16M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT3L	(CONFIG_SYS_PCI1_MEM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
+#define CONFIG_SYS_IBAT3U	(CONFIG_SYS_PCI1_MEM_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT4L	(CONFIG_SYS_PCI1_MMIO_BASE | BATL_PP_10 | BATL_MEMCOHERENCE | BATL_GUARDEDSTORAGE)
+#define CONFIG_SYS_IBAT4U	(CONFIG_SYS_PCI1_MMIO_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT5L	(CONFIG_SYS_PCI1_IO_BASE | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
+#define CONFIG_SYS_IBAT5U	(CONFIG_SYS_PCI1_IO_BASE | BATU_BL_16M | BATU_VS | BATU_VP)
 #else
-#define CFG_IBAT3L	(0)
-#define CFG_IBAT3U	(0)
-#define CFG_IBAT4L	(0)
-#define CFG_IBAT4U	(0)
-#define CFG_IBAT5L	(0)
-#define CFG_IBAT5U	(0)
+#define CONFIG_SYS_IBAT3L	(0)
+#define CONFIG_SYS_IBAT3U	(0)
+#define CONFIG_SYS_IBAT4L	(0)
+#define CONFIG_SYS_IBAT4U	(0)
+#define CONFIG_SYS_IBAT5L	(0)
+#define CONFIG_SYS_IBAT5U	(0)
 #endif
 
 /* IMMRBAR */
-#define CFG_IBAT6L	(CFG_IMMRBAR | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CFG_IBAT6U	(CFG_IMMRBAR | BATU_BL_1M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT6L	(CONFIG_SYS_IMMR | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
+#define CONFIG_SYS_IBAT6U	(CONFIG_SYS_IMMR | BATU_BL_1M | BATU_VS | BATU_VP)
 
 /* FLASH */
-#define CFG_IBAT7L	(CFG_FLASH_BASE | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CFG_IBAT7U	(CFG_FLASH_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT7L	(CONFIG_SYS_FLASH_BASE | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
+#define CONFIG_SYS_IBAT7U	(CONFIG_SYS_FLASH_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
 
-#define CFG_DBAT0L	CFG_IBAT0L
-#define CFG_DBAT0U	CFG_IBAT0U
-#define CFG_DBAT1L	CFG_IBAT1L
-#define CFG_DBAT1U	CFG_IBAT1U
-#define CFG_DBAT2L	CFG_IBAT2L
-#define CFG_DBAT2U	CFG_IBAT2U
-#define CFG_DBAT3L	CFG_IBAT3L
-#define CFG_DBAT3U	CFG_IBAT3U
-#define CFG_DBAT4L	CFG_IBAT4L
-#define CFG_DBAT4U	CFG_IBAT4U
-#define CFG_DBAT5L	CFG_IBAT5L
-#define CFG_DBAT5U	CFG_IBAT5U
-#define CFG_DBAT6L	CFG_IBAT6L
-#define CFG_DBAT6U	CFG_IBAT6U
-#define CFG_DBAT7L	CFG_IBAT7L
-#define CFG_DBAT7U	CFG_IBAT7U
+#define CONFIG_SYS_DBAT0L	CONFIG_SYS_IBAT0L
+#define CONFIG_SYS_DBAT0U	CONFIG_SYS_IBAT0U
+#define CONFIG_SYS_DBAT1L	CONFIG_SYS_IBAT1L
+#define CONFIG_SYS_DBAT1U	CONFIG_SYS_IBAT1U
+#define CONFIG_SYS_DBAT2L	CONFIG_SYS_IBAT2L
+#define CONFIG_SYS_DBAT2U	CONFIG_SYS_IBAT2U
+#define CONFIG_SYS_DBAT3L	CONFIG_SYS_IBAT3L
+#define CONFIG_SYS_DBAT3U	CONFIG_SYS_IBAT3U
+#define CONFIG_SYS_DBAT4L	CONFIG_SYS_IBAT4L
+#define CONFIG_SYS_DBAT4U	CONFIG_SYS_IBAT4U
+#define CONFIG_SYS_DBAT5L	CONFIG_SYS_IBAT5L
+#define CONFIG_SYS_DBAT5U	CONFIG_SYS_IBAT5U
+#define CONFIG_SYS_DBAT6L	CONFIG_SYS_IBAT6L
+#define CONFIG_SYS_DBAT6U	CONFIG_SYS_IBAT6U
+#define CONFIG_SYS_DBAT7L	CONFIG_SYS_IBAT7L
+#define CONFIG_SYS_DBAT7U	CONFIG_SYS_IBAT7U
 
 /*
  * Internal Definitions
@@ -492,7 +467,7 @@ extern int tqm834x_num_flash_banks;
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH */
 #define BOOTFLAG_WARM		0x02	/* Software reboot */
 
-#if (CONFIG_COMMANDS & CFG_CMD_KGDB)
+#if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed of kgdb serial port */
 #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
@@ -501,23 +476,7 @@ extern int tqm834x_num_flash_banks;
  * Environment Configuration
  */
 
-#if defined(CONFIG_TSEC_ENET)
-#define CONFIG_ETHADDR		D2:DA:5E:44:BC:29
-#define CONFIG_HAS_ETH1
-#define CONFIG_ETH1ADDR		1E:F3:40:21:92:53
-#endif
-
-#define CONFIG_IPADDR		192.168.205.1
-
-#define CONFIG_HOSTNAME		tqm8349
-#define CONFIG_ROOTPATH		/opt/eldk/ppc_6xx
-#define CONFIG_BOOTFILE		/tftpboot/tqm83xx/uImage
-
-#define CONFIG_SERVERIP		192.168.1.1
-#define CONFIG_GATEWAYIP	192.168.1.1
-#define CONFIG_NETMASK		255.255.255.0
-
-#define CONFIG_LOADADDR		200000	/* default location for tftp and bootm */
+#define CONFIG_LOADADDR		400000	/* default location for tftp and bootm */
 
 #define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
 #undef  CONFIG_BOOTARGS			/* the boot command will set bootargs */
@@ -525,35 +484,50 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_BAUDRATE		115200
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
-	"hostname=tqm83xx\0"						\
+	"hostname=tqm834x\0"						\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
 	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
 	"addip=setenv bootargs ${bootargs} "				\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
 		":${hostname}:${netdev}:off panic=1\0"			\
-	"addtty=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
-	"flash_nfs=run nfsargs addip addtty;"				\
+	"addcons=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
+	"flash_nfs_old=run nfsargs addip addcons;"			\
 		"bootm ${kernel_addr}\0"				\
-	"flash_self=run ramargs addip addtty;"				\
+	"flash_nfs=run nfsargs addip addcons;"				\
+		"bootm ${kernel_addr} - ${fdt_addr}\0"			\
+	"flash_self_old=run ramargs addip addcons;"			\
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
-	"net_nfs=tftp 200000 ${bootfile};run nfsargs addip addtty;"     \
-		"bootm\0"						\
+	"flash_self=run ramargs addip addcons;"				\
+		"bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
+	"net_nfs_old=tftp 400000 ${bootfile};"				\
+		"run nfsargs addip addcons;bootm\0"			\
+	"net_nfs=tftp ${kernel_addr_r} ${bootfile}; "			\
+		"tftp ${fdt_addr_r} ${fdt_file}; "			\
+		"run nfsargs addip addcons; "				\
+		"bootm ${kernel_addr_r} - ${fdt_addr_r}\0"		\
 	"rootpath=/opt/eldk/ppc_6xx\0"					\
-	"bootfile=/tftpboot/tqm83xx/uImage\0"				\
-	"kernel_addr=80060000\0"					\
-	"ramdisk_addr=80160000\0"					\
-	"load=tftp 100000 /tftpboot/tqm83xx/u-boot.bin\0"		\
-	"update=protect off 80000000 8003ffff; "			\
-		"era 80000000 8003ffff; cp.b 100000 80000000 40000\0"	\
-	"upd=run load;run update\0"					\
+	"bootfile=tqm834x/uImage\0"					\
+	"fdtfile=tqm834x/tqm834x.dtb\0"					\
+	"kernel_addr_r=400000\0"					\
+	"fdt_addr_r=600000\0"						\
+	"ramdisk_addr_r=800000\0"					\
+	"kernel_addr=800C0000\0"					\
+	"fdt_addr=800A0000\0"						\
+	"ramdisk_addr=80300000\0"					\
+	"u-boot=tqm834x/u-boot.bin\0"					\
+	"load=tftp 200000 ${u-boot}\0"					\
+	"update=protect off 80000000 +${filesize};"			\
+		"era 80000000 +${filesize};"				\
+		"cp.b 200000 80000000 ${filesize}\0"			\
+	"upd=run load update\0"						\
 	""
 
 #define CONFIG_BOOTCOMMAND	"run flash_self"
@@ -562,11 +536,13 @@ extern int tqm834x_num_flash_banks;
  * JFFS2 partitions
  */
 /* mtdparts command line support */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=TQM834x-0"
 
 /* default mtd partition table */
-#define MTDPARTS_DEFAULT	"mtdparts=TQM834x-0:256k(u-boot),128k(env),"\
+#define MTDPARTS_DEFAULT	"mtdparts=TQM834x-0:256k(u-boot),256k(env),"\
 						"1m(kernel),2m(initrd),"\
 						"-(user);"\
 

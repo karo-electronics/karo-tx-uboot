@@ -10,7 +10,7 @@
 #include <bedbug/regs.h>
 #include <bedbug/ppc.h>
 
-#if (CONFIG_COMMANDS & CFG_CMD_BEDBUG) && defined(CONFIG_4xx)
+#if defined(CONFIG_CMD_BEDBUG) && defined(CONFIG_4xx)
 
 #define MAX_BREAK_POINTS 4
 
@@ -71,7 +71,7 @@ void bedbug405_do_break (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	/* -------------------------------------------------- */
 
 	if (argc < 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return;
 	}
 
@@ -125,7 +125,7 @@ void bedbug405_do_break (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	/* Set a breakpoint at the address */
 
 	if (!isdigit (argv[1][0])) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return;
 	}
 

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004 Freescale Semiconductor.
+ * Copyright 2004, 2007 Freescale Semiconductor.
  * Copyright (C) 2003  Motorola,Inc.
- * Xianghua Xiao<X.Xiao@motorola.com>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -31,6 +30,7 @@
 
 #include <config.h>
 #include <mpc85xx.h>
+#include <timestamp.h>
 #include <version.h>
 
 #define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file	*/
@@ -46,7 +46,7 @@
 #endif
 
 #undef	MSR_KERNEL
-#define MSR_KERNEL ( MSR_ME  )	/* Machine Check */
+#define MSR_KERNEL ( MSR_ME )	/* Machine Check */
 
 /*
  * Set up GOT: Global Offset Table
@@ -80,110 +80,37 @@
  *
  */
 
-    .section .bootpg,"ax"
-    .globl _start_e500
+	.section .bootpg,"ax"
+	.globl _start_e500
 
 _start_e500:
-	mfspr	r0, PVR
-	lis	r1, PVR_85xx_REV1@h
-	ori	r1, r1, PVR_85xx_REV1@l
-	cmpw	r0, r1
-	bne	1f
 
-	/* Semi-bogus errata fixup for Rev 1 */
-	li	r0,0x2000
-	mtspr	977,r0
+/* clear registers/arrays not reset by hardware */
 
-	/*
-	 * Before invalidating MMU L1/L2, read TLB1 Entry 0 and then
-	 * write it back immediately to fixup a Rev 1 bug (Errata CPU4)
-	 * for this initial TLB1 entry 0, otherwise the TLB1 entry 0
-	 * will be invalidated (incorrectly).
-	 */
-	lis	r2,0x1000
-	mtspr	MAS0,r2
-	tlbre
-	tlbwe
-	isync
-
-1:
-	/*
-	 * Clear and set up some registers.
-	 * Note: Some registers need strict synchronization by
-	 * sync/mbar/msync/isync when being "mtspr".
-	 * BookE: isync before PID,tlbivax,tlbwe
-	 * BookE: isync after MSR,PID; msync_isync after tlbivax & tlbwe
-	 * E500:  msync,isync before L1CSR0
-	 * E500:  isync after BBEAR,BBTAR,BUCSR,DBCR0,DBCR1,HID0,HID1,
-	 *	  L1CSR0, L1CSR1, MAS[0,1,2,3,4,6],MMUCSR0, PID[0,1,2],
-	 *	  SPEFCSR
-	 */
-
-	/* invalidate d-cache */
-	mfspr	r0,L1CSR0
-	ori	r0,r0,0x0002
-	msync
-	isync
-	mtspr	L1CSR0,r0
-	isync
-
-	/* disable d-cache */
-	li	r0,0x0
-	mtspr	L1CSR0,r0
-
-	/* invalidate i-cache */
-	mfspr	r0,L1CSR1
-	ori	r0,r0,0x0002
-	mtspr	L1CSR1,r0
-	isync
-
-	/* disable i-cache */
-	li	r0,0x0
-	mtspr	L1CSR1,r0
-	isync
-
-	/* clear registers */
-	li	r0,0
-	mtspr	SRR0,r0
-	mtspr	SRR1,r0
-	mtspr	CSRR0,r0
-	mtspr	CSRR1,r0
-	mtspr	MCSRR0,r0
-	mtspr	MCSRR1,r0
-
-	mtspr	ESR,r0
-	mtspr	MCSR,r0
-	mtspr	DEAR,r0
-
-	/* not needed and conflicts with some debuggers */
-	/* mtspr	DBCR0,r0 */
-	mtspr	DBCR1,r0
-	mtspr	DBCR2,r0
-	/* not needed and conflicts with some debuggers */
-	/* mtspr	IAC1,r0 */
-	/* mtspr	IAC2,r0 */
-	mtspr	DAC1,r0
-	mtspr	DAC2,r0
+	/* L1 */
+	li	r0,2
+	mtspr	L1CSR0,r0	/* invalidate d-cache */
+	mtspr	L1CSR1,r0	/* invalidate i-cache */
 
 	mfspr	r1,DBSR
 	mtspr	DBSR,r1		/* Clear all valid bits */
 
-	mtspr	PID0,r0
-	mtspr	PID1,r0
-	mtspr	PID2,r0
-	mtspr	TCR,r0
+	/*
+	 *	Enable L1 Caches early
+	 *
+	 */
 
-	mtspr	BUCSR,r0	/* disable branch prediction */
-	mtspr	MAS4,r0
-	mtspr	MAS6,r0
-#if defined(CONFIG_ENABLE_36BIT_PHYS)
-	mtspr	MAS7,r0
-#endif
+	lis	r2,L1CSR0_CPE@H	/* enable parity */
+	ori	r2,r2,L1CSR0_DCE
+	mtspr	L1CSR0,r2	/* enable L1 Dcache */
 	isync
+	mtspr	L1CSR1,r2	/* enable L1 Icache */
+	isync
+	msync
 
 	/* Setup interrupt vectors */
 	lis	r1,TEXT_BASE@h
-	mtspr IVPR, r1
+	mtspr	IVPR,r1
 
 	li	r1,0x0100
 	mtspr	IVOR0,r1	/* 0: Critical input */
@@ -217,135 +144,8 @@ _start_e500:
 	li	r1,0x0f00
 	mtspr	IVOR15,r1	/* 15: Debug */
 
-	/*
-	 * Invalidate MMU L1/L2
-	 *
-	 * Note: There is a fixup earlier for Errata CPU4 on
-	 * Rev 1 parts that must precede this MMU invalidation.
-	 */
-	li	r2, 0x001e
-	mtspr	MMUCSR0, r2
-	isync
-
-	/*
-	 * Invalidate all TLB0 entries.
-	 */
-	li	r3,4
-	li	r4,0
-	tlbivax r4,r3
-	/*
-	 * To avoid REV1 Errata CPU6 issues, make sure
-	 * the instruction following tlbivax is not a store.
-	 */
-
-	/*
-	 * After reset, CCSRBAR is located at CFG_CCSRBAR_DEFAULT, i.e.
-	 * 0xff700000-0xff800000. We need add a TLB1 entry for this 1MB
-	 * region before we can access any CCSR registers such as L2
-	 * registers, Local Access Registers,etc. We will also re-allocate
-	 * CFG_CCSRBAR_DEFAULT to CFG_CCSRBAR immediately after TLB1 setup.
-	 *
-	 * Please refer to board-specif directory for TLB1 entry configuration.
-	 * (e.g. board/<yourboard>/init.S)
-	 *
-	 */
-	bl	tlb1_entry
-	mr	r5,r0
-	li	r1,0x0020	/* max 16 TLB1 plus some TLB0 entries */
-	mtctr	r1
-	lwzu	r4,0(r5)	/* how many TLB1 entries we actually use */
-
-0:	cmpwi	r4,0
-	beq	1f
-	lwzu	r0,4(r5)
-	lwzu	r1,4(r5)
-	lwzu	r2,4(r5)
-	lwzu	r3,4(r5)
-	mtspr	MAS0,r0
-	mtspr	MAS1,r1
-	mtspr	MAS2,r2
-	mtspr	MAS3,r3
-	isync
-	msync
-	tlbwe
-	isync
-	addi	r4,r4,-1
-	bdnz	0b
-
-1:
-#if (CFG_CCSRBAR_DEFAULT != CFG_CCSRBAR)
-	/* Special sequence needed to update CCSRBAR itself */
-	lis	r4, CFG_CCSRBAR_DEFAULT@h
-	ori	r4, r4, CFG_CCSRBAR_DEFAULT@l
-
-	lis	r5, CFG_CCSRBAR@h
-	ori	r5, r5, CFG_CCSRBAR@l
-	srwi	r6,r5,12
-	stw	r6, 0(r4)
-	isync
-
-	lis	r5, 0xffff
-	ori	r5,r5,0xf000
-	lwz	r5, 0(r5)
-	isync
-
-	lis	r3, CFG_CCSRBAR@h
-	lwz	r5, CFG_CCSRBAR@l(r3)
-	isync
-#endif
-
-
-	/* set up local access windows, defined at board/<boardname>/init.S */
-	lis	r7,CFG_CCSRBAR@h
-	ori	r7,r7,CFG_CCSRBAR@l
-
-	bl	law_entry
-	mr	r6,r0
-	li	r1,0x0007	/* 8 LAWs, but reserve one for boot-over-rio-or-pci */
-	mtctr	r1
-	lwzu	r5,0(r6)	/* how many windows we actually use */
-
-	li	r2,0x0c28	/* the first pair is reserved for boot-over-rio-or-pci */
-	li	r1,0x0c30
-
-0:	cmpwi	r5,0
-	beq	1f
-	lwzu	r4,4(r6)
-	lwzu	r3,4(r6)
-	stwx	r4,r7,r2
-	stwx	r3,r7,r1
-	addi	r5,r5,-1
-	addi	r2,r2,0x0020
-	addi	r1,r1,0x0020
-	bdnz	0b
-
-	/* Jump out the last 4K page and continue to 'normal' start */
-1:	bl	3f
-	b	_start
-
-3:	li	r0,0
-	mtspr	SRR1,r0		/* Keep things disabled for now */
-	mflr	r1
-	mtspr	SRR0,r1
-	rfi
-
-/*
- * r3 - 1st arg to board_init(): IMMP pointer
- * r4 - 2nd arg to board_init(): boot flag
- */
-	.text
-	.long	0x27051956		/* U-BOOT Magic Number			*/
-	.globl	version_string
-version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", __DATE__, " - ", __TIME__, ")"
-	.ascii CONFIG_IDENT_STRING, "\0"
-
-	. = EXC_OFF_SYS_RESET
-	.globl	_start
-_start:
 	/* Clear and set up some registers. */
-	li	r0,0x0000
+	li      r0,0x0000
 	lis	r1,0xffff
 	mtspr	DEC,r0			/* prevent dec exceptions */
 	mttbl	r0			/* prevent fit & wdt exceptions */
@@ -355,25 +155,21 @@ _start:
 	mtspr	ESR,r0			/* clear exception syndrome register */
 	mtspr	MCSR,r0			/* machine check syndrome register */
 	mtxer	r0			/* clear integer exception register */
-	lis	r1,0x0002		/* set CE bit (Critical Exceptions) */
-	ori	r1,r1,0x1200		/* set ME/DE bit */
-	mtmsr	r1			/* change MSR */
-	isync
 
 	/* Enable Time Base and Select Time Base Clock */
 	lis	r0,HID0_EMCP@h		/* Enable machine check */
-	ori	r0,r0,0x4000		/* time base is processor clock */
 #if defined(CONFIG_ENABLE_36BIT_PHYS)
-	ori	r0,r0,0x0080		/* enable MAS7 updates */
+	ori	r0,r0,HID0_ENMAS7@l	/* Enable MAS7 */
+#endif
+#ifndef CONFIG_E500MC
+	ori	r0,r0,HID0_TBEN@l	/* Enable Timebase */
 #endif
 	mtspr	HID0,r0
 
-#if defined(CONFIG_ADDR_STREAMING)
-	li	r0,0x3000
-#else
-	li	r0,0x1000
-#endif
+#ifndef CONFIG_E500MC
+	li	r0,(HID1_ASTME|HID1_ABE)@l	/* Addr streaming & broadcast */
 	mtspr	HID1,r0
+#endif
 
 	/* Enable Branch Prediction */
 #if defined(CONFIG_BTB)
@@ -381,50 +177,164 @@ _start:
 	mtspr	BUCSR,r0
 #endif
 
-#if defined(CFG_INIT_DBCR)
+#if defined(CONFIG_SYS_INIT_DBCR)
 	lis	r1,0xffff
 	ori	r1,r1,0xffff
 	mtspr	DBSR,r1			/* Clear all status bits */
-	lis	r0,CFG_INIT_DBCR@h	/* DBCR0[IDM] must be set */
-	ori	r0,r0,CFG_INIT_DBCR@l
+	lis	r0,CONFIG_SYS_INIT_DBCR@h	/* DBCR0[IDM] must be set */
+	ori	r0,r0,CONFIG_SYS_INIT_DBCR@l
 	mtspr	DBCR0,r0
 #endif
 
-/* L1 DCache is used for initial RAM */
-	mfspr	r2, L1CSR0
-	ori	r2, r2, 0x0003
-	oris	r2, r2, 0x0001
-	mtspr	L1CSR0, r2	/* enable/invalidate L1 Dcache */
+#ifdef CONFIG_MPC8569
+#define CONFIG_SYS_LBC_ADDR (CONFIG_SYS_CCSRBAR_DEFAULT + 0x5000)
+#define CONFIG_SYS_LBCR_ADDR (CONFIG_SYS_LBC_ADDR + 0xd0)
+
+	/* MPC8569 Rev.0 silcon needs to set bit 13 of LBCR to allow elBC to
+	 * use address space which is more than 12bits, and it must be done in
+	 * the 4K boot page. So we set this bit here.
+	 */
+
+	/* create a temp mapping TLB0[0] for LBCR  */
+	lis     r6,FSL_BOOKE_MAS0(0, 0, 0)@h
+	ori     r6,r6,FSL_BOOKE_MAS0(0, 0, 0)@l
+
+	lis     r7,FSL_BOOKE_MAS1(1, 0, 0, 0, BOOKE_PAGESZ_4K)@h
+	ori     r7,r7,FSL_BOOKE_MAS1(1, 0, 0, 0, BOOKE_PAGESZ_4K)@l
+
+	lis     r8,FSL_BOOKE_MAS2(CONFIG_SYS_LBC_ADDR, MAS2_I|MAS2_G)@h
+	ori     r8,r8,FSL_BOOKE_MAS2(CONFIG_SYS_LBC_ADDR, MAS2_I|MAS2_G)@l
+
+	lis     r9,FSL_BOOKE_MAS3(CONFIG_SYS_LBC_ADDR, 0,
+						(MAS3_SX|MAS3_SW|MAS3_SR))@h
+	ori     r9,r9,FSL_BOOKE_MAS3(CONFIG_SYS_LBC_ADDR, 0,
+						(MAS3_SX|MAS3_SW|MAS3_SR))@l
+
+	mtspr   MAS0,r6
+	mtspr   MAS1,r7
+	mtspr   MAS2,r8
+	mtspr   MAS3,r9
 	isync
+	msync
+	tlbwe
+
+	/* Set LBCR register */
+	lis     r4,CONFIG_SYS_LBCR_ADDR@h
+	ori     r4,r4,CONFIG_SYS_LBCR_ADDR@l
+
+	lis     r5,CONFIG_SYS_LBC_LBCR@h
+	ori     r5,r5,CONFIG_SYS_LBC_LBCR@l
+	stw     r5,0(r4)
+	isync
+
+	/* invalidate this temp TLB */
+	lis	r4,CONFIG_SYS_LBC_ADDR@h
+	ori	r4,r4,CONFIG_SYS_LBC_ADDR@l
+	tlbivax	0,r4
+	isync
+
+#endif /* CONFIG_MPC8569 */
+
+	/* create a temp mapping in AS=1 to the 4M boot window */
+	lis     r6,FSL_BOOKE_MAS0(1, 15, 0)@h
+	ori     r6,r6,FSL_BOOKE_MAS0(1, 15, 0)@l
+
+	lis     r7,FSL_BOOKE_MAS1(1, 1, 0, 1, BOOKE_PAGESZ_4M)@h
+	ori     r7,r7,FSL_BOOKE_MAS1(1, 1, 0, 1, BOOKE_PAGESZ_4M)@l
+
+	lis     r8,FSL_BOOKE_MAS2(TEXT_BASE & 0xffc00000, (MAS2_I|MAS2_G))@h
+	ori     r8,r8,FSL_BOOKE_MAS2(TEXT_BASE & 0xffc00000, (MAS2_I|MAS2_G))@l
+
+	/* The 85xx has the default boot window 0xff800000 - 0xffffffff */
+	lis     r9,FSL_BOOKE_MAS3(0xffc00000, 0, (MAS3_SX|MAS3_SW|MAS3_SR))@h
+	ori     r9,r9,FSL_BOOKE_MAS3(0xffc00000, 0, (MAS3_SX|MAS3_SW|MAS3_SR))@l
+
+	mtspr   MAS0,r6
+	mtspr   MAS1,r7
+	mtspr   MAS2,r8
+	mtspr   MAS3,r9
+	isync
+	msync
+	tlbwe
+
+	/* create a temp mapping in AS=1 to the stack */
+	lis     r6,FSL_BOOKE_MAS0(1, 14, 0)@h
+	ori     r6,r6,FSL_BOOKE_MAS0(1, 14, 0)@l
+
+	lis     r7,FSL_BOOKE_MAS1(1, 1, 0, 1, BOOKE_PAGESZ_16K)@h
+	ori     r7,r7,FSL_BOOKE_MAS1(1, 1, 0, 1, BOOKE_PAGESZ_16K)@l
+
+	lis     r8,FSL_BOOKE_MAS2(CONFIG_SYS_INIT_RAM_ADDR, 0)@h
+	ori     r8,r8,FSL_BOOKE_MAS2(CONFIG_SYS_INIT_RAM_ADDR, 0)@l
+
+	lis     r9,FSL_BOOKE_MAS3(CONFIG_SYS_INIT_RAM_ADDR, 0, (MAS3_SX|MAS3_SW|MAS3_SR))@h
+	ori     r9,r9,FSL_BOOKE_MAS3(CONFIG_SYS_INIT_RAM_ADDR, 0, (MAS3_SX|MAS3_SW|MAS3_SR))@l
+
+	mtspr   MAS0,r6
+	mtspr   MAS1,r7
+	mtspr   MAS2,r8
+	mtspr   MAS3,r9
+	isync
+	msync
+	tlbwe
+
+	lis	r6,MSR_CE|MSR_ME|MSR_DE|MSR_IS|MSR_DS@h
+	ori	r6,r6,MSR_CE|MSR_ME|MSR_DE|MSR_IS|MSR_DS@l
+	lis	r7,switch_as@h
+	ori	r7,r7,switch_as@l
+
+	mtspr	SPRN_SRR0,r7
+	mtspr	SPRN_SRR1,r6
+	rfi
+
+switch_as:
+/* L1 DCache is used for initial RAM */
 
 	/* Allocate Initial RAM in data cache.
 	 */
-	lis	r3, CFG_INIT_RAM_ADDR@h
-	ori	r3, r3, CFG_INIT_RAM_ADDR@l
-	li	r2, 512 /* 512*32=16K */
+	lis	r3,CONFIG_SYS_INIT_RAM_ADDR@h
+	ori	r3,r3,CONFIG_SYS_INIT_RAM_ADDR@l
+	mfspr	r2, L1CFG0
+	andi.	r2, r2, 0x1ff
+	/* cache size * 1024 / (2 * L1 line size) */
+	slwi	r2, r2, (10 - 1 - L1_CACHE_SHIFT)
 	mtctr	r2
-	li	r0, 0
+	li	r0,0
 1:
-	dcbz	r0, r3
-	dcbtls	0,r0, r3
-	addi	r3, r3, 32
+	dcbz	r0,r3
+	dcbtls	0,r0,r3
+	addi	r3,r3,CONFIG_SYS_CACHELINE_SIZE
 	bdnz	1b
 
-#ifndef CFG_RAMBOOT
+	/* Jump out the last 4K page and continue to 'normal' start */
+#ifdef CONFIG_SYS_RAMBOOT
+	b	_start_cont
+#else
 	/* Calculate absolute address in FLASH and jump there		*/
 	/*--------------------------------------------------------------*/
-	lis	r3, CFG_MONITOR_BASE@h
-	ori	r3, r3, CFG_MONITOR_BASE@l
-	addi	r3, r3, in_flash - _start + EXC_OFF_SYS_RESET
+	lis	r3,CONFIG_SYS_MONITOR_BASE@h
+	ori	r3,r3,CONFIG_SYS_MONITOR_BASE@l
+	addi	r3,r3,_start_cont - _start + _START_OFFSET
 	mtlr	r3
 	blr
+#endif
 
-in_flash:
-#endif	/* CFG_RAMBOOT */
+	.text
+	.globl	_start
+_start:
+	.long	0x27051956		/* U-BOOT Magic Number */
+	.globl	version_string
+version_string:
+	.ascii U_BOOT_VERSION
+	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
+	.ascii CONFIG_IDENT_STRING, "\0"
 
+	.align	4
+	.globl	_start_cont
+_start_cont:
 	/* Setup the stack in initial RAM,could be L2-as-SRAM or L1 dcache*/
-	lis	r1,CFG_INIT_RAM_ADDR@h
-	ori	r1,r1,CFG_INIT_SP_OFFSET@l
+	lis	r1,CONFIG_SYS_INIT_RAM_ADDR@h
+	ori	r1,r1,CONFIG_SYS_INIT_SP_OFFSET@l
 
 	li	r0,0
 	stwu	r0,-4(r1)
@@ -432,26 +342,32 @@ in_flash:
 
 	stwu	r1,-8(r1)		/* Save back chain and move SP */
 	lis	r0,RESET_VECTOR@h	/* Address of reset vector */
-	ori	r0,r0, RESET_VECTOR@l
+	ori	r0,r0,RESET_VECTOR@l
 	stwu	r1,-8(r1)		/* Save back chain and move SP */
 	stw	r0,+12(r1)		/* Save return addr (underflow vect) */
 
 	GET_GOT
+	bl	cpu_init_early_f
+
+	/* switch back to AS = 0 */
+	lis	r3,(MSR_CE|MSR_ME|MSR_DE)@h
+	ori	r3,r3,(MSR_CE|MSR_ME|MSR_DE)@l
+	mtmsr	r3
+	isync
+
 	bl	cpu_init_f
-	bl	icache_enable
 	bl	board_init_f
 	isync
 
-/* --FIXME-- machine check with MCSRRn and rfmci */
-
+	. = EXC_OFF_SYS_RESET
 	.globl	_start_of_vectors
 _start_of_vectors:
-#if 0
+
 /* Critical input. */
-	CRIT_EXCEPTION(0x0100, CritcalInput, CritcalInputException)
-#endif
-/* Machine check --FIXME-- Should be MACH_EXCEPTION */
-	CRIT_EXCEPTION(0x0200, MachineCheck, MachineCheckException)
+	CRIT_EXCEPTION(0x0100, CriticalInput, CritcalInputException)
+
+/* Machine check */
+	MCK_EXCEPTION(0x200, MachineCheck, MachineCheckException)
 
 /* Data Storage exception. */
 	STD_EXCEPTION(0x0300, DataStorage, UnknownException)
@@ -460,12 +376,12 @@ _start_of_vectors:
 	STD_EXCEPTION(0x0400, InstStorage, UnknownException)
 
 /* External Interrupt exception. */
-	STD_EXCEPTION(0x0500, ExtInterrupt, UnknownException)
+	STD_EXCEPTION(0x0500, ExtInterrupt, ExtIntException)
 
 /* Alignment exception. */
 	. = 0x0600
 Alignment:
-	EXCEPTION_PROLOG
+	EXCEPTION_PROLOG(SRR0, SRR1)
 	mfspr	r4,DAR
 	stw	r4,_DAR(r21)
 	mfspr	r5,DSISR
@@ -477,13 +393,13 @@ Alignment:
 	mtlr	r6
 	blrl
 .L_Alignment:
-	.long	AlignmentException - _start + EXC_OFF_SYS_RESET
-	.long	int_return - _start + EXC_OFF_SYS_RESET
+	.long	AlignmentException - _start + _START_OFFSET
+	.long	int_return - _start + _START_OFFSET
 
 /* Program check exception */
 	. = 0x0700
 ProgramCheck:
-	EXCEPTION_PROLOG
+	EXCEPTION_PROLOG(SRR0, SRR1)
 	addi	r3,r1,STACK_FRAME_OVERHEAD
 	li	r20,MSR_KERNEL
 	rlwimi	r20,r23,0,16,16		/* copy EE bit from saved MSR */
@@ -491,8 +407,8 @@ ProgramCheck:
 	mtlr	r6
 	blrl
 .L_ProgramCheck:
-	.long	ProgramCheckException - _start + EXC_OFF_SYS_RESET
-	.long	int_return - _start + EXC_OFF_SYS_RESET
+	.long	ProgramCheckException - _start + _START_OFFSET
+	.long	int_return - _start + _START_OFFSET
 
 	/* No FPU on MPC85xx.  This exception is not supposed to happen.
 	*/
@@ -504,23 +420,23 @@ ProgramCheck:
  * r3-... arguments
  */
 SystemCall:
-	addis	r11,r0,0		/* get functions table addr */
-	ori	r11,r11,0		/* Note: this code is patched in trap_init */
-	addis	r12,r0,0		/* get number of functions */
+	addis	r11,r0,0	/* get functions table addr */
+	ori	r11,r11,0	/* Note: this code is patched in trap_init */
+	addis	r12,r0,0	/* get number of functions */
 	ori	r12,r12,0
 
-	cmplw	0, r0, r12
+	cmplw	0,r0,r12
 	bge	1f
 
-	rlwinm	r0,r0,2,0,31		/* fn_addr = fn_tbl[r0] */
+	rlwinm	r0,r0,2,0,31	/* fn_addr = fn_tbl[r0] */
 	add	r11,r11,r0
 	lwz	r11,0(r11)
 
-	li	r20,0xd00-4		/* Get stack pointer */
+	li	r20,0xd00-4	/* Get stack pointer */
 	lwz	r12,0(r20)
-	subi	r12,r12,12		/* Adjust stack pointer */
+	subi	r12,r12,12	/* Adjust stack pointer */
 	li	r0,0xc00+_end_back-SystemCall
-	cmplw	0, r0, r12		/* Check stack overflow */
+	cmplw	0,r0,r12	/* Check stack overflow */
 	bgt	1f
 	stw	r12,0(r20)
 
@@ -578,7 +494,7 @@ _end_back:
 _end_of_vectors:
 
 
-	. = 0x2100
+	. = . + (0x100 - ( . & 0xff ))	/* align for debug */
 
 /*
  * This code finishes saving the registers to the exception frame
@@ -663,26 +579,60 @@ crit_return:
 	REST_GPR(31, r1)
 	lwz	r2,_NIP(r1)	/* Restore environment */
 	lwz	r0,_MSR(r1)
-	mtspr	990,r2		/* SRR2 */
-	mtspr	991,r0		/* SRR3 */
+	mtspr	SPRN_CSRR0,r2
+	mtspr	SPRN_CSRR1,r0
 	lwz	r0,GPR0(r1)
 	lwz	r2,GPR2(r1)
 	lwz	r1,GPR1(r1)
 	SYNC
 	rfci
 
+mck_return:
+	mfmsr	r28		/* Disable interrupts */
+	li	r4,0
+	ori	r4,r4,MSR_EE
+	andc	r28,r28,r4
+	SYNC			/* Some chip revs need this... */
+	mtmsr	r28
+	SYNC
+	lwz	r2,_CTR(r1)
+	lwz	r0,_LINK(r1)
+	mtctr	r2
+	mtlr	r0
+	lwz	r2,_XER(r1)
+	lwz	r0,_CCR(r1)
+	mtspr	XER,r2
+	mtcrf	0xFF,r0
+	REST_10GPRS(3, r1)
+	REST_10GPRS(13, r1)
+	REST_8GPRS(23, r1)
+	REST_GPR(31, r1)
+	lwz	r2,_NIP(r1)	/* Restore environment */
+	lwz	r0,_MSR(r1)
+	mtspr	SPRN_MCSRR0,r2
+	mtspr	SPRN_MCSRR1,r0
+	lwz	r0,GPR0(r1)
+	lwz	r2,GPR2(r1)
+	lwz	r1,GPR1(r1)
+	SYNC
+	rfmci
+
 /* Cache functions.
 */
+.globl invalidate_icache
 invalidate_icache:
 	mfspr	r0,L1CSR1
-	ori	r0,r0,0x0002
+	ori	r0,r0,L1CSR1_ICFI
+	msync
+	isync
 	mtspr	L1CSR1,r0
 	isync
-	blr				/*   entire I cache */
+	blr				/* entire I cache */
 
+.globl invalidate_dcache
 invalidate_dcache:
 	mfspr	r0,L1CSR0
-	ori	r0,r0,0x0002
+	ori	r0,r0,L1CSR0_DCFI
 	msync
 	isync
 	mtspr	L1CSR0,r0
@@ -705,9 +655,9 @@ icache_enable:
 	.globl	icache_disable
 icache_disable:
 	mfspr	r0,L1CSR1
-	lis	r1,0xfffffffe@h
-	ori	r1,r1,0xfffffffe@l
-	and	r0,r0,r1
+	lis	r3,0
+	ori	r3,r3,L1CSR1_ICE
+	andc	r0,r0,r3
 	mtspr	L1CSR1,r0
 	isync
 	blr
@@ -715,7 +665,7 @@ icache_disable:
 	.globl	icache_status
 icache_status:
 	mfspr	r3,L1CSR1
-	andi.	r3,r3,1
+	andi.	r3,r3,L1CSR1_ICE
 	blr
 
 	.globl	dcache_enable
@@ -735,12 +685,10 @@ dcache_enable:
 
 	.globl	dcache_disable
 dcache_disable:
-	mfspr	r0,L1CSR0
-	lis	r1,0xfffffffe@h
-	ori	r1,r1,0xfffffffe@l
-	and	r0,r0,r1
-	msync
-	isync
+	mfspr	r3,L1CSR0
+	lis	r4,0
+	ori	r4,r4,L1CSR0_DCE
+	andc	r3,r3,r4
 	mtspr	L1CSR0,r0
 	isync
 	blr
@@ -748,27 +696,27 @@ dcache_disable:
 	.globl	dcache_status
 dcache_status:
 	mfspr	r3,L1CSR0
-	andi.	r3,r3,1
+	andi.	r3,r3,L1CSR0_DCE
 	blr
 
 	.globl get_pir
 get_pir:
-	mfspr	r3, PIR
+	mfspr	r3,PIR
 	blr
 
 	.globl get_pvr
 get_pvr:
-	mfspr	r3, PVR
+	mfspr	r3,PVR
 	blr
 
 	.globl get_svr
 get_svr:
-	mfspr	r3, SVR
+	mfspr	r3,SVR
 	blr
 
 	.globl wr_tcr
 wr_tcr:
-	mtspr	TCR, r3
+	mtspr	TCR,r3
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -787,6 +735,7 @@ in8:
 	.globl	out8
 out8:
 	stb	r4,0x0000(r3)
+	sync
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -796,6 +745,7 @@ out8:
 	.globl	out16
 out16:
 	sth	r4,0x0000(r3)
+	sync
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -805,6 +755,7 @@ out16:
 	.globl	out16r
 out16r:
 	sthbrx	r4,r0,r3
+	sync
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -814,6 +765,7 @@ out16r:
 	.globl	out32
 out32:
 	stw	r4,0x0000(r3)
+	sync
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -823,6 +775,7 @@ out32:
 	.globl	out32r
 out32r:
 	stwbrx	r4,r0,r3
+	sync
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -861,51 +814,6 @@ in32r:
 	lwbrx	r3,r0,r3
 	blr
 
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcDcbf */
-/* Description:	 Data Cache block flush */
-/* Input:	 r3 = effective address */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcDcbf
-ppcDcbf:
-	dcbf	r0,r3
-	blr
-
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcDcbi */
-/* Description:	 Data Cache block Invalidate */
-/* Input:	 r3 = effective address */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcDcbi
-ppcDcbi:
-	dcbi	r0,r3
-	blr
-
-/*--------------------------------------------------------------------------
- * Function:	 ppcDcbz
- * Description:	 Data Cache block zero.
- * Input:	 r3 = effective address
- * Output:	 none.
- *-------------------------------------------------------------------------- */
-
-	.globl	ppcDcbz
-ppcDcbz:
-	dcbz	r0,r3
-	blr
-
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcSync */
-/* Description:	 Processor Synchronize */
-/* Input:	 none. */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcSync
-ppcSync:
-	sync
-	blr
-
 /*------------------------------------------------------------------------------*/
 
 /*
@@ -921,30 +829,30 @@ ppcSync:
  */
 	.globl	relocate_code
 relocate_code:
-	mr	r1,  r3		/* Set new stack pointer		*/
-	mr	r9,  r4		/* Save copy of Init Data pointer	*/
-	mr	r10, r5		/* Save copy of Destination Address	*/
+	mr	r1,r3		/* Set new stack pointer		*/
+	mr	r9,r4		/* Save copy of Init Data pointer	*/
+	mr	r10,r5		/* Save copy of Destination Address	*/
 
-	mr	r3,  r5				/* Destination Address	*/
-	lis	r4, CFG_MONITOR_BASE@h		/* Source      Address	*/
-	ori	r4, r4, CFG_MONITOR_BASE@l
+	mr	r3,r5				/* Destination Address	*/
+	lis	r4,CONFIG_SYS_MONITOR_BASE@h		/* Source      Address	*/
+	ori	r4,r4,CONFIG_SYS_MONITOR_BASE@l
 	lwz	r5,GOT(__init_end)
 	sub	r5,r5,r4
-	li	r6, CFG_CACHELINE_SIZE		/* Cache Line Size	*/
+	li	r6,CONFIG_SYS_CACHELINE_SIZE		/* Cache Line Size	*/
 
 	/*
 	 * Fix GOT pointer:
 	 *
-	 * New GOT-PTR = (old GOT-PTR - CFG_MONITOR_BASE) + Destination Address
+	 * New GOT-PTR = (old GOT-PTR - CONFIG_SYS_MONITOR_BASE) + Destination Address
 	 *
 	 * Offset:
 	 */
-	sub	r15, r10, r4
+	sub	r15,r10,r4
 
 	/* First our own GOT */
-	add	r14, r14, r15
+	add	r14,r14,r15
 	/* the the one used by the C code */
-	add	r30, r30, r15
+	add	r30,r30,r15
 
 	/*
 	 * Now relocate code
@@ -1005,10 +913,10 @@ relocate_code:
  * initialization, now running from RAM.
  */
 
-	addi	r0, r10, in_ram - _start + EXC_OFF_SYS_RESET
+	addi	r0,r10,in_ram - _start + _START_OFFSET
 	mtlr	r0
 	blr				/* NEVER RETURNS! */
-
+	.globl	in_ram
 in_ram:
 
 	/*
@@ -1052,19 +960,19 @@ clear_bss:
 	lwz	r3,GOT(__bss_start)
 	lwz	r4,GOT(_end)
 
-	cmplw	0, r3, r4
+	cmplw	0,r3,r4
 	beq	6f
 
-	li	r0, 0
+	li	r0,0
 5:
-	stw	r0, 0(r3)
-	addi	r3, r3, 4
-	cmplw	0, r3, r4
+	stw	r0,0(r3)
+	addi	r3,r3,4
+	cmplw	0,r3,r4
 	bne	5b
 6:
 
-	mr	r3, r9		/* Init Data pointer		*/
-	mr	r4, r10		/* Destination Address		*/
+	mr	r3,r9		/* Init Data pointer		*/
+	mr	r4,r10		/* Destination Address		*/
 	bl	board_init_r
 
 	/*
@@ -1075,52 +983,54 @@ clear_bss:
 	 */
 	.globl	trap_init
 trap_init:
-	lwz	r7, GOT(_start)
-	lwz	r8, GOT(_end_of_vectors)
+	lwz	r7,GOT(_start_of_vectors)
+	lwz	r8,GOT(_end_of_vectors)
 
-	li	r9, 0x100		/* reset vector always at 0x100 */
+	li	r9,0x100		/* reset vector always at 0x100 */
 
-	cmplw	0, r7, r8
+	cmplw	0,r7,r8
 	bgelr				/* return if r7>=r8 - just in case */
 
 	mflr	r4			/* save link register		*/
 1:
-	lwz	r0, 0(r7)
-	stw	r0, 0(r9)
-	addi	r7, r7, 4
-	addi	r9, r9, 4
-	cmplw	0, r7, r8
+	lwz	r0,0(r7)
+	stw	r0,0(r9)
+	addi	r7,r7,4
+	addi	r9,r9,4
+	cmplw	0,r7,r8
 	bne	1b
 
 	/*
 	 * relocate `hdlr' and `int_return' entries
 	 */
-	li	r7, .L_MachineCheck - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_CriticalInput - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_DataStorage - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_MachineCheck - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_InstStorage - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_DataStorage - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_ExtInterrupt - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_InstStorage - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_Alignment - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_ExtInterrupt - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_ProgramCheck - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_Alignment - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_FPUnavailable - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_ProgramCheck - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_Decrementer - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_FPUnavailable - _start + _START_OFFSET
 	bl	trap_reloc
-	li	r7, .L_IntervalTimer - _start + EXC_OFF_SYS_RESET
-	li	r8, _end_of_vectors - _start + EXC_OFF_SYS_RESET
+	li	r7,.L_Decrementer - _start + _START_OFFSET
+	bl	trap_reloc
+	li	r7,.L_IntervalTimer - _start + _START_OFFSET
+	li	r8,_end_of_vectors - _start + _START_OFFSET
 2:
 	bl	trap_reloc
-	addi	r7, r7, 0x100		/* next exception vector	*/
-	cmplw	0, r7, r8
+	addi	r7,r7,0x100		/* next exception vector	*/
+	cmplw	0,r7,r8
 	blt	2b
 
 	lis	r7,0x0
-	mtspr	IVPR, r7
+	mtspr	IVPR,r7
 
 	mtlr	r4			/* restore link register	*/
 	blr
@@ -1129,29 +1039,86 @@ trap_init:
 	 * Function: relocate entries for one exception vector
 	 */
 trap_reloc:
-	lwz	r0, 0(r7)		/* hdlr ...			*/
-	add	r0, r0, r3		/*  ... += dest_addr		*/
-	stw	r0, 0(r7)
+	lwz	r0,0(r7)		/* hdlr ...			*/
+	add	r0,r0,r3		/*  ... += dest_addr		*/
+	stw	r0,0(r7)
 
-	lwz	r0, 4(r7)		/* int_return ...		*/
-	add	r0, r0, r3		/*  ... += dest_addr		*/
-	stw	r0, 4(r7)
+	lwz	r0,4(r7)		/* int_return ...		*/
+	add	r0,r0,r3		/*  ... += dest_addr		*/
+	stw	r0,4(r7)
 
 	blr
 
-#ifdef CFG_INIT_RAM_LOCK
 .globl unlock_ram_in_cache
 unlock_ram_in_cache:
 	/* invalidate the INIT_RAM section */
-	lis	r3, (CFG_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CFG_INIT_RAM_ADDR & ~31)@l
-	li	r2,512
-	mtctr	r2
-1:	icbi	r0, r3
-	dcbi	r0, r3
-	addi	r3, r3, 32
+	lis	r3,(CONFIG_SYS_INIT_RAM_ADDR & ~(CONFIG_SYS_CACHELINE_SIZE-1))@h
+	ori	r3,r3,(CONFIG_SYS_INIT_RAM_ADDR & ~(CONFIG_SYS_CACHELINE_SIZE-1))@l
+	mfspr	r4,L1CFG0
+	andi.	r4,r4,0x1ff
+	slwi	r4,r4,(10 - 1 - L1_CACHE_SHIFT)
+	mtctr	r4
+1:	dcbi	r0,r3
+	addi	r3,r3,CONFIG_SYS_CACHELINE_SIZE
 	bdnz	1b
-	sync			/* Wait for all icbi to complete on bus */
+	sync
+
+	/* Invalidate the TLB entries for the cache */
+	lis	r3,CONFIG_SYS_INIT_RAM_ADDR@h
+	ori	r3,r3,CONFIG_SYS_INIT_RAM_ADDR@l
+	tlbivax	0,r3
+	addi	r3,r3,0x1000
+	tlbivax	0,r3
+	addi	r3,r3,0x1000
+	tlbivax	0,r3
+	addi	r3,r3,0x1000
+	tlbivax	0,r3
 	isync
 	blr
-#endif
+
+.globl flush_dcache
+flush_dcache:
+	mfspr	r3,SPRN_L1CFG0
+
+	rlwinm	r5,r3,9,3	/* Extract cache block size */
+	twlgti	r5,1		/* Only 32 and 64 byte cache blocks
+				 * are currently defined.
+				 */
+	li	r4,32
+	subfic	r6,r5,2		/* r6 = log2(1KiB / cache block size) -
+				 *      log2(number of ways)
+				 */
+	slw	r5,r4,r5	/* r5 = cache block size */
+
+	rlwinm	r7,r3,0,0xff	/* Extract number of KiB in the cache */
+	mulli	r7,r7,13	/* An 8-way cache will require 13
+				 * loads per set.
+				 */
+	slw	r7,r7,r6
+
+	/* save off HID0 and set DCFA */
+	mfspr	r8,SPRN_HID0
+	ori	r9,r8,HID0_DCFA@l
+	mtspr	SPRN_HID0,r9
+	isync
+
+	lis	r4,0
+	mtctr	r7
+
+1:	lwz	r3,0(r4)	/* Load... */
+	add	r4,r4,r5
+	bdnz	1b
+
+	msync
+	lis	r4,0
+	mtctr	r7
+
+1:	dcbf	0,r4		/* ...and flush. */
+	add	r4,r4,r5
+	bdnz	1b
+
+	/* restore HID0 */
+	mtspr	SPRN_HID0,r8
+	isync
+
+	blr

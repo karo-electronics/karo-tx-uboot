@@ -31,6 +31,7 @@
 #include <watchdog.h>
 
 unsigned long get_dram_size (void);
+void sdram_init(void);
 
 /*
  * Macros to transform values
@@ -131,7 +132,7 @@ int checkboard (void)
 	puts ("Board: ");
 
 	/* VPD data present in I2C EEPROM */
-	if (vpd_get_data (CFG_DEF_EEPROM_ADDR, &vpd) == 0) {
+	if (vpd_get_data (CONFIG_SYS_DEF_EEPROM_ADDR, &vpd) == 0) {
 		/*
 		 * Known board type.
 		 */
@@ -151,8 +152,15 @@ int checkboard (void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
+	/*
+	 * ToDo: Move the asm init routine sdram_init() to this C file,
+	 * or even better use some common ppc4xx code available
+	 * in cpu/ppc4xx
+	 */
+	sdram_init();
+
 	return get_dram_size ();
 }
 
@@ -196,7 +204,7 @@ static void w7o_env_init (VPD * vpd)
 	/*
 	 * Read VPD
 	 */
-	if (vpd_get_data (CFG_DEF_EEPROM_ADDR, vpd) != 0)
+	if (vpd_get_data (CONFIG_SYS_DEF_EEPROM_ADDR, vpd) != 0)
 		return;
 
 	/*

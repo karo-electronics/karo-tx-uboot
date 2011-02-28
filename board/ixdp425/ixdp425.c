@@ -31,6 +31,7 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
+#include <netdev.h>
 #include <asm/arch/ixp425.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -38,11 +39,6 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Miscelaneous platform dependent initialisations
  */
-int board_post_init (void)
-{
-	return (0);
-}
-
 int board_init (void)
 {
 	/* arch number of IXDP */
@@ -58,25 +54,25 @@ int board_init (void)
 	/*
 	 * Get realtek RTL8305 switch and SLIC out of reset
 	 */
-	GPIO_OUTPUT_SET(CFG_GPIO_SWITCH_RESET_N);
-	GPIO_OUTPUT_ENABLE(CFG_GPIO_SWITCH_RESET_N);
-	GPIO_OUTPUT_SET(CFG_GPIO_SLIC_RESET_N);
-	GPIO_OUTPUT_ENABLE(CFG_GPIO_SLIC_RESET_N);
+	GPIO_OUTPUT_SET(CONFIG_SYS_GPIO_SWITCH_RESET_N);
+	GPIO_OUTPUT_ENABLE(CONFIG_SYS_GPIO_SWITCH_RESET_N);
+	GPIO_OUTPUT_SET(CONFIG_SYS_GPIO_SLIC_RESET_N);
+	GPIO_OUTPUT_ENABLE(CONFIG_SYS_GPIO_SLIC_RESET_N);
 
 	/*
 	 * Setup GPIO's for PCI INTA & INTB
 	 */
-	GPIO_OUTPUT_DISABLE(CFG_GPIO_PCI_INTA_N);
-	GPIO_INT_ACT_LOW_SET(CFG_GPIO_PCI_INTA_N);
-	GPIO_OUTPUT_DISABLE(CFG_GPIO_PCI_INTB_N);
-	GPIO_INT_ACT_LOW_SET(CFG_GPIO_PCI_INTB_N);
+	GPIO_OUTPUT_DISABLE(CONFIG_SYS_GPIO_PCI_INTA_N);
+	GPIO_INT_ACT_LOW_SET(CONFIG_SYS_GPIO_PCI_INTA_N);
+	GPIO_OUTPUT_DISABLE(CONFIG_SYS_GPIO_PCI_INTB_N);
+	GPIO_INT_ACT_LOW_SET(CONFIG_SYS_GPIO_PCI_INTB_N);
 
 	/*
 	 * Setup GPIO's for 33MHz clock output
 	 */
 	*IXP425_GPIO_GPCLKR = 0x01FF01FF;
-	GPIO_OUTPUT_ENABLE(CFG_GPIO_PCI_CLK);
-	GPIO_OUTPUT_ENABLE(CFG_GPIO_EXTBUS_CLK);
+	GPIO_OUTPUT_ENABLE(CONFIG_SYS_GPIO_PCI_CLK);
+	GPIO_OUTPUT_ENABLE(CONFIG_SYS_GPIO_EXTBUS_CLK);
 #endif
 
 	return 0;
@@ -112,7 +108,7 @@ int dram_init (void)
 	return (0);
 }
 
-#if (CONFIG_COMMANDS & CFG_CMD_PCI) || defined(CONFIG_PCI)
+#if defined(CONFIG_CMD_PCI) || defined(CONFIG_PCI)
 extern struct pci_controller hose;
 extern void pci_ixp_init(struct pci_controller * hose);
 
@@ -123,3 +119,8 @@ void pci_init_board(void)
 	pci_ixp_init(&hose);
 }
 #endif
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
+}

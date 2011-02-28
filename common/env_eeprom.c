@@ -25,9 +25,6 @@
  */
 
 #include <common.h>
-
-#if defined(CFG_ENV_IS_IN_EEPROM) /* Environment is in EEPROM */
-
 #include <command.h>
 #include <environment.h>
 #include <linux/stddef.h>
@@ -38,16 +35,12 @@ env_t *env_ptr = NULL;
 
 char * env_name_spec = "EEPROM";
 
-extern uchar (*env_get_char)(int);
-extern uchar env_get_char_memory (int index);
-
-
 uchar env_get_char_spec (int index)
 {
 	uchar c;
 
-	eeprom_read (CFG_DEF_EEPROM_ADDR,
-		     CFG_ENV_OFFSET+index+offsetof(env_t,data),
+	eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR,
+		     CONFIG_ENV_OFFSET+index+offsetof(env_t,data),
 		     &c, 1);
 
 	return (c);
@@ -55,18 +48,18 @@ uchar env_get_char_spec (int index)
 
 void env_relocate_spec (void)
 {
-	eeprom_read (CFG_DEF_EEPROM_ADDR,
-		     CFG_ENV_OFFSET,
+	eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR,
+		     CONFIG_ENV_OFFSET,
 		     (uchar*)env_ptr,
-		     CFG_ENV_SIZE);
+		     CONFIG_ENV_SIZE);
 }
 
 int saveenv(void)
 {
-	return eeprom_write (CFG_DEF_EEPROM_ADDR,
-			     CFG_ENV_OFFSET,
+	return eeprom_write (CONFIG_SYS_DEF_EEPROM_ADDR,
+			     CONFIG_ENV_OFFSET,
 			     (uchar *)env_ptr,
-			     CFG_ENV_SIZE);
+			     CONFIG_ENV_SIZE);
 }
 
 /************************************************************************
@@ -84,8 +77,8 @@ int env_init(void)
 	eeprom_init ();	/* prepare for EEPROM read/write */
 
 	/* read old CRC */
-	eeprom_read (CFG_DEF_EEPROM_ADDR,
-		     CFG_ENV_OFFSET+offsetof(env_t,crc),
+	eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR,
+		     CONFIG_ENV_OFFSET+offsetof(env_t,crc),
 		     (uchar *)&crc, sizeof(ulong));
 
 	new = 0;
@@ -94,7 +87,7 @@ int env_init(void)
 	while (len > 0) {
 		int n = (len > sizeof(buf)) ? sizeof(buf) : len;
 
-		eeprom_read (CFG_DEF_EEPROM_ADDR, CFG_ENV_OFFSET+off, buf, n);
+		eeprom_read (CONFIG_SYS_DEF_EEPROM_ADDR, CONFIG_ENV_OFFSET+off, buf, n);
 		new = crc32 (new, buf, n);
 		len -= n;
 		off += n;
@@ -110,5 +103,3 @@ int env_init(void)
 
 	return (0);
 }
-
-#endif /* CFG_ENV_IS_IN_EEPROM */

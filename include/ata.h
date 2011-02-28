@@ -33,17 +33,19 @@
 #ifndef	_ATA_H
 #define _ATA_H
 
+#include <libata.h>
+
 /* Register addressing depends on the hardware design; for instance,
  * 8-bit (register) and 16-bit (data) accesses might use different
  * address spaces. This is implemented by the following definitions.
  */
-#ifndef CFG_ATA_STRIDE
-#define CFG_ATA_STRIDE	1
+#ifndef CONFIG_SYS_ATA_STRIDE
+#define CONFIG_SYS_ATA_STRIDE	1
 #endif
 
-#define ATA_IO_DATA(x)	(CFG_ATA_DATA_OFFSET+((x) * CFG_ATA_STRIDE))
-#define ATA_IO_REG(x)	(CFG_ATA_REG_OFFSET +((x) * CFG_ATA_STRIDE))
-#define ATA_IO_ALT(x)	(CFG_ATA_ALT_OFFSET +((x) * CFG_ATA_STRIDE))
+#define ATA_IO_DATA(x)	(CONFIG_SYS_ATA_DATA_OFFSET+((x) * CONFIG_SYS_ATA_STRIDE))
+#define ATA_IO_REG(x)	(CONFIG_SYS_ATA_REG_OFFSET +((x) * CONFIG_SYS_ATA_STRIDE))
+#define ATA_IO_ALT(x)	(CONFIG_SYS_ATA_ALT_OFFSET +((x) * CONFIG_SYS_ATA_STRIDE))
 
 /*
  * I/O Register Descriptions
@@ -234,7 +236,9 @@ typedef struct hd_driveid {
 	unsigned short	words130_155[26];/* reserved vendor words 130-155 */
 	unsigned short	word156;
 	unsigned short	words157_159[3];/* reserved vendor words 157-159 */
-	unsigned short	words160_255[95];/* reserved words 160-255 */
+	unsigned short	words160_162[3];/* reserved words 160-162 */
+	unsigned short	cf_advanced_caps;
+	unsigned short	words164_255[92];/* reserved words 164-255 */
 } hd_driveid_t;
 
 

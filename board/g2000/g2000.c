@@ -33,7 +33,7 @@
 #define MEM_SDTR1_INIT_VAL      0x00854005
 #define SDRAM0_CFG_ENABLE       0x80000000
 
-#define CFG_SDRAM_SIZE          0x04000000      /* 64 MB */
+#define CONFIG_SYS_SDRAM_SIZE          0x04000000      /* 64 MB */
 
 int board_early_init_f (void)
 {
@@ -73,12 +73,12 @@ int misc_init_f (void)
 
 int misc_init_r (void)
 {
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
+#if defined(CONFIG_CMD_NAND)
 	/*
 	 * Set NAND-FLASH GPIO signals to default
 	 */
-	out32(GPIO0_OR, in32(GPIO0_OR) & ~(CFG_NAND_CLE | CFG_NAND_ALE));
-	out32(GPIO0_OR, in32(GPIO0_OR) | CFG_NAND_CE);
+	out32(GPIO0_OR, in32(GPIO0_OR) & ~(CONFIG_SYS_NAND_CLE | CONFIG_SYS_NAND_ALE));
+	out32(GPIO0_OR, in32(GPIO0_OR) | CONFIG_SYS_NAND_CE);
 #endif
 
 	return (0);
@@ -127,11 +127,11 @@ long int init_sdram_static_settings(void)
 	udelay(500);
 	mtsdram0( mem_mcopt1, MEM_MCOPT1_INIT_VAL|SDRAM0_CFG_ENABLE );
 
-	return (CFG_SDRAM_SIZE); /* CFG_SDRAM_SIZE is in G2000.h */
+	return (CONFIG_SYS_SDRAM_SIZE); /* CONFIG_SYS_SDRAM_SIZE is in G2000.h */
  }
 
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long int ret;
 
@@ -147,56 +147,6 @@ long int initdram (int board_type)
 
 	return ret;
 }
-
-
-#if 1 /* test-only */
-void sdram_init(void)
-{
-	init_sdram_static_settings();
-}
-#endif
-
-
-#if 0 /* test-only */
-long int initdram (int board_type)
-{
-	unsigned long val;
-
-	mtdcr(memcfga, mem_mb0cf);
-	val = mfdcr(memcfgd);
-
-#if 0
-	printf("\nmb0cf=%x\n", val); /* test-only */
-	printf("strap=%x\n", mfdcr(strap)); /* test-only */
-#endif
-
-	return (4*1024*1024 << ((val & 0x000e0000) >> 17));
-}
-#endif
-
-
-int testdram (void)
-{
-	/* TODO: XXX XXX XXX */
-	printf ("test: 16 MB - ok\n");
-
-	return (0);
-}
-
-
-#if (CONFIG_COMMANDS & CFG_CMD_NAND)
-#include <linux/mtd/nand_legacy.h>
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
-
-void nand_init(void)
-{
-	nand_probe(CFG_NAND_BASE);
-	if (nand_dev_desc[0].ChipID != NAND_ChipID_UNKNOWN) {
-		print_size(nand_dev_desc[0].totlen, "\n");
-	}
-}
-#endif
-
 
 #if 0 /* test-only !!! */
 int do_dumpebc(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -220,8 +170,8 @@ int do_dumpebc(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	dumpebc,	1,	1,	do_dumpebc,
-	"dumpebc - Dump all EBC registers\n",
-	NULL
+	"Dump all EBC registers",
+	""
 );
 
 
@@ -242,8 +192,8 @@ int do_dumpdcr(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	dumpdcr,	1,	1,	do_dumpdcr,
-	"dumpdcr - Dump all DCR registers\n",
-	NULL
+	"Dump all DCR registers",
+	""
 );
 
 
@@ -306,7 +256,7 @@ int do_dumpspr(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	dumpspr,	1,	1,	do_dumpspr,
-	"dumpspr - Dump all SPR registers\n",
-	NULL
+	"Dump all SPR registers",
+	""
 );
 #endif

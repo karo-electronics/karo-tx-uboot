@@ -44,7 +44,7 @@ SECTIONS
 
   .data    :
   {
-    *(.rodata*)
+    *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
     *(.data*)
     *(.sdata*)
     __got2_start = .;
@@ -55,10 +55,11 @@ SECTIONS
   _edata  =  .;
 
   __bss_start = .;
-  .bss       :
+  .bss (NOLOAD)       :
   {
    *(.sbss)
    *(.bss)
+   . = ALIGN(4);
   }
 
   _end = . ;

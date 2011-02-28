@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 2001	Marius Gröger <mag@sysgo.de>
  *  Copyright (c) 2002	Alex Züpke <azu@sysgo.de>
- *  Copyright (c) 2002	Gary Jennejohn <gj@denx.de>
+ *  Copyright (c) 2002	Gary Jennejohn <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -172,8 +172,8 @@ copy_loop:
 	/* Set up the stack						    */
 stack_setup:
 	ldr	r0, _TEXT_BASE		/* upper 128 KiB: relocated uboot   */
-	sub	r0, r0, #CFG_MALLOC_LEN	/* malloc area                      */
-	sub	r0, r0, #CFG_GBL_DATA_SIZE /* bdinfo                        */
+	sub	r0, r0, #CONFIG_SYS_MALLOC_LEN	/* malloc area                      */
+	sub	r0, r0, #CONFIG_SYS_GBL_DATA_SIZE /* bdinfo                        */
 #ifdef CONFIG_USE_IRQ
 	sub	r0, r0, #(CONFIG_STACKSIZE_IRQ+CONFIG_STACKSIZE_FIQ)
 #endif
@@ -184,7 +184,7 @@ clear_bss:
 	@add	r0, r0, #4		/* start at first byte of bss       */
 					/*   why inc. 4 bytes past then?    */
 	ldr	r1, _bss_end		/* stop here                        */
-	mov 	r2, #0x00000000		/* clear                            */
+	mov	r2, #0x00000000		/* clear                            */
 
 clbss_l:str	r2, [r0]		/* clear loop...                    */
 	add	r0, r0, #4
@@ -285,8 +285,8 @@ cpu_init_crit:
 	sub	sp, sp, #S_FRAME_SIZE
 	stmia	sp, {r0 - r12}			@ Calling r0-r12
 	ldr	r2, _armboot_start
-	sub	r2, r2, #(CONFIG_STACKSIZE+CFG_MALLOC_LEN)
-	sub	r2, r2, #(CFG_GBL_DATA_SIZE+8)  @ set base 2 words into abort stack
+	sub	r2, r2, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
+	sub	r2, r2, #(CONFIG_SYS_GBL_DATA_SIZE+8)  @ set base 2 words into abort stack
 	ldmia	r2, {r2 - r3}			@ get pc, cpsr
 	add	r0, sp, #S_FRAME_SIZE		@ restore sp_SVC
 
@@ -318,8 +318,8 @@ cpu_init_crit:
 
 	.macro get_bad_stack
 	ldr	r13, _armboot_start		@ setup our mode stack
-	sub	r13, r13, #(CONFIG_STACKSIZE+CFG_MALLOC_LEN)
-	sub	r13, r13, #(CFG_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
+	sub	r13, r13, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
+	sub	r13, r13, #(CONFIG_SYS_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
 
 	str	lr, [r13]			@ save caller lr / spsr
 	mrs	lr, spsr
@@ -347,31 +347,31 @@ cpu_init_crit:
 undefined_instruction:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_undefined_instruction
+	bl	do_undefined_instruction
 
 	.align	5
 software_interrupt:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_software_interrupt
+	bl	do_software_interrupt
 
 	.align	5
 prefetch_abort:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_prefetch_abort
+	bl	do_prefetch_abort
 
 	.align	5
 data_abort:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_data_abort
+	bl	do_data_abort
 
 	.align	5
 not_used:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_not_used
+	bl	do_not_used
 
 #ifdef CONFIG_USE_IRQ
 
@@ -379,7 +379,7 @@ not_used:
 irq:
 	get_irq_stack
 	irq_save_user_regs
-	bl 	do_irq
+	bl	do_irq
 	irq_restore_user_regs
 
 	.align	5
@@ -387,7 +387,7 @@ fiq:
 	get_fiq_stack
 	/* someone ought to write a more effiction fiq_save_user_regs */
 	irq_save_user_regs
-	bl 	do_fiq
+	bl	do_fiq
 	irq_restore_user_regs
 
 #else
@@ -396,13 +396,13 @@ fiq:
 irq:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_irq
+	bl	do_irq
 
 	.align	5
 fiq:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_fiq
+	bl	do_fiq
 
 #endif
 
