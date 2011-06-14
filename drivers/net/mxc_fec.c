@@ -764,7 +764,7 @@ static int fec_init(struct eth_device *dev, bd_t *bd)
 		info->rxbd[i].cbd_bufaddr =
 			iomem_to_phys((ulong)info->rxbuf[i]);
 #else
-		info->rxbd[i].cbd_bufaddr = NetRxPackets[i];
+		info->rxbd[i].cbd_bufaddr = (ulong)NetRxPackets[i];
 #endif
 	}
 	info->rxbd[PKTBUFSRX - 1].cbd_sc |= BD_ENET_RX_WRAP;

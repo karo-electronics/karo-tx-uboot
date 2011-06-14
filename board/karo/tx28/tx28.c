@@ -54,28 +54,9 @@ static struct pin_desc mmc0_pins_desc[] = {
 	{ PINID_SSP0_SCK, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
 };
 
-static struct pin_desc mmc1_pins_desc[] = {
-	{ PINID_GPMI_D00, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D01, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D02, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D03, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D04, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D05, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D06, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_D07, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_RDY1, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_RDY0, PIN_FUN2, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_GPMI_WRN, PIN_FUN2, PAD_8MA, PAD_3V3, 1 }
-};
-
 static struct pin_group mmc0_pins = {
 	.pins		= mmc0_pins_desc,
 	.nr_pins	= ARRAY_SIZE(mmc0_pins_desc)
-};
-
-static struct pin_group mmc1_pins = {
-	.pins		= mmc1_pins_desc,
-	.nr_pins	= ARRAY_SIZE(mmc1_pins_desc)
 };
 
 struct imx_ssp_mmc_cfg ssp_mmc_cfg[2] = {
@@ -119,6 +100,29 @@ static struct pin_group duart_pins = {
 	.nr_pins = ARRAY_SIZE(duart_pins_desc),
 };
 
+static struct pin_desc gpmi_pins_desc[] = {
+	{ PINID_GPMI_D00, PIN_FUN1, },
+	{ PINID_GPMI_D01, PIN_FUN1, },
+	{ PINID_GPMI_D02, PIN_FUN1, },
+	{ PINID_GPMI_D03, PIN_FUN1, },
+	{ PINID_GPMI_D04, PIN_FUN1, },
+	{ PINID_GPMI_D05, PIN_FUN1, },
+	{ PINID_GPMI_D06, PIN_FUN1, },
+	{ PINID_GPMI_D07, PIN_FUN1, },
+	{ PINID_GPMI_CE0N, PIN_FUN1, },
+	{ PINID_GPMI_RDY0, PIN_FUN1, },
+	{ PINID_GPMI_RDN, PIN_FUN1, },
+	{ PINID_GPMI_WRN, PIN_FUN1, },
+	{ PINID_GPMI_ALE, PIN_FUN1, },
+	{ PINID_GPMI_CLE, PIN_FUN1, },
+	{ PINID_GPMI_RESETN, PIN_FUN1, },
+};
+
+static struct pin_group gpmi_pins = {
+	.pins		= gpmi_pins_desc,
+	.nr_pins	= ARRAY_SIZE(gpmi_pins_desc),
+};
+
 /*
  * Functions
  */
@@ -158,8 +162,6 @@ int get_mmc_env_devno(void)
 }
 #endif
 
-#define PINID_SSP0_GPIO_WP PINID_SSP1_SCK
-#define PINID_SSP1_GPIO_WP PINID_GPMI_RESETN
 
 u32 ssp_mmc_is_wp(struct mmc *mmc)
 {
@@ -176,11 +178,6 @@ int ssp_mmc_gpio_init(bd_t *bis)
 		case 0:
 			/* Set up MMC pins */
 			pin_set_group(&mmc0_pins);
-			break;
-
-		case 1:
-			/* Set up MMC pins */
-			pin_set_group(&mmc1_pins);
 			break;
 
 		default:
@@ -251,6 +248,17 @@ void enet_board_init(void)
 	udelay(200);
 	pin_gpio_set(PINID_ENET0_RX_CLK, 1);
 }
+
+#ifdef CONFIG_MXS_NAND
+#include <linux/mtd/nand.h>
+extern int mxs_gpmi_nand_init(struct mtd_info *mtd, struct nand_chip *chip);
+
+int board_nand_init(struct mtd_info *mtd, struct nand_chip *chip)
+{
+	pin_set_group(&gpmi_pins);
+	return mxs_gpmi_nand_init(mtd, chip);
+}
+#endif
 
 int checkboard(void)
 {

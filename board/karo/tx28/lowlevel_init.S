@@ -29,7 +29,7 @@
 #include <version.h>
 
 /* Set up the platform, once the cpu has been initialized */
-.globl lowlevel_init
+	.globl lowlevel_init
 lowlevel_init:
 
 	/* All SDRAM settings are done by sdram_prep */

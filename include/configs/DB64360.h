@@ -38,8 +38,8 @@
  * History:
  *
  *	$Log$
- *	Revision 1.1.3.2  2011-02-28 14:53:42  lothar
- *	imported Ka-Ro specific additions to U-Boot 2009.08 for TX28
+ *	Revision 1.1.2.1  2011-06-14 08:40:02  lothar
+ *	TX28 Release 2011-05-30
  *
  *	Revision 1.3  2003/04/26 04:58:13  brad
  *	Cosmetic changes and compiler warning cleanups

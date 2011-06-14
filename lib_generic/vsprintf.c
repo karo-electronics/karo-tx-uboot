@@ -632,8 +632,29 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 			continue;
 		}
 #ifdef CONFIG_SYS_64BIT_VSPRINTF
-		if (qualifier == 'L')  /* "quad" for 64 bit variables */
-			num = va_arg(args, unsigned long long);
+#ifndef GCC_VERSION
+#define GCC_VERSION (__GNUC__ * 1000 + __GNUC_MINOR__)
+#endif
+		if (qualifier == 'L') /* "quad" for 64 bit variables */
+#if GCC_VERSION <= 3003 || GCC_VERSION > 4004
+			/* gcc 3.3.2 handles this correctly
+			 * at least gcc >= 4.3.4 and <= 4.4.1 misalign long long arguments on stack!
+			 */
+			num = va_arg(args, long long);
+#else
+#define get_addr(arg) ({					\
+	unsigned long __sp;					\
+	asm volatile ("mov %0, %1" : "=r"(__sp) : "r"(arg));	\
+	__sp;							\
+	})
+		/* workaround for broken gcc */
+		{
+			if (!(get_addr(args) & 0x7))
+				num = va_arg(args, long);
+			num = va_arg(args, long);
+			num |= (unsigned long long)va_arg(args, long) << 32;
+		}
+#endif
 		else
 #endif
 		if (qualifier == 'l') {

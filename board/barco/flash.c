@@ -9,8 +9,8 @@
  *
  * Last ChangeLog Entry
  * $Log$
- * Revision 1.1.3.2  2011-02-28 14:52:53  lothar
- * imported Ka-Ro specific additions to U-Boot 2009.08 for TX28
+ * Revision 1.1.2.1  2011-06-14 08:39:03  lothar
+ * TX28 Release 2011-05-30
  *
  * Revision 1.3  2005/02/21 12:48:58  mleeman
  * update of copyright years (feedback wd)

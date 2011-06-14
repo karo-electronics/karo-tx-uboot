@@ -29,8 +29,8 @@
  *
  *
  * $Log$
- * Revision 1.1.3.2  2011-02-28 14:53:36  lothar
- * imported Ka-Ro specific additions to U-Boot 2009.08 for TX28
+ * Revision 1.1.2.1  2011-06-14 08:40:05  lothar
+ * TX28 Release 2011-05-30
  *
  * Revision 1.21  2005/06/03 15:05:25  tsawyer
  * MB rev 2.0.3 KA rev 0.0.7.  Add CONFIG_VERSION_VARIABLE, Add fakeled to MB

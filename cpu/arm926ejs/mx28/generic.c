@@ -24,7 +24,87 @@
 #include <asm/errno.h>
 #include <asm/arch/regs-clkctrl.h>
 #include <asm/cache-cp15.h>
+#include <asm/io.h>
 #include <asm/fec.h>
+
+#define MXS_MODULE_SFTRST	(1 << 31)
+#define MXS_MODULE_CLKGATE	(1 << 30)
+
+static inline void __mxs_clrl(u32 mask, volatile void *addr)
+{
+	__raw_writel(mask, addr + MXS_CLR_ADDR);
+}
+
+static inline void __mxs_setl(u32 mask, volatile void *addr)
+{
+	__raw_writel(mask, addr + MXS_SET_ADDR);
+}
+
+/*
+ * Clear the bit and poll it cleared.  This is usually called with
+ * a reset address and mask being either SFTRST(bit 31) or CLKGATE
+ * (bit 30).
+ */
+static int clear_poll_bit(volatile void *addr, u32 mask)
+{
+	int timeout = 0x400;
+
+	/* clear the bit */
+	__mxs_clrl(mask, addr);
+
+	/*
+	 * SFTRST needs 3 GPMI clocks to settle, the reference manual
+	 * recommends to wait 1us.
+	 */
+	udelay(1);
+
+	/* poll the bit becoming clear */
+	while ((__raw_readl(addr) & mask) && --timeout)
+		udelay(1);
+
+	return !timeout;
+}
+
+int mxs_reset_block(volatile void *reset_addr)
+{
+	int ret;
+	int timeout = 0x400000;
+
+	/* clear and poll SFTRST */
+	ret = clear_poll_bit(reset_addr, MXS_MODULE_SFTRST);
+	if (ret)
+		goto error;
+
+	/* clear CLKGATE */
+	__mxs_clrl(MXS_MODULE_CLKGATE, reset_addr);
+
+	/* set SFTRST to reset the block */
+	__mxs_setl(MXS_MODULE_SFTRST, reset_addr);
+	udelay(1);
+
+	/* poll CLKGATE becoming set */
+	while ((!(__raw_readl(reset_addr) & MXS_MODULE_CLKGATE)) && --timeout)
+		udelay(1);
+
+	if (!timeout)
+		goto error;
+
+	/* clear and poll SFTRST */
+	ret = clear_poll_bit(reset_addr, MXS_MODULE_SFTRST);
+	if (ret)
+		goto error;
+
+	/* clear and poll CLKGATE */
+	ret = clear_poll_bit(reset_addr, MXS_MODULE_CLKGATE);
+	if (ret)
+		goto error;
+
+	return 0;
+
+error:
+	printf("%s(%p): module reset timeout\n", __func__, reset_addr);
+	return -ETIMEDOUT;
+}
 
 static u32 mx28_get_pclk(void)
 {
@@ -105,6 +185,7 @@ static u32 mx28_get_emiclk(void)
 
 	return emiclk;
 }
+
 static inline void __enable_gpmi_clk(void)
 {
 	/* Clear bypass bit*/
@@ -112,11 +193,12 @@ static inline void __enable_gpmi_clk(void)
 	       BM_CLKCTRL_CLKSEQ_BYPASS_GPMI);
 	/* Set gpmi clock to ref_gpmi/12 */
 	REG_WR(REGS_CLKCTRL_BASE, HW_CLKCTRL_GPMI,
-	      REG_RD(REGS_CLKCTRL_BASE, HW_CLKCTRL_GPMI) &
-	      (~(BM_CLKCTRL_GPMI_DIV)) &
-	      (~(BM_CLKCTRL_GPMI_CLKGATE)) |
-	      1);
+		(REG_RD(REGS_CLKCTRL_BASE, HW_CLKCTRL_GPMI) &
+			(~(BM_CLKCTRL_GPMI_DIV |
+				~BM_CLKCTRL_GPMI_CLKGATE))) |
+		1);
 }
+
 static u32 mx28_get_gpmiclk(void)
 {
 	const u32 xtal = 24, ref = 480;
@@ -146,6 +228,7 @@ static u32 mx28_get_gpmiclk(void)
 
 	return gpmiclk;
 }
+
 u32 mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {

@@ -70,22 +70,27 @@
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_BOOTARGS		"console=ttyAM0,115200n8 "
 #define CONFIG_BOOTCOMMAND	"run bootcmd_net"
-#define CONFIG_LOADADDR		0x42000000
+#define CONFIG_LOADADDR		0x40100000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 
 /*
  * Extra Environments
  */
-#define	CONFIG_EXTRA_ENV_SETTINGS \
-	"nfsroot=/home/notroot/nfs/rootfs\0" \
-	"bootargs_nfs=setenv bootargs ${bootargs} root=/dev/nfs " \
-		"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp " \
-		"fec_mac=${ethaddr}\0" \
-	"bootcmd_net=run bootargs_nfs; dhcp; bootm\0" \
+#define	CONFIG_EXTRA_ENV_SETTINGS					\
+	"nfsroot=/home/notroot/nfs/rootfs\0"				\
+	"bootargs_nfs=setenv bootargs ${bootargs} root=/dev/nfs "	\
+	"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp "		\
+	"fec_mac=${ethaddr}\0"						\
+	"bootcmd_net=run bootargs_nfs; dhcp; bootm\0"			\
 	"bootargs_mmc=setenv bootargs ${bootargs} root=/dev/mmcblk0p3 " \
-		"rw rootwait ip=dhcp fec_mac=${ethaddr}\0" \
-	"bootcmd_mmc=run bootargs_mmc; " \
-		"mmc read 0 ${loadaddr} 100 3000; bootm\0" \
+	"rw rootwait ip=dhcp fec_mac=${ethaddr}\0"			\
+	"bootcmd_mmc=run bootargs_mmc; "				\
+	"mmc read 0 ${loadaddr} 100 3000; bootm\0"			\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+
+#define MTDIDS_DEFAULT			"nand0=gpmi-nfc"
+#define MTDPARTS_DEFAULT		"mtdparts=gpmi-nfc:1m@0x40000(u-boot),4m(linux),16m(rootfs),-(userfs)\0" \
 
 /*
  * U-Boot Commands
@@ -120,17 +125,51 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_DNS
 
+#define CONFIG_CMD_MMC
+#define CONFIG_CMD_NAND
+#define CONFIG_CMD_MTDPARTS
+
+/*
+ * NAND flash driver
+ */
+#ifdef CONFIG_CMD_NAND
+#define CONFIG_MTD_DEVICE
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_MXS_NAND
+#define CONFIG_SYS_MXS_DMA_CHANNEL	4
+#define CONFIG_SYS_MAX_FLASH_SECT	1024
+#define CONFIG_SYS_MAX_FLASH_BANKS	1
+#define CONFIG_SYS_NAND_MAX_CHIPS	1
+#define CONFIG_SYS_MAX_NAND_DEVICE	1
+#ifdef CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_OVERWRITE
+#define CONFIG_ENV_OFFSET		0x20000
+#define CONFIG_ENV_SIZE			0x20000 /* 128 KiB */
+#endif
+#ifndef CONFIG_SYS_NO_FLASH
+#define CONFIG_CMD_FLASH
+#define CONFIG_SYS_NAND_BASE		0xa0000000
+#define CONFIG_FIT
+#define CONFIG_OF_LIBFDT
+#else
+#define CONFIG_SYS_NAND_BASE		0x00000000
+#define CONFIG_CMD_ROMUPDATE
+#endif
+#endif /* CONFIG_CMD_NAND */
+
 /*
  * MMC Driver
  */
-#define CONFIG_CMD_MMC
+#ifdef CONFIG_CMD_MMC
+#ifndef CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_IS_IN_MMC
+#endif
 #define CONFIG_MMC
 #define CONFIG_IMX_SSP_MMC		/* MMC driver based on SSP */
 #define CONFIG_GENERIC_MMC
-#define CONFIG_SYS_MMC_ENV_DEV	0
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
-#define CONFIG_SYS_SSP_MMC_NUM 2
+#define CONFIG_SYS_SSP_MMC_NUM		1
 
 #define CONFIG_BOOT_PARTITION_ACCESS
 #define CONFIG_DOS_PARTITION
@@ -140,13 +179,16 @@
 /*
  * Environments on MMC
  */
+#ifdef CONFIG_ENV_IS_IN_MMC
+#define CONFIG_SYS_MMC_ENV_DEV	0
 #define CONFIG_CMD_ENV
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_ENV_IS_IN_MMC
 /* Assoiated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		0x400 /* 1 KB */
 #define CONFIG_ENV_SIZE			(0x20000 - 0x400) /* 127 KB */
 #define CONFIG_DYNAMIC_MMC_DEVNO
+#endif /* CONFIG_ENV_IS_IN_MMC */
+#endif /* CONFIG_CMD_MMC */
 
 /* The global boot mode will be detected by ROM code and
  * a boot mode value will be stored at fixed address:

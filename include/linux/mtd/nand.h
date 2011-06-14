@@ -31,7 +31,6 @@
 #include "linux/mtd/mtd.h"
 #include "linux/mtd/bbm.h"
 
-
 struct mtd_info;
 /* Scan and identify a NAND device */
 extern int nand_scan (struct mtd_info *mtd, int max_chips);
@@ -200,6 +199,11 @@ typedef enum {
 /* This option is defined if the board driver allocates its own buffers
    (e.g. because it needs them DMA-coherent */
 #define NAND_OWN_BUFFERS	0x00040000
+/*
+ * If passed additionally to NAND_USE_FLASH_BBT then BBT code will not touch
+ * the OOB area.
+ */
+#define NAND_USE_FLASH_BBT_NO_OOB	0x00100000
 /* Options set by nand scan */
 /* bbt has already been read */
 #define NAND_BBT_SCANNED	0x40000000
@@ -551,5 +555,4 @@ struct platform_nand_chip *get_platform_nandchip(struct mtd_info *mtd)
 
 	return chip->priv;
 }
-
 #endif /* __LINUX_MTD_NAND_H */

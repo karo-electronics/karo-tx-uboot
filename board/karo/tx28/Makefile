@@ -26,6 +26,9 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(BOARD).a
 
 COBJS	:= tx28.o
+ifeq ($(CONFIG_CMD_ROMUPDATE),y)
+	COBJS += flash.o
+endif
 SOBJS	:= lowlevel_init.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
