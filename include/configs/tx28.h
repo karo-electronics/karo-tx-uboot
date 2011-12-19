@@ -48,11 +48,11 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_SYS_PROMPT	"MX28 U-Boot > "
-#define CONFIG_SYS_CBSIZE	1024		/* Console I/O buffer size */
+#define CONFIG_SYS_CBSIZE	2048		/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 						/* Print buffer size */
-#define CONFIG_SYS_MAXARGS	16		/* Max number of command args */
+#define CONFIG_SYS_MAXARGS	64		/* Max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 						/* Boot argument buffer size */
 #define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
@@ -68,8 +68,9 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttyAM0,115200n8 "
-#define CONFIG_BOOTCOMMAND	"run bootcmd_net"
+#define CONFIG_BOOTARGS		"console=ttyAMA0,115200 tx28_base=stkv3" \
+	" tx28_otg_mode=device ro debug panic=1"
+#define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
 #define CONFIG_LOADADDR		0x40100000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 
@@ -77,20 +78,31 @@
  * Extra Environments
  */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
-	"nfsroot=/home/notroot/nfs/rootfs\0"				\
-	"bootargs_nfs=setenv bootargs ${bootargs} root=/dev/nfs "	\
-	"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp "		\
-	"fec_mac=${ethaddr}\0"						\
-	"bootcmd_net=run bootargs_nfs; dhcp; bootm\0"			\
-	"bootargs_mmc=setenv bootargs ${bootargs} root=/dev/mmcblk0p3 " \
-	"rw rootwait ip=dhcp fec_mac=${ethaddr}\0"			\
-	"bootcmd_mmc=run bootargs_mmc; "				\
-	"mmc read 0 ${loadaddr} 100 3000; bootm\0"			\
+	"bootargs_nand=setenv bootargs ${bootargs} ${mtdparts}"		\
+	" root=/dev/mtdblock3"						\
+	" rootfstype=jffs2\0"						\
+	"nfsroot=/tftpboot/rootfs\0"					\
+	"bootargs_nfs=setenv bootargs ${bootargs} root=/dev/nfs"	\
+	" ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"		\
+	"bootargs_mmc=setenv bootargs ${bootargs} root=/dev/mmcblk0p3"	\
+	" rootwait ip=dhcp\0"						\
+	"bootcmd_nand=set autostart yes;run bootargs_nand;"		\
+	" nboot linux\0"						\
+	"bootcmd_net=set autostart yes;run bootargs_nfs; dhcp\0"	\
+	"bootcmd_mmc=set autostart yes;run bootargs_mmc;"		\
+	" mmc read 0 ${loadaddr} 100 3000\0"				\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"autostart=no\0"
 
-#define MTDIDS_DEFAULT			"nand0=gpmi-nfc"
-#define MTDPARTS_DEFAULT		"mtdparts=gpmi-nfc:1m@0x40000(u-boot),4m(linux),16m(rootfs),-(userfs)\0" \
+#define __stringify(s)			_stringify(s)
+#define _stringify(s)			#s
+
+#define MTD_NAME			"gpmi-nand"
+#define MTDIDS_DEFAULT			"nand0=" MTD_NAME
+#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":128k@" \
+	__stringify(CONFIG_ENV_OFFSET)				      \
+	"(env),1m@0x40000(u-boot),4m(linux),16m(rootfs),-(userfs)"
 
 /*
  * U-Boot Commands

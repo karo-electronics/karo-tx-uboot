@@ -5,8 +5,8 @@ Unpacking the source
 --------------------
 mkdir u-boot
 cd u-boot
-tar -xzf u-boot-src.tgz
-
+tar -xzf /cdrom/U-Boot/u-boot-src.tar.bz2
+sudo tar -C / -xzf /cdrom/Tools/Linux/elftosb.tgz
 
 Compiling U-Boot
 ----------------
