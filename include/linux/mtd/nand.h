@@ -31,7 +31,6 @@
 #include "linux/mtd/mtd.h"
 #include "linux/mtd/bbm.h"
 
-
 struct mtd_info;
 /* Scan and identify a NAND device */
 extern int nand_scan (struct mtd_info *mtd, int max_chips);
@@ -50,8 +49,8 @@ extern void nand_wait_ready(struct mtd_info *mtd);
  * is supported now. If you add a chip with bigger oobsize/page
  * adjust this accordingly.
  */
-#define NAND_MAX_OOBSIZE	218
-#define NAND_MAX_PAGESIZE	4096
+#define NAND_MAX_OOBSIZE	(218 * CONFIG_SYS_NAND_MAX_CHIPS)
+#define NAND_MAX_PAGESIZE	(4096 * CONFIG_SYS_NAND_MAX_CHIPS)
 
 /*
  * Constants for hardware specific CLE/ALE/NCE function
@@ -200,6 +199,11 @@ typedef enum {
 /* This option is defined if the board driver allocates its own buffers
    (e.g. because it needs them DMA-coherent */
 #define NAND_OWN_BUFFERS	0x00040000
+/*
+ * If passed additionally to NAND_USE_FLASH_BBT then BBT code will not touch
+ * the OOB area.
+ */
+#define NAND_USE_FLASH_BBT_NO_OOB	0x00100000
 /* Options set by nand scan */
 /* bbt has already been read */
 #define NAND_BBT_SCANNED	0x40000000
@@ -437,6 +441,8 @@ struct nand_chip {
 #define NAND_MFR_HYNIX		0xad
 #define NAND_MFR_MICRON		0x2c
 #define NAND_MFR_AMD		0x01
+#define NAND_MFR_SANDISK	0x45
+#define NAND_MFR_INTEL		0x89
 
 /**
  * struct nand_flash_dev - NAND Flash Device ID Structure
@@ -549,5 +555,4 @@ struct platform_nand_chip *get_platform_nandchip(struct mtd_info *mtd)
 
 	return chip->priv;
 }
-
 #endif /* __LINUX_MTD_NAND_H */

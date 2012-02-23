@@ -29,6 +29,8 @@ COBJS	+= generic.o
 COBJS	+= timer.o
 COBJS	+= devices.o
 
+SOBJS	= nand_load.o
+
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
 

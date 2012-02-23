@@ -74,11 +74,11 @@ const char version_string[] =
 	U_BOOT_VERSION" (" U_BOOT_DATE " - " U_BOOT_TIME ")"CONFIG_IDENT_STRING;
 
 #ifdef CONFIG_DRIVER_CS8900
-extern void cs8900_get_enetaddr (void);
+extern void cs8900_get_enetaddr(void);
 #endif
 
 #ifdef CONFIG_DRIVER_RTL8019
-extern void rtl8019_get_enetaddr (uchar * addr);
+extern void rtl8019_get_enetaddr(uchar * addr);
 #endif
 
 #if defined(CONFIG_HARD_I2C) || \
@@ -89,32 +89,32 @@ extern void rtl8019_get_enetaddr (uchar * addr);
 /*
  * Begin and End of memory area for malloc(), and current "brk"
  */
-static ulong mem_malloc_start = 0;
-static ulong mem_malloc_end = 0;
-static ulong mem_malloc_brk = 0;
+static void *mem_malloc_start;
+static void *mem_malloc_end;
+static void *mem_malloc_brk;
 
 static
-void mem_malloc_init (ulong dest_addr)
+void mem_malloc_init(void *dest_addr)
 {
 	mem_malloc_start = dest_addr;
 	mem_malloc_end = dest_addr + CONFIG_SYS_MALLOC_LEN;
 	mem_malloc_brk = mem_malloc_start;
 
-	memset ((void *) mem_malloc_start, 0,
-			mem_malloc_end - mem_malloc_start);
+	memset(mem_malloc_start, 0,
+		mem_malloc_end - mem_malloc_start);
 }
 
-void *sbrk (ptrdiff_t increment)
+void *sbrk(ptrdiff_t increment)
 {
-	ulong old = mem_malloc_brk;
-	ulong new = old + increment;
+	void *old = mem_malloc_brk;
+	void *new = old + increment;
 
 	if ((new < mem_malloc_start) || (new > mem_malloc_end)) {
-		return (NULL);
+		return NULL;
 	}
 	mem_malloc_brk = new;
 
-	return ((void *) old);
+	return old;
 }
 
 
@@ -123,24 +123,24 @@ void *sbrk (ptrdiff_t increment)
  ************************************************************************
  * May be supplied by boards if desired
  */
-void inline __coloured_LED_init (void) {}
-void inline coloured_LED_init (void) __attribute__((weak, alias("__coloured_LED_init")));
-void inline __red_LED_on (void) {}
-void inline red_LED_on (void) __attribute__((weak, alias("__red_LED_on")));
-void inline __red_LED_off(void) {}
-void inline red_LED_off(void)	     __attribute__((weak, alias("__red_LED_off")));
-void inline __green_LED_on(void) {}
-void inline green_LED_on(void) __attribute__((weak, alias("__green_LED_on")));
-void inline __green_LED_off(void) {}
-void inline green_LED_off(void)__attribute__((weak, alias("__green_LED_off")));
-void inline __yellow_LED_on(void) {}
-void inline yellow_LED_on(void)__attribute__((weak, alias("__yellow_LED_on")));
-void inline __yellow_LED_off(void) {}
-void inline yellow_LED_off(void)__attribute__((weak, alias("__yellow_LED_off")));
-void inline __blue_LED_on(void) {}
-void inline blue_LED_on(void)__attribute__((weak, alias("__blue_LED_on")));
-void inline __blue_LED_off(void) {}
-void inline blue_LED_off(void)__attribute__((weak, alias("__blue_LED_off")));
+void __coloured_LED_init(void) {}
+void coloured_LED_init(void) __attribute__((weak, alias("__coloured_LED_init")));
+void __red_LED_on(void) {}
+void red_LED_on(void) __attribute__((weak, alias("__red_LED_on")));
+void __red_LED_off(void) {}
+void red_LED_off(void)	     __attribute__((weak, alias("__red_LED_off")));
+void __green_LED_on(void) {}
+void green_LED_on(void) __attribute__((weak, alias("__green_LED_on")));
+void __green_LED_off(void) {}
+void green_LED_off(void)__attribute__((weak, alias("__green_LED_off")));
+void __yellow_LED_on(void) {}
+void yellow_LED_on(void)__attribute__((weak, alias("__yellow_LED_on")));
+void __yellow_LED_off(void) {}
+void yellow_LED_off(void)__attribute__((weak, alias("__yellow_LED_off")));
+void __blue_LED_on(void) {}
+void blue_LED_on(void)__attribute__((weak, alias("__blue_LED_on")));
+void __blue_LED_off(void) {}
+void blue_LED_off(void)__attribute__((weak, alias("__blue_LED_off")));
 
 /************************************************************************
  * Init Utilities							*
@@ -153,31 +153,32 @@ void inline blue_LED_off(void)__attribute__((weak, alias("__blue_LED_off")));
 #if defined(CONFIG_ARM_DCC) && !defined(CONFIG_BAUDRATE)
 #define CONFIG_BAUDRATE 115200
 #endif
-static int init_baudrate (void)
+static int init_baudrate(void)
 {
 	char tmp[64];	/* long enough for environment variables */
-	int i = getenv_r ("baudrate", tmp, sizeof (tmp));
-	gd->bd->bi_baudrate = gd->baudrate = (i > 0)
-			? (int) simple_strtoul (tmp, NULL, 10)
-			: CONFIG_BAUDRATE;
+	int i = getenv_r("baudrate", tmp, sizeof(tmp));
 
-	return (0);
+	gd->bd->bi_baudrate = gd->baudrate = (i > 0) ?
+		(int)simple_strtoul(tmp, NULL, 10) :
+		CONFIG_BAUDRATE;
+
+	return 0;
 }
 
-static int display_banner (void)
+static int display_banner(void)
 {
-	printf ("\n\n%s\n\n", version_string);
-	debug ("U-Boot code: %08lX -> %08lX  BSS: -> %08lX\n",
+	printf("\n\n%s\n\n", version_string);
+	debug("U-Boot code: %08lX -> %08lX  BSS: -> %08lX\n",
 	       _armboot_start, _bss_start, _bss_end);
 #ifdef CONFIG_MODEM_SUPPORT
-	debug ("Modem Support enabled\n");
+	debug("Modem Support enabled\n");
 #endif
 #ifdef CONFIG_USE_IRQ
-	debug ("IRQ Stack: %08lx\n", IRQ_STACK_START);
-	debug ("FIQ Stack: %08lx\n", FIQ_STACK_START);
+	debug("IRQ Stack: %08lx\n", IRQ_STACK_START);
+	debug("FIQ Stack: %08lx\n", FIQ_STACK_START);
 #endif
 
-	return (0);
+	return 0;
 }
 
 /*
@@ -187,49 +188,49 @@ static int display_banner (void)
  * gives a simple yet clear indication which part of the
  * initialization if failing.
  */
-static int display_dram_config (void)
+static int display_dram_config(void)
 {
 	int i;
 
 #ifdef DEBUG
-	puts ("RAM Configuration:\n");
+	puts("RAM Configuration:\n");
 
-	for(i=0; i<CONFIG_NR_DRAM_BANKS; i++) {
-		printf ("Bank #%d: %08lx ", i, gd->bd->bi_dram[i].start);
-		print_size (gd->bd->bi_dram[i].size, "\n");
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
+		printf("Bank #%d: %08lx ", i, gd->bd->bi_dram[i].start);
+		print_size(gd->bd->bi_dram[i].size, "\n");
 	}
 #else
 	ulong size = 0;
 
-	for (i=0; i<CONFIG_NR_DRAM_BANKS; i++) {
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
 		size += gd->bd->bi_dram[i].size;
 	}
 	puts("DRAM:  ");
 	print_size(size, "\n");
 #endif
 
-	return (0);
+	return 0;
 }
 
 #ifndef CONFIG_SYS_NO_FLASH
-static void display_flash_config (ulong size)
+static void display_flash_config(ulong size)
 {
-	puts ("Flash: ");
-	print_size (size, "\n");
+	puts("Flash: ");
+	print_size(size, "\n");
 }
 #endif /* CONFIG_SYS_NO_FLASH */
 
 #if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
-static int init_func_i2c (void)
+static int init_func_i2c(void)
 {
-	puts ("I2C:   ");
-	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-	puts ("ready\n");
+	puts("I2C:   ");
+	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+	puts("ready\n");
 	return (0);
 }
 #endif
 
-#if defined(CONFIG_CMD_PCI) || defined (CONFIG_PCI)
+#if defined(CONFIG_CMD_PCI) || defined(CONFIG_PCI)
 #include <pci.h>
 static int arm_pci_init(void)
 {
@@ -261,9 +262,9 @@ static int arm_pci_init(void)
  * argument, and returns an integer return code, where 0 means
  * "continue" and != 0 means "fatal error, hang the system".
  */
-typedef int (init_fnc_t) (void);
+typedef int (init_fnc_t)(void);
 
-int print_cpuinfo (void);
+int print_cpuinfo(void);
 
 init_fnc_t *init_sequence[] = {
 #if defined(CONFIG_ARCH_CPU_INIT)
@@ -289,14 +290,14 @@ init_fnc_t *init_sequence[] = {
 	init_func_i2c,
 #endif
 	dram_init,		/* configure available RAM banks */
-#if defined(CONFIG_CMD_PCI) || defined (CONFIG_PCI)
+#if defined(CONFIG_CMD_PCI) || defined(CONFIG_PCI)
 	arm_pci_init,
 #endif
 	display_dram_config,
 	NULL,
 };
 
-void start_armboot (void)
+void start_armboot(void)
 {
 	init_fnc_t **init_fnc_ptr;
 	char *s;
@@ -309,9 +310,9 @@ void start_armboot (void)
 	/* compiler optimization barrier needed for GCC >= 3.4 */
 	__asm__ __volatile__("": : :"memory");
 
-	memset ((void*)gd, 0, sizeof (gd_t));
+	memset((void *)gd, 0, sizeof(gd_t));
 	gd->bd = (bd_t*)((char*)gd - sizeof(bd_t));
-	memset (gd->bd, 0, sizeof (bd_t));
+	memset(gd->bd, 0, sizeof(bd_t));
 
 	gd->flags |= GD_FLG_RELOC;
 
@@ -319,16 +320,16 @@ void start_armboot (void)
 
 	for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
 		if ((*init_fnc_ptr)() != 0) {
-			hang ();
+			hang();
 		}
 	}
 
 	/* armboot_start is defined in the board-specific linker script */
-	mem_malloc_init (_armboot_start - CONFIG_SYS_MALLOC_LEN);
+	mem_malloc_init((void *)(_armboot_start - CONFIG_SYS_MALLOC_LEN));
 
 #ifndef CONFIG_SYS_NO_FLASH
 	/* configure available FLASH banks */
-	display_flash_config (flash_init ());
+	display_flash_config(flash_init());
 #endif /* CONFIG_SYS_NO_FLASH */
 
 #ifdef CONFIG_VFD
@@ -340,7 +341,7 @@ void start_armboot (void)
 	 */
 	/* bss_end is defined in the board-specific linker script */
 	addr = (_bss_end + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
-	vfd_setmem (addr);
+	vfd_setmem(addr);
 	gd->fb_base = addr;
 #endif /* CONFIG_VFD */
 
@@ -355,13 +356,13 @@ void start_armboot (void)
 		 */
 		/* bss_end is defined in the board-specific linker script */
 		addr = (_bss_end + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
-		lcd_setmem (addr);
+		lcd_setmem(addr);
 		gd->fb_base = addr;
 	}
 #endif /* CONFIG_LCD */
 
 #if defined(CONFIG_CMD_NAND)
-	puts ("NAND:  ");
+	puts("NAND:  ");
 	nand_init();		/* go init the NAND */
 #endif
 
@@ -374,8 +375,13 @@ void start_armboot (void)
 	dataflash_print_info();
 #endif
 
+#ifdef CONFIG_GENERIC_MMC
+	puts("MMC:   ");
+	mmc_initialize(gd->bd);
+#endif
+
 	/* initialize environment */
-	env_relocate ();
+	env_relocate();
 
 #ifdef CONFIG_VFD
 	/* must do this after the framebuffer is allocated */
@@ -387,36 +393,36 @@ void start_armboot (void)
 #endif
 
 	/* IP Address */
-	gd->bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
+	gd->bd->bi_ip_addr = getenv_IPaddr("ipaddr");
 
-	stdio_init ();	/* get the devices list going. */
+	stdio_init();	/* get the devices list going. */
 
-	jumptable_init ();
+	jumptable_init();
 
 #if defined(CONFIG_API)
 	/* Initialize API */
-	api_init ();
+	api_init();
 #endif
 
-	console_init_r ();	/* fully init console as a device */
+	console_init_r();	/* fully init console as a device */
 
 #if defined(CONFIG_ARCH_MISC_INIT)
 	/* miscellaneous arch dependent initialisations */
-	arch_misc_init ();
+	arch_misc_init();
 #endif
 #if defined(CONFIG_MISC_INIT_R)
 	/* miscellaneous platform dependent initialisations */
-	misc_init_r ();
+	misc_init_r();
 #endif
 
 	/* enable exceptions */
-	enable_interrupts ();
+	enable_interrupts();
 
 	/* Perform network card initialisation if necessary */
 #ifdef CONFIG_DRIVER_TI_EMAC
 	/* XXX: this needs to be moved to board init */
-extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
-	if (getenv ("ethaddr")) {
+extern void davinci_eth_set_mac_addr(const u_int8_t *addr);
+	if (getenv("ethaddr")) {
 		uchar enetaddr[6];
 		eth_getenv_enetaddr("ethaddr", enetaddr);
 		davinci_eth_set_mac_addr(enetaddr);
@@ -425,57 +431,57 @@ extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
 
 #ifdef CONFIG_DRIVER_CS8900
 	/* XXX: this needs to be moved to board init */
-	cs8900_get_enetaddr ();
+	cs8900_get_enetaddr();
 #endif
 
-#if defined(CONFIG_DRIVER_SMC91111) || defined (CONFIG_DRIVER_LAN91C96)
+#if defined(CONFIG_DRIVER_SMC91111) || defined(CONFIG_DRIVER_LAN91C96)
 	/* XXX: this needs to be moved to board init */
-	if (getenv ("ethaddr")) {
+	if (getenv("ethaddr")) {
 		uchar enetaddr[6];
 		eth_getenv_enetaddr("ethaddr", enetaddr);
 		smc_set_mac_addr(enetaddr);
 	}
 #endif /* CONFIG_DRIVER_SMC91111 || CONFIG_DRIVER_LAN91C96 */
 
+#if defined(CONFIG_ENC28J60_ETH) && !defined(CONFIG_ETHADDR)
+	extern void enc_set_mac_addr(void);
+	enc_set_mac_addr();
+#endif /* CONFIG_ENC28J60_ETH && !CONFIG_ETHADDR*/
+
 	/* Initialize from environment */
-	if ((s = getenv ("loadaddr")) != NULL) {
-		load_addr = simple_strtoul (s, NULL, 16);
+	if ((s = getenv("loadaddr")) != NULL) {
+		load_addr = simple_strtoul(s, NULL, 16);
 	}
 #if defined(CONFIG_CMD_NET)
-	if ((s = getenv ("bootfile")) != NULL) {
-		copy_filename (BootFile, s, sizeof (BootFile));
+	if ((s = getenv("bootfile")) != NULL) {
+		copy_filename(BootFile, s, sizeof(BootFile));
 	}
 #endif
 
 #ifdef BOARD_LATE_INIT
-	board_late_init ();
-#endif
-
-#ifdef CONFIG_GENERIC_MMC
-	puts ("MMC:   ");
-	mmc_initialize (gd->bd);
+	board_late_init();
 #endif
 
 #if defined(CONFIG_CMD_NET)
 #if defined(CONFIG_NET_MULTI)
-	puts ("Net:   ");
+	puts("Net:   ");
 #endif
 	eth_initialize(gd->bd);
 #if defined(CONFIG_RESET_PHY_R)
-	debug ("Reset Ethernet PHY\n");
+	debug("Reset Ethernet PHY\n");
 	reset_phy();
 #endif
 #endif
 	/* main_loop() can return to retry autoboot, if so just run it again. */
 	for (;;) {
-		main_loop ();
+		main_loop();
 	}
 
 	/* NOTREACHED - no way out of command loop except booting */
 }
 
-void hang (void)
+void hang(void)
 {
-	puts ("### ERROR ### Please RESET the board ###\n");
+	puts("### ERROR ### Please RESET the board ###\n");
 	for (;;);
 }

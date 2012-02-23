@@ -182,9 +182,19 @@ extern void __raw_readsl(unsigned int addr, void *data, int longlen);
  * linux/Documentation/IO-mapping.txt.  If you want a
  * physical address, use __ioremap instead.
  */
+#ifdef CONFIG_ARCH_MMU
 extern void * __ioremap(unsigned long offset, size_t size, unsigned long flags);
 extern void __iounmap(void *addr);
+#else
+static inline void *__ioremap(unsigned long offset, size_t size, unsigned long flags)
+{
+	return (void *)offset;
+}
 
+static inline void __iounmap(void *addr)
+{
+}
+#endif
 /*
  * Generic ioremap support.
  *
@@ -198,7 +208,7 @@ extern void __iounmap(void *addr);
 	unsigned long _off = (off), _size = (sz);		\
 	void *_ret = (void *)0;					\
 	if (iomem_valid_addr(_off, _size))			\
-		_ret = __ioremap(iomem_to_phys(_off),_size,0);	\
+		_ret = __ioremap(iomem_to_phys(_off), _size, nocache);	\
 	_ret;							\
  })
 

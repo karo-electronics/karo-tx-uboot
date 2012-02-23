@@ -30,9 +30,15 @@
 
 #include <config.h>
 #include <version.h>
+
+.section ".text.head", "ax"
 .globl _start
-_start: b	reset
+_start:
+.section ".text.vect", "ax"
+.global _start_vect
+_start_vect:
 #ifdef CONFIG_PRELOADER
+	b	reset
 	ldr	pc, _hang
 	ldr	pc, _hang
 	ldr	pc, _hang
@@ -85,6 +91,87 @@ _end_vect:
  *************************************************************************
  */
 
+/*
+ * the actual reset code
+ */
+
+.section ".text.head", "ax"
+.globl reset
+reset:
+	/*
+	 * set the cpu to SVC32 mode
+	 */
+	mrs	r0,cpsr
+	bic	r0,r0,#0x1f
+	orr	r0,r0,#0xd3
+	msr	cpsr,r0
+
+#ifdef CONFIG_OMAP2420H4
+       /* Copy vectors to mask ROM indirect addr */
+	adr	r0, _start		/* r0 <- current position of code   */
+ 	add     r0, r0, #4	/* skip reset vector			*/
+	mov	r2, #64			/* r2 <- size to copy  */
+	add	r2, r0, r2		/* r2 <- source end address	    */
+	mov	r1, #SRAM_OFFSET0	  /* build vect addr */
+	mov	r3, #SRAM_OFFSET1
+	add	r1, r1, r3
+	mov	r3, #SRAM_OFFSET2
+	add	r1, r1, r3
+next:
+	ldmia	r0!, {r3-r10}		/* copy from source address [r0]    */
+	stmia	r1!, {r3-r10}		/* copy to   target address [r1]    */
+	cmp	r0, r2			/* until source end address [r2]    */
+	bne	next			/* loop until equal */
+	bl	cpy_clk_code		/* put dpll adjust code behind vectors */
+#endif
+	/* the mask ROM code should have PLL and others stable */
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+	bl  cpu_init_crit
+#endif
+	b	setup_env
+
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+/*
+ *************************************************************************
+ *
+ * CPU_init_critical registers
+ *
+ * setup important registers
+ * setup memory timing
+ *
+ *************************************************************************
+ */
+cpu_init_crit:
+	/*
+	 * flush v4 I/D caches
+	 */
+	mov	r0, #0
+	mcr	p15, 0, r0, c7, c7, 0	/* flush v3/v4 cache */
+	mcr	p15, 0, r0, c8, c7, 0	/* flush v4 TLB */
+
+	/*
+	 * disable MMU stuff and caches
+	 */
+	mrc	p15, 0, r0, c1, c0, 0
+	bic	r0, r0, #0x00002300	@ clear bits 13, 9:8 (--V- --RS)
+	bic	r0, r0, #0x00000087	@ clear bits 7, 2:0 (B--- -CAM)
+	orr	r0, r0, #0x00000002	@ set bit 2 (A) Align
+	orr	r0, r0, #0x00001000	@ set bit 12 (I) I-Cache
+	mcr	p15, 0, r0, c1, c0, 0
+
+	/*
+	 * Jump to board specific initialization... The Mask ROM will have already initialized
+	 * basic memory.  Go here to bump up clock rate and handle wake up conditions.
+	 */
+	mov	ip, lr		/* persevere link reg across call */
+	bl	lowlevel_init	/* go setup pll,mux,memory */
+	mov	lr, ip		/* restore link */
+	mov	pc, lr		/* back to my caller */
+#endif /* CONFIG_SKIP_LOWLEVEL_INIT */
+
+.section ".text.setup", "ax"
+
+.globl _TEXT_BASE
 _TEXT_BASE:
 	.word	TEXT_BASE
 
@@ -115,51 +202,18 @@ FIQ_STACK_START:
 	.word 0x0badc0de
 #endif
 
-/*
- * the actual reset code
- */
-
-reset:
-	/*
-	 * set the cpu to SVC32 mode
-	 */
-	mrs	r0,cpsr
-	bic	r0,r0,#0x1f
-	orr	r0,r0,#0xd3
-	msr	cpsr,r0
-
-#ifdef CONFIG_OMAP2420H4
-       /* Copy vectors to mask ROM indirect addr */
-	adr	r0, _start		/* r0 <- current position of code   */
-		add     r0, r0, #4				/* skip reset vector			*/
-	mov	r2, #64			/* r2 <- size to copy  */
-	add	r2, r0, r2		/* r2 <- source end address	    */
-	mov	r1, #SRAM_OFFSET0	  /* build vect addr */
-	mov	r3, #SRAM_OFFSET1
-	add	r1, r1, r3
-	mov	r3, #SRAM_OFFSET2
-	add	r1, r1, r3
-next:
-	ldmia	r0!, {r3-r10}		/* copy from source address [r0]    */
-	stmia	r1!, {r3-r10}		/* copy to   target address [r1]    */
-	cmp	r0, r2			/* until source end address [r2]    */
-	bne	next			/* loop until equal */
-	bl	cpy_clk_code		/* put dpll adjust code behind vectors */
-#endif
-	/* the mask ROM code should have PLL and others stable */
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
-	bl  cpu_init_crit
-#endif
+setup_env:
 
 #ifndef CONFIG_SKIP_RELOCATE_UBOOT
 relocate:				/* relocate U-Boot to RAM	    */
-	adr	r0, _start		/* r0 <- current position of code   */
-	ldr	r1, _TEXT_BASE		/* test if we run from flash or RAM */
+	adr	r0, _armboot_start
+	ldr	r1, =_armboot_start
 	cmp	r0, r1			/* don't reloc during debug	    */
-#ifndef CONFIG_PRELOADER
 	beq	stack_setup
-#endif	/* CONFIG_PRELOADER */
-
+	ldr 	r2, _armboot_start
+	sub	r0, r1, r0
+	sub	r0, r2, r0
+	mov	r1, r2
 	ldr	r2, _armboot_start
 	ldr	r3, _bss_start
 	sub	r2, r3, r2		/* r2 <- size of armboot	    */
@@ -197,7 +251,9 @@ clbss_l:str	r2, [r0]		/* clear loop...		    */
 	cmp	r0, r1
 	bne	clbss_l
 #endif
-
+#ifdef CONFIG_ARCH_MMU
+	bl board_mmu_init
+#endif
 	ldr	pc, _start_armboot
 
 #ifdef CONFIG_NAND_SPL
@@ -209,45 +265,6 @@ _start_armboot: .word start_oneboot
 _start_armboot: .word start_armboot
 #endif /* CONFIG_ONENAND_IPL */
 #endif /* CONFIG_NAND_SPL */
-
-/*
- *************************************************************************
- *
- * CPU_init_critical registers
- *
- * setup important registers
- * setup memory timing
- *
- *************************************************************************
- */
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
-cpu_init_crit:
-	/*
-	 * flush v4 I/D caches
-	 */
-	mov	r0, #0
-	mcr	p15, 0, r0, c7, c7, 0	/* flush v3/v4 cache */
-	mcr	p15, 0, r0, c8, c7, 0	/* flush v4 TLB */
-
-	/*
-	 * disable MMU stuff and caches
-	 */
-	mrc	p15, 0, r0, c1, c0, 0
-	bic	r0, r0, #0x00002300	@ clear bits 13, 9:8 (--V- --RS)
-	bic	r0, r0, #0x00000087	@ clear bits 7, 2:0 (B--- -CAM)
-	orr	r0, r0, #0x00000002	@ set bit 2 (A) Align
-	orr	r0, r0, #0x00001000	@ set bit 12 (I) I-Cache
-	mcr	p15, 0, r0, c1, c0, 0
-
-	/*
-	 * Jump to board specific initialization... The Mask ROM will have already initialized
-	 * basic memory.  Go here to bump up clock rate and handle wake up conditions.
-	 */
-	mov	ip, lr		/* persevere link reg across call */
-	bl	lowlevel_init	/* go setup pll,mux,memory */
-	mov	lr, ip		/* restore link */
-	mov	pc, lr		/* back to my caller */
-#endif /* CONFIG_SKIP_LOWLEVEL_INIT */
 
 #ifndef CONFIG_PRELOADER
 /*

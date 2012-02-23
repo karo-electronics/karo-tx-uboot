@@ -596,7 +596,7 @@ static char* hist_prev(void)
 	} else
 		ret = hist_list[hist_cur];
 
-	return (ret);
+	return ret;
 }
 
 static char* hist_next(void)
@@ -617,7 +617,7 @@ static char* hist_next(void)
 	} else
 		ret = hist_list[hist_cur];
 
-	return (ret);
+	return ret;
 }
 
 #ifndef CONFIG_CMDLINE_EDITING
@@ -728,9 +728,10 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len)
 #ifdef CONFIG_BOOT_RETRY_TIME
 		while (!tstc()) {	/* while no incoming data */
 			if (retry_time >= 0 && get_ticks() > endtime)
-				return (-2);	/* timed out */
+				return -2;	/* timed out */
 		}
 #endif
+		WATCHDOG_RESET();		/* Trigger watchdog, if needed */
 
 		ichar = getcmd_getch();
 
@@ -802,7 +803,7 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len)
 			break;
 		case CTL_CH('c'):	/* ^C - break */
 			*buf = '\0';	/* discard input */
-			return (-1);
+			return -1;
 		case CTL_CH('f'):
 			if (num < eol_num) {
 				getcmd_putch(buf[num]);
@@ -923,7 +924,7 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len)
 		cread_add_to_hist(buf);
 	hist_cur = hist_add_idx;
 
-	return (rc);
+	return rc;
 }
 
 #endif /* CONFIG_CMDLINE_EDITING */
@@ -988,7 +989,7 @@ int readline_into_buffer (const char *const prompt, char * buffer)
 #ifdef CONFIG_BOOT_RETRY_TIME
 		while (!tstc()) {	/* while no incoming data */
 			if (retry_time >= 0 && get_ticks() > endtime)
-				return (-2);	/* timed out */
+				return -2;	/* timed out */
 		}
 #endif
 		WATCHDOG_RESET();		/* Trigger watchdog, if needed */
@@ -1009,14 +1010,14 @@ int readline_into_buffer (const char *const prompt, char * buffer)
 		case '\n':
 			*p = '\0';
 			puts ("\r\n");
-			return (p - p_buf);
+			return p - p_buf;
 
 		case '\0':				/* nul			*/
 			continue;
 
 		case 0x03:				/* ^C - break		*/
 			p_buf[0] = '\0';	/* discard input */
-			return (-1);
+			return -1;
 
 		case 0x15:				/* ^U - erase line	*/
 			while (col > plen) {
@@ -1078,7 +1079,7 @@ static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 	char *s;
 
 	if (*np == 0) {
-		return (p);
+		return p;
 	}
 
 	if (*(--p) == '\t') {			/* will retype the whole line	*/
@@ -1088,8 +1089,8 @@ static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 		}
 		for (s=buffer; s<p; ++s) {
 			if (*s == '\t') {
-				puts (tab_seq+((*colp) & 07));
-				*colp += 8 - ((*colp) & 07);
+				puts (tab_seq+(*colp & 07));
+				*colp += 8 - (*colp & 07);
 			} else {
 				++(*colp);
 				putc (*s);
@@ -1100,7 +1101,7 @@ static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 		(*colp)--;
 	}
 	(*np)--;
-	return (p);
+	return p;
 }
 
 /****************************************************************************/
@@ -1124,7 +1125,7 @@ int parse_line (char *line, char *argv[])
 #ifdef DEBUG_PARSER
 		printf ("parse_line: nargs=%d\n", nargs);
 #endif
-			return (nargs);
+			return nargs;
 		}
 
 		argv[nargs++] = line;	/* begin of argument string	*/
@@ -1139,7 +1140,7 @@ int parse_line (char *line, char *argv[])
 #ifdef DEBUG_PARSER
 		printf ("parse_line: nargs=%d\n", nargs);
 #endif
-			return (nargs);
+			return nargs;
 		}
 
 		*line++ = '\0';		/* terminate current arg	 */
@@ -1150,7 +1151,7 @@ int parse_line (char *line, char *argv[])
 #ifdef DEBUG_PARSER
 	printf ("parse_line: nargs=%d\n", nargs);
 #endif
-	return (nargs);
+	return nargs;
 }
 
 /****************************************************************************/
