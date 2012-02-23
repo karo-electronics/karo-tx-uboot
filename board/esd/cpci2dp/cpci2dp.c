@@ -31,13 +31,13 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int board_early_init_f (void)
 {
-	unsigned long cntrl0Reg;
+	unsigned long CPC0_CR0Reg;
 
 	/*
 	 * Setup GPIO pins
 	 */
-	cntrl0Reg = mfdcr(cntrl0);
-	mtdcr(cntrl0, cntrl0Reg |
+	CPC0_CR0Reg = mfdcr(CPC0_CR0);
+	mtdcr(CPC0_CR0, CPC0_CR0Reg |
 	      ((CONFIG_SYS_EEPROM_WP | CONFIG_SYS_PB_LED |
 		CONFIG_SYS_SELF_RST | CONFIG_SYS_INTA_FAKE) << 5));
 
@@ -58,21 +58,21 @@ int board_early_init_f (void)
 	 * IRQ 30 (EXT IRQ 5) PCI SLOT 3; active low; level sensitive
 	 * IRQ 31 (EXT IRQ 6) unused
 	 */
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr(uicer, 0x00000000);	/* disable all ints */
-	mtdcr(uiccr, 0x00000000);	/* set all to be non-critical*/
-	mtdcr(uicpr, 0xFFFFFF81);	/* set int polarities */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr(UIC0CR, 0x00000000);	/* set all to be non-critical*/
+	mtdcr(UIC0PR, 0xFFFFFF81);	/* set int polarities */
 
-	mtdcr(uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr(uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority*/
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr(UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest priority*/
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	return 0;
 }
 
 int misc_init_r (void)
 {
-	unsigned long cntrl0Reg;
+	unsigned long CPC0_CR0Reg;
 
 	/* adjust flash start and offset */
 	gd->bd->bi_flashstart = 0 - gd->bd->bi_flashsize;
@@ -81,8 +81,8 @@ int misc_init_r (void)
 	/*
 	 * Select cts (and not dsr) on uart1
 	 */
-	cntrl0Reg = mfdcr(cntrl0);
-	mtdcr(cntrl0, cntrl0Reg | 0x00001000);
+	CPC0_CR0Reg = mfdcr(CPC0_CR0);
+	mtdcr(CPC0_CR0, CPC0_CR0Reg | 0x00001000);
 
 	return (0);
 }
@@ -94,7 +94,7 @@ int misc_init_r (void)
 int checkboard (void)
 {
 	char str[64];
-	int i = getenv_r ("serial#", str, sizeof(str));
+	int i = getenv_f("serial#", str, sizeof(str));
 
 	puts ("Board: ");
 
@@ -149,7 +149,7 @@ int eeprom_write_enable (unsigned dev_addr, int state) {
 #endif
 
 #if defined(CONFIG_SYS_EEPROM_WREN)
-int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int query = argc == 1;
 	int state = 0;

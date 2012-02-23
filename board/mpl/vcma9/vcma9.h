@@ -25,110 +25,21 @@
  * Global routines used for VCMA9
  *****************************************************************************/
 
-#include <s3c2410.h>
+#include <asm/arch/s3c24x0_cpu.h>
 
-extern int  mem_test(unsigned long start, unsigned long ramsize,int mode);
+extern void vcma9_print_info(void);
+extern int do_mplcommon(cmd_tbl_t *cmdtp, int flag,
+			int argc, char *const argv[]);
 
-void print_vcma9_info(void);
+/* VCMA9 PLD registers */
+enum vcma9_pld_regs {
+	VCMA9_PLD_ID,
+	VCMA9_PLD_NIC,
+	VCMA9_PLD_CAN,
+	VCMA9_PLD_MISC,
+	VCMA9_PLD_GPCD,
+	VCMA9_PLD_BOARD,
+	VCMA9_PLD_SDRAM
+};
 
-#if defined(CONFIG_CMD_NAND)
-typedef enum {
-	NFCE_LOW,
-	NFCE_HIGH
-} NFCE_STATE;
-
-static inline void NF_Conf(u16 conf)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	nand->NFCONF = conf;
-}
-
-static inline void NF_Cmd(u8 cmd)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	nand->NFCMD = cmd;
-}
-
-static inline void NF_CmdW(u8 cmd)
-{
-	NF_Cmd(cmd);
-	udelay(1);
-}
-
-static inline void NF_Addr(u8 addr)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	nand->NFADDR = addr;
-}
-
-static inline void NF_SetCE(NFCE_STATE s)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	switch (s) {
-		case NFCE_LOW:
-			nand->NFCONF &= ~(1<<11);
-			break;
-
-		case NFCE_HIGH:
-			nand->NFCONF |= (1<<11);
-			break;
-	}
-}
-
-static inline void NF_WaitRB(void)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	while (!(nand->NFSTAT & (1<<0)));
-}
-
-static inline void NF_Write(u8 data)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	nand->NFDATA = data;
-}
-
-static inline u8 NF_Read(void)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	return(nand->NFDATA);
-}
-
-static inline void NF_Init_ECC(void)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	nand->NFCONF |= (1<<12);
-}
-
-static inline u32 NF_Read_ECC(void)
-{
-	S3C2410_NAND * const nand = S3C2410_GetBase_NAND();
-
-	return(nand->NFECC);
-}
-
-#endif
-
-/* VCMA9 PLD regsiters */
-typedef struct {
-	S3C24X0_REG8	ID;
-	S3C24X0_REG8	NIC;
-	S3C24X0_REG8	CAN;
-	S3C24X0_REG8	MISC;
-	S3C24X0_REG8	GPCD;
-	S3C24X0_REG8	BOARD;
-	S3C24X0_REG8	SDRAM;
-} /*__attribute__((__packed__))*/ VCMA9_PLD;
-
-#define VCMA9_PLD_BASE	0x2C000100
-static inline VCMA9_PLD * VCMA9_GetBase_PLD(void)
-{
-	return (VCMA9_PLD * const)VCMA9_PLD_BASE;
-}
+#define VCMA9_PLD_BASE	(0x2C000100)

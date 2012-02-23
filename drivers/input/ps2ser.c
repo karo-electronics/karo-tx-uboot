@@ -3,7 +3,6 @@
  * (C) Copyright 2004-2009
  * DENX Software Engineering
  * Wolfgang Denk, wd@denx.de
- * All rights reserved.
  *
  * Simple 16550A serial driver
  *
@@ -37,8 +36,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PSC_BASE MPC5XXX_PSC2
 #elif CONFIG_PS2SERIAL == 3
 #define PSC_BASE MPC5XXX_PSC3
-#elif defined(CONFIG_MGT5100)
-#error CONFIG_PS2SERIAL must be in 1, 2 or 3
 #elif CONFIG_PS2SERIAL == 4
 #define PSC_BASE MPC5XXX_PSC4
 #elif CONFIG_PS2SERIAL == 5
@@ -49,8 +46,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #error CONFIG_PS2SERIAL must be in 1 ... 6
 #endif
 
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
 
 #if CONFIG_PS2SERIAL == 1
 #define COM_BASE (CONFIG_SYS_CCSRBAR+0x4500)
@@ -60,17 +56,12 @@ DECLARE_GLOBAL_DATA_PTR;
 #error CONFIG_PS2SERIAL must be in 1 ... 2
 #endif
 
-#endif /* CONFIG_MPC5xxx / CONFIG_MPC8540 / other */
+#endif /* CONFIG_MPC5xxx / other */
 
 static int	ps2ser_getc_hw(void);
 static void	ps2ser_interrupt(void *dev_id);
 
 extern struct	serial_state rs_table[]; /* in serial.c */
-#if !defined(CONFIG_MPC5xxx) && !defined(CONFIG_MPC8540) && \
-    !defined(CONFIG_MPC8541) && !defined(CONFIG_MPC8548) && \
-    !defined(CONFIG_MPC8555)
-static struct	serial_state *state;
-#endif
 
 static u_char	ps2buf[PS2BUF_SIZE];
 static atomic_t	ps2buf_cnt;
@@ -88,23 +79,14 @@ int ps2ser_init(void)
 	psc->command = PSC_SEL_MODE_REG_1;
 
 	/* select clock sources */
-#if defined(CONFIG_MGT5100)
-	psc->psc_clock_select = 0xdd00;
-	baseclk = (CONFIG_SYS_MPC5XXX_CLKIN + 16) / 32;
-#elif defined(CONFIG_MPC5200)
 	psc->psc_clock_select = 0;
 	baseclk = (gd->ipb_clk + 16) / 32;
-#endif
 
 	/* switch to UART mode */
 	psc->sicr = 0;
 
 	/* configure parity, bit length and so on */
-#if defined(CONFIG_MGT5100)
-	psc->mode = PSC_MODE_ERR | PSC_MODE_8_BITS | PSC_MODE_PARNONE;
-#elif defined(CONFIG_MPC5200)
 	psc->mode = PSC_MODE_8_BITS | PSC_MODE_PARNONE;
-#endif
 	psc->mode = PSC_MODE_ONE_STOP;
 
 	/* set up UART divisor */
@@ -123,8 +105,8 @@ int ps2ser_init(void)
 	return (0);
 }
 
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
+
 int ps2ser_init(void)
 {
 	NS16550_t com_port = (NS16550_t)COM_BASE;
@@ -140,76 +122,24 @@ int ps2ser_init(void)
 	return (0);
 }
 
-#else /* !CONFIG_MPC5xxx && !CONFIG_MPC8540 / other */
-
-static inline unsigned int ps2ser_in(int offset)
-{
-	return readb((unsigned long) state->iomem_base + offset);
-}
-
-static inline void ps2ser_out(int offset, int value)
-{
-	writeb(value, (unsigned long) state->iomem_base + offset);
-}
-
-int ps2ser_init(void)
-{
-	int quot;
-	unsigned cval;
-
-	state = rs_table + CONFIG_PS2SERIAL;
-
-	quot = state->baud_base / PS2SER_BAUD;
-	cval = 0x3; /* 8N1 - 8 data bits, no parity bits, 1 stop bit */
-
-	  /* Set speed, enable interrupts, enable FIFO
-	   */
-	ps2ser_out(UART_LCR, cval | UART_LCR_DLAB);
-	ps2ser_out(UART_DLL, quot & 0xff);
-	ps2ser_out(UART_DLM, quot >> 8);
-	ps2ser_out(UART_LCR, cval);
-	ps2ser_out(UART_IER, UART_IER_RDI);
-	ps2ser_out(UART_MCR, UART_MCR_OUT2 | UART_MCR_DTR | UART_MCR_RTS);
-	ps2ser_out(UART_FCR,
-	    UART_FCR_ENABLE_FIFO | UART_FCR_CLEAR_RCVR | UART_FCR_CLEAR_XMIT);
-
-	/* If we read 0xff from the LSR, there is no UART here
-	 */
-	if (ps2ser_in(UART_LSR) == 0xff) {
-		printf ("ps2ser.c: no UART found\n");
-		return -1;
-	}
-
-	irq_install_handler(state->irq, ps2ser_interrupt, NULL);
-
-	return 0;
-}
-#endif /* CONFIG_MPC5xxx / CONFIG_MPC8540 / other */
+#endif /* CONFIG_MPC5xxx / other */
 
 void ps2ser_putc(int chr)
 {
 #ifdef CONFIG_MPC5xxx
 	volatile struct mpc5xxx_psc *psc = (struct mpc5xxx_psc *)PSC_BASE;
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
 	NS16550_t com_port = (NS16550_t)COM_BASE;
 #endif
-#ifdef DEBUG
-	printf(">>>> 0x%02x\n", chr);
-#endif
+	debug(">>>> 0x%02x\n", chr);
 
 #ifdef CONFIG_MPC5xxx
 	while (!(psc->psc_status & PSC_SR_TXRDY));
 
 	psc->psc_buffer_8 = chr;
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
 	while ((com_port->lsr & UART_LSR_THRE) == 0);
 	com_port->thr = chr;
-#else
-	while (!(ps2ser_in(UART_LSR) & UART_LSR_THRE));
-
-	ps2ser_out(UART_TX, chr);
 #endif
 }
 
@@ -217,8 +147,7 @@ static int ps2ser_getc_hw(void)
 {
 #ifdef CONFIG_MPC5xxx
 	volatile struct mpc5xxx_psc *psc = (struct mpc5xxx_psc *)PSC_BASE;
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
 	NS16550_t com_port = (NS16550_t)COM_BASE;
 #endif
 	int res = -1;
@@ -227,14 +156,9 @@ static int ps2ser_getc_hw(void)
 	if (psc->psc_status & PSC_SR_RXRDY) {
 		res = (psc->psc_buffer_8);
 	}
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
 	if (com_port->lsr & UART_LSR_DR) {
 		res = com_port->rbr;
-	}
-#else
-	if (ps2ser_in(UART_LSR) & UART_LSR_DR) {
-		res = (ps2ser_in(UART_RX));
 	}
 #endif
 
@@ -246,9 +170,7 @@ int ps2ser_getc(void)
 	volatile int chr;
 	int flags;
 
-#ifdef DEBUG
-	printf("<< ");
-#endif
+	debug("<< ");
 
 	flags = disable_interrupts();
 
@@ -263,11 +185,10 @@ int ps2ser_getc(void)
 	}
 	while (chr < 0);
 
-	if (flags) enable_interrupts();
+	if (flags)
+		enable_interrupts();
 
-#ifdef DEBUG
-	printf("0x%02x\n", chr);
-#endif
+	debug("0x%02x\n", chr);
 
 	return chr;
 }
@@ -287,8 +208,7 @@ static void ps2ser_interrupt(void *dev_id)
 {
 #ifdef CONFIG_MPC5xxx
 	volatile struct mpc5xxx_psc *psc = (struct mpc5xxx_psc *)PSC_BASE;
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
+#else
 	NS16550_t com_port = (NS16550_t)COM_BASE;
 #endif
 	int chr;
@@ -298,11 +218,8 @@ static void ps2ser_interrupt(void *dev_id)
 		chr = ps2ser_getc_hw();
 #ifdef CONFIG_MPC5xxx
 		status = psc->psc_status;
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
-		status = com_port->lsr;
 #else
-		status = ps2ser_in(UART_IIR);
+		status = com_port->lsr;
 #endif
 		if (chr < 0) continue;
 
@@ -315,13 +232,9 @@ static void ps2ser_interrupt(void *dev_id)
 		}
 #ifdef CONFIG_MPC5xxx
 	} while (status & PSC_SR_RXRDY);
-#elif defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-      defined(CONFIG_MPC8548) || defined(CONFIG_MPC8555)
-	} while (status & UART_LSR_DR);
 #else
-	} while (status & UART_IIR_RDI);
+	} while (status & UART_LSR_DR);
 #endif
-
 	if (atomic_read(&ps2buf_cnt)) {
 		ps2mult_callback(atomic_read(&ps2buf_cnt));
 	}

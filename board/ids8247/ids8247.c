@@ -281,10 +281,9 @@ phys_size_t initdram (int board_type)
 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile memctl8260_t *memctl = &immap->im_memctl;
 
-	long psize, lsize;
+	long psize;
 
 	psize = 16 * 1024 * 1024;
-	lsize = 0;
 
 	memctl->memc_psrt = CONFIG_SYS_PSRT;
 	memctl->memc_mptpr = CONFIG_SYS_MPTPR;
@@ -400,24 +399,8 @@ int board_nand_init(struct nand_chip *nand)
 #endif	/* CONFIG_CMD_NAND */
 
 #if defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT)
-/*
- * update "memory" property in the blob
- */
-void ft_blob_update(void *blob, bd_t *bd)
-{
-	int ret;
-
-	ret = fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
-
-	if (ret < 0) {
-		printf("ft_blob_update(): cannot set /memory/reg "
-			"property err:%s\n", fdt_strerror(ret));
-	}
-}
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup( blob, bd);
-	ft_blob_update(blob, bd);
 }
 #endif /* defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT) */

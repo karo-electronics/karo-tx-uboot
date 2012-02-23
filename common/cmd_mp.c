@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Freescale Semiconductor, Inc.
+ * Copyright 2008-2009 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -24,45 +24,39 @@
 #include <command.h>
 
 int
-cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	unsigned long cpuid;
 
-	if (argc < 3) {
-		cmd_usage(cmdtp);
-		return 1;
-	}
+	if (argc < 3)
+		return cmd_usage(cmdtp);
 
 	cpuid = simple_strtoul(argv[1], NULL, 10);
-	if (cpuid >= CONFIG_NUM_CPUS) {
-		printf ("Core num: %lu is out of range[0..%d]\n",
-				cpuid, CONFIG_NUM_CPUS - 1);
+	if (!is_core_valid(cpuid)) {
+		printf ("Core num: %lu is not valid\n",	cpuid);
 		return 1;
 	}
 
 
 	if (argc == 3) {
-		if (strncmp(argv[2], "reset", 5) == 0) {
+		if (strncmp(argv[2], "reset", 5) == 0)
 			cpu_reset(cpuid);
-		} else if (strncmp(argv[2], "status", 6) == 0) {
+		else if (strncmp(argv[2], "status", 6) == 0)
 			cpu_status(cpuid);
-		} else {
-			cmd_usage(cmdtp);
-			return 1;
-		}
+		else if (strncmp(argv[2], "disable", 7) == 0)
+			return cpu_disable(cpuid);
+		else
+			return cmd_usage(cmdtp);
+
 		return 0;
 	}
 
 	/* 4 or greater, make sure its release */
-	if (strncmp(argv[2], "release", 7) != 0) {
-		cmd_usage(cmdtp);
-		return 1;
-	}
+	if (strncmp(argv[2], "release", 7) != 0)
+		return cmd_usage(cmdtp);
 
-	if (cpu_release(cpuid, argc - 3, argv + 3)) {
-		cmd_usage(cmdtp);
-		return 1;
-	}
+	if (cpu_release(cpuid, argc - 3, argv + 3))
+		return cmd_usage(cmdtp);
 
 	return 0;
 }
@@ -86,6 +80,7 @@ U_BOOT_CMD(
 	"Multiprocessor CPU boot manipulation and release",
 	    "<num> reset                 - Reset cpu <num>\n"
 	"cpu <num> status                - Status of cpu <num>\n"
+	"cpu <num> disable               - Disable cpu <num>\n"
 	"cpu <num> release <addr> [args] - Release cpu <num> at <addr> with [args]"
 #ifdef CPU_ARCH_HELP
 	"\n"

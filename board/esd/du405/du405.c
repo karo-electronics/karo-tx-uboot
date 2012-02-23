@@ -24,15 +24,12 @@
 #include <common.h>
 #include "du405.h"
 #include <asm/processor.h>
-#include <ppc4xx.h>
-#include <4xx_i2c.h>
+#include <asm/ppc4xx.h>
+#include <asm/ppc4xx-i2c.h>
 #include <command.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/*cmd_boot.c*/
-
-extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 extern void lxt971_no_sleep(void);
 
 
@@ -124,18 +121,18 @@ int board_early_init_f (void)
 	 * IRQ 30 (EXT IRQ 5) unused; active low; level sensitive
 	 * IRQ 31 (EXT IRQ 6) COMPACT FLASH; active high; level sensitive
 	 */
-	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr (uicer, 0x00000000);	/* disable all ints */
-	mtdcr (uiccr, 0x00000000);	/* set all to be non-critical */
-	mtdcr (uicpr, 0xFFFFFFB1);	/* set int polarities */
-	mtdcr (uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr (uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
-	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr (UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr (UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr (UIC0CR, 0x00000000);	/* set all to be non-critical */
+	mtdcr (UIC0PR, 0xFFFFFFB1);	/* set int polarities */
+	mtdcr (UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr (UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest priority */
+	mtdcr (UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	/*
 	 * EBC Configuration Register: set ready timeout to 100 us
 	 */
-	mtebc (epcr, 0xb8400000);
+	mtebc (EBC0_CFG, 0xb8400000);
 
 	return 0;
 }
@@ -143,13 +140,13 @@ int board_early_init_f (void)
 
 int misc_init_r (void)
 {
-	unsigned long cntrl0Reg;
+	unsigned long CPC0_CR0Reg;
 
 	/*
 	 * Setup UART1 handshaking: use CTS instead of DSR
 	 */
-	cntrl0Reg = mfdcr(cntrl0);
-	mtdcr(cntrl0, cntrl0Reg | 0x00001000);
+	CPC0_CR0Reg = mfdcr(CPC0_CR0);
+	mtdcr(CPC0_CR0, CPC0_CR0Reg | 0x00001000);
 
 	return (0);
 }
@@ -163,7 +160,7 @@ int checkboard (void)
 	int index;
 	int len;
 	char str[64];
-	int i = getenv_r ("serial#", str, sizeof (str));
+	int i = getenv_f("serial#", str, sizeof (str));
 
 	puts ("Board: ");
 

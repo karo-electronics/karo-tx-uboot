@@ -42,6 +42,10 @@
 #define CONFIG_440		1	/* ... PPC440 family		*/
 #define CONFIG_4xx		1	/* ... PPC4xx family		*/
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFFF80000
+#endif
+
 /*
  * Include common defines/options for all AMCC eval boards
  */
@@ -53,7 +57,7 @@
 
 /*
  * Define this if you want support for video console with radeon 9200 pci card
- * Also set TEXT_BASE to 0xFFF80000 in board/amcc/sequoia/config.mk in this case
+ * Also set CONFIG_SYS_TEXT_BASE to 0xFFF80000 in board/amcc/sequoia/config.mk in this case
  */
 #undef CONFIG_VIDEO
 
@@ -84,9 +88,6 @@
 #define CONFIG_SYS_PCI_MEMBASE2	CONFIG_SYS_PCI_MEMBASE1 + 0x10000000
 #define CONFIG_SYS_PCI_MEMBASE3	CONFIG_SYS_PCI_MEMBASE2 + 0x10000000
 
-/* Don't change either of these */
-#define CONFIG_SYS_PERIPHERAL_BASE	0xef600000	/* internal peripherals	*/
-
 #define CONFIG_SYS_USB2D0_BASE		0xe0000100
 #define CONFIG_SYS_USB_DEVICE		0xe0000000
 #define CONFIG_SYS_USB_HOST		0xe0000400
@@ -97,17 +98,15 @@
  */
 /* 440EPx/440GRx have 16KB of internal SRAM, so no need for D-Cache	*/
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_BASE	/* OCM			*/
-#define CONFIG_SYS_INIT_RAM_END	(4 << 10)
-#define CONFIG_SYS_GBL_DATA_SIZE	256	/* num bytes initial data	*/
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_POST_WORD_ADDR
+#define CONFIG_SYS_INIT_RAM_SIZE	(4 << 10)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 
 /*
  * Serial Port
  */
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
 #define CONFIG_SYS_EXT_SERIAL_CLOCK	11059200	/* ext. 11.059MHz clk	*/
-/* define this if you want console on UART1 */
-#undef CONFIG_UART1_CONSOLE
 
 /*
  * Environment
@@ -206,9 +205,7 @@
 
 #define CONFIG_SYS_NAND_ECCSIZE	256
 #define CONFIG_SYS_NAND_ECCBYTES	3
-#define CONFIG_SYS_NAND_ECCSTEPS	(CONFIG_SYS_NAND_PAGE_SIZE / CONFIG_SYS_NAND_ECCSIZE)
 #define CONFIG_SYS_NAND_OOBSIZE	16
-#define CONFIG_SYS_NAND_ECCTOTAL	(CONFIG_SYS_NAND_ECCBYTES * CONFIG_SYS_NAND_ECCSTEPS)
 #define CONFIG_SYS_NAND_ECCPOS		{0, 1, 2, 3, 6, 7}
 
 #ifdef CONFIG_ENV_IS_IN_NAND
@@ -242,6 +239,11 @@
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 10
+
+/* I2C bootstrap EEPROM */
+#define CONFIG_4xx_CONFIG_I2C_EEPROM_ADDR	0x52
+#define CONFIG_4xx_CONFIG_I2C_EEPROM_OFFSET	0
+#define CONFIG_4xx_CONFIG_BLOCKSIZE		16
 
 /* I2C SYSMON (LM75, AD7414 is almost compatible)			*/
 #define CONFIG_DTT_LM75		1	/* ON Semi's LM75		*/
@@ -277,8 +279,20 @@
 
 /* USB */
 #ifdef CONFIG_440EPX
+
+#undef CONFIG_USB_EHCI	/* OHCI by default */
+
+#ifdef CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_PPC4XX
+#define CONFIG_SYS_PPC4XX_USB_ADDR	0xe0000300
+#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
+#define CONFIG_EHCI_MMIO_BIG_ENDIAN
+#define CONFIG_EHCI_DESC_BIG_ENDIAN
+#ifdef CONFIG_4xx_DCACHE
+#define CONFIG_EHCI_DCACHE
+#endif
+#else /* CONFIG_USB_EHCI */
 #define CONFIG_USB_OHCI_NEW
-#define CONFIG_USB_STORAGE
 #define CONFIG_SYS_OHCI_BE_CONTROLLER
 
 #undef CONFIG_SYS_USB_OHCI_BOARD_INIT
@@ -286,7 +300,9 @@
 #define CONFIG_SYS_USB_OHCI_REGS_BASE	CONFIG_SYS_USB_HOST
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME	"ppc440"
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS 15
+#endif
 
+#define CONFIG_USB_STORAGE
 /* Comment this out to enable USB 1.1 device */
 #define USB_2_0_DEVICE
 
@@ -300,6 +316,7 @@
 /*
  * Commands additional to the ones defined in amcc-common.h
  */
+#define CONFIG_CMD_CHIP_CONFIG
 #define CONFIG_CMD_DTT
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_NAND
@@ -337,7 +354,6 @@
 				 CONFIG_SYS_POST_SPR	   | \
 				 CONFIG_SYS_POST_UART)
 
-#define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 #define CONFIG_LOGBUFFER
 #define CONFIG_SYS_POST_CACHE_ADDR	0x7fff0000	/* free virtual address     */
 
@@ -358,6 +374,7 @@
 /* Board-specific PCI */
 #define CONFIG_SYS_PCI_TARGET_INIT
 #define CONFIG_SYS_PCI_MASTER_INIT
+#define CONFIG_SYS_PCI_BOARD_FIXUP_IRQ
 
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x10e8	/* AMCC				*/
 #define CONFIG_SYS_PCI_SUBSYS_ID       0xcafe	/* Whatever			*/

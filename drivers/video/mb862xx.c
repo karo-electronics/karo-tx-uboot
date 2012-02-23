@@ -89,6 +89,7 @@ unsigned int fr_div[] = { 0x00000f00, 0x00000900, 0x00000500 };
 				       (GC_DISP_BASE | GC_L0PAL0) + \
 				       ((idx) << 2)), (val))
 
+#if defined(CONFIG_VIDEO_MB862xx_ACCEL)
 static void gdc_sw_reset (void)
 {
 	GraphicDevice *dev = &mb862xx;
@@ -129,6 +130,7 @@ static void de_wait_slots (int slots)
 			break;
 		}
 }
+#endif
 
 #if !defined(CONFIG_VIDEO_CORALP)
 static void board_disp_init (void)
@@ -144,11 +146,13 @@ static void board_disp_init (void)
 #endif
 
 /*
- * Init drawing engine
+ * Init drawing engine if accel enabled.
+ * Also clears visible framebuffer.
  */
 static void de_init (void)
 {
 	GraphicDevice *dev = &mb862xx;
+#if defined(CONFIG_VIDEO_MB862xx_ACCEL)
 	int cf = (dev->gdfBytesPP == 1) ? 0x0000 : 0x8000;
 
 	dev->dprBase = dev->frameAdrs + GC_DRAW_BASE;
@@ -174,16 +178,33 @@ static void de_init (void)
 	DE_WR_FIFO (dev->winSizeY << 16 | dev->winSizeX);
 	/* sync with SW access to framebuffer */
 	de_wait ();
+#else
+	unsigned int i, *p;
+
+	i = dev->winSizeX * dev->winSizeY;
+	p = (unsigned int *)dev->frameAdrs;
+	while (i--)
+		*p++ = 0;
+#endif
 }
 
 #if defined(CONFIG_VIDEO_CORALP)
+/* use CCF and MMR parameters for Coral-P Eval. Board as default */
+#ifndef CONFIG_SYS_MB862xx_CCF
+#define CONFIG_SYS_MB862xx_CCF	0x00090000
+#endif
+#ifndef CONFIG_SYS_MB862xx_MMR
+#define CONFIG_SYS_MB862xx_MMR	0x11d7fa13
+#endif
+
 unsigned int pci_video_init (void)
 {
 	GraphicDevice *dev = &mb862xx;
 	pci_dev_t devbusfn;
+	u16 device;
 
 	if ((devbusfn = pci_find_devices (supported, 0)) < 0) {
-		puts ("PCI video controller not found!\n");
+		puts("controller not present\n");
 		return 0;
 	}
 
@@ -200,10 +221,25 @@ unsigned int pci_video_init (void)
 
 	dev->pciBase = dev->frameAdrs;
 
-	/* Setup clocks and memory mode for Coral-P Eval. Board */
-	HOST_WR_REG (GC_CCF, 0x00090000);
+	puts("Coral-");
+
+	pci_read_config_word(devbusfn, PCI_DEVICE_ID, &device);
+	switch (device) {
+	case PCI_DEVICE_ID_CORAL_P:
+		puts("P\n");
+		break;
+	case PCI_DEVICE_ID_CORAL_PA:
+		puts("PA\n");
+		break;
+	default:
+		puts("Unknown\n");
+		return 0;
+	}
+
+	/* Setup clocks and memory mode for Coral-P(A) */
+	HOST_WR_REG(GC_CCF, CONFIG_SYS_MB862xx_CCF);
 	udelay (200);
-	HOST_WR_REG (GC_MMR, 0x11d7fa13);
+	HOST_WR_REG(GC_MMR, CONFIG_SYS_MB862xx_MMR);
 	udelay (100);
 	return dev->frameAdrs;
 }
@@ -222,8 +258,6 @@ unsigned int card_init (void)
 
 	if (!pci_video_init ())
 		return 0;
-
-	puts ("CoralP\n");
 
 	tmp = 0;
 	videomode = 0x310;
@@ -340,6 +374,30 @@ unsigned int card_init (void)
 }
 #endif
 
+
+#if !defined(CONFIG_VIDEO_CORALP)
+int mb862xx_probe(unsigned int addr)
+{
+	GraphicDevice *dev = &mb862xx;
+	unsigned int reg;
+
+	dev->frameAdrs = addr;
+	dev->dprBase = dev->frameAdrs + GC_DRAW_BASE;
+
+	/* Try to access GDC ID/Revision registers */
+	reg = HOST_RD_REG (GC_CID);
+	reg = HOST_RD_REG (GC_CID);
+	if (reg == 0x303) {
+		reg = DE_RD_REG(GC_REV);
+		reg = DE_RD_REG(GC_REV);
+		if ((reg & ~0xff) == 0x20050100)
+			return MB862XX_TYPE_LIME;
+	}
+
+	return 0;
+}
+#endif
+
 void *video_hw_init (void)
 {
 	GraphicDevice *dev = &mb862xx;
@@ -359,8 +417,16 @@ void *video_hw_init (void)
 	if ((dev->frameAdrs = board_video_init ()) == 0) {
 		puts ("Controller not found!\n");
 		return NULL;
-	} else
+	} else {
 		puts ("Lime\n");
+
+		/* Set Change of Clock Frequency Register */
+		HOST_WR_REG (GC_CCF, CONFIG_SYS_MB862xx_CCF);
+		/* Delay required */
+		udelay(300);
+		/* Set Memory I/F Mode Register) */
+		HOST_WR_REG (GC_MMR, CONFIG_SYS_MB862xx_MMR);
+	}
 #endif
 
 	de_init ();
@@ -389,6 +455,7 @@ void video_set_lut (unsigned int index, unsigned char r,
 	L0PAL_WR_REG (index, (r << 16) | (g << 8) | (b));
 }
 
+#if defined(CONFIG_VIDEO_MB862xx_ACCEL)
 /*
  * Drawing engine Fill and BitBlt screen region
  */
@@ -430,3 +497,4 @@ void video_hw_bitblt (unsigned int bpp, unsigned int src_x,
 	DE_WR_FIFO ((height << 16) | width);
 	de_wait (); /* sync */
 }
+#endif

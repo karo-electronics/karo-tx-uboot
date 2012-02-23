@@ -22,9 +22,14 @@
  */
 
 #include <common.h>
+#include <hwconfig.h>
 #include <mpc8xx.h>
 #ifdef CONFIG_PS2MULT
 #include <ps2mult.h>
+#endif
+
+#if defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT)
+#include <libfdt.h>
 #endif
 
 extern flash_info_t flash_info[];	/* FLASH chips info */
@@ -101,31 +106,33 @@ const uint sdram_table[] =
 
 int checkboard (void)
 {
-	char *s = getenv ("serial#");
+	char buf[64];
+	int i;
+	int l = getenv_f("serial#", buf, sizeof(buf));
 
 	puts ("Board: ");
 
-	if (!s || strncmp (s, "TQM8", 4)) {
+	if (l < 0 || strncmp(buf, "TQM8", 4)) {
 		puts ("### No HW ID - assuming TQM8xxL\n");
 		return (0);
 	}
 
-	if ((*(s + 6) == 'L')) {	/* a TQM8xxL type */
+	if ((buf[6] == 'L')) {	/* a TQM8xxL type */
 		gd->board_type = 'L';
 	}
 
-	if ((*(s + 6) == 'M')) {	/* a TQM8xxM type */
+	if ((buf[6] == 'M')) {	/* a TQM8xxM type */
 		gd->board_type = 'M';
 	}
 
-	if ((*(s + 6) == 'D')) {	/* a TQM885D type */
+	if ((buf[6] == 'D')) {	/* a TQM885D type */
 		gd->board_type = 'D';
 	}
 
-	for (; *s; ++s) {
-		if (*s == ' ')
+	for (i = 0; i < l; ++i) {
+		if (buf[i] == ' ')
 			break;
-		putc (*s);
+		putc (buf[i]);
 	}
 #ifdef CONFIG_VIRTLAB2
 	puts (" (Virtlab2)");
@@ -425,29 +432,6 @@ static long int dram_size (long int mamr_value, long int *base, long int maxsize
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef CONFIG_PS2MULT
-
-#ifdef CONFIG_HMI10
-#define BASE_BAUD ( 1843200 / 16 )
-struct serial_state rs_table[] = {
-	{ BASE_BAUD, 4,  (void*)0xec140000 },
-	{ BASE_BAUD, 2,  (void*)0xec150000 },
-	{ BASE_BAUD, 6,  (void*)0xec160000 },
-	{ BASE_BAUD, 10, (void*)0xec170000 },
-};
-
-#ifdef CONFIG_BOARD_EARLY_INIT_R
-int board_early_init_r (void)
-{
-	ps2mult_early_init();
-	return (0);
-}
-#endif
-#endif /* CONFIG_HMI10 */
-
-#endif /* CONFIG_PS2MULT */
-
-
 #ifdef CONFIG_MISC_INIT_R
 extern void load_sernum_ethaddr(void);
 int misc_init_r (void)
@@ -599,6 +583,120 @@ void lcd_show_board_info(void)
 }
 #endif /* CONFIG_LCD_INFO */
 
+/*
+ * Device Tree Support
+ */
+#if defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT)
+int fdt_set_node_and_value (void *blob,
+				char *nodename,
+				char *regname,
+				void *var,
+				int size)
+{
+	int ret = 0;
+	int nodeoffset = 0;
+
+	nodeoffset = fdt_path_offset (blob, nodename);
+	if (nodeoffset >= 0) {
+		ret = fdt_setprop (blob, nodeoffset, regname, var,
+					size);
+		if (ret < 0) {
+			printf("ft_blob_update(): "
+				"cannot set %s/%s property; err: %s\n",
+				nodename, regname, fdt_strerror (ret));
+		}
+	} else {
+		printf("ft_blob_update(): "
+			"cannot find %s node err:%s\n",
+			nodename, fdt_strerror (nodeoffset));
+	}
+	return ret;
+}
+
+int fdt_del_node_name (void *blob, char *nodename)
+{
+	int ret = 0;
+	int nodeoffset = 0;
+
+	nodeoffset = fdt_path_offset (blob, nodename);
+	if (nodeoffset >= 0) {
+		ret = fdt_del_node (blob, nodeoffset);
+		if (ret < 0) {
+			printf("%s: cannot delete %s; err: %s\n",
+				__func__, nodename, fdt_strerror (ret));
+		}
+	} else {
+		printf("%s: cannot find %s node err:%s\n",
+			__func__, nodename, fdt_strerror (nodeoffset));
+	}
+	return ret;
+}
+
+int fdt_del_prop_name (void *blob, char *nodename, char *propname)
+{
+	int ret = 0;
+	int nodeoffset = 0;
+
+	nodeoffset = fdt_path_offset (blob, nodename);
+	if (nodeoffset >= 0) {
+		ret = fdt_delprop (blob, nodeoffset, propname);
+		if (ret < 0) {
+			printf("%s: cannot delete %s %s; err: %s\n",
+				__func__, nodename, propname,
+				fdt_strerror (ret));
+		}
+	} else {
+		printf("%s: cannot find %s node err:%s\n",
+			__func__, nodename, fdt_strerror (nodeoffset));
+	}
+	return ret;
+}
+
+/*
+ * update "brg" property in the blob
+ */
+void ft_blob_update (void *blob, bd_t *bd)
+{
+	uchar enetaddr[6];
+	ulong brg_data = 0;
+
+	/* BRG */
+	brg_data = cpu_to_be32(bd->bi_busfreq);
+	fdt_set_node_and_value(blob,
+				"/soc/cpm", "brg-frequency",
+				&brg_data, sizeof(brg_data));
+
+	/* MAC addr */
+	if (eth_getenv_enetaddr("ethaddr", enetaddr)) {
+		fdt_set_node_and_value(blob,
+					"ethernet0", "local-mac-address",
+					enetaddr, sizeof(u8) * 6);
+	}
+
+	if (hwconfig_arg_cmp("fec", "off")) {
+		/* no FEC on this plattform, delete DTS nodes */
+		fdt_del_node_name (blob, "ethernet1");
+		fdt_del_node_name (blob, "mdio1");
+		/* also the aliases entries */
+		fdt_del_prop_name (blob, "/aliases", "ethernet1");
+		fdt_del_prop_name (blob, "/aliases", "mdio1");
+	} else {
+		/* adjust local-mac-address for FEC ethernet */
+		if (eth_getenv_enetaddr("eth1addr", enetaddr)) {
+			fdt_set_node_and_value(blob,
+					"ethernet1", "local-mac-address",
+					enetaddr, sizeof(u8) * 6);
+		}
+	}
+}
+
+void ft_board_setup(void *blob, bd_t *bd)
+{
+	ft_cpu_setup(blob, bd);
+	ft_blob_update(blob, bd);
+}
+#endif /* defined(CONFIG_OF_BOARD_SETUP) && defined(CONFIG_OF_LIBFDT) */
+
 /* ---------------------------------------------------------------------------- */
 /* TK885D specific initializaion						*/
 /* ---------------------------------------------------------------------------- */
@@ -626,15 +724,15 @@ int last_stage_init(void)
 		return 0;
 
 	for (i = 0; i < 2; i++) {
-		ret = miiphy_read("FEC ETHERNET", phy[i], PHY_BMCR, &reg);
+		ret = miiphy_read("FEC", phy[i], MII_BMCR, &reg);
 		if (ret) {
 			printf("Cannot read BMCR on PHY %d\n", phy[i]);
 			return 0;
 		}
 		/* Auto-negotiation off, hard set full duplex, 100Mbps */
-		ret = miiphy_write("FEC ETHERNET", phy[i],
-				   PHY_BMCR, (reg | PHY_BMCR_100MB |
-					      PHY_BMCR_DPLX) & ~PHY_BMCR_AUTON);
+		ret = miiphy_write("FEC", phy[i],
+				   MII_BMCR, (reg | BMCR_SPEED100 |
+					      BMCR_FULLDPLX) & ~BMCR_ANENABLE);
 		if (ret) {
 			printf("Cannot write BMCR on PHY %d\n", phy[i]);
 			return 0;

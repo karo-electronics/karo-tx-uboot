@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2007-2008
- * Stelian Pop <stelian.pop@leadtechdesign.com>
+ * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  * Copyright (C) 2008 Ronetix Ilko Iliev (www.ronetix.at)
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
@@ -26,16 +26,14 @@
 
 #include <common.h>
 #include <asm/sizes.h>
-#include <asm/arch/at91sam9263.h>
-#include <asm/arch/at91sam9263_matrix.h>
+#include <asm/io.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
+#include <asm/arch/at91_matrix.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/io.h>
-#include <asm/arch/hardware.h>
 #include <lcd.h>
 #include <atmel_lcdc.h>
 #include <dataflash.h>
@@ -55,52 +53,58 @@ DECLARE_GLOBAL_DATA_PTR;
 static void pm9263_nand_hw_init(void)
 {
 	unsigned long csa;
+	struct at91_smc *smc = (struct at91_smc *)ATMEL_BASE_SMC0;
+	struct at91_matrix *matrix = (struct at91_matrix *)ATMEL_BASE_MATRIX;
 
 	/* Enable CS3 */
-	csa = at91_sys_read(AT91_MATRIX_EBI0CSA);
-	at91_sys_write(AT91_MATRIX_EBI0CSA,
-		       csa | AT91_MATRIX_EBI0_CS3A_SMC_SMARTMEDIA);
+	csa = readl(&matrix->csa[0]) | AT91_MATRIX_CSA_EBI_CS3A;
+	writel(csa, &matrix->csa[0]);
 
 	/* Configure SMC CS3 for NAND/SmartMedia */
-	at91_sys_write(AT91_SMC_SETUP(3),
-		       AT91_SMC_NWESETUP_(1) | AT91_SMC_NCS_WRSETUP_(1) |
-		       AT91_SMC_NRDSETUP_(1) | AT91_SMC_NCS_RDSETUP_(1));
-	at91_sys_write(AT91_SMC_PULSE(3),
-		       AT91_SMC_NWEPULSE_(3) | AT91_SMC_NCS_WRPULSE_(3) |
-		       AT91_SMC_NRDPULSE_(3) | AT91_SMC_NCS_RDPULSE_(3));
-	at91_sys_write(AT91_SMC_CYCLE(3),
-		       AT91_SMC_NWECYCLE_(5) | AT91_SMC_NRDCYCLE_(5));
-	at91_sys_write(AT91_SMC_MODE(3),
-		       AT91_SMC_READMODE | AT91_SMC_WRITEMODE |
-		       AT91_SMC_EXNWMODE_DISABLE |
+	writel(AT91_SMC_SETUP_NWE(1) | AT91_SMC_SETUP_NCS_WR(1) |
+		AT91_SMC_SETUP_NRD(1) | AT91_SMC_SETUP_NCS_RD(1),
+		&smc->cs[3].setup);
+
+	writel(AT91_SMC_PULSE_NWE(3) | AT91_SMC_PULSE_NCS_WR(3) |
+		AT91_SMC_PULSE_NRD(3) | AT91_SMC_PULSE_NCS_RD(3),
+		&smc->cs[3].pulse);
+
+	writel(AT91_SMC_CYCLE_NWE(5) | AT91_SMC_CYCLE_NRD(5),
+		&smc->cs[3].cycle);
+
+	writel(AT91_SMC_MODE_RM_NRD | AT91_SMC_MODE_WM_NWE |
+		AT91_SMC_MODE_EXNW_DISABLE |
 #ifdef CONFIG_SYS_NAND_DBW_16
-		       AT91_SMC_DBW_16 |
+		AT91_SMC_MODE_DBW_16 |
 #else /* CONFIG_SYS_NAND_DBW_8 */
-		       AT91_SMC_DBW_8 |
+		AT91_SMC_MODE_DBW_8 |
 #endif
-		       AT91_SMC_TDF_(2));
+		AT91_SMC_MODE_TDF_CYCLE(2),
+		&smc->cs[3].mode);
 
 	/* Configure RDY/BSY */
-	at91_set_gpio_input(CONFIG_SYS_NAND_READY_PIN, 1);
+	at91_set_pio_input(CONFIG_SYS_NAND_READY_PIN, 1);
 
 	/* Enable NandFlash */
-	at91_set_gpio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
+	at91_set_pio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
 }
 #endif
 
 #ifdef CONFIG_MACB
 static void pm9263_macb_hw_init(void)
 {
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+
 	/*
 	 * PB27 enables the 50MHz oscillator for Ethernet PHY
 	 * 1 - enable
 	 * 0 - disable
 	 */
-	at91_set_gpio_output(AT91_PIN_PB27, 1);
-	at91_set_gpio_value(AT91_PIN_PB27, 1); /* 1- enable, 0 - disable */
+	at91_set_pio_output(AT91_PIO_PORTB, 27, 1);
+	at91_set_pio_value(AT91_PIO_PORTB, 27, 1); /* 1- enable, 0 - disable */
 
 	/* Enable clock */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9263_ID_EMAC);
+	writel(1 << ATMEL_ID_EMAC, &pmc->pcer);
 
 	/*
 	 * Disable pull-up on:
@@ -110,19 +114,15 @@ static void pm9263_macb_hw_init(void)
 	 *
 	 * PHY has internal pull-down
 	 */
-	writel(pin_to_mask(AT91_PIN_PC25),
-	       pin_to_controller(AT91_PIN_PC0) + PIO_PUDR);
-	writel(pin_to_mask(AT91_PIN_PE25) |
-	       pin_to_mask(AT91_PIN_PE26),
-	       pin_to_controller(AT91_PIN_PE0) + PIO_PUDR);
 
+	at91_set_pio_pullup(AT91_PIO_PORTC, 25, 0);
+	at91_set_pio_pullup(AT91_PIO_PORTE, 25, 0);
+	at91_set_pio_pullup(AT91_PIO_PORTE, 26, 0);
 
 	/* Re-enable pull-up */
-	writel(pin_to_mask(AT91_PIN_PC25),
-	       pin_to_controller(AT91_PIN_PC0) + PIO_PUER);
-	writel(pin_to_mask(AT91_PIN_PE25) |
-	       pin_to_mask(AT91_PIN_PE26),
-	       pin_to_controller(AT91_PIN_PE0) + PIO_PUER);
+	at91_set_pio_pullup(AT91_PIO_PORTC, 25, 1);
+	at91_set_pio_pullup(AT91_PIO_PORTE, 25, 1);
+	at91_set_pio_pullup(AT91_PIO_PORTE, 26, 1);
 
 	at91_macb_hw_init();
 }
@@ -143,64 +143,66 @@ vidinfo_t panel_info = {
 	vl_vsync_len:	1,
 	vl_upper_margin:1,
 	vl_lower_margin:0,
-	mmio:		AT91SAM9263_LCDC_BASE,
+	mmio:		ATMEL_BASE_LCDC,
 };
 
 void lcd_enable(void)
 {
-	at91_set_gpio_value(AT91_PIN_PA22, 1); /* power up */
+	at91_set_pio_value(AT91_PIO_PORTA, 22, 1); /* power up */
 }
 
 void lcd_disable(void)
 {
-	at91_set_gpio_value(AT91_PIN_PA22, 0); /* power down */
+	at91_set_pio_value(AT91_PIO_PORTA, 22, 0); /* power down */
 }
 
 #ifdef CONFIG_LCD_IN_PSRAM
 
-#define PSRAM_CRE_PIN	AT91_PIN_PB29
+#define PSRAM_CRE_PIN	AT91_PIO_PORTB, 29
 #define PSRAM_CTRL_REG	(PHYS_PSRAM + PHYS_PSRAM_SIZE - 2)
 
 /* Initialize the PSRAM memory */
 static int pm9263_lcd_hw_psram_init(void)
 {
-	volatile uint16_t x;
 	unsigned long csa;
+	struct at91_smc *smc = (struct at91_smc *)ATMEL_BASE_SMC1;
+	struct at91_matrix *matrix = (struct at91_matrix *)ATMEL_BASE_MATRIX;
 
 	/* Enable CS3  3.3v, no pull-ups */
-	csa = at91_sys_read(AT91_MATRIX_EBI1CSA);
-	at91_sys_write(AT91_MATRIX_EBI1CSA,
-		       csa | AT91_MATRIX_EBI1_DBPUC |
-		       AT91_MATRIX_EBI1_VDDIOMSEL_3_3V);
+	csa = readl(&matrix->csa[1]) | AT91_MATRIX_CSA_DBPUC |
+		AT91_MATRIX_CSA_VDDIOMSEL_3_3V;
+
+	writel(csa, &matrix->csa[1]);
 
 	/* Configure SMC1 CS0 for PSRAM - 16-bit */
-	at91_sys_write(AT91_SMC1_SETUP(0),
-		       AT91_SMC_NWESETUP_(0) | AT91_SMC_NCS_WRSETUP_(0) |
-		       AT91_SMC_NRDSETUP_(0) | AT91_SMC_NCS_RDSETUP_(0));
-	at91_sys_write(AT91_SMC1_PULSE(0),
-		       AT91_SMC_NWEPULSE_(7) | AT91_SMC_NCS_WRPULSE_(7) |
-		       AT91_SMC_NRDPULSE_(2) | AT91_SMC_NCS_RDPULSE_(7));
-	at91_sys_write(AT91_SMC1_CYCLE(0),
-		       AT91_SMC_NWECYCLE_(8) | AT91_SMC_NRDCYCLE_(8));
-	at91_sys_write(AT91_SMC1_MODE(0),
-		       AT91_SMC_DBW_16 |
-		       AT91_SMC_PMEN |
-		       AT91_SMC_PS_32);
+	writel(AT91_SMC_SETUP_NWE(0) | AT91_SMC_SETUP_NCS_WR(0) |
+		AT91_SMC_SETUP_NRD(0) | AT91_SMC_SETUP_NCS_RD(0),
+		&smc->cs[0].setup);
+
+	writel(AT91_SMC_PULSE_NWE(7) | AT91_SMC_PULSE_NCS_WR(7) |
+		AT91_SMC_PULSE_NRD(2) | AT91_SMC_PULSE_NCS_RD(7),
+		&smc->cs[0].pulse);
+
+	writel(AT91_SMC_CYCLE_NWE(8) | AT91_SMC_CYCLE_NRD(8),
+		&smc->cs[0].cycle);
+
+	writel(AT91_SMC_MODE_DBW_16 | AT91_SMC_MODE_PMEN | AT91_SMC_MODE_PS_32,
+		&smc->cs[0].mode);
 
 	/* setup PB29 as output */
-	at91_set_gpio_output(PSRAM_CRE_PIN, 1);
+	at91_set_pio_output(PSRAM_CRE_PIN, 1);
 
-	at91_set_gpio_value(PSRAM_CRE_PIN, 0);	/* set PSRAM_CRE_PIN to '0' */
+	at91_set_pio_value(PSRAM_CRE_PIN, 0);	/* set PSRAM_CRE_PIN to '0' */
 
 	/* PSRAM: write BCR */
-	x = readw(PSRAM_CTRL_REG);
-	x = readw(PSRAM_CTRL_REG);
+	readw(PSRAM_CTRL_REG);
+	readw(PSRAM_CTRL_REG);
 	writew(1, PSRAM_CTRL_REG);	/* 0 - RCR,1 - BCR */
 	writew(0x9d4f, PSRAM_CTRL_REG);	/* write the BCR */
 
 	/* write RCR of the PSRAM */
-	x = readw(PSRAM_CTRL_REG);
-	x = readw(PSRAM_CTRL_REG);
+	readw(PSRAM_CTRL_REG);
+	readw(PSRAM_CTRL_REG);
 	writew(0, PSRAM_CTRL_REG);	/* 0 - RCR,1 - BCR */
 	/* set RCR; 0x10-async mode,0x90-page mode */
 	writew(0x90, PSRAM_CTRL_REG);
@@ -216,11 +218,11 @@ static int pm9263_lcd_hw_psram_init(void)
 	/* test if the chip is MT45W2M16B */
 	if ((readw(PHYS_PSRAM) != 0x1234) || (readw(PHYS_PSRAM+2) != 0x5678)) {
 		/* try with CRE=1 (MT45W2M16A) */
-		at91_set_gpio_value(PSRAM_CRE_PIN, 1); /* set PSRAM_CRE_PIN to '1' */
+		at91_set_pio_value(PSRAM_CRE_PIN, 1); /* set PSRAM_CRE_PIN to '1' */
 
 		/* write RCR of the PSRAM */
-		x = readw(PSRAM_CTRL_REG);
-		x = readw(PSRAM_CTRL_REG);
+		readw(PSRAM_CTRL_REG);
+		readw(PSRAM_CTRL_REG);
 		writew(0, PSRAM_CTRL_REG);	/* 0 - RCR,1 - BCR */
 		/* set RCR;0x10-async mode,0x90-page mode */
 		writew(0x90, PSRAM_CTRL_REG);
@@ -229,17 +231,14 @@ static int pm9263_lcd_hw_psram_init(void)
 		writew(0x1234, PHYS_PSRAM);
 		writew(0x5678, PHYS_PSRAM+2);
 		if ((readw(PHYS_PSRAM) != 0x1234)
-		   || (readw(PHYS_PSRAM + 2) != 0x5678))
+		  || (readw(PHYS_PSRAM + 2) != 0x5678))
 			return 1;
 
 	}
 
 	/* Bus matrix */
-	at91_sys_write( AT91_MATRIX_PRAS5, AT91_MATRIX_M5PR );
-	at91_sys_write( AT91_MATRIX_SCFG5, AT91_MATRIX_ARBT_FIXED_PRIORITY |
-				(AT91_MATRIX_FIXED_DEFMSTR & (5 << 18)) |
-				AT91_MATRIX_DEFMSTR_TYPE_FIXED |
-				(AT91_MATRIX_SLOT_CYCLE & (0xFF << 0)));
+	writel(AT91_MATRIX_PRA_M5(3), &matrix->pr[5].a);
+	writel(CONFIG_PSRAM_SCFG, &matrix->scfg[5]);
 
 	return 0;
 }
@@ -247,43 +246,45 @@ static int pm9263_lcd_hw_psram_init(void)
 
 static void pm9263_lcd_hw_init(void)
 {
-	at91_set_A_periph(AT91_PIN_PC0, 0);	/* LCDVSYNC */
-	at91_set_A_periph(AT91_PIN_PC1, 0);	/* LCDHSYNC */
-	at91_set_A_periph(AT91_PIN_PC2, 0);	/* LCDDOTCK */
-	at91_set_A_periph(AT91_PIN_PC3, 0);	/* LCDDEN */
-	at91_set_B_periph(AT91_PIN_PB9, 0);	/* LCDCC */
-	at91_set_A_periph(AT91_PIN_PC6, 0);	/* LCDD2 */
-	at91_set_A_periph(AT91_PIN_PC7, 0);	/* LCDD3 */
-	at91_set_A_periph(AT91_PIN_PC8, 0);	/* LCDD4 */
-	at91_set_A_periph(AT91_PIN_PC9, 0);	/* LCDD5 */
-	at91_set_A_periph(AT91_PIN_PC10, 0);	/* LCDD6 */
-	at91_set_A_periph(AT91_PIN_PC11, 0);	/* LCDD7 */
-	at91_set_A_periph(AT91_PIN_PC14, 0);	/* LCDD10 */
-	at91_set_A_periph(AT91_PIN_PC15, 0);	/* LCDD11 */
-	at91_set_A_periph(AT91_PIN_PC16, 0);	/* LCDD12 */
-	at91_set_B_periph(AT91_PIN_PC12, 0);	/* LCDD13 */
-	at91_set_A_periph(AT91_PIN_PC18, 0);	/* LCDD14 */
-	at91_set_A_periph(AT91_PIN_PC19, 0);	/* LCDD15 */
-	at91_set_A_periph(AT91_PIN_PC22, 0);	/* LCDD18 */
-	at91_set_A_periph(AT91_PIN_PC23, 0);	/* LCDD19 */
-	at91_set_A_periph(AT91_PIN_PC24, 0);	/* LCDD20 */
-	at91_set_B_periph(AT91_PIN_PC17, 0);	/* LCDD21 */
-	at91_set_A_periph(AT91_PIN_PC26, 0);	/* LCDD22 */
-	at91_set_A_periph(AT91_PIN_PC27, 0);	/* LCDD23 */
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
 
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9263_ID_LCDC);
+	at91_set_a_periph(AT91_PIO_PORTC, 0, 0);	/* LCDVSYNC */
+	at91_set_a_periph(AT91_PIO_PORTC, 1, 0);	/* LCDHSYNC */
+	at91_set_a_periph(AT91_PIO_PORTC, 2, 0);	/* LCDDOTCK */
+	at91_set_a_periph(AT91_PIO_PORTC, 3, 0);	/* LCDDEN */
+	at91_set_b_periph(AT91_PIO_PORTB, 9, 0);	/* LCDCC */
+	at91_set_a_periph(AT91_PIO_PORTC, 6, 0);	/* LCDD2 */
+	at91_set_a_periph(AT91_PIO_PORTC, 7, 0);	/* LCDD3 */
+	at91_set_a_periph(AT91_PIO_PORTC, 8, 0);	/* LCDD4 */
+	at91_set_a_periph(AT91_PIO_PORTC, 9, 0);	/* LCDD5 */
+	at91_set_a_periph(AT91_PIO_PORTC, 10, 0);	/* LCDD6 */
+	at91_set_a_periph(AT91_PIO_PORTC, 11, 0);	/* LCDD7 */
+	at91_set_a_periph(AT91_PIO_PORTC, 14, 0);	/* LCDD10 */
+	at91_set_a_periph(AT91_PIO_PORTC, 15, 0);	/* LCDD11 */
+	at91_set_a_periph(AT91_PIO_PORTC, 16, 0);	/* LCDD12 */
+	at91_set_b_periph(AT91_PIO_PORTC, 12, 0);	/* LCDD13 */
+	at91_set_a_periph(AT91_PIO_PORTC, 18, 0);	/* LCDD14 */
+	at91_set_a_periph(AT91_PIO_PORTC, 19, 0);	/* LCDD15 */
+	at91_set_a_periph(AT91_PIO_PORTC, 22, 0);	/* LCDD18 */
+	at91_set_a_periph(AT91_PIO_PORTC, 23, 0);	/* LCDD19 */
+	at91_set_a_periph(AT91_PIO_PORTC, 24, 0);	/* LCDD20 */
+	at91_set_b_periph(AT91_PIO_PORTC, 17, 0);	/* LCDD21 */
+	at91_set_a_periph(AT91_PIO_PORTC, 26, 0);	/* LCDD22 */
+	at91_set_a_periph(AT91_PIO_PORTC, 27, 0);	/* LCDD23 */
+
+	writel(1 << ATMEL_ID_LCDC, &pmc->pcer);
 
 	/* Power Control */
-	at91_set_gpio_output(AT91_PIN_PA22, 1);
-	at91_set_gpio_value(AT91_PIN_PA22, 0);	/* power down */
+	at91_set_pio_output(AT91_PIO_PORTA, 22, 1);
+	at91_set_pio_value(AT91_PIO_PORTA, 22, 0);	/* power down */
 
 #ifdef CONFIG_LCD_IN_PSRAM
 	/* initialize te PSRAM */
 	int stat = pm9263_lcd_hw_psram_init();
 
-	gd->fb_base = (stat == 0) ? PHYS_PSRAM : AT91SAM9263_SRAM0_BASE;
+	gd->fb_base = (stat == 0) ? PHYS_PSRAM : ATMEL_BASE_SRAM0;
 #else
-	gd->fb_base = AT91SAM9263_SRAM0_BASE;
+	gd->fb_base = ATMEL_BASE_SRAM0;
 #endif
 
 }
@@ -304,7 +305,7 @@ void lcd_show_board_info(void)
 	lcd_printf ("(C) 2009 Ronetix GmbH\n");
 	lcd_printf ("support@ronetix.at\n");
 	lcd_printf ("%s CPU at %s MHz",
-		AT91_CPU_NAME,
+		CONFIG_SYS_AT91_CPU_NAME,
 		strmhz(temp, get_cpu_clk_rate()));
 
 	dram_size = 0;
@@ -335,23 +336,28 @@ void lcd_show_board_info(void)
 
 #endif /* CONFIG_LCD */
 
+int board_early_init_f(void)
+{
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+
+	/* Enable clocks for all PIOs */
+	writel((1 << ATMEL_ID_PIOA) | (1 << ATMEL_ID_PIOB) |
+		(1 << ATMEL_ID_PIOCDE),
+		&pmc->pcer);
+
+	at91_seriald_hw_init();
+
+	return 0;
+}
+
 int board_init(void)
 {
-	/* Enable Ctrlc */
-	console_init_f();
-
-	at91_sys_write(AT91_PMC_PCER,
-					(1 << AT91SAM9263_ID_PIOA) |
-					(1 << AT91SAM9263_ID_PIOCDE) |
-					(1 << AT91SAM9263_ID_PIOB));
-
 	/* arch number of AT91SAM9263EK-Board */
 	gd->bd->bi_arch_number = MACH_TYPE_PM9263;
 
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-	at91_serial_hw_init();
 #ifdef CONFIG_CMD_NAND
 	pm9263_nand_hw_init();
 #endif
@@ -372,21 +378,21 @@ int board_init(void)
 
 int dram_init(void)
 {
+	/* dram_init must store complete ramsize in gd->ram_size */
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM,
+				PHYS_SDRAM_SIZE);
+	return 0;
+}
+
+void dram_init_banksize(void)
+{
 	gd->bd->bi_dram[0].start = PHYS_SDRAM;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_SIZE;
-	return 0;
 }
 
 #ifdef CONFIG_RESET_PHY_R
 void reset_phy(void)
 {
-#ifdef CONFIG_MACB
-	/*
-	 * Initialize ethernet HW addr prior to starting Linux,
-	 * needed for nfsroot
-	 */
-	eth_init(gd->bd);
-#endif
 }
 #endif
 
@@ -394,7 +400,7 @@ int board_eth_init(bd_t *bis)
 {
 	int rc = 0;
 #ifdef CONFIG_MACB
-	rc = macb_eth_initialize(0, (void *)AT91SAM9263_BASE_EMAC, 0x01);
+	rc = macb_eth_initialize(0, (void *)ATMEL_BASE_EMAC, 0x01);
 #endif
 	return rc;
 }
@@ -411,7 +417,7 @@ int checkboard (void)
 		ss = "(PSRAM)";
 		break;
 
-	case AT91SAM9263_SRAM0_BASE:
+	case ATMEL_BASE_SRAM0:
 		ss = "(Internal SRAM)";
 		break;
 

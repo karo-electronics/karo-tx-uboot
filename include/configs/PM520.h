@@ -33,12 +33,11 @@
 #define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
 #define CONFIG_PM520		1	/* ... on PM520 board */
 
+#define	CONFIG_SYS_TEXT_BASE	0xfff00000
+
 #define CONFIG_SYS_MPC5XXX_CLKIN	33000000 /* ... running at 33MHz */
 
 #define CONFIG_MISC_INIT_R
-
-#define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
-#define BOOTFLAG_WARM		0x02	/* Software reboot	     */
 
 #define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
@@ -50,7 +49,6 @@
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, 230400 }
 
 
-#ifdef CONFIG_MPC5200	/* MPC5100 PCI is not supported yet. */
 /*
  * PCI Mapping:
  * 0x40000000 - 0x4fffffff - PCI Memory
@@ -69,13 +67,11 @@
 #define CONFIG_PCI_IO_PHYS	CONFIG_PCI_IO_BUS
 #define CONFIG_PCI_IO_SIZE	0x01000000
 
-#define CONFIG_NET_MULTI	1
 #define CONFIG_MII		1
 #define CONFIG_EEPRO100		1
 #define CONFIG_SYS_RX_ETH_BUFFER	8  /* use 8 rx buffer on eepro100  */
 #undef  CONFIG_NS8382X
 
-#endif
 
 /* Partitions */
 #define CONFIG_DOS_PARTITION
@@ -111,9 +107,7 @@
 #define CONFIG_CMD_SNTP
 #define CONFIG_CMD_USB
 
-#if defined(CONFIG_MPC5200)
 #define CONFIG_CMD_PCI
-#endif
 
 
 /*
@@ -147,12 +141,10 @@
 
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
-#if defined(CONFIG_MPC5200)
 /*
  * IPB Bus clocking configuration.
  */
 #undef CONFIG_SYS_IPBCLK_EQUALS_XLBCLK		/* define for 133MHz speed */
-#endif
 /*
  * I2C configuration
  */
@@ -240,14 +232,13 @@
 
 /* Use SRAM until RAM will be available */
 #define CONFIG_SYS_INIT_RAM_ADDR	MPC5XXX_SRAM
-#define CONFIG_SYS_INIT_RAM_END	MPC5XXX_SRAM_SIZE	/* End of used area in DPRAM */
+#define CONFIG_SYS_INIT_RAM_SIZE	MPC5XXX_SRAM_SIZE	/* Size of used area in DPRAM */
 
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_BASE    TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE    CONFIG_SYS_TEXT_BASE
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
 #   define CONFIG_SYS_RAMBOOT		1
 #endif
@@ -301,13 +292,8 @@
 /*
  * Various low-level settings
  */
-#if defined(CONFIG_MPC5200)
 #define CONFIG_SYS_HID0_INIT		HID0_ICE | HID0_ICFI
 #define CONFIG_SYS_HID0_FINAL		HID0_ICE
-#else
-#define CONFIG_SYS_HID0_INIT		0
-#define CONFIG_SYS_HID0_FINAL		0
-#endif
 
 #if defined(CONFIG_BOOT_ROM)
 #define CONFIG_SYS_BOOTCS_START	CONFIG_SYS_BOOTROM_BASE

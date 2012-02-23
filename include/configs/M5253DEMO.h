@@ -57,6 +57,7 @@
  */
 #include <config_cmd_default.h>
 
+#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_LOADB
 #define CONFIG_CMD_LOADS
 #define CONFIG_CMD_EXT2
@@ -87,19 +88,14 @@
 #	define CONFIG_SYS_ATA_STRIDE		4	/* Interval between registers */
 #endif
 
-#define CONFIG_NET_MULTI		1
 #define CONFIG_DRIVER_DM9000
 #ifdef CONFIG_DRIVER_DM9000
 #	define CONFIG_DM9000_BASE	(CONFIG_SYS_CS1_BASE | 0x300)
 #	define DM9000_IO		CONFIG_DM9000_BASE
 #	define DM9000_DATA		(CONFIG_DM9000_BASE + 4)
 #	undef CONFIG_DM9000_DEBUG
+#	define CONFIG_DM9000_BYTE_SWAPPED
 
-#	define CONFIG_ETHADDR		00:e0:0c:bc:e5:60
-#	define CONFIG_IPADDR		10.82.121.249
-#	define CONFIG_NETMASK		255.255.252.0
-#	define CONFIG_SERVERIP		10.82.120.80
-#	define CONFIG_GATEWAYIP		10.82.123.254
 #	define CONFIG_OVERWRITE_ETHADDR_ONCE
 
 #	define CONFIG_EXTRA_ENV_SETTINGS		\
@@ -109,9 +105,9 @@
 		"u-boot=u-boot.bin\0"			\
 		"load=tftp ${loadaddr) ${u-boot}\0"	\
 		"upd=run load; run prog\0"		\
-		"prog=prot off 0 2ffff;"	\
-		"era 0 2ffff;"			\
-		"cp.b ${loadaddr} 0 ${filesize};"	\
+		"prog=prot off 0xff800000 0xff82ffff;"	\
+		"era 0xff800000 0xff82ffff;"		\
+		"cp.b ${loadaddr} 0xff800000 ${filesize};"	\
 		"save\0"				\
 		""
 #endif
@@ -171,9 +167,8 @@
  * Definitions for initial stack pointer and data area (in DPRAM)
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	0x20000000
-#define CONFIG_SYS_INIT_RAM_END	0x10000	/* End of used area in internal SRAM */
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x10000	/* Size of used area in internal SRAM */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*
@@ -230,6 +225,20 @@
 
 /* Cache Configuration */
 #define CONFIG_SYS_CACHELINE_SIZE	16
+
+#define ICACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - 8)
+#define DCACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - 4)
+#define CONFIG_SYS_ICACHE_INV		(CF_CACR_DCM)
+#define CONFIG_SYS_CACHE_ACR0		(CONFIG_SYS_FLASH_BASE | \
+					 CF_ADDRMASK(8) | \
+					 CF_ACR_EN | CF_ACR_SM_ALL)
+#define CONFIG_SYS_CACHE_ACR1		(CONFIG_SYS_SDRAM_BASE | \
+					 CF_ADDRMASK(CONFIG_SYS_SDRAM_SIZE) | \
+					 CF_ACR_EN | CF_ACR_SM_ALL)
+#define CONFIG_SYS_CACHE_ICACR		(CF_CACR_CENB | CF_CACR_CEIB | \
+					 CF_CACR_DBWE)
 
 /* Port configuration */
 #define CONFIG_SYS_FECI2C		0xF0

@@ -60,7 +60,7 @@ SECTIONS
 		_text = .;
 
 		*(.start)
-		cpu/leon3/start.o (.text)
+		arch/sparc/cpu/leon3/start.o (.text)
 /* 8k is the same as the PROM offset from end of main memory, (CONFIG_SYS_PROM_SIZE) */
 		. = ALIGN(8192);
 /* PROM CODE, Will be relocated to the end of memory,
@@ -134,7 +134,7 @@ SECTIONS
 	. = ALIGN(16); /* to speed clearing of bss up */
 	}
 	__bss_end = . ;
-	_end = . ;
+	__bss_end__ = . ;
 	PROVIDE (end = .);
 
 /* Relocated into main memory */

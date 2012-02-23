@@ -37,6 +37,8 @@
 #define CONFIG_APOLLON		1
 #define CONFIG_APOLLON_PLUS	1 /* If you have apollon plus 1.x */
 
+#define CONFIG_ONENAND_U_BOOT	y
+
 /* Clock config to target*/
 #define PRCM_CONFIG_I		1
 /* #define PRCM_CONFIG_II	1 */
@@ -76,9 +78,8 @@
  * Size of malloc() pool
  */
 #define	CONFIG_ENV_SIZE SZ_128K	/* Total Size of Environment Sector */
+#define CONFIG_ENV_SIZE_FLEX SZ_256K
 #define	CONFIG_SYS_MALLOC_LEN	(CONFIG_ENV_SIZE + SZ_1M)
-/* bytes reserved for initial data */
-#define	CONFIG_SYS_GBL_DATA_SIZE	128
 
 /*
  * Hardware drivers
@@ -87,7 +88,7 @@
 /*
  * SMC91c96 Etherent
  */
-#define	CONFIG_DRIVER_LAN91C96
+#define	CONFIG_LAN91C96
 #define	CONFIG_LAN91C96_BASE	(APOLLON_CS1_BASE+0x300)
 #define	CONFIG_LAN91C96_EXT_PHY
 
@@ -183,10 +184,8 @@
 /*
  * Miscellaneous configurable options
  */
-#define	V_PROMPT	"Apollon # "
-
 #define	CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define	CONFIG_SYS_PROMPT	V_PROMPT
+#define	CONFIG_SYS_PROMPT	"Apollon # "
 #define	CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define	CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
@@ -214,10 +213,6 @@
  * The stack sizes are set up in start.S using the settings below
  */
 #define	CONFIG_STACKSIZE SZ_128K	/* regular stack */
-#ifdef	CONFIG_USE_IRQ
-# define	CONFIG_STACKSIZE_IRQ SZ_4K	/* IRQ stack */
-# define	CONFIG_STACKSIZE_FIQ SZ_4K	/* FIQ stack */
-#endif
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
@@ -255,8 +250,7 @@
 #define CONFIG_SYS_MONITOR_LEN		SZ_256K	/* U-Boot image size */
 #define	CONFIG_ENV_IS_IN_ONENAND	1
 #define CONFIG_ENV_ADDR		0x00020000
-
-#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
+#define CONFIG_ENV_ADDR_FLEX	0x00040000
 
 #ifdef CONFIG_SYS_USE_UBI
 #define CONFIG_CMD_MTDPARTS
@@ -268,5 +262,9 @@
 					"32m(fs),"			\
 					"-(ubifs)"
 #endif
+
+#define PHYS_SRAM			0x4020F800
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR 	PHYS_SRAM
 
 #endif /* __CONFIG_H */

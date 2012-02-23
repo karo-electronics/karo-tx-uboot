@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2007-2008
- * Stelian Pop <stelian.pop@leadtechdesign.com>
+ * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  * Copyright (C) 2008 Ronetix Ilko Iliev (www.ronetix.at)
  * Copyright (C) 2009 Jean-Christopher PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
@@ -26,16 +26,15 @@
 
 #include <common.h>
 #include <asm/sizes.h>
-#include <asm/arch/at91sam9261.h>
-#include <asm/arch/at91sam9261_matrix.h>
+#include <asm/io.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
+#include <asm/arch/at91_matrix.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/io.h>
-#include <asm/arch/hardware.h>
+
 #include <lcd.h>
 #include <atmel_lcdc.h>
 #include <dataflash.h>
@@ -55,39 +54,48 @@ DECLARE_GLOBAL_DATA_PTR;
 static void pm9261_nand_hw_init(void)
 {
 	unsigned long csa;
+	struct at91_smc *smc = (struct at91_smc *)ATMEL_BASE_SMC;
+	struct at91_matrix *matrix = (struct at91_matrix *)ATMEL_BASE_MATRIX;
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
 
 	/* Enable CS3 */
-	csa = at91_sys_read(AT91_MATRIX_EBICSA);
-	at91_sys_write(AT91_MATRIX_EBICSA,
-		       csa | AT91_MATRIX_CS3A_SMC_SMARTMEDIA);
+	csa = readl(&matrix->csa) | AT91_MATRIX_CSA_EBI_CS3A;
+	writel(csa, &matrix->csa);
 
 	/* Configure SMC CS3 for NAND/SmartMedia */
-	at91_sys_write(AT91_SMC_SETUP(3),
-		       AT91_SMC_NWESETUP_(1) | AT91_SMC_NCS_WRSETUP_(0) |
-		       AT91_SMC_NRDSETUP_(1) | AT91_SMC_NCS_RDSETUP_(0));
-	at91_sys_write(AT91_SMC_PULSE(3),
-		       AT91_SMC_NWEPULSE_(3) | AT91_SMC_NCS_WRPULSE_(3) |
-		       AT91_SMC_NRDPULSE_(3) | AT91_SMC_NCS_RDPULSE_(3));
-	at91_sys_write(AT91_SMC_CYCLE(3),
-		       AT91_SMC_NWECYCLE_(5) | AT91_SMC_NRDCYCLE_(5));
-	at91_sys_write(AT91_SMC_MODE(3),
-		       AT91_SMC_READMODE | AT91_SMC_WRITEMODE |
-		       AT91_SMC_EXNWMODE_DISABLE |
+	writel(AT91_SMC_SETUP_NWE(1) | AT91_SMC_SETUP_NCS_WR(0) |
+		AT91_SMC_SETUP_NRD(1) | AT91_SMC_SETUP_NCS_RD(0),
+		&smc->cs[3].setup);
+
+	writel(AT91_SMC_PULSE_NWE(3) | AT91_SMC_PULSE_NCS_WR(3) |
+		AT91_SMC_PULSE_NRD(3) | AT91_SMC_PULSE_NCS_RD(3),
+		&smc->cs[3].pulse);
+
+	writel(AT91_SMC_CYCLE_NWE(5) | AT91_SMC_CYCLE_NRD(5),
+		&smc->cs[3].cycle);
+
+	writel(AT91_SMC_MODE_RM_NRD | AT91_SMC_MODE_WM_NWE |
+		AT91_SMC_MODE_EXNW_DISABLE |
 #ifdef CONFIG_SYS_NAND_DBW_16
-		       AT91_SMC_DBW_16 |
+		AT91_SMC_MODE_DBW_16 |
 #else /* CONFIG_SYS_NAND_DBW_8 */
-		       AT91_SMC_DBW_8 |
+		AT91_SMC_MODE_DBW_8 |
 #endif
-		       AT91_SMC_TDF_(2));
+		AT91_SMC_MODE_TDF_CYCLE(2),
+		&smc->cs[3].mode);
+
+	writel(1 << ATMEL_ID_PIOA |
+		1 << ATMEL_ID_PIOC,
+		&pmc->pcer);
 
 	/* Configure RDY/BSY */
-	at91_set_gpio_input(AT91_PIN_PA16, 1);
+	at91_set_pio_input(CONFIG_SYS_NAND_READY_PIN, 1);
 
 	/* Enable NandFlash */
-	at91_set_gpio_output(AT91_PIN_PC14, 1);
+	at91_set_pio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
 
-	at91_set_A_periph(AT91_PIN_PC0, 0);	/* NANDOE */
-	at91_set_A_periph(AT91_PIN_PC1, 0);	/* NANDWE */
+	at91_set_a_periph(AT91_PIO_PORTC, 0, 0);	/* NANDOE */
+	at91_set_a_periph(AT91_PIO_PORTC, 1, 0);	/* NANDWE */
 }
 #endif
 
@@ -95,23 +103,30 @@ static void pm9261_nand_hw_init(void)
 #ifdef CONFIG_DRIVER_DM9000
 static void pm9261_dm9000_hw_init(void)
 {
+	struct at91_smc *smc = (struct at91_smc *)ATMEL_BASE_SMC;
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+
 	/* Configure SMC CS2 for DM9000 */
-	at91_sys_write(AT91_SMC_SETUP(2),
-		       AT91_SMC_NWESETUP_(2) | AT91_SMC_NCS_WRSETUP_(0) |
-		       AT91_SMC_NRDSETUP_(2) | AT91_SMC_NCS_RDSETUP_(0));
-	at91_sys_write(AT91_SMC_PULSE(2),
-		       AT91_SMC_NWEPULSE_(4) | AT91_SMC_NCS_WRPULSE_(8) |
-		       AT91_SMC_NRDPULSE_(4) | AT91_SMC_NCS_RDPULSE_(8));
-	at91_sys_write(AT91_SMC_CYCLE(2),
-		       AT91_SMC_NWECYCLE_(16) | AT91_SMC_NRDCYCLE_(16));
-	at91_sys_write(AT91_SMC_MODE(2),
-		       AT91_SMC_READMODE | AT91_SMC_WRITEMODE |
-		       AT91_SMC_EXNWMODE_DISABLE |
-		       AT91_SMC_BAT_WRITE | AT91_SMC_DBW_16 |
-		       AT91_SMC_TDF_(1));
+	writel(AT91_SMC_SETUP_NWE(2) | AT91_SMC_SETUP_NCS_WR(0) |
+		AT91_SMC_SETUP_NRD(2) | AT91_SMC_SETUP_NCS_RD(0),
+		&smc->cs[2].setup);
+
+	writel(AT91_SMC_PULSE_NWE(4) | AT91_SMC_PULSE_NCS_WR(8) |
+		AT91_SMC_PULSE_NRD(4) | AT91_SMC_PULSE_NCS_RD(8),
+		&smc->cs[2].pulse);
+
+	writel(AT91_SMC_CYCLE_NWE(16) | AT91_SMC_CYCLE_NRD(16),
+		&smc->cs[2].cycle);
+
+	writel(AT91_SMC_MODE_RM_NRD | AT91_SMC_MODE_WM_NWE |
+		AT91_SMC_MODE_EXNW_DISABLE |
+		AT91_SMC_MODE_BAT | AT91_SMC_MODE_DBW_16 |
+		AT91_SMC_MODE_TDF_CYCLE(1),
+		&smc->cs[2].mode);
 
 	/* Configure Interrupt pin as input, no pull-up */
-	at91_set_gpio_input(AT91_PIN_PA24, 0);
+	writel(1 << ATMEL_ID_PIOA, &pmc->pcer);
+	at91_set_pio_input(AT91_PIO_PORTA, 24, 0);
 }
 #endif
 
@@ -130,47 +145,49 @@ vidinfo_t panel_info = {
 	vl_vsync_len:	1,
 	vl_upper_margin:1,
 	vl_lower_margin:0,
-	mmio:		AT91SAM9261_LCDC_BASE,
+	mmio:		ATMEL_BASE_LCDC,
 };
 
 void lcd_enable(void)
 {
-	at91_set_gpio_value(AT91_PIN_PA22, 0);  /* power up */
+	at91_set_pio_value(AT91_PIO_PORTA, 22, 0);  /* power up */
 }
 
 void lcd_disable(void)
 {
-	at91_set_gpio_value(AT91_PIN_PA22, 1);  /* power down */
+	at91_set_pio_value(AT91_PIO_PORTA, 22, 1);  /* power down */
 }
 
 static void pm9261_lcd_hw_init(void)
 {
-	at91_set_A_periph(AT91_PIN_PB1, 0);	/* LCDHSYNC */
-	at91_set_A_periph(AT91_PIN_PB2, 0);	/* LCDDOTCK */
-	at91_set_A_periph(AT91_PIN_PB3, 0);	/* LCDDEN */
-	at91_set_A_periph(AT91_PIN_PB4, 0);	/* LCDCC */
-	at91_set_A_periph(AT91_PIN_PB7, 0);	/* LCDD2 */
-	at91_set_A_periph(AT91_PIN_PB8, 0);	/* LCDD3 */
-	at91_set_A_periph(AT91_PIN_PB9, 0);	/* LCDD4 */
-	at91_set_A_periph(AT91_PIN_PB10, 0);	/* LCDD5 */
-	at91_set_A_periph(AT91_PIN_PB11, 0);	/* LCDD6 */
-	at91_set_A_periph(AT91_PIN_PB12, 0);	/* LCDD7 */
-	at91_set_A_periph(AT91_PIN_PB15, 0);	/* LCDD10 */
-	at91_set_A_periph(AT91_PIN_PB16, 0);	/* LCDD11 */
-	at91_set_A_periph(AT91_PIN_PB17, 0);	/* LCDD12 */
-	at91_set_A_periph(AT91_PIN_PB18, 0);	/* LCDD13 */
-	at91_set_A_periph(AT91_PIN_PB19, 0);	/* LCDD14 */
-	at91_set_A_periph(AT91_PIN_PB20, 0);	/* LCDD15 */
-	at91_set_B_periph(AT91_PIN_PB23, 0);	/* LCDD18 */
-	at91_set_B_periph(AT91_PIN_PB24, 0);	/* LCDD19 */
-	at91_set_B_periph(AT91_PIN_PB25, 0);	/* LCDD20 */
-	at91_set_B_periph(AT91_PIN_PB26, 0);	/* LCDD21 */
-	at91_set_B_periph(AT91_PIN_PB27, 0);	/* LCDD22 */
-	at91_set_B_periph(AT91_PIN_PB28, 0);	/* LCDD23 */
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
 
-	at91_sys_write(AT91_PMC_SCER, AT91_PMC_HCK1);
+	at91_set_a_periph(AT91_PIO_PORTB, 1, 0);	/* LCDHSYNC */
+	at91_set_a_periph(AT91_PIO_PORTB, 2, 0);	/* LCDDOTCK */
+	at91_set_a_periph(AT91_PIO_PORTB, 3, 0);	/* LCDDEN */
+	at91_set_a_periph(AT91_PIO_PORTB, 4, 0);	/* LCDCC */
+	at91_set_a_periph(AT91_PIO_PORTB, 7, 0);	/* LCDD2 */
+	at91_set_a_periph(AT91_PIO_PORTB, 8, 0);	/* LCDD3 */
+	at91_set_a_periph(AT91_PIO_PORTB, 9, 0);	/* LCDD4 */
+	at91_set_a_periph(AT91_PIO_PORTB, 10, 0);	/* LCDD5 */
+	at91_set_a_periph(AT91_PIO_PORTB, 11, 0);	/* LCDD6 */
+	at91_set_a_periph(AT91_PIO_PORTB, 12, 0);	/* LCDD7 */
+	at91_set_a_periph(AT91_PIO_PORTB, 15, 0);	/* LCDD10 */
+	at91_set_a_periph(AT91_PIO_PORTB, 16, 0);	/* LCDD11 */
+	at91_set_a_periph(AT91_PIO_PORTB, 17, 0);	/* LCDD12 */
+	at91_set_a_periph(AT91_PIO_PORTB, 18, 0);	/* LCDD13 */
+	at91_set_a_periph(AT91_PIO_PORTB, 19, 0);	/* LCDD14 */
+	at91_set_a_periph(AT91_PIO_PORTB, 20, 0);	/* LCDD15 */
+	at91_set_b_periph(AT91_PIO_PORTB, 23, 0);	/* LCDD18 */
+	at91_set_b_periph(AT91_PIO_PORTB, 24, 0);	/* LCDD19 */
+	at91_set_b_periph(AT91_PIO_PORTB, 25, 0);	/* LCDD20 */
+	at91_set_b_periph(AT91_PIO_PORTB, 26, 0);	/* LCDD21 */
+	at91_set_b_periph(AT91_PIO_PORTB, 27, 0);	/* LCDD22 */
+	at91_set_b_periph(AT91_PIO_PORTB, 28, 0);	/* LCDD23 */
 
-	gd->fb_base = AT91SAM9261_SRAM_BASE;
+	writel(1 << 17, &pmc->scer); /* LCD controller Clock, AT91SAM9261 only */
+
+	gd->fb_base = ATMEL_BASE_SRAM;
 }
 
 #ifdef CONFIG_LCD_INFO
@@ -189,7 +206,7 @@ void lcd_show_board_info(void)
 	lcd_printf ("(C) 2009 Ronetix GmbH\n");
 	lcd_printf ("support@ronetix.at\n");
 	lcd_printf ("%s CPU at %s MHz",
-		AT91_CPU_NAME,
+		CONFIG_SYS_AT91_CPU_NAME,
 		strmhz(temp, get_cpu_clk_rate()));
 
 	dram_size = 0;
@@ -220,21 +237,28 @@ void lcd_show_board_info(void)
 
 #endif /* CONFIG_LCD */
 
+int board_early_init_f(void)
+{
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+
+	/* Enable clocks for some PIOs */
+	writel(1 << ATMEL_ID_PIOA |
+		1 << ATMEL_ID_PIOC,
+		&pmc->pcer);
+
+	at91_seriald_hw_init();
+
+	return 0;
+}
+
 int board_init(void)
 {
-	/* Enable Ctrlc */
-	console_init_f();
-
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_PIOA);
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_PIOC);
-
 	/* arch number of PM9261-Board */
 	gd->bd->bi_arch_number = MACH_TYPE_PM9261;
 
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-	at91_serial_hw_init();
 #ifdef CONFIG_CMD_NAND
 	pm9261_nand_hw_init();
 #endif
@@ -250,11 +274,25 @@ int board_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_DRIVER_DM9000
+int board_eth_init(bd_t *bis)
+{
+	return dm9000_initialize(bis);
+}
+#endif
+
 int dram_init(void)
+{
+	/* dram_init must store complete ramsize in gd->ram_size */
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM,
+				PHYS_SDRAM_SIZE);
+	return 0;
+}
+
+void dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_SIZE;
-	return 0;
 }
 
 #ifdef CONFIG_RESET_PHY_R

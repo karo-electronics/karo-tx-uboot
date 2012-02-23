@@ -243,8 +243,8 @@ void reset_phy (void)
 	 * Enable autonegotiation.
 	 */
 	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, 16, 0x610);
-	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, PHY_BMCR,
-			PHY_BMCR_AUTON | PHY_BMCR_RST_NEG);
+	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, MII_BMCR,
+			BMCR_ANENABLE | BMCR_ANRESTART);
 #else
 	/*
 	 * Ethernet PHY is configured (by means of configuration pins)
@@ -254,13 +254,13 @@ void reset_phy (void)
 	 */
 
 	/* Advertise all capabilities */
-	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, PHY_ANAR, 0x01E1);
+	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, MII_ADVERTISE, 0x01E1);
 
 	/* Do not bypass Rx/Tx (de)scrambler */
-	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, PHY_DCR,  0x0000);
+	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, MII_FCSCOUNTER,  0x0000);
 
-	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, PHY_BMCR,
-			PHY_BMCR_AUTON | PHY_BMCR_RST_NEG);
+	bb_miiphy_write(NULL, CONFIG_SYS_PHY_ADDR, MII_BMCR,
+			BMCR_ANENABLE | BMCR_ANRESTART);
 #endif /* CONFIG_ADSTYPE == CONFIG_SYS_PQ2FADS */
 #endif /* CONFIG_MII */
 }
@@ -550,24 +550,11 @@ void pci_init_board(void)
 #endif
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-void ft_blob_update(void *blob, bd_t *bd)
-{
-	int ret;
-
-	ret = fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
-
-	if (ret < 0) {
-		printf("ft_blob_update(): cannot set /memory/reg "
-			"property err:%s\n", fdt_strerror(ret));
-	}
-}
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-	ft_blob_update(blob, bd);
 }
 #endif

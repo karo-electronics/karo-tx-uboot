@@ -193,4 +193,6 @@ struct ahci_probe_ent {
 	u32	link_port_map; /*linkup port map*/
 };
 
+int ahci_init(u32 base);
+
 #endif

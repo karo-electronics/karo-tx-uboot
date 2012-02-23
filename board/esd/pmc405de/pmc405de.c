@@ -26,7 +26,7 @@
 #include <fdt_support.h>
 #include <asm/processor.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
+#include <asm/ppc4xx-gpio.h>
 #include <asm/4xx_pci.h>
 #include <command.h>
 #include <malloc.h>
@@ -114,20 +114,20 @@ int board_early_init_f(void)
 	 * IRQ 30 (EXT IRQ 5) ETH1-PHY-IRQ#; active low; level sensitive
 	 * IRQ 31 (EXT IRQ 6) PLD-IRQ#; active low; level sensitive
 	 */
-	mtdcr(uicsr, 0xFFFFFFFF);       /* clear all ints */
-	mtdcr(uicer, 0x00000000);       /* disable all ints */
-	mtdcr(uiccr, 0x00000000);       /* set all to be non-critical*/
-	mtdcr(uicpr, 0xFFFFFF80);       /* set int polarities */
-	mtdcr(uictr, 0x10000000);       /* set int trigger levels */
-	mtdcr(uicvcr, 0x00000001);      /* set vect base=0, INT0 highest prio */
-	mtdcr(uicsr, 0xFFFFFFFF);       /* clear all ints */
+	mtdcr(UIC0SR, 0xFFFFFFFF);       /* clear all ints */
+	mtdcr(UIC0ER, 0x00000000);       /* disable all ints */
+	mtdcr(UIC0CR, 0x00000000);       /* set all to be non-critical*/
+	mtdcr(UIC0PR, 0xFFFFFF80);       /* set int polarities */
+	mtdcr(UIC0TR, 0x10000000);       /* set int trigger levels */
+	mtdcr(UIC0VCR, 0x00000001);      /* set vect base=0, INT0 highest prio */
+	mtdcr(UIC0SR, 0xFFFFFFFF);       /* clear all ints */
 
 	/*
 	 * EBC Configuration Register:
 	 * - set ready timeout to 512 ebc-clks -> ca. 15 us
 	 * - EBC lines are always driven
 	 */
-	mtebc(epcr, 0xa8400000);
+	mtebc(EBC0_CFG, 0xa8400000);
 
 	return 0;
 }
@@ -374,7 +374,7 @@ int eeprom_write_enable(unsigned dev_addr, int state)
 	return state;
 }
 
-int do_eep_wren(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_eep_wren(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int query = argc == 1;
 	int state = 0;
@@ -417,7 +417,7 @@ U_BOOT_CMD(eepwren, 2, 0, do_eep_wren,
 #include <environment.h>
 extern env_t *env_ptr;
 
-int do_painit(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_painit(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	u32 pram, nextbase, base;
 	char *v;
@@ -441,7 +441,7 @@ int do_painit(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 */
 	param = base - (pram << 10);
 	printf("PARAM: @%08x\n", param);
-	debug("memsize=0x%08x, base=0x%08x\n", gd->bd->bi_memsize, base);
+	debug("memsize=0x%08x, base=0x%08x\n", (u32)gd->bd->bi_memsize, base);
 
 	/* clear entire PA ram */
 	memset((void*)param, 0, (pram << 10));
@@ -477,7 +477,7 @@ U_BOOT_CMD(
 );
 #endif /* CONFIG_PRAM */
 
-int do_selfreset(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_selfreset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct ppc4xx_gpio *gpio0 = (struct ppc4xx_gpio *)GPIO_BASE;
 	setbits_be32(&gpio0->tcr, CONFIG_SYS_GPIO_SELFRST_N);
@@ -489,7 +489,7 @@ U_BOOT_CMD(
 	""
 );
 
-int do_resetout(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_resetout(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct pmc405de_cpld *cpld =
 		(struct pmc405de_cpld *)CONFIG_SYS_CPLD_BASE;

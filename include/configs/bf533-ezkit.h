@@ -65,12 +65,13 @@
  * Network Settings
  */
 #define ADI_CMDS_NETWORK	1
-#define CONFIG_DRIVER_SMC91111	1
+#define CONFIG_SMC91111	1
 #define CONFIG_SMC91111_BASE	0x20310300
 #define SMC91111_EEPROM_INIT() \
 	do { \
-		*pFIO_DIR |= PF1; \
-		*pFIO_FLAG_S = PF1; \
+		bfin_write_FIO_DIR(bfin_read_FIO_DIR() | PF1 | PF0); \
+		bfin_write_FIO_FLAG_C(PF1); \
+		bfin_write_FIO_FLAG_S(PF0); \
 		SSYNC(); \
 	} while (0)
 #define CONFIG_HOSTNAME		bf533-ezkit
@@ -85,58 +86,17 @@
 #define CONFIG_SYS_MAX_FLASH_BANKS	3
 #define CONFIG_SYS_MAX_FLASH_SECT	40
 #define CONFIG_ENV_IS_IN_FLASH
-#define CONFIG_ENV_ADDR		0x20020000
+#define CONFIG_ENV_ADDR		0x20030000
 #define CONFIG_ENV_SECT_SIZE	0x10000
 #define FLASH_TOT_SECT		40
 
 
 /*
  * I2C Settings
- * By default PF1 is used as SDA and PF0 as SCL on the Stamp board
  */
 #define CONFIG_SOFT_I2C
-#ifdef CONFIG_SOFT_I2C
-#define PF_SCL PF0
-#define PF_SDA PF1
-#define I2C_INIT \
-	do { \
-		*pFIO_DIR |= PF_SCL; \
-		SSYNC(); \
-	} while (0)
-#define I2C_ACTIVE \
-	do { \
-		*pFIO_DIR |= PF_SDA; \
-		*pFIO_INEN &= ~PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_TRISTATE \
-	do { \
-		*pFIO_DIR &= ~PF_SDA; \
-		*pFIO_INEN |= PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_READ ((*pFIO_FLAG_D & PF_SDA) != 0)
-#define I2C_SDA(bit) \
-	do { \
-		if (bit) \
-			*pFIO_FLAG_S = PF_SDA; \
-		else \
-			*pFIO_FLAG_C = PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_SCL(bit) \
-	do { \
-		if (bit) \
-			*pFIO_FLAG_S = PF_SCL; \
-		else \
-			*pFIO_FLAG_C = PF_SCL; \
-		SSYNC(); \
-	} while (0)
-#define I2C_DELAY		udelay(5)	/* 1/4 I2C clock duration */
-
-#define CONFIG_SYS_I2C_SPEED		50000
-#define CONFIG_SYS_I2C_SLAVE		0
-#endif
+#define CONFIG_SOFT_I2C_GPIO_SCL GPIO_PF0
+#define CONFIG_SOFT_I2C_GPIO_SDA GPIO_PF1
 
 
 /*

@@ -47,13 +47,13 @@ int board_early_init_f(void)
 	  |
 	  +-------------------------------------------------------------------------*/
 
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr(uicer, 0x00000000);	/* disable all ints */
-	mtdcr(uiccr, 0x00000020);	/* set all but FPGA SMI to be non-critical */
-	mtdcr(uicpr, 0xFFFFFFE0);	/* set int polarities */
-	mtdcr(uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr(uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr(UIC0CR, 0x00000020);	/* set all but FPGA SMI to be non-critical */
+	mtdcr(UIC0PR, 0xFFFFFFE0);	/* set int polarities */
+	mtdcr(UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr(UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest priority */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	/* set UART1 control to select CTS/RTS */
 #define FPGA_BRDC       0xF0300004
@@ -67,7 +67,8 @@ int board_early_init_f(void)
  */
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 	uint pvr = get_pvr();
 
 	if (pvr == PVR_405GPR_RB) {
@@ -76,9 +77,9 @@ int checkboard(void)
 		puts("Board: Walnut - AMCC PPC405GP Evaluation Board");
 	}
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	putc('\n');
 

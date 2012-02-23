@@ -60,12 +60,11 @@
  *	-The stack is placed below global data (&grows down).
  *----------------------------------------------------------------------*/
 #define CONFIG_SYS_MONITOR_LEN		(128 * 1024)	/* Reserve 128k		*/
-#define CONFIG_SYS_GBL_DATA_SIZE	128		/* Global data size rsvd*/
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128*1024)
 
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_MALLOC_BASE		(CONFIG_SYS_MONITOR_BASE - CONFIG_SYS_MALLOC_LEN)
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_MALLOC_BASE - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_MALLOC_BASE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP		CONFIG_SYS_GBL_DATA_OFFSET
 
 /*------------------------------------------------------------------------
@@ -92,7 +91,8 @@
 /*------------------------------------------------------------------------
  * CONSOLE
  *----------------------------------------------------------------------*/
-#if defined(CONFIG_CONSOLE_JTAG)
+#define CONFIG_ALTERA_UART		1	/* Use altera uart */
+#if defined(CONFIG_ALTERA_JTAG_UART)
 #define CONFIG_SYS_NIOS_CONSOLE	0x00920820	/* JTAG UART base addr	*/
 #else
 #define CONFIG_SYS_NIOS_CONSOLE	0x009208a0	/* UART base addr	*/
@@ -113,14 +113,17 @@
  * TIMEBASE --
  *
  * The high res timer defaults to 1 msec. Since it includes the period
- * registers, we can slow it down to 10 msec using TMRCNT. If the default
- * period is acceptable, TMRCNT can be left undefined.
+ * registers, the interrupt frequency can be reduced using TMRCNT.
+ * If the default period is acceptable, TMRCNT can be left undefined.
+ * TMRMS represents the desired mecs per tick (msecs per interrupt).
  *----------------------------------------------------------------------*/
+#define CONFIG_SYS_HZ			1000	/* Always 1000 */
+#define CONFIG_SYS_LOW_RES_TIMER
 #define CONFIG_SYS_NIOS_TMRBASE	0x00920860	/* Tick timer base addr	*/
-#define CONFIG_SYS_NIOS_TMRIRQ		3		/* Timer IRQ num	*/
-#define CONFIG_SYS_NIOS_TMRMS		10		/* 10 msec per tick	*/
-#define CONFIG_SYS_NIOS_TMRCNT	(CONFIG_SYS_NIOS_TMRMS * (CONFIG_SYS_CLK_FREQ/1000))
-#define	CONFIG_SYS_HZ		(CONFIG_SYS_CLK_FREQ/(CONFIG_SYS_NIOS_TMRCNT + 1))
+#define CONFIG_SYS_NIOS_TMRIRQ		3	/* Timer IRQ num */
+#define CONFIG_SYS_NIOS_TMRMS		10	/* Desired period (msec)*/
+#define CONFIG_SYS_NIOS_TMRCNT \
+		(CONFIG_SYS_NIOS_TMRMS * (CONFIG_SYS_CLK_FREQ/1000))
 
 
 /*

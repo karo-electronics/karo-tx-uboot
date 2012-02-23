@@ -39,6 +39,10 @@
 #define CONFIG_440		1	/* ... PPC440 family    */
 #define CONFIG_4xx		1	/* ... PPC4xx family    */
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFFF90000
+#endif
+
 #define CONFIG_SYS_CLK_FREQ	33333400
 
 #if 0 /* temporary disabled because OS/9 does not like dcache on startup */
@@ -53,7 +57,7 @@
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  *----------------------------------------------------------------------*/
-#define CONFIG_SYS_MONITOR_LEN		(384  * 1024)	/* Reserve 384 kB for Monitor   */
+#define CONFIG_SYS_MONITOR_LEN		(~(CONFIG_SYS_TEXT_BASE) + 1)
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)	/* Reserve 256 kB for malloc()  */
 
 #define CONFIG_PRAM		0	/* use pram variable to overwrite */
@@ -61,7 +65,7 @@
 #define CONFIG_SYS_BOOT_BASE_ADDR	0xf0000000
 #define CONFIG_SYS_SDRAM_BASE		0x00000000	/* _must_ be 0          */
 #define CONFIG_SYS_FLASH_BASE		0xfc000000	/* start of FLASH       */
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_NAND_ADDR		0xd0000000	/* NAND Flash           */
 #define CONFIG_SYS_OCM_BASE		0xe0010000	/* ocm                  */
 #define CONFIG_SYS_OCM_DATA_ADDR	CONFIG_SYS_OCM_BASE
@@ -71,9 +75,6 @@
 #define CONFIG_SYS_PCI_MEMBASE2	CONFIG_SYS_PCI_MEMBASE1 + 0x10000000
 #define CONFIG_SYS_PCI_MEMBASE3	CONFIG_SYS_PCI_MEMBASE2 + 0x10000000
 #define CONFIG_SYS_PCI_MEMSIZE		0x80000000	/* 2GB! */
-
-/* Don't change either of these */
-#define CONFIG_SYS_PERIPHERAL_BASE	0xef600000	/* internal peripherals */
 
 #define CONFIG_SYS_USB2D0_BASE		0xe0000100
 #define CONFIG_SYS_USB_DEVICE		0xe0000000
@@ -87,18 +88,21 @@
  *----------------------------------------------------------------------*/
 /* 440EPx/440GRx have 16KB of internal SRAM, so no need for D-Cache	*/
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_BASE	/* OCM                  */
-#define CONFIG_SYS_INIT_RAM_END	(4 << 10)
-#define CONFIG_SYS_GBL_DATA_SIZE	256	/* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_POST_WORD_ADDR
+#define CONFIG_SYS_INIT_RAM_SIZE	(4 << 10)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 
 /*-----------------------------------------------------------------------
  * Serial Port
  *----------------------------------------------------------------------*/
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	1
+#define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 #undef CONFIG_SYS_EXT_SERIAL_CLOCK
 #define CONFIG_BAUDRATE		115200
-#define CONFIG_SERIAL_MULTI	1
-#undef CONFIG_UART1_CONSOLE	/* console on front panel */
+#define CONFIG_SERIAL_MULTI     1
 
 #define CONFIG_SYS_BAUDRATE_TABLE						\
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200}
@@ -196,9 +200,7 @@
 
 #define CONFIG_SYS_NAND_ECCSIZE	256
 #define CONFIG_SYS_NAND_ECCBYTES	3
-#define CONFIG_SYS_NAND_ECCSTEPS	(CONFIG_SYS_NAND_PAGE_SIZE / CONFIG_SYS_NAND_ECCSIZE)
 #define CONFIG_SYS_NAND_OOBSIZE	16
-#define CONFIG_SYS_NAND_ECCTOTAL	(CONFIG_SYS_NAND_ECCBYTES * CONFIG_SYS_NAND_ECCSTEPS)
 #define CONFIG_SYS_NAND_ECCPOS		{0, 1, 2, 3, 6, 7}
 #endif
 
@@ -215,7 +217,6 @@
 /*-----------------------------------------------------------------------
  * DDR SDRAM
  *----------------------------------------------------------------------*/
-#define CONFIG_SYS_MBYTES_SDRAM	(256)	/* 256MB                        */
 #if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
 #define CONFIG_DDR_DATA_EYE	/* use DDR2 optimization        */
 #endif
@@ -227,6 +228,7 @@
  *----------------------------------------------------------------------*/
 #define CONFIG_HARD_I2C		1	/* I2C with hardware support    */
 #undef	CONFIG_SOFT_I2C		/* I2C bit-banged               */
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 #define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address  */
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 
@@ -288,12 +290,8 @@
 	"addtty=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0" \
 	"addmisc=setenv bootargs ${bootargs} mem=${mem}\0"		\
 	"nandargs=setenv bootargs root=/dev/mtdblock6 rootfstype=jffs2 rw\0" \
-	"nand_boot=run nandargs addip addtty addmisc;bootm ${kernel_addr}\0" \
 	"nand_boot_fdt=run nandargs addip addtty addmisc;"		\
 		"bootm ${kernel_addr} - ${fdt_addr}\0"			\
-	"net_nfs=tftp ${kernel_addr_r} ${bootfile};"			\
-		"run nfsargs addip addtty addmisc;"			\
-		"bootm\0"						\
 	"net_nfs_fdt=tftp ${kernel_addr_r} ${bootfile};"		\
 		"tftp  ${fdt_addr_r} ${fdt_file};"			\
 		"run nfsargs addip addtty addmisc;"			\
@@ -305,8 +303,8 @@
 	"fdt_addr_r=800000\0"						\
 	"fpga=fpga loadb 0 ${fpga_addr}\0"				\
 	"load=tftp 200000 /tftpboot/pmc440/u-boot.bin\0"		\
-	"update=protect off fffa0000 ffffffff;era fffa0000 ffffffff;"	\
-		"cp.b 200000 fffa0000 60000\0"				\
+	"update=protect off fff90000 ffffffff;era fff90000 ffffffff;"	\
+		"cp.b 200000 fff90000 70000\0"				\
 	""
 
 #define CONFIG_BOOTDELAY	3	/* autoboot after 3 seconds     */
@@ -324,7 +322,6 @@
 #define CONFIG_HAS_ETH0
 #define CONFIG_SYS_RX_ETH_BUFFER	32	/* Number of ethernet rx buffers & descriptors */
 
-#define CONFIG_NET_MULTI	1
 #define CONFIG_HAS_ETH1		1	/* add support for "eth1addr"   */
 #define CONFIG_PHY1_ADDR	1
 #define CONFIG_RESET_PHY_R	1
@@ -352,15 +349,12 @@
 
 #define CONFIG_CMD_BSP
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DTT
-#define CONFIG_CMD_DIAG
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_I2C
-#define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_NET
@@ -369,7 +363,6 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_USB
 #define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_SDRAM
 
 /* POST support */
 #define CONFIG_POST		(CONFIG_SYS_POST_MEMORY |	\
@@ -381,7 +374,6 @@
 				 CONFIG_SYS_POST_ETHER  |	\
 				 CONFIG_SYS_POST_SPR)
 
-#define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 #define CONFIG_LOGBUFFER
 #define CONFIG_SYS_POST_CACHE_ADDR	0x7fff0000	/* free virtual address     */
 
@@ -436,11 +428,16 @@
 /* Board-specific PCI */
 #define CONFIG_SYS_PCI_TARGET_INIT
 #define CONFIG_SYS_PCI_MASTER_INIT
+#define CONFIG_SYS_PCI_BOARD_FIXUP_IRQ
+
+#define CONFIG_PCI_BOOTDELAY 0
 
 /* PCI identification */
 #define CONFIG_SYS_PCI_SUBSYS_VENDORID 0x12FE	/* PCI Vendor ID: esd gmbh      */
 #define CONFIG_SYS_PCI_SUBSYS_ID_NONMONARCH 0x0441	/* PCI Device ID: Non-Monarch */
 #define CONFIG_SYS_PCI_SUBSYS_ID_MONARCH 0x0440	/* PCI Device ID: Monarch */
+/* for weak __pci_target_init() */
+#define CONFIG_SYS_PCI_SUBSYS_ID	CONFIG_SYS_PCI_SUBSYS_ID_MONARCH
 #define CONFIG_SYS_PCI_CLASSCODE_NONMONARCH	PCI_CLASS_PROCESSOR_POWERPC
 #define CONFIG_SYS_PCI_CLASSCODE_MONARCH	PCI_CLASS_BRIDGE_HOST
 
@@ -507,14 +504,6 @@
 #define CONFIG_SYS_NAND_BASE		(CONFIG_SYS_NAND_ADDR + CONFIG_SYS_NAND_CS)
 #define CONFIG_SYS_NAND_SELECT_DEVICE	1 /* nand driver supports mutipl. chips */
 #define CONFIG_SYS_NAND_QUIET_TEST	1
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01	/* Normal Power-On: Boot from FLASH     */
-#define BOOTFLAG_WARM	0x02	/* Software reboot                      */
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */

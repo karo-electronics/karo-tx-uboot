@@ -1,9 +1,15 @@
 /*
- * i2c driver for Freescale mx31
+ * i2c driver for Freescale i.MX series
  *
  * (c) 2007 Pengutronix, Sascha Hauer <s.hauer@pengutronix.de>
+ * (c) 2011 Marek Vasut <marek.vasut@gmail.com>
  *
- * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
+ * Based on i2c-imx.c from linux kernel:
+ *  Copyright (C) 2005 Torsten Koschorrek <koschorrek at synertronixx.de>
+ *  Copyright (C) 2005 Matthias Blaschke <blaschke at synertronixx.de>
+ *  Copyright (C) 2007 RightHand Technologies, Inc.
+ *  Copyright (C) 2008 Darius Augulis <darius.augulis at teltonika.lt>
+ *
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -25,14 +31,21 @@
  */
 
 #include <common.h>
+#include <asm/io.h>
 
 #if defined(CONFIG_HARD_I2C)
 
-#define IADR	0x00
-#define IFDR	0x04
-#define I2CR	0x08
-#define I2SR	0x0c
-#define I2DR	0x10
+#include <asm/arch/clock.h>
+#include <asm/arch/imx-regs.h>
+#include <i2c.h>
+
+struct mxc_i2c_regs {
+	uint32_t	iadr;
+	uint32_t	ifdr;
+	uint32_t	i2cr;
+	uint32_t	i2sr;
+	uint32_t	i2dr;
+};
 
 #define I2CR_IEN	(1 << 7)
 #define I2CR_IIEN	(1 << 6)
@@ -46,244 +59,414 @@
 #define I2SR_IIF	(1 << 1)
 #define I2SR_RX_NO_AK	(1 << 0)
 
-#ifdef CONFIG_SYS_I2C_PORT
-# define I2C_BASE	CONFIG_SYS_I2C_PORT
+#if defined(CONFIG_SYS_I2C_MX31_PORT1)
+#define I2C_BASE	0x43f80000
+#define I2C_CLK_OFFSET	26
+#elif defined (CONFIG_SYS_I2C_MX31_PORT2)
+#define I2C_BASE	0x43f98000
+#define I2C_CLK_OFFSET	28
+#elif defined (CONFIG_SYS_I2C_MX31_PORT3)
+#define I2C_BASE	0x43f84000
+#define I2C_CLK_OFFSET	30
+#elif defined(CONFIG_SYS_I2C_MX53_PORT1)
+#define I2C_BASE        I2C1_BASE_ADDR
+#elif defined(CONFIG_SYS_I2C_MX53_PORT2)
+#define I2C_BASE        I2C2_BASE_ADDR
+#elif defined(CONFIG_SYS_I2C_MX35_PORT1)
+#define I2C_BASE	I2C_BASE_ADDR
+#elif defined(CONFIG_SYS_I2C_MX35_PORT2)
+#define I2C_BASE	I2C2_BASE_ADDR
+#elif defined(CONFIG_SYS_I2C_MX35_PORT3)
+#define I2C_BASE	I2C3_BASE_ADDR
 #else
-# error "define CONFIG_SYS_I2C_PORT(I2C base address) to use the I2C driver"
+#error "define CONFIG_SYS_I2C_MX<Processor>_PORTx to use the mx I2C driver"
 #endif
 
-#define I2C_MAX_TIMEOUT		100000
-#define I2C_TIMEOUT_TICKET	1
+#define I2C_MAX_TIMEOUT		10000
 
-#undef DEBUG
-
-#ifdef DEBUG
-#define DPRINTF(args...)  printf(args)
-#else
-#define DPRINTF(args...)
-#endif
-
-static u16 div[] = { 30, 32, 36, 42, 48, 52, 60, 72, 80, 88, 104, 128, 144,
-	160, 192, 240, 288, 320, 384, 480, 576, 640, 768, 960,
-	1152, 1280, 1536, 1920, 2304, 2560, 3072, 3840
+static u16 i2c_clk_div[50][2] = {
+	{ 22,	0x20 }, { 24,	0x21 }, { 26,	0x22 }, { 28,	0x23 },
+	{ 30,	0x00 }, { 32,	0x24 }, { 36,	0x25 }, { 40,	0x26 },
+	{ 42,	0x03 }, { 44,	0x27 }, { 48,	0x28 }, { 52,	0x05 },
+	{ 56,	0x29 }, { 60,	0x06 }, { 64,	0x2A }, { 72,	0x2B },
+	{ 80,	0x2C }, { 88,	0x09 }, { 96,	0x2D }, { 104,	0x0A },
+	{ 112,	0x2E }, { 128,	0x2F }, { 144,	0x0C }, { 160,	0x30 },
+	{ 192,	0x31 }, { 224,	0x32 }, { 240,	0x0F }, { 256,	0x33 },
+	{ 288,	0x10 }, { 320,	0x34 }, { 384,	0x35 }, { 448,	0x36 },
+	{ 480,	0x13 }, { 512,	0x37 }, { 576,	0x14 }, { 640,	0x38 },
+	{ 768,	0x39 }, { 896,	0x3A }, { 960,	0x17 }, { 1024,	0x3B },
+	{ 1152,	0x18 }, { 1280,	0x3C }, { 1536,	0x3D }, { 1792,	0x3E },
+	{ 1920,	0x1B }, { 2048,	0x3F }, { 2304,	0x1C }, { 2560,	0x1D },
+	{ 3072,	0x1E }, { 3840,	0x1F }
 };
 
-static inline void i2c_reset(void)
+/*
+ * Calculate and set proper clock divider
+ */
+static uint8_t i2c_imx_get_clk(unsigned int rate)
 {
-	__REG16(I2C_BASE + I2CR) = 0;	/* Reset module */
-	__REG16(I2C_BASE + I2SR) = 0;
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN;
+	unsigned int i2c_clk_rate;
+	unsigned int div;
+	u8 clk_div;
+
+#if defined(CONFIG_MX31)
+	struct clock_control_regs *sc_regs =
+		(struct clock_control_regs *)CCM_BASE;
+
+	/* start the required I2C clock */
+	writel(readl(&sc_regs->cgr0) | (3 << I2C_CLK_OFFSET),
+		&sc_regs->cgr0);
+#endif
+
+	/* Divider value calculation */
+	i2c_clk_rate = mxc_get_clock(MXC_IPG_PERCLK);
+	div = (i2c_clk_rate + rate - 1) / rate;
+	if (div < i2c_clk_div[0][0])
+		clk_div = 0;
+	else if (div > i2c_clk_div[ARRAY_SIZE(i2c_clk_div) - 1][0])
+		clk_div = ARRAY_SIZE(i2c_clk_div) - 1;
+	else
+		for (clk_div = 0; i2c_clk_div[clk_div][0] < div; clk_div++)
+			;
+
+	/* Store divider value */
+	return clk_div;
 }
 
+/*
+ * Reset I2C Controller
+ */
+void i2c_reset(void)
+{
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+
+	writeb(0, &i2c_regs->i2cr);	/* Reset module */
+	writeb(0, &i2c_regs->i2sr);
+}
+
+/*
+ * Init I2C Bus
+ */
 void i2c_init(int speed, int unused)
 {
-	int freq;
-	int i;
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	u8 clk_idx = i2c_imx_get_clk(speed);
+	u8 idx = i2c_clk_div[clk_idx][1];
 
-#ifdef CONFIG_MX31
-	freq = mx31_get_ipg_clk();
-#else
-	freq = mxc_get_clock(MXC_IPG_PERCLK);
-#endif
-	for (i = 0; i < 0x1f; i++)
-		if (freq / div[i] <= speed)
-			break;
+	/* Store divider value */
+	writeb(idx, &i2c_regs->ifdr);
 
-	DPRINTF("%s: root clock: %d, speed: %d div: %x\n",
-		__func__, freq, speed, i);
-
-	__REG16(I2C_BASE + IFDR) = i;
 	i2c_reset();
 }
 
-static int wait_idle(void)
+/*
+ * Set I2C Speed
+ */
+int i2c_set_bus_speed(unsigned int speed)
 {
-	int timeout = I2C_MAX_TIMEOUT;
-
-	while ((__REG16(I2C_BASE + I2SR) & I2SR_IBB) && --timeout) {
-		__REG16(I2C_BASE + I2SR) = 0;
-		udelay(I2C_TIMEOUT_TICKET);
-	}
-	DPRINTF("%s:%x\n", __func__, __REG16(I2C_BASE + I2SR));
-	return timeout ? timeout : (!(__REG16(I2C_BASE + I2SR) & I2SR_IBB));
-}
-
-static int wait_busy(void)
-{
-	int timeout = I2C_MAX_TIMEOUT;
-
-	while ((!(__REG16(I2C_BASE + I2SR) & I2SR_IBB) && (--timeout))) {
-		__REG16(I2C_BASE + I2SR) = 0;
-		udelay(I2C_TIMEOUT_TICKET);
-	}
-	return timeout ? timeout : (__REG16(I2C_BASE + I2SR) & I2SR_IBB);
-}
-
-static int wait_complete(void)
-{
-	int timeout = I2C_MAX_TIMEOUT;
-
-	while ((!(__REG16(I2C_BASE + I2SR) & I2SR_ICF)) && (--timeout)) {
-		__REG16(I2C_BASE + I2SR) = 0;
-		udelay(I2C_TIMEOUT_TICKET);
-	}
-	DPRINTF("%s:%x\n", __func__, __REG16(I2C_BASE + I2SR));
-	{
-		int i;
-		for (i = 0; i < 200; i++)
-			udelay(10);
-
-	}
-	__REG16(I2C_BASE + I2SR) = 0;	/* clear interrupt */
-
-	return timeout;
-}
-
-static int tx_byte(u8 byte)
-{
-	__REG16(I2C_BASE + I2DR) = byte;
-
-	if (!wait_complete() || __REG16(I2C_BASE + I2SR) & I2SR_RX_NO_AK) {
-		DPRINTF("%s:%x <= %x\n", __func__, __REG16(I2C_BASE + I2SR),
-			byte);
-		return -1;
-	}
-	DPRINTF("%s:%x\n", __func__, byte);
+	i2c_init(speed, 0);
 	return 0;
 }
 
-static int rx_byte(u32 *pdata, int last)
+/*
+ * Get I2C Speed
+ */
+unsigned int i2c_get_bus_speed(void)
 {
-	if (!wait_complete())
-		return -1;
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	u8 clk_idx = readb(&i2c_regs->ifdr);
+	u8 clk_div;
 
-	if (last)
-		__REG16(I2C_BASE + I2CR) = I2CR_IEN;
+	for (clk_div = 0; i2c_clk_div[clk_div][1] != clk_idx; clk_div++)
+		;
 
-	*pdata = __REG16(I2C_BASE + I2DR);
-	DPRINTF("%s:%x\n", __func__, *pdata);
+	return mxc_get_clock(MXC_IPG_PERCLK) / i2c_clk_div[clk_div][0];
+}
+
+/*
+ * Wait for bus to be busy (or free if for_busy = 0)
+ *
+ * for_busy = 1: Wait for IBB to be asserted
+ * for_busy = 0: Wait for IBB to be de-asserted
+ */
+int i2c_imx_bus_busy(int for_busy)
+{
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	unsigned int temp;
+
+	int timeout = I2C_MAX_TIMEOUT;
+
+	while (timeout--) {
+		temp = readb(&i2c_regs->i2sr);
+
+		if (for_busy && (temp & I2SR_IBB))
+			return 0;
+		if (!for_busy && !(temp & I2SR_IBB))
+			return 0;
+
+		udelay(1);
+	}
+
+	return 1;
+}
+
+/*
+ * Wait for transaction to complete
+ */
+int i2c_imx_trx_complete(void)
+{
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	int timeout = I2C_MAX_TIMEOUT;
+
+	while (timeout--) {
+		if (readb(&i2c_regs->i2sr) & I2SR_IIF) {
+			writeb(0, &i2c_regs->i2sr);
+			return 0;
+		}
+
+		udelay(1);
+	}
+
+	return 1;
+}
+
+/*
+ * Check if the transaction was ACKed
+ */
+int i2c_imx_acked(void)
+{
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+
+	return readb(&i2c_regs->i2sr) & I2SR_RX_NO_AK;
+}
+
+/*
+ * Start the controller
+ */
+int i2c_imx_start(void)
+{
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	unsigned int temp = 0;
+	int result;
+	int speed = i2c_get_bus_speed();
+	u8 clk_idx = i2c_imx_get_clk(speed);
+	u8 idx = i2c_clk_div[clk_idx][1];
+
+	/* Store divider value */
+	writeb(idx, &i2c_regs->ifdr);
+
+	/* Enable I2C controller */
+	writeb(0, &i2c_regs->i2sr);
+	writeb(I2CR_IEN, &i2c_regs->i2cr);
+
+	/* Wait controller to be stable */
+	udelay(50);
+
+	/* Start I2C transaction */
+	temp = readb(&i2c_regs->i2cr);
+	temp |= I2CR_MSTA;
+	writeb(temp, &i2c_regs->i2cr);
+
+	result = i2c_imx_bus_busy(1);
+	if (result)
+		return result;
+
+	temp |= I2CR_MTX | I2CR_TX_NO_AK;
+	writeb(temp, &i2c_regs->i2cr);
+
 	return 0;
 }
 
-int i2c_probe(uchar chip)
+/*
+ * Stop the controller
+ */
+void i2c_imx_stop(void)
 {
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	unsigned int temp = 0;
+
+	/* Stop I2C transaction */
+	temp = readb(&i2c_regs->i2cr);
+	temp |= ~(I2CR_MSTA | I2CR_MTX);
+	writeb(temp, &i2c_regs->i2cr);
+
+	i2c_imx_bus_busy(0);
+
+	/* Disable I2C controller */
+	writeb(0, &i2c_regs->i2cr);
+}
+
+/*
+ * Set chip address and access mode
+ *
+ * read = 1: READ access
+ * read = 0: WRITE access
+ */
+int i2c_imx_set_chip_addr(uchar chip, int read)
+{
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
 	int ret;
 
-	__REG16(I2C_BASE + I2CR) = 0;	/* Reset module */
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN;
-	for (ret = 0; ret < 1000; ret++)
-		udelay(1);
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN | I2CR_MSTA | I2CR_MTX;
-	ret = tx_byte(chip << 1);
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN;
+	writeb((chip << 1) | read, &i2c_regs->i2dr);
+
+	ret = i2c_imx_trx_complete();
+	if (ret)
+		return ret;
+
+	ret = i2c_imx_acked();
+	if (ret)
+		return ret;
 
 	return ret;
 }
 
-static int i2c_addr(uchar chip, uint addr, int alen)
+/*
+ * Write register address
+ */
+int i2c_imx_set_reg_addr(uint addr, int alen)
 {
-	int i, retry = 0;
-	for (retry = 0; retry < 3; retry++) {
-		if (wait_idle())
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	int ret = 0;
+
+	while (alen--) {
+		writeb((addr >> (alen * 8)) & 0xff, &i2c_regs->i2dr);
+
+		ret = i2c_imx_trx_complete();
+		if (ret)
 			break;
-		i2c_reset();
-		for (i = 0; i < I2C_MAX_TIMEOUT; i++)
-			udelay(I2C_TIMEOUT_TICKET);
+
+		ret = i2c_imx_acked();
+		if (ret)
+			break;
 	}
-	if (retry >= 3) {
-		printf("%s:bus is busy(%x)\n",
-		       __func__, __REG16(I2C_BASE + I2SR));
-		return -1;
-	}
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN | I2CR_MSTA | I2CR_MTX;
-	if (!wait_busy()) {
-		printf("%s:trigger start fail(%x)\n",
-		       __func__, __REG16(I2C_BASE + I2SR));
-		return -1;
-	}
-	if (tx_byte(chip << 1) || (__REG16(I2C_BASE + I2SR) & I2SR_RX_NO_AK)) {
-		printf("%s:chip address cycle fail(%x)\n",
-		       __func__, __REG16(I2C_BASE + I2SR));
-		return -1;
-	}
-	while (alen--)
-		if (tx_byte((addr >> (alen * 8)) & 0xff) ||
-		    (__REG16(I2C_BASE + I2SR) & I2SR_RX_NO_AK)) {
-			printf("%s:device address cycle fail(%x)\n",
-			       __func__, __REG16(I2C_BASE + I2SR));
-			return -1;
-		}
-	return 0;
+
+	return ret;
 }
 
+/*
+ * Try if a chip add given address responds (probe the chip)
+ */
+int i2c_probe(uchar chip)
+{
+	int ret;
+
+	ret = i2c_imx_start();
+	if (ret)
+		return ret;
+
+	ret = i2c_imx_set_chip_addr(chip, 0);
+	if (ret)
+		return ret;
+
+	i2c_imx_stop();
+
+	return ret;
+}
+
+/*
+ * Read data from I2C device
+ */
 int i2c_read(uchar chip, uint addr, int alen, uchar *buf, int len)
 {
-	int timeout = I2C_MAX_TIMEOUT;
-	uint ret;
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	int ret;
+	unsigned int temp;
+	int i;
 
-	DPRINTF("%s chip: 0x%02x addr: 0x%04x alen: %d len: %d\n",
-		__func__, chip, addr, alen, len);
+	ret = i2c_imx_start();
+	if (ret)
+		return ret;
 
-	if (i2c_addr(chip, addr, alen)) {
-		printf("i2c_addr failed\n");
-		return -1;
-	}
+	/* write slave address */
+	ret = i2c_imx_set_chip_addr(chip, 0);
+	if (ret)
+		return ret;
 
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN | I2CR_MSTA | I2CR_MTX | I2CR_RSTA;
+	ret = i2c_imx_set_reg_addr(addr, alen);
+	if (ret)
+		return ret;
 
-	if (tx_byte(chip << 1 | 1) ||
-	    (__REG16(I2C_BASE + I2SR) & I2SR_RX_NO_AK)) {
-		printf("%s:Send 2th chip address fail(%x)\n",
-		       __func__, __REG16(I2C_BASE + I2SR));
-		return -1;
-	}
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN | I2CR_MSTA |
-	    ((len == 1) ? I2CR_TX_NO_AK : 0);
-	DPRINTF("CR=%x\n", __REG16(I2C_BASE + I2CR));
-	ret = __REG16(I2C_BASE + I2DR);
+	temp = readb(&i2c_regs->i2cr);
+	temp |= I2CR_RSTA;
+	writeb(temp, &i2c_regs->i2cr);
 
-	while (len--) {
-		if (len == 0)
-			__REG16(I2C_BASE + I2CR) = I2CR_IEN | I2CR_MSTA |
-			    I2CR_TX_NO_AK;
+	ret = i2c_imx_set_chip_addr(chip, 1);
+	if (ret)
+		return ret;
 
-		if (rx_byte(&ret, len == 0) < 0) {
-			printf("Read: rx_byte fail\n");
-			return -1;
+	/* setup bus to read data */
+	temp = readb(&i2c_regs->i2cr);
+	temp &= ~(I2CR_MTX | I2CR_TX_NO_AK);
+	if (len == 1)
+		temp |= I2CR_TX_NO_AK;
+	writeb(temp, &i2c_regs->i2cr);
+	readb(&i2c_regs->i2dr);
+
+	/* read data */
+	for (i = 0; i < len; i++) {
+		ret = i2c_imx_trx_complete();
+		if (ret)
+			return ret;
+
+		/*
+		 * It must generate STOP before read I2DR to prevent
+		 * controller from generating another clock cycle
+		 */
+		if (i == (len - 1)) {
+			temp = readb(&i2c_regs->i2cr);
+			temp &= ~(I2CR_MSTA | I2CR_MTX);
+			writeb(temp, &i2c_regs->i2cr);
+			i2c_imx_bus_busy(0);
+		} else if (i == (len - 2)) {
+			temp = readb(&i2c_regs->i2cr);
+			temp |= I2CR_TX_NO_AK;
+			writeb(temp, &i2c_regs->i2cr);
 		}
-		*buf++ = ret;
+
+		buf[i] = readb(&i2c_regs->i2dr);
 	}
 
-	while (__REG16(I2C_BASE + I2SR) & I2SR_IBB && --timeout) {
-		__REG16(I2C_BASE + I2SR) = 0;
-		udelay(I2C_TIMEOUT_TICKET);
-	}
-	if (!timeout) {
-		printf("%s:trigger stop fail(%x)\n",
-		       __func__, __REG16(I2C_BASE + I2SR));
-	}
-	return 0;
+	i2c_imx_stop();
+
+	return ret;
 }
 
+/*
+ * Write data to I2C device
+ */
 int i2c_write(uchar chip, uint addr, int alen, uchar *buf, int len)
 {
-	int timeout = I2C_MAX_TIMEOUT;
-	DPRINTF("%s chip: 0x%02x addr: 0x%04x alen: %d len: %d\n",
-		__func__, chip, addr, alen, len);
+	struct mxc_i2c_regs *i2c_regs = (struct mxc_i2c_regs *)I2C_BASE;
+	int ret;
+	int i;
 
-	if (i2c_addr(chip, addr, alen))
-		return -1;
+	ret = i2c_imx_start();
+	if (ret)
+		return ret;
 
-	while (len--)
-		if (tx_byte(*buf++))
-			return -1;
+	/* write slave address */
+	ret = i2c_imx_set_chip_addr(chip, 0);
+	if (ret)
+		return ret;
 
-	__REG16(I2C_BASE + I2CR) = I2CR_IEN;
+	ret = i2c_imx_set_reg_addr(addr, alen);
+	if (ret)
+		return ret;
 
-	while (__REG16(I2C_BASE + I2SR) & I2SR_IBB && --timeout)
-		udelay(I2C_TIMEOUT_TICKET);
+	for (i = 0; i < len; i++) {
+		writeb(buf[i], &i2c_regs->i2dr);
 
-	return 0;
+		ret = i2c_imx_trx_complete();
+		if (ret)
+			return ret;
+
+		ret = i2c_imx_acked();
+		if (ret)
+			return ret;
+	}
+
+	i2c_imx_stop();
+
+	return ret;
 }
-
-#endif				/* CONFIG_HARD_I2C */
+#endif /* CONFIG_HARD_I2C */

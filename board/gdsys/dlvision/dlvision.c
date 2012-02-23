@@ -25,7 +25,7 @@
 #include <command.h>
 #include <asm/processor.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
+#include <asm/ppc4xx-gpio.h>
 
 enum {
 	HWTYPE_DLVISION_CPU = 0,
@@ -36,19 +36,19 @@ enum {
 
 int board_early_init_f(void)
 {
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr(uicer, 0x00000000);	/* disable all ints */
-	mtdcr(uiccr, 0x00000000);	/* set all to be non-critical */
-	mtdcr(uicpr, 0xFFFFFF80);	/* set int polarities */
-	mtdcr(uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr(uicvcr, 0x00000001);	/* set vect base=0,INT0 highest prio */
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr(UIC0CR, 0x00000000);	/* set all to be non-critical */
+	mtdcr(UIC0PR, 0xFFFFFF80);	/* set int polarities */
+	mtdcr(UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr(UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest prio */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	/*
 	 * EBC Configuration Register: set ready timeout to 512 ebc-clks
 	 * -> ca. 15 us
 	 */
-	mtebc(epcr, 0xa8400000);	/* ebc always driven */
+	mtebc(EBC0_CFG, 0xa8400000);	/* ebc always driven */
 
 	/*
 	 * setup io-latches
@@ -75,7 +75,8 @@ int misc_init_r(void)
  */
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 	u8 channel2_msr = in_8((void *)CONFIG_UART_BASE + 0x26);
 	u8 channel3_msr = in_8((void *)CONFIG_UART_BASE + 0x36);
 	u8 channel7_msr = in_8((void *)CONFIG_UART_BASE + 0x76);
@@ -108,9 +109,9 @@ int checkboard(void)
 		break;
 	}
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	puts("\n       ");
 

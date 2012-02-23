@@ -20,8 +20,9 @@
 #include <linux/mtd/compat.h>
 #include <linux/mtd/bbm.h>
 
+#define MAX_DIES		2
 #define MAX_BUFFERRAM		2
-#define MAX_ONENAND_PAGESIZE	(2048 + 64)
+#define MAX_ONENAND_PAGESIZE	(4096 + 128)
 
 /* Scan and identify a OneNAND device */
 extern int onenand_scan (struct mtd_info *mtd, int max_chips);
@@ -39,9 +40,14 @@ struct onenand_bufferram {
 /**
  * struct onenand_chip - OneNAND Private Flash Chip Data
  * @param base		[BOARDSPECIFIC] address to access OneNAND
+ * @dies:               [INTERN][FLEXONENAND] number of dies on chip
+ * @boundary:           [INTERN][FLEXONENAND] Boundary of the dies
+ * @diesize:            [INTERN][FLEXONENAND] Size of the dies
  * @param chipsize	[INTERN] the size of one chip for multichip arrays
  * @param device_id	[INTERN] device ID
  * @param verstion_id	[INTERN] version ID
+ * @technology		[INTERN] describes the internal NAND array technology such as SLC or MLC.
+ * @density_mask:	[INTERN] chip density, used for DDP devices
  * @param options	[BOARDSPECIFIC] various chip options. They can partly be set to inform onenand_scan about
  * @param erase_shift	[INTERN] number of address bits in a block
  * @param page_shift	[INTERN] number of address bits in a page
@@ -64,9 +70,13 @@ struct onenand_bufferram {
  */
 struct onenand_chip {
 	void __iomem *base;
+	unsigned int dies;
+	unsigned int boundary[MAX_DIES];
+	unsigned int diesize[MAX_DIES];
 	unsigned int chipsize;
 	unsigned int device_id;
 	unsigned int version_id;
+	unsigned int technology;
 	unsigned int density_mask;
 	unsigned int options;
 
@@ -83,9 +93,8 @@ struct onenand_chip {
 			size_t len);
 	int (*wait) (struct mtd_info *mtd, int state);
 	int (*bbt_wait) (struct mtd_info *mtd, int state);
+	void (*unlock_all)(struct mtd_info *mtd);
 	int (*read_bufferram) (struct mtd_info *mtd, loff_t addr, int area,
-			       unsigned char *buffer, int offset, size_t count);
-	int (*read_spareram) (struct mtd_info *mtd, loff_t addr, int area,
 			       unsigned char *buffer, int offset, size_t count);
 	int (*write_bufferram) (struct mtd_info *mtd, loff_t addr, int area,
 				const unsigned char *buffer, int offset,
@@ -125,6 +134,8 @@ struct onenand_chip {
 #define ONENAND_SET_BUFFERRAM0(this)		(this->bufferram_index = 0)
 #define ONENAND_SET_BUFFERRAM1(this)		(this->bufferram_index = 1)
 
+#define FLEXONENAND(this)	(this->device_id & DEVICE_IS_FLEXONENAND)
+#define ONENAND_IS_MLC(this)	(this->technology & ONENAND_TECHNOLOGY_IS_MLC)
 #define ONENAND_IS_DDP(this)						\
 	(this->device_id & ONENAND_DEVICE_IS_DDP)
 
@@ -136,12 +147,14 @@ struct onenand_chip {
 #define ONENAND_HAS_CONT_LOCK		(0x0001)
 #define ONENAND_HAS_UNLOCK_ALL		(0x0002)
 #define ONENAND_HAS_2PLANE		(0x0004)
+#define ONENAND_RUNTIME_BADBLOCK_CHECK	(0x0200)
 #define ONENAND_PAGEBUF_ALLOC		(0x1000)
 #define ONENAND_OOBBUF_ALLOC		(0x2000)
 
 /*
  * OneNAND Flash Manufacturer ID Codes
  */
+#define ONENAND_MFR_NUMONYX	0x20
 #define ONENAND_MFR_SAMSUNG	0xec
 
 /**
@@ -157,4 +170,6 @@ struct onenand_manufacturers {
 int onenand_bbt_read_oob(struct mtd_info *mtd, loff_t from,
 			struct mtd_oob_ops *ops);
 
+unsigned int onenand_block(struct onenand_chip *this, loff_t addr);
+int flexonenand_region(struct mtd_info *mtd, loff_t addr);
 #endif				/* __LINUX_MTD_ONENAND_H */

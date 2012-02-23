@@ -40,16 +40,23 @@
 #define CONFIG_S3C64XX		1	/* in a SAMSUNG S3C64XX Family  */
 #define CONFIG_SMDK6400		1	/* on a SAMSUNG SMDK6400 Board  */
 
+#define CONFIG_PERIPORT_REMAP
+#define CONFIG_PERIPORT_BASE	0x70000000
+#define CONFIG_PERIPORT_SIZE	0x13
+
+#define CONFIG_SYS_IRAM_BASE    0x0c000000  /* Internal SRAM base address */
+#define CONFIG_SYS_IRAM_SIZE    0x2000      /* 8 KB of internal SRAM memory */
+#define CONFIG_SYS_IRAM_END     (CONFIG_SYS_IRAM_BASE + CONFIG_SYS_IRAM_SIZE)
+#define CONFIG_SYS_INIT_SP_ADDR (CONFIG_SYS_IRAM_END - GENERATED_GBL_DATA_SIZE)
+
 #define CONFIG_SYS_SDRAM_BASE	0x50000000
 
 /* input clock of PLL: SMDK6400 has 12MHz input clock */
 #define CONFIG_SYS_CLK_FREQ	12000000
 
-#if !defined(CONFIG_NAND_SPL) && (TEXT_BASE >= 0xc0000000)
+#if !defined(CONFIG_NAND_SPL) && (CONFIG_SYS_TEXT_BASE >= 0xc0000000)
 #define CONFIG_ENABLE_MMU
 #endif
-
-#define CONFIG_MEMORY_UPPER_CODE
 
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_CMDLINE_TAG
@@ -58,25 +65,22 @@
 /*
  * Architecture magic and machine type
  */
-#define MACH_TYPE		1270
+#define CONFIG_MACH_TYPE		1270
 
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
-
-#undef CONFIG_SKIP_RELOCATE_UBOOT
 
 /*
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 1024 * 1024)
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes for initial data */
 
 /*
  * Hardware drivers
  */
-#define CONFIG_DRIVER_CS8900	1	/* we have a CS8900 on-board	*/
-#define CS8900_BASE	  	0x18800300
-#define CS8900_BUS16		1 	/* follow the Linux driver	*/
+#define CONFIG_CS8900			/* we have a CS8900 on-board	*/
+#define CONFIG_CS8900_BASE	  	0x18800300
+#define CONFIG_CS8900_BUS16		/* follow the Linux driver	*/
 
 /*
  * select serial console configuration
@@ -258,18 +262,12 @@
 #define CONFIG_SYS_NAND_ECCSIZE	CONFIG_SYS_NAND_PAGE_SIZE
 /* Number of ECC bytes per OOB - S3C6400 calculates 4 bytes ECC in 1-bit mode */
 #define CONFIG_SYS_NAND_ECCBYTES	4
-/* Number of ECC-blocks per NAND page */
-#define CONFIG_SYS_NAND_ECCSTEPS	(CONFIG_SYS_NAND_PAGE_SIZE / CONFIG_SYS_NAND_ECCSIZE)
 /* Size of a single OOB region */
 #define CONFIG_SYS_NAND_OOBSIZE	64
-/* Number of ECC bytes per page */
-#define CONFIG_SYS_NAND_ECCTOTAL	(CONFIG_SYS_NAND_ECCBYTES * CONFIG_SYS_NAND_ECCSTEPS)
 /* ECC byte positions */
 #define CONFIG_SYS_NAND_ECCPOS		{40, 41, 42, 43, 44, 45, 46, 47, \
 				 48, 49, 50, 51, 52, 53, 54, 55, \
 				 56, 57, 58, 59, 60, 61, 62, 63}
-
-#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
 
 /* Boot configuration (define only one of next 3) */
 #define CONFIG_BOOT_NAND

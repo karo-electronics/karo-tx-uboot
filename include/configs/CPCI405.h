@@ -37,7 +37,10 @@
 #define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 #define CONFIG_CPCI405		1	/* ...on a CPCI405 board	*/
 
+#define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
+
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
+#define CONFIG_MISC_INIT_R	 1	/* call misc_init_r()		*/
 
 #define CONFIG_SYS_CLK_FREQ	33000000 /* external frequency to pll	*/
 
@@ -58,7 +61,6 @@
 #define CONFIG_LXT971_NO_SLEEP  1       /* disable sleep mode in LXT971 */
 #define CONFIG_RESET_PHY_R      1       /* use reset_phy() to disable phy sleep mode */
 
-#define CONFIG_NET_MULTI	1
 #undef  CONFIG_HAS_ETH1
 
 /*
@@ -124,6 +126,12 @@
 #define CONFIG_SYS_MEMTEST_START	0x0400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 4 ... 12 MB in DRAM	*/
 
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	1
+#define CONFIG_SYS_NS16550_CLK		get_serial_clock()
+
 #undef	CONFIG_SYS_EXT_SERIAL_CLOCK	       /* no external serial clock used */
 #define CONFIG_SYS_BASE_BAUD	    691200
 
@@ -171,6 +179,8 @@
 #define CONFIG_SYS_PCI_PTM2MS  0xffc00001      /* 4MB, enable                  */
 #define CONFIG_SYS_PCI_PTM2PCI 0x04000000      /* Host: use this pci address   */
 
+#define CONFIG_PCI_4xx_PTM_OVERWRITE	1 /* overwrite PTMx settings by env */
+
 /*-----------------------------------------------------------------------
  * IDE/ATA stuff
  *-----------------------------------------------------------------------
@@ -195,9 +205,9 @@
  * Please note that CONFIG_SYS_SDRAM_BASE _must_ start at 0
  */
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
-#define CONFIG_SYS_FLASH_BASE		TEXT_BASE
-#define CONFIG_SYS_MONITOR_BASE		TEXT_BASE
-#define CONFIG_SYS_MONITOR_LEN		(~(TEXT_BASE) + 1)
+#define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_MONITOR_LEN		(~(CONFIG_SYS_TEXT_BASE) + 1)
 #define CONFIG_SYS_MALLOC_LEN		(128 * 1024)	/* Reserve 128 kB for malloc()	*/
 
 /*
@@ -253,6 +263,7 @@
  * I2C EEPROM (CAT24WC08) for environment
  */
 #define CONFIG_HARD_I2C			/* I2c with hardware support */
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 #define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address */
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 
@@ -323,18 +334,8 @@
 #else
 #define CONFIG_SYS_INIT_RAM_ADDR	0x00df0000 /* inside of SDRAM			*/
 #endif
-#define CONFIG_SYS_INIT_RAM_END	0x2000	/* End of used area in RAM	       */
-#define CONFIG_SYS_GBL_DATA_SIZE      128  /* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET    (CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x2000	/* Size of used area in RAM	       */
+#define CONFIG_SYS_GBL_DATA_OFFSET    (CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
 
 #endif	/* __CONFIG_H */

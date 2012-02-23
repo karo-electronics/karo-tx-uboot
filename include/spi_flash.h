@@ -24,18 +24,20 @@
 #define _SPI_FLASH_H_
 
 #include <spi.h>
-
-struct spi_flash_region {
-	unsigned int	count;
-	unsigned int	size;
-};
+#include <linux/types.h>
+#include <linux/compiler.h>
 
 struct spi_flash {
 	struct spi_slave *spi;
 
 	const char	*name;
 
+	/* Total flash size */
 	u32		size;
+	/* Write (page) size */
+	u32		page_size;
+	/* Erase (sector) size */
+	u32		sector_size;
 
 	int		(*read)(struct spi_flash *flash, u32 offset,
 				size_t len, void *buf);
@@ -66,5 +68,7 @@ static inline int spi_flash_erase(struct spi_flash *flash, u32 offset,
 {
 	return flash->erase(flash, offset, len);
 }
+
+void spi_boot(void) __noreturn;
 
 #endif /* _SPI_FLASH_H_ */

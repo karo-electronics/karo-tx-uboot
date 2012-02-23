@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2007-2008
- * Stelian Pop <stelian.pop@leadtechdesign.com>
+ * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  * Ilko Iliev <www.ronetix.at>
  *
@@ -28,47 +28,56 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+/*
+ * SoC must be defined first, before hardware.h is included.
+ * In this case SoC is defined in boards.cfg.
+ */
+
+#include <asm/hardware.h>
 /* ARM asynchronous clock */
-#define AT91_CPU_NAME		"AT91SAM9261"
 
 #define CONFIG_DISPLAY_BOARDINFO
 
 #define MASTER_PLL_DIV		15
 #define MASTER_PLL_MUL		162
 #define MAIN_PLL_DIV		2
-#define AT91_MAIN_CLOCK		18432000
+#define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
+#define CONFIG_SYS_AT91_MAIN_CLOCK	18432000
 
 #define CONFIG_SYS_HZ		1000
 
-#define CONFIG_ARM926EJS	1	/* This is an ARM926EJS Core	*/
-#define CONFIG_AT91SAM9261	1	/* It's an Atmel AT91SAM9261 SoC*/
+#define CONFIG_SYS_AT91_CPU_NAME	"AT91SAM9261"
 #define CONFIG_PM9261		1	/* on a Ronetix PM9261 Board	*/
 #define CONFIG_ARCH_CPU_INIT
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff	*/
+#define CONFIG_SYS_TEXT_BASE	0
+
+#define MACH_TYPE_PM9261	1187
+#define CONFIG_MACH_TYPE	MACH_TYPE_PM9261
 
 /* clocks */
 /* CKGR_MOR - enable main osc. */
 #define CONFIG_SYS_MOR_VAL						\
-		(AT91_PMC_MOSCEN |					\
+		(AT91_PMC_MOR_MOSCEN |					\
 		 (255 << 8))		/* Main Oscillator Start-up Time */
 #define CONFIG_SYS_PLLAR_VAL						\
-		(AT91_PMC_PLLA_WR_ERRATA | /* Bit 29 must be 1 when prog */ \
-		 AT91_PMC_OUT |						\
+		(AT91_PMC_PLLAR_29 | /* Bit 29 must be 1 when prog */ \
+		 AT91_PMC_PLLXR_OUT(3) |						\
 		 ((MASTER_PLL_MUL - 1) << 16) | (MASTER_PLL_DIV))
 
 /* PCK/2 = MCK Master Clock from PLLA */
 #define	CONFIG_SYS_MCKR1_VAL		\
-		(AT91_PMC_CSS_SLOW |	\
-		 AT91_PMC_PRES_1 |	\
-		 AT91SAM9_PMC_MDIV_2 |	\
-		 AT91_PMC_PDIV_1)
+		(AT91_PMC_MCKR_CSS_SLOW |	\
+		 AT91_PMC_MCKR_PRES_1 |	\
+		 AT91_PMC_MCKR_MDIV_2 |	\
+		 AT91_PMC_MCKR_PLLADIV_1)
 
 /* PCK/2 = MCK Master Clock from PLLA */
 #define	CONFIG_SYS_MCKR2_VAL		\
-		(AT91_PMC_CSS_PLLA |	\
-		 AT91_PMC_PRES_1 |	\
-		 AT91SAM9_PMC_MDIV_2 |	\
-		 AT91_PMC_PDIV_1)
+		(AT91_PMC_MCKR_CSS_PLLA |	\
+		 AT91_PMC_MCKR_PRES_1 |	\
+		 AT91_PMC_MCKR_MDIV_2 |	\
+		 AT91_PMC_MCKR_PLLADIV_1)
 
 /* define PDC[31:16] as DATA[31:16] */
 #define CONFIG_SYS_PIOC_PDR_VAL1	0xFFFF0000
@@ -77,7 +86,7 @@
 
 /* EBI_CSA, no pull-ups for D[15:0], CS1 SDRAM, CS3 NAND Flash */
 #define CONFIG_SYS_MATRIX_EBICSA_VAL		\
-       (AT91_MATRIX_DBPUC | AT91_MATRIX_CS1A_SDRAMC)
+	(AT91_MATRIX_CSA_DBPUC | AT91_MATRIX_CSA_EBI_CS1A)
 
 /* SDRAM */
 /* SDRAMC_MR Mode register */
@@ -120,48 +129,47 @@
 
 /* setup SMC0, CS0 (NOR Flash) - 16-bit, 15 WS */
 #define CONFIG_SYS_SMC0_SETUP0_VAL					\
-		(AT91_SMC_NWESETUP_(10) | AT91_SMC_NCS_WRSETUP_(10) |	\
-		 AT91_SMC_NRDSETUP_(10) | AT91_SMC_NCS_RDSETUP_(10))
+		(AT91_SMC_SETUP_NWE(10) | AT91_SMC_SETUP_NCS_WR(10) |	\
+		 AT91_SMC_SETUP_NRD(10) | AT91_SMC_SETUP_NCS_RD(10))
 #define CONFIG_SYS_SMC0_PULSE0_VAL					\
-		(AT91_SMC_NWEPULSE_(11) | AT91_SMC_NCS_WRPULSE_(11) |	\
-		 AT91_SMC_NRDPULSE_(11) | AT91_SMC_NCS_RDPULSE_(11))
+		(AT91_SMC_PULSE_NWE(11) | AT91_SMC_PULSE_NCS_WR(11) |	\
+		 AT91_SMC_PULSE_NRD(11) | AT91_SMC_PULSE_NCS_RD(11))
 #define CONFIG_SYS_SMC0_CYCLE0_VAL	\
-		(AT91_SMC_NWECYCLE_(22) | AT91_SMC_NRDCYCLE_(22))
+		(AT91_SMC_CYCLE_NWE(22) | AT91_SMC_CYCLE_NRD(22))
 #define CONFIG_SYS_SMC0_MODE0_VAL				\
-		(AT91_SMC_READMODE | AT91_SMC_WRITEMODE |	\
-		 AT91_SMC_DBW_16 |				\
-		 AT91_SMC_TDFMODE |				\
-		 AT91_SMC_TDF_(6))
+		(AT91_SMC_MODE_RM_NRD | AT91_SMC_MODE_WM_NWE |	\
+		 AT91_SMC_MODE_DBW_16 |				\
+		 AT91_SMC_MODE_TDF |				\
+		 AT91_SMC_MODE_TDF_CYCLE(6))
 
 /* user reset enable */
 #define CONFIG_SYS_RSTC_RMR_VAL			\
 		(AT91_RSTC_KEY |		\
-		AT91_RSTC_PROCRST |		\
-		AT91_RSTC_RSTTYP_WAKEUP |	\
-		AT91_RSTC_RSTTYP_WATCHDOG)
+		AT91_RSTC_CR_PROCRST |		\
+		AT91_RSTC_MR_ERSTL(1) |	\
+		AT91_RSTC_MR_ERSTL(2))
 
 /* Disable Watchdog */
 #define CONFIG_SYS_WDTC_WDMR_VAL				\
-		(AT91_WDT_WDIDLEHLT | AT91_WDT_WDDBGHLT |	\
-		 AT91_WDT_WDV |					\
-		 AT91_WDT_WDDIS |				\
-		 AT91_WDT_WDD)
+		(AT91_WDT_MR_WDIDLEHLT | AT91_WDT_MR_WDDBGHLT |	\
+		 AT91_WDT_MR_WDV(0xfff) |					\
+		 AT91_WDT_MR_WDDIS |				\
+		 AT91_WDT_MR_WDD(0xfff))
 
 #define CONFIG_CMDLINE_TAG	1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS 1
 #define CONFIG_INITRD_TAG	1
 
 #undef CONFIG_SKIP_LOWLEVEL_INIT
-#undef CONFIG_SKIP_RELOCATE_UBOOT
+#define CONFIG_BOARD_EARLY_INIT_F
 
 /*
  * Hardware drivers
  */
+#define CONFIG_AT91_GPIO	1
 #define CONFIG_ATMEL_USART	1
-#undef CONFIG_USART0
-#undef CONFIG_USART1
-#undef CONFIG_USART2
-#define CONFIG_USART3		1	/* USART 3 is DBGU */
+#define CONFIG_USART_BASE		ATMEL_BASE_DBGU
+#define	CONFIG_USART_ID			ATMEL_ID_SYS
 
 /* LCD */
 #define CONFIG_LCD			1
@@ -177,9 +185,9 @@
 
 /* LED */
 #define CONFIG_AT91_LED
-#define	CONFIG_RED_LED		AT91_PIN_PC12
-#define	CONFIG_GREEN_LED	AT91_PIN_PC13
-#define	CONFIG_YELLOW_LED	AT91_PIN_PC15
+#define	CONFIG_RED_LED		AT91_PIO_PORTC, 12
+#define	CONFIG_GREEN_LED	AT91_PIO_PORTC, 13
+#define	CONFIG_YELLOW_LED	AT91_PIO_PORTC, 15
 
 #define CONFIG_BOOTDELAY	3
 
@@ -197,11 +205,11 @@
 #include <config_cmd_default.h>
 #undef CONFIG_CMD_BDI
 #undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_AUTOSCRIPT
 #undef CONFIG_CMD_FPGA
 #undef CONFIG_CMD_LOADS
 #undef CONFIG_CMD_IMLS
 
+#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_PING		1
 #define CONFIG_CMD_DHCP		1
 #define CONFIG_CMD_NAND		1
@@ -225,7 +233,6 @@
 
 /* NAND flash */
 #define CONFIG_NAND_ATMEL
-#define NAND_MAX_CHIPS				1
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_BASE			0x40000000
 #define CONFIG_SYS_NAND_DBW_8			1
@@ -233,11 +240,8 @@
 #define CONFIG_SYS_NAND_MASK_ALE		(1 << 22)
 /* our CLE is AD21 */
 #define CONFIG_SYS_NAND_MASK_CLE		(1 << 21)
-#define CONFIG_SYS_NAND_ENABLE_PIN		AT91_PIN_PC14
-#define CONFIG_SYS_NAND_READY_PIN		AT91_PIN_PA16
-
-#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
-
+#define CONFIG_SYS_NAND_ENABLE_PIN		AT91_PIO_PORTC, 14
+#define CONFIG_SYS_NAND_READY_PIN		AT91_PIO_PORTA, 16
 
 /* NOR flash */
 #define CONFIG_SYS_FLASH_CFI			1
@@ -255,7 +259,6 @@
 #define CONFIG_DM9000_USE_16BIT			1
 #define CONFIG_NET_RETRY_COUNT			20
 #define CONFIG_RESET_PHY_R			1
-#define CONFIG_NET_MULTI
 
 /* USB */
 #define CONFIG_USB_ATMEL
@@ -373,7 +376,10 @@
  */
 #define CONFIG_SYS_MALLOC_LEN		\
 		ROUND(3 * CONFIG_ENV_SIZE + 128 * 1024, 0x1000)
-#define CONFIG_SYS_GBL_DATA_SIZE	128
+
+#define CONFIG_SYS_SDRAM_BASE	PHYS_SDRAM
+#define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_SDRAM_BASE + 0x1000 - \
+				GENERATED_GBL_DATA_SIZE)
 
 #define CONFIG_STACKSIZE		(32 * 1024)	/* regular stack */
 

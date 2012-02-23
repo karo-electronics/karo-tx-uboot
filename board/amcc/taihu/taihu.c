@@ -29,7 +29,7 @@
 #include <asm/io.h>
 #include <spi.h>
 #include <netdev.h>
-#include <asm/gpio.h>
+#include <asm/ppc4xx-gpio.h>
 
 extern int lcd_init(void);
 
@@ -40,22 +40,22 @@ int board_early_init_f(void)
 {
 	lcd_init();
 
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr(uicer, 0x00000000);	/* disable all ints */
-	mtdcr(uiccr, 0x00000000);
-	mtdcr(uicpr, 0xFFFF7F00);	/* set int polarities */
-	mtdcr(uictr, 0x00000000);	/* set int trigger levels */
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr(uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr(UIC0CR, 0x00000000);
+	mtdcr(UIC0PR, 0xFFFF7F00);	/* set int polarities */
+	mtdcr(UIC0TR, 0x00000000);	/* set int trigger levels */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest priority */
 
-	mtebc(pb3ap, CONFIG_SYS_EBC_PB3AP);	/* memory bank 3 (CPLD_LCM) initialization */
-	mtebc(pb3cr, CONFIG_SYS_EBC_PB3CR);
+	mtebc(PB3AP, CONFIG_SYS_EBC_PB3AP);	/* memory bank 3 (CPLD_LCM) initialization */
+	mtebc(PB3CR, CONFIG_SYS_EBC_PB3CR);
 
 	/*
 	 * Configure CPC0_PCI to enable PerWE as output
 	 * and enable the internal PCI arbiter
 	 */
-	mtdcr(cpc0_pci, CPC0_PCI_SPE | CPC0_PCI_HOST_CFG_EN | CPC0_PCI_ARBIT_EN);
+	mtdcr(CPC0_PCI, CPC0_PCI_SPE | CPC0_PCI_HOST_CFG_EN | CPC0_PCI_ARBIT_EN);
 
 	return 0;
 }
@@ -65,20 +65,21 @@ int board_early_init_f(void)
  */
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 
 	puts("Board: Taihu - AMCC PPC405EP Evaluation Board");
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	putc('\n');
 
 	return 0;
 }
 
-static int do_sw_stat(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
+static int do_sw_stat(cmd_tbl_t* cmd_tp, int flags, int argc, char * const argv[])
 {
 	char stat;
 	int i;
@@ -97,20 +98,16 @@ U_BOOT_CMD (
 	""
 );
 
-static int do_led_ctl(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
+static int do_led_ctl(cmd_tbl_t* cmd_tp, int flags, int argc, char * const argv[])
 {
 	int led_no;
 
-	if (argc != 3) {
-		cmd_usage(cmd_tp);
-		return -1;
-	}
+	if (argc != 3)
+		return cmd_usage(cmd_tp);
 
 	led_no = simple_strtoul(argv[1], NULL, 16);
-	if (led_no != 1 && led_no != 2) {
-		cmd_usage(cmd_tp);
-		return -1;
-	}
+	if (led_no != 1 && led_no != 2)
+		return cmd_usage(cmd_tp);
 
 	if (strcmp(argv[2],"off") == 0x0) {
 		if (led_no == 1)
@@ -123,8 +120,7 @@ static int do_led_ctl(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
 		else
 			gpio_write_bit(31, 0);
 	} else {
-		cmd_usage(cmd_tp);
-		return -1;
+		return cmd_usage(cmd_tp);
 	}
 
 	return 0;

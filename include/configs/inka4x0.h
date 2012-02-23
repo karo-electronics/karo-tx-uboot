@@ -36,13 +36,19 @@
 #define CONFIG_MPC5200		1	/* (more precisely an MPC5200 CPU)	*/
 #define CONFIG_INKA4X0		1	/* INKA4x0 board			*/
 
+/*
+ * Valid values for CONFIG_SYS_TEXT_BASE are:
+ * 0xFFE00000	boot low
+ * 0x00100000	boot from RAM (for testing only)
+ */
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFFE00000	/* Standard: boot low */
+#endif
+#define CONFIG_SYS_LDSCRIPT	"arch/powerpc/cpu/mpc5xxx/u-boot-customlayout.lds"
+
 #define CONFIG_SYS_MPC5XXX_CLKIN	33000000 /* ... running at 33.000000MHz		*/
 
-#define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM		0x02	/* Software reboot			*/
-
 #define CONFIG_MISC_INIT_F	1	/* Use misc_init_f()			*/
-#define CONFIG_MISC_INIT_R	1	/* Use misc_init_r()			*/
 
 #define CONFIG_HIGH_BATS	1	/* High BATs supported			*/
 
@@ -106,7 +112,7 @@
 
 #define	CONFIG_TIMESTAMP	1	/* Print image info with timestamp */
 
-#if (TEXT_BASE == 0xFFE00000)		/* Boot low */
+#if (CONFIG_SYS_TEXT_BASE == 0xFFE00000)		/* Boot low */
 #   define CONFIG_SYS_LOWBOOT		1
 #endif
 
@@ -128,8 +134,8 @@
 #define	CONFIG_SERVERIP		192.168.100.1
 #define	CONFIG_NETMASK		255.255.255.0
 #define HOSTNAME		inka4x0
-#define CONFIG_BOOTFILE		/tftpboot/inka4x0/uImage
-#define	CONFIG_ROOTPATH		/opt/eldk/ppc_6xx
+#define CONFIG_BOOTFILE		"/tftpboot/inka4x0/uImage"
+#define	CONFIG_ROOTPATH		"/opt/eldk/ppc_6xx"
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
@@ -201,19 +207,20 @@
 
 /* Use ON-Chip SRAM until RAM will be available */
 #define CONFIG_SYS_INIT_RAM_ADDR	MPC5XXX_SRAM
-#ifdef CONFIG_POST
+
 /* preserve space for the post_word at end of on-chip SRAM */
-#define CONFIG_SYS_INIT_RAM_END	MPC5XXX_SRAM_POST_SIZE
+#define MPC5XXX_SRAM_POST_SIZE (MPC5XXX_SRAM_SIZE - 4)
+
+#ifdef CONFIG_POST
+#define CONFIG_SYS_INIT_RAM_SIZE	MPC5XXX_SRAM_POST_SIZE
 #else
-#define CONFIG_SYS_INIT_RAM_END	MPC5XXX_SRAM_SIZE
+#define CONFIG_SYS_INIT_RAM_SIZE	MPC5XXX_SRAM_SIZE
 #endif
 
-
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_BASE    TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE    CONFIG_SYS_TEXT_BASE
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
 #   define CONFIG_SYS_RAMBOOT		1
 #endif
@@ -367,13 +374,8 @@ static inline void tws_data_config_output(unsigned output)
 /*
  * Various low-level settings
  */
-#if defined(CONFIG_MPC5200)
 #define CONFIG_SYS_HID0_INIT		HID0_ICE | HID0_ICFI
 #define CONFIG_SYS_HID0_FINAL		HID0_ICE
-#else
-#define CONFIG_SYS_HID0_INIT		0
-#define CONFIG_SYS_HID0_FINAL		0
-#endif
 
 #define CONFIG_SYS_BOOTCS_START	CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_BOOTCS_SIZE		CONFIG_SYS_FLASH_SIZE

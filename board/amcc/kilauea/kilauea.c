@@ -22,12 +22,13 @@
  */
 
 #include <common.h>
-#include <ppc4xx.h>
-#include <ppc405.h>
+#include <asm/ppc4xx.h>
+#include <asm/ppc405.h>
 #include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>
 #include <asm/io.h>
+#include <asm/errno.h>
 
 #if defined(CONFIG_PCI)
 #include <pci.h>
@@ -37,6 +38,37 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 extern flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
+
+static int board_cpld_version(void)
+{
+	u32 cpld;
+
+	cpld = in_be32((void *)CONFIG_SYS_FPGA_FIFO_BASE);
+	if ((cpld & CONFIG_SYS_FPGA_MAGIC_MASK) != CONFIG_SYS_FPGA_MAGIC) {
+		/*
+		 * Magic not found -> "old" CPLD revision which needs
+		 * the "old" EBC configuration
+		 */
+		mtebc(PB2AP, EBC_BXAP_BME_ENABLED | EBC_BXAP_FWT_ENCODE(5) |
+		      EBC_BXAP_BWT_ENCODE(0) | EBC_BXAP_BCE_DISABLE |
+		      EBC_BXAP_BCT_2TRANS | EBC_BXAP_CSN_ENCODE(0) |
+		      EBC_BXAP_OEN_ENCODE(0) | EBC_BXAP_WBN_ENCODE(3) |
+		      EBC_BXAP_WBF_ENCODE(0) | EBC_BXAP_TH_ENCODE(4) |
+		      EBC_BXAP_RE_DISABLED | EBC_BXAP_SOR_DELAYED |
+		      EBC_BXAP_BEM_WRITEONLY | EBC_BXAP_PEN_DISABLED);
+
+		/*
+		 * Return 0 for "old" CPLD version
+		 */
+		return 0;
+	}
+
+	/*
+	 * Magic found -> "new" CPLD revision which needs no new
+	 * EBC configuration
+	 */
+	return (cpld & CONFIG_SYS_FPGA_VER_MASK) >> 8;
+}
 
 /*
  * Board early initialization function
@@ -158,33 +190,33 @@ int board_early_init_f (void)
 	 | interrupts again.
 	 +-------------------------------------------------------------------*/
 
-	mtdcr (uic2sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr (uic2er, 0x00000000);	/* disable all interrupts */
-	mtdcr (uic2cr, 0x00000000);	/* Set Critical / Non Critical interrupts */
-	mtdcr (uic2pr, 0xf7ffffff);	/* Set Interrupt Polarities */
-	mtdcr (uic2tr, 0x01e1fff8);	/* Set Interrupt Trigger Levels */
-	mtdcr (uic2vr, 0x00000001);	/* Set Vect base=0,INT31 Highest priority */
-	mtdcr (uic2sr, 0x00000000);	/* clear all interrupts */
-	mtdcr (uic2sr, 0xffffffff);	/* clear all interrupts */
+	mtdcr (UIC2SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr (UIC2ER, 0x00000000);	/* disable all interrupts */
+	mtdcr (UIC2CR, 0x00000000);	/* Set Critical / Non Critical interrupts */
+	mtdcr (UIC2PR, 0xf7ffffff);	/* Set Interrupt Polarities */
+	mtdcr (UIC2TR, 0x01e1fff8);	/* Set Interrupt Trigger Levels */
+	mtdcr (UIC2VR, 0x00000001);	/* Set Vect base=0,INT31 Highest priority */
+	mtdcr (UIC2SR, 0x00000000);	/* clear all interrupts */
+	mtdcr (UIC2SR, 0xffffffff);	/* clear all interrupts */
 
-	mtdcr (uic1sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr (uic1er, 0x00000000);	/* disable all interrupts */
-	mtdcr (uic1cr, 0x00000000);	/* Set Critical / Non Critical interrupts */
-	mtdcr (uic1pr, 0xfffac785);	/* Set Interrupt Polarities */
-	mtdcr (uic1tr, 0x001d0040);	/* Set Interrupt Trigger Levels */
-	mtdcr (uic1vr, 0x00000001);	/* Set Vect base=0,INT31 Highest priority */
-	mtdcr (uic1sr, 0x00000000);	/* clear all interrupts */
-	mtdcr (uic1sr, 0xffffffff);	/* clear all interrupts */
+	mtdcr (UIC1SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr (UIC1ER, 0x00000000);	/* disable all interrupts */
+	mtdcr (UIC1CR, 0x00000000);	/* Set Critical / Non Critical interrupts */
+	mtdcr (UIC1PR, 0xfffac785);	/* Set Interrupt Polarities */
+	mtdcr (UIC1TR, 0x001d0040);	/* Set Interrupt Trigger Levels */
+	mtdcr (UIC1VR, 0x00000001);	/* Set Vect base=0,INT31 Highest priority */
+	mtdcr (UIC1SR, 0x00000000);	/* clear all interrupts */
+	mtdcr (UIC1SR, 0xffffffff);	/* clear all interrupts */
 
-	mtdcr (uic0sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr (uic0er, 0x0000000a);	/* Disable all interrupts */
+	mtdcr (UIC0SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr (UIC0ER, 0x0000000a);	/* Disable all interrupts */
 					/* Except cascade UIC0 and UIC1 */
-	mtdcr (uic0cr, 0x00000000);	/* Set Critical / Non Critical interrupts */
-	mtdcr (uic0pr, 0xffbfefef);	/* Set Interrupt Polarities */
-	mtdcr (uic0tr, 0x00007000);	/* Set Interrupt Trigger Levels */
-	mtdcr (uic0vr, 0x00000001);	/* Set Vect base=0,INT31 Highest priority */
-	mtdcr (uic0sr, 0x00000000);	/* clear all interrupts */
-	mtdcr (uic0sr, 0xffffffff);	/* clear all interrupts */
+	mtdcr (UIC0CR, 0x00000000);	/* Set Critical / Non Critical interrupts */
+	mtdcr (UIC0PR, 0xffbfefef);	/* Set Interrupt Polarities */
+	mtdcr (UIC0TR, 0x00007000);	/* Set Interrupt Trigger Levels */
+	mtdcr (UIC0VR, 0x00000001);	/* Set Vect base=0,INT31 Highest priority */
+	mtdcr (UIC0SR, 0x00000000);	/* clear all interrupts */
+	mtdcr (UIC0SR, 0xffffffff);	/* clear all interrupts */
 
 	/*
 	 * Note: Some cores are still in reset when the chip starts, so
@@ -206,6 +238,13 @@ int board_early_init_f (void)
 	 */
 	val = SDR0_PFC1_USBEN | SDR0_PFC1_USBBIGEN | SDR0_PFC1_GPT_FREQ;
 	mtsdr(SDR0_PFC1, val);
+
+	/*
+	 * The CPLD version detection has to be the first access to
+	 * the CPLD, so we need to make this access this early and
+	 * save the CPLD version for later.
+	 */
+	gd->board_type = board_cpld_version();
 
 	/*
 	 * Configure FPGA register with PCIe reset
@@ -251,126 +290,36 @@ int board_emac_count(void)
 		return 2;
 }
 
-static int board_pcie_count(void)
+/*
+ * Override the weak default implementation and return the
+ * last PCIe slot number (max number - 1).
+ */
+int board_pcie_last(void)
 {
 	/*
 	 * 405EXr only has one EMAC interface, 405EX has two
 	 */
 	if (is_405exr())
-		return 1;
+		return 1 - 1;
 	else
-		return 2;
+		return 2 - 1;
 }
 
 int checkboard (void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 
 	if (is_405exr())
 		printf("Board: Haleakala - AMCC PPC405EXr Evaluation Board");
 	else
 		printf("Board: Kilauea - AMCC PPC405EX Evaluation Board");
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
-	putc('\n');
+	printf(" (CPLD rev. %ld)\n", gd->board_type);
 
 	return (0);
 }
-
-/*************************************************************************
- *  pci_pre_init
- *
- *  This routine is called just prior to registering the hose and gives
- *  the board the opportunity to check things. Returning a value of zero
- *  indicates that things are bad & PCI initialization should be aborted.
- *
- *      Different boards may wish to customize the pci controller structure
- *      (add regions, override default access routines, etc) or perform
- *      certain pre-initialization actions.
- *
- ************************************************************************/
-#if defined(CONFIG_PCI)
-int pci_pre_init(struct pci_controller * hose )
-{
-	return 0;
-}
-#endif  /* defined(CONFIG_PCI) */
-
-#ifdef CONFIG_PCI
-static struct pci_controller pcie_hose[2] = {{0},{0}};
-
-void pcie_setup_hoses(int busno)
-{
-	struct pci_controller *hose;
-	int i, bus;
-	int ret = 0;
-	bus = busno;
-	char *env;
-	unsigned int delay;
-
-	for (i = 0; i < board_pcie_count(); i++) {
-
-		if (is_end_point(i))
-			ret = ppc4xx_init_pcie_endport(i);
-		else
-			ret = ppc4xx_init_pcie_rootport(i);
-		if (ret) {
-			printf("PCIE%d: initialization as %s failed\n", i,
-			       is_end_point(i) ? "endpoint" : "root-complex");
-			continue;
-		}
-
-		hose = &pcie_hose[i];
-		hose->first_busno = bus;
-		hose->last_busno = bus;
-		hose->current_busno = bus;
-
-		/* setup mem resource */
-		pci_set_region(hose->regions + 0,
-			       CONFIG_SYS_PCIE_MEMBASE + i * CONFIG_SYS_PCIE_MEMSIZE,
-			       CONFIG_SYS_PCIE_MEMBASE + i * CONFIG_SYS_PCIE_MEMSIZE,
-			       CONFIG_SYS_PCIE_MEMSIZE,
-			       PCI_REGION_MEM);
-		hose->region_count = 1;
-		pci_register_hose(hose);
-
-		if (is_end_point(i)) {
-			ppc4xx_setup_pcie_endpoint(hose, i);
-			/*
-			 * Reson for no scanning is endpoint can not generate
-			 * upstream configuration accesses.
-			 */
-		} else {
-			ppc4xx_setup_pcie_rootpoint(hose, i);
-			env = getenv ("pciscandelay");
-			if (env != NULL) {
-				delay = simple_strtoul(env, NULL, 10);
-				if (delay > 5)
-					printf("Warning, expect noticable delay before "
-					       "PCIe scan due to 'pciscandelay' value!\n");
-				mdelay(delay * 1000);
-			}
-
-			/*
-			 * Config access can only go down stream
-			 */
-			hose->last_busno = pci_hose_scan(hose);
-			bus = hose->last_busno + 1;
-		}
-	}
-}
-#endif
-
-#if defined(CONFIG_POST)
-/*
- * Returns 1 if keys pressed to start the power-on long-running tests
- * Called from board_init_f().
- */
-int post_hotkeys_pressed(void)
-{
-	return 0;	/* No hotkeys supported */
-}
-#endif /* CONFIG_POST */

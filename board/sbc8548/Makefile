@@ -2,8 +2,8 @@
 # (C) Copyright 2004-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# (C) Copyright 2004 Wind River Systems Inc <www.windriver.com>.
-# Added support for Wind River SBC8560 board
+# (C) Copyright 2007 Wind River Systems Inc <www.windriver.com>.
+# Added support for Wind River SBC8548 board
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -26,7 +26,7 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
 COBJS-y	+= $(BOARD).o
 COBJS-y	+= law.o
@@ -38,13 +38,7 @@ OBJS	:= $(addprefix $(obj),$(COBJS-y))
 SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS)
-
-clean:
-	rm -f $(OBJS) $(SOBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
+	$(call cmd_link_o_target, $(OBJS))
 
 #########################################################################
 

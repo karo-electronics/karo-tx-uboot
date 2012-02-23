@@ -29,16 +29,17 @@
 #include <mpc83xx.h>
 #include <ns16550.h>
 #include <nand.h>
+#include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifndef CONFIG_NAND_SPL
 int checkboard(void)
 {
 	puts("Board: Sheldon Instruments SIMPC8313\n");
 	return 0;
 }
 
-#ifndef CONFIG_NAND_SPL
 static struct pci_region pci_regions[] = {
 	{
 		bus_start: CONFIG_SYS_PCI1_MEM_BASE,
@@ -66,7 +67,6 @@ void pci_init_board(void)
 	volatile clk83xx_t *clk = (volatile clk83xx_t *)&immr->clk;
 	volatile law83xx_t *pci_law = immr->sysconf.pcilaw;
 	struct pci_region *reg[] = { pci_regions };
-	int warmboot;
 
 	/* Enable all 3 PCI_CLK_OUTPUTs. */
 	clk->occr |= 0xe0000000;
@@ -80,9 +80,7 @@ void pci_init_board(void)
 	pci_law[1].bar = CONFIG_SYS_PCI1_IO_PHYS & LAWBAR_BAR;
 	pci_law[1].ar = LBLAWAR_EN | LBLAWAR_1MB;
 
-	warmboot = gd->bd->bi_bootflags & BOOTFLAG_WARM;
-
-	mpc83xx_pci_init(1, reg, warmboot);
+	mpc83xx_pci_init(1, reg);
 }
 
 /*
@@ -91,6 +89,40 @@ void pci_init_board(void)
 int misc_init_r(void)
 {
 	int rc = 0;
+	immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
+	fsl_lbc_t *lbus = &immap->im_lbc;
+	u32 *mxmr = &lbus->mamr;	/* Pointer to mamr */
+
+	/* UPM Table Configuration Code */
+	static uint UPMATable[] = {
+		/* Read Single-Beat (RSS) */
+		0x0fff0c00, 0x0fffdc00, 0x0fff0c05, 0xfffffc00,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc01,
+		/* Read Burst (RBS) */
+		0x0fff0c00, 0x0ffcdc00, 0x0ffc0c00, 0x0ffc0f0c,
+		0x0ffccf0c, 0x0ffc0f0c, 0x0ffcce0c, 0x3ffc0c05,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc00,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc01,
+		/* Write Single-Beat (WSS) */
+		0x0ffc0c00, 0x0ffcdc00, 0x0ffc0c05, 0xfffffc00,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc01,
+		/* Write Burst (WBS) */
+		0x0ffc0c00, 0x0fffcc0c, 0x0fff0c00, 0x0fffcc00,
+		0x0fff1c00, 0x0fffcf0c, 0x0fff0f0c, 0x0fffcf0c,
+		0x0fff0c0c, 0x0fffcc0c, 0x0fff0c05, 0xfffffc00,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc01,
+		/* Refresh Timer (RTS) */
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc00,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc00,
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc01,
+		/* Exception Condition (EXS) */
+		0xfffffc00, 0xfffffc00, 0xfffffc00, 0xfffffc01
+	};
+
+	upmconfig(UPMA, UPMATable, sizeof(UPMATable) / sizeof(UPMATable[0]));
+
+	/* Set LUPWAIT to be active low and enabled */
+	out_be32(mxmr, MxMR_UWPL | MxMR_GPL_x4DIS);
 
 	return rc;
 }
@@ -112,7 +144,7 @@ void board_init_f(ulong bootflag)
 	puts("NAND boot... ");
 	init_timebase();
 	initdram(0);
-	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC + 0x10000, (gd_t *)gd,
+	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC_SP, (gd_t *)gd,
 				  CONFIG_SYS_NAND_U_BOOT_RELOC);
 }
 

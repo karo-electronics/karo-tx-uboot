@@ -29,10 +29,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/*cmd_boot.c*/
-extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
-
-
 /* ------------------------------------------------------------------------- */
 
 #if 0
@@ -52,16 +48,16 @@ const unsigned char fpgadata[] = {
 
 int board_early_init_f (void)
 {
-	unsigned long cntrl0Reg;
+	unsigned long CPC0_CR0Reg;
 	int index, len, i;
 	int status;
 
 	/*
 	 * Setup GPIO pins
 	 */
-	cntrl0Reg = mfdcr (cntrl0) & 0xf0001fff;
-	cntrl0Reg |= 0x0070f000;
-	mtdcr (cntrl0, cntrl0Reg);
+	CPC0_CR0Reg = mfdcr (CPC0_CR0) & 0xf0001fff;
+	CPC0_CR0Reg |= 0x0070f000;
+	mtdcr (CPC0_CR0, CPC0_CR0Reg);
 
 #ifdef FPGA_DEBUG
 	/* set up serial port with default baudrate */
@@ -134,13 +130,13 @@ int board_early_init_f (void)
 	 * IRQ 30 (EXT IRQ 5) PCI SLOT 3; active low; level sensitive
 	 * IRQ 31 (EXT IRQ 6) COMPACT FLASH; active high; level sensitive
 	 */
-	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr (uicer, 0x00000000);	/* disable all ints */
-	mtdcr (uiccr, 0x00000000);	/* set all to be non-critical */
-	mtdcr (uicpr, 0xFFFFFF81);	/* set int polarities */
-	mtdcr (uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr (uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
-	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr (UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr (UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr (UIC0CR, 0x00000000);	/* set all to be non-critical */
+	mtdcr (UIC0PR, 0xFFFFFF81);	/* set int polarities */
+	mtdcr (UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr (UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest priority */
+	mtdcr (UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	return 0;
 }
@@ -157,7 +153,7 @@ int checkboard (void)
 	int index;
 	int len;
 	char str[64];
-	int i = getenv_r ("serial#", str, sizeof (str));
+	int i = getenv_f("serial#", str, sizeof (str));
 
 	puts ("Board: ");
 

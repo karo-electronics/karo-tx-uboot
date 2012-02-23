@@ -69,6 +69,7 @@
 #define CONFIG_CMD_MEMORY
 #define CONFIG_CMD_MISC
 #undef CONFIG_CMD_NET
+#undef CONFIG_CMD_NFS
 #define CONFIG_CMD_REGINFO
 #undef CONFIG_CMD_USB
 #undef CONFIG_CMD_BMP
@@ -207,12 +208,11 @@
  * Definitions for initial stack pointer and data area (in DPRAM)
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	0x80000000
-#define CONFIG_SYS_INIT_RAM_END		0x8000	/* End of used area in internal SRAM */
+#define CONFIG_SYS_INIT_RAM_SIZE		0x8000	/* Size of used area in internal SRAM */
 #define CONFIG_SYS_INIT_RAM_CTRL	0x221
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	((CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE) - 32)
+#define CONFIG_SYS_GBL_DATA_OFFSET	((CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE) - 32)
 #define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - 32)
-#define CONFIG_SYS_SBFHDR_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - 32)
+#define CONFIG_SYS_SBFHDR_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - 32)
 
 /*
  * Start addresses for the final memory configuration
@@ -232,7 +232,7 @@
 #define CONFIG_SYS_MEMTEST_END		((CONFIG_SYS_SDRAM_SIZE - 3) << 20)
 
 #ifdef CONFIG_CF_SBF
-#	define CONFIG_SYS_MONITOR_BASE	(TEXT_BASE + 0x400)
+#	define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_TEXT_BASE + 0x400)
 #else
 #	define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_FLASH_BASE + 0x400)
 #endif
@@ -246,7 +246,8 @@
 
 /*
  * Configuration for environment
- * Environment is embedded in u-boot in the second sector of the flash
+ * Environment is not embedded in u-boot. First time runing may have env
+ * crc error warning if there is no correct environment on the flash.
  */
 #ifdef CONFIG_CF_SBF
 #	define CONFIG_ENV_IS_IN_SPI_FLASH
@@ -255,13 +256,13 @@
 #	define CONFIG_ENV_IS_IN_FLASH	1
 #endif
 #define CONFIG_ENV_OVERWRITE		1
-#undef CONFIG_ENV_IS_EMBEDDED
 
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
 #ifdef CONFIG_SYS_STMICRO_BOOT
 #	define CONFIG_SYS_FLASH_BASE	CONFIG_SYS_CS0_BASE
+#	define CONFIG_SYS_FLASH0_BASE	CONFIG_SYS_CS0_BASE
 #	define CONFIG_ENV_OFFSET	0x30000
 #	define CONFIG_ENV_SIZE		0x1000
 #	define CONFIG_ENV_SECT_SIZE	0x10000
@@ -269,7 +270,7 @@
 #ifdef CONFIG_SYS_SPANSION_BOOT
 #	define CONFIG_SYS_FLASH_BASE	CONFIG_SYS_CS0_BASE
 #	define CONFIG_SYS_FLASH0_BASE	CONFIG_SYS_CS0_BASE
-#	define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x8000)
+#	define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + 0x40000)
 #	define CONFIG_ENV_SIZE		0x1000
 #	define CONFIG_ENV_SECT_SIZE	0x8000
 #endif
@@ -302,6 +303,19 @@
  * Cache Configuration
  */
 #define CONFIG_SYS_CACHELINE_SIZE	16
+
+#define ICACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - 8)
+#define DCACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - 4)
+#define CONFIG_SYS_ICACHE_INV		(CF_CACR_CINV | CF_CACR_INVI)
+#define CONFIG_SYS_CACHE_ACR0		(CONFIG_SYS_SDRAM_BASE | \
+					 CF_ADDRMASK(CONFIG_SYS_SDRAM_SIZE) | \
+					 CF_ACR_EN | CF_ACR_SM_ALL)
+#define CONFIG_SYS_CACHE_ICACR		(CF_CACR_CENB | CF_CACR_CINV | \
+					 CF_CACR_DISD | CF_CACR_INVI | \
+					 CF_CACR_CEIB | CF_CACR_DCM | \
+					 CF_CACR_EUSP)
 
 /*-----------------------------------------------------------------------
  * Memory bank definitions

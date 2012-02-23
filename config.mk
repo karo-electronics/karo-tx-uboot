@@ -12,7 +12,7 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -23,19 +23,31 @@
 
 #########################################################################
 
-ifneq ($(OBJTREE),$(SRCTREE))
 ifeq ($(CURDIR),$(SRCTREE))
 dir :=
 else
 dir := $(subst $(SRCTREE)/,,$(CURDIR))
 endif
 
+ifneq ($(OBJTREE),$(SRCTREE))
+# Create object files for SPL in a separate directory
+ifeq ($(CONFIG_SPL_BUILD),y)
+obj := $(if $(dir),$(SPLTREE)/$(dir)/,$(SPLTREE)/)
+else
 obj := $(if $(dir),$(OBJTREE)/$(dir)/,$(OBJTREE)/)
+endif
 src := $(if $(dir),$(SRCTREE)/$(dir)/,$(SRCTREE)/)
 
 $(shell mkdir -p $(obj))
 else
+# Create object files for SPL in a separate directory
+ifeq ($(CONFIG_SPL_BUILD),y)
+obj := $(if $(dir),$(SPLTREE)/$(dir)/,$(SPLTREE)/)
+
+$(shell mkdir -p $(obj))
+else
 obj :=
+endif
 src :=
 endif
 
@@ -46,21 +58,73 @@ PLATFORM_LDFLAGS =
 
 #########################################################################
 
+HOSTCFLAGS	= -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer \
+		  $(HOSTCPPFLAGS)
+HOSTSTRIP	= strip
+
+#
+# Mac OS X / Darwin's C preprocessor is Apple specific.  It
+# generates numerous errors and warnings.  We want to bypass it
+# and use GNU C's cpp.	To do this we pass the -traditional-cpp
+# option to the compiler.  Note that the -traditional-cpp flag
+# DOES NOT have the same semantics as GNU C's flag, all it does
+# is invoke the GNU preprocessor in stock ANSI/ISO C fashion.
+#
+# Apple's linker is similar, thanks to the new 2 stage linking
+# multiple symbol definitions are treated as errors, hence the
+# -multiply_defined suppress option to turn off this error.
+#
+
 ifeq ($(HOSTOS),darwin)
-HOSTCC		= cc
+# get major and minor product version (e.g. '10' and '6' for Snow Leopard)
+DARWIN_MAJOR_VERSION	= $(shell sw_vers -productVersion | cut -f 1 -d '.')
+DARWIN_MINOR_VERSION	= $(shell sw_vers -productVersion | cut -f 2 -d '.')
+
+os_x_before	= $(shell if [ $(DARWIN_MAJOR_VERSION) -le $(1) -a \
+	$(DARWIN_MINOR_VERSION) -le $(2) ] ; then echo "$(3)"; else echo "$(4)"; fi ;)
+
+# Snow Leopards build environment has no longer restrictions as described above
+HOSTCC		 = $(call os_x_before, 10, 5, "cc", "gcc")
+HOSTCFLAGS	+= $(call os_x_before, 10, 4, "-traditional-cpp")
+HOSTLDFLAGS	+= $(call os_x_before, 10, 5, "-multiply_defined suppress")
 else
 HOSTCC		= gcc
 endif
-HOSTCFLAGS	= -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer
-HOSTSTRIP	= strip
+
+ifeq ($(HOSTOS),cygwin)
+HOSTCFLAGS	+= -ansi
+endif
+
+# We build some files with extra pedantic flags to try to minimize things
+# that won't build on some weird host compiler -- though there are lots of
+# exceptions for files that aren't complaint.
+
+HOSTCFLAGS_NOPED = $(filter-out -pedantic,$(HOSTCFLAGS))
+HOSTCFLAGS	+= -pedantic
 
 #########################################################################
 #
 # Option checker (courtesy linux kernel) to ensure
 # only supported compiler options are used
 #
-cc-option = $(shell if $(CC) $(CFLAGS) $(1) -S -o /dev/null -xc /dev/null \
-		> /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ;)
+CC_OPTIONS_CACHE_FILE := $(OBJTREE)/include/generated/cc_options.mk
+
+$(if $(wildcard $(CC_OPTIONS_CACHE_FILE)),,\
+	$(shell mkdir -p $(dir $(CC_OPTIONS_CACHE_FILE))))
+
+-include $(CC_OPTIONS_CACHE_FILE)
+
+cc-option-sys = $(shell if $(CC) $(CFLAGS) $(1) -S -o /dev/null -xc /dev/null \
+		> /dev/null 2>&1; then \
+		echo 'CC_OPTIONS += $(strip $1)' >> $(CC_OPTIONS_CACHE_FILE); \
+		echo "$(1)"; fi)
+
+ifeq ($(CONFIG_CC_OPT_CACHE_DISABLE),y)
+cc-option = $(strip $(if $(call cc-option-sys,$1),$1,$2))
+else
+cc-option = $(strip $(if $(findstring $1,$(CC_OPTIONS)),$1,\
+		$(if $(call cc-option-sys,$1),$1,$2)))
+endif
 
 #
 # Include the make variables (CC, etc...)
@@ -76,20 +140,28 @@ STRIP	= $(CROSS_COMPILE)strip
 OBJCOPY = $(CROSS_COMPILE)objcopy
 OBJDUMP = $(CROSS_COMPILE)objdump
 RANLIB	= $(CROSS_COMPILE)RANLIB
+DTC	= dtc
 
 #########################################################################
 
 # Load generated board configuration
 sinclude $(OBJTREE)/include/autoconf.mk
+sinclude $(OBJTREE)/include/config.mk
 
-ifdef	ARCH
-sinclude $(TOPDIR)/lib_$(ARCH)/config.mk	# include architecture dependend rules
+# Some architecture config.mk files need to know what CPUDIR is set to,
+# so calculate CPUDIR before including ARCH/SOC/CPU config.mk files.
+# Check if arch/$ARCH/cpu/$CPU exists, otherwise assume arch/$ARCH/cpu contains
+# CPU-specific code.
+CPUDIR=arch/$(ARCH)/cpu/$(CPU)
+ifneq ($(SRCTREE)/$(CPUDIR),$(wildcard $(SRCTREE)/$(CPUDIR)))
+CPUDIR=arch/$(ARCH)/cpu
 endif
-ifdef	CPU
-sinclude $(TOPDIR)/cpu/$(CPU)/config.mk		# include  CPU	specific rules
-endif
+
+sinclude $(TOPDIR)/arch/$(ARCH)/config.mk	# include architecture dependend rules
+sinclude $(TOPDIR)/$(CPUDIR)/config.mk		# include  CPU	specific rules
+
 ifdef	SOC
-sinclude $(TOPDIR)/cpu/$(CPU)/$(SOC)/config.mk	# include  SoC	specific rules
+sinclude $(TOPDIR)/$(CPUDIR)/$(SOC)/config.mk	# include  SoC	specific rules
 endif
 ifdef	VENDOR
 BOARDDIR = $(VENDOR)/$(BOARD)
@@ -102,30 +174,40 @@ endif
 
 #########################################################################
 
-ifneq (,$(findstring s,$(MAKEFLAGS)))
-ARFLAGS = cr
-else
-ARFLAGS = crv
-endif
+# We don't actually use $(ARFLAGS) anywhere anymore, so catch people
+# who are porting old code to latest mainline but not updating $(AR).
+ARFLAGS = $(error update your Makefile to use cmd_link_o_target and not AR)
 RELFLAGS= $(PLATFORM_RELFLAGS)
 DBGFLAGS= -g # -DDEBUG
 OPTFLAGS= -Os #-fomit-frame-pointer
-ifndef LDSCRIPT
-#LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot.lds.debug
-ifeq ($(CONFIG_NAND_U_BOOT),y)
-LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot-nand.lds
-else
-LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot.lds
-endif
-endif
+
 OBJCFLAGS += --gap-fill=0xff
 
 gccincdir := $(shell $(CC) -print-file-name=include)
 
 CPPFLAGS := $(DBGFLAGS) $(OPTFLAGS) $(RELFLAGS)		\
 	-D__KERNEL__
-ifneq ($(TEXT_BASE),)
-CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE)
+
+# Enable garbage collection of un-used sections for SPL
+ifeq ($(CONFIG_SPL_BUILD),y)
+CPPFLAGS += -ffunction-sections -fdata-sections
+LDFLAGS_FINAL += --gc-sections
+endif
+
+ifneq ($(CONFIG_SYS_TEXT_BASE),)
+CPPFLAGS += -DCONFIG_SYS_TEXT_BASE=$(CONFIG_SYS_TEXT_BASE)
+endif
+
+ifneq ($(CONFIG_SPL_TEXT_BASE),)
+CPPFLAGS += -DCONFIG_SPL_TEXT_BASE=$(CONFIG_SPL_TEXT_BASE)
+endif
+
+ifeq ($(CONFIG_SPL_BUILD),y)
+CPPFLAGS += -DCONFIG_SPL_BUILD
+endif
+
+ifneq ($(RESET_VECTOR_ADDRESS),)
+CPPFLAGS += -DRESET_VECTOR_ADDRESS=$(RESET_VECTOR_ADDRESS)
 endif
 
 ifneq ($(OBJTREE),$(SRCTREE))
@@ -143,15 +225,13 @@ else
 CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
 endif
 
-CFLAGS += $(call cc-option,-fno-stack-protector)
-
-# avoid trigraph warnings while parsing pci.h (produced by NIOS gcc-2.9)
-# this option have to be placed behind -Wall -- that's why it is here
-ifeq ($(ARCH),nios)
-ifeq ($(findstring 2.9,$(shell $(CC) --version)),2.9)
-CFLAGS := $(CPPFLAGS) -Wall -Wno-trigraphs
-endif
-endif
+CFLAGS_SSP := $(call cc-option,-fno-stack-protector)
+CFLAGS += $(CFLAGS_SSP)
+# Some toolchains enable security related warning flags by default,
+# but they don't make much sense in the u-boot world, so disable them.
+CFLAGS_WARN := $(call cc-option,-Wno-format-nonliteral) \
+	       $(call cc-option,-Wno-format-security)
+CFLAGS += $(CFLAGS_WARN)
 
 # $(CPPFLAGS) sets -g, which causes gcc to pass a suitable -g<format>
 # option to the assembler.
@@ -166,9 +246,17 @@ endif
 
 AFLAGS := $(AFLAGS_DEBUG) -D__ASSEMBLY__ $(CPPFLAGS)
 
-LDFLAGS += -Bstatic -T $(obj)u-boot.lds $(PLATFORM_LDFLAGS)
-ifneq ($(TEXT_BASE),)
-LDFLAGS += -Ttext $(TEXT_BASE)
+LDFLAGS += $(PLATFORM_LDFLAGS)
+LDFLAGS_FINAL += -Bstatic
+
+LDFLAGS_u-boot += -T $(obj)u-boot.lds $(LDFLAGS_FINAL)
+ifneq ($(CONFIG_SYS_TEXT_BASE),)
+LDFLAGS_u-boot += -Ttext $(CONFIG_SYS_TEXT_BASE)
+endif
+
+LDFLAGS_u-boot-spl += -T $(obj)u-boot-spl.lds $(LDFLAGS_FINAL)
+ifneq ($(CONFIG_SPL_TEXT_BASE),)
+LDFLAGS_u-boot-spl += -Ttext $(CONFIG_SPL_TEXT_BASE)
 endif
 
 # Location of a usable BFD library, where we define "usable" as
@@ -196,23 +284,39 @@ endif
 
 #########################################################################
 
-export	HOSTCC HOSTCFLAGS CROSS_COMPILE \
+export	HOSTCC HOSTCFLAGS HOSTLDFLAGS PEDCFLAGS HOSTSTRIP CROSS_COMPILE \
 	AS LD CC CPP AR NM STRIP OBJCOPY OBJDUMP MAKE
-export	TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS AFLAGS
+export	CONFIG_SYS_TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS AFLAGS
 
 #########################################################################
 
 # Allow boards to use custom optimize flags on a per dir/file basis
-BCURDIR := $(notdir $(CURDIR))
+BCURDIR = $(subst $(SRCTREE)/,,$(CURDIR:$(obj)%=%))
+ALL_AFLAGS = $(AFLAGS) $(AFLAGS_$(BCURDIR)/$(@F)) $(AFLAGS_$(BCURDIR))
+ALL_CFLAGS = $(CFLAGS) $(CFLAGS_$(BCURDIR)/$(@F)) $(CFLAGS_$(BCURDIR))
+EXTRA_CPPFLAGS = $(CPPFLAGS_$(BCURDIR)/$(@F)) $(CPPFLAGS_$(BCURDIR))
+ALL_CFLAGS += $(EXTRA_CPPFLAGS)
+
+# The _DEP version uses the $< file target (for dependency generation)
+# See rules.mk
+EXTRA_CPPFLAGS_DEP = $(CPPFLAGS_$(BCURDIR)/$(addsuffix .o,$(basename $<))) \
+		$(CPPFLAGS_$(BCURDIR))
 $(obj)%.s:	%.S
-	$(CPP) $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $<
+	$(CPP) $(ALL_AFLAGS) -o $@ $<
 $(obj)%.o:	%.S
-	$(CC)  $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $< -c
+	$(CC)  $(ALL_AFLAGS) -o $@ $< -c
 $(obj)%.o:	%.c
-	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
+	$(CC)  $(ALL_CFLAGS) -o $@ $< -c
 $(obj)%.i:	%.c
-	$(CPP) $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
+	$(CPP) $(ALL_CFLAGS) -o $@ $< -c
 $(obj)%.s:	%.c
-	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c -S
+	$(CC)  $(ALL_CFLAGS) -o $@ $< -c -S
+
+#########################################################################
+
+# If the list of objects to link is empty, just create an empty built-in.o
+cmd_link_o_target = $(if $(strip $1),\
+		      $(LD) $(LDFLAGS) -r -o $@ $1,\
+		      rm -f $@; $(AR) rcs $@ )
 
 #########################################################################

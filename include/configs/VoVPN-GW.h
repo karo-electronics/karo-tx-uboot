@@ -29,6 +29,8 @@
 /* define busmode: 8260 */
 #undef	CONFIG_BUSMODE_60x
 
+#define	CONFIG_SYS_TEXT_BASE		0xfff00000
+
 /* system clock rate (CLKIN) - equal to the 60x and local bus speed */
 #ifdef	CONFIG_CLKIN_66MHz
 #define	CONFIG_8260_CLKIN		66666666	/* in Hz */
@@ -124,6 +126,11 @@
 #define CONFIG_BITBANGMII
 
 #define MDIO_PORT			1		/* Port B */
+
+#define MDIO_DECLARE		volatile ioport_t *iop = ioport_addr ( \
+					(immap_t *) CONFIG_SYS_IMMR, MDIO_PORT )
+#define MDC_DECLARE		MDIO_DECLARE
+
 #define CONFIG_SYS_MDIO_PIN			0x00002000	/* PB18 */
 #define CONFIG_SYS_MDC_PIN			0x00001000	/* PB19 */
 #define MDIO_ACTIVE			(iop->pdir |=  CONFIG_SYS_MDIO_PIN)
@@ -291,9 +298,8 @@
 
 /* definitions for initial stack pointer and data area (in DPRAM) */
 #define CONFIG_SYS_INIT_RAM_ADDR		CONFIG_SYS_IMMR
-#define CONFIG_SYS_INIT_RAM_END		0x2000
-#define CONFIG_SYS_GBL_DATA_SIZE		128
-#define CONFIG_SYS_GBL_DATA_OFFSET		(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE		0x2000
+#define CONFIG_SYS_GBL_DATA_OFFSET		(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET		CONFIG_SYS_GBL_DATA_OFFSET
 
 /*
@@ -303,14 +309,10 @@
  */
 #define CONFIG_SYS_SDRAM_BASE			0x00000000
 #define CONFIG_SYS_SDRAM_SIZE			(32*1024*1024)
-#define CONFIG_SYS_MONITOR_BASE		TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_MONITOR_FLASH		(CONFIG_SYS_FLASH_BASE + CONFIG_SYS_MONITOR_OFFSET)
 #define CONFIG_SYS_MONITOR_LEN			0x00020000
 #define CONFIG_SYS_MALLOC_LEN			0x00020000
-
-/* boot flags */
-#define BOOTFLAG_COLD			0x01	/* normal power-on */
-#define BOOTFLAG_WARM			0x02	/* software reboot */
 
 /* cache configuration */
 #define CONFIG_SYS_CACHELINE_SIZE		32      /* for MPC8260 */

@@ -28,4 +28,8 @@
 #include "mingw_support.h"
 #endif
 
+#if defined(__APPLE__) && __DARWIN_C_LEVEL < 200809L
+#include "getline.h"
+#endif
+
 #endif /* __OS_SUPPORT_H_ */

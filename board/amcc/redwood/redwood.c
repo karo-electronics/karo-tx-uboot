@@ -26,10 +26,10 @@
 
 #include <common.h>
 #include "redwood.h"
-#include <ppc4xx.h>
+#include <asm/ppc4xx.h>
 #include <asm/processor.h>
 #include <i2c.h>
-#include <asm-ppc/io.h>
+#include <asm/io.h>
 
 int compare_to_true(char *str);
 char *remove_l_w_space(char *in_str);
@@ -200,12 +200,13 @@ int board_early_init_f(void)
 
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 
 	printf("Board: Redwood - AMCC 460SX Reference Board");
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	putc('\n');
 
@@ -220,7 +221,7 @@ static void early_init_EBC(void)
 	 * default value :
 	 *      0x07C00000 - 0 0 000 1 1 1 1 1 0000 0 00000 000000000000
 	 */
-	mtebc(xbcfg, EBC_CFG_LE_UNLOCK |
+	mtebc(EBC0_CFG, EBC_CFG_LE_UNLOCK |
 	      EBC_CFG_PTD_ENABLE |
 	      EBC_CFG_RTC_16PERCLK |
 	      EBC_CFG_ATC_PREVIOUS |
@@ -237,8 +238,8 @@ static void early_init_EBC(void)
 	 * since some board registers values may be needed to determine the
 	 * boot type
 	 */
-	mtebc(pb1ap, EBC_BXAP_FPGA);
-	mtebc(pb1cr, EBC_BXCR_FPGA_CS3);
+	mtebc(PB1AP, EBC_BXAP_FPGA);
+	mtebc(PB1CR, EBC_BXCR_FPGA_CS3);
 
 }
 
@@ -399,12 +400,12 @@ static void early_reinit_EBC(int computed_boot_device)
 		break;
 	}
 
-	mtebc(pb0ap, ebc0_cs0_bxap_value);
-	mtebc(pb0cr, ebc0_cs0_bxcr_value);
-	mtebc(pb1ap, ebc0_cs1_bxap_value);
-	mtebc(pb1cr, ebc0_cs1_bxcr_value);
-	mtebc(pb2ap, ebc0_cs2_bxap_value);
-	mtebc(pb2cr, ebc0_cs2_bxcr_value);
+	mtebc(PB0AP, ebc0_cs0_bxap_value);
+	mtebc(PB0CR, ebc0_cs0_bxcr_value);
+	mtebc(PB1AP, ebc0_cs1_bxap_value);
+	mtebc(PB1CR, ebc0_cs1_bxcr_value);
+	mtebc(PB2AP, ebc0_cs2_bxap_value);
+	mtebc(PB2CR, ebc0_cs2_bxcr_value);
 }
 
 static void early_init_UIC(void)
@@ -416,41 +417,41 @@ static void early_init_UIC(void)
 	 * interrupt trigger levels.  Make bit 0 High  priority.  Clear all
 	 * interrupts again.
 	 */
-	mtdcr(uic3sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr(uic3er, 0x00000000);	/* disable all interrupts */
-	mtdcr(uic3cr, 0x00000000);	/* Set Critical / Non Critical
+	mtdcr(UIC3SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr(UIC3ER, 0x00000000);	/* disable all interrupts */
+	mtdcr(UIC3CR, 0x00000000);	/* Set Critical / Non Critical
 					 * interrupts */
-	mtdcr(uic3pr, 0xffffffff);	/* Set Interrupt Polarities */
-	mtdcr(uic3tr, 0x001fffff);	/* Set Interrupt Trigger Levels */
-	mtdcr(uic3vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic3sr, 0xffffffff);	/* clear all  interrupts */
+	mtdcr(UIC3PR, 0xffffffff);	/* Set Interrupt Polarities */
+	mtdcr(UIC3TR, 0x001fffff);	/* Set Interrupt Trigger Levels */
+	mtdcr(UIC3VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC3SR, 0xffffffff);	/* clear all  interrupts */
 
-	mtdcr(uic2sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr(uic2er, 0x00000000);	/* disable all interrupts */
-	mtdcr(uic2cr, 0x00000000);	/* Set Critical / Non Critical
+	mtdcr(UIC2SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr(UIC2ER, 0x00000000);	/* disable all interrupts */
+	mtdcr(UIC2CR, 0x00000000);	/* Set Critical / Non Critical
 					 * interrupts */
-	mtdcr(uic2pr, 0xebebebff);	/* Set Interrupt Polarities */
-	mtdcr(uic2tr, 0x74747400);	/* Set Interrupt Trigger Levels */
-	mtdcr(uic2vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic2sr, 0xffffffff);	/* clear all interrupts */
+	mtdcr(UIC2PR, 0xebebebff);	/* Set Interrupt Polarities */
+	mtdcr(UIC2TR, 0x74747400);	/* Set Interrupt Trigger Levels */
+	mtdcr(UIC2VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC2SR, 0xffffffff);	/* clear all interrupts */
 
-	mtdcr(uic1sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr(uic1er, 0x00000000);	/* disable all interrupts */
-	mtdcr(uic1cr, 0x00000000);	/* Set Critical / Non Critical
+	mtdcr(UIC1SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr(UIC1ER, 0x00000000);	/* disable all interrupts */
+	mtdcr(UIC1CR, 0x00000000);	/* Set Critical / Non Critical
 					 * interrupts */
-	mtdcr(uic1pr, 0xffffffff);	/* Set Interrupt Polarities */
-	mtdcr(uic1tr, 0x001fc0ff);	/* Set Interrupt Trigger Levels */
-	mtdcr(uic1vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic1sr, 0xffffffff);	/* clear all interrupts */
+	mtdcr(UIC1PR, 0xffffffff);	/* Set Interrupt Polarities */
+	mtdcr(UIC1TR, 0x001fc0ff);	/* Set Interrupt Trigger Levels */
+	mtdcr(UIC1VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC1SR, 0xffffffff);	/* clear all interrupts */
 
-	mtdcr(uic0sr, 0xffffffff);	/* Clear all interrupts */
-	mtdcr(uic0er, 0x00000000);	/* disable all interrupts excepted
+	mtdcr(UIC0SR, 0xffffffff);	/* Clear all interrupts */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all interrupts excepted
 					 * cascade to be checked */
-	mtdcr(uic0cr, 0x00104001);	/* Set Critical / Non Critical
+	mtdcr(UIC0CR, 0x00104001);	/* Set Critical / Non Critical
 					 * interrupts */
-	mtdcr(uic0pr, 0xffffffff);	/* Set Interrupt Polarities */
-	mtdcr(uic0tr, 0x000f003c);	/* Set Interrupt Trigger Levels */
-	mtdcr(uic0vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic0sr, 0xffffffff);	/* clear all interrupts */
+	mtdcr(UIC0PR, 0xffffffff);	/* Set Interrupt Polarities */
+	mtdcr(UIC0TR, 0x000f003c);	/* Set Interrupt Trigger Levels */
+	mtdcr(UIC0VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC0SR, 0xffffffff);	/* clear all interrupts */
 
 }

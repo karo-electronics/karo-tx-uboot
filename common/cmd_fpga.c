@@ -33,18 +33,7 @@
 #include <fpga.h>
 #include <malloc.h>
 
-#if 0
-#define	FPGA_DEBUG
-#endif
-
-#ifdef	FPGA_DEBUG
-#define	PRINTF(fmt,args...)	printf (fmt ,##args)
-#else
-#define PRINTF(fmt,args...)
-#endif
-
 /* Local functions */
-static void fpga_usage (cmd_tbl_t * cmdtp);
 static int fpga_get_op (char *opstr);
 
 /* Local defines */
@@ -77,8 +66,9 @@ int fpga_loadbitstream(unsigned long dev, char* fpgadata, size_t size)
 	length = (*dataptr << 8) + *(dataptr+1);
 	dataptr+=2;
 	if (*dataptr++ != 0x61) {
-		PRINTF ("%s: Design name identifier not recognized in bitstream\n",
-			__FUNCTION__ );
+		debug("%s: Design name identifier not recognized "
+			"in bitstream\n",
+			__func__);
 		return FPGA_FAIL;
 	}
 
@@ -91,8 +81,9 @@ int fpga_loadbitstream(unsigned long dev, char* fpgadata, size_t size)
 
 	/* get part number (identifier, length, string) */
 	if (*dataptr++ != 0x62) {
-		printf("%s: Part number identifier not recognized in bitstream\n",
-			__FUNCTION__ );
+		printf("%s: Part number identifier not recognized "
+			"in bitstream\n",
+			__func__);
 		return FPGA_FAIL;
 	}
 
@@ -105,7 +96,7 @@ int fpga_loadbitstream(unsigned long dev, char* fpgadata, size_t size)
 	/* get date (identifier, length, string) */
 	if (*dataptr++ != 0x63) {
 		printf("%s: Date identifier not recognized in bitstream\n",
-		       __FUNCTION__);
+		       __func__);
 		return FPGA_FAIL;
 	}
 
@@ -117,7 +108,8 @@ int fpga_loadbitstream(unsigned long dev, char* fpgadata, size_t size)
 
 	/* get time (identifier, length, string) */
 	if (*dataptr++ != 0x64) {
-		printf("%s: Time identifier not recognized in bitstream\n",__FUNCTION__);
+		printf("%s: Time identifier not recognized in bitstream\n",
+			__func__);
 		return FPGA_FAIL;
 	}
 
@@ -130,7 +122,7 @@ int fpga_loadbitstream(unsigned long dev, char* fpgadata, size_t size)
 	/* get fpga data length (identifier, length) */
 	if (*dataptr++ != 0x65) {
 		printf("%s: Data length identifier not recognized in bitstream\n",
-			__FUNCTION__);
+			__func__);
 		return FPGA_FAIL;
 	}
 	swapsize = ((unsigned int) *dataptr     <<24) +
@@ -156,7 +148,7 @@ int fpga_loadbitstream(unsigned long dev, char* fpgadata, size_t size)
  * If there is no data addr field, the fpgadata environment variable is used.
  * The info command requires no data address field.
  */
-int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
 	int op, dev = FPGA_INVALID_DEVICE;
 	size_t data_size = 0;
@@ -164,6 +156,7 @@ int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	char *devstr = getenv ("fpga");
 	char *datastr = getenv ("fpgadata");
 	int rc = FPGA_FAIL;
+	int wrong_parms = 0;
 #if defined (CONFIG_FIT)
 	const char *fit_uname = NULL;
 	ulong fit_addr;
@@ -183,39 +176,43 @@ int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		if (fit_parse_subimage (argv[3], (ulong)fpga_data,
 					&fit_addr, &fit_uname)) {
 			fpga_data = (void *)fit_addr;
-			debug ("*  fpga: subimage '%s' from FIT image at 0x%08lx\n",
-					fit_uname, fit_addr);
+			debug("*  fpga: subimage '%s' from FIT image "
+				"at 0x%08lx\n",
+				fit_uname, fit_addr);
 		} else
 #endif
 		{
 			fpga_data = (void *) simple_strtoul (argv[3], NULL, 16);
-			debug ("*  fpga: cmdline image address = 0x%08lx\n", (ulong)fpga_data);
+			debug("*  fpga: cmdline image address = 0x%08lx\n",
+				(ulong)fpga_data);
 		}
-		PRINTF ("%s: fpga_data = 0x%x\n", __FUNCTION__, (uint) fpga_data);
+		debug("%s: fpga_data = 0x%x\n", __func__, (uint) fpga_data);
 
 	case 3:		/* fpga <op> <dev | data addr> */
 		dev = (int) simple_strtoul (argv[2], NULL, 16);
-		PRINTF ("%s: device = %d\n", __FUNCTION__, dev);
+		debug("%s: device = %d\n", __func__, dev);
 		/* FIXME - this is a really weak test */
 		if ((argc == 3) && (dev > fpga_count ())) {	/* must be buffer ptr */
-			PRINTF ("%s: Assuming buffer pointer in arg 3\n",
-				__FUNCTION__);
+			debug("%s: Assuming buffer pointer in arg 3\n",
+				__func__);
 
 #if defined(CONFIG_FIT)
 			if (fit_parse_subimage (argv[2], (ulong)fpga_data,
 						&fit_addr, &fit_uname)) {
 				fpga_data = (void *)fit_addr;
-				debug ("*  fpga: subimage '%s' from FIT image at 0x%08lx\n",
-						fit_uname, fit_addr);
+				debug("*  fpga: subimage '%s' from FIT image "
+					"at 0x%08lx\n",
+					fit_uname, fit_addr);
 			} else
 #endif
 			{
 				fpga_data = (void *) dev;
-				debug ("*  fpga: cmdline image address = 0x%08lx\n", (ulong)fpga_data);
+				debug("*  fpga: cmdline image address = "
+					"0x%08lx\n", (ulong)fpga_data);
 			}
 
-			PRINTF ("%s: fpga_data = 0x%x\n",
-				__FUNCTION__, (uint) fpga_data);
+			debug("%s: fpga_data = 0x%x\n",
+				__func__, (uint) fpga_data);
 			dev = FPGA_INVALID_DEVICE;	/* reset device num */
 		}
 
@@ -224,16 +221,41 @@ int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		break;
 
 	default:
-		PRINTF ("%s: Too many or too few args (%d)\n",
-			__FUNCTION__, argc);
+		debug("%s: Too many or too few args (%d)\n",
+			__func__, argc);
 		op = FPGA_NONE;	/* force usage display */
 		break;
 	}
 
+	if (dev == FPGA_INVALID_DEVICE) {
+		puts("FPGA device not specified\n");
+		op = FPGA_NONE;
+	}
+
 	switch (op) {
 	case FPGA_NONE:
-		fpga_usage (cmdtp);
+	case FPGA_INFO:
 		break;
+	case FPGA_LOAD:
+	case FPGA_LOADB:
+	case FPGA_DUMP:
+		if (!fpga_data || !data_size)
+			wrong_parms = 1;
+		break;
+	case FPGA_LOADMK:
+		if (!fpga_data)
+			wrong_parms = 1;
+		break;
+	}
+
+	if (wrong_parms) {
+		puts("Wrong parameters for FPGA request\n");
+		op = FPGA_NONE;
+	}
+
+	switch (op) {
+	case FPGA_NONE:
+		return cmd_usage(cmdtp);
 
 	case FPGA_INFO:
 		rc = fpga_info (dev);
@@ -264,7 +286,7 @@ int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			{
 				const void *fit_hdr = (const void *)fpga_data;
 				int noffset;
-				void *fit_data;
+				const void *fit_data;
 
 				if (fit_uname == NULL) {
 					puts ("No FIT subimage unit name\n");
@@ -312,15 +334,9 @@ int do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 	default:
 		printf ("Unknown operation\n");
-		fpga_usage (cmdtp);
-		break;
+		return cmd_usage(cmdtp);
 	}
 	return (rc);
-}
-
-static void fpga_usage (cmd_tbl_t * cmdtp)
-{
-	cmd_usage(cmdtp);
 }
 
 /*
@@ -350,17 +366,18 @@ static int fpga_get_op (char *opstr)
 }
 
 U_BOOT_CMD (fpga, 6, 1, do_fpga,
-	    "loadable FPGA image support",
-	    "fpga [operation type] [device number] [image address] [image size]\n"
-	    "fpga operations:\n"
-	    "\tinfo\tlist known device information\n"
-	    "\tload\tLoad device from memory buffer\n"
-	    "\tloadb\tLoad device from bitstream buffer (Xilinx devices only)\n"
-	    "\tloadmk\tLoad device generated with mkimage\n"
-	    "\tdump\tLoad device to memory buffer"
+	"loadable FPGA image support",
+	"[operation type] [device number] [image address] [image size]\n"
+	"fpga operations:\n"
+	"  dump\t[dev]\t\t\tLoad device to memory buffer\n"
+	"  info\t[dev]\t\t\tlist known device information\n"
+	"  load\t[dev] [address] [size]\tLoad device from memory buffer\n"
+	"  loadb\t[dev] [address] [size]\t"
+	"Load device from bitstream buffer (Xilinx only)\n"
+	"  loadmk [dev] [address]\tLoad device generated with mkimage"
 #if defined(CONFIG_FIT)
-	    "\n"
-	    "\tFor loadmk operating on FIT format uImage address must include\n"
-	    "\tsubimage unit name in the form of addr:<subimg_uname>"
+	"\n"
+	"\tFor loadmk operating on FIT format uImage address must include\n"
+	"\tsubimage unit name in the form of addr:<subimg_uname>"
 #endif
 );

@@ -46,7 +46,6 @@ Altera_CYC2_Passive_Serial_fns altera_fns = {
 	fpga_wr_fn,
 	fpga_null_fn,
 	fpga_null_fn,
-	0
 };
 
 Altera_desc cyclone2 = {
@@ -62,9 +61,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int mvblm7_init_fpga(void)
 {
-	fpga_debug("Initialize FPGA interface (reloc 0x%.8lx)\n",
-		gd->reloc_off);
-	fpga_init(gd->reloc_off);
+	fpga_debug("Initialize FPGA interface\n");
+	fpga_init();
 	fpga_add(fpga_altera, &cyclone2);
 	fpga_config_fn(0, 1, 0);
 	udelay(60);
@@ -174,7 +172,7 @@ static inline int _write_fpga(u8 val, int dump)
 	return 0;
 }
 
-int fpga_wr_fn(void *buf, size_t len, int flush, int cookie)
+int fpga_wr_fn(const void *buf, size_t len, int flush, int cookie)
 {
 	unsigned char *data = (unsigned char *) buf;
 	int i;

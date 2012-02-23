@@ -26,6 +26,7 @@
  */
 
 #include <common.h>
+#include <netdev.h>
 #include "psd4256.h"
 #include "flash-defines.h"
 
@@ -36,13 +37,6 @@ int checkboard(void)
 	printf("Board: ADI BF533 EZ-Kit Lite board\n");
 	printf("       Support: http://blackfin.uclinux.org/\n");
 	return 0;
-}
-
-phys_size_t initdram(int board_type)
-{
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_MAX_RAM_SIZE;
-	return gd->bd->bi_memsize;
 }
 
 /* miscellaneous platform dependent initialisations */
@@ -57,3 +51,10 @@ int misc_init_r(void)
 
 	return 0;
 }
+
+#ifdef CONFIG_SMC91111
+int board_eth_init(bd_t *bis)
+{
+	return smc91111_initialize(0, CONFIG_SMC91111_BASE);
+}
+#endif

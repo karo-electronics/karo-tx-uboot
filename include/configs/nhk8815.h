@@ -80,6 +80,11 @@
 #define PHYS_SDRAM_1_SIZE	0x04000000	/* 64 MB */
 #define PHYS_SDRAM_2		0x08000000	/* SDR-SDRAM BANK #2*/
 #define PHYS_SDRAM_2_SIZE	0x04000000	/* 64 MB */
+#define CONFIG_SYS_SDRAM_BASE	PHYS_SDRAM_1
+#define CONFIG_SYS_SDRAM_SIZE	(PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE)
+/* The IPL loads us at 0, tell so to u-boot. Put stack pointer 1M into RAM */
+#define CONFIG_SYS_TEXT_BASE    0x00000000
+#define CONFIG_SYS_INIT_SP_ADDR (CONFIG_SYS_TEXT_BASE + (1<<20))
 
 #define CONFIG_STACKSIZE	(128 * 1024)	/* regular stack */
 #ifdef CONFIG_USE_IRQ
@@ -90,10 +95,8 @@
 #define CONFIG_SYS_MEMTEST_START	0x00000000
 #define CONFIG_SYS_MEMTEST_END		0x0FFFFFFF
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 256 * 1024)
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* for initial data */
-#define CONFIG_SYS_64BIT_VSPRINTF	/* mtd desires this */
 
-#define BOARD_LATE_INIT		/* call board_late_init during start up */
+#define CONFIG_BOARD_LATE_INIT	/* call board_late_init during start up */
 
 /* timing informazion */
 #define CONFIG_SYS_HZ		1000 /* Mandatory... */
@@ -132,11 +135,15 @@
 #define __io(a)			((void __iomem *)(PCI_IO_VADDR + (a)))
 #define __mem_isa(a)		((a) + PCI_MEMORY_VADDR)
 
-#define CONFIG_DRIVER_SMC91111	/* Using SMC91c111*/
+#define CONFIG_SMC91111	/* Using SMC91c111*/
 #define CONFIG_SMC91111_BASE	0x34000300
 #undef  CONFIG_SMC91111_EXT_PHY	/* Internal PHY */
 #define CONFIG_SMC_USE_32_BIT
 #define CONFIG_BOOTFILE		"uImage"
+
+#define CONFIG_IP_DEFRAG	/* Allows faster download, TFTP and NFS */
+#define CONFIG_TFTP_BLOCKSIZE	4096
+#define CONFIG_NFS_READ_SIZE	4096
 
 /* Storage information: onenand and nand */
 #define CONFIG_CMD_ONENAND

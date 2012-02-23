@@ -35,9 +35,7 @@ u32 pkt_data_pull(struct eth_device *dev, u32 addr) \
 void pkt_data_push(struct eth_device *dev, u32 addr, u32 val) \
 	__attribute__ ((weak, alias ("smc911x_reg_write")));
 
-#define mdelay(n)       udelay((n)*1000)
-
-static void smx911x_handle_mac_address(struct eth_device *dev)
+static void smc911x_handle_mac_address(struct eth_device *dev)
 {
 	unsigned long addrh, addrl;
 	uchar *m = dev->enetaddr;
@@ -50,7 +48,7 @@ static void smx911x_handle_mac_address(struct eth_device *dev)
 	printf(DRIVERNAME ": MAC %pM\n", m);
 }
 
-static int smc911x_miiphy_read(struct eth_device *dev,
+static int smc911x_eth_phy_read(struct eth_device *dev,
 				u8 phy, u8 reg, u16 *val)
 {
 	while (smc911x_get_mac_csr(dev, MII_ACC) & MII_ACC_MII_BUSY)
@@ -67,7 +65,7 @@ static int smc911x_miiphy_read(struct eth_device *dev,
 	return 0;
 }
 
-static int smc911x_miiphy_write(struct eth_device *dev,
+static int smc911x_eth_phy_write(struct eth_device *dev,
 				u8 phy, u8 reg, u16  val)
 {
 	while (smc911x_get_mac_csr(dev, MII_ACC) & MII_ACC_MII_BUSY)
@@ -103,11 +101,11 @@ static void smc911x_phy_configure(struct eth_device *dev)
 
 	smc911x_phy_reset(dev);
 
-	smc911x_miiphy_write(dev, 1, PHY_BMCR, PHY_BMCR_RESET);
+	smc911x_eth_phy_write(dev, 1, MII_BMCR, BMCR_RESET);
 	mdelay(1);
-	smc911x_miiphy_write(dev, 1, PHY_ANAR, 0x01e1);
-	smc911x_miiphy_write(dev, 1, PHY_BMCR, PHY_BMCR_AUTON |
-				PHY_BMCR_RST_NEG);
+	smc911x_eth_phy_write(dev, 1, MII_ADVERTISE, 0x01e1);
+	smc911x_eth_phy_write(dev, 1, MII_BMCR, BMCR_ANENABLE |
+				BMCR_ANRESTART);
 
 	timeout = 5000;
 	do {
@@ -115,9 +113,9 @@ static void smc911x_phy_configure(struct eth_device *dev)
 		if ((timeout--) == 0)
 			goto err_out;
 
-		if (smc911x_miiphy_read(dev, 1, PHY_BMSR, &status) != 0)
+		if (smc911x_eth_phy_read(dev, 1, MII_BMSR, &status) != 0)
 			goto err_out;
-	} while (!(status & PHY_BMSR_LS));
+	} while (!(status & BMSR_LSTATUS));
 
 	printf(DRIVERNAME ": phy initialized\n");
 
@@ -155,7 +153,7 @@ static int smc911x_init(struct eth_device *dev, bd_t * bd)
 	/* Configure the PHY, initialize the link state */
 	smc911x_phy_configure(dev);
 
-	smx911x_handle_mac_address(dev);
+	smc911x_handle_mac_address(dev);
 
 	/* Turn on Tx + Rx */
 	smc911x_enable(dev);
@@ -235,6 +233,25 @@ static int smc911x_rx(struct eth_device *dev)
 	return 0;
 }
 
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+/* wrapper for smc911x_eth_phy_read */
+static int smc911x_miiphy_read(const char *devname, u8 phy, u8 reg, u16 *val)
+{
+	struct eth_device *dev = eth_get_dev_by_name(devname);
+	if (dev)
+		return smc911x_eth_phy_read(dev, phy, reg, val);
+	return -1;
+}
+/* wrapper for smc911x_eth_phy_write */
+static int smc911x_miiphy_write(const char *devname, u8 phy, u8 reg, u16 val)
+{
+	struct eth_device *dev = eth_get_dev_by_name(devname);
+	if (dev)
+		return smc911x_eth_phy_write(dev, phy, reg, val);
+	return -1;
+}
+#endif
+
 int smc911x_initialize(u8 dev_num, int base_addr)
 {
 	unsigned long addrl, addrh;
@@ -242,8 +259,7 @@ int smc911x_initialize(u8 dev_num, int base_addr)
 
 	dev = malloc(sizeof(*dev));
 	if (!dev) {
-		free(dev);
-		return 0;
+		return -1;
 	}
 	memset(dev, 0, sizeof(*dev));
 
@@ -257,12 +273,15 @@ int smc911x_initialize(u8 dev_num, int base_addr)
 
 	addrh = smc911x_get_mac_csr(dev, ADDRH);
 	addrl = smc911x_get_mac_csr(dev, ADDRL);
-	dev->enetaddr[0] = addrl;
-	dev->enetaddr[1] = addrl >>  8;
-	dev->enetaddr[2] = addrl >> 16;
-	dev->enetaddr[3] = addrl >> 24;
-	dev->enetaddr[4] = addrh;
-	dev->enetaddr[5] = addrh >> 8;
+	if (!(addrl == 0xffffffff && addrh == 0x0000ffff)) {
+		/* address is obtained from optional eeprom */
+		dev->enetaddr[0] = addrl;
+		dev->enetaddr[1] = addrl >>  8;
+		dev->enetaddr[2] = addrl >> 16;
+		dev->enetaddr[3] = addrl >> 24;
+		dev->enetaddr[4] = addrh;
+		dev->enetaddr[5] = addrh >> 8;
+	}
 
 	dev->init = smc911x_init;
 	dev->halt = smc911x_halt;
@@ -271,5 +290,10 @@ int smc911x_initialize(u8 dev_num, int base_addr)
 	sprintf(dev->name, "%s-%hu", DRIVERNAME, dev_num);
 
 	eth_register(dev);
-	return 0;
+
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+	miiphy_register(dev->name, smc911x_miiphy_read, smc911x_miiphy_write);
+#endif
+
+	return 1;
 }

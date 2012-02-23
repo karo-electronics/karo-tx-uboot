@@ -28,11 +28,15 @@
 #include <common.h>
 #include <command.h>
 #include <asm/byteorder.h>
+#include <asm/unaligned.h>
 #include <part.h>
 #include <usb.h>
 
 #ifdef CONFIG_USB_STORAGE
 static int usb_stor_curr_dev = -1; /* current device */
+#endif
+#ifdef CONFIG_USB_HOST_ETHER
+static int usb_ether_curr_dev = -1; /* current ethernet device */
 #endif
 
 /* some display routines (info command) */
@@ -157,7 +161,7 @@ void usb_display_desc(struct usb_device *dev)
 {
 	if (dev->descriptor.bDescriptorType == USB_DT_DEVICE) {
 		printf("%d: %s,  USB Revision %x.%x\n", dev->devnum,
-		usb_get_class_desc(dev->config.if_desc[0].bInterfaceClass),
+		usb_get_class_desc(dev->config.if_desc[0].desc.bInterfaceClass),
 				   (dev->descriptor.bcdUSB>>8) & 0xff,
 				   dev->descriptor.bcdUSB & 0xff);
 
@@ -174,7 +178,7 @@ void usb_display_desc(struct usb_device *dev)
 		} else {
 			printf(" - Class: (from Interface) %s\n",
 			       usb_get_class_desc(
-				dev->config.if_desc[0].bInterfaceClass));
+				dev->config.if_desc[0].desc.bInterfaceClass));
 		}
 		printf(" - PacketSize: %d  Configurations: %d\n",
 			dev->descriptor.bMaxPacketSize0,
@@ -187,14 +191,14 @@ void usb_display_desc(struct usb_device *dev)
 
 }
 
-void usb_display_conf_desc(struct usb_config_descriptor *config,
+void usb_display_conf_desc(struct usb_configuration_descriptor *config,
 			   struct usb_device *dev)
 {
 	printf("   Configuration: %d\n", config->bConfigurationValue);
 	printf("   - Interfaces: %d %s%s%dmA\n", config->bNumInterfaces,
 	       (config->bmAttributes & 0x40) ? "Self Powered " : "Bus Powered ",
 	       (config->bmAttributes & 0x20) ? "Remote Wakeup " : "",
-		config->MaxPower*2);
+		config->bMaxPower*2);
 	if (config->iConfiguration) {
 		printf("   - ");
 		usb_display_string(dev, config->iConfiguration);
@@ -237,7 +241,7 @@ void usb_display_ep_desc(struct usb_endpoint_descriptor *epdesc)
 		printf("Interrupt");
 		break;
 	}
-	printf(" MaxPacket %d", epdesc->wMaxPacketSize);
+	printf(" MaxPacket %d", get_unaligned(&epdesc->wMaxPacketSize));
 	if ((epdesc->bmAttributes & 0x03) == 0x3)
 		printf(" Interval %dms", epdesc->bInterval);
 	printf("\n");
@@ -246,16 +250,16 @@ void usb_display_ep_desc(struct usb_endpoint_descriptor *epdesc)
 /* main routine to diasplay the configs, interfaces and endpoints */
 void usb_display_config(struct usb_device *dev)
 {
-	struct usb_config_descriptor *config;
-	struct usb_interface_descriptor *ifdesc;
+	struct usb_config *config;
+	struct usb_interface *ifdesc;
 	struct usb_endpoint_descriptor *epdesc;
 	int i, ii;
 
 	config = &dev->config;
-	usb_display_conf_desc(config, dev);
+	usb_display_conf_desc(&config->desc, dev);
 	for (i = 0; i < config->no_of_if; i++) {
 		ifdesc = &config->if_desc[i];
-		usb_display_if_desc(ifdesc, dev);
+		usb_display_if_desc(&ifdesc->desc, dev);
 		for (ii = 0; ii < ifdesc->no_of_ep; ii++) {
 			epdesc = &ifdesc->ep_desc[ii];
 			usb_display_ep_desc(epdesc);
@@ -278,7 +282,7 @@ static inline char *portspeed(int speed)
 void usb_show_tree_graph(struct usb_device *dev, char *pre)
 {
 	int i, index;
-	int has_child, last_child, port;
+	int has_child, last_child;
 
 	index = strlen(pre);
 	printf(" %s", pre);
@@ -297,7 +301,6 @@ void usb_show_tree_graph(struct usb_device *dev, char *pre)
 				/* found our pointer, see if we have a
 				 * little sister
 				 */
-				port = i;
 				while (i++ < dev->parent->maxchild) {
 					if (dev->parent->children[i] != NULL) {
 						/* found a sister */
@@ -319,9 +322,9 @@ void usb_show_tree_graph(struct usb_device *dev, char *pre)
 	pre[index++] = has_child ? '|' : ' ';
 	pre[index] = 0;
 	printf(" %s (%s, %dmA)\n", usb_get_class_desc(
-					dev->config.if_desc[0].bInterfaceClass),
+					dev->config.if_desc[0].desc.bInterfaceClass),
 					portspeed(dev->speed),
-					dev->config.MaxPower * 2);
+					dev->config.desc.bMaxPower * 2);
 	if (strlen(dev->mf) || strlen(dev->prod) || strlen(dev->serial))
 		printf(" %s  %s %s %s\n", pre, dev->mf, dev->prod, dev->serial);
 	printf(" %s\n", pre);
@@ -349,11 +352,11 @@ void usb_show_tree(struct usb_device *dev)
  * usb boot command intepreter. Derived from diskboot
  */
 #ifdef CONFIG_USB_STORAGE
-int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *boot_device = NULL;
 	char *ep;
-	int dev, part = 1, rcode;
+	int dev, part = 1;
 	ulong addr, cnt;
 	disk_partition_t info;
 	image_header_t *hdr;
@@ -376,8 +379,7 @@ int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		boot_device = argv[2];
 		break;
 	default:
-		cmd_usage(cmdtp);
-		return 1;
+		return cmd_usage(cmdtp);
 	}
 
 	if (!boot_device) {
@@ -387,7 +389,7 @@ int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	dev = simple_strtoul(boot_device, &ep, 16);
 	stor_dev = usb_stor_get_dev(dev);
-	if (stor_dev->type == DEV_TYPE_UNKNOWN) {
+	if (stor_dev == NULL || stor_dev->type == DEV_TYPE_UNKNOWN) {
 		printf("\n** Device %d not available\n", dev);
 		return 1;
 	}
@@ -488,17 +490,7 @@ int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	flush_cache(addr, (cnt+1)*info.blksz);
 
-	/* Check if we should attempt an auto-start */
-	if (((ep = getenv("autostart")) != NULL) && (strcmp(ep, "yes") == 0)) {
-		char *local_args[2];
-		extern int do_bootm(cmd_tbl_t *, int, int, char *[]);
-		local_args[0] = argv[0];
-		local_args[1] = NULL;
-		printf("Automatic boot of image at addr 0x%08lX ...\n", addr);
-		rcode = do_bootm(cmdtp, 0, 1, local_args);
-		return rcode;
-	}
-	return 0;
+	return bootm_maybe_autostart(cmdtp, argv[0]);
 }
 #endif /* CONFIG_USB_STORAGE */
 
@@ -506,7 +498,7 @@ int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 /******************************************************************************
  * usb command intepreter
  */
-int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 
 	int i;
@@ -516,16 +508,24 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	block_dev_desc_t *stor_dev;
 #endif
 
+	if (argc < 2)
+		return cmd_usage(cmdtp);
+
 	if ((strncmp(argv[1], "reset", 5) == 0) ||
 		 (strncmp(argv[1], "start", 5) == 0)) {
 		usb_stop();
 		printf("(Re)start USB...\n");
 		i = usb_init();
+		if (i >= 0) {
 #ifdef CONFIG_USB_STORAGE
-		/* try to recognize storage devices immediately */
-		if (i >= 0)
+			/* try to recognize storage devices immediately */
 			usb_stor_curr_dev = usb_stor_scan(1);
 #endif
+#ifdef CONFIG_USB_HOST_ETHER
+			/* try to recognize ethernet devices immediately */
+			usb_ether_curr_dev = usb_host_eth_scan(1);
+#endif
+		}
 		return 0;
 	}
 	if (strncmp(argv[1], "stop", 4) == 0) {
@@ -579,7 +579,7 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 					break;
 			}
 			if (dev == NULL) {
-				printf("*** NO Device avaiable ***\n");
+				printf("*** No device available ***\n");
 				return 0;
 			} else {
 				usb_display_desc(dev);
@@ -595,22 +595,25 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (strncmp(argv[1], "part", 4) == 0) {
 		int devno, ok = 0;
 		if (argc == 2) {
-			for (devno = 0; devno < USB_MAX_STOR_DEV; ++devno) {
+			for (devno = 0; ; ++devno) {
 				stor_dev = usb_stor_get_dev(devno);
+				if (stor_dev == NULL)
+					break;
 				if (stor_dev->type != DEV_TYPE_UNKNOWN) {
 					ok++;
 					if (devno)
 						printf("\n");
-					printf("print_part of %x\n", devno);
+					debug("print_part of %x\n", devno);
 					print_part(stor_dev);
 				}
 			}
 		} else {
 			devno = simple_strtoul(argv[2], NULL, 16);
 			stor_dev = usb_stor_get_dev(devno);
-			if (stor_dev->type != DEV_TYPE_UNKNOWN) {
+			if (stor_dev != NULL &&
+			    stor_dev->type != DEV_TYPE_UNKNOWN) {
 				ok++;
-				printf("print_part of %x\n", devno);
+				debug("print_part of %x\n", devno);
 				print_part(stor_dev);
 			}
 		}
@@ -642,16 +645,38 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			return 1;
 		}
 	}
+	if (strcmp(argv[1], "write") == 0) {
+		if (usb_stor_curr_dev < 0) {
+			printf("no current device selected\n");
+			return 1;
+		}
+		if (argc == 5) {
+			unsigned long addr = simple_strtoul(argv[2], NULL, 16);
+			unsigned long blk  = simple_strtoul(argv[3], NULL, 16);
+			unsigned long cnt  = simple_strtoul(argv[4], NULL, 16);
+			unsigned long n;
+			printf("\nUSB write: device %d block # %ld, count %ld"
+				" ... ", usb_stor_curr_dev, blk, cnt);
+			stor_dev = usb_stor_get_dev(usb_stor_curr_dev);
+			n = stor_dev->block_write(usb_stor_curr_dev, blk, cnt,
+						(ulong *)addr);
+			printf("%ld blocks write: %s\n", n,
+				(n == cnt) ? "OK" : "ERROR");
+			if (n == cnt)
+				return 0;
+			return 1;
+		}
+	}
 	if (strncmp(argv[1], "dev", 3) == 0) {
 		if (argc == 3) {
 			int dev = (int)simple_strtoul(argv[2], NULL, 10);
 			printf("\nUSB device %d: ", dev);
-			if (dev >= USB_MAX_STOR_DEV) {
+			stor_dev = usb_stor_get_dev(dev);
+			if (stor_dev == NULL) {
 				printf("unknown device\n");
 				return 1;
 			}
 			printf("\n    Device %d: ", dev);
-			stor_dev = usb_stor_get_dev(dev);
 			dev_print(stor_dev);
 			if (stor_dev->type == DEV_TYPE_UNKNOWN)
 				return 1;
@@ -669,24 +694,26 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return 0;
 	}
 #endif /* CONFIG_USB_STORAGE */
-	cmd_usage(cmdtp);
-	return 1;
+	return cmd_usage(cmdtp);
 }
 
 #ifdef CONFIG_USB_STORAGE
 U_BOOT_CMD(
 	usb,	5,	1,	do_usb,
 	"USB sub-system",
-	"reset - reset (rescan) USB controller\n"
-	"usb stop [f]  - stop USB [f]=force stop\n"
-	"usb tree  - show USB device tree\n"
+	"start - start (scan) USB controller\n"
+	"usb reset - reset (rescan) USB controller\n"
+	"usb stop [f] - stop USB [f]=force stop\n"
+	"usb tree - show USB device tree\n"
 	"usb info [dev] - show available USB devices\n"
-	"usb storage  - show details of USB storage devices\n"
+	"usb storage - show details of USB storage devices\n"
 	"usb dev [dev] - show or set current USB storage device\n"
 	"usb part [dev] - print partition table of one or all USB storage"
 	" devices\n"
 	"usb read addr blk# cnt - read `cnt' blocks starting at block `blk#'\n"
-	"    to memory address `addr'"
+	"    to memory address `addr'\n"
+	"usb write addr blk# cnt - write `cnt' blocks starting at block `blk#'\n"
+	"    from memory address `addr'"
 );
 
 
@@ -700,8 +727,9 @@ U_BOOT_CMD(
 U_BOOT_CMD(
 	usb,	5,	1,	do_usb,
 	"USB sub-system",
-	"reset - reset (rescan) USB controller\n"
-	"usb  tree  - show USB device tree\n"
-	"usb  info [dev] - show available USB devices"
+	"start - start (scan) USB controller\n"
+	"usb reset - reset (rescan) USB controller\n"
+	"usb tree - show USB device tree\n"
+	"usb info [dev] - show available USB devices"
 );
 #endif

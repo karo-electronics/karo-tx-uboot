@@ -31,15 +31,19 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-const char *weekdays[] = {
+static const char * const weekdays[] = {
 	"Sun", "Mon", "Tues", "Wednes", "Thurs", "Fri", "Satur",
 };
 
+#ifdef CONFIG_NEEDS_MANUAL_RELOC
 #define RELOC(a)	((typeof(a))((unsigned long)(a) + gd->reloc_off))
+#else
+#define RELOC(a)	a
+#endif
 
-int mk_date (char *, struct rtc_time *);
+int mk_date (const char *, struct rtc_time *);
 
-int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct rtc_time tm;
 	int rcode = 0;
@@ -67,9 +71,9 @@ int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				/* and write to RTC */
 				rcode = rtc_set (&tm);
 				if(rcode)
-					puts("## Set date failled\n");
+					puts("## Set date failed\n");
 			} else {
-				puts("## Get date failled\n");
+				puts("## Get date failed\n");
 			}
 		}
 		/* FALL TROUGH */
@@ -77,7 +81,7 @@ int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		rcode = rtc_get (&tm);
 
 		if (rcode) {
-			puts("## Get date failled\n");
+			puts("## Get date failed\n");
 			break;
 		}
 
@@ -102,7 +106,7 @@ int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 /*
  * simple conversion of two-digit string with error checking
  */
-static int cnvrt2 (char *str, int *valp)
+static int cnvrt2 (const char *str, int *valp)
 {
 	int val;
 
@@ -127,7 +131,7 @@ static int cnvrt2 (char *str, int *valp)
  * Some basic checking for valid values is done, but this will not catch
  * all possible error conditions.
  */
-int mk_date (char *datestr, struct rtc_time *tmp)
+int mk_date (const char *datestr, struct rtc_time *tmp)
 {
 	int len, val;
 	char *ptr;

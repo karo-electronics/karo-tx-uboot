@@ -282,7 +282,7 @@ OUTL(struct eth_device *dev, int command, u_long addr)
  * ready to send and receive packets.
  *
  * Side effects:
- *            leaves the natsemi initialized, and ready to recieve packets.
+ *            leaves the natsemi initialized, and ready to receive packets.
  *
  * Returns:   struct eth_device *:          pointer to NIC data structure
  */
@@ -321,6 +321,11 @@ natsemi_initialize(bd_t * bis)
 		}
 
 		dev = (struct eth_device *) malloc(sizeof *dev);
+		if (!dev) {
+			printf("natsemi: Can not allocate memory\n");
+			break;
+		}
+		memset(dev, 0, sizeof(*dev));
 
 		sprintf(dev->name, "dp83815#%d", card_number);
 		dev->iobase = bus_to_phys(iobase);
@@ -754,7 +759,8 @@ natsemi_send(struct eth_device *dev, volatile void *packet, int length)
 {
 	u32 i, status = 0;
 	u32 tx_status = 0;
-	vu_long *res = (vu_long *)&tx_status;
+	u32 *tx_ptr = &tx_status;
+	vu_long *res = (vu_long *)tx_ptr;
 
 	/* Stop the transmitter */
 	OUTL(dev, TxOff, ChipCmd);

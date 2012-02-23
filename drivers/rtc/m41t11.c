@@ -45,17 +45,6 @@
 
 #if defined(CONFIG_SYS_I2C_RTC_ADDR) && defined(CONFIG_CMD_DATE)
 
-static unsigned bcd2bin (uchar n)
-{
-	return ((((n >> 4) & 0x0F) * 10) + (n & 0x0F));
-}
-
-static unsigned char bin2bcd (unsigned int n)
-{
-	return (((n / 10) << 4) | (n % 10));
-}
-
-
 /* ------------------------------------------------------------------------- */
 /*
   these are simple defines for the chip local to here so they aren't too
@@ -192,18 +181,4 @@ void rtc_reset (void)
 	val = val & 0x3F;/*turn off freq test keep calibration*/
 	i2c_write(CONFIG_SYS_I2C_RTC_ADDR, RTC_CONTROL_ADDR, 1, &val, 1);
 }
-
-int rtc_store(int addr, unsigned char* data, int size)
-{
-	/*don't let things wrap onto the time on a write*/
-	if( (addr+size) >= M41T11_STORAGE_SZ )
-		return 1;
-	return i2c_write( CONFIG_SYS_I2C_RTC_ADDR, REG_CNT+addr, 1, data, size );
-}
-
-int rtc_recall(int addr, unsigned char* data, int size)
-{
-	return i2c_read( CONFIG_SYS_I2C_RTC_ADDR, REG_CNT+addr, 1, data, size );
-}
-
 #endif

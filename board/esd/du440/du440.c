@@ -24,7 +24,7 @@
 #include <asm/bitops.h>
 #include <command.h>
 #include <i2c.h>
-#include <ppc440.h>
+#include <asm/ppc440.h>
 #include "du440.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -45,8 +45,8 @@ int board_early_init_f(void)
 	u32 sdr0_pfc1, sdr0_pfc2;
 	u32 reg;
 
-	mtdcr(ebccfga, xbcfg);
-	mtdcr(ebccfgd, 0xb8400000);
+	mtdcr(EBC0_CFGADDR, EBC0_CFG);
+	mtdcr(EBC0_CFGDATA, 0xb8400000);
 
 	/*
 	 * Setup the GPIO pins
@@ -87,37 +87,37 @@ int board_early_init_f(void)
 	/*
 	 * Setup the interrupt controller polarities, triggers, etc.
 	 */
-	mtdcr(uic0sr, 0xffffffff);	/* clear all */
-	mtdcr(uic0er, 0x00000000);	/* disable all */
-	mtdcr(uic0cr, 0x00000005);	/* ATI & UIC1 crit are critical */
-	mtdcr(uic0pr, 0xfffff7ff);	/* per ref-board manual */
-	mtdcr(uic0tr, 0x00000000);	/* per ref-board manual */
-	mtdcr(uic0vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic0sr, 0xffffffff);	/* clear all */
+	mtdcr(UIC0SR, 0xffffffff);	/* clear all */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all */
+	mtdcr(UIC0CR, 0x00000005);	/* ATI & UIC1 crit are critical */
+	mtdcr(UIC0PR, 0xfffff7ff);	/* per ref-board manual */
+	mtdcr(UIC0TR, 0x00000000);	/* per ref-board manual */
+	mtdcr(UIC0VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC0SR, 0xffffffff);	/* clear all */
 
 	/*
 	 * UIC1:
 	 *  bit30: ext. Irq 1: PLD : int 32+30
 	 */
-	mtdcr(uic1sr, 0xffffffff);	/* clear all */
-	mtdcr(uic1er, 0x00000000);	/* disable all */
-	mtdcr(uic1cr, 0x00000000);	/* all non-critical */
-	mtdcr(uic1pr, 0xfffffffd);
-	mtdcr(uic1tr, 0x00000000);
-	mtdcr(uic1vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic1sr, 0xffffffff);	/* clear all */
+	mtdcr(UIC1SR, 0xffffffff);	/* clear all */
+	mtdcr(UIC1ER, 0x00000000);	/* disable all */
+	mtdcr(UIC1CR, 0x00000000);	/* all non-critical */
+	mtdcr(UIC1PR, 0xfffffffd);
+	mtdcr(UIC1TR, 0x00000000);
+	mtdcr(UIC1VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC1SR, 0xffffffff);	/* clear all */
 
 	/*
 	 * UIC2
 	 *  bit3: ext. Irq 2: DCF77 : int 64+3
 	 */
-	mtdcr(uic2sr, 0xffffffff);	/* clear all */
-	mtdcr(uic2er, 0x00000000);	/* disable all */
-	mtdcr(uic2cr, 0x00000000);	/* all non-critical */
-	mtdcr(uic2pr, 0xffffffff);	/* per ref-board manual */
-	mtdcr(uic2tr, 0x00000000);	/* per ref-board manual */
-	mtdcr(uic2vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic2sr, 0xffffffff);	/* clear all */
+	mtdcr(UIC2SR, 0xffffffff);	/* clear all */
+	mtdcr(UIC2ER, 0x00000000);	/* disable all */
+	mtdcr(UIC2CR, 0x00000000);	/* all non-critical */
+	mtdcr(UIC2PR, 0xffffffff);	/* per ref-board manual */
+	mtdcr(UIC2TR, 0x00000000);	/* per ref-board manual */
+	mtdcr(UIC2VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC2SR, 0xffffffff);	/* clear all */
 
 	/* select Ethernet pins */
 	mfsdr(SDR0_PFC1, sdr0_pfc1);
@@ -145,8 +145,8 @@ int board_early_init_f(void)
 	mtsdr(SDR0_PFC1, sdr0_pfc1);
 
 	/* PCI arbiter enabled */
-	mfsdr(sdr_pci0, reg);
-	mtsdr(sdr_pci0, 0x80000000 | reg);
+	mfsdr(SDR0_PCI0, reg);
+	mtsdr(SDR0_PCI0, 0x80000000 | reg);
 
 	/* setup NAND FLASH */
 	mfsdr(SDR0_CUST0, sdr0_cust0);
@@ -176,12 +176,12 @@ int misc_init_r(void)
 	gd->bd->bi_flashstart = 0 - gd->bd->bi_flashsize;
 	gd->bd->bi_flashoffset = 0;
 
-	mtdcr(ebccfga, pb0cr);
-	pbcr = mfdcr(ebccfgd);
+	mtdcr(EBC0_CFGADDR, PB0CR);
+	pbcr = mfdcr(EBC0_CFGDATA);
 	size_val = ffs(gd->bd->bi_flashsize) - 21;
 	pbcr = (pbcr & 0x0001ffff) | gd->bd->bi_flashstart | (size_val << 17);
-	mtdcr(ebccfga, pb0cr);
-	mtdcr(ebccfgd, pbcr);
+	mtdcr(EBC0_CFGADDR, PB0CR);
+	mtdcr(EBC0_CFGDATA, pbcr);
 
 	/*
 	 * Re-check to get correct base address
@@ -265,8 +265,8 @@ int misc_init_r(void)
 	 * This fix will make the MAL burst disabling patch for the Linux
 	 * EMAC driver obsolete.
 	 */
-	reg = mfdcr(plb4_acr) & ~PLB4_ACR_WRP;
-	mtdcr(plb4_acr, reg);
+	reg = mfdcr(PLB4A0_ACR) & ~PLB4Ax_ACR_WRP_MASK;
+	mtdcr(PLB4A0_ACR, reg);
 
 	/*
 	 * release IO-RST#
@@ -350,7 +350,7 @@ int checkboard(void)
 
 	puts("Board: DU440");
 
-	if (getenv_r("serial#", serno, sizeof(serno)) > 0) {
+	if (getenv_f("serial#", serno, sizeof(serno)) > 0) {
 		puts(", serial# ");
 		puts(serno);
 	}
@@ -359,165 +359,6 @@ int checkboard(void)
 	       board_revision(), pld_revision());
 	return (0);
 }
-
-/*
- * pci_pre_init
- *
- * This routine is called just prior to registering the hose and gives
- * the board the opportunity to check things. Returning a value of zero
- * indicates that things are bad & PCI initialization should be aborted.
- *
- * Different boards may wish to customize the pci controller structure
- * (add regions, override default access routines, etc) or perform
- * certain pre-initialization actions.
- */
-#if defined(CONFIG_PCI)
-int pci_pre_init(struct pci_controller *hose)
-{
-	unsigned long addr;
-
-	/*
-	 * Set priority for all PLB3 devices to 0.
-	 * Set PLB3 arbiter to fair mode.
-	 */
-	mfsdr(sdr_amp1, addr);
-	mtsdr(sdr_amp1, (addr & 0x000000FF) | 0x0000FF00);
-	addr = mfdcr(plb3_acr);
-	mtdcr(plb3_acr, addr | 0x80000000);
-
-	/*
-	 * Set priority for all PLB4 devices to 0.
-	 */
-	mfsdr(sdr_amp0, addr);
-	mtsdr(sdr_amp0, (addr & 0x000000FF) | 0x0000FF00);
-	addr = mfdcr(plb4_acr) | 0xa0000000; /* Was 0x8---- */
-	mtdcr(plb4_acr, addr);
-
-	/*
-	 * Set Nebula PLB4 arbiter to fair mode.
-	 */
-	/* Segment0 */
-	addr = (mfdcr(plb0_acr) & ~plb0_acr_ppm_mask) | plb0_acr_ppm_fair;
-	addr = (addr & ~plb0_acr_hbu_mask) | plb0_acr_hbu_enabled;
-	addr = (addr & ~plb0_acr_rdp_mask) | plb0_acr_rdp_4deep;
-	addr = (addr & ~plb0_acr_wrp_mask) | plb0_acr_wrp_2deep;
-	mtdcr(plb0_acr, addr);
-
-	/* Segment1 */
-	addr = (mfdcr(plb1_acr) & ~plb1_acr_ppm_mask) | plb1_acr_ppm_fair;
-	addr = (addr & ~plb1_acr_hbu_mask) | plb1_acr_hbu_enabled;
-	addr = (addr & ~plb1_acr_rdp_mask) | plb1_acr_rdp_4deep;
-	addr = (addr & ~plb1_acr_wrp_mask) | plb1_acr_wrp_2deep;
-	mtdcr(plb1_acr, addr);
-
-	return 1;
-}
-#endif /* defined(CONFIG_PCI) */
-
-/*
- * pci_target_init
- *
- * The bootstrap configuration provides default settings for the pci
- * inbound map (PIM). But the bootstrap config choices are limited and
- * may not be sufficient for a given board.
- */
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
-void pci_target_init(struct pci_controller *hose)
-{
-	/*
-	 * Set up Direct MMIO registers
-	 */
-	/*
-	 * PowerPC440EPX PCI Master configuration.
-	 * Map one 1Gig range of PLB/processor addresses to PCI memory space.
-	 * PLB address 0xA0000000-0xDFFFFFFF
-	 *     ==> PCI address 0xA0000000-0xDFFFFFFF
-	 * Use byte reversed out routines to handle endianess.
-	 * Make this region non-prefetchable.
-	 */
-	out32r(PCIX0_PMM0MA, 0x00000000);	/* PMM0 Mask/Attribute */
-						/* - disabled b4 setting */
-	out32r(PCIX0_PMM0LA, CONFIG_SYS_PCI_MEMBASE);	/* PMM0 Local Address */
-	out32r(PCIX0_PMM0PCILA, CONFIG_SYS_PCI_MEMBASE); /* PMM0 PCI Low Address */
-	out32r(PCIX0_PMM0PCIHA, 0x00000000);	/* PMM0 PCI High Address */
-	out32r(PCIX0_PMM0MA, 0xE0000001);	/* 512M + No prefetching, */
-						/* and enable region */
-
-	out32r(PCIX0_PMM1MA, 0x00000000);	/* PMM0 Mask/Attribute */
-						/* - disabled b4 setting */
-	out32r(PCIX0_PMM1LA, CONFIG_SYS_PCI_MEMBASE2); /* PMM0 Local Address */
-	out32r(PCIX0_PMM1PCILA, CONFIG_SYS_PCI_MEMBASE2); /* PMM0 PCI Low Address */
-	out32r(PCIX0_PMM1PCIHA, 0x00000000);	/* PMM0 PCI High Address */
-	out32r(PCIX0_PMM1MA, 0xE0000001);	/* 512M + No prefetching, */
-						/* and enable region */
-
-	out32r(PCIX0_PTM1MS, 0x00000001);	/* Memory Size/Attribute */
-	out32r(PCIX0_PTM1LA, 0);		/* Local Addr. Reg */
-	out32r(PCIX0_PTM2MS, 0);		/* Memory Size/Attribute */
-	out32r(PCIX0_PTM2LA, 0);		/* Local Addr. Reg */
-
-	/*
-	 * Set up Configuration registers
-	 */
-
-	/* Program the board's subsystem id/vendor id */
-	pci_write_config_word(0, PCI_SUBSYSTEM_VENDOR_ID,
-			      PCI_VENDOR_ID_ESDGMBH);
-	pci_write_config_word(0, PCI_SUBSYSTEM_ID, PCI_DEVICE_ID_DU440);
-
-	pci_write_config_word(0, PCI_CLASS_SUB_CODE, PCI_CLASS_BRIDGE_HOST);
-
-	/* Configure command register as bus master */
-	pci_write_config_word(0, PCI_COMMAND, PCI_COMMAND_MASTER);
-
-	/* 240nS PCI clock */
-	pci_write_config_word(0, PCI_LATENCY_TIMER, 1);
-
-	/* No error reporting */
-	pci_write_config_word(0, PCI_ERREN, 0);
-
-	pci_write_config_dword(0, PCI_BRDGOPT2, 0x00000101);
-
-}
-#endif /* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
-
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT)
-void pci_master_init(struct pci_controller *hose)
-{
-	unsigned short temp_short;
-
-	/*
-	 * Write the PowerPC440 EP PCI Configuration regs.
-	 * Enable PowerPC440 EP to be a master on the PCI bus (PMM).
-	 * Enable PowerPC440 EP to act as a PCI memory target (PTM).
-	 */
-	pci_read_config_word(0, PCI_COMMAND, &temp_short);
-	pci_write_config_word(0, PCI_COMMAND,
-			      temp_short | PCI_COMMAND_MASTER |
-			      PCI_COMMAND_MEMORY);
-}
-#endif /* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT) */
-
-/*
- * is_pci_host
- *
- * This routine is called to determine if a pci scan should be
- * performed. With various hardware environments (especially cPCI and
- * PPMC) it's insufficient to depend on the state of the arbiter enable
- * bit in the strap register, or generic host/adapter assumptions.
- *
- * Rather than hard-code a bad assumption in the general 440 code, the
- * 440 pci code requires the board to decide at runtime.
- *
- * Return 0 for adapter mode, non-zero for host (monarch) mode.
- */
-#if defined(CONFIG_PCI)
-int is_pci_host(struct pci_controller *hose)
-{
-	/* always configured as host. */
-	return (1);
-}
-#endif /* defined(CONFIG_PCI) */
 
 int last_stage_init(void)
 {
@@ -568,7 +409,7 @@ int dcf77_status(void)
 	return mv;
 }
 
-int do_dcf77(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_dcf77(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int mv;
 	u32 pin, pinold;
@@ -649,7 +490,7 @@ int usbhub_init(void)
 	return ret;
 }
 
-int do_hubinit(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_hubinit(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	usbhub_init();
 	return 0;
@@ -732,7 +573,7 @@ int boot_eeprom_write (unsigned dev_addr,
 	return rcode;
 }
 
-int do_setup_boot_eeprom(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_setup_boot_eeprom(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	ulong sdsdp[4];
 
@@ -832,7 +673,7 @@ int eeprom_write_enable (unsigned dev_addr, int state)
 	return state;
 }
 
-int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int query = argc == 1;
 	int state = 0;
@@ -886,7 +727,7 @@ static int pld_interrupt(u32 arg)
 	return rc;
 }
 
-int do_waitpwrirq(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_waitpwrirq(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	got_pldirq = 0;
 
@@ -954,7 +795,7 @@ int dvi_init(void)
 	return ret;
 }
 
-int do_dviinit(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_dviinit(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	dvi_init();
 	return 0;
@@ -969,7 +810,7 @@ U_BOOT_CMD(
  * TODO: 'time' command might be useful for others as well.
  *       Move to 'common' directory.
  */
-int do_time(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_time(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	unsigned long long start, end;
 	char c, cmd[CONFIG_SYS_CBSIZE];
@@ -1033,7 +874,7 @@ unsigned int prng(unsigned int max)
 	return Y;
 }
 
-int do_gfxdemo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_gfxdemo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	unsigned int color;
 	unsigned int x, y, dx, dy;

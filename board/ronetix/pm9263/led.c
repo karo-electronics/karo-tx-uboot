@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2007-2008
- * Stelian Pop <stelian.pop@leadtechdesign.com>
+ * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  * Ilko Iliev <www.ronetix.at>
  *
@@ -24,20 +24,20 @@
  */
 
 #include <common.h>
-#include <asm/arch/at91sam9263.h>
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/io.h>
+#include <asm/io.h>
 
 void coloured_LED_init(void)
 {
+	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
+
 	/* Enable clock */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9263_ID_PIOB |
-				      1 << AT91SAM9263_ID_PIOCDE);
+	writel(1 << ATMEL_ID_PIOB, &pmc->pcer);
 
-	at91_set_gpio_output(CONFIG_RED_LED, 1);
-	at91_set_gpio_output(CONFIG_GREEN_LED, 1);
+	at91_set_pio_output(CONFIG_RED_LED, 1);
+	at91_set_pio_output(CONFIG_GREEN_LED, 1);
 
-	at91_set_gpio_value(CONFIG_RED_LED, 0);
-	at91_set_gpio_value(CONFIG_GREEN_LED, 1);
+	at91_set_pio_value(CONFIG_RED_LED, 0);
+	at91_set_pio_value(CONFIG_GREEN_LED, 1);
 }

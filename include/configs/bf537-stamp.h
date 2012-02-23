@@ -63,7 +63,6 @@
 #define ADI_CMDS_NETWORK	1
 #define CONFIG_BFIN_MAC
 #define CONFIG_NETCONSOLE	1
-#define CONFIG_NET_MULTI	1
 #endif
 #define CONFIG_HOSTNAME		bf537-stamp
 /* Uncomment next line to use fixed MAC address */
@@ -89,10 +88,7 @@
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
 #define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_ATMEL
-#define CONFIG_SPI_FLASH_SPANSION
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_WINBOND
+#define CONFIG_SPI_FLASH_ALL
 
 
 /*
@@ -113,7 +109,7 @@
 #if (CONFIG_BFIN_BOOT_MODE == BFIN_BOOT_BYPASS)
 #define ENV_IS_EMBEDDED
 #else
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 #endif
 #ifdef ENV_IS_EMBEDDED
 /* WARNING - the following is hand-optimized to fit within
@@ -122,13 +118,10 @@
  * it linked after the configuration sector.
  */
 # define LDS_BOARD_TEXT \
-	cpu/blackfin/traps.o		(.text .text.*); \
-	cpu/blackfin/interrupt.o	(.text .text.*); \
-	cpu/blackfin/serial.o		(.text .text.*); \
-	common/dlmalloc.o		(.text .text.*); \
-	lib_generic/crc32.o		(.text .text.*); \
+	arch/blackfin/lib/libblackfin.o (.text*); \
+	arch/blackfin/cpu/libblackfin.o (.text*); \
 	. = DEFINED(env_offset) ? env_offset : .; \
-	common/env_embedded.o		(.text .text.*);
+	common/env_embedded.o (.text*);
 #endif
 
 
@@ -137,15 +130,14 @@
  */
 #define CONFIG_BFIN_TWI_I2C	1
 #define CONFIG_HARD_I2C		1
-#define CONFIG_SYS_I2C_SPEED	50000
-#define CONFIG_SYS_I2C_SLAVE	0
 
 
 /*
  * SPI_MMC Settings
  */
 #define CONFIG_MMC
-#define CONFIG_BFIN_SPI_MMC
+#define CONFIG_GENERIC_MMC
+#define CONFIG_MMC_SPI
 
 
 /*
@@ -157,7 +149,6 @@
 
 #define BFIN_NAND_CLE(chip) ((unsigned long)(chip)->IO_ADDR_W | (1 << 2))
 #define BFIN_NAND_ALE(chip) ((unsigned long)(chip)->IO_ADDR_W | (1 << 1))
-#define BFIN_NAND_READY     PF3
 #define BFIN_NAND_WRITE(addr, cmd) \
 	do { \
 		bfin_write8(addr, cmd); \
@@ -166,21 +157,34 @@
 
 #define NAND_PLAT_WRITE_CMD(chip, cmd) BFIN_NAND_WRITE(BFIN_NAND_CLE(chip), cmd)
 #define NAND_PLAT_WRITE_ADR(chip, cmd) BFIN_NAND_WRITE(BFIN_NAND_ALE(chip), cmd)
-#define NAND_PLAT_DEV_READY(chip)      (bfin_read_PORTFIO() & BFIN_NAND_READY)
-#define NAND_PLAT_INIT() \
-	do { \
-		bfin_write_PORTF_FER(bfin_read_PORTF_FER() & ~BFIN_NAND_READY); \
-		bfin_write_PORTFIO_DIR(bfin_read_PORTFIO_DIR() & ~BFIN_NAND_READY); \
-		bfin_write_PORTFIO_INEN(bfin_read_PORTFIO_INEN() | BFIN_NAND_READY); \
-	} while (0)
+#define NAND_PLAT_GPIO_DEV_READY       GPIO_PF3
 
 
 /*
  * CF-CARD IDE-HDD Support
  */
-/* #define CONFIG_BFIN_TRUE_IDE */	/* Add CF flash card support */
-/* #define CONFIG_BFIN_CF_IDE */	/* Add CF flash card support */
-/* #define CONFIG_BFIN_HDD_IDE */	/* Add IDE Disk Drive (HDD) support */
+
+/*
+ * Add CF flash card support in TRUE-IDE Mode (CF-IDE-NAND Card)
+ * Strange address mapping Blackfin A13 connects to CF_A0
+ */
+
+/* #define CONFIG_BFIN_TRUE_IDE */
+
+/*
+ * Add CF flash card support in Common Memory Mode (CF-IDE-NAND Card)
+ * This should be the preferred mode
+ */
+
+/* #define CONFIG_BFIN_CF_IDE */
+
+/*
+ * Add IDE Disk Drive (HDD) support
+ * See example interface here:
+ * http://docs.blackfin.uclinux.org/doku.php?id=linux-kernel:drivers:ide-blackfin
+ */
+
+/* #define CONFIG_BFIN_HDD_IDE */
 
 #if defined(CONFIG_BFIN_CF_IDE) || \
     defined(CONFIG_BFIN_HDD_IDE) || \
@@ -218,7 +222,7 @@
 #define CONFIG_SYS_ATA_DATA_OFFSET	0x0020	/* data I/O */
 #define CONFIG_SYS_ATA_REG_OFFSET	0x0020	/* normal register accesses */
 #define CONFIG_SYS_ATA_ALT_OFFSET	0x001C	/* alternate registers */
-#define CONFIG_SYS_ATA_STRIDE		2	/* CF.A0 --> Blackfin.Ax */
+#define CONFIG_SYS_ATA_STRIDE		2	/* CF.A0 --> Blackfin.A13 */
 
 #elif defined(CONFIG_BFIN_CF_IDE)
 #define CONFIG_SYS_ATA_BASE_ADDR	0x20211800
@@ -226,7 +230,7 @@
 #define CONFIG_SYS_ATA_DATA_OFFSET	0x0000	/* data I/O */
 #define CONFIG_SYS_ATA_REG_OFFSET	0x0000	/* normal register accesses */
 #define CONFIG_SYS_ATA_ALT_OFFSET	0x000E	/* alternate registers */
-#define CONFIG_SYS_ATA_STRIDE		1	/* CF.A0 --> Blackfin.Ax */
+#define CONFIG_SYS_ATA_STRIDE		1	/* CF_A0=0, with /CE1 /CE2 odd/even byte selects */
 
 #elif defined(CONFIG_BFIN_HDD_IDE)
 #define CONFIG_SYS_ATA_BASE_ADDR	0x20314000
@@ -249,13 +253,27 @@
 #define CONFIG_RTC_BFIN
 #define CONFIG_UART_CONSOLE	0
 
-/* #define CONFIG_BF537_STAMP_LEDCMD	1 */
-
 /* Define if want to do post memory test */
 #undef CONFIG_POST
 #ifdef CONFIG_POST
-#define FLASH_START_POST_BLOCK	11	/* Should > = 11 */
-#define FLASH_END_POST_BLOCK	71	/* Should < = 71 */
+#define CONFIG_SYS_POST_HOTKEYS_GPIO	GPIO_PF5
+#define CONFIG_POST_BSPEC1_GPIO_LEDS \
+	GPIO_PF6, GPIO_PF7, GPIO_PF8, GPIO_PF9, GPIO_PF10, GPIO_PF11,
+#define CONFIG_POST_BSPEC2_GPIO_BUTTONS \
+	GPIO_PF5, GPIO_PF4, GPIO_PF3, GPIO_PF2,
+#define CONFIG_POST_BSPEC2_GPIO_NAMES \
+	10, 11, 12, 13,
+#define CONFIG_SYS_POST_FLASH_START	11
+#define CONFIG_SYS_POST_FLASH_END	71
+#endif
+
+/* These are for board tests */
+#if 0
+#define CONFIG_BOOTCOMMAND       "bootldr 0x203f0100"
+#define CONFIG_AUTOBOOT_KEYED
+#define CONFIG_AUTOBOOT_PROMPT \
+	"autoboot in %d seconds: press space to stop\n", bootdelay
+#define CONFIG_AUTOBOOT_STOP_STR " "
 #endif
 
 

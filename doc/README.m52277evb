@@ -14,13 +14,13 @@ Changed files:
 - board/freescale/m52277evb/config.mk	config make
 - board/freescale/m52277evb/u-boot.lds	Linker description
 
-- cpu/mcf5227x/cpu.c		cpu specific code
-- cpu/mcf5227x/cpu_init.c	FBCS, Mux pins, icache and RTC extra regs
-- cpu/mcf5227x/interrupts.c	cpu specific interrupt support
-- cpu/mcf5227x/speed.c		system, flexbus, and cpu clock
-- cpu/mcf5227x/Makefile		Makefile
-- cpu/mcf5227x/config.mk	config make
-- cpu/mcf5227x/start.S		start up assembly code
+- arch/m68k/cpu/mcf5227x/cpu.c		cpu specific code
+- arch/m68k/cpu/mcf5227x/cpu_init.c	FBCS, Mux pins, icache and RTC extra regs
+- arch/m68k/cpu/mcf5227x/interrupts.c	cpu specific interrupt support
+- arch/m68k/cpu/mcf5227x/speed.c		system, flexbus, and cpu clock
+- arch/m68k/cpu/mcf5227x/Makefile		Makefile
+- arch/m68k/cpu/mcf5227x/config.mk	config make
+- arch/m68k/cpu/mcf5227x/start.S		start up assembly code
 
 - doc/README.m52277evb		This readme file
 
@@ -53,12 +53,12 @@ Changed files:
 
 - include/configs/M52277EVB.h		Board specific configuration file
 
-- lib_m68k/board.c			board init function
-- lib_m68k/cache.c
-- lib_m68k/interrupts			Coldfire common interrupt functions
-- lib_m68k/m68k_linux.c
-- lib_m68k/time.c			Timer functions (Dma timer and PIT)
-- lib_m68k/traps.c			Exception init code
+- arch/m68k/lib/board.c			board init function
+- arch/m68k/lib/cache.c
+- arch/m68k/lib/interrupts			Coldfire common interrupt functions
+- arch/m68k/lib/m68k_linux.c
+- arch/m68k/lib/time.c			Timer functions (Dma timer and PIT)
+- arch/m68k/lib/traps.c			Exception init code
 
 1 MCF52277 specific Options/Settings
 ====================================
@@ -184,7 +184,6 @@ baudrate    = 115200 bps
 ->
 -> help
 ?       - alias for 'help'
-autoscr - run script from memory
 base    - print or set address offset
 bdinfo  - print Board Info structure
 boot    - boot default, i.e., run 'bootcmd'
@@ -227,5 +226,6 @@ run     - run commands in an environment variable
 saveenv - save environment variables to persistent storage
 setenv  - set environment variables
 sleep   - delay execution for some time
+source  - run script from memory
 version - print monitor version
 ->

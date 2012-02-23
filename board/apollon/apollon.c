@@ -24,6 +24,7 @@
  * MA 02111-1307 USA
  */
 #include <common.h>
+#include <netdev.h>
 #include <asm/arch/omap2420.h>
 #include <asm/io.h>
 #include <asm/arch/bits.h>
@@ -94,7 +95,6 @@ void s_init(void)
  ********************************************************/
 int misc_init_r(void)
 {
-	ether_init();		/* better done here so timers are init'ed */
 	return (0);
 }
 
@@ -138,13 +138,14 @@ void wait_for_command_complete(unsigned int wd_base)
 }
 
 /*******************************************************************
- * Routine:ether_init
+ * Routine:board_eth_init
  * Description: take the Ethernet controller out of reset and wait
  *		   for the EEPROM load to complete.
  ******************************************************************/
-void ether_init(void)
+int board_eth_init(bd_t *bis)
 {
-#ifdef CONFIG_DRIVER_LAN91C96
+	int rc = 0;
+#ifdef CONFIG_LAN91C96
 	int cnt = 20;
 
 	__raw_writeb(0x03, OMAP2420_CTRL_BASE + 0x0f2);	/*protect->gpio74 */
@@ -171,10 +172,10 @@ void ether_init(void)
 
 	mask_config_reg(ETH_CONTROL_REG, 0x01);
 	udelay(1000);
-
+	rc = lan91c96_initialize(0, CONFIG_LAN91C96_BASE);
 eth_reset_err_out:
-	return;
 #endif
+	return rc;
 }
 
 /**********************************************
@@ -183,14 +184,12 @@ eth_reset_err_out:
  **********************************************/
 int dram_init(void)
 {
-	unsigned int size0 = 0, size1 = 0;
-	u32 mtype, btype, rev = 0, cpu = 0;
+	unsigned int size;
+	u32 mtype, btype;
 #define NOT_EARLY 0
 
 	btype = get_board_type();
 	mtype = get_mem_type();
-	rev = get_cpu_rev();
-	cpu = get_cpu_type();
 
 	display_board_info(btype);
 
@@ -199,14 +198,16 @@ int dram_init(void)
 		do_sdrc_init(SDRC_CS1_OSET, NOT_EARLY);
 	}
 
-	size0 = get_sdr_cs_size(SDRC_CS0_OSET);
-	size1 = get_sdr_cs_size(SDRC_CS1_OSET);
+	size = get_sdr_cs_size(SDRC_CS0_OSET);
 
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = size0;
+	gd->bd->bi_dram[0].size = size;
 #if CONFIG_NR_DRAM_BANKS > 1
-	gd->bd->bi_dram[1].start = PHYS_SDRAM_1 + size0;
-	gd->bd->bi_dram[1].size = size1;
+	size = get_sdr_cs_size(SDRC_CS1_OSET);
+
+	gd->bd->bi_dram[1].start = gd->bd->bi_dram[0].start +
+				   gd->bd->bi_dram[0].size;
+	gd->bd->bi_dram[1].size = size;
 #endif
 
 	return 0;

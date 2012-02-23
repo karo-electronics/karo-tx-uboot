@@ -38,8 +38,11 @@
 #define CONFIG_W7O		1		/* ...on a Wave 7 Optics board	*/
 #define CONFIG_W7OLMG		1		/* ...specifically an LMG	*/
 
+#define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
+
 #define CONFIG_BOARD_EARLY_INIT_F 1		/* Call board_early_init_f	*/
 #define	CONFIG_MISC_INIT_F	1		/* and misc_init_f()		*/
+#define	CONFIG_MISC_INIT_R	1		/* and misc_init_r()		*/
 
 #define CONFIG_SYS_CLK_FREQ	33333333	/* external frequency to pll	*/
 
@@ -68,7 +71,6 @@
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1		/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0		/* PHY address			*/
-#define CONFIG_NET_MULTI
 
 #define CONFIG_RTC_M48T35A	1		/* ST Electronics M48 timekeeper */
 #define CONFIG_DTT_LM75     1                /* ON Semi's LM75 */
@@ -131,6 +133,12 @@
 
 #define CONFIG_SYS_MEMTEST_START	0x0400000	/* memtest works on		*/
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 4 ... 12 MB in DRAM		*/
+
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	1
+#define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 
 #undef  CONFIG_SYS_EXT_SERIAL_CLOCK			/* external serial clock */
 #define CONFIG_SYS_405_UART_ERRATA_59			/* 405GP/CR Rev. D silicon */
@@ -214,9 +222,9 @@
 #define CONFIG_SYS_EBC_PB5CR   0xFD87A000
 
 /* bank 6 is unused */
-/* pb6ap = 0 */
+/* PB6AP = 0 */
 #define CONFIG_SYS_EBC_PB6AP   0x00000000
-/* pb6cr = 0 */
+/* PB6CR = 0 */
 #define CONFIG_SYS_EBC_PB6CR   0x00000000
 
 /* bank 7 is LED register */
@@ -279,6 +287,7 @@
  * I2C EEPROM (ATMEL 24C04N)
  */
 #define CONFIG_HARD_I2C		1		/* Hardware assisted I2C	*/
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 #define CONFIG_SYS_I2C_SPEED		400000		/* I2C speed and slave address */
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 
@@ -306,19 +315,9 @@
  * Definitions for initial stack pointer and data area (in RAM)
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_DATA_ADDR /* inside of SDRAM		*/
-#define CONFIG_SYS_INIT_RAM_END	CONFIG_SYS_OCM_DATA_SIZE /* End of used area in RAM	*/
-#define CONFIG_SYS_GBL_DATA_SIZE	64		/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	CONFIG_SYS_OCM_DATA_SIZE /* Size of used area in RAM	*/
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD		0x01		/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM		0x02		/* Software reboot		*/
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400		/* speed to run kgdb serial port */

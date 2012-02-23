@@ -39,8 +39,6 @@
  *	Bank 6 - used to switch on the 12V for the Multipurpose socket
  *	Bank 7 - Config Register
  *-----------------------------------------------------------------------------*/
-#include <ppc4xx.h>
-
 #define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file	*/
 
 #include <configs/PIP405.h>
@@ -49,12 +47,13 @@
 
 #include <asm/cache.h>
 #include <asm/mmu.h>
+#include <asm/ppc4xx.h>
 #include "pip405.h"
 
   .globl ext_bus_cntlr_init
  ext_bus_cntlr_init:
   mflr   r4                      /* save link register */
-  mfdcr  r3,strap                /* get strapping reg */
+  mfdcr  r3,CPC0_PSR                /* get strapping reg */
   andi.  r0, r3, PSR_ROM_LOC     /* mask out irrelevant bits */
   bnelr                          /* jump back if PCI boot */
 
@@ -83,9 +82,9 @@
 	/*-----------------------------------------------------------------------
 	 * decide boot up mode
 	 *----------------------------------------------------------------------- */
-	addi		r4,0,pb0cr
-	mtdcr		ebccfga,r4
-	mfdcr		r4,ebccfgd
+	addi		r4,0,PB0CR
+	mtdcr		EBC0_CFGADDR,r4
+	mfdcr		r4,EBC0_CFGDATA
 
 	andi.		r0, r4, 0x2000			/* mask out irrelevant bits */
 	beq		0f				/* jump if 8 bit bus width */
@@ -95,18 +94,18 @@
    * Memory Bank 0 (16 Bit Flash) initialization
    *---------------------------------------------------------------------- */
 
-	addi    r4,0,pb0ap
-	mtdcr   ebccfga,r4
+	addi    r4,0,PB1AP
+	mtdcr   EBC0_CFGADDR,r4
 	addis   r4,0,(FLASH_AP_B)@h
 	ori     r4,r4,(FLASH_AP_B)@l
-	mtdcr   ebccfgd,r4
+	mtdcr   EBC0_CFGDATA,r4
 
-	addi    r4,0,pb0cr
-	mtdcr   ebccfga,r4
+	addi    r4,0,PB0CR
+	mtdcr   EBC0_CFGADDR,r4
 	/* BS=0x010(4MB),BU=0x3(R/W), */
 	addis   r4,0,(FLASH_CR_B)@h
 	ori     r4,r4,(FLASH_CR_B)@l
-	mtdcr   ebccfgd,r4
+	mtdcr   EBC0_CFGDATA,r4
 	b				1f
 
 0:
@@ -115,65 +114,65 @@
 	* Memory Bank 0 Multi Purpose Socket initialization
 	*----------------------------------------------------------------------- */
 	/* 0x7F8FFE80 slowest boot */
-	addi    r4,0,pb0ap
-	mtdcr   ebccfga,r4
+	addi    r4,0,PB1AP
+	mtdcr   EBC0_CFGADDR,r4
 	addis   r4,0,(MPS_AP_B)@h
 	ori     r4,r4,(MPS_AP_B)@l
-	mtdcr   ebccfgd,r4
+	mtdcr   EBC0_CFGDATA,r4
 
-	addi    r4,0,pb0cr
-	mtdcr   ebccfga,r4
+	addi    r4,0,PB0CR
+	mtdcr   EBC0_CFGADDR,r4
 	/* BS=0x010(4MB),BU=0x3(R/W), */
 	addis   r4,0,(MPS_CR_B)@h
 	ori     r4,r4,(MPS_CR_B)@l
-	mtdcr   ebccfgd,r4
+	mtdcr   EBC0_CFGDATA,r4
 
 
 1:
   /*-----------------------------------------------------------------------
    * Memory Bank 2-3-4-5-6 (not used) initialization
    *-----------------------------------------------------------------------*/
-  addi    r4,0,pb1cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB1CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
 
-  addi    r4,0,pb2cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB2CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
 
-  addi    r4,0,pb3cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB3CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
 
-  addi    r4,0,pb4cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB4CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
 
-  addi    r4,0,pb5cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB5CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
 
-  addi    r4,0,pb6cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB6CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
 
-  addi    r4,0,pb7cr
-  mtdcr   ebccfga,r4
+  addi    r4,0,PB7CR
+  mtdcr   EBC0_CFGADDR,r4
   addis   r4,0,0x0000
   ori     r4,r4,0x0000
-  mtdcr   ebccfgd,r4
+  mtdcr   EBC0_CFGDATA,r4
   nop				/* pass2 DCR errata #8 */
   blr
 

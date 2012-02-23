@@ -69,7 +69,6 @@
  * Network Settings
  */
 #define ADI_CMDS_NETWORK	1
-#define CONFIG_NET_MULTI
 #define CONFIG_SMC911X	1
 #define CONFIG_SMC911X_BASE	0x24000000
 #define CONFIG_SMC911X_16_BIT
@@ -107,18 +106,18 @@
 #define CONFIG_ENV_OFFSET	0x10000
 #define CONFIG_ENV_SIZE		0x2000
 #define CONFIG_ENV_SECT_SIZE	0x10000
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 #elif (CONFIG_BFIN_BOOT_MODE == BFIN_BOOT_NAND)
 #define CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_OFFSET	0x40000
+#define CONFIG_ENV_OFFSET	0x60000
 #define CONFIG_ENV_SIZE		0x20000
 #else
+/* The BF548-EZKIT uses a top boot flash */
 #define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_ADDR		0x20002000
-#define CONFIG_ENV_OFFSET	0x2000
-#define CONFIG_ENV_SIZE		0x2000
-#define CONFIG_ENV_SECT_SIZE	(128 * 1024)
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + CONFIG_ENV_OFFSET)
+#define CONFIG_ENV_OFFSET	(0x1000000 - CONFIG_ENV_SECT_SIZE)
+#define CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
+#define CONFIG_ENV_SECT_SIZE	0x8000
 #endif
 
 
@@ -132,8 +131,6 @@
 #define CONFIG_DRIVER_NAND_BFIN
 #define CONFIG_SYS_NAND_BASE		0 /* not actually used */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define NAND_MAX_CHIPS		1
-#define CONFIG_CMD_NAND
 
 
 /*
@@ -141,8 +138,6 @@
  */
 #define CONFIG_BFIN_TWI_I2C	1
 #define CONFIG_HARD_I2C		1
-#define CONFIG_SYS_I2C_SPEED	50000
-#define CONFIG_SYS_I2C_SLAVE	0
 
 
 /*
@@ -162,6 +157,7 @@
  * SDH Settings
  */
 #if !defined(__ADSPBF544__)
+#define CONFIG_GENERIC_MMC
 #define CONFIG_MMC
 #define CONFIG_BFIN_SDH
 #endif
@@ -183,8 +179,10 @@
  * Misc Settings
  */
 #define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_SIZE_LIMIT $$(( 512 * 1024 ))
 #define CONFIG_RTC_BFIN
 #define CONFIG_UART_CONSOLE	1
+#define CONFIG_BFIN_SPI_IMG_SIZE 0x50000
 
 #ifndef __ADSPBF542__
 /* Don't waste time transferring a logo over the UART */
@@ -197,8 +195,14 @@
 /* Define if want to do post memory test */
 #undef CONFIG_POST
 #ifdef CONFIG_POST
-#define FLASH_START_POST_BLOCK 11       /* Should > = 11 */
-#define FLASH_END_POST_BLOCK   71       /* Should < = 71 */
+#define CONFIG_POST_BSPEC1_GPIO_LEDS \
+	GPIO_PG6, GPIO_PG7, GPIO_PG8, GPIO_PG9, GPIO_PG10, GPIO_PG11,
+#define CONFIG_POST_BSPEC2_GPIO_BUTTONS \
+	GPIO_PB8, GPIO_PB9, GPIO_PB10, GPIO_PB11
+#define CONFIG_POST_BSPEC2_GPIO_NAMES \
+	13, 12, 11, 10,
+#define CONFIG_SYS_POST_FLASH_START	10
+#define CONFIG_SYS_POST_FLASH_END	127
 #endif
 
 

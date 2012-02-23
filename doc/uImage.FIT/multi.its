@@ -1,6 +1,9 @@
 /*
  * U-boot uImage source file with multiple kernels, ramdisks and FDT blobs
  */
+
+/dts-v1/;
+
 / {
 	description = "Various kernels, ramdisks and FDT blobs";
 	#address-cells = <1>;
@@ -58,6 +61,8 @@
 			arch = "ppc";
 			os = "linux";
 			compression = "gzip";
+			load = <00000000>;
+			entry = <00000000>;
 			hash@1 {
 				algo = "sha1";
 			};
@@ -70,6 +75,8 @@
 			arch = "ppc";
 			os = "linux";
 			compression = "gzip";
+			load = <00000000>;
+			entry = <00000000>;
 			hash@1 {
 				algo = "crc32";
 			};

@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2007
+ * (C) Copyright 2007-2010
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * This program is free software; you can redistribute it and/or
@@ -20,14 +20,17 @@
 
 #include <common.h>
 #include <command.h>
-#include <ppc440.h>
+#include <asm/ppc440.h>
 #include <asm/processor.h>
-#include <asm/gpio.h>
+#include <asm/ppc4xx-gpio.h>
 #include <asm/io.h>
+#include <post.h>
+#include <flash.h>
+#include <mtd/cfi_flash.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-extern flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
+static phys_addr_t lwmon5_cfi_flash_bank_addr[2] = CONFIG_SYS_FLASH_BANKS_LIST;
 
 ulong flash_get_size(ulong base, int banknum);
 int misc_init_r_kbd(void);
@@ -38,35 +41,35 @@ int board_early_init_f(void)
 	u32 reg;
 
 	/* PLB Write pipelining disabled. Denali Core workaround */
-	mtdcr(plb0_acr, 0xDE000000);
-	mtdcr(plb1_acr, 0xDE000000);
+	mtdcr(PLB4A0_ACR, 0xDE000000);
+	mtdcr(PLB4A1_ACR, 0xDE000000);
 
 	/*--------------------------------------------------------------------
 	 * Setup the interrupt controller polarities, triggers, etc.
 	 *-------------------------------------------------------------------*/
-	mtdcr(uic0sr, 0xffffffff);  /* clear all. if write with 1 then the status is cleared  */
-	mtdcr(uic0er, 0x00000000);  /* disable all */
-	mtdcr(uic0cr, 0x00000000);  /* we have not critical interrupts at the moment */
-	mtdcr(uic0pr, 0xFFBFF1EF);  /* Adjustment of the polarity */
-	mtdcr(uic0tr, 0x00000900);  /* per ref-board manual */
-	mtdcr(uic0vr, 0x00000000);  /* int31 highest, base=0x000 is within DDRAM */
-	mtdcr(uic0sr, 0xffffffff);  /* clear all */
+	mtdcr(UIC0SR, 0xffffffff);  /* clear all. if write with 1 then the status is cleared  */
+	mtdcr(UIC0ER, 0x00000000);  /* disable all */
+	mtdcr(UIC0CR, 0x00000000);  /* we have not critical interrupts at the moment */
+	mtdcr(UIC0PR, 0xFFBFF1EF);  /* Adjustment of the polarity */
+	mtdcr(UIC0TR, 0x00000900);  /* per ref-board manual */
+	mtdcr(UIC0VR, 0x00000000);  /* int31 highest, base=0x000 is within DDRAM */
+	mtdcr(UIC0SR, 0xffffffff);  /* clear all */
 
-	mtdcr(uic1sr, 0xffffffff);  /* clear all */
-	mtdcr(uic1er, 0x00000000);  /* disable all */
-	mtdcr(uic1cr, 0x00000000);  /* all non-critical */
-	mtdcr(uic1pr, 0xFFFFC6A5);  /* Adjustment of the polarity */
-	mtdcr(uic1tr, 0x60000040);  /* per ref-board manual */
-	mtdcr(uic1vr, 0x00000000);  /* int31 highest, base=0x000 is within DDRAM */
-	mtdcr(uic1sr, 0xffffffff);  /* clear all */
+	mtdcr(UIC1SR, 0xffffffff);  /* clear all */
+	mtdcr(UIC1ER, 0x00000000);  /* disable all */
+	mtdcr(UIC1CR, 0x00000000);  /* all non-critical */
+	mtdcr(UIC1PR, 0xFFFFC6A5);  /* Adjustment of the polarity */
+	mtdcr(UIC1TR, 0x60000040);  /* per ref-board manual */
+	mtdcr(UIC1VR, 0x00000000);  /* int31 highest, base=0x000 is within DDRAM */
+	mtdcr(UIC1SR, 0xffffffff);  /* clear all */
 
-	mtdcr(uic2sr, 0xffffffff);  /* clear all */
-	mtdcr(uic2er, 0x00000000);  /* disable all */
-	mtdcr(uic2cr, 0x00000000);  /* all non-critical */
-	mtdcr(uic2pr, 0x27C00000);  /* Adjustment of the polarity */
-	mtdcr(uic2tr, 0x3C000000);  /* per ref-board manual */
-	mtdcr(uic2vr, 0x00000000);  /* int31 highest, base=0x000 is within DDRAM */
-	mtdcr(uic2sr, 0xffffffff);  /* clear all */
+	mtdcr(UIC2SR, 0xffffffff);  /* clear all */
+	mtdcr(UIC2ER, 0x00000000);  /* disable all */
+	mtdcr(UIC2CR, 0x00000000);  /* all non-critical */
+	mtdcr(UIC2PR, 0x27C00000);  /* Adjustment of the polarity */
+	mtdcr(UIC2TR, 0x3C000000);  /* per ref-board manual */
+	mtdcr(UIC2VR, 0x00000000);  /* int31 highest, base=0x000 is within DDRAM */
+	mtdcr(UIC2SR, 0xffffffff);  /* clear all */
 
 	/* Trace Pins are disabled. SDR0_PFC0 Register */
 	mtsdr(SDR0_PFC0, 0x0);
@@ -90,23 +93,25 @@ int board_early_init_f(void)
 
 	/* PCI arbiter disabled */
 	/* PCI Host Configuration disbaled */
-	mfsdr(sdr_pci0, reg);
+	mfsdr(SDR0_PCI0, reg);
 	reg = 0;
-	mtsdr(sdr_pci0, 0x00000000 | reg);
+	mtsdr(SDR0_PCI0, 0x00000000 | reg);
 
 	gpio_write_bit(CONFIG_SYS_GPIO_FLASH_WP, 1);
 
 #if CONFIG_POST & CONFIG_SYS_POST_BSPEC1
-	gpio_write_bit(CONFIG_SYS_GPIO_HIGHSIDE, 1);
+	/* enable the LSB transmitter */
+	gpio_write_bit(CONFIG_SYS_GPIO_LSB_ENABLE, 1);
+	/* enable the CAN transmitter */
+	gpio_write_bit(CONFIG_SYS_GPIO_CAN_ENABLE, 1);
 
 	reg = 0; /* reuse as counter */
 	out_be32((void *)CONFIG_SYS_DSPIC_TEST_ADDR,
 		in_be32((void *)CONFIG_SYS_DSPIC_TEST_ADDR)
 			& ~CONFIG_SYS_DSPIC_TEST_MASK);
-	while (!gpio_read_in_bit(CONFIG_SYS_GPIO_DSPIC_READY) && reg++ < 1000) {
+	while (gpio_read_in_bit(CONFIG_SYS_GPIO_DSPIC_READY) && reg++ < 1000) {
 		udelay(1000);
 	}
-	gpio_write_bit(CONFIG_SYS_GPIO_HIGHSIDE, 0);
 	if (gpio_read_in_bit(CONFIG_SYS_GPIO_DSPIC_READY)) {
 		/* set "boot error" flag */
 		out_be32((void *)CONFIG_SYS_DSPIC_TEST_ADDR,
@@ -135,9 +140,61 @@ int board_early_init_f(void)
 	return 0;
 }
 
-/*---------------------------------------------------------------------------+
-  | misc_init_r.
-  +---------------------------------------------------------------------------*/
+/*
+ * Override weak default with board specific version
+ */
+phys_addr_t cfi_flash_bank_addr(int bank)
+{
+	return lwmon5_cfi_flash_bank_addr[bank];
+}
+
+/*
+ * Override the weak default mapping function with a board specific one
+ */
+u32 flash_get_bank_size(int cs, int idx)
+{
+	return flash_info[idx].size;
+}
+
+int board_early_init_r(void)
+{
+	u32 val0, val1;
+
+	/*
+	 * lwmon5 is manufactured in 2 different board versions:
+	 * The lwmon5a board has 64MiB NOR flash instead of the
+	 * 128MiB of the original lwmon5. Unfortunately the CFI driver
+	 * will report 2 banks of 64MiB even for the smaller flash
+	 * chip, since the bank is mirrored. To fix this, we bring
+	 * one bank into CFI query mode and read its response. This
+	 * enables us to detect the real number of flash devices/
+	 * banks which will be used later on by the common CFI driver.
+	 */
+
+	/* Put bank 0 into CFI command mode and read */
+	out_be32((void *)CONFIG_SYS_FLASH0, 0x00980098);
+	val0 = in_be32((void *)CONFIG_SYS_FLASH0 + FLASH_OFFSET_CFI_RESP);
+	val1 = in_be32((void *)CONFIG_SYS_FLASH1 + FLASH_OFFSET_CFI_RESP);
+
+	/* Reset flash again out of query mode */
+	out_be32((void *)CONFIG_SYS_FLASH0, 0x00f000f0);
+
+	/* When not identical, we have 2 different flash devices/banks */
+	if (val0 != val1)
+		return 0;
+
+	/*
+	 * Now we're sure that we're running on a LWMON5a board with
+	 * only 64MiB NOR flash in one bank:
+	 *
+	 * Set flash base address and bank count for CFI driver probing.
+	 */
+	cfi_flash_num_flash_banks = 1;
+	lwmon5_cfi_flash_bank_addr[0] = CONFIG_SYS_FLASH0;
+
+	return 0;
+}
+
 int misc_init_r(void)
 {
 	u32 pbcr;
@@ -145,7 +202,7 @@ int misc_init_r(void)
 	u32 reg;
 	unsigned long usb2d0cr = 0;
 	unsigned long usb2phy0cr, usb2h0cr = 0;
-	unsigned long sdr0_pfc1;
+	unsigned long sdr0_pfc1, sdr0_srst;
 
 	/*
 	 * FLASH stuff...
@@ -157,35 +214,10 @@ int misc_init_r(void)
 	gd->bd->bi_flashstart = 0 - gd->bd->bi_flashsize;
 	gd->bd->bi_flashoffset = 0;
 
-	mfebc(pb0cr, pbcr);
-	switch (gd->bd->bi_flashsize) {
-	case 1 << 20:
-		size_val = 0;
-		break;
-	case 2 << 20:
-		size_val = 1;
-		break;
-	case 4 << 20:
-		size_val = 2;
-		break;
-	case 8 << 20:
-		size_val = 3;
-		break;
-	case 16 << 20:
-		size_val = 4;
-		break;
-	case 32 << 20:
-		size_val = 5;
-		break;
-	case 64 << 20:
-		size_val = 6;
-		break;
-	case 128 << 20:
-		size_val = 7;
-		break;
-	}
+	mfebc(PB0CR, pbcr);
+	size_val = ffs(gd->bd->bi_flashsize) - 21;
 	pbcr = (pbcr & 0x0001ffff) | gd->bd->bi_flashstart | (size_val << 17);
-	mtebc(pb0cr, pbcr);
+	mtebc(PB0CR, pbcr);
 
 	/*
 	 * Re-check to get correct base address
@@ -193,53 +225,92 @@ int misc_init_r(void)
 	flash_get_size(gd->bd->bi_flashstart, 0);
 
 	/* Monitor protection ON by default */
-	(void)flash_protect(FLAG_PROTECT_SET,
-			    -CONFIG_SYS_MONITOR_LEN,
-			    0xffffffff,
-			    &flash_info[1]);
+	flash_protect(FLAG_PROTECT_SET, -CONFIG_SYS_MONITOR_LEN, 0xffffffff,
+		      &flash_info[cfi_flash_num_flash_banks - 1]);
 
 	/* Env protection ON by default */
-	(void)flash_protect(FLAG_PROTECT_SET,
-			    CONFIG_ENV_ADDR_REDUND,
-			    CONFIG_ENV_ADDR_REDUND + 2*CONFIG_ENV_SECT_SIZE - 1,
-			    &flash_info[1]);
+	flash_protect(FLAG_PROTECT_SET, CONFIG_ENV_ADDR_REDUND,
+		      CONFIG_ENV_ADDR_REDUND + 2 * CONFIG_ENV_SECT_SIZE - 1,
+		      &flash_info[cfi_flash_num_flash_banks - 1]);
 
 	/*
 	 * USB suff...
 	 */
+
+	/* Reset USB */
+	/* Reset of USB2PHY0 must be active at least 10 us  */
+	mtsdr(SDR0_SRST0, SDR0_SRST0_USB2H | SDR0_SRST0_USB2D);
+	udelay(2000);
+
+	mtsdr(SDR0_SRST1, SDR0_SRST1_USB20PHY | SDR0_SRST1_USB2HUTMI |
+	      SDR0_SRST1_USB2HPHY | SDR0_SRST1_OPBA2 |
+	      SDR0_SRST1_PLB42OPB1 | SDR0_SRST1_OPB2PLB40);
+	udelay(2000);
+
+	/* Errata CHIP_6 */
+
+	/* 1. Set internal PHY configuration */
 	/* SDR Setting */
 	mfsdr(SDR0_PFC1, sdr0_pfc1);
 	mfsdr(SDR0_USB0, usb2d0cr);
 	mfsdr(SDR0_USB2PHY0CR, usb2phy0cr);
 	mfsdr(SDR0_USB2H0CR, usb2h0cr);
 
-	usb2phy0cr = usb2phy0cr &~SDR0_USB2PHY0CR_XOCLK_MASK;
-	usb2phy0cr = usb2phy0cr | SDR0_USB2PHY0CR_XOCLK_EXTERNAL;	/*0*/
-	usb2phy0cr = usb2phy0cr &~SDR0_USB2PHY0CR_WDINT_MASK;
-	usb2phy0cr = usb2phy0cr | SDR0_USB2PHY0CR_WDINT_16BIT_30MHZ;	/*1*/
-	usb2phy0cr = usb2phy0cr &~SDR0_USB2PHY0CR_DVBUS_MASK;
-	usb2phy0cr = usb2phy0cr | SDR0_USB2PHY0CR_DVBUS_PURDIS;		/*0*/
-	usb2phy0cr = usb2phy0cr &~SDR0_USB2PHY0CR_DWNSTR_MASK;
-	usb2phy0cr = usb2phy0cr | SDR0_USB2PHY0CR_DWNSTR_HOST;		/*1*/
-	usb2phy0cr = usb2phy0cr &~SDR0_USB2PHY0CR_UTMICN_MASK;
-	usb2phy0cr = usb2phy0cr | SDR0_USB2PHY0CR_UTMICN_HOST;		/*1*/
+	usb2phy0cr = usb2phy0cr & ~SDR0_USB2PHY0CR_XOCLK_MASK;
+	usb2phy0cr = usb2phy0cr |  SDR0_USB2PHY0CR_XOCLK_EXTERNAL;	/*0*/
+	usb2phy0cr = usb2phy0cr & ~SDR0_USB2PHY0CR_WDINT_MASK;
+	usb2phy0cr = usb2phy0cr |  SDR0_USB2PHY0CR_WDINT_16BIT_30MHZ;	/*1*/
+	usb2phy0cr = usb2phy0cr & ~SDR0_USB2PHY0CR_DVBUS_MASK;
+	usb2phy0cr = usb2phy0cr |  SDR0_USB2PHY0CR_DVBUS_PUREN;		/*1*/
+	usb2phy0cr = usb2phy0cr & ~SDR0_USB2PHY0CR_DWNSTR_MASK;
+	usb2phy0cr = usb2phy0cr |  SDR0_USB2PHY0CR_DWNSTR_HOST;		/*1*/
+	usb2phy0cr = usb2phy0cr & ~SDR0_USB2PHY0CR_UTMICN_MASK;
+	usb2phy0cr = usb2phy0cr |  SDR0_USB2PHY0CR_UTMICN_HOST;		/*1*/
 
-	/* An 8-bit/60MHz interface is the only possible alternative
-	   when connecting the Device to the PHY */
-	usb2h0cr   = usb2h0cr &~SDR0_USB2H0CR_WDINT_MASK;
-	usb2h0cr   = usb2h0cr | SDR0_USB2H0CR_WDINT_16BIT_30MHZ;	/*1*/
+	/*
+	 * An 8-bit/60MHz interface is the only possible alternative
+	 * when connecting the Device to the PHY
+	 */
+	usb2h0cr   = usb2h0cr & ~SDR0_USB2H0CR_WDINT_MASK;
+	usb2h0cr   = usb2h0cr |  SDR0_USB2H0CR_WDINT_16BIT_30MHZ;	/*1*/
 
 	mtsdr(SDR0_PFC1, sdr0_pfc1);
 	mtsdr(SDR0_USB0, usb2d0cr);
 	mtsdr(SDR0_USB2PHY0CR, usb2phy0cr);
 	mtsdr(SDR0_USB2H0CR, usb2h0cr);
 
+	/* 2. De-assert internal PHY reset */
+	mfsdr(SDR0_SRST1, sdr0_srst);
+	sdr0_srst = sdr0_srst & ~SDR0_SRST1_USB20PHY;
+	mtsdr(SDR0_SRST1, sdr0_srst);
+
+	/* 3. Wait for more than 1 ms */
+	udelay(2000);
+
+	/* 4. De-assert USB 2.0 Host main reset */
+	mfsdr(SDR0_SRST0, sdr0_srst);
+	sdr0_srst = sdr0_srst &~ SDR0_SRST0_USB2H;
+	mtsdr(SDR0_SRST0, sdr0_srst);
+	udelay(1000);
+
+	/* 5. De-assert reset of OPB2 cores */
+	mfsdr(SDR0_SRST1, sdr0_srst);
+	sdr0_srst = sdr0_srst &~ SDR0_SRST1_PLB42OPB1;
+	sdr0_srst = sdr0_srst &~ SDR0_SRST1_OPB2PLB40;
+	sdr0_srst = sdr0_srst &~ SDR0_SRST1_OPBA2;
+	mtsdr(SDR0_SRST1, sdr0_srst);
+	udelay(1000);
+
+	/* 6. Set EHCI Configure FLAG */
+
+	/* 7. Reassert internal PHY reset: */
+	mtsdr(SDR0_SRST1, SDR0_SRST1_USB20PHY);
+	udelay(1000);
+
 	/*
 	 * Clear resets
 	 */
-	udelay (1000);
 	mtsdr(SDR0_SRST1, 0x00000000);
-	udelay (1000);
 	mtsdr(SDR0_SRST0, 0x00000000);
 
 	printf("USB:   Host(int phy) Device(ext phy)\n");
@@ -249,8 +320,8 @@ int misc_init_r(void)
 	 * This fix will make the MAL burst disabling patch for the Linux
 	 * EMAC driver obsolete.
 	 */
-	reg = mfdcr(plb4_acr) & ~PLB4_ACR_WRP;
-	mtdcr(plb4_acr, reg);
+	reg = mfdcr(PLB4A0_ACR) & ~PLB4Ax_ACR_WRP_MASK;
+	mtdcr(PLB4A0_ACR, reg);
 
 	/*
 	 * Init matrix keyboard
@@ -262,178 +333,19 @@ int misc_init_r(void)
 
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 
-	printf("Board: lwmon5");
+	puts("Board: lwmon5");
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	putc('\n');
 
 	return (0);
 }
-
-/*************************************************************************
- *  pci_pre_init
- *
- *  This routine is called just prior to registering the hose and gives
- *  the board the opportunity to check things. Returning a value of zero
- *  indicates that things are bad & PCI initialization should be aborted.
- *
- *	Different boards may wish to customize the pci controller structure
- *	(add regions, override default access routines, etc) or perform
- *	certain pre-initialization actions.
- *
- ************************************************************************/
-#if defined(CONFIG_PCI)
-int pci_pre_init(struct pci_controller *hose)
-{
-	unsigned long addr;
-
-	/*-------------------------------------------------------------------------+
-	  | Set priority for all PLB3 devices to 0.
-	  | Set PLB3 arbiter to fair mode.
-	  +-------------------------------------------------------------------------*/
-	mfsdr(sdr_amp1, addr);
-	mtsdr(sdr_amp1, (addr & 0x000000FF) | 0x0000FF00);
-	addr = mfdcr(plb3_acr);
-	mtdcr(plb3_acr, addr | 0x80000000);
-
-	/*-------------------------------------------------------------------------+
-	  | Set priority for all PLB4 devices to 0.
-	  +-------------------------------------------------------------------------*/
-	mfsdr(sdr_amp0, addr);
-	mtsdr(sdr_amp0, (addr & 0x000000FF) | 0x0000FF00);
-	addr = mfdcr(plb4_acr) | 0xa0000000;	/* Was 0x8---- */
-	mtdcr(plb4_acr, addr);
-
-	/*-------------------------------------------------------------------------+
-	  | Set Nebula PLB4 arbiter to fair mode.
-	  +-------------------------------------------------------------------------*/
-	/* Segment0 */
-	addr = (mfdcr(plb0_acr) & ~plb0_acr_ppm_mask) | plb0_acr_ppm_fair;
-	addr = (addr & ~plb0_acr_hbu_mask) | plb0_acr_hbu_enabled;
-	addr = (addr & ~plb0_acr_rdp_mask) | plb0_acr_rdp_4deep;
-	addr = (addr & ~plb0_acr_wrp_mask) | plb0_acr_wrp_2deep;
-	mtdcr(plb0_acr, addr);
-
-	/* Segment1 */
-	addr = (mfdcr(plb1_acr) & ~plb1_acr_ppm_mask) | plb1_acr_ppm_fair;
-	addr = (addr & ~plb1_acr_hbu_mask) | plb1_acr_hbu_enabled;
-	addr = (addr & ~plb1_acr_rdp_mask) | plb1_acr_rdp_4deep;
-	addr = (addr & ~plb1_acr_wrp_mask) | plb1_acr_wrp_2deep;
-	mtdcr(plb1_acr, addr);
-
-	return 1;
-}
-#endif	/* defined(CONFIG_PCI) */
-
-/*************************************************************************
- *  pci_target_init
- *
- *	The bootstrap configuration provides default settings for the pci
- *	inbound map (PIM). But the bootstrap config choices are limited and
- *	may not be sufficient for a given board.
- *
- ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
-void pci_target_init(struct pci_controller *hose)
-{
-	/*--------------------------------------------------------------------------+
-	 * Set up Direct MMIO registers
-	 *--------------------------------------------------------------------------*/
-	/*--------------------------------------------------------------------------+
-	  | PowerPC440EPX PCI Master configuration.
-	  | Map one 1Gig range of PLB/processor addresses to PCI memory space.
-	  |   PLB address 0xA0000000-0xDFFFFFFF ==> PCI address 0xA0000000-0xDFFFFFFF
-	  |   Use byte reversed out routines to handle endianess.
-	  | Make this region non-prefetchable.
-	  +--------------------------------------------------------------------------*/
-	out32r(PCIX0_PMM0MA, 0x00000000);	/* PMM0 Mask/Attribute - disabled b4 setting */
-	out32r(PCIX0_PMM0LA, CONFIG_SYS_PCI_MEMBASE);	/* PMM0 Local Address */
-	out32r(PCIX0_PMM0PCILA, CONFIG_SYS_PCI_MEMBASE);	/* PMM0 PCI Low Address */
-	out32r(PCIX0_PMM0PCIHA, 0x00000000);	/* PMM0 PCI High Address */
-	out32r(PCIX0_PMM0MA, 0xE0000001);	/* 512M + No prefetching, and enable region */
-
-	out32r(PCIX0_PMM1MA, 0x00000000);	/* PMM0 Mask/Attribute - disabled b4 setting */
-	out32r(PCIX0_PMM1LA, CONFIG_SYS_PCI_MEMBASE2); /* PMM0 Local Address */
-	out32r(PCIX0_PMM1PCILA, CONFIG_SYS_PCI_MEMBASE2);	/* PMM0 PCI Low Address */
-	out32r(PCIX0_PMM1PCIHA, 0x00000000);	/* PMM0 PCI High Address */
-	out32r(PCIX0_PMM1MA, 0xE0000001);	/* 512M + No prefetching, and enable region */
-
-	out32r(PCIX0_PTM1MS, 0x00000001);	/* Memory Size/Attribute */
-	out32r(PCIX0_PTM1LA, 0);	/* Local Addr. Reg */
-	out32r(PCIX0_PTM2MS, 0);	/* Memory Size/Attribute */
-	out32r(PCIX0_PTM2LA, 0);	/* Local Addr. Reg */
-
-	/*--------------------------------------------------------------------------+
-	 * Set up Configuration registers
-	 *--------------------------------------------------------------------------*/
-
-	/* Program the board's subsystem id/vendor id */
-	pci_write_config_word(0, PCI_SUBSYSTEM_VENDOR_ID,
-			      CONFIG_SYS_PCI_SUBSYS_VENDORID);
-	pci_write_config_word(0, PCI_SUBSYSTEM_ID, CONFIG_SYS_PCI_SUBSYS_ID);
-
-	/* Configure command register as bus master */
-	pci_write_config_word(0, PCI_COMMAND, PCI_COMMAND_MASTER);
-
-	/* 240nS PCI clock */
-	pci_write_config_word(0, PCI_LATENCY_TIMER, 1);
-
-	/* No error reporting */
-	pci_write_config_word(0, PCI_ERREN, 0);
-
-	pci_write_config_dword(0, PCI_BRDGOPT2, 0x00000101);
-
-}
-#endif				/* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
-
-/*************************************************************************
- *  pci_master_init
- *
- ************************************************************************/
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT)
-void pci_master_init(struct pci_controller *hose)
-{
-	unsigned short temp_short;
-
-	/*--------------------------------------------------------------------------+
-	  | Write the PowerPC440 EP PCI Configuration regs.
-	  |   Enable PowerPC440 EP to be a master on the PCI bus (PMM).
-	  |   Enable PowerPC440 EP to act as a PCI memory target (PTM).
-	  +--------------------------------------------------------------------------*/
-	pci_read_config_word(0, PCI_COMMAND, &temp_short);
-	pci_write_config_word(0, PCI_COMMAND,
-			      temp_short | PCI_COMMAND_MASTER |
-			      PCI_COMMAND_MEMORY);
-}
-#endif				/* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT) */
-
-/*************************************************************************
- *  is_pci_host
- *
- *	This routine is called to determine if a pci scan should be
- *	performed. With various hardware environments (especially cPCI and
- *	PPMC) it's insufficient to depend on the state of the arbiter enable
- *	bit in the strap register, or generic host/adapter assumptions.
- *
- *	Rather than hard-code a bad assumption in the general 440 code, the
- *	440 pci code requires the board to decide at runtime.
- *
- *	Return 0 for adapter mode, non-zero for host (monarch) mode.
- *
- *
- ************************************************************************/
-#if defined(CONFIG_PCI)
-int is_pci_host(struct pci_controller *hose)
-{
-	/* Cactus is always configured as host. */
-	return (1);
-}
-#endif				/* defined(CONFIG_PCI) */
 
 void hw_watchdog_reset(void)
 {
@@ -464,22 +376,17 @@ void hw_watchdog_reset(void)
 	gpio_write_bit(CONFIG_SYS_GPIO_WATCHDOG, val);
 }
 
-int do_eeprom_wp(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_eeprom_wp(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	if (argc < 2) {
-		cmd_usage(cmdtp);
-		return 1;
-	}
+	if (argc < 2)
+		return cmd_usage(cmdtp);
 
-	if ((strcmp(argv[1], "on") == 0)) {
+	if ((strcmp(argv[1], "on") == 0))
 		gpio_write_bit(CONFIG_SYS_GPIO_EEPROM_EXT_WP, 1);
-	} else if ((strcmp(argv[1], "off") == 0)) {
+	else if ((strcmp(argv[1], "off") == 0))
 		gpio_write_bit(CONFIG_SYS_GPIO_EEPROM_EXT_WP, 0);
-	} else {
-		cmd_usage(cmdtp);
-		return 1;
-	}
-
+	else
+		return cmd_usage(cmdtp);
 
 	return 0;
 }
@@ -496,34 +403,33 @@ U_BOOT_CMD(
 
 extern GraphicDevice mb862xx;
 
-static const gdc_regs init_regs [] =
-{
-	{0x0100, 0x00000f00},
-	{0x0020, 0x801401df},
-	{0x0024, 0x00000000},
-	{0x0028, 0x00000000},
-	{0x002c, 0x00000000},
-	{0x0110, 0x00000000},
-	{0x0114, 0x00000000},
-	{0x0118, 0x01df0280},
-	{0x0004, 0x031f0000},
-	{0x0008, 0x027f027f},
-	{0x000c, 0x015f028f},
-	{0x0010, 0x020c0000},
-	{0x0014, 0x01df01ea},
-	{0x0018, 0x00000000},
-	{0x001c, 0x01e00280},
-	{0x0100, 0x80010f00},
-	{0x0, 0x0}
+static const gdc_regs init_regs [] = {
+	{ 0x0100, 0x00000f00 },
+	{ 0x0020, 0x801401df },
+	{ 0x0024, 0x00000000 },
+	{ 0x0028, 0x00000000 },
+	{ 0x002c, 0x00000000 },
+	{ 0x0110, 0x00000000 },
+	{ 0x0114, 0x00000000 },
+	{ 0x0118, 0x01df0280 },
+	{ 0x0004, 0x031f0000 },
+	{ 0x0008, 0x027f027f },
+	{ 0x000c, 0x015f028f },
+	{ 0x0010, 0x020c0000 },
+	{ 0x0014, 0x01df01ea },
+	{ 0x0018, 0x00000000 },
+	{ 0x001c, 0x01e00280 },
+	{ 0x0100, 0x80010f00 },
+	{ 0x0, 0x0 }
 };
 
-const gdc_regs *board_get_regs (void)
+const gdc_regs *board_get_regs(void)
 {
 	return init_regs;
 }
 
 /* Returns Lime base address */
-unsigned int board_video_init (void)
+unsigned int board_video_init(void)
 {
 	/*
 	 * Reset Lime controller
@@ -531,13 +437,6 @@ unsigned int board_video_init (void)
 	gpio_write_bit(CONFIG_SYS_GPIO_LIME_S, 1);
 	udelay(500);
 	gpio_write_bit(CONFIG_SYS_GPIO_LIME_RST, 1);
-
-	/* Lime memory clock adjusted to 100MHz */
-	out_be32((void *)CONFIG_SYS_LIME_SDRAM_CLOCK, CONFIG_SYS_LIME_CLOCK_100MHZ);
-	/* Wait untill time expired. Because of requirements in lime manual */
-	udelay(300);
-	/* Write lime controller memory parameters */
-	out_be32((void *)CONFIG_SYS_LIME_MMR, CONFIG_SYS_LIME_MMR_VALUE);
 
 	mb862xx.winSizeX = 640;
 	mb862xx.winSizeY = 480;
@@ -547,7 +446,7 @@ unsigned int board_video_init (void)
 	return CONFIG_SYS_LIME_BASE_0;
 }
 
-#define DEFAULT_BRIGHTNESS 0x64
+#define DEFAULT_BRIGHTNESS	0x64
 
 static void board_backlight_brightness(int brightness)
 {
@@ -562,7 +461,7 @@ static void board_backlight_brightness(int brightness)
 	}
 }
 
-void board_backlight_switch (int flag)
+void board_backlight_switch(int flag)
 {
 	char * param;
 	int rc;
@@ -582,15 +481,14 @@ void board_backlight_switch (int flag)
 /*
  * Return text to be printed besides the logo.
  */
-void video_get_info_str (int line_number, char *info)
+void video_get_info_str(int line_number, char *info)
 {
-	if (line_number == 1) {
-		strcpy (info, " Board: Lwmon5 (Liebherr Elektronik GmbH)");
-	} else {
+	if (line_number == 1)
+		strcpy(info, " Board: Lwmon5 (Liebherr Elektronik GmbH)");
+	else
 		info [0] = '\0';
-	}
 }
-#endif
+#endif /* CONFIG_CONSOLE_EXTRA_INFO */
 #endif /* CONFIG_VIDEO */
 
 void board_reset(void)

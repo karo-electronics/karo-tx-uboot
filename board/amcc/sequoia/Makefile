@@ -23,23 +23,21 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
-COBJS	= $(BOARD).o cmd_sequoia.o sdram.o
+COBJS-y	= $(BOARD).o sdram.o
+COBJS-$(CONFIG_CMD_CHIP_CONFIG) += chip_config.o
 SOBJS	= init.o
 
+COBJS   := $(COBJS-y)
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
-$(LIB):	$(OBJS) $(SOBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS) $(SOBJS)
+all:	$(LIB) $(SOBJS)
 
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
+$(LIB):	$(OBJS)
+	$(call cmd_link_o_target, $^)
 
 #########################################################################
 

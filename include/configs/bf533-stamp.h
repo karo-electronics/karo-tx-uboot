@@ -60,12 +60,13 @@
  * Network Settings
  */
 #define ADI_CMDS_NETWORK	1
-#define CONFIG_DRIVER_SMC91111	1
+#define CONFIG_SMC91111	1
 #define CONFIG_SMC91111_BASE	0x20300300
 #define SMC91111_EEPROM_INIT() \
 	do { \
-		*pFIO_DIR |= PF1; \
-		*pFIO_FLAG_S = PF1; \
+		bfin_write_FIO_DIR(bfin_read_FIO_DIR() | PF1 | PF0); \
+		bfin_write_FIO_FLAG_C(PF1); \
+		bfin_write_FIO_FLAG_S(PF0); \
 		SSYNC(); \
 	} while (0)
 #define CONFIG_HOSTNAME		bf533-stamp
@@ -91,10 +92,7 @@
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
 #define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_ATMEL
-#define CONFIG_SPI_FLASH_SPANSION
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_WINBOND
+#define CONFIG_SPI_FLASH_ALL
 
 
 /*
@@ -115,7 +113,7 @@
 #if (CONFIG_BFIN_BOOT_MODE == BFIN_BOOT_BYPASS)
 #define ENV_IS_EMBEDDED
 #else
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 #endif
 #ifdef ENV_IS_EMBEDDED
 /* WARNING - the following is hand-optimized to fit within
@@ -124,63 +122,19 @@
  * it linked after the configuration sector.
  */
 # define LDS_BOARD_TEXT \
-	cpu/blackfin/traps.o		(.text .text.*); \
-	cpu/blackfin/interrupt.o	(.text .text.*); \
-	cpu/blackfin/serial.o		(.text .text.*); \
-	common/dlmalloc.o		(.text .text.*); \
-	lib_generic/crc32.o		(.text .text.*); \
+	arch/blackfin/lib/libblackfin.o (.text*); \
+	arch/blackfin/cpu/libblackfin.o (.text*); \
 	. = DEFINED(env_offset) ? env_offset : .; \
-	common/env_embedded.o		(.text .text.*);
+	common/env_embedded.o (.text*);
 #endif
 
 
 /*
  * I2C Settings
- * By default PF2 is used as SDA and PF3 as SCL on the Stamp board
  */
 #define CONFIG_SOFT_I2C
-#ifdef CONFIG_SOFT_I2C
-#define PF_SCL PF3
-#define PF_SDA PF2
-#define I2C_INIT \
-	do { \
-		*pFIO_DIR |= PF_SCL; \
-		SSYNC(); \
-	} while (0)
-#define I2C_ACTIVE \
-	do { \
-		*pFIO_DIR |= PF_SDA; \
-		*pFIO_INEN &= ~PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_TRISTATE \
-	do { \
-		*pFIO_DIR &= ~PF_SDA; \
-		*pFIO_INEN |= PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_READ ((*pFIO_FLAG_D & PF_SDA) != 0)
-#define I2C_SDA(bit) \
-	do { \
-		if (bit) \
-			*pFIO_FLAG_S = PF_SDA; \
-		else \
-			*pFIO_FLAG_C = PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_SCL(bit) \
-	do { \
-		if (bit) \
-			*pFIO_FLAG_S = PF_SCL; \
-		else \
-			*pFIO_FLAG_C = PF_SCL; \
-		SSYNC(); \
-	} while (0)
-#define I2C_DELAY		udelay(5)	/* 1/4 I2C clock duration */
-
-#define CONFIG_SYS_I2C_SPEED		50000
-#define CONFIG_SYS_I2C_SLAVE		0
-#endif
+#define CONFIG_SOFT_I2C_GPIO_SCL GPIO_PF3
+#define CONFIG_SOFT_I2C_GPIO_SDA GPIO_PF2
 
 
 /*
@@ -228,23 +182,19 @@
 /* define to enable run status via led */
 /* #define CONFIG_STATUS_LED */
 #ifdef CONFIG_STATUS_LED
+#define CONFIG_GPIO_LED
 #define CONFIG_BOARD_SPECIFIC_LED
-#ifndef __ASSEMBLY__
-typedef unsigned int led_id_t;
-void __led_init(led_id_t mask, int state);
-void __led_set(led_id_t mask, int state);
-void __led_toggle(led_id_t mask);
-#endif
-/* use LED1 to indicate booting/alive */
+/* use LED0 to indicate booting/alive */
 #define STATUS_LED_BOOT 0
-#define STATUS_LED_BIT 1
+#define STATUS_LED_BIT GPIO_PF2
 #define STATUS_LED_STATE STATUS_LED_ON
 #define STATUS_LED_PERIOD (CONFIG_SYS_HZ / 4)
-/* use LED2 to indicate crash */
+/* use LED1 to indicate crash */
 #define STATUS_LED_CRASH 1
-#define STATUS_LED_BIT1 2
+#define STATUS_LED_BIT1 GPIO_PF3
 #define STATUS_LED_STATE1 STATUS_LED_ON
 #define STATUS_LED_PERIOD1 (CONFIG_SYS_HZ / 2)
+/* #define STATUS_LED_BIT2 GPIO_PF4 */
 #endif
 
 /* define to enable splash screen support */

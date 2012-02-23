@@ -23,7 +23,7 @@
 
 #include <common.h>
 #ifdef __PPC__
-#include <ppc4xx.h>
+#include <asm/ppc4xx.h>
 #endif
 #include <asm/processor.h>
 
@@ -630,9 +630,10 @@ int write_buff (flash_info_t *info, uchar *src, ulong addr, ulong cnt)
  */
 static int write_word (flash_info_t *info, ulong dest, ulong data)
 {
+	ulong *data_ptr = &data;
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *)(info->start[0]);
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *)dest;
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *)&data;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *)data_ptr;
 	ulong start;
 	int flag;
 	int i;

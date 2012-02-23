@@ -29,7 +29,10 @@
  */
 
 #include <common.h>
-#include <s3c6400.h>
+#include <netdev.h>
+#include <asm/arch/s3c6400.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* ------------------------------------------------------------------------- */
 #define CS8900_Tacs	0x0	/* 0clk		address set-up		*/
@@ -62,8 +65,6 @@ static void cs8900_pre_init(void)
 
 int board_init(void)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	cs8900_pre_init();
 
 	/* NOR-flash in SROM0 */
@@ -71,18 +72,21 @@ int board_init(void)
 	/* Enable WAIT */
 	SROM_BW_REG |= 4 | 8 | 1;
 
-	gd->bd->bi_arch_number = MACH_TYPE;
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
 	return 0;
 }
 
-int dram_init(void)
+void dram_init_banksize(void)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
+}
+
+int dram_init(void)
+{
+	gd->ram_size = get_ram_size((long *)CONFIG_SYS_SDRAM_BASE,
+				PHYS_SDRAM_1_SIZE);
 
 	return 0;
 }
@@ -117,3 +121,14 @@ ulong board_flash_get_legacy (ulong base, int banknum, flash_info_t *info)
 	} else
 		return 0;
 }
+
+#ifdef CONFIG_CMD_NET
+int board_eth_init(bd_t *bis)
+{
+	int rc = 0;
+#ifdef CONFIG_CS8900
+	rc = cs8900_initialize(0, CONFIG_CS8900_BASE);
+#endif
+	return rc;
+}
+#endif

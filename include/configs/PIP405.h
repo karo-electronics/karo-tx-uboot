@@ -35,6 +35,9 @@
 #define CONFIG_405GP		1	/* This is a PPC405 CPU		*/
 #define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 #define CONFIG_PIP405		1	/* ...on a PIP405 board		*/
+
+#define	CONFIG_SYS_TEXT_BASE	0xFFF80000
+
 /***********************************************************
  * Clock
  ***********************************************************/
@@ -86,6 +89,7 @@
  * The Atmel EEPROM uses 16Bit addressing.
  ***************************************************************/
 #define CONFIG_HARD_I2C			/* I2c with hardware support */
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 #define CONFIG_SYS_I2C_SPEED		50000	/* I2C speed and slave address */
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 
@@ -109,6 +113,8 @@
 #define SPD_EEPROM_ADDRESS      0x50
 
 #define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_EARLY_INIT_R
+
 /**************************************************************
  * Environment definitions
  **************************************************************/
@@ -166,6 +172,12 @@
 #define CONFIG_SYS_MEMTEST_START	0x0100000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 1 ... 12 MB in DRAM	*/
 
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	1
+#define CONFIG_SYS_NS16550_CLK		get_serial_clock()
+
 #undef	CONFIG_SYS_EXT_SERIAL_CLOCK	       /* no external serial clock used */
 #define CONFIG_SYS_BASE_BAUD       691200
 
@@ -220,11 +232,17 @@
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
-#define CONFIG_SYS_MAX_FLASH_SECT	256	/* max number of sectors on one chip	*/
+#define CONFIG_SYS_UPDATE_FLASH_SIZE
+#define CONFIG_SYS_FLASH_PROTECTION
+#define CONFIG_SYS_FLASH_EMPTY_INFO
 
-#define CONFIG_SYS_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)	*/
+#define CONFIG_SYS_FLASH_CFI
+#define CONFIG_FLASH_CFI_DRIVER
+
+#define CONFIG_FLASH_SHOW_PROGRESS	45
+
+#define CONFIG_SYS_MAX_FLASH_BANKS	1
+#define CONFIG_SYS_MAX_FLASH_SECT	256
 
 /*
  * Init Memory Controller:
@@ -248,19 +266,9 @@
 #define CONFIG_SYS_OCM_DATA_ADDR	0xF0000000
 #define CONFIG_SYS_OCM_DATA_SIZE	0x1000
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_DATA_ADDR	/* inside of On Chip SRAM    */
-#define CONFIG_SYS_INIT_RAM_END	CONFIG_SYS_OCM_DATA_SIZE	/* End of On Chip SRAM	       */
-#define CONFIG_SYS_GBL_DATA_SIZE	64		/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	CONFIG_SYS_OCM_DATA_SIZE	/* Size of On Chip SRAM	       */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
-
 
 /***********************************************************************
  * External peripheral base address
@@ -277,7 +285,6 @@
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		1	/* PHY address			*/
-#define CONFIG_NET_MULTI
 /************************************************************
  * RTC
  ***********************************************************/

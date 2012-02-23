@@ -32,10 +32,11 @@
 #define CONFIG_MPC5xxx	1
 #define CONFIG_MPC5200 	1
 
-#define CONFIG_SYS_MPC5XXX_CLKIN	33000000
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFF800000
+#endif
 
-#define BOOTFLAG_COLD		0x01
-#define BOOTFLAG_WARM		0x02
+#define CONFIG_SYS_MPC5XXX_CLKIN	33000000
 
 #define CONFIG_MISC_INIT_R	1
 
@@ -73,8 +74,8 @@
 #define MV_INITRD_LENGTH	0x00400000
 #define MV_SCRATCH_ADDR		0x00000000
 #define MV_SCRATCH_LENGTH	MV_INITRD_LENGTH
-#define MV_SOURCE_ADDR		0xff840000
-#define MV_SOURCE_ADDR2		0xff850000
+#define MV_SCRIPT_ADDR		0xff840000
+#define MV_SCRIPT_ADDR2		0xff850000
 #define MV_DTB_ADDR		0xfffc0000
 
 #define CONFIG_SHOW_BOOT_PROGRESS 1
@@ -130,9 +131,9 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_RESET_TO_RETRY		1000
 
-#define CONFIG_BOOTCOMMAND	"if imi ${autoscr_addr}; \
-					then source ${autoscr_addr};	\
-					else source ${autoscr_addr2};	\
+#define CONFIG_BOOTCOMMAND	"if imi ${script_addr}; \
+					then source ${script_addr};	\
+					else source ${script_addr2};	\
 				fi;"
 
 #define CONFIG_BOOTARGS		"root=/dev/ram ro rootfstype=squashfs"
@@ -150,8 +151,8 @@
 	"fpga=0\0"						\
 	"fpgadata=" MK_STR(MV_FPGA_DATA) "\0"			\
 	"fpgadatasize=" MK_STR(MV_FPGA_SIZE) "\0"		\
-	"autoscr_addr=" MK_STR(MV_SOURCE_ADDR) "\0"		\
-	"autoscr_addr2=" MK_STR(MV_SOURCE_ADDR2) "\0"		\
+	"script_addr=" MK_STR(MV_SCRIPT_ADDR) "\0"		\
+	"script_addr2=" MK_STR(MV_SCRIPT_ADDR2) "\0"		\
 	"mv_kernel_addr=" MK_STR(MV_KERNEL_ADDR) "\0"		\
 	"mv_kernel_addr_ram=" MK_STR(MV_KERNEL_ADDR_RAM) "\0"	\
 	"mv_initrd_addr=" MK_STR(MV_INITRD_ADDR) "\0"		\
@@ -211,7 +212,7 @@
 #define CONFIG_SYS_MAX_FLASH_SECT	256
 
 #define CONFIG_SYS_LOWBOOT
-#define CONFIG_SYS_FLASH_BASE		TEXT_BASE
+#define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_FLASH_SIZE		0x00800000
 
 /*
@@ -234,13 +235,12 @@
 #define CONFIG_SYS_DEFAULT_MBAR	0x80000000
 
 #define CONFIG_SYS_INIT_RAM_ADDR	MPC5XXX_SRAM
-#define CONFIG_SYS_INIT_RAM_END	MPC5XXX_SRAM_SIZE
+#define CONFIG_SYS_INIT_RAM_SIZE	MPC5XXX_SRAM_SIZE
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
 #define CONFIG_SYS_RAMBOOT		1
 #endif
@@ -261,7 +261,6 @@
 /*
  * Ethernet configuration
  */
-#define CONFIG_NET_MULTI
 #define CONFIG_NET_RETRY_COUNT 5
 
 #define CONFIG_E1000

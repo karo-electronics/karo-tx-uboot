@@ -101,7 +101,7 @@ int board_early_init_f(void)
 
 phys_size_t initdram (int board_type)
 {
-	return fixed_sdram();
+	return fixed_sdram(NULL, NULL, 0);
 }
 
 int misc_init_r(void)
@@ -119,11 +119,6 @@ int misc_init_r(void)
 		 tmp & 0x000000FF
 	);
 
-#ifdef CONFIG_FSL_DIU_FB
-# if	!(defined(CONFIG_VIDEO) || defined(CONFIG_CFB_CONSOLE))
-	mpc5121_diu_init();
-# endif
-#endif
 	return 0;
 }
 
@@ -196,6 +191,5 @@ int checkboard (void)
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
-	fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
 }
 #endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */

@@ -81,10 +81,9 @@ typedef struct {		/* typedef Xilinx_desc */
 
 /* Generic Xilinx Functions
  *********************************************************************/
-extern int xilinx_load( Xilinx_desc *desc, void *image, size_t size );
-extern int xilinx_dump( Xilinx_desc *desc, void *buf, size_t bsize );
-extern int xilinx_info( Xilinx_desc *desc );
-extern int xilinx_reloc( Xilinx_desc *desc, ulong reloc_offset );
+extern int xilinx_load(Xilinx_desc *desc, const void *image, size_t size);
+extern int xilinx_dump(Xilinx_desc *desc, const void *buf, size_t bsize);
+extern int xilinx_info(Xilinx_desc *desc);
 
 /* Board specific implementation specific function types
  *********************************************************************/
@@ -101,5 +100,6 @@ typedef int (*Xilinx_busy_fn)( int cookie );
 typedef int (*Xilinx_abort_fn)( int cookie );
 typedef int (*Xilinx_pre_fn)( int cookie );
 typedef int (*Xilinx_post_fn)( int cookie );
+typedef int (*Xilinx_bwr_fn)( void *buf, size_t len, int flush, int cookie );
 
 #endif  /* _XILINX_H_ */

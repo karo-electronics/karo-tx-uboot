@@ -55,7 +55,6 @@
 #define CONFIG_ENV_OFFSET		0x4000
 #define CONFIG_ENV_SECT_SIZE	0x2000
 #define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_IS_EMBEDDED	1
 #else
 #define CONFIG_ENV_ADDR		0xffe04000
 #define CONFIG_ENV_SECT_SIZE	0x2000
@@ -73,6 +72,7 @@
 /* Available command configuration */
 #include <config_cmd_default.h>
 
+#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_NET
@@ -87,7 +87,6 @@
 
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
-#define CONFIG_NET_MULTI	1
 #define CONFIG_MII		1
 #define CONFIG_MII_INIT		1
 #define CONFIG_SYS_DISCOVER_PHY
@@ -122,11 +121,6 @@
 #define CONFIG_SYS_I2C_PINMUX_CLR	(0xFFF0)
 #define CONFIG_SYS_I2C_PINMUX_SET	(0x000F)
 
-#ifdef CONFIG_MCFFEC
-#define CONFIG_ETHADDR		00:06:3b:01:41:55
-#define CONFIG_ETH1ADDR		00:0e:0c:bc:e5:60
-#endif
-
 #define CONFIG_SYS_PROMPT		"-> "
 #define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 
@@ -146,6 +140,23 @@
 #define CONFIG_SYS_MEMTEST_START	0x400
 #define CONFIG_SYS_MEMTEST_END		0x380000
 
+#ifdef CONFIG_MCFFEC
+#	define CONFIG_NET_RETRY_COUNT	5
+#	define CONFIG_OVERWRITE_ETHADDR_ONCE
+#endif				/* FEC_ENET */
+
+#define CONFIG_EXTRA_ENV_SETTINGS		\
+	"netdev=eth0\0"				\
+	"loadaddr=10000\0"			\
+	"uboot=u-boot.bin\0"			\
+	"load=tftp ${loadaddr} ${uboot}\0"	\
+	"upd=run load; run prog\0"		\
+	"prog=prot off ffe00000 ffe3ffff;"	\
+	"era ffe00000 ffe3ffff;"		\
+	"cp.b ${loadaddr} ffe00000 ${filesize};"\
+	"save\0"				\
+	""
+
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_CLK			150000000
 
@@ -161,9 +172,8 @@
  * Definitions for initial stack pointer and data area (in DPRAM)
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	0x20000000
-#define CONFIG_SYS_INIT_RAM_END	0x10000	/* End of used area in internal SRAM */
-#define CONFIG_SYS_GBL_DATA_SIZE	1000	/* bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x10000	/* Size of used area in internal SRAM */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
@@ -208,6 +218,19 @@
  * Cache Configuration
  */
 #define CONFIG_SYS_CACHELINE_SIZE	16
+
+#define ICACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - 8)
+#define DCACHE_STATUS			(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - 4)
+#define CONFIG_SYS_ICACHE_INV		(CF_CACR_CINV | CF_CACR_INVI)
+#define CONFIG_SYS_CACHE_ACR0		(CONFIG_SYS_SDRAM_BASE | \
+					 CF_ADDRMASK(CONFIG_SYS_SDRAM_SIZE) | \
+					 CF_ACR_EN | CF_ACR_SM_ALL)
+#define CONFIG_SYS_CACHE_ICACR		(CF_CACR_CENB | CF_CACR_CINV | \
+					 CF_CACR_DISD | CF_CACR_INVI | \
+					 CF_CACR_CEIB | CF_CACR_DCM | \
+					 CF_CACR_EUSP)
 
 /*-----------------------------------------------------------------------
  * Memory bank definitions

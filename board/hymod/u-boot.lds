@@ -55,20 +55,19 @@ SECTIONS
     /* WARNING - the following is hand-optimized to fit within	*/
     /* the sector layout of our flash chips!	XXX FIXME XXX	*/
 
-    cpu/mpc8260/start.o	(.text)
+    arch/powerpc/cpu/mpc8260/start.o	(.text)
 /*
     common/dlmalloc.o	(.text)
-    lib_ppc/ppcstring.o	(.text)
-    lib_generic/vsprintf.o	(.text)
-    lib_generic/crc32.o		(.text)
-    lib_generic/zlib.o		(.text)
+    arch/powerpc/lib/ppcstring.o	(.text)
+    lib/vsprintf.o	(.text)
+    lib/crc32.o		(.text)
+    lib/zlib.o		(.text)
 
     . = env_offset;
 */
     common/env_embedded.o(.text)
 
     *(.text)
-    *(.fixup)
     *(.got1)
   }
   _etext = .;
@@ -88,13 +87,14 @@ SECTIONS
   PROVIDE (erotext = .);
   .reloc   :
   {
-    *(.got)
     _GOT2_TABLE_ = .;
-    *(.got2)
+    KEEP(*(.got2))
+    KEEP(*(.got))
+    PROVIDE(_GLOBAL_OFFSET_TABLE_ = . + 4);
     _FIXUP_TABLE_ = .;
     *(.fixup)
   }
-  __got2_entries = (_FIXUP_TABLE_ - _GOT2_TABLE_) >>2;
+  __got2_entries = ((_GLOBAL_OFFSET_TABLE_ - _GOT2_TABLE_) >> 2) - 1;
   __fixup_entries = (. - _FIXUP_TABLE_)>>2;
 
   .data    :
@@ -141,6 +141,6 @@ SECTIONS
     common/env_embedded.o (.ppcenv)
   }
   . = ALIGN(4);
-  _end = . ;
+  __bss_end__ = . ;
   PROVIDE (end = .);
 }

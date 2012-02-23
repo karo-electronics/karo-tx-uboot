@@ -179,7 +179,6 @@ void write_4hex (unsigned long val)
 
 int board_early_init_f (void)
 {
-	unsigned char dataout[1];
 	unsigned char datain[128];
 	unsigned long sdram_size = 0;
 	SDRAM_SETUP *t = (SDRAM_SETUP *) sdram_setup_table;
@@ -189,14 +188,18 @@ int board_early_init_f (void)
 	unsigned short i;
 	unsigned char rows, cols, banks, sdram_banks, density;
 	unsigned char supported_cal, trp_clocks, trcd_clocks, tras_clocks,
-			trc_clocks, tctp_clocks;
+		trc_clocks;
 	unsigned char cal_index, cal_val, spd_version, spd_chksum;
 	unsigned char buf[8];
+#ifdef SDRAM_DEBUG
+	unsigned char tctp_clocks;
+#endif
+
 	/* set up the config port */
-	mtdcr (ebccfga, pb7ap);
-	mtdcr (ebccfgd, CONFIG_PORT_AP);
-	mtdcr (ebccfga, pb7cr);
-	mtdcr (ebccfgd, CONFIG_PORT_CR);
+	mtdcr (EBC0_CFGADDR, PB7AP);
+	mtdcr (EBC0_CFGDATA, CONFIG_PORT_AP);
+	mtdcr (EBC0_CFGADDR, PB7CR);
+	mtdcr (EBC0_CFGDATA, CONFIG_PORT_CR);
 
 	memclk = get_bus_freq (tmemclk);
 	tmemclk = 1000000000 / (memclk / 100);	/* in 10 ps units */
@@ -210,7 +213,6 @@ int board_early_init_f (void)
 
 	/* Read Serial Presence Detect Information */
 	i2c_init (CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-	dataout[0] = 0;
 	for (i = 0; i < 128; i++)
 		datain[i] = 127;
 	i2c_read(SPD_EEPROM_ADDRESS,0,1,datain,128);
@@ -307,12 +309,13 @@ int board_early_init_f (void)
 
 	/* trc_clocks is sum of trp_clocks + tras_clocks */
 	trc_clocks = trp_clocks + tras_clocks;
+
+#ifdef SDRAM_DEBUG
 	/* ctp = ((trp + tras) - trp - trcd) => tras - trcd */
 	tctp_clocks =
 			((NSto10PS (datain[30]) - NSto10PS (datain[29])) +
 			 (tmemclk - 1)) / tmemclk;
 
-#ifdef SDRAM_DEBUG
 	serial_puts ("c_RP: ");
 	write_hex (trp_clocks);
 	serial_puts ("\nc_RCD: ");
@@ -361,8 +364,8 @@ int board_early_init_f (void)
 		SDRAM_err ("unsupported SDRAM");
 
 	/* get SDRAM timing register */
-	mtdcr (memcfga, mem_sdtr1);
-	tmp = mfdcr (memcfgd) & ~0x018FC01F;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_TR);
+	tmp = mfdcr (SDRAM0_CFGDATA) & ~0x018FC01F;
 	/* insert CASL value */
 /*  tmp |= ((unsigned long)cal_val) << 23; */
 	tmp |= ((unsigned long) cal_val) << 23;
@@ -385,8 +388,8 @@ int board_early_init_f (void)
 #endif
 
 	/* write SDRAM timing register */
-	mtdcr (memcfga, mem_sdtr1);
-	mtdcr (memcfgd, tmp);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_TR);
+	mtdcr (SDRAM0_CFGDATA, tmp);
 	baseaddr = CONFIG_SYS_SDRAM_BASE;
 	bank_size = (((unsigned long) density) << 22) / 2;
 	/* insert AM value */
@@ -418,8 +421,8 @@ int board_early_init_f (void)
 		SDRAM_err ("unsupported SDRAM");
 	}	/* endswitch */
 	/* get SDRAM bank 0 register */
-	mtdcr (memcfga, mem_mb0cf);
-	bank = mfdcr (memcfgd) & ~0xFFCEE001;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B0CR);
+	bank = mfdcr (SDRAM0_CFGDATA) & ~0xFFCEE001;
 	bank |= (baseaddr | tmp | 0x01);
 #ifdef SDRAM_DEBUG
 	serial_puts ("bank0: baseaddr: ");
@@ -434,12 +437,12 @@ int board_early_init_f (void)
 	sdram_size += bank_size;
 
 	/* write SDRAM bank 0 register */
-	mtdcr (memcfga, mem_mb0cf);
-	mtdcr (memcfgd, bank);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B0CR);
+	mtdcr (SDRAM0_CFGDATA, bank);
 
 	/* get SDRAM bank 1 register */
-	mtdcr (memcfga, mem_mb1cf);
-	bank = mfdcr (memcfgd) & ~0xFFCEE001;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B1CR);
+	bank = mfdcr (SDRAM0_CFGDATA) & ~0xFFCEE001;
 	sdram_size = 0;
 
 #ifdef SDRAM_DEBUG
@@ -459,12 +462,12 @@ int board_early_init_f (void)
 	serial_puts ("\n");
 #endif
 	/* write SDRAM bank 1 register */
-	mtdcr (memcfga, mem_mb1cf);
-	mtdcr (memcfgd, bank);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B1CR);
+	mtdcr (SDRAM0_CFGDATA, bank);
 
 	/* get SDRAM bank 2 register */
-	mtdcr (memcfga, mem_mb2cf);
-	bank = mfdcr (memcfgd) & ~0xFFCEE001;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B2CR);
+	bank = mfdcr (SDRAM0_CFGDATA) & ~0xFFCEE001;
 
 	bank |= (baseaddr | tmp | 0x01);
 
@@ -482,12 +485,12 @@ int board_early_init_f (void)
 	sdram_size += bank_size;
 
 	/* write SDRAM bank 2 register */
-	mtdcr (memcfga, mem_mb2cf);
-	mtdcr (memcfgd, bank);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B2CR);
+	mtdcr (SDRAM0_CFGDATA, bank);
 
 	/* get SDRAM bank 3 register */
-	mtdcr (memcfga, mem_mb3cf);
-	bank = mfdcr (memcfgd) & ~0xFFCEE001;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B3CR);
+	bank = mfdcr (SDRAM0_CFGDATA) & ~0xFFCEE001;
 
 #ifdef SDRAM_DEBUG
 	serial_puts ("bank3: baseaddr: ");
@@ -509,13 +512,13 @@ int board_early_init_f (void)
 #endif
 
 	/* write SDRAM bank 3 register */
-	mtdcr (memcfga, mem_mb3cf);
-	mtdcr (memcfgd, bank);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B3CR);
+	mtdcr (SDRAM0_CFGDATA, bank);
 
 
 	/* get SDRAM refresh interval register */
-	mtdcr (memcfga, mem_rtr);
-	tmp = mfdcr (memcfgd) & ~0x3FF80000;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_RTR);
+	tmp = mfdcr (SDRAM0_CFGDATA) & ~0x3FF80000;
 
 	if (tmemclk < NSto10PS (16))
 		tmp |= 0x05F00000;
@@ -523,14 +526,14 @@ int board_early_init_f (void)
 		tmp |= 0x03F80000;
 
 	/* write SDRAM refresh interval register */
-	mtdcr (memcfga, mem_rtr);
-	mtdcr (memcfgd, tmp);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_RTR);
+	mtdcr (SDRAM0_CFGDATA, tmp);
 
 	/* enable SDRAM controller with no ECC, 32-bit SDRAM width, 16 byte burst */
-	mtdcr (memcfga, mem_mcopt1);
-	tmp = (mfdcr (memcfgd) & ~0xFFE00000) | 0x80E00000;
-	mtdcr (memcfga, mem_mcopt1);
-	mtdcr (memcfgd, tmp);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_CFG);
+	tmp = (mfdcr (SDRAM0_CFGDATA) & ~0xFFE00000) | 0x80E00000;
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_CFG);
+	mtdcr (SDRAM0_CFGDATA, tmp);
 
 
    /*-------------------------------------------------------------------------+
@@ -552,18 +555,38 @@ int board_early_init_f (void)
    |       caused the interrupt.
    |
    +-------------------------------------------------------------------------*/
-	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr (uicer, 0x00000000);	/* disable all ints */
-	mtdcr (uiccr, 0x00000000);	/* set all to be non-critical (for now) */
-	mtdcr (uicpr, 0xFFFFFF80);	/* set int polarities */
-	mtdcr (uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr (uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
-	mtdcr (uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr (UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr (UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr (UIC0CR, 0x00000000);	/* set all to be non-critical (for now) */
+	mtdcr (UIC0PR, 0xFFFFFF80);	/* set int polarities */
+	mtdcr (UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr (UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest priority */
+	mtdcr (UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	return 0;
 }
 
+int board_early_init_r(void)
+{
+	int mode;
 
+	/*
+	 * since we are relocated, we can finally enable i-cache
+	 * and set up the flash CS correctly
+	 */
+	icache_enable();
+	setup_cs_reloc();
+	/* get and display boot mode */
+	mode = get_boot_mode();
+	if (mode & BOOT_PCI)
+		printf("PCI Boot %s Map\n", (mode & BOOT_MPS) ?
+			"MPS" : "Flash");
+	else
+		printf("%s Boot\n", (mode & BOOT_MPS) ?
+			"MPS" : "Flash");
+
+	return 0;
+}
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -579,7 +602,7 @@ int checkboard (void)
 
 	puts ("Board: ");
 
-	i = getenv_r ("serial#", (char *)s, 32);
+	i = getenv_f("serial#", (char *)s, 32);
 	if ((i == 0) || strncmp ((char *)s, "PIP405", 6)) {
 		get_backup_values (b);
 		if (strncmp (b->signature, "MPL\0", 4) != 0) {
@@ -619,14 +642,14 @@ phys_size_t initdram (int board_type)
 	/* since the DRAM controller is allready set up,
 	 * calculate the size with the bank registers
 	 */
-	mtdcr (memcfga, mem_mb0cf);
-	bank_reg[0] = mfdcr (memcfgd);
-	mtdcr (memcfga, mem_mb1cf);
-	bank_reg[1] = mfdcr (memcfgd);
-	mtdcr (memcfga, mem_mb2cf);
-	bank_reg[2] = mfdcr (memcfgd);
-	mtdcr (memcfga, mem_mb3cf);
-	bank_reg[3] = mfdcr (memcfgd);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B0CR);
+	bank_reg[0] = mfdcr (SDRAM0_CFGDATA);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B1CR);
+	bank_reg[1] = mfdcr (SDRAM0_CFGDATA);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B2CR);
+	bank_reg[2] = mfdcr (SDRAM0_CFGDATA);
+	mtdcr (SDRAM0_CFGADDR, SDRAM0_B3CR);
+	bank_reg[3] = mfdcr (SDRAM0_CFGDATA);
 	TotalSize = 0;
 	for (i = 0; i < 4; i++) {
 		if ((bank_reg[i] & 0x1) == 0x1) {
@@ -657,9 +680,6 @@ static int test_dram (unsigned long ramsize)
 	return (1);
 }
 
-
-extern flash_info_t flash_info[];	/* info for FLASH chips */
-
 int misc_init_r (void)
 {
 	/* adjust flash start and size as well as the offset */
@@ -668,7 +688,7 @@ int misc_init_r (void)
 	gd->bd->bi_flashoffset=0;
 
 	/* if PIP405 has booted from PCI, reset CCR0[24] as described in errata PCI_18 */
-	if (mfdcr(strap) & PSR_ROM_LOC)
+	if (mfdcr(CPC0_PSR) & PSR_ROM_LOC)
 	       mtspr(SPRN_CCR0, (mfspr(SPRN_CCR0) & ~0x80));
 
 	return (0);

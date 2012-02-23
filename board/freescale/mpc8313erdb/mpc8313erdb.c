@@ -31,6 +31,9 @@
 #include <vsc7385.h>
 #include <ns16550.h>
 #include <nand.h>
+#if defined(CONFIG_MPC83XX_GPIO) && !defined(CONFIG_NAND_SPL)
+#include <asm/gpio.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -41,6 +44,18 @@ int board_early_init_f(void)
 
 	if (im->pmc.pmccr1 & PMCCR1_POWER_OFF)
 		gd->flags |= GD_FLG_SILENT;
+#endif
+#if defined(CONFIG_MPC83XX_GPIO) && !defined(CONFIG_NAND_SPL)
+	mpc83xx_gpio_init_f();
+#endif
+
+	return 0;
+}
+
+int board_early_init_r(void)
+{
+#if defined(CONFIG_MPC83XX_GPIO) && !defined(CONFIG_NAND_SPL)
+	mpc83xx_gpio_init_r();
 #endif
 
 	return 0;
@@ -80,7 +95,6 @@ void pci_init_board(void)
 	volatile clk83xx_t *clk = (volatile clk83xx_t *)&immr->clk;
 	volatile law83xx_t *pci_law = immr->sysconf.pcilaw;
 	struct pci_region *reg[] = { pci_regions };
-	int warmboot;
 
 	/* Enable all 3 PCI_CLK_OUTPUTs. */
 	clk->occr |= 0xe0000000;
@@ -94,12 +108,7 @@ void pci_init_board(void)
 	pci_law[1].bar = CONFIG_SYS_PCI1_IO_PHYS & LAWBAR_BAR;
 	pci_law[1].ar = LBLAWAR_EN | LBLAWAR_1MB;
 
-	warmboot = gd->bd->bi_bootflags & BOOTFLAG_WARM;
-#ifndef CONFIG_SYS_8313ERDB_BROKEN_PMC
-	warmboot |= immr->pmc.pmccr1 & PMCCR1_POWER_OFF;
-#endif
-
-	mpc83xx_pci_init(1, reg, warmboot);
+	mpc83xx_pci_init(1, reg);
 }
 
 /*
@@ -140,7 +149,7 @@ void board_init_f(ulong bootflag)
 	puts("NAND boot... ");
 	init_timebase();
 	initdram(0);
-	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC + 0x10000, (gd_t *)gd,
+	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC_SP, (gd_t *)gd,
 	              CONFIG_SYS_NAND_U_BOOT_RELOC);
 }
 

@@ -178,6 +178,7 @@ int indir1_blkno = -1;
 uint32_t *indir2_block = NULL;
 int indir2_size = 0;
 int indir2_blkno = -1;
+static unsigned int inode_size;
 
 
 static int ext2fs_blockgroup
@@ -212,7 +213,7 @@ static int ext2fs_read_inode
 	unsigned int blkoff;
 
 #ifdef DEBUG
-	printf ("ext2fs read inode %d\n", ino);
+	printf ("ext2fs read inode %d, inode_size %d\n", ino, inode_size);
 #endif
 	/* It is easier to calculate if the first inode is 0.  */
 	ino--;
@@ -222,16 +223,12 @@ static int ext2fs_read_inode
 		return (0);
 	}
 
-	inodes_per_block = EXT2_BLOCK_SIZE(data) / __le16_to_cpu(sblock->inode_size);
-
-#ifdef DEBUG
-	printf ("ext2fs read inode blkno %d blkoff %d\n", blkno, blkoff);
-#endif
+	inodes_per_block = EXT2_BLOCK_SIZE(data) / inode_size;
 
 	blkno = __le32_to_cpu (blkgrp.inode_table_id) +
 		(ino % __le32_to_cpu (sblock->inodes_per_group))
 		/ inodes_per_block;
-	blkoff = (ino % inodes_per_block) * __le16_to_cpu (sblock->inode_size);
+	blkoff = (ino % inodes_per_block) * inode_size;
 #ifdef DEBUG
 	printf ("ext2fs read inode blkno %d blkoff %d\n", blkno, blkoff);
 #endif
@@ -268,7 +265,8 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 	/* Indirect.  */
 	else if (fileblock < (INDIRECT_BLOCKS + (blksz / 4))) {
 		if (indir1_block == NULL) {
-			indir1_block = (uint32_t *) malloc (blksz);
+			indir1_block = (uint32_t *) memalign(ARCH_DMA_MINALIGN,
+							     blksz);
 			if (indir1_block == NULL) {
 				printf ("** ext2fs read block (indir 1) malloc failed. **\n");
 				return (-1);
@@ -281,7 +279,8 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 			indir1_block = NULL;
 			indir1_size = 0;
 			indir1_blkno = -1;
-			indir1_block = (uint32_t *) malloc (blksz);
+			indir1_block = (uint32_t *) memalign(ARCH_DMA_MINALIGN,
+							     blksz);
 			if (indir1_block == NULL) {
 				printf ("** ext2fs read block (indir 1) malloc failed. **\n");
 				return (-1);
@@ -312,7 +311,8 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 						   + blksz / 4);
 
 		if (indir1_block == NULL) {
-			indir1_block = (uint32_t *) malloc (blksz);
+			indir1_block = (uint32_t *) memalign(ARCH_DMA_MINALIGN,
+							     blksz);
 			if (indir1_block == NULL) {
 				printf ("** ext2fs read block (indir 2 1) malloc failed. **\n");
 				return (-1);
@@ -325,7 +325,8 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 			indir1_block = NULL;
 			indir1_size = 0;
 			indir1_blkno = -1;
-			indir1_block = (uint32_t *) malloc (blksz);
+			indir1_block = (uint32_t *) memalign(ARCH_DMA_MINALIGN,
+							     blksz);
 			if (indir1_block == NULL) {
 				printf ("** ext2fs read block (indir 2 1) malloc failed. **\n");
 				return (-1);
@@ -346,7 +347,8 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 		}
 
 		if (indir2_block == NULL) {
-			indir2_block = (uint32_t *) malloc (blksz);
+			indir2_block = (uint32_t *) memalign(ARCH_DMA_MINALIGN,
+							     blksz);
 			if (indir2_block == NULL) {
 				printf ("** ext2fs read block (indir 2 2) malloc failed. **\n");
 				return (-1);
@@ -359,7 +361,8 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 			indir2_block = NULL;
 			indir2_size = 0;
 			indir2_blkno = -1;
-			indir2_block = (uint32_t *) malloc (blksz);
+			indir2_block = (uint32_t *) memalign(ARCH_DMA_MINALIGN,
+							     blksz);
 			if (indir2_block == NULL) {
 				printf ("** ext2fs read block (indir 2 2) malloc failed. **\n");
 				return (-1);
@@ -367,7 +370,7 @@ static int ext2fs_read_block (ext2fs_node_t node, int fileblock) {
 			indir2_size = blksz;
 		}
 		if ((__le32_to_cpu (indir1_block[rblock / perblock]) <<
-		     log2_blksz) != indir1_blkno) {
+		     log2_blksz) != indir2_blkno) {
 			status = ext2fs_devread (__le32_to_cpu(indir1_block[rblock / perblock]) << log2_blksz,
 						 0, blksz,
 						 (char *) indir2_block);
@@ -752,7 +755,7 @@ int ext2fs_find_file
 }
 
 
-int ext2fs_ls (char *dirname) {
+int ext2fs_ls (const char *dirname) {
 	ext2fs_node_t dirnode;
 	int status;
 
@@ -772,7 +775,7 @@ int ext2fs_ls (char *dirname) {
 }
 
 
-int ext2fs_open (char *filename) {
+int ext2fs_open (const char *filename) {
 	ext2fs_node_t fdiro = NULL;
 	int status;
 	int len;
@@ -863,6 +866,15 @@ int ext2fs_mount (unsigned part_length) {
 	if (__le16_to_cpu (data->sblock.magic) != EXT2_MAGIC) {
 		goto fail;
 	}
+	if (__le32_to_cpu(data->sblock.revision_level == 0)) {
+		inode_size = 128;
+	} else {
+		inode_size = __le16_to_cpu(data->sblock.inode_size);
+	}
+#ifdef DEBUG
+	printf("EXT2 rev %d, inode_size %d\n",
+			__le32_to_cpu(data->sblock.revision_level), inode_size);
+#endif
 	data->diropen.data = data;
 	data->diropen.ino = 2;
 	data->diropen.inode_read = 1;

@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2007-2009
+ * (C) Copyright 2007-2010
  * Larry Johnson, lrj@acm.org
  *
  * (C) Copyright 2006-2007
@@ -29,12 +29,13 @@
 #include <fdt_support.h>
 #include <i2c.h>
 #include <libfdt.h>
-#include <ppc440.h>
+#include <asm/ppc440.h>
 #include <asm/bitops.h>
-#include <asm/gpio.h>
+#include <asm/ppc4xx-gpio.h>
 #include <asm/io.h>
 #include <asm/ppc4xx-uic.h>
 #include <asm/processor.h>
+#include <asm/4xx_pci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -81,35 +82,35 @@ int board_early_init_f(void)
 	korat_buzzer(0);
 #endif
 
-	mtdcr(ebccfga, xbcfg);
-	mtdcr(ebccfgd, 0xb8400000);
+	mtdcr(EBC0_CFGADDR, EBC0_CFG);
+	mtdcr(EBC0_CFGDATA, 0xb8400000);
 
 	/*
 	 * Setup the interrupt controller polarities, triggers, etc.
 	 */
-	mtdcr(uic0sr, 0xffffffff);	/* clear all */
-	mtdcr(uic0er, 0x00000000);	/* disable all */
-	mtdcr(uic0cr, 0x00000005);	/* ATI & UIC1 crit are critical */
-	mtdcr(uic0pr, 0xfffff7ff);	/* per ref-board manual */
-	mtdcr(uic0tr, 0x00000000);	/* per ref-board manual */
-	mtdcr(uic0vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic0sr, 0xffffffff);	/* clear all */
+	mtdcr(UIC0SR, 0xffffffff);	/* clear all */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all */
+	mtdcr(UIC0CR, 0x00000005);	/* ATI & UIC1 crit are critical */
+	mtdcr(UIC0PR, 0xfffff7ff);	/* per ref-board manual */
+	mtdcr(UIC0TR, 0x00000000);	/* per ref-board manual */
+	mtdcr(UIC0VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC0SR, 0xffffffff);	/* clear all */
 
-	mtdcr(uic1sr, 0xffffffff);	/* clear all */
-	mtdcr(uic1er, 0x00000000);	/* disable all */
-	mtdcr(uic1cr, 0x00000000);	/* all non-critical */
-	mtdcr(uic1pr, 0xffffffff);	/* per ref-board manual */
-	mtdcr(uic1tr, 0x00000000);	/* per ref-board manual */
-	mtdcr(uic1vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic1sr, 0xffffffff);	/* clear all */
+	mtdcr(UIC1SR, 0xffffffff);	/* clear all */
+	mtdcr(UIC1ER, 0x00000000);	/* disable all */
+	mtdcr(UIC1CR, 0x00000000);	/* all non-critical */
+	mtdcr(UIC1PR, 0xffffffff);	/* per ref-board manual */
+	mtdcr(UIC1TR, 0x00000000);	/* per ref-board manual */
+	mtdcr(UIC1VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC1SR, 0xffffffff);	/* clear all */
 
-	mtdcr(uic2sr, 0xffffffff);	/* clear all */
-	mtdcr(uic2er, 0x00000000);	/* disable all */
-	mtdcr(uic2cr, 0x00000000);	/* all non-critical */
-	mtdcr(uic2pr, 0xffffffff);	/* per ref-board manual */
-	mtdcr(uic2tr, 0x00000000);	/* per ref-board manual */
-	mtdcr(uic2vr, 0x00000000);	/* int31 highest, base=0x000 */
-	mtdcr(uic2sr, 0xffffffff);	/* clear all */
+	mtdcr(UIC2SR, 0xffffffff);	/* clear all */
+	mtdcr(UIC2ER, 0x00000000);	/* disable all */
+	mtdcr(UIC2CR, 0x00000000);	/* all non-critical */
+	mtdcr(UIC2PR, 0xffffffff);	/* per ref-board manual */
+	mtdcr(UIC2TR, 0x00000000);	/* per ref-board manual */
+	mtdcr(UIC2VR, 0x00000000);	/* int31 highest, base=0x000 */
+	mtdcr(UIC2SR, 0xffffffff);	/* clear all */
 
 	/*
 	 * Take sim card reader and CF controller out of reset.  Also enable PHY
@@ -157,8 +158,8 @@ int board_early_init_f(void)
 	mtsdr(SDR0_PFC1, sdr0_pfc1);
 
 	/* PCI arbiter enabled */
-	mfsdr(sdr_pci0, reg);
-	mtsdr(sdr_pci0, 0x80000000 | reg);
+	mfsdr(SDR0_PCI0, reg);
+	mtsdr(SDR0_PCI0, 0x80000000 | reg);
 
 	return 0;
 }
@@ -359,12 +360,12 @@ int misc_init_r(void)
 	gd->bd->bi_flashstart = CONFIG_SYS_FLASH1_TOP - flash1_size;
 	gd->bd->bi_flashoffset = 0;
 
-	mtdcr(ebccfga, pb1cr);
-	pbcr = mfdcr(ebccfgd);
+	mtdcr(EBC0_CFGADDR, PB1CR);
+	pbcr = mfdcr(EBC0_CFGDATA);
 	size_val = ffs(flash1_size) - 21;
 	pbcr = (pbcr & 0x0001ffff) | gd->bd->bi_flashstart | (size_val << 17);
-	mtdcr(ebccfga, pb1cr);
-	mtdcr(ebccfgd, pbcr);
+	mtdcr(EBC0_CFGADDR, PB1CR);
+	mtdcr(EBC0_CFGDATA, pbcr);
 
 	/*
 	 * Re-check to get correct base address
@@ -378,12 +379,12 @@ int misc_init_r(void)
 	gd->bd->bi_flashoffset =
 		CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SECT_SIZE - CONFIG_SYS_FLASH1_ADDR;
 
-	mtdcr(ebccfga, pb1cr);
-	pbcr = mfdcr(ebccfgd);
+	mtdcr(EBC0_CFGADDR, PB1CR);
+	pbcr = mfdcr(EBC0_CFGDATA);
 	size_val = ffs(gd->bd->bi_flashsize - CONFIG_SYS_FLASH0_SIZE) - 21;
 	pbcr = (pbcr & 0x0001ffff) | gd->bd->bi_flashstart | (size_val << 17);
-	mtdcr(ebccfga, pb1cr);
-	mtdcr(ebccfgd, pbcr);
+	mtdcr(EBC0_CFGADDR, PB1CR);
+	mtdcr(EBC0_CFGDATA, pbcr);
 
 	/* Monitor protection ON by default */
 #if defined(CONFIG_KORAT_PERMANENT)
@@ -416,7 +417,7 @@ int misc_init_r(void)
 		 * then connect the CompactFlash controller to the PowerPC USB
 		 * port.
 		 */
-		printf("Attaching CompactFalsh controller to PPC USB\n");
+		printf("Attaching CompactFlash controller to PPC USB\n");
 		out_8((u8 *) CONFIG_SYS_CPLD_BASE + 0x02,
 		      in_8((u8 *) CONFIG_SYS_CPLD_BASE + 0x02) | 0x10);
 	} else {
@@ -424,7 +425,7 @@ int misc_init_r(void)
 			printf("Warning: \"korat_usbcf\" is not set to a legal "
 			       "value (\"ppc\" or \"pci\")\n");
 
-		printf("Attaching CompactFalsh controller to PCI USB\n");
+		printf("Attaching CompactFlash controller to PCI USB\n");
 	}
 	if (act == NULL || strcmp(act, "hostdev") == 0) {
 		/* SDR Setting */
@@ -552,8 +553,8 @@ int misc_init_r(void)
 	 * This fix will make the MAL burst disabling patch for the Linux
 	 * EMAC driver obsolete.
 	 */
-	reg = mfdcr(plb4_acr) & ~PLB4_ACR_WRP;
-	mtdcr(plb4_acr, reg);
+	reg = mfdcr(PLB4A0_ACR) & ~PLB4Ax_ACR_WRP_MASK;
+	mtdcr(PLB4A0_ACR, reg);
 
 	set_serial_number();
 	set_mac_addresses();
@@ -594,69 +595,11 @@ int checkboard(void)
 /*
  * Assign interrupts to PCI devices.
  */
-void korat_pci_fixup_irq(struct pci_controller *hose, pci_dev_t dev)
+void board_pci_fixup_irq(struct pci_controller *hose, pci_dev_t dev)
 {
 	pci_hose_write_config_byte(hose, dev, PCI_INTERRUPT_LINE, VECNUM_EIRQ2);
 }
 #endif
-
-/*
- * pci_pre_init
- *
- * This routine is called just prior to registering the hose and gives
- * the board the opportunity to check things. Returning a value of zero
- * indicates that things are bad & PCI initialization should be aborted.
- *
- * Different boards may wish to customize the pci controller structure
- * (add regions, override default access routines, etc) or perform
- * certain pre-initialization actions.
- */
-#if defined(CONFIG_PCI)
-int pci_pre_init(struct pci_controller *hose)
-{
-	unsigned long addr;
-
-	/*
-	 * Set priority for all PLB3 devices to 0.
-	 * Set PLB3 arbiter to fair mode.
-	 */
-	mfsdr(sdr_amp1, addr);
-	mtsdr(sdr_amp1, (addr & 0x000000FF) | 0x0000FF00);
-	addr = mfdcr(plb3_acr);
-	mtdcr(plb3_acr, addr | 0x80000000);
-
-	/*
-	 * Set priority for all PLB4 devices to 0.
-	 */
-	mfsdr(sdr_amp0, addr);
-	mtsdr(sdr_amp0, (addr & 0x000000FF) | 0x0000FF00);
-	addr = mfdcr(plb4_acr) | 0xa0000000;	/* Was 0x8---- */
-	mtdcr(plb4_acr, addr);
-
-	/*
-	 * Set Nebula PLB4 arbiter to fair mode.
-	 */
-	/* Segment0 */
-	addr = (mfdcr(plb0_acr) & ~plb0_acr_ppm_mask) | plb0_acr_ppm_fair;
-	addr = (addr & ~plb0_acr_hbu_mask) | plb0_acr_hbu_enabled;
-	addr = (addr & ~plb0_acr_rdp_mask) | plb0_acr_rdp_4deep;
-	addr = (addr & ~plb0_acr_wrp_mask) | plb0_acr_wrp_2deep;
-	mtdcr(plb0_acr, addr);
-
-	/* Segment1 */
-	addr = (mfdcr(plb1_acr) & ~plb1_acr_ppm_mask) | plb1_acr_ppm_fair;
-	addr = (addr & ~plb1_acr_hbu_mask) | plb1_acr_hbu_enabled;
-	addr = (addr & ~plb1_acr_rdp_mask) | plb1_acr_rdp_4deep;
-	addr = (addr & ~plb1_acr_wrp_mask) | plb1_acr_wrp_2deep;
-	mtdcr(plb1_acr, addr);
-
-#if defined(CONFIG_PCI_PNP)
-	hose->fixup_irq = korat_pci_fixup_irq;
-#endif
-
-	return 1;
-}
-#endif /* defined(CONFIG_PCI) */
 
 /*
  * pci_target_init
@@ -668,60 +611,8 @@ int pci_pre_init(struct pci_controller *hose)
 #if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT)
 void pci_target_init(struct pci_controller *hose)
 {
-	/*
-	 * Set up Direct MMIO registers
-	 */
-	/*
-	 * PowerPC440EPX PCI Master configuration.
-	 * Map one 1Gig range of PLB/processor addresses to PCI memory space.
-	 * PLB address 0x80000000-0xBFFFFFFF
-	 *     ==> PCI address 0x80000000-0xBFFFFFFF
-	 * Use byte reversed out routines to handle endianess.
-	 * Make this region non-prefetchable.
-	 */
-	out32r(PCIX0_PMM0MA, 0x00000000);	/* PMM0 Mask/Attribute */
-						/* - disabled b4 setting */
-	out32r(PCIX0_PMM0LA, CONFIG_SYS_PCI_MEMBASE);	/* PMM0 Local Address */
-	out32r(PCIX0_PMM0PCILA,
-	       CONFIG_SYS_PCI_MEMBASE);		/* PMM0 PCI Low Address */
-	out32r(PCIX0_PMM0PCIHA, 0x00000000);	/* PMM0 PCI High Address */
-	out32r(PCIX0_PMM0MA, 0xE0000001);	/* 512M + No prefetching, */
-						/* and enable region */
-
-	out32r(PCIX0_PMM1MA, 0x00000000);	/* PMM0 Mask/Attribute */
-						/* - disabled b4 setting */
-	out32r(PCIX0_PMM1LA,
-	       CONFIG_SYS_PCI_MEMBASE + 0x20000000);	/* PMM0 Local Address */
-	out32r(PCIX0_PMM1PCILA,
-	       CONFIG_SYS_PCI_MEMBASE + 0x20000000);	/* PMM0 PCI Low Address */
-	out32r(PCIX0_PMM1PCIHA, 0x00000000);	/* PMM0 PCI High Address */
-	out32r(PCIX0_PMM1MA, 0xE0000001);	/* 512M + No prefetching, */
-						/* and enable region */
-
-	out32r(PCIX0_PTM1MS, 0x00000001);	/* Memory Size/Attribute */
-	out32r(PCIX0_PTM1LA, 0);		/* Local Addr. Reg */
-	out32r(PCIX0_PTM2MS, 0);		/* Memory Size/Attribute */
-	out32r(PCIX0_PTM2LA, 0);		/* Local Addr. Reg */
-
-	/*
-	 * Set up Configuration registers
-	 */
-
-	/* Program the board's subsystem id/vendor id */
-	pci_write_config_word(0, PCI_SUBSYSTEM_VENDOR_ID,
-			      CONFIG_SYS_PCI_SUBSYS_VENDORID);
-	pci_write_config_word(0, PCI_SUBSYSTEM_ID, CONFIG_SYS_PCI_SUBSYS_ID);
-
-	/* Configure command register as bus master */
-	pci_write_config_word(0, PCI_COMMAND, PCI_COMMAND_MASTER);
-
-	/* 240nS PCI clock */
-	pci_write_config_word(0, PCI_LATENCY_TIMER, 1);
-
-	/* No error reporting */
-	pci_write_config_word(0, PCI_ERREN, 0);
-
-	pci_write_config_dword(0, PCI_BRDGOPT2, 0x00000101);
+	/* First do 440EP(x) common setup */
+	__pci_target_init(hose);
 
 	/*
 	 * Set up Configuration registers for on-board NEC uPD720101 USB
@@ -730,55 +621,6 @@ void pci_target_init(struct pci_controller *hose)
 	pci_write_config_dword(PCI_BDF(0x0, 0xC, 0x0), 0xE4, 0x00000020);
 }
 #endif /* defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_TARGET_INIT) */
-
-#if defined(CONFIG_PCI) && defined(CONFIG_SYS_PCI_MASTER_INIT)
-void pci_master_init(struct pci_controller *hose)
-{
-	unsigned short temp_short;
-
-	/*
-	 * Write the PowerPC440 EP PCI Configuration regs.
-	 * Enable PowerPC440 EP to be a master on the PCI bus (PMM).
-	 * Enable PowerPC440 EP to act as a PCI memory target (PTM).
-	 */
-	pci_read_config_word(0, PCI_COMMAND, &temp_short);
-	pci_write_config_word(0, PCI_COMMAND,
-			      temp_short | PCI_COMMAND_MASTER |
-			      PCI_COMMAND_MEMORY);
-}
-#endif
-
-/*
- * is_pci_host
- *
- * This routine is called to determine if a pci scan should be
- * performed. With various hardware environments (especially cPCI and
- * PPMC) it's insufficient to depend on the state of the arbiter enable
- * bit in the strap register, or generic host/adapter assumptions.
- *
- * Rather than hard-code a bad assumption in the general 440 code, the
- * 440 pci code requires the board to decide at runtime.
- *
- * Return 0 for adapter mode, non-zero for host (monarch) mode.
- */
-#if defined(CONFIG_PCI)
-int is_pci_host(struct pci_controller *hose)
-{
-	/* Korat is always configured as host. */
-	return (1);
-}
-#endif /* defined(CONFIG_PCI) */
-
-#if defined(CONFIG_POST)
-/*
- * Returns 1 if keys pressed to start the power-on long-running tests
- * Called from board_init_f().
- */
-int post_hotkeys_pressed(void)
-{
-	return 0;	/* No hotkeys supported */
-}
-#endif /* CONFIG_POST */
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
 void ft_board_setup(void *blob, bd_t *bd)

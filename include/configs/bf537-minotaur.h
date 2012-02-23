@@ -75,7 +75,6 @@
 #ifndef __ADSPBF534__
 #define CONFIG_BFIN_MAC
 #define CONFIG_NETCONSOLE	1
-#define CONFIG_NET_MULTI	1
 #endif
 #ifdef CONFIG_BFIN_MAC
 #define CONFIG_IPADDR		192.168.0.15
@@ -86,7 +85,7 @@
 #endif
 
 #define CONFIG_SYS_AUTOLOAD	"no"
-#define CONFIG_ROOTPATH		/romfs
+#define CONFIG_ROOTPATH		"/romfs"
 /* Uncomment next line to use fixed MAC address */
 /* #define CONFIG_ETHADDR	02:80:ad:20:31:42 */
 
@@ -115,7 +114,7 @@
 #define CONFIG_ENV_OFFSET	0x10000
 #define CONFIG_ENV_SIZE		0x10000
 #define CONFIG_ENV_SECT_SIZE	0x10000
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 
 
 /*
@@ -156,6 +155,7 @@
 # define CONFIG_CMD_PING
 #else
 # undef CONFIG_CMD_NET
+# undef CONFIG_CMD_NFS
 #endif
 
 #define CONFIG_CMD_BOOTLDR

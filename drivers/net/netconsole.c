@@ -40,13 +40,14 @@ static short nc_port;			/* source/target port */
 static const char *output_packet;	/* used by first send udp */
 static int output_packet_len = 0;
 
-static void nc_wait_arp_handler (uchar * pkt, unsigned dest, unsigned src,
+static void nc_wait_arp_handler(uchar *pkt, unsigned dest,
+				 IPaddr_t sip, unsigned src,
 				 unsigned len)
 {
 	NetState = NETLOOP_SUCCESS;	/* got arp reply - quit net loop */
 }
 
-static void nc_handler (uchar * pkt, unsigned dest, unsigned src,
+static void nc_handler(uchar *pkt, unsigned dest, IPaddr_t sip, unsigned src,
 			unsigned len)
 {
 	if (input_size)
@@ -139,7 +140,7 @@ static void nc_send_packet (const char *buf, int len)
 		eth_halt ();
 }
 
-int nc_start (void)
+static int nc_start(void)
 {
 	int netmask, our_ip;
 
@@ -169,7 +170,7 @@ int nc_start (void)
 	return 0;
 }
 
-void nc_putc (char c)
+static void nc_putc(char c)
 {
 	if (output_recursion)
 		return;
@@ -180,7 +181,7 @@ void nc_putc (char c)
 	output_recursion = 0;
 }
 
-void nc_puts (const char *s)
+static void nc_puts(const char *s)
 {
 	int len;
 
@@ -188,15 +189,18 @@ void nc_puts (const char *s)
 		return;
 	output_recursion = 1;
 
-	if ((len = strlen (s)) > 512)
-		len = 512;
-
-	nc_send_packet (s, len);
+	len = strlen(s);
+	while (len) {
+		int send_len = min(len, 512);
+		nc_send_packet(s, send_len);
+		len -= send_len;
+		s += send_len;
+	}
 
 	output_recursion = 0;
 }
 
-int nc_getc (void)
+static int nc_getc(void)
 {
 	uchar c;
 
@@ -217,7 +221,7 @@ int nc_getc (void)
 	return c;
 }
 
-int nc_tstc (void)
+static int nc_tstc(void)
 {
 	struct eth_device *eth;
 

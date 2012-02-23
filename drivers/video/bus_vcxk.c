@@ -31,9 +31,29 @@ vu_long  *vcxk_bws_long = ((vu_long *) (CONFIG_SYS_VCXK_BASE));
 
 #ifdef CONFIG_AT91RM9200
 	#include <asm/arch/hardware.h>
+	#include <asm/arch/at91_pio.h>
+
 	#ifndef VCBITMASK
 		#define VCBITMASK(bitno)	(0x0001 << (bitno % 16))
 	#endif
+#ifndef CONFIG_AT91_LEGACY
+at91_pio_t *pio = (at91_pio_t *) AT91_PIO_BASE;
+#define VCXK_INIT_PIN(PORT, PIN, DDR, I0O1) \
+	do { \
+		writel(PIN, &pio->PORT.per); \
+		writel(PIN, &pio->PORT.DDR); \
+		writel(PIN, &pio->PORT.mddr); \
+		if (!I0O1) \
+			writel(PIN, &pio->PORT.puer); \
+	} while (0);
+
+#define VCXK_SET_PIN(PORT, PIN)	writel(PIN, &pio->PORT.sodr);
+#define VCXK_CLR_PIN(PORT, PIN)	writel(PIN, &pio->PORT.codr);
+
+#define VCXK_ACKNOWLEDGE	\
+	(!(readl(&pio->CONFIG_SYS_VCXK_ACKNOWLEDGE_PORT.pdsr) & \
+			CONFIG_SYS_VCXK_ACKNOWLEDGE_PIN))
+#else
 	#define VCXK_INIT_PIN(PORT, PIN, DDR, I0O1) \
 		((AT91PS_PIO) PORT)->PIO_PER = PIN; \
 		((AT91PS_PIO) PORT)->DDR = PIN; \
@@ -46,7 +66,7 @@ vu_long  *vcxk_bws_long = ((vu_long *) (CONFIG_SYS_VCXK_BASE));
 	#define VCXK_ACKNOWLEDGE	\
 		(!(((AT91PS_PIO) CONFIG_SYS_VCXK_ACKNOWLEDGE_PORT)->\
 			PIO_PDSR & CONFIG_SYS_VCXK_ACKNOWLEDGE_PIN))
-
+#endif
 #elif defined(CONFIG_MCF52x2)
 	#include <asm/m5282.h>
 	#ifndef VCBITMASK
@@ -144,7 +164,7 @@ int vcxk_init(unsigned long width, unsigned long height)
 #else
 	#error CONFIG_SYS_VCXK_DEFAULT_LINEALIGN is invalid
 #endif
-	debug("linesize ((%d + 15) / 8 & ~0x1) = %d\n",
+	debug("linesize ((%ld + 15) / 8 & ~0x1) = %ld\n",
 		display_width, display_bwidth);
 
 #ifdef CONFIG_SYS_VCXK_AUTODETECT
@@ -373,7 +393,6 @@ int vcxk_display_bitmap(ulong addr, int x, int y)
 	unsigned long width;
 	unsigned long height;
 	unsigned long bpp;
-	unsigned long compression;
 
 	unsigned long lw;
 
@@ -384,7 +403,6 @@ int vcxk_display_bitmap(ulong addr, int x, int y)
 	bmp = (bmp_image_t *) addr;
 	if ((bmp->header.signature[0] == 'B') &&
 	    (bmp->header.signature[1] == 'M')) {
-		compression  = le32_to_cpu(bmp->header.compression);
 		width        = le32_to_cpu(bmp->header.width);
 		height       = le32_to_cpu(bmp->header.height);
 		bpp          = le16_to_cpu(bmp->header.bit_count);

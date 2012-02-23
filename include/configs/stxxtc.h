@@ -38,6 +38,8 @@
 #define CONFIG_MPC875		1	/* This is a MPC875 CPU		*/
 #define CONFIG_STXXTC		1	/* ...on a STx XTc  board	*/
 
+#define	CONFIG_SYS_TEXT_BASE	0x40F00000
+
 #define	CONFIG_8xx_CONS_SMC1	1	/* Console is on SMC1		*/
 #undef	CONFIG_8xx_CONS_SMC2
 #undef	CONFIG_8xx_CONS_NONE
@@ -93,7 +95,6 @@
 
 #define	CONFIG_RTC_MPC8xx		/* use internal RTC of MPC8xx	*/
 
-#define	CONFIG_NET_MULTI	1	/* the only way to get the FEC in */
 #define	FEC_ENET		1	/* eth.c needs it that way... */
 #undef CONFIG_SYS_DISCOVER_PHY
 #define CONFIG_MII		1
@@ -166,9 +167,8 @@
  * Definitions for initial stack pointer and data area (in DPRAM)
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_IMMR
-#define	CONFIG_SYS_INIT_RAM_END	0x3000	/* End of used area in DPRAM	*/
-#define	CONFIG_SYS_GBL_DATA_SIZE	64  /* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define	CONFIG_SYS_INIT_RAM_SIZE	0x3000	/* Size of used area in DPRAM	*/
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define	CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
@@ -430,14 +430,6 @@
 			 MAMR_AMA_TYPE_1 | MAMR_DSA_1_CYCL | MAMR_G0CLA_A10 |	\
 			 MAMR_RLFA_1X	 | MAMR_WLFA_1X	   | MAMR_TLFA_4X)
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define	BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
-
 #define CONFIG_LAST_STAGE_INIT		/* needed to reset the damn phys */
 
 /****************************************************************/
@@ -509,7 +501,6 @@ typedef unsigned int led_id_t;
 /* pass open firmware flattened device tree */
 #define CONFIG_OF_LIBFDT	1
 
-#define OF_CPU			"PowerPC,MPC870@0"
 #define OF_TBCLK		(MPC8XX_HZ / 16)
 
 #endif	/* __CONFIG_H */

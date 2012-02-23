@@ -135,7 +135,7 @@ int board_early_init_f(void)
 
 phys_size_t initdram(int board_type)
 {
-	return get_ram_size(0, fixed_sdram());
+	return get_ram_size(0, fixed_sdram(NULL, NULL, 0));
 }
 
 int misc_init_r(void)
@@ -273,6 +273,5 @@ int checkboard(void)
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
-	fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
 }
 #endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */

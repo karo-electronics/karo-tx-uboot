@@ -39,12 +39,10 @@
 *		and emulation of all the x86 extended two-byte processor
 *		instructions.
 *
-*		Jason port this file to u-boot. Put the function pointer into
-*		got2 sector.
-*
 ****************************************************************************/
 
 #include <common.h>
+#include <linux/compiler.h>
 #include "x86emu/x86emui.h"
 
 /*----------------------------- Implementation ----------------------------*/
@@ -171,7 +169,7 @@ void x86emuOp2_set_byte(u8 op2)
     int mod, rl, rh;
     uint destoffset;
     u8	*destreg;
-    char *name = 0;
+    __maybe_unused char *name = 0;
     int cond = 0;
 
     START_OF_INSTR();
@@ -1495,7 +1493,7 @@ void x86emuOp2_movsx_word_R_RM(u8 X86EMU_UNUSED(op2))
 /***************************************************************************
  * Double byte operation code table:
  **************************************************************************/
-void (*x86emu_optab2[256])(u8) __attribute__((section(GOT2_TYPE))) =
+void (*x86emu_optab2[256])(u8) =
 {
 /*  0x00 */ x86emuOp2_illegal_op,  /* Group F (ring 0 PM)      */
 /*  0x01 */ x86emuOp2_illegal_op,  /* Group G (ring 0 PM)      */

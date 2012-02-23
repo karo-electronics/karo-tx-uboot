@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Freescale Semiconductor, Inc.
+ * Copyright (C) 2006,2010-2011 Freescale Semiconductor, Inc.
  * Dave Liu <daveliu@freescale.com>
  *
  * See file CREDITS for list of people who contributed to this
@@ -16,17 +16,24 @@
 #include <mpc83xx.h>
 #include <i2c.h>
 #include <miiphy.h>
+#include <phy.h>
 #if defined(CONFIG_PCI)
 #include <pci.h>
 #endif
 #include <spd_sdram.h>
 #include <asm/mmu.h>
+#include <asm/io.h>
+#include <asm/fsl_enet.h>
+#include <asm/mmu.h>
 #if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
 #endif
+#include <hwconfig.h>
+#include <fdt_support.h>
 #if defined(CONFIG_PQ_MDS_PIB)
 #include "../common/pq-mds-pib.h"
 #endif
+#include "../../../drivers/qe/uec.h"
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* GETH1 */
@@ -89,11 +96,19 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 	{0,  0, 0, 0, QE_IOP_TAB_END}, /* END of table */
 };
 
+/* Handle "mpc8360ea rev.2.1 erratum 2: RGMII Timing"? */
+static int board_handle_erratum2(void)
+{
+	const immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
+
+	return REVID_MAJOR(immr->sysconf.spridr) == 2 &&
+	       REVID_MINOR(immr->sysconf.spridr) == 1;
+}
+
 int board_early_init_f(void)
 {
-
-	u8 *bcsr = (u8 *)CONFIG_SYS_BCSR;
 	const immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
+	u8 *bcsr = (u8 *)CONFIG_SYS_BCSR;
 
 	/* Enable flash write */
 	bcsr[0xa] &= ~0x04;
@@ -105,16 +120,67 @@ int board_early_init_f(void)
 	/* Enable second UART */
 	bcsr[0x9] &= ~0x01;
 
+	if (board_handle_erratum2()) {
+		void *immap = (immap_t *)(CONFIG_SYS_IMMR + 0x14a8);
+
+		/*
+		 * IMMR + 0x14A8[4:5] = 11 (clk delay for UCC 2)
+		 * IMMR + 0x14A8[18:19] = 11 (clk delay for UCC 1)
+		 */
+		setbits_be32(immap, 0x0c003000);
+
+		/*
+		 * IMMR + 0x14AC[20:27] = 10101010
+		 * (data delay for both UCC's)
+		 */
+		clrsetbits_be32(immap + 4, 0xff0, 0xaa0);
+	}
 	return 0;
 }
 
 int board_early_init_r(void)
 {
+	gd_t *gd;
 #ifdef CONFIG_PQ_MDS_PIB
 	pib_init();
 #endif
+	/*
+	 * BAT6 is used for SDRAM when DDR size is 512MB or larger than 256MB
+	 * So re-setup PCI MEM space used BAT5 after relocated to DDR
+	 */
+	gd = (gd_t *)(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_GBL_DATA_OFFSET);
+	if (gd->ram_size > CONFIG_MAX_MEM_MAPPED) {
+		write_bat(DBAT5, CONFIG_SYS_DBAT6U, CONFIG_SYS_DBAT6L);
+		write_bat(IBAT5, CONFIG_SYS_IBAT6U, CONFIG_SYS_IBAT6L);
+	}
+
 	return 0;
 }
+
+#ifdef CONFIG_UEC_ETH
+static uec_info_t uec_info[] = {
+#ifdef CONFIG_UEC_ETH1
+	STD_UEC_INFO(1),
+#endif
+#ifdef CONFIG_UEC_ETH2
+	STD_UEC_INFO(2),
+#endif
+};
+
+int board_eth_init(bd_t *bd)
+{
+	if (board_handle_erratum2()) {
+		int i;
+
+		for (i = 0; i < ARRAY_SIZE(uec_info); i++) {
+			uec_info[i].enet_interface_type =
+				PHY_INTERFACE_MODE_RGMII_RXID;
+			uec_info[i].speed = SPEED_1000;
+		}
+	}
+	return uec_eth_init(bd, uec_info, ARRAY_SIZE(uec_info));
+}
+#endif /* CONFIG_UEC_ETH */
 
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 extern void ddr_enable_ecc(unsigned int dram_size);
@@ -126,6 +192,7 @@ phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
 	u32 msize = 0;
+	u32 lbc_sdram_size;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32) im)
 		return -1;
@@ -147,7 +214,9 @@ phys_size_t initdram(int board_type)
 	/*
 	 * Initialize SDRAM if it is on local bus.
 	 */
-	msize += sdram_init(msize * 1024 * 1024);
+	lbc_sdram_size = sdram_init(msize * 1024 * 1024);
+	if (!msize)
+		msize = lbc_sdram_size;
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
 	return (msize * 1024 * 1024);
@@ -160,19 +229,15 @@ phys_size_t initdram(int board_type)
 int fixed_sdram(void)
 {
 	volatile immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
-	u32 msize = 0;
-	u32 ddr_size;
-	u32 ddr_size_log2;
+	u32 msize = CONFIG_SYS_DDR_SIZE;
+	u32 ddr_size = msize << 20;
+	u32 ddr_size_log2 = __ilog2(ddr_size);
+	u32 half_ddr_size = ddr_size >> 1;
 
-	msize = CONFIG_SYS_DDR_SIZE;
-	for (ddr_size = msize << 20, ddr_size_log2 = 0;
-	     (ddr_size > 1); ddr_size = ddr_size >> 1, ddr_size_log2++) {
-		if (ddr_size & 1) {
-			return -1;
-		}
-	}
+	im->sysconf.ddrlaw[0].bar =
+		CONFIG_SYS_DDR_SDRAM_BASE & 0xfffff000;
 	im->sysconf.ddrlaw[0].ar =
-	    LAWAR_EN | ((ddr_size_log2 - 1) & LAWAR_SIZE);
+		LAWAR_EN | ((ddr_size_log2 - 1) & LAWAR_SIZE);
 #if (CONFIG_SYS_DDR_SIZE != 256)
 #warning Currenly any ddr size other than 256 is not supported
 #endif
@@ -190,11 +255,25 @@ int fixed_sdram(void)
 	im->ddr.sdram_interval = CONFIG_SYS_DDR_INTERVAL;
 	im->ddr.sdram_clk_cntl = CONFIG_SYS_DDR_CLK_CNTL;
 #else
-	im->ddr.csbnds[0].csbnds = 0x00000007;
-	im->ddr.csbnds[1].csbnds = 0x0008000f;
 
-	im->ddr.cs_config[0] = CONFIG_SYS_DDR_CONFIG;
-	im->ddr.cs_config[1] = CONFIG_SYS_DDR_CONFIG;
+#if ((CONFIG_SYS_DDR_SDRAM_BASE & 0x00FFFFFF) != 0)
+#warning Chip select bounds is only configurable in 16MB increments
+#endif
+	im->ddr.csbnds[0].csbnds =
+		((CONFIG_SYS_DDR_SDRAM_BASE >> CSBNDS_SA_SHIFT) & CSBNDS_SA) |
+		(((CONFIG_SYS_DDR_SDRAM_BASE + half_ddr_size - 1) >>
+				CSBNDS_EA_SHIFT) & CSBNDS_EA);
+	im->ddr.csbnds[1].csbnds =
+		(((CONFIG_SYS_DDR_SDRAM_BASE + half_ddr_size) >>
+				CSBNDS_SA_SHIFT) & CSBNDS_SA) |
+		(((CONFIG_SYS_DDR_SDRAM_BASE + ddr_size - 1) >>
+				CSBNDS_EA_SHIFT) & CSBNDS_EA);
+
+	im->ddr.cs_config[0] = CONFIG_SYS_DDR_CS0_CONFIG;
+	im->ddr.cs_config[1] = CONFIG_SYS_DDR_CS1_CONFIG;
+
+	im->ddr.cs_config[2] = 0;
+	im->ddr.cs_config[3] = 0;
 
 	im->ddr.timing_cfg_1 = CONFIG_SYS_DDR_TIMING_1;
 	im->ddr.timing_cfg_2 = CONFIG_SYS_DDR_TIMING_2;
@@ -227,7 +306,7 @@ int checkboard(void)
 static int sdram_init(unsigned int base)
 {
 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
-	volatile fsl_lbus_t *lbc = &immap->lbus;
+	fsl_lbc_t *lbc = LBC_BASE_ADDR;
 	const int sdram_size = CONFIG_SYS_LBC_SDRAM_SIZE * 1024 * 1024;
 	int rem = base % sdram_size;
 	uint *sdram_addr;
@@ -236,12 +315,25 @@ static int sdram_init(unsigned int base)
 	if (rem)
 		base = base - rem + sdram_size;
 
+	/*
+	 * Setup BAT6 for SDRAM when DDR size is 512MB or larger than 256MB
+	 * After relocated to DDR, reuse BAT5 for PCI MEM space
+	 */
+	if (base > CONFIG_MAX_MEM_MAPPED) {
+		unsigned long batl = base | BATL_PP_10 | BATL_MEMCOHERENCE;
+		unsigned long batu = base | BATU_BL_64M | BATU_VS | BATU_VP;
+
+		/* Setup the BAT6 for SDRAM */
+		write_bat(DBAT6, batu, batl);
+		write_bat(IBAT6, batu, batl);
+	}
+
 	sdram_addr = (uint *)base;
 	/*
 	 * Setup SDRAM Base and Option Registers
 	 */
-	immap->lbus.bank[2].br = base | CONFIG_SYS_BR2;
-	immap->lbus.bank[2].or = CONFIG_SYS_OR2;
+	set_lbc_br(2, base | CONFIG_SYS_BR2);
+	set_lbc_or(2, CONFIG_SYS_OR2);
 	immap->sysconf.lblaw[2].bar = base;
 	immap->sysconf.lblaw[2].ar = CONFIG_SYS_LBLAWAR2;
 
@@ -307,21 +399,28 @@ static int sdram_init(unsigned int base) { return 0; }
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
+static void ft_board_fixup_qe_usb(void *blob, bd_t *bd)
+{
+	if (!hwconfig_subarg_cmp("qe_usb", "mode", "peripheral"))
+		return;
+
+	do_fixup_by_compat(blob, "fsl,mpc8323-qe-usb", "mode",
+			   "peripheral", sizeof("peripheral"), 1);
+}
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
-	const immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
-
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+	ft_board_fixup_qe_usb(blob, bd);
 	/*
 	 * mpc8360ea pb mds errata 2: RGMII timing
 	 * if on mpc8360ea rev. 2.1,
 	 * change both ucc phy-connection-types from rgmii-id to rgmii-rxid
 	 */
-	if ((REVID_MAJOR(immr->sysconf.spridr) == 2) &&
-	    (REVID_MINOR(immr->sysconf.spridr) == 1)) {
+	if (board_handle_erratum2()) {
 		int nodeoffset;
 		const char *prop;
 		int path;
@@ -336,10 +435,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 				prop = fdt_getprop(blob, path,
 				                   "phy-connection-type", 0);
 				if (prop && (strcmp(prop, "rgmii-id") == 0))
-					fdt_setprop(blob, path,
-					            "phy-connection-type",
-					            "rgmii-rxid",
-					            sizeof("rgmii-rxid"));
+					fdt_fixup_phy_connection(blob, path,
+						PHY_INTERFACE_MODE_RGMII_RXID);
 			}
 #endif
 #if defined(CONFIG_HAS_ETH1)
@@ -350,10 +447,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 				prop = fdt_getprop(blob, path,
 				                   "phy-connection-type", 0);
 				if (prop && (strcmp(prop, "rgmii-id") == 0))
-					fdt_setprop(blob, path,
-					            "phy-connection-type",
-					            "rgmii-rxid",
-					            sizeof("rgmii-rxid"));
+					fdt_fixup_phy_connection(blob, path,
+						PHY_INTERFACE_MODE_RGMII_RXID);
 			}
 #endif
 		}

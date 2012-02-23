@@ -30,7 +30,7 @@ SECTIONS
 	.text ALIGN(0x4):
 	{
 		__text_start = .;
-		cpu/microblaze/start.o (.text)
+		arch/microblaze/cpu/start.o (.text)
 		*(.text)
 		__text_end = .;
 	}
@@ -60,7 +60,10 @@ SECTIONS
 	.bss ALIGN(0x4):
 	{
 		__bss_start = .;
+		*(.sbss)
+		*(.scommon)
 		*(.bss)
+		*(COMMON)
 		. = ALIGN(4);
 		__bss_end = .;
 	}

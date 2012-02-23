@@ -33,6 +33,8 @@
 #define CONFIG_MPC8260		1
 #define CONFIG_MUAS3001		1
 
+#define	CONFIG_SYS_TEXT_BASE	0xFF000000
+
 #define CONFIG_CPM2		1	/* Has a CPM2 */
 
 /* Do boardspecific init */
@@ -74,14 +76,15 @@
 
 #define CONFIG_ETHER_INDEX	1
 #define CONFIG_ETHER_ON_FCC1
+#define CONFIG_HAS_ETH0
 #define FCC_ENET
 
 /*
  * - Rx-CLK is CLK11
  * - Tx-CLK is CLK12
  */
-# define CONFIG_SYS_CMXFCR_VALUE	(CMXFCR_RF1CS_CLK11 | CMXFCR_TF1CS_CLK12)
-# define CONFIG_SYS_CMXFCR_MASK	(CMXFCR_FC1 | CMXFCR_RF1CS_MSK | CMXFCR_TF1CS_MSK)
+# define CONFIG_SYS_CMXFCR_VALUE1	(CMXFCR_RF1CS_CLK11 | CMXFCR_TF1CS_CLK12)
+# define CONFIG_SYS_CMXFCR_MASK1	(CMXFCR_FC1 | CMXFCR_RF1CS_MSK | CMXFCR_TF1CS_MSK)
 /*
  * - RAM for BD/Buffers is on the 60x Bus (see 28-13)
  */
@@ -100,6 +103,10 @@
  * GPIO pins used for bit-banged MII communications
  */
 #define MDIO_PORT	0		/* Port A */
+#define MDIO_DECLARE	volatile ioport_t *iop = ioport_addr ( \
+				(immap_t *) CONFIG_SYS_IMMR, MDIO_PORT )
+#define MDC_DECLARE	MDIO_DECLARE
+
 
 #define CONFIG_SYS_MDIO_PIN	0x00200000	/* PA10 */
 #define CONFIG_SYS_MDC_PIN	0x00400000	/* PA9  */
@@ -220,7 +227,7 @@
 
 #define CONFIG_SYS_FLASH_BANKS_LIST { CONFIG_SYS_FLASH_BASE }
 
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
 #define CONFIG_SYS_RAMBOOT
 #endif
@@ -253,9 +260,8 @@
 #define CONFIG_SYS_DEFAULT_IMMR	0x0F010000
 
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_IMMR
-#define CONFIG_SYS_INIT_RAM_END	0x2000	/* End of used area in DPRAM	*/
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x2000	/* Size of used area in DPRAM	*/
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /* Hard reset configuration word */
@@ -269,9 +275,6 @@
 #define CONFIG_SYS_HRCW_SLAVE5 	0
 #define CONFIG_SYS_HRCW_SLAVE6 	0
 #define CONFIG_SYS_HRCW_SLAVE7 	0
-
-#define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM		0x02	/* Software reboot                  */
 
 #define CONFIG_SYS_MALLOC_LEN		(4096 << 10)	/* Reserve 4 MB for malloc()	*/
 #define CONFIG_SYS_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
@@ -404,8 +407,6 @@
 #define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP	1
 
-#define OF_CPU			"PowerPC,8270@0"
-#define OF_SOC			"soc@f0000000"
 #define OF_TBCLK		(bd->bi_busfreq / 4)
 #if defined(CONFIG_MUAS_DEV_BOARD)
 #define OF_STDOUT_PATH		"/soc/cpm/serial@11a90"

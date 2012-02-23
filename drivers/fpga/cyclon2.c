@@ -47,14 +47,13 @@
 #define CONFIG_SYS_FPGA_WAIT CONFIG_SYS_HZ/10		/* 100 ms */
 #endif
 
-static int CYC2_ps_load( Altera_desc *desc, void *buf, size_t bsize );
-static int CYC2_ps_dump( Altera_desc *desc, void *buf, size_t bsize );
+static int CYC2_ps_load(Altera_desc *desc, const void *buf, size_t bsize);
+static int CYC2_ps_dump(Altera_desc *desc, const void *buf, size_t bsize);
 /* static int CYC2_ps_info( Altera_desc *desc ); */
-static int CYC2_ps_reloc( Altera_desc *desc, ulong reloc_offset );
 
 /* ------------------------------------------------------------------------- */
 /* CYCLON2 Generic Implementation */
-int CYC2_load (Altera_desc * desc, void *buf, size_t bsize)
+int CYC2_load(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;
 
@@ -62,6 +61,16 @@ int CYC2_load (Altera_desc * desc, void *buf, size_t bsize)
 	case passive_serial:
 		PRINTF ("%s: Launching Passive Serial Loader\n", __FUNCTION__);
 		ret_val = CYC2_ps_load (desc, buf, bsize);
+		break;
+
+	case fast_passive_parallel:
+		/* Fast Passive Parallel (FPP) and PS only differ in what is
+		 * done in the write() callback. Use the existing PS load
+		 * function for FPP, too.
+		 */
+		PRINTF ("%s: Launching Fast Passive Parallel Loader\n",
+		      __FUNCTION__);
+		ret_val = CYC2_ps_load(desc, buf, bsize);
 		break;
 
 		/* Add new interface types here */
@@ -74,7 +83,7 @@ int CYC2_load (Altera_desc * desc, void *buf, size_t bsize)
 	return ret_val;
 }
 
-int CYC2_dump (Altera_desc * desc, void *buf, size_t bsize)
+int CYC2_dump(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;
 
@@ -99,33 +108,9 @@ int CYC2_info( Altera_desc *desc )
 	return FPGA_SUCCESS;
 }
 
-int CYC2_reloc (Altera_desc * desc, ulong reloc_offset)
-{
-	int ret_val = FPGA_FAIL;	/* assume a failure */
-
-	if (desc->family != Altera_CYC2) {
-		printf ("%s: Unsupported family type, %d\n",
-				__FUNCTION__, desc->family);
-		return FPGA_FAIL;
-	} else
-		switch (desc->iface) {
-		case passive_serial:
-			ret_val = CYC2_ps_reloc (desc, reloc_offset);
-			break;
-
-		/* Add new interface types here */
-
-		default:
-			printf ("%s: Unsupported interface type, %d\n",
-					__FUNCTION__, desc->iface);
-		}
-
-	return ret_val;
-}
-
 /* ------------------------------------------------------------------------- */
 /* CYCLON2 Passive Serial Generic Implementation                                  */
-static int CYC2_ps_load (Altera_desc * desc, void *buf, size_t bsize)
+static int CYC2_ps_load(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume the worst */
 	Altera_CYC2_Passive_Serial_fns *fn = desc->iface_fns;
@@ -225,77 +210,11 @@ static int CYC2_ps_load (Altera_desc * desc, void *buf, size_t bsize)
 	return ret_val;
 }
 
-static int CYC2_ps_dump (Altera_desc * desc, void *buf, size_t bsize)
+static int CYC2_ps_dump(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	/* Readback is only available through the Slave Parallel and         */
 	/* boundary-scan interfaces.                                         */
 	printf ("%s: Passive Serial Dumping is unavailable\n",
 			__FUNCTION__);
 	return FPGA_FAIL;
-}
-
-static int CYC2_ps_reloc (Altera_desc * desc, ulong reloc_offset)
-{
-	int ret_val = FPGA_FAIL;	/* assume the worst */
-	Altera_CYC2_Passive_Serial_fns *fn_r, *fn =
-			(Altera_CYC2_Passive_Serial_fns *) (desc->iface_fns);
-
-	if (fn) {
-		ulong addr;
-
-		/* Get the relocated table address */
-		addr = (ulong) fn + reloc_offset;
-		fn_r = (Altera_CYC2_Passive_Serial_fns *) addr;
-
-		if (!fn_r->relocated) {
-
-			if (memcmp (fn_r, fn,
-						sizeof (Altera_CYC2_Passive_Serial_fns))
-				== 0) {
-				/* good copy of the table, fix the descriptor pointer */
-				desc->iface_fns = fn_r;
-			} else {
-				PRINTF ("%s: Invalid function table at 0x%p\n",
-						__FUNCTION__, fn_r);
-				return FPGA_FAIL;
-			}
-
-			PRINTF ("%s: Relocating descriptor at 0x%p\n", __FUNCTION__,
-					desc);
-
-			addr = (ulong) (fn->pre) + reloc_offset;
-			fn_r->pre = (Altera_pre_fn) addr;
-
-			addr = (ulong) (fn->config) + reloc_offset;
-			fn_r->config = (Altera_config_fn) addr;
-
-			addr = (ulong) (fn->status) + reloc_offset;
-			fn_r->status = (Altera_status_fn) addr;
-
-			addr = (ulong) (fn->done) + reloc_offset;
-			fn_r->done = (Altera_done_fn) addr;
-
-			addr = (ulong) (fn->write) + reloc_offset;
-			fn_r->write = (Altera_write_fn) addr;
-
-			addr = (ulong) (fn->abort) + reloc_offset;
-			fn_r->abort = (Altera_abort_fn) addr;
-
-			addr = (ulong) (fn->post) + reloc_offset;
-			fn_r->post = (Altera_post_fn) addr;
-
-			fn_r->relocated = TRUE;
-
-		} else {
-			/* this table has already been moved */
-			/* XXX - should check to see if the descriptor is correct */
-			desc->iface_fns = fn_r;
-		}
-
-		ret_val = FPGA_SUCCESS;
-	} else {
-		printf ("%s: NULL Interface function table!\n", __FUNCTION__);
-	}
-
-	return ret_val;
 }

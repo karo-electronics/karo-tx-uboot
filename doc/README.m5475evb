@@ -15,14 +15,14 @@ Changed files:
 - board/freescale/m547xevb/config.mk	config make
 - board/freescale/m547xevb/u-boot.lds	Linker description
 
-- cpu/mcf547x_8x/cpu.c			cpu specific code
-- cpu/mcf547x_8x/cpu_init.c		Flexbus ChipSelect, Mux pins setup, icache and RTC extra regs
-- cpu/mcf547x_8x/interrupts.c		cpu specific interrupt support
-- cpu/mcf547x_8x/slicetimer.c		Timer support
-- cpu/mcf547x_8x/speed.c		system, pci, flexbus, and cpu clock
-- cpu/mcf547x_8x/Makefile		Makefile
-- cpu/mcf547x_8x/config.mk		config make
-- cpu/mcf547x_8x/start.S		start up assembly code
+- arch/m68k/cpu/mcf547x_8x/cpu.c			cpu specific code
+- arch/m68k/cpu/mcf547x_8x/cpu_init.c		Flexbus ChipSelect, Mux pins setup, icache and RTC extra regs
+- arch/m68k/cpu/mcf547x_8x/interrupts.c		cpu specific interrupt support
+- arch/m68k/cpu/mcf547x_8x/slicetimer.c		Timer support
+- arch/m68k/cpu/mcf547x_8x/speed.c		system, pci, flexbus, and cpu clock
+- arch/m68k/cpu/mcf547x_8x/Makefile		Makefile
+- arch/m68k/cpu/mcf547x_8x/config.mk		config make
+- arch/m68k/cpu/mcf547x_8x/start.S		start up assembly code
 
 - doc/README.m5475evb			This readme file
 
@@ -58,11 +58,11 @@ Changed files:
 
 - include/configs/M5475EVB.h		Board specific configuration file
 
-- lib_m68k/board.c			board init function
-- lib_m68k/cache.c
-- lib_m68k/interrupts			Coldfire common interrupt functions
-- lib_m68k/m68k_linux.c
-- lib_m68k/traps.c			Exception init code
+- arch/m68k/lib/board.c			board init function
+- arch/m68k/lib/cache.c
+- arch/m68k/lib/interrupts			Coldfire common interrupt functions
+- arch/m68k/lib/m68k_linux.c
+- arch/m68k/lib/traps.c			Exception init code
 
 1 MCF547x specific Options/Settings
 ====================================
@@ -78,7 +78,6 @@ CONFIG_SYS_UART_PORT		-- define UART port number, start with 0, 1 and 2
 CONFIG_BAUDRATE		-- define UART baudrate
 
 CONFIG_FSLDMAFEC	-- define to use common dma FEC driver
-CONFIG_NET_MULTI	-- define to use multi FEC in u-boot
 CONFIG_MII		-- enable to use MII driver
 CONFIG_CF_DOMII		-- enable to use MII feature in cmd_mii.c
 CONFIG_SYS_DISCOVER_PHY	-- enable PHY discovery
@@ -215,7 +214,6 @@ ip_addr     = 192.162.1.2
 baudrate    = 115200 bps
 -> ?
 ?	- alias for 'help'
-autoscr - run script from memory
 base	- print or set address offset
 bdinfo	- print Board Info structure
 boot	- boot default, i.e., run 'bootcmd'
@@ -260,6 +258,7 @@ run	- run commands in an environment variable
 saveenv - save environment variables to persistent storage
 setenv	- set environment variables
 sleep	- delay execution for some time
+source	- run script from memory
 tftpboot- boot image via network using TFTP protocol
 usb	- USB sub-system
 usbboot - boot from USB device

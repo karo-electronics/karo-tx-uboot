@@ -19,16 +19,13 @@
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
-#include <asm/sizes.h>
 
 /* Spectrum Digital TMS320DM355 EVM board */
 #define DAVINCI_DM355EVM
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* U-Boot is a 3rd stage loader */
-#define CONFIG_SKIP_RELOCATE_UBOOT
 #define CONFIG_SYS_NO_FLASH		/* that is, no *NOR* flash */
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
-#define CONFIG_DISPLAY_CPUINFO
 
 /* SoC Configuration */
 #define CONFIG_ARM926EJS				/* arm926ejs CPU */
@@ -40,7 +37,7 @@
 /* Memory Info */
 #define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM_1			0x80000000
-#define PHYS_SDRAM_1_SIZE		SZ_128M
+#define PHYS_SDRAM_1_SIZE		(128 << 20)	/* 128 MiB */
 
 /* Serial Driver info: UART0 for console  */
 #define CONFIG_SYS_NS16550
@@ -57,7 +54,6 @@
 #define CONFIG_DM9000_BASE		0x04014000
 #define DM9000_IO			CONFIG_DM9000_BASE
 #define DM9000_DATA			(CONFIG_DM9000_BASE + 2)
-#define CONFIG_NET_MULTI
 
 /* I2C */
 #define CONFIG_HARD_I2C
@@ -66,15 +62,24 @@
 #define CONFIG_SYS_I2C_SLAVE		0x10	/* SMBus host address */
 
 /* NAND: socketed, two chipselects, normally 2 GBytes */
-/* NYET -- #define CONFIG_NAND_DAVINCI */
-#define CONFIG_SYS_NAND_HW_ECC
+#define CONFIG_NAND_DAVINCI
+#define CONFIG_SYS_NAND_CS		2
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
+#define CONFIG_SYS_NAND_4BIT_HW_ECC_OOBFIRST
+#define CONFIG_SYS_NAND_PAGE_2K
 
 #define CONFIG_SYS_NAND_LARGEPAGE
 #define CONFIG_SYS_NAND_BASE_LIST	{ 0x02000000, }
 /* socket has two chipselects, nCE0 gated by address BIT(14) */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	2
+
+/* SD/MMC */
+#define CONFIG_MMC
+#define CONFIG_GENERIC_MMC
+#define CONFIG_DAVINCI_MMC
+#define CONFIG_DAVINCI_MMC_SD1
+#define CONFIG_MMC_MBLOCK
 
 /* USB: OTG connector */
 /* NYET -- #define CONFIG_USB_DAVINCI */
@@ -93,17 +98,25 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
 
+#ifdef CONFIG_CMD_BDI
+#define CONFIG_CLOCKS
+#endif
+
+#ifdef CONFIG_MMC
+#define CONFIG_DOS_PARTITION
+#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_FAT
+#define CONFIG_CMD_MMC
+#endif
+
 #ifdef CONFIG_NAND_DAVINCI
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_PARTITIONS
+#define CONFIG_MTD_DEVICE
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_UBI
 #define CONFIG_RBTREE
 #endif
-
-/* TEMPORARY -- no safe place to save env, yet */
-#define CONFIG_ENV_IS_NOWHERE
-#undef CONFIG_CMD_SAVEENV
 
 #ifdef CONFIG_USB_DAVINCI
 #define CONFIG_MUSB_HCD
@@ -130,9 +143,22 @@
 #define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #define CONFIG_SYS_LONGHELP
 
-#define CONFIG_ENV_SIZE		SZ_16K
+#ifdef CONFIG_NAND_DAVINCI
+#define CONFIG_ENV_SIZE		(256 << 10)	/* 256 KiB */
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_OFFSET	0x3C0000
+#undef CONFIG_ENV_IS_IN_FLASH
+#endif
 
-/* NYET -- #define CONFIG_BOOTDELAY	5 */
+#if defined(CONFIG_MMC) && !defined(CONFIG_ENV_IS_IN_NAND)
+#define CONFIG_CMD_ENV
+#define CONFIG_ENV_SIZE		(16 << 10)	/* 16 KiB */
+#define CONFIG_ENV_OFFSET	(51 << 9)	/* Sector 51 */
+#define CONFIG_ENV_IS_IN_MMC
+#undef CONFIG_ENV_IS_IN_FLASH
+#endif
+
+#define CONFIG_BOOTDELAY	5
 #define CONFIG_BOOTCOMMAND \
 		"dhcp;bootm"
 #define CONFIG_BOOTARGS \
@@ -146,9 +172,8 @@
 #define CONFIG_NET_RETRY_COUNT 10
 
 /* U-Boot memory configuration */
-#define CONFIG_STACKSIZE		SZ_256K		/* regular stack */
-#define CONFIG_SYS_MALLOC_LEN		SZ_512K		/* malloc() arena */
-#define CONFIG_SYS_GBL_DATA_SIZE	128		/* for initial data */
+#define CONFIG_STACKSIZE		(256 << 10)	/* 256 KiB */
+#define CONFIG_SYS_MALLOC_LEN		(1 << 20)	/* 1 MiB */
 #define CONFIG_SYS_MEMTEST_START	0x87000000	/* physical address */
 #define CONFIG_SYS_MEMTEST_END		0x88000000	/* test 16MB RAM */
 
@@ -187,5 +212,11 @@
 
 #define MTDPARTS_DEFAULT	\
 	"mtdparts=davinci_nand.0:" PART_BOOT PART_KERNEL PART_REST
+
+#define CONFIG_MAX_RAM_BANK_SIZE	(256 << 20)	/* 256 MB */
+
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR		\
+	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
 
 #endif /* __CONFIG_H */

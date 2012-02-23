@@ -45,10 +45,11 @@
 #define CONFIG_MECP5200		1	/* ... on MECP5200  board */
 #define CONFIG_MPC5200_DDR      1       /* ... use DDR RAM      */
 
-#define CONFIG_SYS_MPC5XXX_CLKIN	33000000 /* ... running at 33.000000MHz */
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFFF00000
+#endif
 
-#define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
-#define BOOTFLAG_WARM		0x02	/* Software reboot	     */
+#define CONFIG_SYS_MPC5XXX_CLKIN	33000000 /* ... running at 33.000000MHz */
 
 #define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
@@ -63,19 +64,11 @@
 #endif
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, 230400 }
 
-
-#ifdef CONFIG_MPC5200	/* MPC5100 PCI is not supported yet. */
-
 #define CONFIG_MII
 #if 0 /* test-only !!! */
-#define CONFIG_NET_MULTI	1
 #define CONFIG_EEPRO100		1
 #define CONFIG_SYS_RX_ETH_BUFFER	8  /* use 8 rx buffer on eepro100  */
 #define CONFIG_NS8382X		1
-#endif
-
-#else	/* MPC5100 */
-
 #endif
 
 /* Partitions */
@@ -112,11 +105,11 @@
 #define CONFIG_CMD_ELF
 
 
-#if (TEXT_BASE == 0xFF000000)		/* Boot low with 16 MB Flash */
+#if (CONFIG_SYS_TEXT_BASE == 0xFF000000)		/* Boot low with 16 MB Flash */
 #   define CONFIG_SYS_LOWBOOT		1
 #   define CONFIG_SYS_LOWBOOT16	1
 #endif
-#if (TEXT_BASE == 0xFF800000)		/* Boot low with  8 MB Flash */
+#if (CONFIG_SYS_TEXT_BASE == 0xFF800000)		/* Boot low with  8 MB Flash */
 #   define CONFIG_SYS_LOWBOOT		1
 #   define CONFIG_SYS_LOWBOOT08	1
 #endif
@@ -152,12 +145,10 @@
 
 #define CONFIG_BOOTCOMMAND	"run flash_vxworks0"
 
-#if defined(CONFIG_MPC5200)
 /*
  * IPB Bus clocking configuration.
  */
 #undef CONFIG_SYS_IPBSPEED_133			/* define for 133MHz speed */
-#endif
 /*
  * I2C configuration
  */
@@ -223,14 +214,13 @@
 
 /* Use SRAM until RAM will be available */
 #define CONFIG_SYS_INIT_RAM_ADDR	MPC5XXX_SRAM
-#define CONFIG_SYS_INIT_RAM_END	MPC5XXX_SRAM_SIZE	/* End of used area in DPRAM */
+#define CONFIG_SYS_INIT_RAM_SIZE	MPC5XXX_SRAM_SIZE	/* Size of used area in DPRAM */
 
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_BASE    TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE    CONFIG_SYS_TEXT_BASE
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
 #   define CONFIG_SYS_RAMBOOT		1
 #endif
@@ -288,13 +278,8 @@
 /*
  * Various low-level settings
  */
-#if defined(CONFIG_MPC5200)
 #define CONFIG_SYS_HID0_INIT		HID0_ICE | HID0_ICFI
 #define CONFIG_SYS_HID0_FINAL		HID0_ICE
-#else
-#define CONFIG_SYS_HID0_INIT		0
-#define CONFIG_SYS_HID0_FINAL		0
-#endif
 
 #define CONFIG_SYS_BOOTCS_START	CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_BOOTCS_SIZE		CONFIG_SYS_FLASH_SIZE

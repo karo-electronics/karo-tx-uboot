@@ -31,19 +31,19 @@
 
 int board_early_init_f(void)
 {
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
-	mtdcr(uicer, 0x00000000);	/* disable all ints */
-	mtdcr(uiccr, 0x00000000);	/* set all to be non-critical */
-	mtdcr(uicpr, 0xFFFFFF80);	/* set int polarities */
-	mtdcr(uictr, 0x10000000);	/* set int trigger levels */
-	mtdcr(uicvcr, 0x00000001);	/* set vect base=0,INT0 highest prio */
-	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
+	mtdcr(UIC0ER, 0x00000000);	/* disable all ints */
+	mtdcr(UIC0CR, 0x00000000);	/* set all to be non-critical */
+	mtdcr(UIC0PR, 0xFFFFFF80);	/* set int polarities */
+	mtdcr(UIC0TR, 0x10000000);	/* set int trigger levels */
+	mtdcr(UIC0VCR, 0x00000001);	/* set vect base=0,INT0 highest prio */
+	mtdcr(UIC0SR, 0xFFFFFFFF);	/* clear all ints */
 
 	/*
 	 * EBC Configuration Register: set ready timeout to 512 ebc-clks
 	 * -> ca. 15 us
 	 */
-	mtebc(epcr, 0xa8400000);	/* ebc always driven */
+	mtebc(EBC0_CFG, 0xa8400000);	/* ebc always driven */
 
 	return 0;
 }
@@ -53,7 +53,8 @@ int board_early_init_f(void)
  */
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 	u16 val = in_le16((void *)CONFIG_FPGA_BASE + 2);
 	u8 unit_type;
 	u8 hardware_cpu_ports;
@@ -62,9 +63,9 @@ int checkboard(void)
 
 	printf("Board: CATCenter Neo");
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	puts("\n       ");
 

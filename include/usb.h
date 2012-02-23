@@ -27,6 +27,7 @@
 #define _USB_H_
 
 #include <usb_defs.h>
+#include <usbdescriptors.h>
 
 /* Everything is aribtrary */
 #define USB_ALTSETTINGALLOC		4
@@ -41,12 +42,11 @@
 
 #define USB_CNTL_TIMEOUT 100 /* 100ms timeout */
 
-/* String descriptor */
-struct usb_string_descriptor {
-	unsigned char	bLength;
-	unsigned char	bDescriptorType;
-	unsigned short	wData[1];
-} __attribute__ ((packed));
+/*
+ * This is the timeout to allow for submitting an urb in ms. We allow more
+ * time for a BULK device to react - some are slow.
+ */
+#define USB_TIMEOUT_MS(pipe) (usb_pipebulk(pipe) ? 5000 : 1000)
 
 /* device request (setup) */
 struct devrequest {
@@ -63,47 +63,9 @@ struct usb_descriptor_header {
 	unsigned char	bDescriptorType;
 } __attribute__ ((packed));
 
-/* Device descriptor */
-struct usb_device_descriptor {
-	unsigned char	bLength;
-	unsigned char	bDescriptorType;
-	unsigned short	bcdUSB;
-	unsigned char	bDeviceClass;
-	unsigned char	bDeviceSubClass;
-	unsigned char	bDeviceProtocol;
-	unsigned char	bMaxPacketSize0;
-	unsigned short	idVendor;
-	unsigned short	idProduct;
-	unsigned short	bcdDevice;
-	unsigned char	iManufacturer;
-	unsigned char	iProduct;
-	unsigned char	iSerialNumber;
-	unsigned char	bNumConfigurations;
-} __attribute__ ((packed));
-
-/* Endpoint descriptor */
-struct usb_endpoint_descriptor {
-	unsigned char	bLength;
-	unsigned char	bDescriptorType;
-	unsigned char	bEndpointAddress;
-	unsigned char	bmAttributes;
-	unsigned short	wMaxPacketSize;
-	unsigned char	bInterval;
-	unsigned char	bRefresh;
-	unsigned char	bSynchAddress;
-} __attribute__ ((packed)) __attribute__ ((aligned(2)));
-
-/* Interface descriptor */
-struct usb_interface_descriptor {
-	unsigned char	bLength;
-	unsigned char	bDescriptorType;
-	unsigned char	bInterfaceNumber;
-	unsigned char	bAlternateSetting;
-	unsigned char	bNumEndpoints;
-	unsigned char	bInterfaceClass;
-	unsigned char	bInterfaceSubClass;
-	unsigned char	bInterfaceProtocol;
-	unsigned char	iInterface;
+/* Interface */
+struct usb_interface {
+	struct usb_interface_descriptor desc;
 
 	unsigned char	no_of_ep;
 	unsigned char	num_altsetting;
@@ -112,20 +74,12 @@ struct usb_interface_descriptor {
 	struct usb_endpoint_descriptor ep_desc[USB_MAXENDPOINTS];
 } __attribute__ ((packed));
 
-
-/* Configuration descriptor information.. */
-struct usb_config_descriptor {
-	unsigned char	bLength;
-	unsigned char	bDescriptorType;
-	unsigned short	wTotalLength;
-	unsigned char	bNumInterfaces;
-	unsigned char	bConfigurationValue;
-	unsigned char	iConfiguration;
-	unsigned char	bmAttributes;
-	unsigned char	MaxPower;
+/* Configuration information.. */
+struct usb_config {
+	struct usb_configuration_descriptor desc;
 
 	unsigned char	no_of_if;	/* number of interfaces */
-	struct usb_interface_descriptor if_desc[USB_MAXINTERFACES];
+	struct usb_interface if_desc[USB_MAXINTERFACES];
 } __attribute__ ((packed));
 
 enum {
@@ -156,7 +110,7 @@ struct usb_device {
 
 	int configno;			/* selected config number */
 	struct usb_device_descriptor descriptor; /* Device Descriptor */
-	struct usb_config_descriptor config; /* config descriptor */
+	struct usb_config config; /* config descriptor */
 
 	int have_langid;		/* whether string_langid is valid yet */
 	int string_langid;		/* language ID for strings */
@@ -183,7 +137,9 @@ struct usb_device {
 #if defined(CONFIG_USB_UHCI) || defined(CONFIG_USB_OHCI) || \
 	defined(CONFIG_USB_EHCI) || defined(CONFIG_USB_OHCI_NEW) || \
 	defined(CONFIG_USB_SL811HS) || defined(CONFIG_USB_ISP116X_HCD) || \
-	defined(CONFIG_USB_R8A66597_HCD) || defined(CONFIG_USB_DAVINCI)
+	defined(CONFIG_USB_R8A66597_HCD) || defined(CONFIG_USB_DAVINCI) || \
+	defined(CONFIG_USB_OMAP3) || defined(CONFIG_USB_DA8XX) || \
+	defined(CONFIG_USB_BLACKFIN) || defined(CONFIG_USB_AM35X)
 
 int usb_lowlevel_init(void);
 int usb_lowlevel_stop(void);
@@ -212,6 +168,13 @@ int usb_stor_info(void);
 
 #endif
 
+#ifdef CONFIG_USB_HOST_ETHER
+
+#define USB_MAX_ETH_DEV 5
+int usb_host_eth_scan(int mode);
+
+#endif
+
 #ifdef CONFIG_USB_KEYBOARD
 
 int drv_usb_kbd_init(void);
@@ -235,7 +198,7 @@ int usb_bulk_msg(struct usb_device *dev, unsigned int pipe,
 			void *data, int len, int *actual_length, int timeout);
 int usb_submit_int_msg(struct usb_device *dev, unsigned long pipe,
 			void *buffer, int transfer_len, int interval);
-void usb_disable_asynch(int disable);
+int usb_disable_asynch(int disable);
 int usb_maxpacket(struct usb_device *dev, unsigned long pipe);
 inline void wait_ms(unsigned long ms);
 int usb_get_configuration_no(struct usb_device *dev, unsigned char *buffer,
@@ -309,7 +272,7 @@ int usb_set_interface(struct usb_device *dev, int interface, int alternate);
  */
 /* Create various pipes... */
 #define create_pipe(dev,endpoint) \
-		(((dev)->devnum << 8) | (endpoint << 15) | \
+		(((dev)->devnum << 8) | ((endpoint) << 15) | \
 		((dev)->speed << 26) | (dev)->maxpacketsize)
 #define default_pipe(dev) ((dev)->speed << 26)
 

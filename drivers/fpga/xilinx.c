@@ -48,7 +48,7 @@ static int xilinx_validate (Xilinx_desc * desc, char *fn);
 
 /* ------------------------------------------------------------------------- */
 
-int xilinx_load (Xilinx_desc * desc, void *buf, size_t bsize)
+int xilinx_load(Xilinx_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume a failure */
 
@@ -95,7 +95,7 @@ int xilinx_load (Xilinx_desc * desc, void *buf, size_t bsize)
 	return ret_val;
 }
 
-int xilinx_dump (Xilinx_desc * desc, void *buf, size_t bsize)
+int xilinx_dump(Xilinx_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume a failure */
 
@@ -237,48 +237,6 @@ int xilinx_info (Xilinx_desc * desc)
 
 	return ret_val;
 }
-
-int xilinx_reloc (Xilinx_desc * desc, ulong reloc_offset)
-{
-	int ret_val = FPGA_FAIL;	/* assume a failure */
-
-	if (!xilinx_validate (desc, (char *)__FUNCTION__)) {
-		printf ("%s: Invalid device descriptor\n", __FUNCTION__);
-	} else
-		switch (desc->family) {
-		case Xilinx_Spartan2:
-#if defined(CONFIG_FPGA_SPARTAN2)
-			ret_val = Spartan2_reloc (desc, reloc_offset);
-#else
-			printf ("%s: No support for Spartan-II devices.\n",
-					__FUNCTION__);
-#endif
-			break;
-		case Xilinx_Spartan3:
-#if defined(CONFIG_FPGA_SPARTAN3)
-			ret_val = Spartan3_reloc (desc, reloc_offset);
-#else
-			printf ("%s: No support for Spartan-III devices.\n",
-					__FUNCTION__);
-#endif
-			break;
-		case Xilinx_Virtex2:
-#if defined(CONFIG_FPGA_VIRTEX2)
-			ret_val = Virtex2_reloc (desc, reloc_offset);
-#else
-			printf ("%s: No support for Virtex-II devices.\n",
-					__FUNCTION__);
-#endif
-			break;
-			/* Add new family types here */
-		default:
-			printf ("%s: Unsupported family type, %d\n",
-					__FUNCTION__, desc->family);
-		}
-
-	return ret_val;
-}
-
 
 /* ------------------------------------------------------------------------- */
 

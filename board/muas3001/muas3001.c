@@ -308,26 +308,9 @@ int board_early_init_r (void)
 void ft_blob_update (void *blob, bd_t *bd)
 {
 	int ret, nodeoffset = 0;
-	ulong memory_data[2] = {0};
 	ulong flash_data[4] = {0};
-	ulong freq = 0;
 	ulong	speed = 0;
 
-	memory_data[0] = cpu_to_be32 (bd->bi_memstart);
-	memory_data[1] = cpu_to_be32 (bd->bi_memsize);
-
-	nodeoffset = fdt_path_offset (blob, "/memory");
-	if (nodeoffset >= 0) {
-		ret = fdt_setprop (blob, nodeoffset, "reg", memory_data,
-					sizeof(memory_data));
-	if (ret < 0)
-		printf ("ft_blob_update): cannot set /memory/reg "
-			"property err:%s\n", fdt_strerror (ret));
-	} else {
-		/* memory node is required in dts */
-		printf ("ft_blob_update(): cannot find /memory node "
-			"err:%s\n", fdt_strerror(nodeoffset));
-	}
 	/* update Flash addr, size */
 	flash_data[2] = cpu_to_be32 (CONFIG_SYS_FLASH_BASE);
 	flash_data[3] = cpu_to_be32 (CONFIG_SYS_FLASH_SIZE);
@@ -341,36 +324,6 @@ void ft_blob_update (void *blob, bd_t *bd)
 	} else {
 		/* memory node is required in dts */
 		printf ("ft_blob_update(): cannot find /localbus node "
-			"err:%s\n", fdt_strerror (nodeoffset));
-	}
-	/* MAC Adresse */
-	nodeoffset = fdt_path_offset (blob, "/soc/cpm/ethernet");
-	if (nodeoffset >= 0) {
-		uchar ethaddr[6];
-		eth_getenv_enetaddr("ethaddr", ethaddr);
-		ret = fdt_setprop (blob, nodeoffset, "mac-address", ethaddr,
-					sizeof (uchar) * 6);
-	if (ret < 0)
-		printf ("ft_blob_update): cannot set /soc/cpm/ethernet/mac-address "
-			"property err:%s\n", fdt_strerror (ret));
-	} else {
-		/* memory node is required in dts */
-		printf ("ft_blob_update(): cannot find /soc/cpm/ethernet node "
-			"err:%s\n", fdt_strerror (nodeoffset));
-	}
-
-	/* brg clock */
-	nodeoffset = fdt_path_offset (blob, "/soc/cpm/brg");
-	if (nodeoffset >= 0) {
-		freq = cpu_to_be32 (bd->bi_brgfreq);
-		ret = fdt_setprop (blob, nodeoffset, "clock-frequency", &freq,
-					sizeof (unsigned long));
-	if (ret < 0)
-		printf ("ft_blob_update): cannot set /soc/cpm/brg/clock-frequency "
-			"property err:%s\n", fdt_strerror (ret));
-	} else {
-		/* memory node is required in dts */
-		printf ("ft_blob_update(): cannot find /soc/cpm/brg/clock-frequency node "
 			"err:%s\n", fdt_strerror (nodeoffset));
 	}
 

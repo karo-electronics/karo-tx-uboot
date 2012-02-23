@@ -1,5 +1,5 @@
 /*
- * Copyright 2009 Freescale Semiconductor, Inc.
+ * Copyright 2009-2010 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -46,22 +46,29 @@ struct fsl_e_tlb_entry tlb_table[] = {
 
 	/* TLB 1 Initializations */
 	/*
-	 * TLBe 0:	16M	Non-cacheable, guarded
-	 * 0xff000000	16M	FLASH (upper half)
+	 * TLBe 0:	64M	write-through, guarded
 	 * Out of reset this entry is only 4K.
+	 * 0xfc000000	32MB	NAND FLASH (CS3)
+	 * 0xfe000000	32MB	NOR FLASH (CS0)
 	 */
-	SET_TLB_ENTRY(1, CONFIG_SYS_FLASH_BASE + 0x1000000,
-		      CONFIG_SYS_FLASH_BASE_PHYS + 0x1000000,
+#ifdef CONFIG_NAND_SPL
+	SET_TLB_ENTRY(1, CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_BASE,
 		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
-		      0, 0, BOOKE_PAGESZ_16M, 1),
-
+		      0, 0, BOOKE_PAGESZ_1M, 1),
+#else
+	SET_TLB_ENTRY(1, CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_BASE,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_W|MAS2_G,
+		      0, 0, BOOKE_PAGESZ_64M, 1),
+#endif
 	/*
-	 * TLBe 1:	16M	Non-cacheable, guarded
-	 * 0xfe000000	16M	FLASH (lower half)
+	 * TLBe 1:	256KB	Non-cacheable, guarded
+	 * 0xf8000000	32K	BCSR
+	 * 0xf8008000	32K	PIB (CS4)
+	 * 0xf8010000	32K	PIB (CS5)
 	 */
-	SET_TLB_ENTRY(1, CONFIG_SYS_FLASH_BASE, CONFIG_SYS_FLASH_BASE_PHYS,
+	SET_TLB_ENTRY(1, CONFIG_SYS_BCSR_BASE, CONFIG_SYS_BCSR_BASE_PHYS,
 		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
-		      0, 1, BOOKE_PAGESZ_16M, 1),
+		      0, 1, BOOKE_PAGESZ_256K, 1),
 
 	/*
 	 * TLBe 2:	256M	Non-cacheable, guarded
@@ -89,15 +96,16 @@ struct fsl_e_tlb_entry tlb_table[] = {
 		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		      0, 4, BOOKE_PAGESZ_64M, 1),
 
-	/*
-	 * TLBe 5:	256K	Non-cacheable, guarded
-	 * 0xf8000000	32K BCSR
-	 * 0xf8008000	32K PIB (CS4)
-	 * 0xf8010000	32K PIB (CS5)
-	 */
-	SET_TLB_ENTRY(1, CONFIG_SYS_BCSR_BASE, CONFIG_SYS_BCSR_BASE_PHYS,
-		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
-		      0, 5, BOOKE_PAGESZ_256K, 1),
+#if defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SYS_INIT_L2_ADDR)
+	/* *I*G - L2SRAM */
+	SET_TLB_ENTRY(1, CONFIG_SYS_INIT_L2_ADDR, CONFIG_SYS_INIT_L2_ADDR_PHYS,
+			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+			0, 5, BOOKE_PAGESZ_256K, 1),
+	SET_TLB_ENTRY(1, CONFIG_SYS_INIT_L2_ADDR + 0x40000,
+			CONFIG_SYS_INIT_L2_ADDR_PHYS + 0x40000,
+			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+			0, 6, BOOKE_PAGESZ_256K, 1),
+#endif
 };
 
 int num_tlb_entries = ARRAY_SIZE(tlb_table);

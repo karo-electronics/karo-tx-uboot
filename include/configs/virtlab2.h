@@ -37,6 +37,8 @@
 #define CONFIG_VIRTLAB2		1	/* ...on a virtlab2 module	*/
 #define	CONFIG_TQM8xxL		1
 
+#define	CONFIG_SYS_TEXT_BASE	0x40000000
+
 #define	CONFIG_8xx_CONS_SMC1	1	/* Console is on SMC1		*/
 #define CONFIG_SYS_SMC_RXBUFLEN	128
 #define CONFIG_SYS_MAXIDLE	10
@@ -174,9 +176,8 @@
  * Definitions for initial stack pointer and data area (in DPRAM)
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_IMMR
-#define	CONFIG_SYS_INIT_RAM_END	0x2F00	/* End of used area in DPRAM	*/
-#define	CONFIG_SYS_GBL_DATA_SIZE	64  /* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define	CONFIG_SYS_INIT_RAM_SIZE	0x2F00	/* Size of used area in DPRAM	*/
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define	CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
@@ -475,15 +476,6 @@
 			 MAMR_AMA_TYPE_1 | MAMR_DSA_1_CYCL | MAMR_G0CLA_A10 |	\
 			 MAMR_RLFA_1X	 | MAMR_WLFA_1X	   | MAMR_TLFA_4X)
 
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define	BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
-
 /* Map peripheral control registers on CS4 */
 #define CONFIG_SYS_PERIPHERAL_BASE 0xA0000000
 #define CONFIG_SYS_PERIPHERAL_OR_AM 0xFFFF8000 /* 32 kB address mask */
@@ -491,4 +483,10 @@
 						OR_SCY_2_CLK)
 #define CONFIG_SYS_BR4_PRELIM ((CONFIG_SYS_PERIPHERAL_BASE & BR_BA_MSK) | BR_PS_8 | BR_V)
 #define PCMCIA_CTRL (CONFIG_SYS_PERIPHERAL_BASE + 0xB00)
+
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_HWCONFIG		1
+
 #endif	/* __CONFIG_H */

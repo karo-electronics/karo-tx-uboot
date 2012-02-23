@@ -62,7 +62,10 @@
 #define CONFIG_4xx	1
 #define CONFIG_405GP	1
 
+#define	CONFIG_SYS_TEXT_BASE	0xFFFA0000
+
 #define CONFIG_BOARD_EARLY_INIT_F	1
+#define CONFIG_MISC_INIT_R		1	/* Call misc_init_r() */
 
 /*
  * Define IDE_USES_ISA_EMULATION for slower IDE access in the ISA-IO address range
@@ -75,15 +78,12 @@
 /*-----------------------------------------------------------------------
  * Serial Port
  *----------------------------------------------------------------------*/
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
+#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_SERIAL
+#define CONFIG_SYS_NS16550_REG_SIZE	1
+#define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 #define CONFIG_SERIAL_MULTI
-#undef CONFIG_SERIAL_SOFTWARE_FIFO
-/*
- * define CONFIG_POWER_DOWN if your cpu should power down while waiting for your input
- * Works only, if you have enabled the CONFIG_SERIAL_SOFTWARE_FIFO feature
- */
-#if CONFIG_SERIAL_SOFTWARE_FIFO
- #define CONFIG_POWER_DOWN
-#endif
 
 /*
  * define CONFIG_SYS_CLK_FREQ to your base crystal clock in Hz
@@ -162,7 +162,6 @@
 #undef CONFIG_LOADS_ECHO   /* no echo on for serial download	*/
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
 
-#define CONFIG_NET_MULTI
 /* #define CONFIG_EEPRO100_SROM_WRITE */
 /* #define CONFIG_SHOW_MAC */
 #define CONFIG_EEPRO100
@@ -250,6 +249,7 @@
  */
 #define  CONFIG_HARD_I2C		/* I2C with hardware support	*/
 #undef	CONFIG_SOFT_I2C			/* I2C bit-banged		*/
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 
 #define I2C_INIT
 #define I2C_ACTIVE 0
@@ -375,15 +375,11 @@
  * CONFIG_SYS_FLASH_BASE   -> start address of internal flash
  * CONFIG_SYS_MONITOR_BASE -> start of u-boot
  */
-#ifndef __ASSEMBLER__
-extern unsigned long offsetOfBigFlash;
-extern unsigned long offsetOfEnvironment;
-#endif
-
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
 #define CONFIG_SYS_FLASH_BASE		0xFFE00000
-#define CONFIG_SYS_MONITOR_BASE	0xFFFC0000     /* placed last 256k */
-#define CONFIG_SYS_MONITOR_LEN		(224 * 1024)	/* Reserve 224 KiB for Monitor	*/
+
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* Start of U-Boot	*/
+#define CONFIG_SYS_MONITOR_LEN		(0xFFFFFFFF - CONFIG_SYS_MONITOR_BASE + 1)
 #define CONFIG_SYS_MALLOC_LEN		(128 * 1024)	/* Reserve 128 KiB for malloc()	*/
 
 /*
@@ -426,8 +422,6 @@ extern unsigned long offsetOfEnvironment;
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		0x77D00000
 
-#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
-
 #define CONFIG_JFFS2_NAND 1			/* jffs2 on nand support */
 
 /* No command line, one static partition */
@@ -461,14 +455,14 @@ extern unsigned long offsetOfEnvironment;
  * - internal SRAM (OCM=On Chip Memory) is placed to CONFIG_SYS_OCM_DATA_ADDR
  * - Stackpointer will be located to
  *   (CONFIG_SYS_INIT_RAM_ADDR&0xFFFF0000) | (CONFIG_SYS_INIT_SP_OFFSET&0x0000FFFF)
- *   in cpu/ppc4xx/start.S
+ *   in arch/powerpc/cpu/ppc4xx/start.S
  */
 
 #undef CONFIG_SYS_INIT_DCACHE_CS
 /* Where the internal SRAM starts */
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_DATA_ADDR
 /* Where the internal SRAM ends (only offset) */
-#define CONFIG_SYS_INIT_RAM_END	0x0F00
+#define CONFIG_SYS_INIT_RAM_SIZE	0x0F00
 
 /*
 
@@ -481,26 +475,16 @@ extern unsigned long offsetOfEnvironment;
 			   |	      |
 			   | 64 Bytes |
 			   |	      |
- CONFIG_SYS_INIT_RAM_END  ------> ------------ higher address
+ CONFIG_SYS_INIT_RAM_SIZE  ------> ------------ higher address
   (offset only)
 
 */
-/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_SIZE     64
-#define CONFIG_SYS_GBL_DATA_OFFSET   (CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET   (CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 /* Initial value of the stack pointern in internal SRAM */
 #define CONFIG_SYS_INIT_SP_OFFSET    CONFIG_SYS_GBL_DATA_OFFSET
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
-
 /* ################################################################################### */
-/* These defines will be used in cpu/ppc4xx/cpu_init.c to setup external chip selects  */
+/* These defines will be used in arch/powerpc/cpu/ppc4xx/cpu_init.c to setup external chip selects  */
 /* They are currently undefined cause they are initiaized in board/solidcard3/init.S   */
 
 /* This chip select accesses the boot device */
@@ -532,7 +516,7 @@ extern unsigned long offsetOfEnvironment;
 
 #define CONFIG_SYS_EBC_CFG    0xb84ef000
 
-#define CONFIG_SDRAM_BANK0	/* use the standard SDRAM initialization */
+#undef CONFIG_SDRAM_BANK0	/* use private SDRAM initialization */
 #undef CONFIG_SPD_EEPROM
 
 /*
@@ -547,9 +531,9 @@ extern unsigned long offsetOfEnvironment;
 
 #define CONFIG_SYS_ISA_MEM_BASE_ADDRESS 0x78000000
 /*
- Die Grafik-Treiber greifen über die Adresse in diesem Macro auf den Chip zu.
+ Die Grafik-Treiber greifen Ã¼ber die Adresse in diesem Macro auf den Chip zu.
  Das funktioniert bei deren Karten, weil sie eine PCI-Bridge benutzen, die
- das gleiche Mapping durchführen kann, wie der SC520 (also Aufteilen von IO-Zugriffen
+ das gleiche Mapping durchfÃ¼hren kann, wie der SC520 (also Aufteilen von IO-Zugriffen
  auf ISA- und PCI-Zyklen)
  */
 #define CONFIG_SYS_ISA_IO_BASE_ADDRESS  0xE8000000

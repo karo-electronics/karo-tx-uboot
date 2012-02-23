@@ -222,7 +222,6 @@
 
 
 
-
 /* Preliminaries */
 
 #ifndef __STD_C
@@ -286,13 +285,6 @@ extern "C" {
     detail the assumptions and invariants underlying the algorithms.
 
 */
-
-#ifdef DEBUG
-#include <assert.h>
-#else
-#define assert(x) ((void)0)
-#endif
-
 
 /*
   INTERNAL_SIZE_T is the word-size used for internal bookkeeping
@@ -935,10 +927,10 @@ struct mallinfo mALLINFo();
 #endif
 
 /* ---------- To make a malloc.h, end cutting here ------------ */
-#else				/* Moved to malloc.h */
+#endif	/* 0 */			/* Moved to malloc.h */
 
 #include <malloc.h>
-#if 0
+#ifdef DEBUG
 #if __STD_C
 static void malloc_update_mallinfo (void);
 void malloc_stats (void);
@@ -946,9 +938,7 @@ void malloc_stats (void);
 static void malloc_update_mallinfo ();
 void malloc_stats();
 #endif
-#endif	/* 0 */
-
-#endif	/* 0 */			/* Moved to malloc.h */
+#endif	/* DEBUG */
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -1155,7 +1145,7 @@ struct malloc_chunk
   INTERNAL_SIZE_T size;      /* Size in bytes, including overhead. */
   struct malloc_chunk* fd;   /* double links -- used only if free. */
   struct malloc_chunk* bk;
-};
+} __attribute__((__may_alias__)) ;
 
 typedef struct malloc_chunk* mchunkptr;
 
@@ -1494,6 +1484,7 @@ static mbinptr av_[NAV * 2 + 2] = {
  IAV(120), IAV(121), IAV(122), IAV(123), IAV(124), IAV(125), IAV(126), IAV(127)
 };
 
+#ifdef CONFIG_NEEDS_MANUAL_RELOC
 void malloc_bin_reloc (void)
 {
 	unsigned long *p = (unsigned long *)(&av_[2]);
@@ -1502,7 +1493,40 @@ void malloc_bin_reloc (void)
 		*p++ += gd->reloc_off;
 	}
 }
-
+#endif
+
+ulong mem_malloc_start = 0;
+ulong mem_malloc_end = 0;
+ulong mem_malloc_brk = 0;
+
+void *sbrk(ptrdiff_t increment)
+{
+	ulong old = mem_malloc_brk;
+	ulong new = old + increment;
+
+	/*
+	 * if we are giving memory back make sure we clear it out since
+	 * we set MORECORE_CLEARS to 1
+	 */
+	if (increment < 0)
+		memset((void *)new, 0, -increment);
+
+	if ((new < mem_malloc_start) || (new > mem_malloc_end))
+		return (void *)MORECORE_FAILURE;
+
+	mem_malloc_brk = new;
+
+	return (void *)old;
+}
+
+void mem_malloc_init(ulong start, ulong size)
+{
+	mem_malloc_start = start;
+	mem_malloc_end = start + size;
+	mem_malloc_brk = start;
+
+	memset((void *)mem_malloc_start, 0, size);
+}
 
 /* field-extraction macros */
 
@@ -1591,9 +1615,9 @@ static struct mallinfo current_mallinfo = {  0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 /* Tracking mmaps */
 
-#if 0
+#ifdef DEBUG
 static unsigned int n_mmaps = 0;
-#endif	/* 0 */
+#endif	/* DEBUG */
 static unsigned long mmapped_mem = 0;
 #if HAVE_MMAP
 static unsigned int max_n_mmaps = 0;
@@ -1623,9 +1647,7 @@ static void do_check_chunk(mchunkptr p)
 static void do_check_chunk(p) mchunkptr p;
 #endif
 {
-#if 0	/* causes warnings because assert() is off */
   INTERNAL_SIZE_T sz = p->size & ~PREV_INUSE;
-#endif	/* 0 */
 
   /* No checkable chunk is mmapped */
   assert(!chunk_is_mmapped(p));
@@ -1647,9 +1669,7 @@ static void do_check_free_chunk(p) mchunkptr p;
 #endif
 {
   INTERNAL_SIZE_T sz = p->size & ~PREV_INUSE;
-#if 0	/* causes warnings because assert() is off */
   mchunkptr next = chunk_at_offset(p, sz);
-#endif	/* 0 */
 
   do_check_chunk(p);
 
@@ -1713,10 +1733,8 @@ static void do_check_malloced_chunk(mchunkptr p, INTERNAL_SIZE_T s)
 static void do_check_malloced_chunk(p, s) mchunkptr p; INTERNAL_SIZE_T s;
 #endif
 {
-#if 0	/* causes warnings because assert() is off */
   INTERNAL_SIZE_T sz = p->size & ~PREV_INUSE;
   long room = sz - s;
-#endif	/* 0 */
 
   do_check_inuse_chunk(p);
 
@@ -2151,6 +2169,12 @@ Void_t* mALLOc(bytes) size_t bytes;
   mbinptr q;                         /* misc temp */
 
   INTERNAL_SIZE_T nb;
+
+  /* check if mem_malloc_init() was run */
+  if ((mem_malloc_start == 0) && (mem_malloc_end == 0)) {
+    /* not initialized yet */
+    return 0;
+  }
 
   if ((long)bytes < 0) return 0;
 
@@ -3068,7 +3092,7 @@ size_t malloc_usable_size(mem) Void_t* mem;
 
 /* Utility to update current_mallinfo for malloc_stats and mallinfo() */
 
-#if 0
+#ifdef DEBUG
 static void malloc_update_mallinfo()
 {
   int i;
@@ -3106,7 +3130,7 @@ static void malloc_update_mallinfo()
   current_mallinfo.keepcost = chunksize(top);
 
 }
-#endif	/* 0 */
+#endif	/* DEBUG */
 
 
 
@@ -3125,7 +3149,7 @@ static void malloc_update_mallinfo()
 
 */
 
-#if 0
+#ifdef DEBUG
 void malloc_stats()
 {
   malloc_update_mallinfo();
@@ -3140,19 +3164,19 @@ void malloc_stats()
 	  (unsigned int)max_n_mmaps);
 #endif
 }
-#endif	/* 0 */
+#endif	/* DEBUG */
 
 /*
   mallinfo returns a copy of updated current mallinfo.
 */
 
-#if 0
+#ifdef DEBUG
 struct mallinfo mALLINFo()
 {
   malloc_update_mallinfo();
   return current_mallinfo;
 }
-#endif	/* 0 */
+#endif	/* DEBUG */
 
 
 

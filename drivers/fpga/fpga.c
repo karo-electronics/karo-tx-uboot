@@ -28,6 +28,7 @@
 #include <common.h>             /* core U-Boot definitions */
 #include <xilinx.h>             /* xilinx specific definitions */
 #include <altera.h>             /* altera specific definitions */
+#include <lattice.h>
 
 #if 0
 #define FPGA_DEBUG              /* define FPGA_DEBUG to get debug messages */
@@ -46,13 +47,12 @@
 #endif
 
 /* Local static data */
-static ulong relocation_offset = 0;
 static int next_desc = FPGA_INVALID_DEVICE;
 static fpga_desc desc_table[CONFIG_MAX_FPGA_DEVICES];
 
 /* Local static functions */
 static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_get_desc( int devnum );
-static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_validate( int devnum, void *buf,
+static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_validate(int devnum, const void *buf,
 					 size_t bsize, char *fn );
 static int fpga_dev_info( int devnum );
 
@@ -94,7 +94,7 @@ static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_ge
 /* fpga_validate
  *	generic parameter checking code
  */
-static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_validate( int devnum, void *buf,
+static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_validate(int devnum, const void *buf,
 					 size_t bsize, char *fn )
 {
 	fpga_desc * desc = fpga_get_desc( devnum );
@@ -140,6 +140,14 @@ static int fpga_dev_info( int devnum )
 			fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
 #endif
 			break;
+		case fpga_lattice:
+#if defined(CONFIG_FPGA_LATTICE)
+			printf("Lattice Device\nDescriptor @ 0x%p\n", desc);
+			ret_val = lattice_info(desc->devdesc);
+#else
+			fpga_no_sup( (char *)__FUNCTION__, "Lattice devices" );
+#endif
+			break;
 		default:
 			printf( "%s: Invalid or unsupported device type %d\n",
 					__FUNCTION__, desc->devtype );
@@ -153,46 +161,12 @@ static int fpga_dev_info( int devnum )
 }
 
 
-/* fpga_reloc
- *	generic multiplexing code
- */
-int fpga_reloc( fpga_type devtype, void *desc, ulong reloc_off )
-{
-	int ret_val = FPGA_FAIL;
-
-	PRINTF( "%s: Relocating Device of type %d @ 0x%p with offset %lx\n",
-				__FUNCTION__, devtype, desc, reloc_off );
-
-	switch ( devtype ) {
-	case fpga_xilinx:
-#if defined(CONFIG_FPGA_XILINX)
-		ret_val = xilinx_reloc( desc, reloc_off );
-#else
-		fpga_no_sup( (char *)__FUNCTION__, "Xilinx devices" );
-#endif
-		break;
-	case fpga_altera:
-#if defined(CONFIG_FPGA_ALTERA)
-		ret_val = altera_reloc( desc, reloc_off );
-#else
-		fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
-#endif
-		break;
-	default:
-		printf( "%s: Invalid or unsupported device type %d\n",
-			__FUNCTION__, devtype );
-	}
-
-	return ret_val;
-}
-
 /* ------------------------------------------------------------------------- */
 /* fgpa_init is usually called from misc_init_r() and MUST be called
  * before any of the other fpga functions are used.
  */
-void fpga_init( ulong reloc_off )
+void fpga_init(void)
 {
-	relocation_offset = reloc_off;
 	next_desc = 0;
 	memset( desc_table, 0, sizeof(desc_table));
 
@@ -208,9 +182,7 @@ int fpga_count( void )
 }
 
 /* fpga_add
- *	Attempts to relocate the device/board specific interface code
- *	to the proper RAM locations and adds the device descriptor to
- *	the device table.
+ *	Add the device descriptor to the device table.
  */
 int fpga_add( fpga_type devtype, void *desc )
 {
@@ -221,15 +193,9 @@ int fpga_add( fpga_type devtype, void *desc )
 	} else if (( devtype > fpga_min_type ) && ( devtype < fpga_undefined )) {
 		if ( desc ) {
 			if ( next_desc < CONFIG_MAX_FPGA_DEVICES ) {
-				if ( fpga_reloc( devtype, desc, relocation_offset )
-				  == FPGA_SUCCESS ) {
-					devnum = next_desc;
-					desc_table[next_desc].devtype = devtype;
-					desc_table[next_desc++].devdesc = desc;
-				} else {
-					printf( "%s: Unable to relocate device interface table!\n",
-						__FUNCTION__ );
-				}
+				devnum = next_desc;
+				desc_table[next_desc].devtype = devtype;
+				desc_table[next_desc++].devdesc = desc;
 			} else {
 				printf( "%s: Exceeded Max FPGA device count\n", __FUNCTION__ );
 			}
@@ -246,7 +212,7 @@ int fpga_add( fpga_type devtype, void *desc )
 /*
  *	Generic multiplexing code
  */
-int fpga_load( int devnum, void *buf, size_t bsize )
+int fpga_load(int devnum, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;           /* assume failure */
 	fpga_desc * desc = fpga_validate( devnum, buf, bsize, (char *)__FUNCTION__ );
@@ -267,6 +233,13 @@ int fpga_load( int devnum, void *buf, size_t bsize )
 			fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
 #endif
 			break;
+		case fpga_lattice:
+#if defined(CONFIG_FPGA_LATTICE)
+			ret_val = lattice_load(desc->devdesc, buf, bsize);
+#else
+			fpga_no_sup( (char *)__FUNCTION__, "Lattice devices" );
+#endif
+			break;
 		default:
 			printf( "%s: Invalid or unsupported device type %d\n",
 				__FUNCTION__, desc->devtype );
@@ -279,7 +252,7 @@ int fpga_load( int devnum, void *buf, size_t bsize )
 /* fpga_dump
  *	generic multiplexing code
  */
-int fpga_dump( int devnum, void *buf, size_t bsize )
+int fpga_dump(int devnum, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;           /* assume failure */
 	fpga_desc * desc = fpga_validate( devnum, buf, bsize, (char *)__FUNCTION__ );
@@ -298,6 +271,13 @@ int fpga_dump( int devnum, void *buf, size_t bsize )
 			ret_val = altera_dump( desc->devdesc, buf, bsize );
 #else
 			fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
+#endif
+			break;
+		case fpga_lattice:
+#if defined(CONFIG_FPGA_LATTICE)
+			ret_val = lattice_dump(desc->devdesc, buf, bsize);
+#else
+			fpga_no_sup( (char *)__FUNCTION__, "Lattice devices" );
 #endif
 			break;
 		default:

@@ -38,6 +38,8 @@
 /*#define CONFIG_APTIX           1    #* define if on APTIX test chip */
 /*#define CONFIG_VIRTIO          1    #* Using Virtio simulator */
 
+#define CONFIG_STANDALONE_LOAD_ADDR	0x80300000
+
 /* Clock config to target*/
 #define PRCM_CONFIG_II	1
 /* #define PRCM_CONFIG_III		1 */
@@ -72,7 +74,6 @@
  */
 #define CONFIG_ENV_SIZE             SZ_128K     /* Total Size of Environment Sector */
 #define CONFIG_SYS_MALLOC_LEN           (CONFIG_ENV_SIZE + SZ_128K)
-#define CONFIG_SYS_GBL_DATA_SIZE        128  /* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
@@ -81,7 +82,7 @@
 /*
  * SMC91c96 Etherent
  */
-#define CONFIG_DRIVER_LAN91C96
+#define CONFIG_LAN91C96
 #define CONFIG_LAN91C96_BASE     (H4_CS1_BASE+0x300)
 #define CONFIG_LAN91C96_EXT_PHY
 
@@ -163,14 +164,12 @@
 /*
  * Miscellaneous configurable options
  */
-#ifdef CONFIG_APTIX
-#define V_PROMPT                 "OMAP2420 Aptix # "
-#else
-#define V_PROMPT                 "OMAP242x H4 # "
-#endif
-
 #define CONFIG_SYS_LONGHELP             /* undef to save memory */
-#define CONFIG_SYS_PROMPT               V_PROMPT
+#ifdef CONFIG_APTIX
+# define CONFIG_SYS_PROMPT		"OMAP2420 Aptix # "
+#else
+# define CONFIG_SYS_PROMPT		"OMAP242x H4 # "
+#endif
 #define CONFIG_SYS_CBSIZE               256  /* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE               (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
@@ -220,6 +219,7 @@
 #define PHYS_FLASH_2             (H4_CS0_BASE+SZ_32M) /* same cs, 2 chips in series */
 #define PHYS_FLASH_SIZE_2        SZ_32M
 
+#define PHYS_SRAM		0x4020F800
 /*-----------------------------------------------------------------------
  * FLASH and environment organization
  */
@@ -270,5 +270,8 @@
 #define MTDIDS_DEFAULT		"nor1=omap2420-1"
 #define MTDPARTS_DEFAULT	"mtdparts=omap2420-1:-(jffs2)"
 */
+
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR 	PHYS_SRAM
 
 #endif							/* __CONFIG_H */

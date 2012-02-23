@@ -32,9 +32,9 @@
  */
 
 #include <common.h>
-#include <ppc4xx.h>
+#include <asm/ppc4xx.h>
 #include <asm/processor.h>
-#include <ppc440.h>
+#include <asm/ppc440.h>
 #include "yucca.h"
 
 #ifdef DEBUG
@@ -422,7 +422,7 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 {
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2;
-	int flag, prot, sect, l_sect;
+	int flag, prot, sect;
 	int i;
 
 	if ((s_first < 0) || (s_first > s_last)) {
@@ -449,8 +449,6 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 
 	printf("\n");
 
-	l_sect = -1;
-
 	/* Disable interrupts which might cause a timeout here */
 	flag = disable_interrupts();
 
@@ -476,7 +474,6 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 				addr[CONFIG_SYS_FLASH_ADDR1] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x00550055;
 				addr2[0] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x00300030;	/* sector erase */
 			}
-			l_sect = sect;
 			/*
 			 * Wait for each sector to complete, it's more
 			 * reliable.  According to AMD Spec, you must
@@ -831,7 +828,7 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 {
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2;
-	int flag, prot, sect, l_sect;
+	int flag, prot, sect;
 	int i;
 
 	if ((s_first < 0) || (s_first > s_last)) {
@@ -858,8 +855,6 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 
 	printf("\n");
 
-	l_sect = -1;
-
 	/* Disable interrupts which might cause a timeout here */
 	flag = disable_interrupts();
 
@@ -885,7 +880,6 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 				addr[CONFIG_SYS_FLASH_ADDR1] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x00550055;
 				addr2[0] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x00300030;	/* sector erase */
 			}
-			l_sect = sect;
 			/*
 			 * Wait for each sector to complete, it's more
 			 * reliable.  According to AMD Spec, you must
@@ -914,9 +908,10 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 
 static int write_word_2(flash_info_t * info, ulong dest, ulong data)
 {
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *) dest;
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *) & data;
+	ulong *data_ptr = &data;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *)(info->start[0]);
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *)dest;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *)data_ptr;
 	ulong start;
 	int i;
 
@@ -981,7 +976,7 @@ unsigned long flash_init(void)
 		 * Boot Settings in IIC EEprom address 0xA8 or 0xA0
 		 * Read Serial Device Strap Register1 in PPC440SPe
 		 */
-		mfsdr(sdr_sdstp1, val);
+		mfsdr(SDR0_SDSTP1, val);
 		boot_selection  = val & SDR0_SDSTP1_BOOT_SEL_MASK;
 		ebc_boot_size   = val & SDR0_SDSTP1_EBC_ROM_BS_MASK;
 

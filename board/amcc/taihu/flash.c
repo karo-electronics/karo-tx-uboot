@@ -29,7 +29,7 @@
  */
 
 #include <common.h>
-#include <ppc4xx.h>
+#include <asm/ppc4xx.h>
 #include <asm/processor.h>
 
 flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];	/* info for FLASH chips        */
@@ -511,7 +511,7 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 {
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2;
-	int flag, prot, sect, l_sect;
+	int flag, prot, sect;
 	int i;
 
 	if ((s_first < 0) || (s_first > s_last)) {
@@ -542,8 +542,6 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 		printf("\n");
 	}
 
-	l_sect = -1;
-
 	/* Disable interrupts which might cause a timeout here */
 	flag = disable_interrupts();
 
@@ -569,7 +567,6 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 				addr[CONFIG_SYS_FLASH_ADDR1] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x00550055;
 				addr2[0] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x00300030;	/* sector erase */
 			}
-			l_sect = sect;
 			/*
 			 * Wait for each sector to complete, it's more
 			 * reliable.  According to AMD Spec, you must
@@ -691,9 +688,10 @@ static int write_word_1(flash_info_t * info, ulong dest, ulong data)
 static int write_word(flash_info_t * info, ulong dest, ulong data)
 #endif
 {
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *) dest;
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *) & data;
+	ulong *data_ptr = &data;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *)(info->start[0]);
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *)dest;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *)data_ptr;
 	ulong start;
 	int i;
 
@@ -952,7 +950,7 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 {
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
 	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2;
-	int flag, prot, sect, l_sect;
+	int flag, prot, sect;
 	int i;
 
 	if ((s_first < 0) || (s_first > s_last)) {
@@ -983,8 +981,6 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 		printf("\n");
 	}
 
-	l_sect = -1;
-
 	/* Disable interrupts which might cause a timeout here */
 	flag = disable_interrupts();
 
@@ -1010,7 +1006,6 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 				addr[CONFIG_SYS_FLASH_CHAR_ADDR1] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x55555555;
 				addr2[0] = (CONFIG_SYS_FLASH_WORD_SIZE) 0x30303030;	/* sector erase */
 			}
-			l_sect = sect;
 			/*
 			 * Wait for each sector to complete, it's more
 			 * reliable.  According to AMD Spec, you must
@@ -1039,9 +1034,10 @@ static int flash_erase_2(flash_info_t * info, int s_first, int s_last)
 
 static int write_word_2(flash_info_t * info, ulong dest, ulong data)
 {
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *) (info->start[0]);
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *) dest;
-	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *) & data;
+	ulong *data_ptr = &data;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *addr2 = (CONFIG_SYS_FLASH_WORD_SIZE *)(info->start[0]);
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *dest2 = (CONFIG_SYS_FLASH_WORD_SIZE *)dest;
+	volatile CONFIG_SYS_FLASH_WORD_SIZE *data2 = (CONFIG_SYS_FLASH_WORD_SIZE *)data_ptr;
 	ulong start;
 	int i;
 

@@ -48,12 +48,16 @@
 
 #define CONFIG_MPC8260ADS	1	/* Motorola PQ2 ADS family board */
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFFF00000	/* Standard: boot high */
+#endif
+
 #define CONFIG_CPM2		1	/* Has a CPM2 */
 
 /*
  * Figure out if we are booting low via flash HRCW or high via the BCSR.
  */
-#if (TEXT_BASE != 0xFFF00000)		/* Boot low (flash HRCW) */
+#if (CONFIG_SYS_TEXT_BASE != 0xFFF00000)		/* Boot low (flash HRCW) */
 #   define CONFIG_SYS_LOWBOOT		1
 #endif
 
@@ -81,6 +85,7 @@
 #endif /* CONFIG_ADSTYPE == CONFIG_SYS_8272ADS */
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* Call board_early_init_f	*/
+#define CONFIG_RESET_PHY_R	1	/* Call reset_phy()		*/
 
 /* allow serial and ethaddr to be overwritten */
 #define CONFIG_ENV_OVERWRITE
@@ -123,20 +128,20 @@
 #if   CONFIG_ETHER_INDEX == 1
 
 # define CONFIG_SYS_PHY_ADDR		0
-# define CONFIG_SYS_CMXFCR_VALUE	(CMXFCR_RF1CS_CLK11 | CMXFCR_TF1CS_CLK10)
-# define CONFIG_SYS_CMXFCR_MASK	(CMXFCR_FC1 | CMXFCR_RF1CS_MSK | CMXFCR_TF1CS_MSK)
+# define CONFIG_SYS_CMXFCR_VALUE1	(CMXFCR_RF1CS_CLK11 | CMXFCR_TF1CS_CLK10)
+# define CONFIG_SYS_CMXFCR_MASK1	(CMXFCR_FC1 | CMXFCR_RF1CS_MSK | CMXFCR_TF1CS_MSK)
 
 #elif CONFIG_ETHER_INDEX == 2
 
 #if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS	/* RxCLK is CLK15, TxCLK is CLK16 */
 # define CONFIG_SYS_PHY_ADDR		3
-# define CONFIG_SYS_CMXFCR_VALUE	(CMXFCR_RF2CS_CLK15 | CMXFCR_TF2CS_CLK16)
+# define CONFIG_SYS_CMXFCR_VALUE2	(CMXFCR_RF2CS_CLK15 | CMXFCR_TF2CS_CLK16)
 #else					/* RxCLK is CLK13, TxCLK is CLK14 */
 # define CONFIG_SYS_PHY_ADDR		0
-# define CONFIG_SYS_CMXFCR_VALUE	(CMXFCR_RF2CS_CLK13 | CMXFCR_TF2CS_CLK14)
+# define CONFIG_SYS_CMXFCR_VALUE2	(CMXFCR_RF2CS_CLK13 | CMXFCR_TF2CS_CLK14)
 #endif /* CONFIG_ADSTYPE == CONFIG_SYS_8272ADS */
 
-# define CONFIG_SYS_CMXFCR_MASK	(CMXFCR_FC2 | CMXFCR_RF2CS_MSK | CMXFCR_TF2CS_MSK)
+# define CONFIG_SYS_CMXFCR_MASK2	(CMXFCR_FC2 | CMXFCR_RF2CS_MSK | CMXFCR_TF2CS_MSK)
 
 #endif	/* CONFIG_ETHER_INDEX */
 
@@ -149,6 +154,9 @@
  * GPIO pins used for bit-banged MII communications
  */
 #define MDIO_PORT	2		/* Port C */
+#define MDIO_DECLARE	volatile ioport_t *iop = ioport_addr ( \
+				(immap_t *) CONFIG_SYS_IMMR, MDIO_PORT )
+#define MDC_DECLARE	MDIO_DECLARE
 
 #if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS
 #define CONFIG_SYS_MDIO_PIN	0x00002000	/* PC18 */
@@ -209,7 +217,6 @@
 #define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP	1
 #if defined(CONFIG_OF_LIBFDT)
-#define OF_CPU			"cpu@0"
 #define OF_TBCLK		(bd->bi_busfreq / 4)
 #endif
 
@@ -341,9 +348,8 @@
 #define BCSR_PCI_MODE		0x01000000
 
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_IMMR
-#define CONFIG_SYS_INIT_RAM_END	0x2000	/* End of used area in DPRAM	*/
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x2000	/* Size of used area in DPRAM	*/
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #ifdef CONFIG_SYS_LOWBOOT
@@ -370,10 +376,8 @@
 #define CONFIG_SYS_HRCW_SLAVE6 0
 #define CONFIG_SYS_HRCW_SLAVE7 0
 
-#define BOOTFLAG_COLD	0x01	/* Normal Power-On: Boot from FLASH  */
-#define BOOTFLAG_WARM	0x02	/* Software reboot	     */
+#define CONFIG_SYS_MONITOR_BASE    CONFIG_SYS_TEXT_BASE
 
-#define CONFIG_SYS_MONITOR_BASE    TEXT_BASE
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
 #   define CONFIG_SYS_RAMBOOT
 #endif
@@ -534,11 +538,11 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"netdev=" MK_STR(CONFIG_NETDEV) "\0"				\
 	"tftpflash=tftpboot $loadaddr $uboot; "				\
-		"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
-		"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
-		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
-		"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
-		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
+		"protect off " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "	\
+		"erase " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+		"cp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize; "	\
+		"protect on " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+		"cmp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize\0"	\
 	"fdtaddr=400000\0"						\
 	"console=ttyCPM0\0"						\
 	"setbootargs=setenv bootargs "					\

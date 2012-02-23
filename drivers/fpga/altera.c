@@ -45,7 +45,7 @@
 static int altera_validate (Altera_desc * desc, const char *fn);
 
 /* ------------------------------------------------------------------------- */
-int altera_load( Altera_desc *desc, void *buf, size_t bsize )
+int altera_load(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume a failure */
 
@@ -60,7 +60,7 @@ int altera_load( Altera_desc *desc, void *buf, size_t bsize )
 					__FUNCTION__);
 			ret_val = ACEX1K_load (desc, buf, bsize);
 #elif defined(CONFIG_FPGA_CYCLON2)
-			PRINTF ("%s: Launching the CYCLON II Loader...\n",
+			PRINTF ("%s: Launching the CYCLONE II Loader...\n",
 					__FUNCTION__);
 			ret_val = CYC2_load (desc, buf, bsize);
 #else
@@ -85,7 +85,7 @@ int altera_load( Altera_desc *desc, void *buf, size_t bsize )
 	return ret_val;
 }
 
-int altera_dump( Altera_desc *desc, void *buf, size_t bsize )
+int altera_dump(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume a failure */
 
@@ -206,45 +206,6 @@ int altera_info( Altera_desc *desc )
 		ret_val = FPGA_SUCCESS;
 	} else {
 		printf ("%s: Invalid device descriptor\n", __FUNCTION__);
-	}
-
-	return ret_val;
-}
-
-int altera_reloc( Altera_desc *desc, ulong reloc_offset)
-{
-	int ret_val = FPGA_FAIL;	/* assume a failure */
-
-	if (!altera_validate (desc, (char *)__FUNCTION__)) {
-		printf ("%s: Invalid device descriptor\n", __FUNCTION__);
-	} else {
-		switch (desc->family) {
-		case Altera_ACEX1K:
-#if defined(CONFIG_FPGA_ACEX1K)
-			ret_val = ACEX1K_reloc (desc, reloc_offset);
-#else
-			printf ("%s: No support for ACEX devices.\n",
-					__FUNCTION__);
-#endif
-			break;
-#if defined(CONFIG_FPGA_STRATIX_II)
-		case Altera_StratixII:
-			ret_val = StratixII_reloc (desc, reloc_offset);
-			break;
-#endif
-		case Altera_CYC2:
-#if defined(CONFIG_FPGA_CYCLON2)
-			ret_val = CYC2_reloc (desc, reloc_offset);
-#else
-			printf ("%s: No support for CYCLON II devices.\n",
-					__FUNCTION__);
-#endif
-			break;
-			/* Add new family types here */
-		default:
-			printf ("%s: Unsupported family type, %d\n",
-					__FUNCTION__, desc->family);
-		}
 	}
 
 	return ret_val;

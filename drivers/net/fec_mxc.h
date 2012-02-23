@@ -32,6 +32,8 @@
 #ifndef __FEC_MXC_H
 #define __FEC_MXC_H
 
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
+
 /**
  * Layout description of the FEC
  */
@@ -145,9 +147,17 @@ struct ethernet_regs {
 	uint32_t r_fdxfc;		/* MBAR_ETH + 0x2DC */
 	uint32_t ieee_r_octets_ok;	/* MBAR_ETH + 0x2E0 */
 
-	uint32_t res14[6];		/* MBAR_ETH + 0x2E4-2FC */
+	uint32_t res14[7];		/* MBAR_ETH + 0x2E4-2FC */
 
+#if defined(CONFIG_MX25) || defined(CONFIG_MX53)
+	uint16_t miigsk_cfgr;		/* MBAR_ETH + 0x300 */
+	uint16_t res15[3];		/* MBAR_ETH + 0x302-306 */
+	uint16_t miigsk_enr;		/* MBAR_ETH + 0x308 */
+	uint16_t res16[3];		/* MBAR_ETH + 0x30a-30e */
+	uint32_t res17[60];		/* MBAR_ETH + 0x300-3FF */
+#else
 	uint32_t res15[64];		/* MBAR_ETH + 0x300-3FF */
+#endif
 };
 
 #define FEC_IEVENT_HBERR		0x80000000
@@ -186,6 +196,8 @@ struct ethernet_regs {
 #define FEC_RCNTRL_PROM			0x00000008
 #define FEC_RCNTRL_BC_REJ		0x00000010
 #define FEC_RCNTRL_FCE			0x00000020
+#define FEC_RCNTRL_RGMII		0x00000040
+#define FEC_RCNTRL_RMII			0x00000100
 
 #define FEC_TCNTRL_GTS			0x00000001
 #define FEC_TCNTRL_HBC			0x00000002
@@ -195,6 +207,29 @@ struct ethernet_regs {
 
 #define FEC_ECNTRL_RESET		0x00000001	/* reset the FEC */
 #define FEC_ECNTRL_ETHER_EN		0x00000002	/* enable the FEC */
+#define FEC_ECNTRL_DBSWAP		0x00000100
+
+#define FEC_X_WMRK_STRFWD		0x00000100
+
+#if defined(CONFIG_MX25) || defined(CONFIG_MX53)
+/* defines for MIIGSK */
+/* RMII frequency control: 0=50MHz, 1=5MHz */
+#define MIIGSK_CFGR_FRCONT		(1 << 6)
+/* loopback mode */
+#define MIIGSK_CFGR_LBMODE		(1 << 4)
+/* echo mode */
+#define MIIGSK_CFGR_EMODE		(1 << 3)
+/* MII gasket mode field */
+#define MIIGSK_CFGR_IF_MODE_MASK	(3 << 0)
+/* MMI/7-Wire mode */
+#define MIIGSK_CFGR_IF_MODE_MII		(0 << 0)
+/* RMII mode */
+#define MIIGSK_CFGR_IF_MODE_RMII	(1 << 0)
+/* reflects MIIGSK Enable bit (RO) */
+#define MIIGSK_ENR_READY		(1 << 2)
+/* enable MIGSK (set by default) */
+#define MIIGSK_ENR_EN			(1 << 1)
+#endif
 
 /**
  * @brief Descriptor buffer alignment
@@ -229,7 +264,9 @@ struct fec_bd {
 enum xceiver_type {
 	SEVENWIRE,	/* 7-wire       */
 	MII10,		/* MII 10Mbps   */
-	MII100		/* MII 100Mbps  */
+	MII100,		/* MII 100Mbps  */
+	RMII,		/* RMII */
+	RGMII,		/* RGMII */
 };
 
 /**
@@ -245,6 +282,9 @@ struct fec_priv {
 	bd_t *bd;
 	void *rdb_ptr;
 	void *base_ptr;
+	int dev_id;
+	int phy_id;
+	int (*mii_postcall)(int);
 };
 
 /**

@@ -15,13 +15,13 @@ Changed files:
 - board/freescale/m5373evb/config.mk	config make
 - board/freescale/m5373evb/u-boot.lds	Linker description
 
-- cpu/mcf532x/cpu.c		cpu specific code
-- cpu/mcf532x/cpu_init.c	FBCS, Mux pins, icache and RTC extra regs
-- cpu/mcf532x/interrupts.c	cpu specific interrupt support
-- cpu/mcf532x/speed.c		system, pci, flexbus, and cpu clock
-- cpu/mcf532x/Makefile		Makefile
-- cpu/mcf532x/config.mk		config make
-- cpu/mcf532x/start.S		start up assembly code
+- arch/m68k/cpu/mcf532x/cpu.c		cpu specific code
+- arch/m68k/cpu/mcf532x/cpu_init.c	FBCS, Mux pins, icache and RTC extra regs
+- arch/m68k/cpu/mcf532x/interrupts.c	cpu specific interrupt support
+- arch/m68k/cpu/mcf532x/speed.c		system, pci, flexbus, and cpu clock
+- arch/m68k/cpu/mcf532x/Makefile		Makefile
+- arch/m68k/cpu/mcf532x/config.mk		config make
+- arch/m68k/cpu/mcf532x/start.S		start up assembly code
 
 - doc/README.m5373evb		This readme file
 
@@ -50,12 +50,12 @@ Changed files:
 
 - include/configs/M5373EVB.h		Board specific configuration file
 
-- lib_m68k/board.c			board init function
-- lib_m68k/cache.c
-- lib_m68k/interrupts			Coldfire common interrupt functions
-- lib_m68k/m68k_linux.c
-- lib_m68k/time.c			Timer functions (Dma timer and PIT)
-- lib_m68k/traps.c			Exception init code
+- arch/m68k/lib/board.c			board init function
+- arch/m68k/lib/cache.c
+- arch/m68k/lib/interrupts			Coldfire common interrupt functions
+- arch/m68k/lib/m68k_linux.c
+- arch/m68k/lib/time.c			Timer functions (Dma timer and PIT)
+- arch/m68k/lib/traps.c			Exception init code
 
 1 MCF5373 specific Options/Settings
 ====================================
@@ -77,7 +77,6 @@ RTC_DEBUG		-- define to show RTC debug message
 CONFIG_CMD_DATE		-- enable to use date feature in u-boot
 
 CONFIG_MCFFEC		-- define to use common CF FEC driver
-CONFIG_NET_MULTI	-- define to use multi FEC in u-boot
 CONFIG_MII		-- enable to use MII driver
 CONFIG_CF_DOMII		-- enable to use MII feature in cmd_mii.c
 CONFIG_SYS_DISCOVER_PHY	-- enable PHY discovery
@@ -195,7 +194,6 @@ baudrate    = 115200 bps
 ->
 -> help
 ?	- alias for 'help'
-autoscr - run script from memory
 base	- print or set address offset
 bdinfo	- print Board Info structure
 boot	- boot default, i.e., run 'bootcmd'
@@ -243,6 +241,7 @@ run	- run commands in an environment variable
 saveenv - save environment variables to persistent storage
 setenv	- set environment variables
 sleep	- delay execution for some time
+source	- run script from memory
 tftpboot- boot image via network using TFTP protocol
 version - print monitor version
 -> tftp 0x40800000 uImage
@@ -279,7 +278,7 @@ usbcore: registered new device driver usb
 NET: Registered protocol family 2
 IP route cache hash table entries: 1024 (order: 0, 4096 bytes) TCP established hash table entries: 1024 (order: 1, 8192 bytes) TCP bind hash table entries: 1024 (order: 0, 4096 bytes)
 TCP: Hash tables configured (established 1024 bind 1024) TCP reno registered
-JFFS2 version 2.2. (NAND) © 2001-2006 Red Hat, Inc.
+JFFS2 version 2.2. (NAND) Â© 2001-2006 Red Hat, Inc.
 io scheduler noop registered
 io scheduler cfq registered (default)
 ColdFire internal UART serial driver version 1.00 ttyS0 at 0xfc060000 (irq = 90) is a builtin ColdFire UART

@@ -7,6 +7,7 @@
  */
 
 #include <common.h>
+#include <netdev.h>
 #include <config.h>
 #include <asm/blackfin.h>
 
@@ -19,9 +20,9 @@ int checkboard(void)
 	return 0;
 }
 
-phys_size_t initdram(int board_type)
+#ifdef CONFIG_SMC91111
+int board_eth_init(bd_t *bis)
 {
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_MAX_RAM_SIZE;
-	return gd->bd->bi_memsize;
+	return smc91111_initialize(0, CONFIG_SMC91111_BASE);
 }
+#endif

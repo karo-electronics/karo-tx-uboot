@@ -201,11 +201,11 @@ static void mv88e61xx_port_vlan_config(struct mv88e61xx_config *swconfig,
  */
 static int mv88e61xx_busychk(char *name)
 {
-	u32 reg = 0;
+	u16 reg = 0;
 	u32 timeout = MV88E61XX_PHY_TIMEOUT;
 	do {
 		RD_PHY(name, MV88E61XX_GLB2REG_DEVADR,
-		       MV88E61XX_PHY_CMD, (u16 *) & reg);
+		       MV88E61XX_PHY_CMD, &reg);
 		if (timeout-- == 0) {
 			printf("SMI busy timeout\n");
 			return -1;
@@ -354,7 +354,7 @@ int mv88e61xx_switch_initialize(struct mv88e61xx_config *swconfig)
 		printf("Invalid cpu port config, using default port5\n");
 	}
 
-	RD_PHY(name, MV88E61XX_PRT_OFST, PHY_PHYIDR2, &reg);
+	RD_PHY(name, MV88E61XX_PRT_OFST, MII_PHYSID2, &reg);
 	switch (reg &= 0xfff0) {
 	case 0x1610:
 		idstr = "88E6161";

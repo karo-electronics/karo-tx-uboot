@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2007
+# (C) Copyright 2007-2010
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
 # See file CREDITS for list of people who contributed to this
@@ -24,12 +24,6 @@
 #
 # AMCC 405EZ Reference Platform (Acadia) board
 #
-
-sinclude $(OBJTREE)/board/$(BOARDDIR)/config.tmp
-
-ifndef TEXT_BASE
-TEXT_BASE = 0xFFF80000
-endif
 
 ifeq ($(debug),1)
 PLATFORM_CPPFLAGS += -DDEBUG

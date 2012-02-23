@@ -22,7 +22,7 @@
  */
 
 #include <common.h>
-#include <ppc4xx.h>
+#include <asm/ppc4xx.h>
 #include <asm/processor.h>
 
 /*
@@ -51,7 +51,8 @@ unsigned long flash_init (void)
 	int size_val = 0;
 
 	debug("[%s, %d] Entering ...\n", __FUNCTION__, __LINE__);
-	debug("[%s, %d] flash_info = 0x%08X ...\n", __FUNCTION__, __LINE__, flash_info);
+	debug("[%s, %d] flash_info = 0x%p ...\n", __func__, __LINE__,
+						flash_info);
 
 	/* Init: no FLASHes known */
 	for (i=0; i<CONFIG_SYS_MAX_FLASH_BANKS; ++i) {
@@ -75,9 +76,9 @@ unsigned long flash_init (void)
 	debug("[%s, %d] Test point ...\n", __FUNCTION__, __LINE__);
 
 	/* Re-do sizing to get full correct info */
-	mtdcr(ebccfga, pb0cr);
-	pbcr = mfdcr(ebccfgd);
-	mtdcr(ebccfga, pb0cr);
+	mtdcr(EBC0_CFGADDR, PB0CR);
+	pbcr = mfdcr(EBC0_CFGDATA);
+	mtdcr(EBC0_CFGADDR, PB0CR);
 	base = -size;
 	switch (size) {
 	case 1 << 20:
@@ -97,7 +98,7 @@ unsigned long flash_init (void)
 		break;
 	}
 	pbcr = (pbcr & 0x0001ffff) | base | (size_val << 17);
-	mtdcr(ebccfgd, pbcr);
+	mtdcr(EBC0_CFGDATA, pbcr);
 	debug("[%s, %d] Test point ...\n", __FUNCTION__, __LINE__);
 
 	/* Monitor protection ON by default */
