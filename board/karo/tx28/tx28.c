@@ -22,11 +22,15 @@
  */
 
 #include <common.h>
+#include <errno.h>
+#include <asm/io.h>
+#include <asm/gpio.h>
+#include <asm/arch/iomux-mx28.h>
+#include <asm/arch/imx-regs.h>
 #include <asm/arch/regs-pinctrl.h>
-#include <asm/arch/pinctrl.h>
 #include <asm/arch/regs-clkctrl.h>
 #include <asm/arch/regs-ocotp.h>
-#include <asm/errno.h>
+#include <asm/arch/sys_proto.h>
 
 #include <mmc.h>
 #include <imx_ssp_mmc.h>
@@ -38,89 +42,65 @@ static const int mach_type = MACH_TYPE_TX28;
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_IMX_SSP_MMC
-
 /* MMC pins */
-static struct pin_desc mmc0_pins_desc[] = {
-	{ PINID_SSP0_DATA0, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA1, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA2, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA3, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA4, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA5, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA6, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DATA7, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_CMD, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_DETECT, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_SSP0_SCK, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-};
-
-static struct pin_group mmc0_pins = {
-	.pins		= mmc0_pins_desc,
-	.nr_pins	= ARRAY_SIZE(mmc0_pins_desc)
-};
-
-struct imx_ssp_mmc_cfg ssp_mmc_cfg[2] = {
-	{REGS_SSP0_BASE, HW_CLKCTRL_SSP0, BM_CLKCTRL_CLKSEQ_BYPASS_SSP0},
-	{REGS_SSP1_BASE, HW_CLKCTRL_SSP1, BM_CLKCTRL_CLKSEQ_BYPASS_SSP1},
+static iomux_cfg_t mmc0_pads[] = {
+	MX28_PAD_SSP0_DATA0__SSP0_D0,
+	MX28_PAD_SSP0_DATA1__SSP0_D1,
+	MX28_PAD_SSP0_DATA2__SSP0_D2,
+	MX28_PAD_SSP0_DATA3__SSP0_D3,
+	MX28_PAD_SSP0_DATA4__SSP0_D4,
+	MX28_PAD_SSP0_DATA5__SSP0_D5,
+	MX28_PAD_SSP0_DATA6__SSP0_D6,
+	MX28_PAD_SSP0_DATA7__SSP0_D7,
+	MX28_PAD_SSP0_CMD__SSP0_CMD,
+	MX28_PAD_SSP0_DETECT__SSP0_CARD_DETECT,
+	MX28_PAD_SSP0_SCK__SSP0_SCK,
 };
 #endif
 
 /* ENET pins */
-static struct pin_desc enet_pins_desc[] = {
-	{ PINID_ENET0_MDC, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_MDIO, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_RX_EN, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_RXD0, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_RXD1, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_TX_EN, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_TXD0, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET0_TXD1, PIN_FUN1, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_ENET_CLK, PIN_FUN1, PAD_8MA, PAD_3V3, 1 }
+static iomux_cfg_t enet_pads[] = {
+	MX28_PAD_PWM4__GPIO_3_29,
+	MX28_PAD_ENET0_RX_CLK__GPIO_4_13,
+	MX28_PAD_ENET0_MDC__ENET0_MDC,
+	MX28_PAD_ENET0_MDIO__ENET0_MDIO,
+	MX28_PAD_ENET0_RX_EN__ENET0_RX_EN,
+	MX28_PAD_ENET0_RXD0__ENET0_RXD0,
+	MX28_PAD_ENET0_RXD1__ENET0_RXD1,
+	MX28_PAD_ENET0_TX_EN__ENET0_TX_EN,
+	MX28_PAD_ENET0_TXD0__ENET0_TXD0,
+	MX28_PAD_ENET0_TXD1__ENET0_TXD1,
+	MX28_PAD_ENET_CLK__CLKCTRL_ENET,
 };
 
-static struct pin_group enet_pins = {
-	.pins		= enet_pins_desc,
-	.nr_pins	= ARRAY_SIZE(enet_pins_desc),
+static iomux_cfg_t duart_pads[] = {
+	MX28_PAD_PWM0__GPIO_3_16,
+	MX28_PAD_PWM1__GPIO_3_17,
+	MX28_PAD_I2C0_SCL__GPIO_3_24,
+	MX28_PAD_I2C0_SDA__GPIO_3_25,
+
+	MX28_PAD_AUART0_RTS__AUART0_RTS,
+	MX28_PAD_AUART0_CTS__AUART0_CTS,
+	MX28_PAD_AUART0_TX__AUART0_TX,
+	MX28_PAD_AUART0_RX__AUART0_RX,
 };
 
-static struct pin_desc duart_pins_desc[] = {
-	{ PINID_PWM0, PIN_GPIO, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_PWM1, PIN_GPIO, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_I2C0_SCL, PIN_GPIO, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_I2C0_SDA, PIN_GPIO, PAD_8MA, PAD_3V3, 1 },
-
-	{ PINID_AUART0_RTS, PIN_FUN3, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_AUART0_CTS, PIN_FUN3, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_AUART0_TX, PIN_FUN3, PAD_8MA, PAD_3V3, 1 },
-	{ PINID_AUART0_RX, PIN_FUN3, PAD_8MA, PAD_3V3, 1 },
-};
-
-static struct pin_group duart_pins = {
-	.pins = duart_pins_desc,
-	.nr_pins = ARRAY_SIZE(duart_pins_desc),
-};
-
-static struct pin_desc gpmi_pins_desc[] = {
-	{ PINID_GPMI_D00, PIN_FUN1, },
-	{ PINID_GPMI_D01, PIN_FUN1, },
-	{ PINID_GPMI_D02, PIN_FUN1, },
-	{ PINID_GPMI_D03, PIN_FUN1, },
-	{ PINID_GPMI_D04, PIN_FUN1, },
-	{ PINID_GPMI_D05, PIN_FUN1, },
-	{ PINID_GPMI_D06, PIN_FUN1, },
-	{ PINID_GPMI_D07, PIN_FUN1, },
-	{ PINID_GPMI_CE0N, PIN_FUN1, },
-	{ PINID_GPMI_RDY0, PIN_FUN1, },
-	{ PINID_GPMI_RDN, PIN_FUN1, },
-	{ PINID_GPMI_WRN, PIN_FUN1, },
-	{ PINID_GPMI_ALE, PIN_FUN1, },
-	{ PINID_GPMI_CLE, PIN_FUN1, },
-	{ PINID_GPMI_RESETN, PIN_FUN1, },
-};
-
-static struct pin_group gpmi_pins = {
-	.pins		= gpmi_pins_desc,
-	.nr_pins	= ARRAY_SIZE(gpmi_pins_desc),
+static iomux_cfg_t gpmi_pads[] = {
+	MX28_PAD_GPMI_D00__GPMI_D0,
+	MX28_PAD_GPMI_D01__GPMI_D1,
+	MX28_PAD_GPMI_D02__GPMI_D2,
+	MX28_PAD_GPMI_D03__GPMI_D3,
+	MX28_PAD_GPMI_D04__GPMI_D4,
+	MX28_PAD_GPMI_D05__GPMI_D5,
+	MX28_PAD_GPMI_D06__GPMI_D6,
+	MX28_PAD_GPMI_D07__GPMI_D7,
+	MX28_PAD_GPMI_CE0N__GPMI_CE0N,
+	MX28_PAD_GPMI_RDY0__GPMI_READY0,
+	MX28_PAD_GPMI_RDN__GPMI_RDN,
+	MX28_PAD_GPMI_WRN__GPMI_WRN,
+	MX28_PAD_GPMI_ALE__GPMI_ALE,
+	MX28_PAD_GPMI_CLE__GPMI_CLE,
+	MX28_PAD_GPMI_RESETN__GPMI_RESETN,
 };
 
 /*
@@ -128,7 +108,7 @@ static struct pin_group gpmi_pins = {
  */
 static void duart_init(void)
 {
-	pin_set_group(&duart_pins);
+	mx28_common_spl_init(&duart_pads, ARRAY_SIZE(duart_pads));
 }
 
 int board_init(void)
@@ -150,8 +130,6 @@ int dram_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_IMX_SSP_MMC
-
 #ifdef CONFIG_DYNAMIC_MMC_DEVNO
 int get_mmc_env_devno(void)
 {
@@ -162,68 +140,31 @@ int get_mmc_env_devno(void)
 }
 #endif
 
-
-u32 ssp_mmc_is_wp(struct mmc *mmc)
-{
-	return 0;
-}
-
-int ssp_mmc_gpio_init(bd_t *bis)
-{
-	s32 status = 0;
-	u32 index = 0;
-
-	for (index = 0; index < CONFIG_SYS_SSP_MMC_NUM; index++) {
-		switch (index) {
-		case 0:
-			/* Set up MMC pins */
-			pin_set_group(&mmc0_pins);
-			break;
-
-		default:
-			printf("Warning: more ssp mmc controllers configured(%d) than supported by the board(2)\n",
-				CONFIG_SYS_SSP_MMC_NUM);
-			return status;
-		}
-		status |= imx_ssp_mmc_initialize(bis, &ssp_mmc_cfg[index]);
-	}
-
-	return status;
-}
-
-int board_mmc_init(bd_t *bis)
-{
-	if (!ssp_mmc_gpio_init(bis))
-		return 0;
-	else
-		return -1;
-}
-
-#endif
-
 #if defined(CONFIG_MXC_FEC) && defined(CONFIG_GET_FEC_MAC_ADDR_FROM_IIM)
 int fec_get_mac_addr(unsigned char *mac)
 {
 	u32 val;
 	int timeout = 1000;
+	struct mx28_ocotp_regs *ocotp_regs =
+		(struct mx28_ocotp_regs *)MXS_OCOTP_BASE;
 
 	/* set this bit to open the OTP banks for reading */
-	REG_WR(REGS_OCOTP_BASE, HW_OCOTP_CTRL_SET,
-		BM_OCOTP_CTRL_RD_BANK_OPEN);
+	writel(OCOTP_CTRL_RD_BANK_OPEN,
+		ocotp_regs->hw_ocotp_ctrl_set);
 
 	/* wait until OTP contents are readable */
-	while (BM_OCOTP_CTRL_BUSY & REG_RD(REGS_OCOTP_BASE, HW_OCOTP_CTRL)) {
+	while (OCOTP_CTRL_BUSY & readl(ocotp_regs->hw_ocotp_ctrl)) {
 		if (timeout-- < 0)
 			return -ETIMEDOUT;
 		udelay(100);
 	}
 
-	val = REG_RD(REGS_OCOTP_BASE, HW_OCOTP_CUSTn(0));
+	val = readl(ocotp_regs->hw_ocotp_cust0);
 	mac[0] = (val >> 24) & 0xFF;
 	mac[1] = (val >> 16) & 0xFF;
 	mac[2] = (val >> 8) & 0xFF;
 	mac[3] = (val >> 0) & 0xFF;
-	val = REG_RD(REGS_OCOTP_BASE, HW_OCOTP_CUSTn(1));
+	val = readl(ocotp_regs->hw_ocotp_cust1);
 	mac[4] = (val >> 24) & 0xFF;
 	mac[5] = (val >> 16) & 0xFF;
 
@@ -234,19 +175,15 @@ int fec_get_mac_addr(unsigned char *mac)
 void enet_board_init(void)
 {
 	/* Set up ENET pins */
-	pin_set_group(&enet_pins);
+	mx28_common_spl_init(&enet_pads, ARRAY_SIZE(enet_pads));
 
 	/* Power on the external phy */
-	pin_gpio_set(PINID_PWM4, 1);
-	pin_gpio_direction(PINID_PWM4, 1);
-	pin_set_type(PINID_PWM4, PIN_GPIO);
+	gpio_direction_output(MX28_PAD_PWM4__GPIO_3_29, 1);
 
 	/* Reset the external phy */
-	pin_gpio_set(PINID_ENET0_RX_CLK, 0);
-	pin_gpio_direction(PINID_ENET0_RX_CLK, 1);
-	pin_set_type(PINID_ENET0_RX_CLK, PIN_GPIO);
+	gpio_direction_output(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 1);
 	udelay(200);
-	pin_gpio_set(PINID_ENET0_RX_CLK, 1);
+	gpio_set_value(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 0);
 }
 
 #ifdef CONFIG_MXS_NAND
@@ -255,7 +192,7 @@ extern int mxs_gpmi_nand_init(struct mtd_info *mtd, struct nand_chip *chip);
 
 int board_nand_init(struct mtd_info *mtd, struct nand_chip *chip)
 {
-	pin_set_group(&gpmi_pins);
+	mx28_common_spl_init(&gpmi_pads, ARRAY_SIZE(gpmi_pads));
 	return mxs_gpmi_nand_init(mtd, chip);
 }
 #endif

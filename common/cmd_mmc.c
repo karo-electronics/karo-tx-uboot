@@ -87,42 +87,12 @@ U_BOOT_CMD(
 );
 #else /* !CONFIG_GENERIC_MMC */
 
-<<<<<<< HEAD
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-#define MMC_PARTITION_SWITCH(mmc, part, enable_boot) \
-	do { \
-		if (IS_SD(mmc)) {	\
-			if (part > 1)	{\
-				printf( \
-				"\nError: SD partition can only be 0 or 1\n");\
-				return 1;	\
-			}	\
-			if (sd_switch_partition(mmc, part) < 0) {	\
-				if (part > 0) { \
-					printf("\nError: Unable to switch SD "\
-					"partition\n");\
-					return 1;	\
-				}	\
-			}	\
-		} else {	\
-			if (mmc_switch_partition(mmc, part, enable_boot) \
-				< 0) {	\
-				printf("Error: Fail to switch "	\
-					"partition to %d\n", part);	\
-				return 1;	\
-			}	\
-		} \
-	} while (0)
-#endif
-
-=======
 enum mmc_state {
 	MMC_INVALID,
 	MMC_READ,
 	MMC_WRITE,
 	MMC_ERASE,
 };
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 static void print_mmcinfo(struct mmc *mmc)
 {
 	printf("Device: %s\n", mmc->name);
@@ -161,12 +131,6 @@ int do_mmcinfo (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	mmc = find_mmc_device(curr_device);
 
 	if (mmc) {
-<<<<<<< HEAD
-		if (mmc_init(mmc))
-			puts("MMC card init failed!\n");
-		else
-			print_mmcinfo(mmc);
-=======
 		mmc_init(mmc);
 
 		print_mmcinfo(mmc);
@@ -174,32 +138,19 @@ int do_mmcinfo (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	} else {
 		printf("no mmc device at slot %x\n", curr_device);
 		return 1;
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 	}
 }
 
-<<<<<<< HEAD
-U_BOOT_CMD(mmcinfo, 2, 0, do_mmcinfo,
-	"mmcinfo <dev num>-- display MMC info",
-=======
 U_BOOT_CMD(
 	mmcinfo, 1, 0, do_mmcinfo,
 	"display MMC info",
 	"    - device number of the device to dislay info of\n"
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 	""
 );
 
 int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-<<<<<<< HEAD
-	int rc = 0;
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-	u32 part = 0;
-#endif
-=======
 	enum mmc_state state;
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 
 	if (argc < 2)
 		return cmd_usage(cmdtp);
@@ -245,23 +196,6 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 		puts("get mmc type error!\n");
 		return 1;
-<<<<<<< HEAD
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-	case 7: /* Fall through */
-		part = simple_strtoul(argv[6], NULL, 10);
-#endif
-	default: /* at least 5 args */
-		if (strcmp(argv[1], "read") == 0) {
-			int dev = simple_strtoul(argv[2], NULL, 10);
-			void *addr = (void *)simple_strtoul(argv[3], NULL, 16);
-			u32 cnt = simple_strtoul(argv[5], NULL, 16);
-			u32 n;
-			u32 blk = simple_strtoul(argv[4], NULL, 16);
-
-			struct mmc *mmc = find_mmc_device(dev);
-
-			if (!mmc)
-=======
 	} else if (strcmp(argv[1], "list") == 0) {
 		print_mmc_devices('\n');
 		return 0;
@@ -279,45 +213,16 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			if (part > PART_ACCESS_MASK) {
 				printf("#part_num shouldn't be larger"
 					" than %d\n", PART_ACCESS_MASK);
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 				return 1;
 			}
 		} else
 			return cmd_usage(cmdtp);
 
-<<<<<<< HEAD
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-			printf("\nMMC read: dev # %d, block # %d, "
-				"count %d partition # %d ... \n",
-				dev, blk, cnt, part);
-#else
-			printf("\nMMC read: dev # %d, block # %d,"
-				"count %d ... \n", dev, blk, cnt);
-#endif
-
-			mmc_init(mmc);
-
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-			if (((mmc->boot_config &
-				EXT_CSD_BOOT_PARTITION_ACCESS_MASK) != part)
-				|| IS_SD(mmc)) {
-				/*
-				 * After mmc_init, we now know whether
-				 * this is a eSD/eMMC which support boot
-				 * partition
-				 */
-				MMC_PARTITION_SWITCH(mmc, part, 0);
-			}
-#endif
-
-			n = mmc->block_dev.block_read(dev, blk, cnt, addr);
-=======
 		mmc = find_mmc_device(dev);
 		if (!mmc) {
 			printf("no mmc device at slot %x\n", dev);
 			return 1;
 		}
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 
 		mmc_init(mmc);
 		if (part != -1) {
@@ -327,23 +232,10 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				return 1;
 			}
 
-<<<<<<< HEAD
-			printf("%d blocks read: %s\n",
-				n, (n==cnt) ? "OK" : "ERROR");
-			return (n == cnt) ? 0 : 1;
-		} else if (strcmp(argv[1], "write") == 0) {
-			int dev = simple_strtoul(argv[2], NULL, 10);
-			void *addr = (void *)simple_strtoul(argv[3], NULL, 16);
-			u32 cnt = simple_strtoul(argv[5], NULL, 16);
-			u32 n;
-
-			struct mmc *mmc = find_mmc_device(dev);
-=======
 			if (part != mmc->part_num) {
 				ret = mmc_switch_part(dev, part);
 				if (!ret)
 					mmc->part_num = part;
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 
 				printf("switch to partions #%d, %s\n",
 						part, (!ret) ? "OK" : "ERROR");
@@ -359,17 +251,6 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 0;
 	}
 
-<<<<<<< HEAD
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-			printf("\nMMC write: dev # %d, block # %d, "
-				"count %d, partition # %d ... \n",
-				dev, blk, cnt, part);
-#else
-			printf("\nMMC write: dev # %d, block # %d, "
-				"count %d ... \n",
-				dev, blk, cnt);
-#endif
-=======
 	if (strcmp(argv[1], "read") == 0)
 		state = MMC_READ;
 	else if (strcmp(argv[1], "write") == 0)
@@ -397,28 +278,11 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			printf("no mmc device at slot %x\n", curr_device);
 			return 1;
 		}
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 
 		printf("\nMMC %s: dev # %d, block # %d, count %d ... ",
 				argv[1], curr_device, blk, cnt);
 
-<<<<<<< HEAD
-#ifdef CONFIG_BOOT_PARTITION_ACCESS
-			if (((mmc->boot_config &
-				EXT_CSD_BOOT_PARTITION_ACCESS_MASK) != part)
-				|| IS_SD(mmc)) {
-				/*
-				 * After mmc_init, we now know whether this is a
-				 * eSD/eMMC which support boot partition
-				 */
-				MMC_PARTITION_SWITCH(mmc, part, 1);
-			}
-#endif
-
-			n = mmc->block_dev.block_write(dev, blk, cnt, addr);
-=======
 		mmc_init(mmc);
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 
 		switch (state) {
 		case MMC_READ:
@@ -449,25 +313,11 @@ int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 U_BOOT_CMD(
 	mmc, 6, 1, do_mmcops,
 	"MMC sub system",
-<<<<<<< HEAD
-	"mmc read <device num> addr blk# cnt\n"
-	"mmc write <device num> addr blk# cnt\n"
-	"mmc rescan <device num>\n"
-=======
 	"read addr blk# cnt\n"
 	"mmc write addr blk# cnt\n"
 	"mmc erase blk# cnt\n"
 	"mmc rescan\n"
 	"mmc part - lists available partition on current mmc device\n"
 	"mmc dev [dev] [part] - show or set current mmc device [partition]\n"
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
-	"mmc list - lists available devices");
-#else
-U_BOOT_CMD(
-	mmc, 7, 1, do_mmcops,
-	"MMC sub system",
-	"mmc read <device num> addr blk# cnt [partition]\n"
-	"mmc write <device num> addr blk# cnt [partition]\n"
-	"mmc rescan <device num>\n"
 	"mmc list - lists available devices");
 #endif

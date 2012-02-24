@@ -16,19 +16,23 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-#ifndef __MX28_EVK_H
-#define __MX28_EVK_H
+#ifndef __CONFIG_H
+#define __CONFIG_H
 
-#include <asm/arch/mx28.h>
+#include <asm/arch/regs-base.h>
 
 /*
- * SoC configurations
+ * Ka-Ro TX28 board - SoC configuration
  */
 #define CONFIG_MX28				/* i.MX28 SoC */
-#define CONFIG_MX28_TO1_2
 #define CONFIG_SYS_HZ		1000		/* Ticks per second */
-/* ROM loads UBOOT into DRAM */
-#define CONFIG_SKIP_RELOCATE_UBOOT
+
+#define CONFIG_SPL
+#define CONFIG_SPL_NO_CPU_SUPPORT_CODE
+#define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mx28"
+#define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mx28/u-boot-spl.lds"
+#define CONFIG_SPL_LIBCOMMON_SUPPORT
+#define CONFIG_SPL_LIBGENERIC_SUPPORT
 
 /*
  * Memory configurations
@@ -36,7 +40,7 @@
 #define CONFIG_NR_DRAM_BANKS	1		/* 1 bank of DRAM */
 #define PHYS_SDRAM_1		0x40000000	/* Base address */
 #define PHYS_SDRAM_1_SIZE	0x08000000	/* 128 MB */
-#define CONFIG_STACKSIZE	0x00020000	/* 128 KB stack */
+#define CONFIG_STACKSIZE	0x00010000	/* 128 KB stack */
 #define CONFIG_SYS_MALLOC_LEN	0x00400000	/* 4 MB for malloc */
 #define CONFIG_SYS_GBL_DATA_SIZE 128		/* Reserved for initial data */
 #define CONFIG_SYS_MEMTEST_START 0x40000000	/* Memtest start address */
@@ -64,6 +68,9 @@
 /*
  * Boot Linux
  */
+#define xstr(s)	str(s)
+#define str(s)	#s
+
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTDELAY	3
@@ -95,13 +102,10 @@
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"autostart=no\0"
 
-#define __stringify(s)			_stringify(s)
-#define _stringify(s)			#s
-
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":128k@" \
-	__stringify(CONFIG_ENV_OFFSET)				      \
+	xstr(CONFIG_ENV_OFFSET)				      \
 	"(env),1m@0x40000(u-boot),4m(linux),16m(rootfs),-(userfs)"
 
 /*
@@ -115,7 +119,10 @@
 /*
  * Serial Driver
  */
-#define CONFIG_UARTDBG_CLK		24000000
+#define	CONFIG_PL011_SERIAL
+#define	CONFIG_PL011_CLOCK		24000000
+#define	CONFIG_PL01x_PORTS		{ (void *)MXS_UARTDBG_BASE }
+#define	CONFIG_CONS_INDEX		0
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
@@ -148,6 +155,7 @@
 #define CONFIG_MTD_DEVICE
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_MXS_NAND
+#define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_MXS_DMA_CHANNEL	4
 #define CONFIG_SYS_MAX_FLASH_SECT	1024
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
@@ -215,4 +223,8 @@
 #define BOOT_MODE_SD0 0x9
 #define BOOT_MODE_SD1 0xa
 
-#endif /* __MX28_EVK_H */
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
+					GENERATED_GBL_DATA_SIZE)
+
+#endif /* __CONFIG_H */

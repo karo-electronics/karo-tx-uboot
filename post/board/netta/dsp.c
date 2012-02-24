@@ -22,9 +22,7 @@
  */
 
 #include <common.h>
-#include <arm926ejs.h>
 
-#if defined(CONFIG_INTEGRATOR) || defined(CONFIG_MX25)
 /*
  * DSP test
  *

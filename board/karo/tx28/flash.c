@@ -1,14 +1,15 @@
 #include <common.h>
 #include <malloc.h>
 #include <nand.h>
+#include <errno.h>
 
 #include <linux/err.h>
 
 #include <asm/io.h>
 #include <asm/sizes.h>
-#include <asm/errno.h>
-#include <asm/arch/mxs_gpmi-regs.h>
-#include <asm/arch/mxs_gpmi-bch-regs.h>
+#include <asm/arch/regs-base.h>
+#include <asm/arch/regs-gpmi.h>
+#include <asm/arch/regs-bch.h>
 
 #define FCB_START_BLOCK		0
 #define NUM_FCB_BLOCKS		1
@@ -71,7 +72,7 @@ struct mx28_dbbt {
 	u32 bb_num[2040 / 4];
 };
 
-#define BF_VAL(v, bf)		(((v) & BM_##bf) >> BP_##bf)
+#define BF_VAL(v, bf)		(((v) & bf##_MASK) >> bf##_OFFSET)
 
 static nand_info_t *mtd = &nand_info[0];
 
@@ -151,8 +152,8 @@ static int calc_bb_offset(nand_info_t *mtd, struct mx28_fcb *fcb)
 static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block, int fw2_start_block,
 				size_t fw_size)
 {
-	volatile void *gpmi_base = __ioremap(GPMI_BASE_ADDR, SZ_4K, 1);
-	volatile void *bch_base = __ioremap(BCH_BASE_ADDR, SZ_4K, 1);
+	volatile struct mx28_gpmi_regs *gpmi_base = __ioremap(MXS_GPMI_BASE, SZ_4K, 1);
+	volatile struct mx28_bch_regs *bch_base = __ioremap(MXS_BCH_BASE, SZ_4K, 1);
 	u32 fl0, fl1;
 	u32 t0, t1;
 	int metadata_size;
@@ -164,12 +165,12 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block, int fw2_start
 		return ERR_PTR(-ENOMEM);
 	}
 
-	fl0 = readl(bch_base + HW_BCH_FLASH0LAYOUT0);
-	fl1 = readl(bch_base + HW_BCH_FLASH0LAYOUT1);
-	t0 = readl(gpmi_base + HW_GPMI_TIMING0);
-	t1 = readl(gpmi_base + HW_GPMI_TIMING1);
+	fl0 = readl(bch_base->hw_bch_flash0layout0);
+	fl1 = readl(bch_base->hw_bch_flash0layout1);
+	t0 = readl(gpmi_base->hw_gpmi_timing0);
+	t1 = readl(gpmi_base->hw_gpmi_timing1);
 
-	metadata_size = BF_VAL(fl0, BCH_FLASH0LAYOUT0_META_SIZE);
+	metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
 
 	fcb = buf + ALIGN(metadata_size, 4);
 	fcb_offs = (void *)fcb - buf;
@@ -189,14 +190,14 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block, int fw2_start
 	fcb->total_page_size = mtd->writesize + mtd->oobsize;
 	fcb->sectors_per_block = mtd->erasesize / mtd->writesize;
 
-	fcb->ecc_block0_type = BF_VAL(fl0, BCH_FLASH0LAYOUT0_ECC0);
-	fcb->ecc_block0_size = BF_VAL(fl0, BCH_FLASH0LAYOUT0_DATA0_SIZE);
-	fcb->ecc_blockn_type = BF_VAL(fl1, BCH_FLASH0LAYOUT1_ECCN);
-	fcb->ecc_blockn_size = BF_VAL(fl1, BCH_FLASH0LAYOUT1_DATAN_SIZE);
+	fcb->ecc_block0_type = BF_VAL(fl0, BCH_FLASHLAYOUT0_ECC0);
+	fcb->ecc_block0_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_DATA0_SIZE);
+	fcb->ecc_blockn_type = BF_VAL(fl1, BCH_FLASHLAYOUT1_ECCN);
+	fcb->ecc_blockn_size = BF_VAL(fl1, BCH_FLASHLAYOUT1_DATAN_SIZE);
 
-	fcb->metadata_size = BF_VAL(fl0, BCH_FLASH0LAYOUT0_META_SIZE);
-	fcb->ecc_blocks_per_page = BF_VAL(fl0, BCH_FLASH0LAYOUT0_NBLOCKS);
-	fcb->bch_mode = readl(bch_base + HW_BCH_MODE);
+	fcb->metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
+	fcb->ecc_blocks_per_page = BF_VAL(fl0, BCH_FLASHLAYOUT0_NBLOCKS);
+	fcb->bch_mode = readl(bch_base->hw_bch_mode);
 /*
 	fcb->boot_patch = 0;
 	fcb->patch_sectors = 0;
@@ -233,7 +234,7 @@ static int find_fcb(void *ref, int page)
 	}
 	chip->select_chip(mtd, 0);
 	chip->cmdfunc(mtd, NAND_CMD_READ0, 0x00, page);
-	ret = chip->ecc.read_page_raw(mtd, chip, buf);
+	ret = chip->ecc.read_page_raw(mtd, chip, buf, page);
 	if (ret) {
 		printf("Failed to read FCB from page %u: %d\n", page, ret);
 		return ret;
@@ -525,7 +526,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		extra_blocks * mtd->erasesize;
 	erase_opts.quiet = 1;
 
-	printf("Erasing flash @ %08lx..%08lx\n", erase_opts.offset,
+	printf("Erasing flash @ %08llx..%08llx\n", erase_opts.offset,
 		erase_opts.offset + erase_opts.length - 1);
 
 	ret = nand_erase_opts(mtd, &erase_opts);
@@ -537,7 +538,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		fcb->fw1_start_page * page_size,
 		fcb->fw1_start_page * page_size + size, addr);
 	ret = nand_write_skip_bad(mtd, fcb->fw1_start_page * page_size,
-				&size, addr);
+				&size, addr, WITH_DROP_FFS);
 	if (ret) {
 		printf("Failed to program flash: %d\n", ret);
 		return ret;
@@ -549,7 +550,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	printf("Programming redundant U-Boot image to block %lu\n",
 		fw2_start_block);
 	erase_opts.offset = fcb->fw2_start_page * page_size;
-	printf("Erasing flash @ %08lx..%08lx\n", erase_opts.offset,
+	printf("Erasing flash @ %08llx..%08llx\n", erase_opts.offset,
 		erase_opts.offset + erase_opts.length - 1);
 
 	ret = nand_erase_opts(mtd, &erase_opts);
@@ -561,7 +562,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		fcb->fw2_start_page * page_size,
 		fcb->fw2_start_page * page_size + size, addr);
 	ret = nand_write_skip_bad(mtd, fcb->fw2_start_page * page_size,
-				&size, addr);
+				&size, addr, WITH_DROP_FFS);
 	if (ret) {
 		printf("Failed to program flash: %d\n", ret);
 		return ret;

@@ -41,16 +41,9 @@ COBJS-$(CONFIG_MXS_SPI) += mxs_spi.o
 COBJS-$(CONFIG_OC_TINY_SPI) += oc_tiny_spi.o
 COBJS-$(CONFIG_OMAP3_SPI) += omap3_spi.o
 COBJS-$(CONFIG_SOFT_SPI) += soft_spi.o
-<<<<<<< HEAD
-COBJS-$(CONFIG_IMX_ECSPI) += imx_ecspi.o
-COBJS-$(CONFIG_IMX_CSPI) += imx_cspi.o
-COBJS-$(CONFIG_IMX_SPI_PMIC) += imx_spi_pmic.o
-COBJS-$(CONFIG_IMX_SPI_CPLD) += imx_spi_cpld.o
-=======
 COBJS-$(CONFIG_SH_SPI) += sh_spi.o
 COBJS-$(CONFIG_FSL_ESPI) += fsl_espi.o
 COBJS-$(CONFIG_TEGRA2_SPI) += tegra2_spi.o
->>>>>>> 9a3aae22edf1eda6326cc51c28631ca5c23b7706
 
 COBJS	:= $(COBJS-y)
 SRCS	:= $(COBJS:.o=.c)

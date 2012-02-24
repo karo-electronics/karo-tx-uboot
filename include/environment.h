@@ -106,20 +106,14 @@ extern unsigned long nand_env_oob_offset;
 #endif /* CONFIG_ENV_IS_IN_MG_DISK */
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
-# ifndef CONFIG_ENV_OFFSET
-#  error "Need to define CONFIG_ENV_OFFSET when using CONFIG_ENV_IS_IN_MMC"
+# ifndef	CONFIG_ENV_ADDR
+#  define	CONFIG_ENV_ADDR	CONFIG_ENV_OFFSET
 # endif
-# ifndef CONFIG_ENV_ADDR
-#  define CONFIG_ENV_ADDR	(CONFIG_ENV_OFFSET)
-# endif
-# ifndef CONFIG_ENV_OFFSET
-#  define CONFIG_ENV_OFFSET (CONFIG_ENV_ADDR)
+# ifndef	CONFIG_ENV_OFFSET
+#  define	CONFIG_ENV_OFFSET CONFIG_ENV_ADDR
 # endif
 # ifdef CONFIG_ENV_OFFSET_REDUND
 #  define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-# endif
-# ifdef CONFIG_ENV_IS_EMBEDDED
-#  define ENV_IS_EMBEDDED	1
 # endif
 #endif /* CONFIG_ENV_IS_IN_MMC */
 

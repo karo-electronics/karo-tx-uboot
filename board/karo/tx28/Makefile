@@ -1,6 +1,6 @@
 #
-# (C) Copyright 2000-2006
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# (C) Copyright 2009 DENX Software Engineering
+# Author: John Rigby <jcrigby@gmail.com>
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -23,7 +23,7 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
 COBJS	:= tx28.o
 ifeq ($(CONFIG_CMD_ROMUPDATE),y)
@@ -36,20 +36,12 @@ OBJS	:= $(addprefix $(obj),$(COBJS))
 SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS) $(SOBJS)
-
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
+	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
 
 #########################################################################
 
-# defines $(obj).depend target
 include $(SRCTREE)/rules.mk
 
 sinclude $(obj).depend
 
 #########################################################################
-
