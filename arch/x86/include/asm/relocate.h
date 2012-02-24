@@ -1,7 +1,6 @@
 /*
- * U-boot - linkage.h
- *
- * Copyright (c) 2005-2007 Analog Devices Inc.
+ * (C) Copyright 2011
+ * Graeme Russ, <graeme.russ@gmail.com>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -18,11 +17,17 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- * MA 02110-1301 USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 
-#ifndef __ASM_LINKAGE_H
-#define __ASM_LINKAGE_H
+#ifndef _RELOCATE_H_
+#define _RELOCATE_H_
 
-#endif
+#include <common.h>
+
+int copy_uboot_to_ram(void);
+int clear_bss(void);
+int do_elf_reloc_fixups(void);
+
+#endif	/* !_RELOCATE_H_ */

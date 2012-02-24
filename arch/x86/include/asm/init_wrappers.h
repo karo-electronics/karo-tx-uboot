@@ -1,7 +1,6 @@
 /*
- * U-boot - linkage.h
- *
- * Copyright (c) 2005-2007 Analog Devices Inc.
+ * (C) Copyright 2011
+ * Graeme Russ, <graeme.russ@gmail.com>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -18,11 +17,26 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- * MA 02110-1301 USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 
-#ifndef __ASM_LINKAGE_H
-#define __ASM_LINKAGE_H
+#ifndef _INIT_WRAPPERS_H_
+#define _INIT_WRAPPERS_H_
 
-#endif
+int serial_initialize_r(void);
+int env_relocate_r(void);
+int pci_init_r(void);
+int jumptable_init_r(void);
+int pcmcia_init_r(void);
+int kgdb_init_r(void);
+int enable_interrupts_r(void);
+int eth_initialize_r(void);
+int reset_phy_r(void);
+int ide_init_r(void);
+int scsi_init_r(void);
+int doc_init_r(void);
+int bb_miiphy_init_r(void);
+int post_run_r(void);
+
+#endif	/* !_INIT_WRAPPERS_H_ */

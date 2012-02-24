@@ -1,5 +1,11 @@
 #
-# (C) Copyright 2002-2006
+# U-boot - Makefile
+#
+# Copyright (c) Switchfin Org. <dpn@switchfin.org>
+#
+# Copyright (c) 2005-2007 Analog Device Inc.
+#
+# (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
 # See file CREDITS for list of people who contributed to this
@@ -23,42 +29,16 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(ARCH).o
+LIB	= $(obj)lib$(BOARD).o
 
-SOBJS-$(CONFIG_SYS_PC_BIOS)	+= bios.o
-SOBJS-$(CONFIG_SYS_PCI_BIOS)	+= bios_pci.o
-SOBJS-$(CONFIG_SYS_X86_REALMODE)	+= realmode_switch.o
-
-COBJS-$(CONFIG_SYS_PC_BIOS)	+= bios_setup.o
-COBJS-y	+= board.o
-COBJS-y	+= bootm.o
-COBJS-y	+= cmd_boot.o
-COBJS-y	+= gcc.o
-COBJS-y	+= init_helpers.o
-COBJS-y	+= init_wrappers.o
-COBJS-y	+= interrupts.o
-COBJS-$(CONFIG_SYS_PCAT_INTERRUPTS) += pcat_interrupts.o
-COBJS-$(CONFIG_SYS_GENERIC_TIMER) += pcat_timer.o
-COBJS-$(CONFIG_PCI) += pci.o
-COBJS-$(CONFIG_PCI) += pci_type1.o
-COBJS-$(CONFIG_SYS_X86_REALMODE)	+= realmode.o
-COBJS-y	+= relocate.o
-COBJS-y	+= string.o
-COBJS-$(CONFIG_SYS_X86_ISR_TIMER)	+= timer.o
-COBJS-$(CONFIG_VIDEO)	+= video_bios.o
-COBJS-$(CONFIG_VIDEO)	+= video.o
-COBJS-$(CONFIG_CMD_ZBOOT)	+= zimage.o
+COBJS-y	:= $(BOARD).o
 
 SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
+OBJS	:= $(addprefix $(obj),$(COBJS-y))
+SOBJS	:= $(addprefix $(obj),$(SOBJS-y))
 
-$(LIB):	$(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-$(PREFIXED_LIBGCC): $(NORMAL_LIBGCC)
-	$(OBJCOPY) $< $@ --prefix-symbols=__normal_
-
-$(LIB): $(PREFIXED_LIBGCC)
+$(LIB):	$(obj).depend $(OBJS) $(SOBJS)
+	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
 
 #########################################################################
 
