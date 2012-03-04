@@ -36,7 +36,7 @@ PLATFORM_CPPFLAGS += -DCONFIG_ARM -D__ARM__
 # Explicitly specifiy 32-bit ARM ISA since toolchain default can be -mthumb:
 PF_CPPFLAGS_ARM := $(call cc-option,-marm,)
 
-# Try if EABI is supported, else fall back to old API,
+# Try if EABI is supported, else fall back to old ABI,
 # i. e. for example:
 # - with ELDK 4.2 (EABI supported), use:
 #	-mabi=aapcs-linux -mno-thumb-interwork
