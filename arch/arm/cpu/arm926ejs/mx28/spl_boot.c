@@ -37,13 +37,16 @@
  * takes a few seconds to roll. The boot doesn't take that long, so to keep the
  * code simple, it doesn't take rolling into consideration.
  */
+/*
+ * There's nothing to be taken into consideration for the rollover.
+ * Two's complement arithmetic used correctly does all the magic automagically.
+ */
 #define	HW_DIGCTRL_MICROSECONDS	0x8001c0c0
 void early_delay(int delay)
 {
 	uint32_t st = readl(HW_DIGCTRL_MICROSECONDS);
-	st += delay;
-	while (st > readl(HW_DIGCTRL_MICROSECONDS))
-		;
+
+	while (readl(HW_DIGCTRL_MICROSECONDS) - st < delay);
 }
 
 void mx28_common_spl_init(const iomux_cfg_t *iomux_setup,
@@ -55,7 +58,7 @@ void mx28_common_spl_init(const iomux_cfg_t *iomux_setup,
 	mx28_power_wait_pswitch();
 }
 
-/* Support aparatus */
+/* Support apparatus */
 inline void board_init_f(unsigned long bootflag)
 {
 	for (;;)
@@ -68,11 +71,33 @@ inline void board_init_r(gd_t *id, ulong dest_addr)
 		;
 }
 
-void serial_putc(const char c) {}
-void serial_puts(const char *s) {}
+void wait_tx_empty(void)
+{
+	while (!(readl(0x80074000 + 0x18) & 0x80));
+}
+
+void serial_putc(const char c)
+{
+	wait_tx_empty();
+#if 1
+	if (c == '\n')
+		writel('\r', 0x80074000);
+#endif
+	writel(c, 0x80074000);
+}
+
+void serial_puts(const char *s)
+{
+	if (s == NULL)
+		return;
+	while (*s != '\0')
+		serial_putc(*s++);
+}
+
 void hang(void) __attribute__ ((noreturn));
 void hang(void)
 {
+	serial_puts("ERROR: please reset the target\n");
 	for (;;)
 		;
 }
