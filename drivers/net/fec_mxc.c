@@ -241,26 +241,24 @@ static int miiphy_wait_aneg(struct eth_device *dev)
 
 	return 0;
 }
-static int fec_rx_task_enable(struct fec_priv *fec)
+
+static inline void fec_rx_task_enable(struct fec_priv *fec)
 {
 	writel(1 << 24, &fec->eth->r_des_active);
-	return 0;
 }
 
-static int fec_rx_task_disable(struct fec_priv *fec)
+static inline void fec_rx_task_disable(struct fec_priv *fec)
 {
-	return 0;
 }
 
-static int fec_tx_task_enable(struct fec_priv *fec)
+static inline void fec_tx_task_enable(struct fec_priv *fec)
 {
 	writel(1 << 24, &fec->eth->x_des_active);
-	return 0;
 }
 
-static int fec_tx_task_disable(struct fec_priv *fec)
+static inline void fec_tx_task_disable(struct fec_priv *fec)
 {
-	return 0;
+}
 }
 
 /**
@@ -277,19 +275,17 @@ static int fec_tx_task_disable(struct fec_priv *fec)
 static int fec_rbd_init(struct fec_priv *fec, int count, int size)
 {
 	int ix;
-	uint32_t p = 0;
+	uint32_t p;
 
 	/* reserve data memory and consider alignment */
 	if (fec->rdb_ptr == NULL)
-		fec->rdb_ptr = malloc(size * count + DB_DATA_ALIGNMENT);
+		fec->rdb_ptr = calloc(size * count + DB_DATA_ALIGNMENT, 1);
 	p = (uint32_t)fec->rdb_ptr;
 	if (!p) {
 		puts("fec_mxc: not enough malloc memory\n");
 		return -ENOMEM;
 	}
-	memset((void *)p, 0, size * count + DB_DATA_ALIGNMENT);
-	p += DB_DATA_ALIGNMENT-1;
-	p &= ~(DB_DATA_ALIGNMENT-1);
+	p = ALIGN(p, DB_DATA_ALIGNMENT);
 
 	for (ix = 0; ix < count; ix++) {
 		writel(p, &fec->rbd_base[ix].data_pointer);
@@ -378,7 +374,7 @@ static int fec_set_hwaddr(struct eth_device *dev)
  */
 static int fec_open(struct eth_device *edev)
 {
-	struct fec_priv *fec = (struct fec_priv *)edev->priv;
+	struct fec_priv *fec = edev->priv;
 
 	debug("fec_open: fec_open(dev)\n");
 	/* full-duplex, heartbeat disabled */
@@ -442,7 +438,7 @@ static int fec_open(struct eth_device *edev)
 
 static int fec_init(struct eth_device *dev, bd_t* bd)
 {
-	uint32_t base;
+	void *base;
 	struct fec_priv *fec = (struct fec_priv *)dev->priv;
 	uint32_t mib_ptr = (uint32_t)&fec->eth->rmon_t_drop;
 	uint32_t rcntrl;
@@ -457,23 +453,20 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 	 * aligned
 	 */
 	if (fec->base_ptr == NULL)
-		fec->base_ptr = malloc((2 + FEC_RBD_NUM) *
-				sizeof(struct fec_bd) + DB_ALIGNMENT);
-	base = (uint32_t)fec->base_ptr;
+		fec->base_ptr = calloc((2 + FEC_RBD_NUM) *
+				sizeof(struct fec_bd) + DB_ALIGNMENT, 1);
+	base = fec->base_ptr;
 	if (!base) {
 		puts("fec_mxc: not enough malloc memory\n");
 		return -ENOMEM;
 	}
-	memset((void *)base, 0, (2 + FEC_RBD_NUM) *
-			sizeof(struct fec_bd) + DB_ALIGNMENT);
-	base += (DB_ALIGNMENT-1);
-	base &= ~(DB_ALIGNMENT-1);
+	base = (void *)ALIGN((unsigned long)base, DB_ALIGNMENT);
 
-	fec->rbd_base = (struct fec_bd *)base;
+	fec->rbd_base = base;
 
 	base += FEC_RBD_NUM * sizeof(struct fec_bd);
 
-	fec->tbd_base = (struct fec_bd *)base;
+	fec->tbd_base = base;
 
 	/*
 	 * Set interrupt mask register
@@ -540,7 +533,6 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 	}
 	fec_tbd_init(fec);
 
-
 	if (fec->xcv_type != SEVENWIRE)
 		miiphy_restart_aneg(dev);
 
@@ -594,7 +586,7 @@ static void fec_halt(struct eth_device *dev)
  * @param[in] length Data count in bytes
  * @return 0 on success
  */
-static int fec_send(struct eth_device *dev, volatile void* packet, int length)
+static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 {
 	unsigned int status;
 
@@ -602,7 +594,7 @@ static int fec_send(struct eth_device *dev, volatile void* packet, int length)
 	 * This routine transmits one frame.  This routine only accepts
 	 * 6-byte Ethernet addresses.
 	 */
-	struct fec_priv *fec = (struct fec_priv *)dev->priv;
+	struct fec_priv *fec = dev->priv;
 
 	/*
 	 * Check for valid length of data.
@@ -622,6 +614,7 @@ static int fec_send(struct eth_device *dev, volatile void* packet, int length)
 #endif
 	writew(length, &fec->tbd_base[fec->tbd_index].data_length);
 	writel((uint32_t)packet, &fec->tbd_base[fec->tbd_index].data_pointer);
+
 	/*
 	 * update BD's status now
 	 * This block:
@@ -750,22 +743,19 @@ static int fec_probe(bd_t *bd, int dev_id, int phy_id, uint32_t base_addr)
 	int ret = 0;
 
 	/* create and fill edev struct */
-	edev = (struct eth_device *)malloc(sizeof(struct eth_device));
+	edev = calloc(sizeof(struct eth_device), 1);
 	if (!edev) {
 		puts("fec_mxc: not enough malloc memory for eth_device\n");
 		ret = -ENOMEM;
 		goto err1;
 	}
 
-	fec = (struct fec_priv *)malloc(sizeof(struct fec_priv));
+	fec = calloc(sizeof(struct fec_priv), 1);
 	if (!fec) {
 		puts("fec_mxc: not enough malloc memory for fec_priv\n");
 		ret = -ENOMEM;
 		goto err2;
 	}
-
-	memset(edev, 0, sizeof(*edev));
-	memset(fec, 0, sizeof(*fec));
 
 	edev->priv = fec;
 	edev->init = fec_init;
