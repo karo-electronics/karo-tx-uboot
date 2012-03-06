@@ -502,6 +502,26 @@ static uint8_t mxs_nand_read_byte(struct mtd_info *mtd)
 	return buf;
 }
 
+void invalidate_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
+{
+	invalidate_dcache_range((unsigned long)nand_info->data_buf,
+				(unsigned long)nand_info->data_buf +
+				mtd->writesize - 1);
+	invalidate_dcache_range((unsigned long)nand_info->oob_buf,
+				(unsigned long)nand_info->oob_buf +
+				mtd->oobsize - 1);
+}
+
+void flush_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
+{
+	flush_dcache_range((unsigned long)nand_info->data_buf,
+			(unsigned long)nand_info->data_buf +
+			mtd->writesize - 1);
+	flush_dcache_range((unsigned long)nand_info->oob_buf,
+			(unsigned long)nand_info->oob_buf +
+			mtd->oobsize - 1);
+}
+
 /*
  * Read a page from NAND.
  */
@@ -555,6 +575,8 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 	d->cmd.pio_words[4] = (dma_addr_t)nand_info->data_buf;
 	d->cmd.pio_words[5] = (dma_addr_t)nand_info->oob_buf;
 
+	flush_buffers(mtd, nand_info);
+
 	mxs_dma_desc_append(channel, d);
 
 	/* Compile the DMA descriptor - disable the BCH block. */
@@ -599,6 +621,8 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 		printf("MXS NAND: BCH read timeout\n");
 		goto rtn;
 	}
+
+	invalidate_buffers(mtd, nand_info);
 
 	/* Read DMA completed, now do the mark swapping. */
 	mxs_nand_swap_block_mark(mtd, nand_info->data_buf, nand_info->oob_buf);
@@ -684,6 +708,8 @@ static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
 	d->cmd.pio_words[3] = mtd->writesize + mtd->oobsize;
 	d->cmd.pio_words[4] = (dma_addr_t)nand_info->data_buf;
 	d->cmd.pio_words[5] = (dma_addr_t)nand_info->oob_buf;
+
+	flush_buffers(mtd, nand_info);
 
 	mxs_dma_desc_append(channel, d);
 
