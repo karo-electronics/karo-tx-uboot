@@ -167,14 +167,15 @@ _reset:
 	 */
 	push	{r0-r12,r14}
 
+#ifndef CONFIG_SPL_BUILD
 	/*
-	 * set the cpu to SVC32 mode
+	 * set the cpu to SVC32 mode and disable interrupts
 	 */
 	mrs	r0,cpsr
-	bic	r0,r0,#0x1f
+	bic	r0,r0,#0x0c
 	orr	r0,r0,#0xd3
 	msr	cpsr,r0
-
+#endif
 	/*
 	 * we do sys-critical inits only at reboot,
 	 * not when booting from ram!
