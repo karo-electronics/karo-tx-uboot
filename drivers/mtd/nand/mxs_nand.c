@@ -681,7 +681,7 @@ static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
 		GPMI_ECCCTRL_ENABLE_ECC |
 		GPMI_ECCCTRL_ECC_CMD_ENCODE |
 		GPMI_ECCCTRL_BUFFER_MASK_BCH_PAGE;
-	d->cmd.pio_words[3] = (mtd->writesize + mtd->oobsize);
+	d->cmd.pio_words[3] = mtd->writesize + mtd->oobsize;
 	d->cmd.pio_words[4] = (dma_addr_t)nand_info->data_buf;
 	d->cmd.pio_words[5] = (dma_addr_t)nand_info->oob_buf;
 
@@ -907,7 +907,7 @@ static int mxs_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 /*
  * Nominally, the purpose of this function is to look for or create the bad
  * block table. In fact, since the we call this function at the very end of
- * the initialization process started by nand_scan(), and we doesn't have a
+ * the initialization process started by nand_scan(), and we don't have a
  * more formal mechanism, we "hook" this function to continue init process.
  *
  * At this point, the physical NAND Flash chips have been identified and
