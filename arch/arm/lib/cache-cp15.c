@@ -20,7 +20,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-
 #include <common.h>
 #include <asm/system.h>
 
@@ -80,12 +79,14 @@ static inline void mmu_setup(void)
 		dram_bank_mmu_setup(i);
 	}
 
-	/* Copy the page table address to cp15 */
-	asm volatile("mcr p15, 0, %0, c2, c0, 0"
-		     : : "r" (page_table) : "memory");
-	/* Set the access control to all-supervisor */
-	asm volatile("mcr p15, 0, %0, c3, c0, 0"
-		     : : "r" (~0));
+	asm volatile(
+		/* Copy the page table address to cp15 */
+		"mcr p15, 0, %0, c2, c0, 0\n"
+		/* Set the access control to all-supervisor */
+		"mcr p15, 0, %1, c3, c0, 0\n"
+		:
+		: "r"(page_table), "r"(~0)
+		);
 	/* and enable the mmu */
 	reg = get_cr();	/* get control reg. */
 	cp_delay();
