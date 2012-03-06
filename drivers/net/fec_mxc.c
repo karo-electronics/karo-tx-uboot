@@ -589,6 +589,7 @@ static void fec_halt(struct eth_device *dev)
 static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 {
 	unsigned int status;
+	int timeout = 1000;
 
 	/*
 	 * This routine transmits one frame.  This routine only accepts
@@ -636,6 +637,8 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 	 * wait until frame is sent .
 	 */
 	while (readw(&fec->tbd_base[fec->tbd_index].status) & FEC_TBD_READY) {
+		if (--timeout < 0)
+			return -ETIMEDOUT;
 		udelay(1);
 	}
 	debug("fec_send: status 0x%x index %d\n",
