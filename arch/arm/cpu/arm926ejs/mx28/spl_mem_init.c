@@ -31,7 +31,7 @@
 
 #include "mx28_init.h"
 
-uint32_t dram_vals[] = {
+static uint32_t dram_vals[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -72,7 +72,7 @@ uint32_t dram_vals[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010001
 };
 
-void init_m28_200mhz_ddr2(void)
+static void init_m28_200mhz_ddr2(void)
 {
 	int i;
 
@@ -80,7 +80,7 @@ void init_m28_200mhz_ddr2(void)
 		writel(dram_vals[i], MXS_DRAM_BASE + (4 * i));
 }
 
-void mx28_mem_init_clock(void)
+static void mx28_mem_init_clock(void)
 {
 	struct mx28_clkctrl_regs *clkctrl_regs =
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
@@ -92,7 +92,7 @@ void mx28_mem_init_clock(void)
 	/* EMI = 205MHz */
 	writel(CLKCTRL_FRAC0_EMIFRAC_MASK,
 		&clkctrl_regs->hw_clkctrl_frac0_set);
-	writel((0x2a << CLKCTRL_FRAC0_EMIFRAC_OFFSET) &
+	writel((~21 << CLKCTRL_FRAC0_EMIFRAC_OFFSET) &
 		CLKCTRL_FRAC0_EMIFRAC_MASK,
 		&clkctrl_regs->hw_clkctrl_frac0_clr);
 
@@ -113,7 +113,7 @@ void mx28_mem_init_clock(void)
 	early_delay(10000);
 }
 
-void mx28_mem_setup_cpu_and_hbus(void)
+static void mx28_mem_setup_cpu_and_hbus(void)
 {
 	struct mx28_clkctrl_regs *clkctrl_regs =
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
@@ -143,7 +143,7 @@ void mx28_mem_setup_cpu_and_hbus(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
 }
 
-void mx28_mem_setup_vdda(void)
+static void mx28_mem_setup_vdda(void)
 {
 	struct mx28_power_regs *power_regs =
 		(struct mx28_power_regs *)MXS_POWER_BASE;
@@ -154,7 +154,7 @@ void mx28_mem_setup_vdda(void)
 		&power_regs->hw_power_vddactrl);
 }
 
-void mx28_mem_setup_vddd(void)
+static void mx28_mem_setup_vddd(void)
 {
 	struct mx28_power_regs *power_regs =
 		(struct mx28_power_regs *)MXS_POWER_BASE;
@@ -167,13 +167,13 @@ void mx28_mem_setup_vddd(void)
 
 #define	HW_DIGCTRL_SCRATCH0	0x8001c280
 #define	HW_DIGCTRL_SCRATCH1	0x8001c290
-void data_abort_memdetect_handler(void) __attribute__((naked));
-void data_abort_memdetect_handler(void)
+static void data_abort_memdetect_handler(void) __attribute__((naked));
+static void data_abort_memdetect_handler(void)
 {
 	asm volatile("subs pc, r14, #4");
 }
 
-void mx28_mem_get_size(void)
+static void mx28_mem_get_size(void)
 {
 	uint32_t sz, da;
 	uint32_t *vt = (uint32_t *)0x20;
