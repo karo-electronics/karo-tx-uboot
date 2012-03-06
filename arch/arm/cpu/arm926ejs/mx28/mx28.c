@@ -204,12 +204,15 @@ int cpu_eth_init(bd_t *bis)
 
 	udelay(10);
 
+	/*
+	 * Enable pad output; must be done BEFORE enabling PLL
+	 * according to i.MX28 Ref. Manual Rev. 1, 2010 p. 883
+	 */
+	setbits_le32(&clkctrl_regs->hw_clkctrl_enet, CLKCTRL_ENET_CLK_OUT_EN);
+
 	/* Gate on ENET PLL */
 	writel(CLKCTRL_PLL2CTRL0_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_pll2ctrl0_clr);
-
-	/* Enable pad output */
-	setbits_le32(&clkctrl_regs->hw_clkctrl_enet, CLKCTRL_ENET_CLK_OUT_EN);
 
 	return 0;
 }
