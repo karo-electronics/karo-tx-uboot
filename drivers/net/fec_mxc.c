@@ -259,6 +259,17 @@ static inline void fec_tx_task_enable(struct fec_priv *fec)
 static inline void fec_tx_task_disable(struct fec_priv *fec)
 {
 }
+
+static inline void fec_invalidate_bd(struct fec_bd *bd)
+{
+	invalidate_dcache_range((unsigned long)bd,
+				(unsigned long)bd + sizeof(*bd));
+}
+
+static inline void fec_flush_bd(struct fec_bd *bd)
+{
+	flush_dcache_range((unsigned long)bd,
+			(unsigned long)bd + sizeof(*bd));
 }
 
 /**
@@ -292,11 +303,14 @@ static int fec_rbd_init(struct fec_priv *fec, int count, int size)
 		p += size;
 		writew(FEC_RBD_EMPTY, &fec->rbd_base[ix].status);
 		writew(0, &fec->rbd_base[ix].data_length);
+		if (ix < count - 1)
+			fec_flush_bd(&fec->rbd_base[ix]);
 	}
 	/*
 	 * mark the last RBD to close the ring
 	 */
 	writew(FEC_RBD_WRAP | FEC_RBD_EMPTY, &fec->rbd_base[ix - 1].status);
+	fec_flush_bd(&fec->rbd_base[ix - 1]);
 	fec->rbd_index = 0;
 
 	return 0;
@@ -317,7 +331,9 @@ static int fec_rbd_init(struct fec_priv *fec, int count, int size)
 static void fec_tbd_init(struct fec_priv *fec)
 {
 	writew(0x0000, &fec->tbd_base[0].status);
+	fec_flush_bd(&fec->tbd_base[0]);
 	writew(FEC_TBD_WRAP, &fec->tbd_base[1].status);
+	fec_flush_bd(&fec->tbd_base[1]);
 	fec->tbd_index = 0;
 }
 
@@ -339,6 +355,7 @@ static void fec_rbd_clean(int last, struct fec_bd *pRbd)
 	 * no data in it
 	 */
 	writew(0, &pRbd->data_length);
+	fec_flush_bd(pRbd);
 }
 
 static int fec_get_hwaddr(struct eth_device *dev, int dev_id,
@@ -613,6 +630,7 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 #ifdef	CONFIG_FEC_MXC_SWAP_PACKET
 	swap_packet((uint32_t *)packet, length);
 #endif
+	flush_dcache_range((unsigned long)packet, length);
 	writew(length, &fec->tbd_base[fec->tbd_index].data_length);
 	writel((uint32_t)packet, &fec->tbd_base[fec->tbd_index].data_pointer);
 
@@ -627,6 +645,7 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 	status = readw(&fec->tbd_base[fec->tbd_index].status) & FEC_TBD_WRAP;
 	status |= FEC_TBD_LAST | FEC_TBD_TC | FEC_TBD_READY;
 	writew(status, &fec->tbd_base[fec->tbd_index].status);
+	fec_flush_bd(&fec->tbd_base[fec->tbd_index]);
 
 	/*
 	 * Enable SmartDMA transmit task
@@ -640,6 +659,7 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 		if (--timeout < 0)
 			return -ETIMEDOUT;
 		udelay(1);
+		fec_invalidate_bd(&fec->tbd_base[fec->tbd_index]);
 	}
 	debug("fec_send: status 0x%x index %d\n",
 			readw(&fec->tbd_base[fec->tbd_index].status),
@@ -667,6 +687,8 @@ static int fec_recv(struct eth_device *dev)
 	struct nbuf *frame;
 	uint16_t bd_status;
 	uchar buff[FEC_MAX_PKT_SIZE];
+
+	fec_invalidate_bd(rbd);
 
 	/*
 	 * Check if any critical events have happened
@@ -709,6 +731,10 @@ static int fec_recv(struct eth_device *dev)
 			 */
 			frame = (struct nbuf *)readl(&rbd->data_pointer);
 			frame_length = readw(&rbd->data_length) - 4;
+			invalidate_dcache_range((unsigned long)frame->data,
+						(unsigned long)frame->data +
+						frame_length);
+
 			/*
 			 *  Fill the buffer and pass it to upper layers
 			 */
