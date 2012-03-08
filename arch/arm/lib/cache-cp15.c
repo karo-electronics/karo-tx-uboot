@@ -39,16 +39,6 @@ void __arm_init_before_mmu(void)
 void arm_init_before_mmu(void)
 	__attribute__((weak, alias("__arm_init_before_mmu")));
 
-static void cp_delay (void)
-{
-	volatile int i;
-
-	/* copro seems to need some delay between reading and writing */
-	for (i = 0; i < 100; i++)
-		nop();
-	asm volatile("" : : : "memory");
-}
-
 static inline void dram_bank_mmu_setup(int bank)
 {
 	u32 *page_table = (u32 *)gd->tlb_addr;
@@ -89,7 +79,6 @@ static inline void mmu_setup(void)
 		);
 	/* and enable the mmu */
 	reg = get_cr();	/* get control reg. */
-	cp_delay();
 	set_cr(reg | CR_M);
 }
 
@@ -107,7 +96,6 @@ static void cache_enable(uint32_t cache_bit)
 	if ((cache_bit == CR_C) && !mmu_enabled())
 		mmu_setup();
 	reg = get_cr();	/* get control reg. */
-	cp_delay();
 	set_cr(reg | cache_bit);
 }
 
@@ -126,7 +114,6 @@ static void cache_disable(uint32_t cache_bit)
 		flush_dcache_all();
 	}
 	reg = get_cr();
-	cp_delay();
 	set_cr(reg & ~cache_bit);
 }
 #endif
