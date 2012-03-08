@@ -965,6 +965,13 @@ int readline_into_buffer(const char *const prompt, char *buffer, int timeout)
 		if (prompt)
 			puts (prompt);
 
+#ifdef CONFIG_SHOW_ACTIVITY
+		while (!tstc()) {
+			extern void show_activity(int arg);
+			show_activity(0);
+			WATCHDOG_RESET();
+		}
+#endif
 		rc = cread_line(prompt, p, &len, timeout);
 		return rc < 0 ? rc : len;
 
