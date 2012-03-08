@@ -72,21 +72,15 @@ void invalidate_dcache_range(unsigned long start, unsigned long end)
 		  "I"(DCACHE_LINE_SIZE - 1)
 		: "memory"
 		);
-
 }
 
 #ifndef CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 void flush_dcache_range(unsigned long start, unsigned long end)
 {
-	if (end - start > CACHE_DLIMIT)
-		flush_dcache_all();
-	else
-		flush_cache(start & ~(SZ_4K - 1), ALIGN(end, SZ_4K));
-}
-
-void flush_cache(unsigned long start, unsigned long end)
-{
 	asm volatile (
+		"bic	%1, %1, %4\n"
+		"add	%2, %2, %4\n"
+		"bic	%2, %2, %4\n"
 		"1:\n"
 		"mcr	p15, 0, %1, c7, c14, 1\n" /* clean and invalidate D entry */
 		"add	%1, %1, %3\n"
@@ -95,9 +89,16 @@ void flush_cache(unsigned long start, unsigned long end)
 		"mcr	p15, 0, %0, c7, c5, 0\n" /* invalidate I cache */
 		"mcr	p15, 0, %0, c7, c10, 4\n" /* data write back */
 		:
-		: "r"(0), "r"(start), "r"(end), "I"(DCACHE_LINE_SIZE)
+		: "r"(0), "r"(start), "r"(end),
+		  "I"(DCACHE_LINE_SIZE),
+		  "I"(DCACHE_LINE_SIZE - 1)
 		: "memory"
 		);
+}
+
+void flush_cache(unsigned long start, unsigned long size)
+{
+	flush_dcache_range(start, start + size);
 }
 
 void flush_dcache_all(void)
