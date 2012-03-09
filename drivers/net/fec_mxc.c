@@ -42,6 +42,14 @@ DECLARE_GLOBAL_DATA_PTR;
 #define	CONFIG_FEC_XCV_TYPE	MII100
 #endif
 
+#if !defined(CONDIF_SYS_DCACHE_OFF) && !defined(CONFIG_SYS_ARM_CACHE_WRITETHROUGH)
+/* Due to multiple RX and TX buffer descriptors sharing a cache line
+ * the driver can only work with DMA coherent memory.
+ * Since U-Boot does not provide this, cache must be disabled or
+ * write-through.
+ */
+#error This driver cannot be used with Writeback DCACHE
+#endif
 /*
  * The i.MX28 operates with packets in big endian. We need to swap them before
  * sending and after receiving.
@@ -300,6 +308,7 @@ static int fec_rbd_init(struct fec_priv *fec, int count, int size)
 
 	for (ix = 0; ix < count; ix++) {
 		writel(p, &fec->rbd_base[ix].data_pointer);
+		invalidate_dcache_range(p, p + size);
 		p += size;
 		writew(FEC_RBD_EMPTY, &fec->rbd_base[ix].status);
 		writew(0, &fec->rbd_base[ix].data_length);
@@ -355,7 +364,6 @@ static void fec_rbd_clean(int last, struct fec_bd *pRbd)
 	 * no data in it
 	 */
 	writew(0, &pRbd->data_length);
-	fec_flush_bd(pRbd);
 }
 
 static int fec_get_hwaddr(struct eth_device *dev, int dev_id,
@@ -630,7 +638,9 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 #ifdef	CONFIG_FEC_MXC_SWAP_PACKET
 	swap_packet((uint32_t *)packet, length);
 #endif
-	flush_dcache_range((unsigned long)packet, length);
+	flush_dcache_range((unsigned long)packet,
+			(unsigned long)packet + length);
+	fec_invalidate_bd(&fec->tbd_base[fec->tbd_index]);
 	writew(length, &fec->tbd_base[fec->tbd_index].data_length);
 	writel((uint32_t)packet, &fec->tbd_base[fec->tbd_index].data_pointer);
 
@@ -638,7 +648,7 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 	 * update BD's status now
 	 * This block:
 	 * - is always the last in a chain (means no chain)
-	 * - should transmitt the CRC
+	 * - should transmit the CRC
 	 * - might be the last BD in the list, so the address counter should
 	 *   wrap (-> keep the WRAP flag)
 	 */
@@ -688,8 +698,6 @@ static int fec_recv(struct eth_device *dev)
 	uint16_t bd_status;
 	uchar buff[FEC_MAX_PKT_SIZE];
 
-	fec_invalidate_bd(rbd);
-
 	/*
 	 * Check if any critical events have happened
 	 */
@@ -720,6 +728,7 @@ static int fec_recv(struct eth_device *dev)
 	/*
 	 * ensure reading the right buffer status
 	 */
+	fec_invalidate_bd(rbd);
 	bd_status = readw(&rbd->status);
 	debug("fec_recv: status 0x%x\n", bd_status);
 
@@ -731,9 +740,10 @@ static int fec_recv(struct eth_device *dev)
 			 */
 			frame = (struct nbuf *)readl(&rbd->data_pointer);
 			frame_length = readw(&rbd->data_length) - 4;
-			invalidate_dcache_range((unsigned long)frame->data,
-						(unsigned long)frame->data +
-						frame_length);
+
+			invalidate_dcache_range((unsigned long)frame,
+						(unsigned long)frame +
+						sizeof(*frame));
 
 			/*
 			 *  Fill the buffer and pass it to upper layers
@@ -755,6 +765,7 @@ static int fec_recv(struct eth_device *dev)
 		 * and move forward to the next buffer
 		 */
 		fec_rbd_clean(fec->rbd_index == (FEC_RBD_NUM - 1) ? 1 : 0, rbd);
+		fec_flush_bd(rbd);
 		fec_rx_task_enable(fec);
 		fec->rbd_index = (fec->rbd_index + 1) % FEC_RBD_NUM;
 	}
