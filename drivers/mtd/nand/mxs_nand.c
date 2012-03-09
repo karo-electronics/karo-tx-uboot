@@ -502,24 +502,24 @@ static uint8_t mxs_nand_read_byte(struct mtd_info *mtd)
 	return buf;
 }
 
-void invalidate_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
+static void invalidate_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
 {
 	invalidate_dcache_range((unsigned long)nand_info->data_buf,
 				(unsigned long)nand_info->data_buf +
-				mtd->writesize - 1);
+				mtd->writesize);
 	invalidate_dcache_range((unsigned long)nand_info->oob_buf,
 				(unsigned long)nand_info->oob_buf +
-				mtd->oobsize - 1);
+				mtd->oobsize);
 }
 
-void flush_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
+static void flush_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
 {
 	flush_dcache_range((unsigned long)nand_info->data_buf,
 			(unsigned long)nand_info->data_buf +
-			mtd->writesize - 1);
+			mtd->writesize);
 	flush_dcache_range((unsigned long)nand_info->oob_buf,
 			(unsigned long)nand_info->oob_buf +
-			mtd->oobsize - 1);
+			mtd->oobsize);
 }
 
 /*
@@ -952,7 +952,14 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 	uint32_t tmp;
 
 	/* Configure BCH and set NFC geometry */
-	mx28_reset_block(&bch_regs->hw_bch_ctrl_reg);
+	if (readl(&bch_regs->hw_bch_ctrl_reg) &
+		(BCH_CTRL_SFTRST | BCH_CTRL_CLKGATE))
+		/* When booting from NAND the BCH engine will already
+		 * be operational and obviously does not like being reset here.
+		 * There will be occasional read errors upon boot when this
+		 * reset is done.
+		 */
+		mx28_reset_block(&bch_regs->hw_bch_ctrl_reg);
 
 	/* Configure layout 0 */
 	tmp = (mxs_nand_ecc_chunk_cnt(mtd->writesize) - 1)
@@ -1110,7 +1117,9 @@ int board_nand_init(struct nand_chip *nand)
 
 	nand->priv = nand_info;
 	nand->options |= NAND_NO_SUBPAGE_WRITE;
-
+#ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
+	nand->options |= NAND_USE_FLASH_BBT | NAND_USE_FLASH_BBT_NO_OOB;
+#endif
 	nand->cmd_ctrl		= mxs_nand_cmd_ctrl;
 
 	nand->dev_ready		= mxs_nand_device_ready;
