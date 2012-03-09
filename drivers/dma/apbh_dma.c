@@ -352,6 +352,24 @@ void mxs_dma_desc_free(struct mxs_dma_desc *pdesc)
 	free(pdesc);
 }
 
+static void mxs_dma_flush_desc(struct mxs_dma_desc *desc)
+{
+	size_t len = (desc->cmd.data & MXS_DMA_DESC_BYTES_MASK) >>
+		MXS_DMA_DESC_BYTES_OFFSET;
+
+	if (len) {
+		if (desc->cmd.data & MXS_DMA_DESC_COMMAND_DMA_READ) {
+			flush_dcache_range(desc->cmd.address,
+					desc->cmd.address + len);
+		} else if (desc->cmd.data & MXS_DMA_DESC_COMMAND_DMA_WRITE) {
+			invalidate_dcache_range(desc->cmd.address,
+						desc->cmd.address + len);
+		}
+	}
+	flush_dcache_range((unsigned long)&desc->cmd,
+			(unsigned long)&desc->cmd + sizeof(desc->cmd));
+}
+
 /*
  * Add a DMA descriptor to a channel.
  *
@@ -421,6 +439,7 @@ int mxs_dma_desc_append(int channel, struct mxs_dma_desc *pdesc)
 		pchan->pending_num++;
 	list_add_tail(&pdesc->node, &pchan->active);
 
+	mxs_dma_flush_desc(pdesc);
 	return ret;
 }
 
