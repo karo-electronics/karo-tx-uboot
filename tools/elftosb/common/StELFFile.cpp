@@ -505,8 +505,20 @@ void StELFFile::dumpSections()
 	{
 		const Elf32_Shdr & header = getSectionAtIndex(i);
 		std::string name = getSectionNameAtIndex(header.sh_name);
-		
-		printf("%s: %s, 0x%08x, 0x%08x, 0x%08x, %d, %d, %d\n", name.c_str(), sectionTypes[header.sh_type], header.sh_addr, header.sh_offset, header.sh_size, header.sh_link, header.sh_info, header.sh_entsize);
+
+		if (header.sh_type < sizeof(sectionTypes) / sizeof(sectionTypes[0])) {
+			printf("%s: %s, 0x%08x, 0x%08x, 0x%08x, %d, %d, %d\n",
+			       name.c_str(), sectionTypes[header.sh_type],
+			       header.sh_addr, header.sh_offset,
+			       header.sh_size, header.sh_link,
+			       header.sh_info, header.sh_entsize);
+		} else {
+			printf("%s: 0x%02x, 0x%08x, 0x%08x, 0x%08x, %d, %d, %d\n",
+			       name.c_str(), header.sh_type,
+			       header.sh_addr, header.sh_offset,
+			       header.sh_size, header.sh_link,
+			       header.sh_info, header.sh_entsize);
+		}
 	}
 }
 
