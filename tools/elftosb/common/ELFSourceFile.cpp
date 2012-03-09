@@ -210,8 +210,14 @@ DataSource * ELFSourceFile::createDataSource(StringMatcher & matcher)
 		std::string name = m_file->getSectionNameAtIndex(header.sh_name);
 		
 		// Ignore most section types
-		if (!(header.sh_type == SHT_PROGBITS || header.sh_type == SHT_NOBITS))
-		{
+		switch (header.sh_type) {
+		case SHT_PROGBITS:
+		case SHT_NOBITS:
+		case SHT_REL:
+		case SHT_DYNSYM:
+			break;
+
+		default:
 			continue;
 		}
 
@@ -425,11 +431,14 @@ void ELFSourceFile::ELFDataSource::addSection(unsigned sectionIndex)
 	
 	// create the right segment subclass based on the section type
 	DataSource::Segment * segment = NULL;
-	if (section.sh_type == SHT_PROGBITS)
-	{
+	switch (section.sh_type) {
+	case SHT_PROGBITS:
+	case SHT_REL:
+	case SHT_DYNSYM:
 		segment = new ProgBitsSegment(*this, m_elf, sectionIndex);
-	}
-	else if (section.sh_type == SHT_NOBITS)
+		break;
+
+	case SHT_NOBITS:
 	{
 		// Always add NOBITS sections by default.
 		bool addNobits = true;
@@ -438,6 +447,7 @@ void ELFSourceFile::ELFDataSource::addSection(unsigned sectionIndex)
 		// If set to ignore, treat like a normal ELF file and always add. If set to
 		// ROM, then only clear if the section is listed in .secinfo. Otherwise if set
 		// to C startup, then let the C startup do all clearing.
+		addNobits = false;
 		if (m_elf->ELFVariant() == eGHSVariant)
 		{
 			GHSSecInfo secinfo(m_elf);
@@ -469,7 +479,8 @@ void ELFSourceFile::ELFDataSource::addSection(unsigned sectionIndex)
 			Log::log(Logger::DEBUG2, "..section %s is not filled\n", name.c_str());
 		}
 	}
-	
+	break;
+	}
 	// add segment if one was created
 	if (segment)
 	{
