@@ -36,8 +36,20 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define timestamp (gd->tbl)
-#define lastdec (gd->lastinc)
+/* Enable this to verify that the code can correctly
+ * handle the timer rollover
+ */
+/* #define DEBUG_TIMER_WRAP */
+
+#ifdef DEBUG_TIMER_WRAP
+/*
+ * Let the timer wrap 15 seconds after start to catch misbehaving
+ * timer related code early
+ */
+#define TIMER_START		(-time_to_tick(15 * CONFIG_SYS_HZ))
+#else
+#define TIMER_START		0UL
+#endif
 
 /*
  * This driver uses 1kHz clock source.
@@ -52,12 +64,6 @@ static inline unsigned long tick_to_time(unsigned long tick)
 static inline unsigned long time_to_tick(unsigned long time)
 {
 	return time * (MX28_INCREMENTER_HZ / CONFIG_SYS_HZ);
-}
-
-/* Calculate how many ticks happen in "us" microseconds */
-static inline unsigned long us_to_tick(unsigned long us)
-{
-	return (us * MX28_INCREMENTER_HZ) / 1000000;
 }
 
 int timer_init(void)
@@ -76,34 +82,29 @@ int timer_init(void)
 		TIMROT_TIMCTRLn_SELECT_1KHZ_XTAL,
 		&timrot_regs->hw_timrot_timctrl0);
 
-	/* Set fixed_count to maximal value */
+#ifndef DEBUG_TIMER_WRAP
+	/* Set fixed_count to maximum value */
 	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
-
+#else
+	/* Set fixed_count so that the counter will wrap after 20 seconds */
+	writel(20 * MX28_INCREMENTER_HZ,
+		&timrot_regs->hw_timrot_fixed_count0);
+	gd->lastinc = TIMER_LOAD_VAL - 20 * MX28_INCREMENTER_HZ;
+#endif
+#ifdef DEBUG_TIMER_WRAP
+	/* Make the usec counter roll over 30 seconds after startup */
+	writel(-30000000, MX28_HW_DIGCTL_MICROSECONDS);
+#endif
+	writel(TIMROT_TIMCTRLn_UPDATE,
+		&timrot_regs->hw_timrot_timctrl0_clr);
+#ifdef DEBUG_TIMER_WRAP
+	/* Set fixed_count to maximal value for subsequent loads */
+	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
+#endif
+	gd->timer_rate_hz = MX28_INCREMENTER_HZ;
+	gd->tbl = TIMER_START;
+	gd->tbu = 0;
 	return 0;
-}
-
-ulong get_timer(ulong base)
-{
-	struct mx28_timrot_regs *timrot_regs =
-		(struct mx28_timrot_regs *)MXS_TIMROT_BASE;
-
-	/* Current tick value */
-	uint32_t now = readl(&timrot_regs->hw_timrot_running_count0);
-
-	if (lastdec >= now) {
-		/*
-		 * normal mode (non roll)
-		 * move stamp forward with absolut diff ticks
-		 */
-		timestamp += (lastdec - now);
-	} else {
-		/* we have rollover of decrementer */
-		timestamp += (TIMER_LOAD_VAL - now) + lastdec;
-
-	}
-	lastdec = now;
-
-	return tick_to_time(timestamp) - base;
 }
 
 /* We use the HW_DIGCTL_MICROSECONDS register for sub-millisecond timer. */
@@ -111,31 +112,50 @@ ulong get_timer(ulong base)
 
 void __udelay(unsigned long usec)
 {
-	uint32_t old, new, incr;
-	uint32_t counter = 0;
-
-	old = readl(MX28_HW_DIGCTL_MICROSECONDS);
-
-	while (counter < usec) {
-		new = readl(MX28_HW_DIGCTL_MICROSECONDS);
-
-		/* Check if the timer wrapped. */
-		if (new < old) {
-			incr = 0xffffffff - old;
-			incr += new;
-		} else {
-			incr = new - old;
-		}
-
-		/*
-		 * Check if we are close to the maximum time and the counter
-		 * would wrap if incremented. If that's the case, break out
-		 * from the loop as the requested delay time passed.
+	uint32_t start = readl(MX28_HW_DIGCTL_MICROSECONDS);
+	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start < usec)
+		/* No need for fancy rollover checks
+		 * Two's complement arithmetic applied correctly
+		 * does everything that's needed  automagically!
 		 */
-		if (counter + incr < counter)
-			break;
+		;
+}
 
-		counter += incr;
-		old = new;
-	}
+/* Note: This function works correctly for TIMER_LOAD_VAL == 0xffffffff!
+ * The rollover is handled automagically due to the properties of
+ * two's complement arithmetic.
+ * For any other value of TIMER_LOAD_VAL the calculations would have
+ * to be done modulus(TIMER_LOAD_VAL + 1).
+ */
+unsigned long long get_ticks(void)
+{
+	struct mx28_timrot_regs *timrot_regs =
+		(struct mx28_timrot_regs *)MXS_TIMROT_BASE;
+	/* The timer is counting down, so subtract the register value from
+	 * the counter period length to get an incrementing timestamp
+	 */
+	unsigned long now = -readl(&timrot_regs->hw_timrot_running_count0);
+	ulong inc = now - gd->lastinc;
+
+	gd->tbl += inc;
+	gd->lastinc = now;
+	/* Since the get_timer() function only uses a 32bit value
+	 * it doesn't make sense to return a real 64 bit value here.
+	 */
+	return gd->tbl;
+}
+
+ulong get_timer(ulong base)
+{
+	/* NOTE: time_to_tick(base) is required to correctly handle rollover! */
+	return tick_to_time(get_ticks() - time_to_tick(base));
+}
+
+/*
+ * This function is derived from PowerPC code (timebase clock frequency).
+ * On ARM it returns the number of timer ticks per second.
+ */
+ulong get_tbclk(void)
+{
+	return gd->timer_rate_hz;
 }
