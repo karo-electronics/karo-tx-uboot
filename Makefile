@@ -442,9 +442,11 @@ $(obj)u-boot.ais:       $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin
 			$(obj)u-boot.ais
 		rm $(obj)spl/u-boot-spl{,-pad}.ais
 
-$(obj)u-boot.sb:       $(obj)u-boot.bin $(obj)spl/u-boot-spl.bin
-		elftosb -zdf imx28 -c $(TOPDIR)/board/$(BOARDDIR)/u-boot.bd \
-			-o $(obj)u-boot.sb
+$(obj)u-boot.bd:       $(TOPDIR)/board/$(BOARDDIR)/u-boot.bd
+		sed "s:@@BUILD_DIR@@:$(obj):g" $< > $@
+
+$(obj)u-boot.sb:       $(obj)u-boot.bd elftosb $(obj)u-boot.bin $(obj)spl/u-boot-spl.bin
+		$(TOPDIR)/tools/elftosb/bld/linux/elftosb -zdf imx28 -c $< -o $@
 
 ifeq ($(CONFIG_SANDBOX),y)
 GEN_UBOOT = \
@@ -513,6 +515,8 @@ $(obj)spl/u-boot-spl.bin:	$(SUBDIR_TOOLS) depend
 
 updater:
 		$(MAKE) -C tools/updater all
+elftosb:
+		$(MAKE) -C $(SUBDIR_TOOLS)/elftosb all
 
 # Explicitly make _depend in subdirs containing multiple targets to prevent
 # parallel sub-makes creating .depend files simultaneously.
