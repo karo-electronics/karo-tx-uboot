@@ -26,6 +26,7 @@
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/arch/iomux-mx28.h>
+#include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/regs-pinctrl.h>
 #include <asm/arch/regs-clkctrl.h>
@@ -33,173 +34,199 @@
 #include <asm/arch/sys_proto.h>
 
 #include <mmc.h>
+#include <netdev.h>
 #include <imx_ssp_mmc.h>
 
-/* This should be removed after it's added into mach-types.h */
-
-static const int mach_type = MACH_TYPE_TX28;
-
 DECLARE_GLOBAL_DATA_PTR;
-
-#ifdef CONFIG_IMX_SSP_MMC
-/* MMC pins */
-static iomux_cfg_t mmc0_pads[] = {
-	MX28_PAD_SSP0_DATA0__SSP0_D0,
-	MX28_PAD_SSP0_DATA1__SSP0_D1,
-	MX28_PAD_SSP0_DATA2__SSP0_D2,
-	MX28_PAD_SSP0_DATA3__SSP0_D3,
-	MX28_PAD_SSP0_DATA4__SSP0_D4,
-	MX28_PAD_SSP0_DATA5__SSP0_D5,
-	MX28_PAD_SSP0_DATA6__SSP0_D6,
-	MX28_PAD_SSP0_DATA7__SSP0_D7,
-	MX28_PAD_SSP0_CMD__SSP0_CMD,
-	MX28_PAD_SSP0_DETECT__SSP0_CARD_DETECT,
-	MX28_PAD_SSP0_SCK__SSP0_SCK,
-};
-#endif
-
-/* ENET pins */
-static iomux_cfg_t enet_pads[] = {
-	MX28_PAD_PWM4__GPIO_3_29,
-	MX28_PAD_ENET0_RX_CLK__GPIO_4_13,
-	MX28_PAD_ENET0_MDC__ENET0_MDC,
-	MX28_PAD_ENET0_MDIO__ENET0_MDIO,
-	MX28_PAD_ENET0_RX_EN__ENET0_RX_EN,
-	MX28_PAD_ENET0_RXD0__ENET0_RXD0,
-	MX28_PAD_ENET0_RXD1__ENET0_RXD1,
-	MX28_PAD_ENET0_TX_EN__ENET0_TX_EN,
-	MX28_PAD_ENET0_TXD0__ENET0_TXD0,
-	MX28_PAD_ENET0_TXD1__ENET0_TXD1,
-	MX28_PAD_ENET_CLK__CLKCTRL_ENET,
-};
-
-static iomux_cfg_t duart_pads[] = {
-	MX28_PAD_PWM0__GPIO_3_16,
-	MX28_PAD_PWM1__GPIO_3_17,
-	MX28_PAD_I2C0_SCL__GPIO_3_24,
-	MX28_PAD_I2C0_SDA__GPIO_3_25,
-
-	MX28_PAD_AUART0_RTS__AUART0_RTS,
-	MX28_PAD_AUART0_CTS__AUART0_CTS,
-	MX28_PAD_AUART0_TX__AUART0_TX,
-	MX28_PAD_AUART0_RX__AUART0_RX,
-};
-
-static iomux_cfg_t gpmi_pads[] = {
-	MX28_PAD_GPMI_D00__GPMI_D0,
-	MX28_PAD_GPMI_D01__GPMI_D1,
-	MX28_PAD_GPMI_D02__GPMI_D2,
-	MX28_PAD_GPMI_D03__GPMI_D3,
-	MX28_PAD_GPMI_D04__GPMI_D4,
-	MX28_PAD_GPMI_D05__GPMI_D5,
-	MX28_PAD_GPMI_D06__GPMI_D6,
-	MX28_PAD_GPMI_D07__GPMI_D7,
-	MX28_PAD_GPMI_CE0N__GPMI_CE0N,
-	MX28_PAD_GPMI_RDY0__GPMI_READY0,
-	MX28_PAD_GPMI_RDN__GPMI_RDN,
-	MX28_PAD_GPMI_WRN__GPMI_WRN,
-	MX28_PAD_GPMI_ALE__GPMI_ALE,
-	MX28_PAD_GPMI_CLE__GPMI_CLE,
-	MX28_PAD_GPMI_RESETN__GPMI_RESETN,
-};
 
 /*
  * Functions
  */
-static void duart_init(void)
+int board_early_init_f(void)
 {
-	mx28_common_spl_init(&duart_pads, ARRAY_SIZE(duart_pads));
+	/* IO0 clock at 480MHz */
+	mx28_set_ioclk(MXC_IOCLK0, 480000);
+	/* IO1 clock at 480MHz */
+	mx28_set_ioclk(MXC_IOCLK1, 480000);
+
+	/* SSP0 clock at 96MHz */
+	mx28_set_sspclk(MXC_SSPCLK0, 96000, 0);
+	/* SSP2 clock at 96MHz */
+	mx28_set_sspclk(MXC_SSPCLK2, 96000, 0);
+
+	return 0;
+}
+
+void coloured_LED_init(void)
+{
+	/* Switch LED off */
+	gpio_set_value(MX28_PAD_ENET0_RXD3__GPIO_4_10, 0);
 }
 
 int board_init(void)
 {
-	gd->bd->bi_arch_number = mach_type;
-
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
-
-	duart_init();
 	return 0;
 }
 
 int dram_init(void)
 {
-	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
-
-	return 0;
+	return mx28_dram_init();
 }
 
-#ifdef CONFIG_DYNAMIC_MMC_DEVNO
-int get_mmc_env_devno(void)
+#ifdef	CONFIG_CMD_MMC
+int board_mmc_init(bd_t *bis)
 {
-	unsigned long global_boot_mode;
-
-	global_boot_mode = REG_RD_ADDR(GLOBAL_BOOT_MODE_ADDR);
-	return ((global_boot_mode & 0xf) == BOOT_MODE_SD1) ? 1 : 0;
+	return mxsmmc_initialize(bis, 0, NULL);
 }
+#endif /* CONFIG_CMD_MMC */
+
+#ifdef CONFIG_FEC_MXC
+#ifdef CONFIG_GET_FEC_MAC_ADDR_FROM_IIM
+
+#ifdef CONFIG_FEC_MXC_MULTI
+#define FEC_MAX_IDX			1
+#else
+#define FEC_MAX_IDX			0
 #endif
 
-#if defined(CONFIG_MXC_FEC) && defined(CONFIG_GET_FEC_MAC_ADDR_FROM_IIM)
-int fec_get_mac_addr(unsigned char *mac)
+static int fec_get_mac_addr(int index)
 {
-	u32 val;
+	u32 val1, val2;
 	int timeout = 1000;
 	struct mx28_ocotp_regs *ocotp_regs =
 		(struct mx28_ocotp_regs *)MXS_OCOTP_BASE;
+	u32 *cust = &ocotp_regs->hw_ocotp_cust0;
+	char mac[6 * 3];
+	char env_name[] = "eth.addr";
+
+	if (index < 0 || index > FEC_MAX_IDX)
+		return -EINVAL;
 
 	/* set this bit to open the OTP banks for reading */
 	writel(OCOTP_CTRL_RD_BANK_OPEN,
-		ocotp_regs->hw_ocotp_ctrl_set);
+		&ocotp_regs->hw_ocotp_ctrl_set);
 
 	/* wait until OTP contents are readable */
-	while (OCOTP_CTRL_BUSY & readl(ocotp_regs->hw_ocotp_ctrl)) {
+	while (OCOTP_CTRL_BUSY & readl(&ocotp_regs->hw_ocotp_ctrl)) {
 		if (timeout-- < 0)
 			return -ETIMEDOUT;
 		udelay(100);
 	}
 
-	val = readl(ocotp_regs->hw_ocotp_cust0);
-	mac[0] = (val >> 24) & 0xFF;
-	mac[1] = (val >> 16) & 0xFF;
-	mac[2] = (val >> 8) & 0xFF;
-	mac[3] = (val >> 0) & 0xFF;
-	val = readl(ocotp_regs->hw_ocotp_cust1);
-	mac[4] = (val >> 24) & 0xFF;
-	mac[5] = (val >> 16) & 0xFF;
+	val1 = readl(&cust[index * 8]);
+	val2 = readl(&cust[index * 8 + 4]);
+	if ((val1 | val2) == 0)
+		return 0;
+	snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x",
+		(val1 >> 24) & 0xFF, (val1 >> 16) & 0xFF,
+		(val1 >> 8) & 0xFF, (val1 >> 0) & 0xFF,
+		(val2 >> 24) & 0xFF, (val2 >> 16) & 0xFF);
+	if (index == 0)
+		snprintf(env_name, sizeof(env_name), "ethaddr");
+	else
+		snprintf(env_name, sizeof(env_name), "eth%daddr", index);
 
+	setenv(env_name, mac);
 	return 0;
 }
-#endif
+#endif /* CONFIG_GET_FEC_MAC_ADDR_FROM_IIM */
 
-void enet_board_init(void)
+static iomux_cfg_t tx28_fec_pads[] = {
+	MX28_PAD_ENET0_RX_EN__ENET0_RX_EN,
+	MX28_PAD_ENET0_RXD0__ENET0_RXD0,
+	MX28_PAD_ENET0_RXD1__ENET0_RXD1,
+};
+
+int board_eth_init(bd_t *bis)
 {
-	/* Set up ENET pins */
-	mx28_common_spl_init(&enet_pads, ARRAY_SIZE(enet_pads));
+	int ret;
+
+	/* Reset the external phy */
+	gpio_direction_output(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 0);
 
 	/* Power on the external phy */
 	gpio_direction_output(MX28_PAD_PWM4__GPIO_3_29, 1);
 
-	/* Reset the external phy */
-	gpio_direction_output(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 1);
-	udelay(200);
-	gpio_set_value(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 0);
-}
+	/* Pull strap pins to high */
+	gpio_direction_output(MX28_PAD_ENET0_RX_EN__GPIO_4_2, 1);
+	gpio_direction_output(MX28_PAD_ENET0_RXD0__GPIO_4_3, 1);
+	gpio_direction_output(MX28_PAD_ENET0_RXD1__GPIO_4_4, 1);
+	gpio_direction_input(MX28_PAD_ENET0_TX_CLK__GPIO_4_5);
 
-#ifdef CONFIG_MXS_NAND
-#include <linux/mtd/nand.h>
-extern int mxs_gpmi_nand_init(struct mtd_info *mtd, struct nand_chip *chip);
+	udelay(25000);
+	gpio_set_value(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 1);
+	udelay(100);
 
-int board_nand_init(struct mtd_info *mtd, struct nand_chip *chip)
-{
-	mx28_common_spl_init(&gpmi_pads, ARRAY_SIZE(gpmi_pads));
-	return mxs_gpmi_nand_init(mtd, chip);
-}
-#endif
+	mxs_iomux_setup_multiple_pads(tx28_fec_pads, ARRAY_SIZE(tx28_fec_pads));
 
-int checkboard(void)
-{
-	printf("Board: Ka-Ro TX28\n");
+	ret = cpu_eth_init(bis);
+	if (ret) {
+		printf("cpu_eth_init() failed: %d\n", ret);
+		return ret;
+	}
 
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return ret;
+	}
+#ifdef CONFIG_FEC_MXC_MULTI
+	if (getenv("ethaddr")) {
+		ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
+		if (ret) {
+			printf("FEC MXS: Unable to init FEC0\n");
+			return ret;
+		}
+	}
+
+	ret = fec_get_mac_addr(1);
+	if (ret < 0) {
+		printf("Failed to read FEC1 MAC address from OCOTP\n");
+		return ret;
+	}
+	if (getenv("eth1addr")) {
+		ret = fecmxc_initialize_multi(bis, 1, 1, MXS_ENET1_BASE);
+		if (ret) {
+			printf("FEC MXS: Unable to init FEC1\n");
+			return ret;
+		}
+	}
 	return 0;
+#else
+	if (getenv("ethaddr")) {
+		ret = fecmxc_initialize(bis);
+	}
+	return ret;
+#endif
+}
+#endif /* CONFIG_FEC_MXC */
+
+enum {
+	LED_STATE_INIT = -1,
+	LED_STATE_OFF,
+	LED_STATE_ON,
+};
+
+void show_activity(int arg)
+{
+	static int led_state = LED_STATE_INIT;
+	static ulong last;
+
+	if (led_state == LED_STATE_INIT) {
+		last = get_timer(0);
+		gpio_set_value(MX28_PAD_ENET0_RXD3__GPIO_4_10, 1);
+		led_state = LED_STATE_ON;
+	} else {
+		if (get_timer(last) > CONFIG_SYS_HZ) {
+			last = get_timer(0);
+			if (led_state == LED_STATE_ON) {
+				gpio_set_value(MX28_PAD_ENET0_RXD3__GPIO_4_10, 0);
+			} else {
+				gpio_set_value(MX28_PAD_ENET0_RXD3__GPIO_4_10, 1);
+			}
+			led_state = 1 - led_state;
+		}
+	}
 }

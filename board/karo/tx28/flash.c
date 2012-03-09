@@ -149,11 +149,13 @@ static int calc_bb_offset(nand_info_t *mtd, struct mx28_fcb *fcb)
 	return bb_mark_offset;
 }
 
-static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block, int fw2_start_block,
-				size_t fw_size)
+static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block,
+				int fw2_start_block, size_t fw_size)
 {
-	volatile struct mx28_gpmi_regs *gpmi_base = __ioremap(MXS_GPMI_BASE, SZ_4K, 1);
-	volatile struct mx28_bch_regs *bch_base = __ioremap(MXS_BCH_BASE, SZ_4K, 1);
+	struct mx28_gpmi_regs *gpmi_base =
+		(struct mx28_gpmi_regs *)MXS_GPMI_BASE;
+	struct mx28_bch_regs *bch_base =
+		(struct mx28_bch_regs *)MXS_BCH_BASE;
 	u32 fl0, fl1;
 	u32 t0, t1;
 	int metadata_size;
@@ -165,10 +167,10 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block, int fw2_start
 		return ERR_PTR(-ENOMEM);
 	}
 
-	fl0 = readl(bch_base->hw_bch_flash0layout0);
-	fl1 = readl(bch_base->hw_bch_flash0layout1);
-	t0 = readl(gpmi_base->hw_gpmi_timing0);
-	t1 = readl(gpmi_base->hw_gpmi_timing1);
+	fl0 = readl(&bch_base->hw_bch_flash0layout0);
+	fl1 = readl(&bch_base->hw_bch_flash0layout1);
+	t0 = readl(&gpmi_base->hw_gpmi_timing0);
+	t1 = readl(&gpmi_base->hw_gpmi_timing1);
 
 	metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
 
@@ -197,7 +199,7 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block, int fw2_start
 
 	fcb->metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
 	fcb->ecc_blocks_per_page = BF_VAL(fl0, BCH_FLASHLAYOUT0_NBLOCKS);
-	fcb->bch_mode = readl(bch_base->hw_bch_mode);
+	fcb->bch_mode = readl(&bch_base->hw_bch_mode);
 /*
 	fcb->boot_patch = 0;
 	fcb->patch_sectors = 0;
@@ -293,7 +295,13 @@ static int write_fcb(void *buf, int block)
 	}							\
 } while (0)
 
-int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+#ifndef CONFIG_ENV_OFFSET_REDUND
+#define TOTAL_ENV_SIZE CONFIG_ENV_SIZE
+#else
+#define TOTAL_ENV_SIZE (CONFIG_ENV_SIZE * 2)
+#endif
+
+int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int ret;
 	int block;
@@ -311,7 +319,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	unsigned long mtd_num_blocks = mtd->size / mtd->erasesize;
 	unsigned long env_start_block = CONFIG_ENV_OFFSET / mtd->erasesize;
 	unsigned long env_end_block = env_start_block +
-		DIV_ROUND_UP(CONFIG_ENV_SIZE, mtd->erasesize) - 1;
+		DIV_ROUND_UP(TOTAL_ENV_SIZE, mtd->erasesize) - 1;
 	int optind;
 	int fw1_set = 0;
 	int fw2_set = 0;

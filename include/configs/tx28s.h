@@ -26,9 +26,10 @@
  * Ka-Ro TX28 board - SoC configuration
  */
 #define CONFIG_MX28				/* i.MX28 SoC */
+#define CONFIG_TX28_S				/* TX28 SoM variant */
 #define	CONFIG_MXS_GPIO				/* GPIO control */
 #define CONFIG_SYS_HZ		1000		/* Ticks per second */
-#define CONFIG_IDENT_STRING	"\nBoard: Ka-Ro TX28-40x0"
+#define CONFIG_IDENT_STRING	"\nBoard: Ka-Ro TX28-4130"
 #define CONFIG_SHOW_ACTIVITY
 
 #define CONFIG_SPL
@@ -38,7 +39,6 @@
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_FIXED_BATT_SUPPLY
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
 /*
@@ -46,7 +46,7 @@
  */
 #define CONFIG_NR_DRAM_BANKS	1		/* 1 bank of DRAM */
 #define PHYS_SDRAM_1		0x40000000	/* Base address */
-#define PHYS_SDRAM_1_SIZE	SZ_128M
+#define PHYS_SDRAM_1_SIZE	SZ_64M
 #define CONFIG_STACKSIZE	0x00010000	/* 128 KB stack */
 #define CONFIG_SYS_MALLOC_LEN	0x00400000	/* 4 MB for malloc */
 #define CONFIG_SYS_GBL_DATA_SIZE 128		/* Reserved for initial data */
@@ -138,7 +138,8 @@
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 
-#define CONFIG_FEC_MXC_MULTI
+#define IMX_FEC_BASE			MXS_ENET0_BASE
+#define CONFIG_FEC_MXC_PHYADDR		0x00
 
 #define CONFIG_MII
 #define CONFIG_FEC_XCV_TYPE		RMII

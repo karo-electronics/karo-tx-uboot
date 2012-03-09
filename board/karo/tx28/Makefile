@@ -26,10 +26,13 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(BOARD).o
 
 COBJS	:= tx28.o
+ifeq ($(CONFIG_SPL_BUILD),y)
+	COBJS += spl_boot.o
+else
 ifeq ($(CONFIG_CMD_ROMUPDATE),y)
 	COBJS += flash.o
 endif
-SOBJS	:= lowlevel_init.o
+endif
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -37,6 +40,9 @@ SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
 	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
+
+$(obj)u-boot.db: u-boot.db.in
+	sed "s:@@BUILD_DIR@@:${BUILD_DIR:-.}/:" $< > $@
 
 #########################################################################
 
