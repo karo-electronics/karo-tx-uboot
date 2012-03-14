@@ -32,7 +32,7 @@ void printhex(int data)
 		c = data >> (i * 4);
 		c &= 0xf;
 		if (c > 9)
-			serial_putc(c - 10 + 'A');
+			serial_putc(c - 10 + 'a');
 		else
 			serial_putc(c + '0');
 	}
