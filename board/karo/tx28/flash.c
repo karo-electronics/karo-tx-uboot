@@ -104,7 +104,7 @@ static void encode_hamming_13_8(void *_src, void *_ecc, size_t size)
 
 static u32 calc_chksum(void *buf, size_t size)
 {
-	u32 chksum;
+	u32 chksum = 0;
 	u8 *bp = buf;
 	size_t i;
 
