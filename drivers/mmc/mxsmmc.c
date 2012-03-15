@@ -343,6 +343,8 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 	 * CLOCK_DIVIDE has to be an even value from 2 to 254, and
 	 * CLOCK_RATE could be any integer from 0 to 255.
 	 */
+	writel(CLKCTRL_SSP_DIV_FRAC_EN | 29, priv->clkctrl_ssp);
+
 	mmc->f_min = 400000;
 	mmc->f_max = mxc_get_clock(MXC_SSP0_CLK + id) * 1000 / 2;
 	mmc->b_max = 0;
