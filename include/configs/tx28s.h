@@ -29,7 +29,7 @@
 #define CONFIG_TX28_S				/* TX28 SoM variant */
 #define	CONFIG_MXS_GPIO				/* GPIO control */
 #define CONFIG_SYS_HZ		1000		/* Ticks per second */
-#define CONFIG_IDENT_STRING	"\nBoard: Ka-Ro TX28-4130"
+#define CONFIG_IDENT_STRING	"\nBoard: Ka-Ro TX28-41xx"
 #define CONFIG_SHOW_ACTIVITY
 
 #define CONFIG_SPL
@@ -92,22 +92,23 @@
  * Extra Environments
  */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
-	"bootargs_nand=setenv bootargs ${bootargs} ${mtdparts}"		\
-	" root=/dev/mtdblock3"						\
-	" rootfstype=jffs2\0"						\
-	"nfsroot=/tftpboot/rootfs\0"					\
-	"bootargs_nfs=setenv bootargs ${bootargs} root=/dev/nfs"	\
-	" ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"		\
-	"bootargs_mmc=setenv bootargs ${bootargs} root=/dev/mmcblk0p3"	\
-	" rootwait ip=dhcp\0"						\
+	"autostart=no\0"						\
+	"bootcmd_mmc=set autostart yes;run bootargs_mmc;"		\
+	" mmc read ${loadaddr} 100 3000\0"				\
 	"bootcmd_nand=set autostart yes;run bootargs_nand;"		\
 	" nboot linux\0"						\
-	"bootcmd_net=set autostart yes;run bootargs_nfs; dhcp\0"	\
-	"bootcmd_mmc=set autostart yes;run bootargs_mmc;"		\
-	" mmc read 0 ${loadaddr} 100 3000\0"				\
+	"bootcmd_net=setenv autostart yes;run bootargs_nfs; dhcp\0"	\
+	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
+	" root=/dev/mmcblk0p3 rootwait\0"				\
+	"bootargs_nand=run default_bootargs;setenv bootargs ${bootargs}"\
+	" ${mtdparts} root=/dev/mtdblock3 rootfstype=jffs2\0"		\
+	"nfsroot=/tftpboot/rootfs\0"					\
+	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
+	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
+	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
+	" mxsfb.mode=${video_mode}\0"					\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
-	"autostart=no\0"
 
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
