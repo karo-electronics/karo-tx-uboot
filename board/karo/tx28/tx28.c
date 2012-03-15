@@ -76,9 +76,14 @@ int dram_init(void)
 }
 
 #ifdef	CONFIG_CMD_MMC
+static int tx28_mmc_wp(int dev_no)
+{
+	return 0;
+}
+
 int board_mmc_init(bd_t *bis)
 {
-	return mxsmmc_initialize(bis, 0, NULL);
+	return mxsmmc_initialize(bis, 0, tx28_mmc_wp);
 }
 #endif /* CONFIG_CMD_MMC */
 
