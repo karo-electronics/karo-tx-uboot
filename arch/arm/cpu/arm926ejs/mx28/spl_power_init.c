@@ -82,6 +82,12 @@
 #define BATT_BO_VAL	((3000 - 2400) / 40)
 #endif
 
+#ifdef CONFIG_SYS_SPL_FIXED_BATT_SUPPLY
+static const int fixed_batt_supply = 1;
+#else
+static const int fixed_batt_supply;
+#endif
+
 static struct mx28_power_regs *power_regs = (void *)MXS_POWER_BASE;
 
 static void mx28_power_clock2xtal(void)
@@ -174,8 +180,14 @@ static void mx28_src_power_init(void)
 			POWER_DCLIMITS_POSLIMIT_BUCK_MASK,
 			0x30 << POWER_DCLIMITS_POSLIMIT_BUCK_OFFSET);
 
-	setbits_le32(&power_regs->hw_power_battmonitor,
+	if (!fixed_batt_supply) {
+		/* FIXME: This requires the LRADC to be set up! */
+		setbits_le32(&power_regs->hw_power_battmonitor,
 			POWER_BATTMONITOR_EN_BATADJ);
+	} else {
+		clrbits_le32(&power_regs->hw_power_battmonitor,
+			POWER_BATTMONITOR_EN_BATADJ);
+	}
 
 	/* Increase the RCSCALE level for quick DCDC response to dynamic load */
 	clrsetbits_le32(&power_regs->hw_power_loopctrl,
@@ -186,10 +198,12 @@ static void mx28_src_power_init(void)
 	clrsetbits_le32(&power_regs->hw_power_minpwr,
 			POWER_MINPWR_HALFFETS, POWER_MINPWR_DOUBLE_FETS);
 
-	/* 5V to battery handoff ... FIXME */
-	setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
-	early_delay(30);
-	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	if (!fixed_batt_supply) {
+		/* 5V to battery handoff ... FIXME */
+		setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+		early_delay(30);
+		clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	}
 }
 
 static void mx28_power_init_4p2_params(void)
@@ -547,6 +561,37 @@ static void mx28_5v_boot(void)
 	mx28_handle_5v_conflict();
 }
 
+static void mx28_fixed_batt_boot(void)
+{
+	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
+
+	setbits_le32(&power_regs->hw_power_5vctrl,
+		POWER_5VCTRL_PWDN_5VBRNOUT |
+		POWER_5VCTRL_ENABLE_DCDC |
+		POWER_5VCTRL_ILIMIT_EQ_ZERO |
+		POWER_5VCTRL_PWDN_5VBRNOUT |
+		POWER_5VCTRL_PWD_CHARGE_4P2_MASK);
+
+	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
+
+	clrbits_le32(&power_regs->hw_power_vdddctrl,
+		POWER_VDDDCTRL_DISABLE_FET |
+		POWER_VDDDCTRL_ENABLE_LINREG |
+		POWER_VDDDCTRL_DISABLE_STEPPING);
+
+	clrbits_le32(&power_regs->hw_power_vddactrl,
+		POWER_VDDACTRL_DISABLE_FET | POWER_VDDACTRL_ENABLE_LINREG |
+		POWER_VDDACTRL_DISABLE_STEPPING);
+
+	clrbits_le32(&power_regs->hw_power_vddioctrl,
+		POWER_VDDIOCTRL_DISABLE_FET |
+		POWER_VDDIOCTRL_DISABLE_STEPPING);
+
+	/* Stop 5V detection */
+	writel(POWER_5VCTRL_PWRUP_VBUS_CMPS,
+		&power_regs->hw_power_5vctrl_clr);
+}
+
 static void mx28_init_batt_bo(void)
 {
 	clrsetbits_le32(&power_regs->hw_power_battmonitor,
@@ -612,7 +657,11 @@ static void mx28_power_configure_power_source(void)
 {
 	mx28_src_power_init();
 
-	mx28_5v_boot();
+	if (!fixed_batt_supply)
+		mx28_5v_boot();
+	else
+		mx28_fixed_batt_boot();
+
 	mx28_power_clock2pll();
 
 	mx28_init_batt_bo();
@@ -893,7 +942,9 @@ void mx28_power_init(void)
 	mx28_power_clock2xtal();
 	mx28_power_clear_auto_restart();
 	mx28_power_set_linreg();
-	mx28_power_setup_5v_detect();
+	if (!fixed_batt_supply)
+		mx28_power_setup_5v_detect();
+
 	mx28_power_configure_power_source();
 	mx28_enable_output_rail_protection();
 
@@ -909,9 +960,9 @@ void mx28_power_init(void)
 		POWER_CTRL_VDDIO_BO_IRQ | POWER_CTRL_VDD5V_DROOP_IRQ |
 		POWER_CTRL_VBUS_VALID_IRQ | POWER_CTRL_BATT_BO_IRQ |
 		POWER_CTRL_DCDC4P2_BO_IRQ, &power_regs->hw_power_ctrl_clr);
-
-	writel(POWER_5VCTRL_PWDN_5VBRNOUT, &power_regs->hw_power_5vctrl_set);
-
+	if (!fixed_batt_supply)
+		writel(POWER_5VCTRL_PWDN_5VBRNOUT,
+			&power_regs->hw_power_5vctrl_set);
 }
 
 #ifdef	CONFIG_SPL_MX28_PSWITCH_WAIT
