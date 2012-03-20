@@ -290,11 +290,11 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 	struct mmc *mmc = NULL;
 	struct mxsmmc_priv *priv = NULL;
 
-	mmc = malloc(sizeof(struct mmc));
+	mmc = calloc(sizeof(struct mmc), 1);
 	if (!mmc)
 		return -ENOMEM;
 
-	priv = malloc(sizeof(struct mxsmmc_priv));
+	priv = calloc(sizeof(struct mxsmmc_priv), 1);
 	if (!priv) {
 		free(mmc);
 		return -ENOMEM;
