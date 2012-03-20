@@ -39,6 +39,8 @@
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
+#define CONFIG_SYS_SPL_VDDD_VAL		1500
+#define CONFIG_SYS_SPL_BATT_BO_LEVEL	2800
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
 /*
@@ -109,6 +111,7 @@
 	" mxsfb.mode=${video_mode}\0"					\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"video_mode=VGA\0"
 
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
