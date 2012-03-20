@@ -30,6 +30,8 @@
 
 #include "mx28_init.h"
 
+static struct mx28_power_regs *power_regs = (void *)MXS_POWER_BASE;
+
 static void mx28_power_clock2xtal(void)
 {
 	struct mx28_clkctrl_regs *clkctrl_regs =
@@ -87,9 +89,6 @@ static void mx28_power_clear_auto_restart(void)
 
 static void mx28_power_set_linreg(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Set linear regulator 25mV below switching converter */
 	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
 			POWER_VDDDCTRL_LINREG_OFFSET_MASK,
@@ -106,9 +105,6 @@ static void mx28_power_set_linreg(void)
 
 static void mx28_power_setup_5v_detect(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Start 5V detection */
 	clrsetbits_le32(&power_regs->hw_power_5vctrl,
 			POWER_5VCTRL_VBUSVALID_TRSH_MASK,
@@ -118,9 +114,6 @@ static void mx28_power_setup_5v_detect(void)
 
 static void mx28_src_power_init(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Improve efficieny and reduce transient ripple */
 	writel(POWER_LOOPCTRL_TOGGLE_DIF | POWER_LOOPCTRL_EN_CM_HYST |
 		POWER_LOOPCTRL_EN_DF_HYST, &power_regs->hw_power_loopctrl_set);
@@ -149,9 +142,6 @@ static void mx28_src_power_init(void)
 
 static void mx28_power_init_4p2_params(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Setup 4P2 parameters */
 	clrsetbits_le32(&power_regs->hw_power_dcdc4p2,
 		POWER_DCDC4P2_CMPTRIP_MASK | POWER_DCDC4P2_TRG_MASK,
@@ -173,8 +163,6 @@ static void mx28_power_init_4p2_params(void)
 
 static void mx28_enable_4p2_dcdc_input(int xfer)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp, vbus_thresh, vbus_5vdetect, pwd_bo;
 	uint32_t prev_5v_brnout, prev_5v_droop;
 
@@ -269,8 +257,6 @@ static void mx28_enable_4p2_dcdc_input(int xfer)
 
 static void mx28_power_init_4p2_regulator(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp, tmp2;
 
 	setbits_le32(&power_regs->hw_power_dcdc4p2, POWER_DCDC4P2_ENABLE_4P2);
@@ -353,9 +339,6 @@ static void mx28_power_init_4p2_regulator(void)
 
 static void mx28_power_init_dcdc_4p2_source(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	if (!(readl(&power_regs->hw_power_dcdc4p2) &
 		POWER_DCDC4P2_ENABLE_DCDC)) {
 		hang();
@@ -375,8 +358,6 @@ static void mx28_power_init_dcdc_4p2_source(void)
 
 static void mx28_power_enable_4p2(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t vdddctrl, vddactrl, vddioctrl;
 	uint32_t tmp;
 
@@ -429,9 +410,6 @@ static void mx28_power_enable_4p2(void)
 
 static void mx28_boot_valid_5v(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/*
 	 * Use VBUSVALID level instead of VDD5V_GT_VDDIO level to trigger a 5V
 	 * disconnect event. FIXME
@@ -452,8 +430,6 @@ static void mx28_boot_valid_5v(void)
 
 static void mx28_powerdown(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	writel(POWER_RESET_UNLOCK_KEY, &power_regs->hw_power_reset);
 	writel(POWER_RESET_UNLOCK_KEY | POWER_RESET_PWD_OFF,
 		&power_regs->hw_power_reset);
@@ -461,8 +437,6 @@ static void mx28_powerdown(void)
 
 static void mx28_handle_5v_conflict(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp;
 
 	setbits_le32(&power_regs->hw_power_vddioctrl,
@@ -488,8 +462,6 @@ static void mx28_handle_5v_conflict(void)
 
 static inline int mx28_get_batt_volt(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t volt = readl(&power_regs->hw_power_battmonitor);
 
 	volt &= POWER_BATTMONITOR_BATT_VAL_MASK;
@@ -505,9 +477,6 @@ static inline int mx28_is_batt_ready(void)
 
 static void mx28_5v_boot(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/*
 	 * NOTE: In original IMX-Bootlets, this also checks for VBUSVALID,
 	 * but their implementation always returns 1 so we omit it here.
@@ -528,8 +497,6 @@ static void mx28_5v_boot(void)
 
 static void mx28_init_batt_bo(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 
 	/* Brownout at 3V */
 	clrsetbits_le32(&power_regs->hw_power_battmonitor,
@@ -542,9 +509,6 @@ static void mx28_init_batt_bo(void)
 
 static void mx28_switch_vddd_to_dcdc_source(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
 		POWER_VDDDCTRL_LINREG_OFFSET_MASK,
 		POWER_VDDDCTRL_LINREG_OFFSET_1STEPS_BELOW);
@@ -556,8 +520,6 @@ static void mx28_switch_vddd_to_dcdc_source(void)
 
 static inline int mx28_is_batt_good(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t volt;
 
 	volt = mx28_get_batt_volt();
@@ -609,9 +571,6 @@ static void mx28_power_configure_power_source(void)
 
 static void mx28_enable_output_rail_protection(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
 		POWER_CTRL_VDDIO_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 
@@ -627,8 +586,6 @@ static void mx28_enable_output_rail_protection(void)
 
 static inline int mx28_get_vddio_power_source_off(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp;
 
 	if ((readl(&power_regs->hw_power_sts) & POWER_STS_VDD5V_GT_VDDIO) &&
@@ -657,8 +614,6 @@ static inline int mx28_get_vddio_power_source_off(void)
 
 static inline int mx28_get_vddd_power_source_off(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp;
 
 	tmp = readl(&power_regs->hw_power_vdddctrl);
@@ -688,8 +643,6 @@ static inline int mx28_get_vddd_power_source_off(void)
 
 static void mx28_power_set_vddio(uint32_t new_target, uint32_t new_brownout)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t cur_target, diff, bo_int = 0;
 	uint32_t powered_by_linreg = 0;
 
@@ -781,8 +734,6 @@ static void mx28_power_set_vddio(uint32_t new_target, uint32_t new_brownout)
 
 static void mx28_power_set_vddd(uint32_t new_target, uint32_t new_brownout)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t cur_target, diff, bo_int = 0;
 	uint32_t powered_by_linreg = 0;
 
@@ -874,9 +825,6 @@ static void mx28_power_set_vddd(uint32_t new_target, uint32_t new_brownout)
 
 void mx28_power_init(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	mx28_power_clock2xtal();
 	mx28_power_clear_auto_restart();
 	mx28_power_set_linreg();
@@ -900,9 +848,6 @@ void mx28_power_init(void)
 #ifdef	CONFIG_SPL_MX28_PSWITCH_WAIT
 void mx28_power_wait_pswitch(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	while (!(readl(&power_regs->hw_power_sts) & POWER_STS_PSWITCH_MASK))
 		;
 }
