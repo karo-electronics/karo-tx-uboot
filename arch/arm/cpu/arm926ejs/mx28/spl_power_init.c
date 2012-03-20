@@ -691,154 +691,89 @@ static inline int mx28_get_vddd_power_source_off(void)
 	return 0;
 }
 
-static void mx28_power_set_vddio(uint32_t new_target, uint32_t new_brownout)
+static inline int mx28_get_vdda_power_source_off(void)
 {
-	uint32_t cur_target, diff, bo_int = 0;
-	uint32_t powered_by_linreg = 0;
+	uint32_t tmp;
 
-	new_brownout = new_target - new_brownout;
-
-	cur_target = readl(&power_regs->hw_power_vddioctrl);
-	cur_target &= POWER_VDDIOCTRL_TRG_MASK;
-	cur_target *= 50;	/* 50 mV step*/
-	cur_target += 2800;	/* 2800 mV lowest */
-
-	powered_by_linreg = mx28_get_vddio_power_source_off();
-	if (new_target > cur_target) {
-
-		if (powered_by_linreg) {
-			bo_int = readl(&power_regs->hw_power_vddioctrl);
-			clrbits_le32(&power_regs->hw_power_vddioctrl,
-					POWER_CTRL_ENIRQ_VDDIO_BO);
-		}
-
-		setbits_le32(&power_regs->hw_power_vddioctrl,
-				POWER_VDDIOCTRL_BO_OFFSET_MASK);
-		do {
-			if (new_target - cur_target > 100)
-				diff = cur_target + 100;
-			else
-				diff = new_target;
-
-			diff -= 2800;
-			diff /= 50;
-
-			clrsetbits_le32(&power_regs->hw_power_vddioctrl,
-				POWER_VDDIOCTRL_TRG_MASK, diff);
-
-			if (powered_by_linreg)
-				early_delay(1500);
-			else {
-				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
-			}
-
-			cur_target = readl(&power_regs->hw_power_vddioctrl);
-			cur_target &= POWER_VDDIOCTRL_TRG_MASK;
-			cur_target *= 50;	/* 50 mV step*/
-			cur_target += 2800;	/* 2800 mV lowest */
-		} while (new_target > cur_target);
-
-		if (powered_by_linreg) {
-			writel(POWER_CTRL_VDDIO_BO_IRQ,
-				&power_regs->hw_power_ctrl_clr);
-			if (bo_int & POWER_CTRL_ENIRQ_VDDIO_BO)
-				setbits_le32(&power_regs->hw_power_vddioctrl,
-						POWER_CTRL_ENIRQ_VDDIO_BO);
-		}
-	} else {
-		do {
-			if (cur_target - new_target > 100)
-				diff = cur_target - 100;
-			else
-				diff = new_target;
-
-			diff -= 2800;
-			diff /= 50;
-
-			clrsetbits_le32(&power_regs->hw_power_vddioctrl,
-				POWER_VDDIOCTRL_TRG_MASK, diff);
-
-			if (powered_by_linreg)
-				early_delay(1500);
-			else {
-				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
-			}
-
-			cur_target = readl(&power_regs->hw_power_vddioctrl);
-			cur_target &= POWER_VDDIOCTRL_TRG_MASK;
-			cur_target *= 50;	/* 50 mV step*/
-			cur_target += 2800;	/* 2800 mV lowest */
-		} while (new_target < cur_target);
+	tmp = readl(&power_regs->hw_power_vddactrl);
+	if (tmp & POWER_VDDACTRL_DISABLE_FET) {
+		if ((tmp & POWER_VDDACTRL_LINREG_OFFSET_MASK) ==
+			POWER_VDDACTRL_LINREG_OFFSET_0STEPS)
+			return 1;
 	}
 
-	clrsetbits_le32(&power_regs->hw_power_vddioctrl,
-			POWER_VDDDCTRL_BO_OFFSET_MASK,
-			new_brownout << POWER_VDDDCTRL_BO_OFFSET_OFFSET);
+	if (readl(&power_regs->hw_power_sts) & POWER_STS_VDD5V_GT_VDDIO) {
+		if (!(readl(&power_regs->hw_power_5vctrl) &
+			POWER_5VCTRL_ENABLE_DCDC))
+			return 1;
+	}
+
+	if (!(tmp & POWER_VDDACTRL_ENABLE_LINREG)) {
+		if ((tmp & POWER_VDDACTRL_LINREG_OFFSET_MASK) ==
+			POWER_VDDACTRL_LINREG_OFFSET_1STEPS_BELOW)
+			return 1;
+	}
+	return 0;
 }
 
-static void mx28_power_set_vddd(uint32_t new_target, uint32_t new_brownout)
+static inline void mx28_power_set_vddx(
+	uint32_t new_target, uint32_t new_brownout,
+	uint32_t *reg, const char *name,
+	uint32_t min_trg, uint32_t max_trg,
+	uint8_t step_size,
+	uint32_t trg_mask, uint32_t trg_shift,
+	uint32_t bo_mask, uint32_t bo_shift,
+	int powered_by_linreg)
 {
-	uint32_t cur_target, diff, bo_int = 0;
-	uint32_t powered_by_linreg = 0;
+	uint32_t cur_target, cur_brownout;
+	uint32_t diff;
 
-	new_brownout = new_target - new_brownout;
+	if (new_target < min_trg || new_target > max_trg)
+		new_target = (new_target > max_trg) ? max_trg : min_trg;
 
-	cur_target = readl(&power_regs->hw_power_vdddctrl);
-	cur_target &= POWER_VDDDCTRL_TRG_MASK;
-	cur_target *= 25;	/* 25 mV step*/
-	cur_target += 800;	/* 800 mV lowest */
+	if (new_brownout / step_size > 7)
+		new_brownout = 7 * step_size;
 
-	powered_by_linreg = mx28_get_vddd_power_source_off();
+	cur_target = readl(reg);
+
+	cur_brownout = (cur_target & bo_mask) >> bo_shift;
+	cur_brownout *= step_size;
+
+	cur_target = (cur_target & trg_mask) >> trg_shift;
+	cur_target *= step_size;
+	cur_target += min_trg;
+	if (cur_target > max_trg)
+		cur_target = max_trg;
+
+	if (new_target == cur_target && new_brownout == cur_brownout)
+		return;
+
 	if (new_target > cur_target) {
-		if (powered_by_linreg) {
-			bo_int = readl(&power_regs->hw_power_vdddctrl);
-			clrbits_le32(&power_regs->hw_power_vdddctrl,
-					POWER_CTRL_ENIRQ_VDDD_BO);
-		}
-
-		setbits_le32(&power_regs->hw_power_vdddctrl,
-				POWER_VDDDCTRL_BO_OFFSET_MASK);
-
+		setbits_le32(reg, bo_mask);
 		do {
 			if (new_target - cur_target > 100)
 				diff = cur_target + 100;
 			else
 				diff = new_target;
 
-			diff -= 800;
-			diff /= 25;
+			diff -= min_trg;
+			diff /= step_size;
 
-			clrsetbits_le32(&power_regs->hw_power_vdddctrl,
-				POWER_VDDDCTRL_TRG_MASK, diff);
+			clrsetbits_le32(reg, trg_mask, diff);
 
-			if (powered_by_linreg)
+			if (powered_by_linreg) {
 				early_delay(1500);
-			else {
+			} else {
 				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
+					POWER_STS_DC_OK)) {
+				}
 			}
 
-			cur_target = readl(&power_regs->hw_power_vdddctrl);
-			cur_target &= POWER_VDDDCTRL_TRG_MASK;
-			cur_target *= 25;	/* 25 mV step*/
-			cur_target += 800;	/* 800 mV lowest */
+			cur_target = readl(reg);
+			cur_target &= trg_mask;
+			cur_target *= step_size;
+			cur_target += min_trg;
 		} while (new_target > cur_target);
-
-		if (powered_by_linreg) {
-			writel(POWER_CTRL_VDDD_BO_IRQ,
-				&power_regs->hw_power_ctrl_clr);
-			if (bo_int & POWER_CTRL_ENIRQ_VDDD_BO)
-				setbits_le32(&power_regs->hw_power_vdddctrl,
-						POWER_CTRL_ENIRQ_VDDD_BO);
-		}
 	} else {
 		do {
 			if (cur_target - new_target > 100)
@@ -846,31 +781,111 @@ static void mx28_power_set_vddd(uint32_t new_target, uint32_t new_brownout)
 			else
 				diff = new_target;
 
-			diff -= 800;
-			diff /= 25;
+			diff -= min_trg;
+			diff /= step_size;
 
-			clrsetbits_le32(&power_regs->hw_power_vdddctrl,
-					POWER_VDDDCTRL_TRG_MASK, diff);
+			clrsetbits_le32(reg, trg_mask, diff);
 
-			if (powered_by_linreg)
+			if (powered_by_linreg) {
 				early_delay(1500);
-			else {
+			} else {
 				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
+					POWER_STS_DC_OK)) {
+				}
 			}
 
-			cur_target = readl(&power_regs->hw_power_vdddctrl);
-			cur_target &= POWER_VDDDCTRL_TRG_MASK;
-			cur_target *= 25;	/* 25 mV step*/
-			cur_target += 800;	/* 800 mV lowest */
+			cur_target = readl(reg);
+			cur_target &= trg_mask;
+			cur_target *= step_size;
+			cur_target += min_trg;
 		} while (new_target < cur_target);
 	}
 
-	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
-			POWER_VDDDCTRL_BO_OFFSET_MASK,
-			new_brownout << POWER_VDDDCTRL_BO_OFFSET_OFFSET);
+	clrsetbits_le32(reg, bo_mask, (new_brownout / step_size) << bo_shift);
+}
+
+#define __mx28_power_set_vddx(trg, bo, min, max, step, reg, name, lr)	\
+	mx28_power_set_vddx(trg, bo,					\
+			&power_regs->hw_power_##reg##ctrl, #name,	\
+			min, max, step,					\
+			POWER_##name##CTRL_TRG_MASK,			\
+			POWER_##name##CTRL_TRG_OFFSET,			\
+			POWER_##name##CTRL_BO_OFFSET_MASK,		\
+			POWER_##name##CTRL_BO_OFFSET_OFFSET, lr)
+
+static inline void mx28_power_set_vddd(uint32_t target, uint32_t brownout)
+{
+	int powered_by_linreg = mx28_get_vddd_power_source_off();
+	uint32_t bo_int = 0;
+
+	if (powered_by_linreg) {
+		bo_int = readl(&power_regs->hw_power_vdddctrl);
+		clrbits_le32(&power_regs->hw_power_vdddctrl,
+			POWER_CTRL_ENIRQ_VDDD_BO);
+	}
+
+	__mx28_power_set_vddx(target, brownout, 800, 1575, 25, vddd, VDDD,
+			powered_by_linreg);
+
+	if (powered_by_linreg) {
+		writel(POWER_CTRL_VDDD_BO_IRQ,
+			&power_regs->hw_power_ctrl_clr);
+		if (bo_int & POWER_CTRL_ENIRQ_VDDD_BO)
+			setbits_le32(&power_regs->hw_power_vdddctrl,
+				POWER_CTRL_ENIRQ_VDDD_BO);
+	}
+}
+
+static inline void mx28_power_set_vddio(uint32_t target, uint32_t brownout)
+{
+	int powered_by_linreg = mx28_get_vddio_power_source_off();
+	uint32_t bo_int = 0;
+
+	if (powered_by_linreg) {
+		bo_int = readl(&power_regs->hw_power_vddioctrl);
+		clrbits_le32(&power_regs->hw_power_vddioctrl,
+			POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+	__mx28_power_set_vddx(target, brownout, 2800, 3600, 50, vddio, VDDIO,
+			powered_by_linreg);
+	if (powered_by_linreg) {
+		writel(POWER_CTRL_VDDIO_BO_IRQ,
+			&power_regs->hw_power_ctrl_clr);
+		if (bo_int & POWER_CTRL_ENIRQ_VDDIO_BO)
+			setbits_le32(&power_regs->hw_power_vddioctrl,
+				POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+}
+
+static inline void mx28_power_set_vdda(uint32_t target, uint32_t brownout)
+{
+	int powered_by_linreg = mx28_get_vdda_power_source_off();
+	uint32_t bo_int = 0;
+
+	if (powered_by_linreg) {
+		bo_int = readl(&power_regs->hw_power_vddioctrl);
+		clrbits_le32(&power_regs->hw_power_vddioctrl,
+			POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+	__mx28_power_set_vddx(target, brownout, 1500, 2275, 25, vdda, VDDA,
+		powered_by_linreg);
+	if (powered_by_linreg) {
+		writel(POWER_CTRL_VDDIO_BO_IRQ,
+			&power_regs->hw_power_ctrl_clr);
+		if (bo_int & POWER_CTRL_ENIRQ_VDDIO_BO)
+			setbits_le32(&power_regs->hw_power_vddioctrl,
+				POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+}
+
+static inline void mx28_power_set_vddmem(uint32_t target, uint32_t brownout)
+{
+	__mx28_power_set_vddx(target, brownout, 1100, 1750, 25, vddmem, VDDMEM,
+			0);
+
+	clrsetbits_le32(&power_regs->hw_power_vddmemctrl,
+		POWER_VDDMEMCTRL_ENABLE_LINREG,
+		POWER_VDDMEMCTRL_ENABLE_ILIMIT);
 }
 
 void mx28_power_init(void)
@@ -886,6 +901,9 @@ void mx28_power_init(void)
 
 	mx28_power_set_vddd(VDDD_VAL, VDDD_BO_VAL);
 
+	mx28_power_set_vdda(VDDA_VAL, VDDA_BO_VAL);
+
+	mx28_power_set_vddmem(VDDMEM_VAL, VDDMEM_BO_VAL);
 
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
 		POWER_CTRL_VDDIO_BO_IRQ | POWER_CTRL_VDD5V_DROOP_IRQ |
