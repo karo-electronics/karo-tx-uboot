@@ -52,17 +52,16 @@ static void mx28_mem_init_clock(void)
 	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_frac0,
 			CLKCTRL_FRAC0_CLKGATEEMI | CLKCTRL_FRAC0_EMIFRAC_MASK,
 			21 << CLKCTRL_FRAC0_EMIFRAC_OFFSET);
-	early_delay(11000);
 
 	writel((2 << CLKCTRL_EMI_DIV_EMI_OFFSET) |
 		(1 << CLKCTRL_EMI_DIV_XTAL_OFFSET),
 		&clkctrl_regs->hw_clkctrl_emi);
+	while (readl(&clkctrl_regs->hw_clkctrl_emi) & CLKCTRL_EMI_BUSY_REF_EMI)
+		;
 
 	/* Unbypass EMI */
 	writel(CLKCTRL_CLKSEQ_BYPASS_EMI,
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
-
-	early_delay(10000);
 }
 
 static void mx28_mem_setup_cpu_and_hbus(void)
@@ -83,13 +82,15 @@ static void mx28_mem_setup_cpu_and_hbus(void)
 	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_hbus,
 			CLKCTRL_HBUS_DIV_MASK,
 			3 << CLKCTRL_HBUS_DIV_OFFSET);
-
-	early_delay(10000);
+	while (readl(&clkctrl_regs->hw_clkctrl_hbus) & CLKCTRL_HBUS_ASM_BUSY)
+		;
 
 	/* CPU clock divider = 1 */
 	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_cpu,
 			CLKCTRL_CPU_DIV_CPU_MASK,
 			1 << CLKCTRL_CPU_DIV_CPU_OFFSET);
+	while (readl(&clkctrl_regs->hw_clkctrl_cpu) & CLKCTRL_CPU_BUSY_REF_CPU)
+		;
 
 	/* Disable CPU bypass */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
@@ -158,7 +159,8 @@ void mx28_mem_init(void)
 	writel(CLKCTRL_PLL0CTRL0_POWER,
 		&clkctrl_regs->hw_clkctrl_pll0ctrl0_set);
 
-	early_delay(11000);
+	/* enabling the PLL requires a 10µs delay before use as clk source */
+	early_delay(11);
 
 	mx28_mem_init_clock();
 
@@ -184,8 +186,6 @@ void mx28_mem_init(void)
 		;
 
 	mx28_mem_setup_vddd();
-
-	early_delay(10000);
 
 	mx28_mem_setup_cpu_and_hbus();
 
