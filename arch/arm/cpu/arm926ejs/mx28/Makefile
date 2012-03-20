@@ -28,12 +28,7 @@ LIB	= $(obj)lib$(SOC).o
 COBJS	= clock.o mx28.o iomux.o timer.o
 
 ifdef	CONFIG_SPL_BUILD
-COBJS	+= spl_boot.o spl_mem_init.o debug.o
-ifneq ($(CONFIG_SPL_FIXED_BATT_SUPPLY),)
-	COBJS += spl_power_init-fixed.o
-else
-	COBJS += spl_power_init.o
-endif
+COBJS	+= spl_boot.o spl_mem_init.o spl_power_init.o debug.o
 endif
 
 SRCS	:= $(START:.o=.S) $(COBJS:.o=.c)
