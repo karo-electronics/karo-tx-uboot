@@ -49,16 +49,9 @@ static void mx28_mem_init_clock(void)
 		&clkctrl_regs->hw_clkctrl_frac0_set);
 
 	/* EMI = 205MHz */
-	writel(CLKCTRL_FRAC0_EMIFRAC_MASK,
-		&clkctrl_regs->hw_clkctrl_frac0_set);
-	writel((~21 << CLKCTRL_FRAC0_EMIFRAC_OFFSET) &
-		CLKCTRL_FRAC0_EMIFRAC_MASK,
-		&clkctrl_regs->hw_clkctrl_frac0_clr);
-
-	/* Ungate EMI clock */
-	writel(CLKCTRL_FRAC0_CLKGATEEMI,
-		&clkctrl_regs->hw_clkctrl_frac0_clr);
-
+	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_frac0,
+			CLKCTRL_FRAC0_CLKGATEEMI | CLKCTRL_FRAC0_EMIFRAC_MASK,
+			21 << CLKCTRL_FRAC0_EMIFRAC_OFFSET);
 	early_delay(11000);
 
 	writel((2 << CLKCTRL_EMI_DIV_EMI_OFFSET) |
@@ -87,15 +80,16 @@ static void mx28_mem_setup_cpu_and_hbus(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_set);
 
 	/* HBUS = 151MHz */
-	writel(CLKCTRL_HBUS_DIV_MASK, &clkctrl_regs->hw_clkctrl_hbus_set);
-	writel(((~3) << CLKCTRL_HBUS_DIV_OFFSET) & CLKCTRL_HBUS_DIV_MASK,
-		&clkctrl_regs->hw_clkctrl_hbus_clr);
+	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_hbus,
+			CLKCTRL_HBUS_DIV_MASK,
+			3 << CLKCTRL_HBUS_DIV_OFFSET);
 
 	early_delay(10000);
 
 	/* CPU clock divider = 1 */
 	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_cpu,
-			CLKCTRL_CPU_DIV_CPU_MASK, 1);
+			CLKCTRL_CPU_DIV_CPU_MASK,
+			1 << CLKCTRL_CPU_DIV_CPU_OFFSET);
 
 	/* Disable CPU bypass */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
