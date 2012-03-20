@@ -30,6 +30,58 @@
 
 #include "mx28_init.h"
 
+#ifdef CONFIG_SYS_SPL_VDDD_VAL
+#define VDDD_VAL	CONFIG_SYS_SPL_VDDD_VAL
+#else
+#define VDDD_VAL	1350
+#endif
+#ifdef CONFIG_SYS_SPL_VDDIO_VAL
+#define VDDIO_VAL	CONFIG_SYS_SPL_VDDIO_VAL
+#else
+#define VDDIO_VAL	3300
+#endif
+#ifdef CONFIG_SYS_SPL_VDDA_VAL
+#define VDDA_VAL	CONFIG_SYS_SPL_VDDA_VAL
+#else
+#define VDDA_VAL	1800
+#endif
+#ifdef CONFIG_SYS_SPL_VDDMEM_VAL
+#define VDDMEM_VAL	CONFIG_SYS_SPL_VDDMEM_VAL
+#else
+#define VDDMEM_VAL	1500
+#endif
+
+#ifdef CONFIG_SYS_SPL_VDDD_BO_VAL
+#define VDDD_BO_VAL	CONFIG_SYS_SPL_VDDD_BO_VAL
+#else
+#define VDDD_BO_VAL	150
+#endif
+#ifdef CONFIG_SYS_SPL_VDDIO_BO_VAL
+#define VDDIO_BO_VAL	CONFIG_SYS_SPL_VDDIO_BO_VAL
+#else
+#define VDDIO_BO_VAL	150
+#endif
+#ifdef CONFIG_SYS_SPL_VDDA_BO_VAL
+#define VDDA_BO_VAL	CONFIG_SYS_SPL_VDDA_BO_VAL
+#else
+#define VDDA_BO_VAL	175
+#endif
+#ifdef CONFIG_SYS_SPL_VDDMEM_BO_VAL
+#define VDDMEM_BO_VAL	CONFIG_SYS_SPL_VDDMEM_BO_VAL
+#else
+#define VDDMEM_BO_VAL	25
+#endif
+
+#ifdef CONFIG_SYS_SPL_BATT_BO_LEVEL
+#if CONFIG_SYS_SPL_BATT_BO_LEVEL < 2400 || CONFIG_SYS_SPL_BATT_BO_LEVEL > 3640
+#error CONFIG_SYS_SPL_BATT_BO_LEVEL out of range
+#endif
+#define BATT_BO_VAL	(((CONFIG_SYS_SPL_BATT_BO_LEVEL) - 2400) / 40)
+#else
+/* Brownout default at 3V */
+#define BATT_BO_VAL	((3000 - 2400) / 40)
+#endif
+
 static struct mx28_power_regs *power_regs = (void *)MXS_POWER_BASE;
 
 static void mx28_power_clock2xtal(void)
@@ -497,11 +549,9 @@ static void mx28_5v_boot(void)
 
 static void mx28_init_batt_bo(void)
 {
-
-	/* Brownout at 3V */
 	clrsetbits_le32(&power_regs->hw_power_battmonitor,
 		POWER_BATTMONITOR_BRWNOUT_LVL_MASK,
-		15 << POWER_BATTMONITOR_BRWNOUT_LVL_OFFSET);
+		BATT_BO_VAL << POWER_BATTMONITOR_BRWNOUT_LVL_OFFSET);
 
 	writel(POWER_CTRL_BATT_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
@@ -832,9 +882,10 @@ void mx28_power_init(void)
 	mx28_power_configure_power_source();
 	mx28_enable_output_rail_protection();
 
-	mx28_power_set_vddio(3300, 3150);
+	mx28_power_set_vddio(VDDIO_VAL, VDDIO_BO_VAL);
 
-	mx28_power_set_vddd(1350, 1200);
+	mx28_power_set_vddd(VDDD_VAL, VDDD_BO_VAL);
+
 
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
 		POWER_CTRL_VDDIO_BO_IRQ | POWER_CTRL_VDD5V_DROOP_IRQ |
