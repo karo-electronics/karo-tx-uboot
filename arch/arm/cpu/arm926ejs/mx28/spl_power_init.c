@@ -932,8 +932,8 @@ static inline void mx28_power_set_vddmem(uint32_t target, uint32_t brownout)
 	__mx28_power_set_vddx(target, brownout, 1100, 1750, 25, vddmem, VDDMEM,
 			0);
 
-	clrsetbits_le32(&power_regs->hw_power_vddmemctrl,
-		POWER_VDDMEMCTRL_ENABLE_LINREG,
+	clrbits_le32(&power_regs->hw_power_vddmemctrl,
+		POWER_VDDMEMCTRL_ENABLE_LINREG |
 		POWER_VDDMEMCTRL_ENABLE_ILIMIT);
 }
 
