@@ -207,6 +207,13 @@ static iomux_cfg_t tx28_stk5_pads[] = {
 	MX28_PAD_ENET0_CRS__GPIO_4_15 | MUX_CONFIG_GPIO,
 };
 
+static void tx28_stk5_lcd_init(void)
+{
+	gpio_direction_output(MX28_PAD_PWM0__GPIO_3_16, 1);
+	gpio_direction_output(MX28_PAD_LCD_RESET__GPIO_3_30, 0);
+	gpio_direction_output(MX28_PAD_LCD_ENABLE__GPIO_1_31, 0);
+}
+
 static void tx28_stk5_led_on(void)
 {
 	gpio_direction_output(MX28_PAD_ENET0_RXD3__GPIO_4_10, 1);
@@ -215,6 +222,7 @@ static void tx28_stk5_led_on(void)
 void board_init_ll(void)
 {
 	mx28_common_spl_init(tx28_stk5_pads, ARRAY_SIZE(tx28_stk5_pads));
+	tx28_stk5_lcd_init();
 	tx28_stk5_led_on();
 }
 
