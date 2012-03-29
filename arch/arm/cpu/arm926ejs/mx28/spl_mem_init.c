@@ -97,28 +97,6 @@ static void mx28_mem_setup_cpu_and_hbus(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
 }
 
-static void mx28_mem_setup_vdda(void)
-{
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
-	writel((0xc << POWER_VDDACTRL_TRG_OFFSET) |
-		(0x7 << POWER_VDDACTRL_BO_OFFSET_OFFSET) |
-		POWER_VDDACTRL_LINREG_OFFSET_1STEPS_BELOW,
-		&power_regs->hw_power_vddactrl);
-}
-
-static void mx28_mem_setup_vddd(void)
-{
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
-	writel((0x1c << POWER_VDDDCTRL_TRG_OFFSET) |
-		(0x7 << POWER_VDDDCTRL_BO_OFFSET_OFFSET) |
-		POWER_VDDDCTRL_LINREG_OFFSET_1STEPS_BELOW,
-		&power_regs->hw_power_vdddctrl);
-}
-
 #define	HW_DIGCTRL_SCRATCH0	0x8001c280
 #define	HW_DIGCTRL_SCRATCH1	0x8001c290
 static void data_abort_memdetect_handler(void) __attribute__((naked));
@@ -164,8 +142,6 @@ void mx28_mem_init(void)
 
 	mx28_mem_init_clock();
 
-	mx28_mem_setup_vdda();
-
 	/*
 	 * Configure the DRAM registers
 	 */
@@ -184,8 +160,6 @@ void mx28_mem_init(void)
 	/* Wait for bit 20 (DRAM init complete) in DRAM_CTL58 */
 	while (!(readl(MXS_DRAM_BASE + 0xe8) & (1 << 20)))
 		;
-
-	mx28_mem_setup_vddd();
 
 	mx28_mem_setup_cpu_and_hbus();
 
