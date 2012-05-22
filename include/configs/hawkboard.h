@@ -62,6 +62,7 @@
 #define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SPL_NAND_LOAD
+#define CONFIG_SPL_LIBGENERIC_SUPPORT	/* for udelay and __div64_32 for NAND */
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_LDSCRIPT		"board/$(BOARDDIR)/u-boot-spl-hawk.lds"
 #define CONFIG_SPL_TEXT_BASE		0xc1080000
@@ -126,7 +127,6 @@
 #define CFG_DAVINCI_STD_NAND_LAYOUT
 #define CONFIG_SYS_NAND_CS		3
 #define CONFIG_SYS_NAND_PAGE_2K
-#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 /* Max number of NAND devices */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE_LIST	{ 0x62000000, }

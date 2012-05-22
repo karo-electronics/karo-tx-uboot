@@ -37,6 +37,7 @@
  * IRQ Stack: 00ebff7c
  * FIQ Stack: 00ebef7c
  */
+#define DEBUG
 
 #include <common.h>
 #include <command.h>
@@ -266,6 +267,8 @@ void board_init_f(ulong bootflag)
 	ulong reg;
 #endif
 
+	bootstage_mark_name(BOOTSTAGE_ID_START_UBOOT_F, "board_init_f");
+
 	/* Pointer is writable since we allocated a register for it */
 	gd = (gd_t *) ((CONFIG_SYS_INIT_SP_ADDR) & ~0x07);
 	/* compiler optimization barrier needed for GCC >= 3.4 */
@@ -289,7 +292,30 @@ void board_init_f(ulong bootflag)
 		if ((*init_fnc_ptr)() != 0) {
 			hang ();
 		}
+#if 1
+	{
+		u32 *data = (u32 *)(CONFIG_SYS_TEXT_BASE - 16);
+		int i;
+
+		debug("ip=%d\n", init_fnc_ptr - init_sequence);
+		debug("gd=%p..%p\n", gd, gd + 1);
+		debug("FDT=%p\n", gd->fdt_blob);
+		debug("spl_data=%p:\n", data);
+		for (i = 0; i < 16 / 4; i++) {
+			debug("%08x ", data[i]);
+		}
+		debug("\n");
 	}
+#endif
+	}
+
+#ifdef CONFIG_OF_CONTROL
+	/* For now, put this check after the console is ready */
+	if (fdtdec_prepare_fdt()) {
+		panic("** CONFIG_OF_CONTROL defined but no FDT - please see "
+			"doc/README.fdt-control");
+	}
+#endif
 
 	debug("monitor len: %08lX\n", gd->mon_len);
 	/*
@@ -455,6 +481,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	gd = id;
 
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
+	bootstage_mark_name(BOOTSTAGE_ID_START_UBOOT_R, "board_init_r");
 
 	monitor_flash_len = _end_ofs;
 

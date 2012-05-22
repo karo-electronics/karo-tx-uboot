@@ -145,6 +145,11 @@ unsigned long long get_ticks(void)
 	return gd->tbl;
 }
 
+ulong get_timer_masked(void)
+{
+	return tick_to_time(get_ticks());
+}
+
 ulong get_timer(ulong base)
 {
 	/* NOTE: time_to_tick(base) is required to correctly handle rollover! */

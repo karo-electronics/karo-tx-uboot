@@ -71,7 +71,7 @@
 /* Size of malloc() pool */
 #define CONFIG_ENV_SIZE			(128 << 10)	/* 128 KiB */
 						/* Sector */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (512 << 10))
+#define CONFIG_SYS_MALLOC_LEN		(1024*1024)
 
 /* Hardware drivers */
 
@@ -139,7 +139,9 @@
 #define CONFIG_CMD_MTDPARTS		/* Enable MTD parts commands */
 #define CONFIG_CMD_NAND			/* NAND support */
 #define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands */
-#define CONFIG_CMD_UBI			/* UBIFS commands */
+#define CONFIG_CMD_UBI			/* UBI commands */
+#define CONFIG_CMD_UBIFS		/* UBIFS commands */
+#define CONFIG_LZO			/* LZO is needed for UBIFS */
 
 #undef CONFIG_CMD_NET
 #undef CONFIG_CMD_NFS
@@ -160,6 +162,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"loadaddr=0x82000000\0" \
 	"console=ttyO2,115200n8\0" \
+	"mmcdev=0\0" \
 	"vram=12M\0" \
 	"lcdmode=800x600\0" \
 	"defaultdisplay=lcd\0" \
@@ -179,22 +182,27 @@
 		"setenv bootargs ${bootargs} " \
 		"omapfb.mode=lcd:${lcdmode} " \
 		"omapdss.def_disp=${defaultdisplay} " \
-		"root=ubi0:rootfs " \
+		"root=ubi0:root " \
+		"ubi.mtd=4 " \
 		"rootfstype=ubifs " \
 		"${kernelopts}\0" \
-	"loadbootscript=fatload mmc 0 ${loadaddr} boot.scr\0" \
+	"loadbootscript=fatload mmc ${mmcdev} ${loadaddr} boot.scr\0" \
 	"bootscript=echo Running bootscript from mmc ...; " \
 		"source ${loadaddr}\0" \
-	"loaduimage=fatload mmc 0 ${loadaddr} uImage\0" \
+	"loaduimage=fatload mmc ${mmcdev} ${loadaddr} uImage\0" \
 	"eraseenv=nand unlock 0x260000 0x20000; nand erase 0x260000 0x20000\0" \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"bootm ${loadaddr}\0" \
+	"loaduimage_ubi=mtd default; " \
+		"ubi part fs; " \
+		"ubifsmount root; " \
+		"ubifsload ${loadaddr} /boot/uImage\0" \
 	"nandboot=echo Booting from nand ...; " \
 		"run nandargs; " \
-		"nand read ${loadaddr} 280000 400000; " \
+		"run loaduimage_ubi; " \
 		"bootm ${loadaddr}\0" \
-	"autoboot=if mmc init 0; then " \
+	"autoboot=if mmc rescan ${mmcdev}; then " \
 			"if run loadbootscript; then " \
 				"run bootscript; " \
 			"else " \
@@ -270,6 +278,7 @@
 #define CONFIG_SPL
 #define CONFIG_SPL_NAND_SIMPLE
 
+#define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBDISK_SUPPORT
 #define CONFIG_SPL_I2C_SUPPORT
@@ -285,7 +294,7 @@
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR 0x300 /* address 0x60000 */
 
 #define CONFIG_SPL_TEXT_BASE		0x40200000 /*CONFIG_SYS_SRAM_START*/
-#define CONFIG_SPL_MAX_SIZE		0xB400  /* 45 K */
+#define CONFIG_SPL_MAX_SIZE		(54 * 1024)	/* 8 KB for stack */
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
 
 #define CONFIG_SPL_BSS_START_ADDR	0x80000000 /*CONFIG_SYS_SDRAM_BASE*/
@@ -303,11 +312,6 @@
 
 #define CONFIG_SYS_NAND_ECCSIZE		512
 #define CONFIG_SYS_NAND_ECCBYTES	3
-
-#define CONFIG_SYS_NAND_ECCSTEPS	(CONFIG_SYS_NAND_PAGE_SIZE / \
-						CONFIG_SYS_NAND_ECCSIZE)
-#define CONFIG_SYS_NAND_ECCTOTAL	(CONFIG_SYS_NAND_ECCBYTES * \
-						CONFIG_SYS_NAND_ECCSTEPS)
 
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 

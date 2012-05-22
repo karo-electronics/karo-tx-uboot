@@ -177,6 +177,7 @@ enum periph_id {
 	PERIPH_ID_CRAM2,
 
 	PERIPH_ID_COUNT,
+	PERIPH_ID_NONE = -1,
 };
 
 /* Converts a clock number to a clock register: 0=L, 1=H, 2=U */
@@ -208,6 +209,21 @@ enum clock_osc_freq clock_get_osc_freq(void);
  */
 unsigned long clock_start_pll(enum clock_id id, u32 divm, u32 divn,
 		u32 divp, u32 cpcon, u32 lfcon);
+
+/**
+ * Read low-level parameters of a PLL.
+ *
+ * @param id	clock id to read (note: USB is not supported)
+ * @param divm	returns input divider
+ * @param divn	returns feedback divider
+ * @param divp	returns post divider 2^n
+ * @param cpcon	returns charge pump setup control
+ * @param lfcon	returns loop filter setup control
+ *
+ * @returns 0 if ok, -1 on error (invalid clock id)
+ */
+int clock_ll_read_pll(enum clock_id clkid, u32 *divm, u32 *divn,
+		      u32 *divp, u32 *cpcon, u32 *lfcon);
 
 /*
  * Enable a clock
@@ -354,6 +370,25 @@ unsigned clock_get_rate(enum clock_id clkid);
  * @param periph_id	Peripheral ID of UART to enable (e,g, PERIPH_ID_UART1)
  */
 void clock_ll_start_uart(enum periph_id periph_id);
+
+/**
+ * Decode a peripheral ID from a device tree node.
+ *
+ * This works by looking up the peripheral's 'clocks' node and reading out
+ * the second cell, which is the clock number / peripheral ID.
+ *
+ * @param blob		FDT blob to use
+ * @param node		Node to look at
+ * @return peripheral ID, or PERIPH_ID_NONE if none
+ */
+enum periph_id clock_decode_periph_id(const void *blob, int node);
+
+/**
+ * Checks if the oscillator bypass is enabled (XOBP bit)
+ *
+ * @return 1 if bypass is enabled, 0 if not
+ */
+int clock_get_osc_bypass(void);
 
 /*
  * Checks that clocks are valid and prints a warning if not

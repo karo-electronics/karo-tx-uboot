@@ -81,9 +81,6 @@ static int __def_eth_init(bd_t *bis)
 int cpu_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
 int board_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
 
-extern int mv6436x_eth_initialize(bd_t *);
-extern int mv6446x_eth_initialize(bd_t *);
-
 #ifdef CONFIG_API
 extern void (*push_packet)(volatile void *, int);
 
@@ -175,8 +172,7 @@ int eth_write_hwaddr(struct eth_device *dev, const char *base_name,
 	unsigned char env_enetaddr[6];
 	int ret = 0;
 
-	if (!eth_getenv_enetaddr_by_index(base_name, eth_number, env_enetaddr))
-		return -1;
+	eth_getenv_enetaddr_by_index(base_name, eth_number, env_enetaddr);
 
 	if (memcmp(env_enetaddr, "\0\0\0\0\0\0", 6)) {
 		if (memcmp(dev->enetaddr, "\0\0\0\0\0\0", 6) &&
@@ -206,7 +202,7 @@ int eth_register(struct eth_device *dev)
 	struct eth_device *d;
 	static int index = 0;
 
-	assert(strlen(dev->name) < NAMESIZE);
+	assert(strlen(dev->name) < sizeof(dev->name));
 
 	if (!eth_devices) {
 		eth_current = eth_devices = dev;
@@ -224,13 +220,42 @@ int eth_register(struct eth_device *dev)
 	return 0;
 }
 
+int eth_unregister(struct eth_device *dev)
+{
+	struct eth_device *cur;
+
+	/* No device */
+	if (!eth_devices)
+		return -1;
+
+	for (cur = eth_devices; cur->next != eth_devices && cur->next != dev;
+	     cur = cur->next)
+		;
+
+	/* Device not found */
+	if (cur->next != dev)
+		return -1;
+
+	cur->next = dev->next;
+
+	if (eth_devices == dev)
+		eth_devices = dev->next == eth_devices ? NULL : dev->next;
+
+	if (eth_current == dev) {
+		eth_current = eth_devices;
+		eth_current_changed();
+	}
+
+	return 0;
+}
+
 int eth_initialize(bd_t *bis)
 {
 	int num_devices = 0;
 	eth_devices = NULL;
 	eth_current = NULL;
 
-	show_boot_progress (64);
+	bootstage_mark(BOOTSTAGE_ID_NET_ETH_START);
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 	miiphy_init();
 #endif
@@ -252,20 +277,14 @@ int eth_initialize(bd_t *bis)
 	} else
 		printf("Net Initialization Skipped\n");
 
-#if defined(CONFIG_DB64360) || defined(CONFIG_CPCI750)
-	mv6436x_eth_initialize(bis);
-#endif
-#if defined(CONFIG_DB64460) || defined(CONFIG_P3Mx)
-	mv6446x_eth_initialize(bis);
-#endif
 	if (!eth_devices) {
 		puts ("No ethernet found.\n");
-		show_boot_progress (-64);
+		bootstage_error(BOOTSTAGE_ID_NET_ETH_START);
 	} else {
 		struct eth_device *dev = eth_devices;
 		char *ethprime = getenv ("ethprime");
 
-		show_boot_progress (65);
+		bootstage_mark(BOOTSTAGE_ID_NET_ETH_INIT);
 		do {
 			if (dev->index)
 				puts (", ");

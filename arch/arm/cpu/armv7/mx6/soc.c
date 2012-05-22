@@ -32,7 +32,13 @@
 
 u32 get_cpu_rev(void)
 {
-	int system_rev = 0x61000 | CHIP_REV_1_0;
+	struct anatop_regs *anatop = (struct anatop_regs *)ANATOP_BASE_ADDR;
+	int reg = readl(&anatop->digprog);
+
+	/* Read mx6 variant: quad, dual or solo */
+	int system_rev = (reg >> 4) & 0xFF000;
+	/* Read mx6 silicon revision */
+	system_rev |= (reg & 0xFF) + 0x10;
 
 	return system_rev;
 }
@@ -71,11 +77,49 @@ void init_aips(void)
 	writel(0x00000000, &aips2->opacr4);
 }
 
+/*
+ * Set the VDDSOC
+ *
+ * Mask out the REG_CORE[22:18] bits (REG2_TRIG) and set
+ * them to the specified millivolt level.
+ * Possible values are from 0.725V to 1.450V in steps of
+ * 0.025V (25mV).
+ */
+void set_vddsoc(u32 mv)
+{
+	struct anatop_regs *anatop = (struct anatop_regs *)ANATOP_BASE_ADDR;
+	u32 val, reg = readl(&anatop->reg_core);
+
+	if (mv < 725)
+		val = 0x00;	/* Power gated off */
+	else if (mv > 1450)
+		val = 0x1F;	/* Power FET switched full on. No regulation */
+	else
+		val = (mv - 700) / 25;
+
+	/*
+	 * Mask out the REG_CORE[22:18] bits (REG2_TRIG)
+	 * and set them to the calculated value (0.7V + val * 0.25V)
+	 */
+	reg = (reg & ~(0x1F << 18)) | (val << 18);
+	writel(reg, &anatop->reg_core);
+}
+
 int arch_cpu_init(void)
 {
 	init_aips();
 
+	set_vddsoc(1200);	/* Set VDDSOC to 1.2V */
+
 	return 0;
+}
+#endif
+
+#ifndef CONFIG_SYS_DCACHE_OFF
+void enable_caches(void)
+{
+	/* Enable D-cache. I-cache is already enabled in start.S */
+	dcache_enable();
 }
 #endif
 

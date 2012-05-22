@@ -46,6 +46,7 @@
 #define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mx28/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
+#define CONFIG_SPL_GPIO_SUPPORT
 
 /*
  * U-Boot Commands
@@ -56,6 +57,7 @@
 #define CONFIG_CMD_FAT
 
 #define CONFIG_CMD_CACHE
+#define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_GPIO
 #define CONFIG_CMD_MII
@@ -63,6 +65,10 @@
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_NFS
 #define CONFIG_CMD_PING
+#define CONFIG_CMD_SF
+#define CONFIG_CMD_SPI
+#define CONFIG_CMD_USB
+#define CONFIG_CMD_BOOTZ
 
 /*
  * Memory configurations
@@ -77,7 +83,7 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 /* Point initial SP in SRAM so SPL can use it too. */
 
-#define CONFIG_SYS_INIT_RAM_ADDR	0x00002000
+#define CONFIG_SYS_INIT_RAM_ADDR	0x00000000
 #define CONFIG_SYS_INIT_RAM_SIZE	(128 * 1024)
 
 #define CONFIG_SYS_INIT_SP_OFFSET \
@@ -122,17 +128,35 @@
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 /*
+ * DMA
+ */
+#define CONFIG_APBH_DMA
+
+/*
  * MMC Driver
  */
 #define CONFIG_ENV_IS_IN_MMC
-#define CONFIG_ENV_OFFSET	(256 * 1024)
-#define CONFIG_ENV_SIZE	(16 * 1024)
-#define CONFIG_SYS_MMC_ENV_DEV 0
+#ifdef CONFIG_ENV_IS_IN_MMC
+ #define CONFIG_ENV_OFFSET	(256 * 1024)
+ #define CONFIG_ENV_SIZE	(16 * 1024)
+ #define CONFIG_SYS_MMC_ENV_DEV 0
+#endif
 #define CONFIG_CMD_SAVEENV
 #ifdef	CONFIG_CMD_MMC
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
+#define CONFIG_MMC_BOUNCE_BUFFER
 #define CONFIG_MXS_MMC
+#endif
+
+/*
+ * NAND Driver
+ */
+#ifdef CONFIG_CMD_NAND
+#define CONFIG_NAND_MXS
+#define CONFIG_SYS_MAX_NAND_DEVICE	1
+#define CONFIG_SYS_NAND_BASE		0x60000000
+#define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #endif
 
 /*
@@ -150,6 +174,60 @@
 #endif
 
 /*
+ * RTC
+ */
+#ifdef	CONFIG_CMD_DATE
+#define	CONFIG_RTC_MXS
+#endif
+
+/*
+ * USB
+ */
+#ifdef	CONFIG_CMD_USB
+#define	CONFIG_USB_EHCI
+#define	CONFIG_USB_EHCI_MXS
+#define	CONFIG_EHCI_MXS_PORT 1
+#define	CONFIG_EHCI_IS_TDI
+#define	CONFIG_USB_STORAGE
+#endif
+
+/*
+ * SPI
+ */
+#ifdef CONFIG_CMD_SPI
+#define CONFIG_HARD_SPI
+#define CONFIG_MXS_SPI
+#define CONFIG_SPI_HALF_DUPLEX
+#define CONFIG_DEFAULT_SPI_BUS		2
+#define CONFIG_DEFAULT_SPI_MODE		SPI_MODE_0
+
+/* SPI Flash */
+#ifdef CONFIG_CMD_SF
+#define CONFIG_SPI_FLASH
+#define CONFIG_SF_DEFAULT_BUS	2
+#define CONFIG_SF_DEFAULT_CS	0
+/* this may vary and depends on the installed chip */
+#define CONFIG_SPI_FLASH_SST
+#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
+#define CONFIG_SF_DEFAULT_SPEED		24000000
+
+/* (redundant) environemnt in SPI flash */
+#undef CONFIG_ENV_IS_IN_SPI_FLASH
+#ifdef CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
+#define CONFIG_ENV_SIZE			0x1000		/* 4KB */
+#define CONFIG_ENV_OFFSET		0x40000		/* 256K */
+#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
+#define CONFIG_ENV_SECT_SIZE		0x1000
+#define CONFIG_ENV_SPI_CS		0
+#define CONFIG_ENV_SPI_BUS		2
+#define CONFIG_ENV_SPI_MAX_HZ		24000000
+#define CONFIG_ENV_SPI_MODE		SPI_MODE_0
+#endif
+#endif
+#endif
+
+/*
  * Boot Linux
  */
 #define CONFIG_CMDLINE_TAG
@@ -159,6 +237,7 @@
 #define CONFIG_BOOTCOMMAND	"run bootcmd_net"
 #define CONFIG_LOADADDR	0x42000000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+#define CONFIG_OF_LIBFDT
 
 /*
  * Extra Environments

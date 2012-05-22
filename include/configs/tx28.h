@@ -74,6 +74,17 @@
 #define CONFIG_SYS_64BIT_VSPRINTF
 
 /*
+ * Flattened Device Tree (FDT) support
+*/
+#define CONFIG_OF_LIBFDT
+/*
+#define CONFIG_OF_BOARD_SETUP
+*/
+#define CONFIG_OF_EMBED
+#define CONFIG_DEFAULT_DEVICE_TREE	karo-tx28
+#define CONFIG_ARCH_DEVICE_TREE		mx28
+
+/*
  * Boot Linux
  */
 #define xstr(s)	str(s)
@@ -133,6 +144,7 @@
 #define	CONFIG_CONS_INDEX		0
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
+#define CONFIG_SPL_SERIAL_SUPPORT
 
 /*
  * FEC Driver

@@ -34,6 +34,7 @@
 #define AHCI_MAX_SG		56 /* hardware max is 64K */
 #define AHCI_MAX_CMD_SLOT	32
 #define AHCI_CMD_SLOT_SZ	32
+#define AHCI_MAX_CMD_SLOT	32
 #define AHCI_RX_FIS_SZ		256
 #define AHCI_CMD_TBL_HDR	0x80
 #define AHCI_CMD_TBL_CDB	0x40

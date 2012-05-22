@@ -594,10 +594,6 @@ Enric Balletbo i Serra <eballetbo@iseebcn.com>
 	igep0020	ARM ARMV7 (OMAP3xx SoC)
 	igep0030	ARM ARMV7 (OMAP3xx SoC)
 
-Dirk Behme <dirk.behme@gmail.com>
-
-	omap3_beagle	ARM ARMV7 (OMAP3530 SoC)
-
 Eric Benard <eric@eukrea.com>
 
 	cpuat91		ARM920T
@@ -672,11 +668,6 @@ Simon Guinot <simon.guinot@sequanux.org>
 Igor Grinberg <grinberg@compulab.co.il>
 
 	cm-t35		ARM ARMV7 (OMAP3xx Soc)
-
-Kshitij Gupta <kshitij@ti.com>
-
-	omap1510inn	ARM925T
-	omap1610inn	ARM926EJS
 
 Stefan Herbrechtsmeier <stefan@code.herbrechtsmeier.net>
 
@@ -767,10 +758,6 @@ Nagendra T S  <nagendra@mistralsolutions.com>
 
    am3517_crane    ARM ARMV7 (AM35x SoC)
 
-Chandan Nath <chandan.nath@ti.com>
-
-	am335x_evm	ARM ARMV7 (AM33xx Soc)
-
 Kyungmin Park <kyungmin.park@samsung.com>
 
 	apollon		ARM1136EJS
@@ -790,6 +777,10 @@ Linus Walleij <linus.walleij@linaro.org>
 	integratorap	various
 	integratorcp	various
 
+Luka Perkov <uboot@lukaperkov.net>
+
+	ib62x0		ARM926EJS
+
 Dave Peverley <dpeverley@mpc-data.co.uk>
 
 	omap730p2	ARM926EJS
@@ -800,6 +791,16 @@ Stelian Pop <stelian@popies.net>
 	at91sam9261ek	ARM926EJS (AT91SAM9261 SoC)
 	at91sam9263ek	ARM926EJS (AT91SAM9263 SoC)
 	at91sam9rlek	ARM926EJS (AT91SAM9RL SoC)
+
+Dave Purdy <david.c.purdy@gmail.com>
+
+	pogo_e02	ARM926EJS (Kirkwood SoC)
+
+Sricharan R <r.sricharan@ti.com>
+
+	omap4_panda	ARM ARMV7 (OMAP4xx SoC)
+	omap4_sdp4430	ARM ARMV7 (OMAP4xx SoC)
+	omap5_evm	ARM ARMV7 (OMAP5xx Soc)
 
 Thierry Reding <thierry.reding@avionic-design.de>
 
@@ -813,6 +814,8 @@ Manfred Rudigier <manfred.rudigier@omicron.at>
 
 Tom Rini <trini@ti.com>
 
+	am335x_evm	ARM ARMV7 (AM33xx Soc)
+	omap3_beagle	ARM ARMV7 (OMAP3xx SoC)
 	omap3_evm	ARM ARMV7 (OMAP3xx SoC)
 
 Tom Rix <Tom.Rix@windriver.com>
@@ -870,12 +873,6 @@ Greg Ungerer <greg.ungerer@opengear.com>
 	cm4008		ks8695p
 	cm4116		ks8695p
 	cm4148		ks8695p
-
-Aneesh V <aneesh@ti.com>
-
-	omap4_panda	ARM ARMV7 (OMAP4xx SoC)
-	omap4_sdp4430	ARM ARMV7 (OMAP4xx SoC)
-	omap5_evm	ARM ARMV7 (OMAP5xx Soc)
 
 Marek Vasut <marek.vasut@gmail.com>
 
@@ -943,11 +940,18 @@ Sughosh Ganu <urwithsughosh@gmail.com>
 
 	hawkboard	ARM926EJS (OMAP-L138)
 
+Vladimir Zapolskiy <vz@mleia.com>
+
+	devkit3250	lpc32xx
+
 -------------------------------------------------------------------------
 
 Unknown / orphaned boards:
  	Board		CPU	Last known maintainer / Comment
 .........................................................................
+
+	omap1510inn	ARM925T         Kshitij Gupta <kshitij@ti.com>
+
 	lubbock		xscale/pxa	Kyle Harris <kharris@nexus-tech.net> / dead address
 
 	imx31_phycore_eet i.MX31  Guennadi Liakhovetski <g.liakhovetski@gmx.de> / resigned
@@ -1199,6 +1203,7 @@ Macpaul Lin <macpaul@andestech.com>
 
 	ADP-AG101	N1213 (AG101 SoC)
 	ADP-AG101P	N1213 (AG101P XC5 FPGA)
+	ADP-AG102	N1213f (AG102 SoC with FPU)
 
 #########################################################################
 # OpenRISC Systems:							#

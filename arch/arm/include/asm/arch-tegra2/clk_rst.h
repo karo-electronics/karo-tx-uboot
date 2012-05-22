@@ -117,6 +117,7 @@ struct clk_rst_ctlr {
 #define PLL_CPCON_MASK		(15U << PLL_CPCON_SHIFT)
 
 #define PLL_LFCON_SHIFT		4
+#define PLL_LFCON_MASK		(15U << PLL_LFCON_SHIFT)
 
 #define PLLU_VCO_FREQ_SHIFT	20
 #define PLLU_VCO_FREQ_MASK	(1U << PLLU_VCO_FREQ_SHIFT)
@@ -124,10 +125,18 @@ struct clk_rst_ctlr {
 /* CLK_RST_CONTROLLER_OSC_CTRL_0 */
 #define OSC_FREQ_SHIFT		30
 #define OSC_FREQ_MASK		(3U << OSC_FREQ_SHIFT)
+#define OSC_XOBP_SHIFT		1
+#define OSC_XOBP_MASK		(1U << OSC_XOBP_SHIFT)
 
-/* CLK_RST_CONTROLLER_CLK_SOURCE_x_OUT_0 */
+/*
+ * CLK_RST_CONTROLLER_CLK_SOURCE_x_OUT_0 - the mask here is normally 8 bits
+ * but can be 16. We could use knowledge we have to restrict the mask in
+ * the 8-bit cases (the divider_bits value returned by
+ * get_periph_clock_source()) but it does not seem worth it since the code
+ * already checks the ranges of values it is writing, in clk_get_divider().
+ */
 #define OUT_CLK_DIVISOR_SHIFT	0
-#define OUT_CLK_DIVISOR_MASK	(255 << OUT_CLK_DIVISOR_SHIFT)
+#define OUT_CLK_DIVISOR_MASK	(0xffff << OUT_CLK_DIVISOR_SHIFT)
 
 #define OUT_CLK_SOURCE_SHIFT	30
 #define OUT_CLK_SOURCE_MASK	(3U << OUT_CLK_SOURCE_SHIFT)

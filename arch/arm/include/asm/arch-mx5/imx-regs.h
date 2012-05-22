@@ -43,6 +43,7 @@
 #define NFC_BASE_ADDR_AXI       0xF7FF0000
 #define IRAM_BASE_ADDR          0xF8000000
 #define CS1_BASE_ADDR           0xF4000000
+#define SATA_BASE_ADDR		0x10000000
 #else
 #error "CPU_TYPE not defined"
 #endif
@@ -93,6 +94,7 @@
 #define GPIO5_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000DC000)
 #define GPIO6_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000E0000)
 #define GPIO7_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000E4000)
+#define UART4_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000F0000)
 #endif
 /*
  * AIPS 2
@@ -132,6 +134,10 @@
 #define TVE_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000F0000)
 #define VPU_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000F4000)
 #define SAHARA_BASE_ADDR	(AIPS2_BASE_ADDR + 0x000F8000)
+
+#if defined(CONFIG_MX53)
+#define UART5_BASE_ADDR         (AIPS2_BASE_ADDR + 0x00090000)
+#endif
 
 /*
  * WEIM CSnGCR1
@@ -221,6 +227,36 @@
 #define CS0_64M_CS1_64M				1
 #define CS0_64M_CS1_32M_CS2_32M			2
 #define CS0_32M_CS1_32M_CS2_32M_CS3_32M		3
+
+/*
+ * CSPI register definitions
+ */
+#define MXC_ECSPI
+#define MXC_CSPICTRL_EN		(1 << 0)
+#define MXC_CSPICTRL_MODE	(1 << 1)
+#define MXC_CSPICTRL_XCH	(1 << 2)
+#define MXC_CSPICTRL_CHIPSELECT(x)	(((x) & 0x3) << 12)
+#define MXC_CSPICTRL_BITCOUNT(x)	(((x) & 0xfff) << 20)
+#define MXC_CSPICTRL_PREDIV(x)	(((x) & 0xF) << 12)
+#define MXC_CSPICTRL_POSTDIV(x)	(((x) & 0xF) << 8)
+#define MXC_CSPICTRL_SELCHAN(x)	(((x) & 0x3) << 18)
+#define MXC_CSPICTRL_MAXBITS	0xfff
+#define MXC_CSPICTRL_TC		(1 << 7)
+#define MXC_CSPICTRL_RXOVF	(1 << 6)
+#define MXC_CSPIPERIOD_32KHZ	(1 << 15)
+#define MAX_SPI_BYTES	32
+
+/* Bit position inside CTRL register to be associated with SS */
+#define MXC_CSPICTRL_CHAN	18
+
+/* Bit position inside CON register to be associated with SS */
+#define MXC_CSPICON_POL		4
+#define MXC_CSPICON_PHA		0
+#define MXC_CSPICON_SSPOL	12
+#define MXC_SPI_BASE_ADDRESSES \
+	CSPI1_BASE_ADDR, \
+	CSPI2_BASE_ADDR, \
+	CSPI3_BASE_ADDR,
 
 /*
  * Number of GPIO pins per port
@@ -453,6 +489,11 @@ struct iim_regs {
 		u32	fuse_regs[0x20];
 		u32	fuse_rsvd[0xe0];
 	} bank[4];
+};
+
+struct fuse_bank0_regs {
+	u32	fuse0_23[24];
+	u32	gp[8];
 };
 
 struct fuse_bank1_regs {
