@@ -200,7 +200,7 @@ copy_loop:
 	/*
 	 * fix .rel.dyn relocations
 	 */
-	ldr	r0, _TEXT_BASE		/* r0 <- Text base */
+	adr	r0, _start		/* r0 <- beginning of code */
 	sub	r9, r6, r0		/* r9 <- relocation offset */
 	ldr	r10, _dynsym_start_ofs	/* r10 <- sym table ofs */
 	add	r10, r10, r0		/* r10 <- sym table in FLASH */
