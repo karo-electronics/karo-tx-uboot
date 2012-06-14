@@ -74,8 +74,8 @@
 
 #define MUX_IO_P                29
 #define MUX_IO_I                24
-#define IOMUX_TO_GPIO(pin)      ((((unsigned int)pin >> MUX_IO_P) * \
-					GPIO_NUM_PIN) + ((pin >> MUX_IO_I) &\
+#define IOMUX_TO_GPIO(pin)      ((((unsigned int)(pin) >> MUX_IO_P) *	\
+					GPIO_NUM_PIN) + (((pin) >> MUX_IO_I) & \
 					((1 << (MUX_IO_P - MUX_IO_I)) - 1)))
 #define IOMUX_TO_IRQ(pin)       (MXC_GPIO_INT_BASE + IOMUX_TO_GPIO(pin))
 
@@ -104,7 +104,7 @@
 #define _MXC_BUILD_PIN(gp, gi, ga, mi, pi) \
 	(((gp) << MUX_IO_P) | ((gi) << MUX_IO_I) | \
 	((mi) << MUX_I) | \
-	((pi - PAD_I_START) << PAD_I) | \
+	(((pi) - PAD_I_START) << PAD_I) |	\
 	((ga) << GPIO_I))
 
 #define _MXC_BUILD_GPIO_PIN(gp, gi, ga, mi, pi) \
@@ -113,9 +113,9 @@
 #define _MXC_BUILD_NON_GPIO_PIN(mi, pi) \
 	_MXC_BUILD_PIN(NON_GPIO_PORT, 0, 0, mi, pi)
 
-#define PIN_TO_IOMUX_MUX(pin)	((pin >> MUX_I) & PIN_TO_MUX_MASK)
-#define PIN_TO_IOMUX_PAD(pin)	((pin >> PAD_I) & PIN_TO_PAD_MASK)
-#define PIN_TO_ALT_GPIO(pin)	((pin >> GPIO_I) & PIN_TO_ALT_GPIO_MASK)
+#define PIN_TO_IOMUX_MUX(pin)	(((pin) >> MUX_I) & PIN_TO_MUX_MASK)
+#define PIN_TO_IOMUX_PAD(pin)	(((pin) >> PAD_I) & PIN_TO_PAD_MASK)
+#define PIN_TO_ALT_GPIO(pin)	(((pin) >> GPIO_I) & PIN_TO_ALT_GPIO_MASK)
 #define PIN_TO_IOMUX_INDEX(pin)	(PIN_TO_IOMUX_MUX(pin) >> 2)
 
 /*
