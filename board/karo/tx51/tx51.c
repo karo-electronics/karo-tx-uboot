@@ -157,7 +157,7 @@ int dram_init(void)
 		printf("%s: Failed to set DDR clock to %uMHz: %d\n", __func__,
 			CONFIG_SYS_SDRAM_CLOCK, ret);
 	else
-		printf("%s: DDR clock set to %u.%03uMHz\n", __func__,
+		debug("%s: DDR clock set to %u.%03uMHz\n", __func__,
 			mxc_get_clock(MXC_DDR_CLK) / 1000000,
 			mxc_get_clock(MXC_DDR_CLK) / 1000 % 1000);
 	return ret;
@@ -548,13 +548,11 @@ static void tx51_move_fdt(void)
 #elif defined CONFIG_OF_SEPARATE
 	fdt = (void *)(_end_ofs + _TEXT_BASE);
 #endif
-	printf("%s fdt=%p fdt_addr=%08lx\n", __func__,
-		fdt, fdt_addr);
 	if (fdt && fdt_addr != 0) {
 		if (fdt_check_header(fdt) == 0) {
 			size_t fdt_len = fdt_totalsize(fdt);
 
-			printf("moving fdt from %p..%p to %08lx..%08lx\n",
+			debug("moving fdt from %p..%p to %08lx..%08lx\n",
 				fdt, fdt + fdt_len - 1, fdt_addr, fdt_addr + fdt_len - 1);
 			memmove((void *)fdt_addr, fdt, fdt_len);
 		} else {
