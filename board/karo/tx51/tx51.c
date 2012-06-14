@@ -570,7 +570,7 @@ int checkboard(void)
 {
 	print_cpuinfo();
 
-	printf("Board: Ka-Ro TX51");
+	printf("Board: Ka-Ro TX51\n");
 
 	tx51_move_fdt();
 
