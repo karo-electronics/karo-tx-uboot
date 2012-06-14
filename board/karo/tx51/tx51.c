@@ -20,7 +20,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-
 #include <common.h>
 #include <errno.h>
 #include <libfdt.h>
@@ -35,6 +34,10 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
+
+#if !defined(CONFIG_TX51_80x0) && !defined(CONFIG_TX51_80x1) && !defined(CONFIG_TX51_80x2)
+#error TX51 model not selected
+#endif
 
 //#define TIMER_TEST
 
@@ -157,9 +160,10 @@ int dram_init(void)
 		printf("%s: Failed to set DDR clock to %uMHz: %d\n", __func__,
 			CONFIG_SYS_SDRAM_CLOCK, ret);
 	else
-		debug("%s: DDR clock set to %u.%03uMHz\n", __func__,
-			mxc_get_clock(MXC_DDR_CLK) / 1000000,
-			mxc_get_clock(MXC_DDR_CLK) / 1000 % 1000);
+		debug("%s: DDR clock set to %u.%03uMHz (desig.: %u.000MHz)\n",
+			__func__, mxc_get_clock(MXC_DDR_CLK) / 1000000,
+			mxc_get_clock(MXC_DDR_CLK) / 1000 % 1000,
+			CONFIG_SYS_SDRAM_CLOCK);
 	return ret;
 }
 
@@ -334,7 +338,6 @@ static struct {
 		dir:1,
 		val:1;
 } tx51_fec_gpios[] = {
-#if 1
 	{ IMX_GPIO_NR(1, 3), 1, 0, },	/* PHY power */
 	{ IMX_GPIO_NR(2, 14), 1, 0, },	/* PHY reset */
 	{ IMX_GPIO_NR(3, 19), 1, 0, },	/* MDC */
@@ -355,29 +358,6 @@ static struct {
 	{ IMX_GPIO_NR(3, 10), 1, 0, },	/* COL */
 	{ IMX_GPIO_NR(2, 30), 1, (CONFIG_FEC_MXC_PHYADDR >> 4) & 1, }, /* PHYAD4 */
 	{ IMX_GPIO_NR(3, 18), 0, 1, },	/* PHY INT (TX_ER) */
-#else
-	{ IMX_GPIO_NR(1, 3), 1, 0, },	/* PHY power */
-	{ IMX_GPIO_NR(2, 14), 1, 0, },	/* PHY reset */
-	{ IMX_GPIO_NR(3, 19), 1, 0, },	/* MDC */
-	{ IMX_GPIO_NR(2, 22), 1, 0, },	/* MDIO */
-	{ IMX_GPIO_NR(3, 31), 1, 1, },	/* RXD0/Mode0 */
-	{ IMX_GPIO_NR(2, 23), 1, 1, },	/* RXD1/Mode1 */
-	{ IMX_GPIO_NR(2, 27), 1, 1, },	/* RXD2/Mode2 */
-	{ IMX_GPIO_NR(2, 28), 1, 1, },	/* RXD3/nINTSEL */
-	{ IMX_GPIO_NR(3, 23), 1, 0, },	/* TX_EN */
-	{ IMX_GPIO_NR(4, 0), 1, 0, },	/* TXD0 */
-	{ IMX_GPIO_NR(3, 20), 1, 0, },	/* TXD1 */
-	{ IMX_GPIO_NR(3, 21), 1, 0, },	/* TXD2 */
-	{ IMX_GPIO_NR(3, 22), 1, 0, },	/* TXD3 */
-	{ IMX_GPIO_NR(3, 10), 1, 0, },	/* COL */
-	{ IMX_GPIO_NR(2, 30), 1, (CONFIG_FEC_MXC_PHYADDR >> 4) & 1, }, /* PHYAD4 */
-
-	{ IMX_GPIO_NR(3, 29), 0, 0, },	/* RX_DV */
-	{ IMX_GPIO_NR(2, 29), 0, 0, },	/* RX_ER */
-	{ IMX_GPIO_NR(3, 24), 0, 0, },	/* TX_CLK */
-	{ IMX_GPIO_NR(3, 11), 0, 1, },	/* RX_CLK */
-	{ IMX_GPIO_NR(3, 18), 0, 1, },	/* PHY INT (TX_ER) */
-#endif
 };
 
 int board_eth_init(bd_t *bis)
@@ -552,8 +532,6 @@ static void tx51_move_fdt(void)
 		if (fdt_check_header(fdt) == 0) {
 			size_t fdt_len = fdt_totalsize(fdt);
 
-			debug("moving fdt from %p..%p to %08lx..%08lx\n",
-				fdt, fdt + fdt_len - 1, fdt_addr, fdt_addr + fdt_len - 1);
 			memmove((void *)fdt_addr, fdt, fdt_len);
 		} else {
 			printf("ERROR: No valid FDT found at %p\n", fdt);
@@ -561,35 +539,38 @@ static void tx51_move_fdt(void)
 	}
 }
 
-int checkboard(void)
+int board_late_init(void)
 {
 	const char *baseboard;
 
+	baseboard = getenv("baseboard");
+	if (!baseboard)
+		return 0;
+
+	if (strncmp(baseboard, "stk5", 4) == 0) {
+		printf("Baseboard: %s\n", baseboard);
+		if ((strlen(baseboard) == 4) ||
+			strcmp(baseboard, "stk5-v3") == 0) {
+			stk5v3_board_init();
+		} else if (strcmp(baseboard, "stk5-v5") == 0) {
+			stk5v5_board_init();
+		} else {
+			printf("WARNING: Unsupported STK5 board rev.: %s\n",
+				baseboard + 4);
+		}
+	} else {
+		printf("WARNING: Unsupported baseboard: '%s'\n",
+			baseboard);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int checkboard(void)
+{
 	print_cpuinfo();
 
 	printf("Board: Ka-Ro TX51");
-	baseboard = getenv("baseboard");
-	if (baseboard) {
-		printf(" on %s", baseboard);
-	}
-	printf("\n");
-
-	if (baseboard) {
-		if (strncmp(baseboard, "stk5", 4) == 0) {
-			if ((strlen(baseboard) == 4) ||
-				strcmp(baseboard, "stk5-v3") == 0) {
-				stk5v3_board_init();
-			} else if (strcmp(baseboard, "stk5-v5") == 0) {
-				stk5v5_board_init();
-			} else {
-				printf("WARNING: Invalid STK5 board rev.: %s\n",
-					baseboard + 4);
-			}
-		} else {
-			printf("WARNING: Unsupported baseboard: '%s'\n",
-				baseboard);
-		}
-	}
 
 	tx51_move_fdt();
 
@@ -644,8 +625,13 @@ static void tx51_fixup_touchpanel(void *blob)
 
 	for (i = 0; i < ARRAY_SIZE(tx51_touchpanels); i++) {
 		int offs;
+		const char *tp = tx51_touchpanels[i];
 
-		if (model != NULL && strcmp(model, tx51_touchpanels[i]) == 0)
+		if (model != NULL && strcmp(model, tp) == 0)
+			continue;
+
+		tp = strchr(tp, ',');
+		if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
 			continue;
 
 		offs = fdt_node_offset_by_compatible(blob, -1,
@@ -667,9 +653,5 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_ethernet(blob);
 
 	tx51_fixup_touchpanel(blob);
-/*
-	fdt_del_subnodes();
-	do_fixup_by_path();
-*/
 }
 #endif
