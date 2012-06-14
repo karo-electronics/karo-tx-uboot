@@ -60,9 +60,6 @@ struct mxc_pll_reg *mxc_plls[PLL_CLOCKS] = {
 #define EMI_DIV_MAX     8
 #define NFC_DIV_MAX     8
 
-#define MX5_CBCMR	0x00015154
-#define MX5_CBCDR	0x02888945
-
 struct fixed_pll_mfd {
 	u32 ref_clk_hz;
 	u32 mfd;
@@ -733,7 +730,7 @@ static int config_ddr_clk(u32 emi_clk)
 	u32 cbcdr = __raw_readl(&mxc_ccm->cbcdr);
 
 	if (emi_clk > MAX_DDR_CLK) {
-		printf("Warning:DDR clock should not exceed %d MHz\n",
+		printf("Warning: DDR clock should not exceed %d MHz\n",
 			MAX_DDR_CLK / SZ_DEC_1M);
 		emi_clk = MAX_DDR_CLK;
 	}
@@ -741,6 +738,12 @@ static int config_ddr_clk(u32 emi_clk)
 	clk_src = get_periph_clk();
 	/* Find DDR clock input */
 	clk_sel = (cbcmr >> 10) & 0x3;
+#ifdef CONFIG_MX51
+	if (cbcdr & MXC_CCM_CBCDR_DDR_HIFREQ_SEL) {
+		clk_src = decode_pll(mxc_plls[PLL1_CLOCK], CONFIG_SYS_MX5_HCLK);
+		clk_sel = 4;
+	}
+#endif
 	switch (clk_sel) {
 	case 0:
 		shift = 16;
@@ -754,6 +757,9 @@ static int config_ddr_clk(u32 emi_clk)
 	case 3:
 		shift = 10;
 		break;
+	case 4:
+		shift = 27;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -762,11 +768,11 @@ static int config_ddr_clk(u32 emi_clk)
 		div = clk_src / emi_clk;
 	else
 		div = (clk_src / emi_clk) + 1;
-	if (div > 8)
-		div = 8;
+	if (--div > 7)
+		div = 7;
 
-	cbcdr = cbcdr & ~(0x7 << shift);
-	cbcdr |= ((div - 1) << shift);
+	cbcdr &= ~(0x7 << shift);
+	cbcdr |= div << shift;
 	__raw_writel(cbcdr, &mxc_ccm->cbcdr);
 	while (__raw_readl(&mxc_ccm->cdhipr) != 0)
 		;
@@ -817,7 +823,9 @@ int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk)
 			return -EINVAL;
 		break;
 	default:
-		printf("Warning:Unsupported or invalid clock type\n");
+		printf("Warning: Unsupported or invalid clock type: %d\n",
+			clk);
+		return -EINVAL;
 	}
 
 	return 0;
