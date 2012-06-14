@@ -35,6 +35,23 @@
 #error "CPU_TYPE not defined"
 #endif
 
+#ifdef CONFIG_HW_WATCHDOG
+#define wdog_base	((void *)WDOG1_BASE_ADDR)
+#define WDOG_WCR	0x00
+#define WCR_WDE		(1 << 2)
+#define WDOG_WSR	0x02
+
+void hw_watchdog_reset(void)
+{
+	if (readw(wdog_base + WDOG_WCR) & WCR_WDE) {
+		static u16 toggle = 0xaaaa;
+
+		writew(toggle, wdog_base + WDOG_WSR);
+		toggle ^= 0xffff;
+	}
+}
+#endif
+
 u32 get_cpu_rev(void)
 {
 #ifdef CONFIG_MX51
@@ -72,7 +89,7 @@ u32 get_cpu_rev(void)
 }
 
 #if defined(CONFIG_FEC_MXC)
-void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
+static void __imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 {
 	int i;
 	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
@@ -83,6 +100,10 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 	for (i = 0; i < 6; i++)
 		mac[i] = readl(&fuse->mac_addr[i]) & 0xff;
 }
+
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
+	__attribute__((weak, alias("__imx_get_mac_from_fuse")));
+
 #endif
 
 void set_chipselect_size(int const cs_size)
@@ -114,4 +135,12 @@ void set_chipselect_size(int const cs_size)
 	}
 
 	writel(reg, &iomuxc_regs->gpr1);
+}
+
+void enable_caches(void)
+{
+#ifndef CONFIG_SYS_DCACHE_OFF
+	/* Enable D-cache. I-cache is already enabled in start.S */
+	dcache_enable();
+#endif
 }
