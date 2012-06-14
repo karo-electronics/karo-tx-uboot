@@ -42,14 +42,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CONFIG_FEC_XCV_TYPE MII100
 #endif
 
-#if !defined(CONDIF_SYS_DCACHE_OFF) && !defined(CONFIG_SYS_ARM_CACHE_WRITETHROUGH)
-/* Due to multiple RX and TX buffer descriptors sharing a cache line
- * the driver can only work with DMA coherent memory.
- * Since U-Boot does not provide this, cache must be disabled or
- * write-through.
- */
-#error This driver cannot be used with Writeback DCACHE
-#endif
 /*
  * The i.MX28 operates with packets in big endian. We need to swap them before
  * sending and after receiving.
@@ -97,7 +89,7 @@ static int fec_mdio_read(struct ethernet_regs *eth, uint8_t phyAddr,
 {
 	uint32_t reg;		/* convenient holder for the PHY register */
 	uint32_t phy;		/* convenient holder for the PHY */
-	uint32_t start;
+	ulong start;
 	int val;
 
 	/*
@@ -117,6 +109,8 @@ static int fec_mdio_read(struct ethernet_regs *eth, uint8_t phyAddr,
 	start = get_timer(0);
 	while (!(readl(&eth->ievent) & FEC_IEVENT_MII)) {
 		if (get_timer(start) > (CONFIG_SYS_HZ / 1000)) {
+			if (readl(&eth->ievent) & FEC_IEVENT_MII)
+				break;
 			printf("Read MDIO failed...\n");
 			return -1;
 		}
@@ -131,7 +125,7 @@ static int fec_mdio_read(struct ethernet_regs *eth, uint8_t phyAddr,
 	 * it's now safe to read the PHY's register
 	 */
 	val = (unsigned short)readl(&eth->mii_data);
-	debug("%s: phy: %02x reg:%02x val:%#x\n", __func__, phyAddr,
+	debug("%s: phy: %02x reg:%02x val:%#06x\n", __func__, phyAddr,
 			regAddr, val);
 	return val;
 }
@@ -152,7 +146,7 @@ static int fec_mdio_write(struct ethernet_regs *eth, uint8_t phyAddr,
 {
 	uint32_t reg;		/* convenient holder for the PHY register */
 	uint32_t phy;		/* convenient holder for the PHY */
-	uint32_t start;
+	ulong start;
 
 	reg = regAddr << FEC_MII_DATA_RA_SHIFT;
 	phy = phyAddr << FEC_MII_DATA_PA_SHIFT;
@@ -166,6 +160,8 @@ static int fec_mdio_write(struct ethernet_regs *eth, uint8_t phyAddr,
 	start = get_timer(0);
 	while (!(readl(&eth->ievent) & FEC_IEVENT_MII)) {
 		if (get_timer(start) > (CONFIG_SYS_HZ / 1000)) {
+			if (readl(&eth->ievent) & FEC_IEVENT_MII)
+				break;
 			printf("Write MDIO failed...\n");
 			return -1;
 		}
@@ -175,7 +171,7 @@ static int fec_mdio_write(struct ethernet_regs *eth, uint8_t phyAddr,
 	 * clear MII interrupt bit
 	 */
 	writel(FEC_IEVENT_MII, &eth->ievent);
-	debug("%s: phy: %02x reg:%02x val:%#x\n", __func__, phyAddr,
+	debug("%s: phy: %02x reg:%02x val:%#06x\n", __func__, phyAddr,
 			regAddr, data);
 
 	return 0;
@@ -273,18 +269,6 @@ static inline void fec_tx_task_disable(struct fec_priv *fec)
 {
 }
 
-static inline void fec_invalidate_bd(struct fec_bd *bd)
-{
-	invalidate_dcache_range((unsigned long)bd,
-				(unsigned long)bd + sizeof(*bd));
-}
-
-static inline void fec_flush_bd(struct fec_bd *bd)
-{
-	flush_dcache_range((unsigned long)bd,
-			(unsigned long)bd + sizeof(*bd));
-}
-
 /**
  * Initialize receive task's buffer descriptors
  * @param[in] fec all we know about the device yet
@@ -355,11 +339,9 @@ static void fec_tbd_init(struct fec_priv *fec)
 	unsigned size = roundup(2 * sizeof(struct fec_bd),
 				ARCH_DMA_MINALIGN);
 	writew(0x0000, &fec->tbd_base[0].status);
-	fec_flush_bd(&fec->tbd_base[0]);
 	writew(FEC_TBD_WRAP, &fec->tbd_base[1].status);
-	fec_flush_bd(&fec->tbd_base[1]);
 	fec->tbd_index = 0;
-	flush_dcache_range(addr, addr+size);
+	flush_dcache_range(addr, addr + size);
 }
 
 /**
@@ -566,8 +548,8 @@ static int fec_open(struct eth_device *edev)
 
 static int fec_init(struct eth_device *dev, bd_t* bd)
 {
-	struct fec_priv *fec = (struct fec_priv *)dev->priv;
-	uint32_t mib_ptr = (uint32_t)&fec->eth->rmon_t_drop;
+	struct fec_priv *fec = dev->priv;
+	uint32_t *mib_ptr = (uint32_t *)&fec->eth->rmon_t_drop;
 	uint32_t size;
 	int i, ret;
 
@@ -633,8 +615,8 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 
 
 	/* clear MIB RAM */
-	for (i = mib_ptr; i <= mib_ptr + 0xfc; i += 4)
-		writel(0, i);
+	for (i = 0; i <= 0xfc >> 2; i++)
+		writel(0, &mib_ptr[i]);
 
 	/* FIFO receive start register */
 	writel(0x520, &fec->eth->r_fstart);
@@ -666,7 +648,7 @@ err1:
 static void fec_halt(struct eth_device *dev)
 {
 	struct fec_priv *fec = (struct fec_priv *)dev->priv;
-	int counter = 0xffff;
+	int counter = 1000;
 
 	/*
 	 * issue graceful stop command to the FEC transmitter if necessary
@@ -679,7 +661,7 @@ static void fec_halt(struct eth_device *dev)
 	 * wait for graceful stop to register
 	 */
 	while ((counter--) && (!(readl(&fec->eth->ievent) & FEC_IEVENT_GRA)))
-		udelay(1);
+		udelay(100);
 
 	/*
 	 * Disable SmartDMA tasks
@@ -753,7 +735,6 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 	status = readw(&fec->tbd_base[fec->tbd_index].status) & FEC_TBD_WRAP;
 	status |= FEC_TBD_LAST | FEC_TBD_TC | FEC_TBD_READY;
 	writew(status, &fec->tbd_base[fec->tbd_index].status);
-	fec_flush_bd(&fec->tbd_base[fec->tbd_index]);
 
 	/*
 	 * Flush data cache. This code flushes both TX descriptors to RAM.
@@ -782,7 +763,7 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 		invalidate_dcache_range(addr, addr + size);
 	}
 
-	debug("fec_send: status 0x%x index %d\n",
+	debug("fec_send: status 0x%04x index %d\n",
 			readw(&fec->tbd_base[fec->tbd_index].status),
 			fec->tbd_index);
 	/* for next transmission use the other buffer */
@@ -816,7 +797,9 @@ static int fec_recv(struct eth_device *dev)
 	 */
 	ievent = readl(&fec->eth->ievent);
 	writel(ievent, &fec->eth->ievent);
-	debug("fec_recv: ievent 0x%lx\n", ievent);
+
+	if (ievent)
+		debug("fec_recv: ievent 0x%lx\n", ievent);
 	if (ievent & FEC_IEVENT_BABR) {
 		fec_halt(dev);
 		fec_init(dev, fec->bd);
@@ -857,9 +840,9 @@ static int fec_recv(struct eth_device *dev)
 	invalidate_dcache_range(addr, addr + size);
 
 	bd_status = readw(&rbd->status);
-	debug("fec_recv: status 0x%x\n", bd_status);
-
 	if (!(bd_status & FEC_RBD_EMPTY)) {
+		debug("fec_recv: status 0x%04x len %u\n", bd_status,
+			readw(&rbd->data_length) - 4);
 		if ((bd_status & FEC_RBD_LAST) && !(bd_status & FEC_RBD_ERR) &&
 			((readw(&rbd->data_length) - 4) > 14)) {
 			/*
@@ -867,10 +850,6 @@ static int fec_recv(struct eth_device *dev)
 			 */
 			frame = (struct nbuf *)readl(&rbd->data_pointer);
 			frame_length = readw(&rbd->data_length) - 4;
-
-			invalidate_dcache_range((unsigned long)frame,
-						(unsigned long)frame +
-						sizeof(*frame));
 
 			/*
 			 * Invalidate data cache over the buffer
@@ -915,8 +894,8 @@ static int fec_recv(struct eth_device *dev)
 
 		fec_rx_task_enable(fec);
 		fec->rbd_index = (fec->rbd_index + 1) % FEC_RBD_NUM;
+		debug("fec_recv: stop\n");
 	}
-	debug("fec_recv: stop\n");
 
 	return len;
 }
@@ -1029,7 +1008,8 @@ int fecmxc_initialize(bd_t *bd)
 {
 	int lout = 1;
 
-	debug("eth_init: fec_probe(bd)\n");
+	debug("eth_init: fec_probe(PHY %02x FEC: %08x)\n",
+		CONFIG_FEC_MXC_PHYADDR, IMX_FEC_BASE);
 	lout = fec_probe(bd, -1, CONFIG_FEC_MXC_PHYADDR, IMX_FEC_BASE);
 
 	return lout;
