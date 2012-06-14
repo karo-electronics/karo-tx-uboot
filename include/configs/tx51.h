@@ -30,29 +30,36 @@
 #define CONFIG_SYS_MX5_HCLK	24000000
 #define CONFIG_SYS_MX5_CLK32	32768
 #define CONFIG_SYS_DDR_CLKSEL	0
-#define CONFIG_SYS_CLKTL_CBCDR	0x01e35180
 #define CONFIG_SYS_HZ		1000		/* Ticks per second */
-#if 0
-#define CONFIG_IDENT_STRING	"\nBoard: Ka-Ro TX51-802x"
-#endif
 #define CONFIG_SHOW_ACTIVITY
 #define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_BOARD_LATE_INIT
 #define CONFIG_SPLASH_SCREEN
 
 /*
  * Memory configurations
  */
-#define CONFIG_NR_DRAM_BANKS	2		/* 1 bank of DRAM */
-#define PHYS_SDRAM_1		0x90000000	/* Base address */
+#define PHYS_SDRAM_1		0x90000000	/* Base address of bank 1 */
 #define PHYS_SDRAM_1_SIZE	SZ_128M
-#define PHYS_SDRAM_2		0x98000000	/* Base address */
+#ifndef CONFIG_TX51_80x0
+#define PHYS_SDRAM_2		0x98000000	/* Base address of bank 2 */
 #define PHYS_SDRAM_2_SIZE	SZ_128M
+#define CONFIG_NR_DRAM_BANKS	2		/* # of banks of DRAM */
+#else
+#define CONFIG_NR_DRAM_BANKS	1		/* # of banks of DRAM */
+#endif
 #define CONFIG_STACKSIZE	0x00010000	/* 128 KB stack */
 #define CONFIG_SYS_MALLOC_LEN	0x00400000	/* 4 MB for malloc */
 #define CONFIG_SYS_GBL_DATA_SIZE 128		/* Reserved for initial data */
 #define CONFIG_SYS_MEMTEST_START 0x90000000	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END	 0x90400000	/* 4 MB RAM test */
+#ifdef CONFIG_TX51_80x1
+#define CONFIG_SYS_CLKTL_CBCDR	0x59e35180
+#define CONFIG_SYS_SDRAM_CLOCK	200
+#else
+#define CONFIG_SYS_CLKTL_CBCDR	0x01e35180
 #define CONFIG_SYS_SDRAM_CLOCK	166
+#endif
 
 /*
  * U-Boot general configurations
@@ -111,23 +118,24 @@
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
-	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
+	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
-	"bootargs_nand=run default_bootargs;setenv bootargs ${bootargs}"\
-	" ${mtdparts} root=/dev/mtdblock3 rootfstype=jffs2\0"		\
+	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
+	" root=/dev/mtdblock3 rootfstype=jffs2\0"		\
 	"nfsroot=/tftpboot/rootfs\0"					\
-	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
+	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
-	" mmc read ${loadaddr} 100 3000;run bootm_cmd\0"		\
-	"bootcmd_nand=set autostart yes;run bootargs_nand;"		\
-	" nboot linux\0"						\
-	"bootcmd_net=setenv autostart yes;run bootargs_nfs; dhcp\0"	\
+	"mmc read ${loadaddr} 100 3000;run bootm_cmd\0"		\
+	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
+	"nboot linux;run bootm_cmd\0"					\
+	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
+	"run bootm_cmd\0"						\
 "bootdelay=-1\0"\
 	"bootm_cmd=fdt addr ${fdtcontroladdr};fdt board;"		\
 	"bootm ${loadaddr} - ${fdtaddr}\0"				\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
-	" video=${video_mode} ${append_bootargs}\0"			\
+	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
 	"fdtcontroladdr=90004000\0"					\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
