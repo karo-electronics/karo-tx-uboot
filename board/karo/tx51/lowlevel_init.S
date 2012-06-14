@@ -1,11 +1,18 @@
+#include <config.h>
 #include <configs/tx51.h>
 
+#if !defined(CONFIG_TX51_80x0) && !defined(CONFIG_TX51_80x1) && !defined(CONFIG_TX51_80x2)
+#error TX51 model not selected
+#endif
+
 #define DCDGEN(type, addr, data)  .long type, addr, data
+
 #define SDRAM_CLK		CONFIG_SYS_SDRAM_CLOCK
-#ifndef PHYS_SDRAM_2_SIZE
-#define SDRAM_SIZE		PHYS_SDRAM_1_SIZE
-#else
+
+#ifdef PHYS_SDRAM_2_SIZE
 #define SDRAM_SIZE		(PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE)
+#else
+#define SDRAM_SIZE		PHYS_SDRAM_1_SIZE
 #endif
 
 #define ESDCTL_BASE_ADDR	0x83fd9000
@@ -155,7 +162,3 @@ dcd_start:
 dcd_end:
 image_len:
 	.long	CONFIG_U_BOOT_IMG_SIZE
-#if 0
-_loop:
-	b _loop
-#endif
