@@ -1,0 +1,365 @@
+/*
+ * Copyright 2011 Freescale Semiconductor, Inc.
+ * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/include/ "skeleton.dtsi"
+
+/ {
+        aliases {
+                serial0 = &uart1;
+                serial1 = &uart2;
+                serial2 = &uart3;
+		ethernet0 = &fec0;
+        };
+
+	tzic: tz-interrupt-controller@e0000000 {
+		compatible = "fsl,imx51-tzic", "fsl,tzic";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		reg = <0xe0000000 0x4000>;
+	};
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ckil {
+			compatible = "fsl,imx-ckil", "fixed-clock";
+			clock-frequency = <32768>;
+		};
+
+		ckih1 {
+			compatible = "fsl,imx-ckih1", "fixed-clock";
+			clock-frequency = <22579200>;
+		};
+
+		ckih2 {
+			compatible = "fsl,imx-ckih2", "fixed-clock";
+			clock-frequency = <0>;
+		};
+
+		osc {
+			compatible = "fsl,imx-osc", "fixed-clock";
+			clock-frequency = <24000000>;
+		};
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		interrupt-parent = <&tzic>;
+		ranges;
+
+		ahb: ahb@40000000 {
+			compatible = "fsl,ahb-bus", "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x40000000 0x60000000>;
+			ranges;
+
+			ipu@5e000000 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,imx-ipuv3";
+				reg = <0x5e000000 0x02000000>;
+				interrupts = <10 11>;
+				status = "disabled";
+			};
+		};
+
+		aips@70000000 { /* AIPS1 */
+			compatible = "fsl,aips-bus", "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x70000000 0x10000000>;
+			ranges;
+
+			spba@70000000 {
+				compatible = "fsl,spba-bus", "simple-bus";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				reg = <0x70000000 0x40000>;
+				ranges;
+
+				ssi2: ssi@70014000 {
+					compatible = "fsl,imx-ssi";
+					reg = <0x70014000 0x4000>;
+					interrupts = <30>;
+					status = "disabled";
+				};
+
+				esdhc@70004000 { /* ESDHC1 */
+					compatible = "fsl,imx51-esdhc";
+					reg = <0x70004000 0x4000>;
+					interrupts = <1>;
+					status = "disabled";
+				};
+
+				esdhc@70008000 { /* ESDHC2 */
+					compatible = "fsl,imx51-esdhc";
+					reg = <0x70008000 0x4000>;
+					interrupts = <2>;
+					status = "disabled";
+				};
+
+				uart3: uart@7000c000 {
+					compatible = "fsl,imx51-uart", "fsl,imx21-uart";
+					reg = <0x7000c000 0x4000>;
+					interrupts = <33>;
+					status = "disabled";
+				};
+
+				ecspi@70010000 { /* ECSPI1 */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					compatible = "fsl,imx51-ecspi";
+					reg = <0x70010000 0x4000>;
+					interrupts = <36>;
+					status = "disabled";
+				};
+
+				esdhc@70020000 { /* ESDHC3 */
+					compatible = "fsl,imx51-esdhc";
+					reg = <0x70020000 0x4000>;
+					interrupts = <3>;
+					status = "disabled";
+				};
+
+				esdhc@70024000 { /* ESDHC4 */
+					compatible = "fsl,imx51-esdhc";
+					reg = <0x70024000 0x4000>;
+					interrupts = <4>;
+					status = "disabled";
+				};
+			};
+
+			imxotg@73f80000 {
+				compatible = "fsl,imx-otg";
+				reg = <0x73f80000 0x200>;
+				interrupts = <18>;
+				status = "disabled";
+
+				phy-mode = "utmi-wide";
+				host-device-name = "mxc-ehci";
+				host-device-id = <0>;
+				gadget-device-name = "fsl-usb2-udc";
+
+			};
+
+			imxotg@73f80200 {
+				compatible = "fsl,imx-otg";
+				reg = <0x73f80200 0x200>;
+				interrupts = <14>;
+				status = "disabled";
+
+				phy-mode = "utmi-wide";
+				host-device-name = "mxc-ehci";
+				host-device-id = <1>;
+			};
+
+			usbh2@73f80400 {
+				compatible = "fsl,mxc-ehci";
+				reg = <0x73f80400 0x200>;
+				interrupts = <16>;
+				status = "disabled";
+			};
+
+			mxc-ehci@73f80600 {
+				compatible = "fsl,mxc-ehci";
+				reg = <0x73f80600 0x200>;
+				interrupts = <17>;
+				status = "disabled";
+			};
+
+			imx-usb-phy@73f80800 {
+				compatible = "fsl,imx51-usb-phy", "fsl,imx-usb-phy";
+				reg = <0x73f80800 0x200>;
+				status = "disabled";
+			};
+
+			gpio1: gpio@73f84000 {
+				compatible = "fsl,imx51-gpio", "fsl,imx31-gpio";
+				reg = <0x73f84000 0x4000>;
+				interrupts = <50 51>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+
+			gpio2: gpio@73f88000 {
+				compatible = "fsl,imx51-gpio", "fsl,imx31-gpio";
+				reg = <0x73f88000 0x4000>;
+				interrupts = <52 53>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+
+			gpio3: gpio@73f8c000 {
+				compatible = "fsl,imx51-gpio", "fsl,imx31-gpio";
+				reg = <0x73f8c000 0x4000>;
+				interrupts = <54 55>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+
+			gpio4: gpio@73f90000 {
+				compatible = "fsl,imx51-gpio", "fsl,imx31-gpio";
+				reg = <0x73f90000 0x4000>;
+				interrupts = <56 57>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-controller;
+				#interrupt-cells = <1>;
+			};
+
+			keypad@73f94000 {
+				compatible = "fsl,imx-keypad";
+				reg = <0x73f94000 0x4000>;
+				interrupts = <60>;
+				status = "disabled";
+			};
+
+			wdog@73f98000 { /* WDOG1 */
+				compatible = "fsl,imx51-wdt", "fsl,imx21-wdt";
+				reg = <0x73f98000 0x4000>;
+				interrupts = <58>;
+				status = "disabled";
+			};
+
+			wdog@73f9c000 { /* WDOG2 */
+				compatible = "fsl,imx51-wdt", "fsl,imx21-wdt";
+				reg = <0x73f9c000 0x4000>;
+				interrupts = <59>;
+				status = "disabled";
+			};
+
+			pwm@73fb4000 {
+				compatible = "fsl,imx51-pwm", "fsl,imx27-pwm";
+				reg = <0x73fb4000 0x4000>;
+				interrupts = <61>;
+				status = "disabled";
+			};
+
+			pwm@73fb8000 {
+				compatible = "fsl,imx51-pwm", "fsl,imx27-pwm";
+				reg = <0x73fb8000 0x4000>;
+				interrupts = <94>;
+				status = "disabled";
+			};
+
+			uart1: uart@73fbc000 {
+				compatible = "fsl,imx51-uart", "fsl,imx21-uart";
+				reg = <0x73fbc000 0x4000>;
+				interrupts = <31>;
+				status = "disabled";
+			};
+
+			uart2: uart@73fc0000 {
+				compatible = "fsl,imx51-uart", "fsl,imx21-uart";
+				reg = <0x73fc0000 0x4000>;
+				interrupts = <32>;
+				status = "disabled";
+			};
+		};
+
+		aips@80000000 {	/* AIPS2 */
+			compatible = "fsl,aips-bus", "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x80000000 0x10000000>;
+			ranges;
+
+			ecspi@83fac000 { /* ECSPI2 */
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,imx51-ecspi";
+				reg = <0x83fac000 0x4000>;
+				interrupts = <37>;
+				status = "disabled";
+			};
+
+			sdma@83fb0000 {
+				compatible = "fsl,imx51-sdma", "fsl,imx35-sdma";
+				reg = <0x83fb0000 0x4000>;
+				interrupts = <6>;
+			};
+
+			cspi@83fc0000 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,imx51-cspi", "fsl,imx35-cspi";
+				reg = <0x83fc0000 0x4000>;
+				interrupts = <38>;
+				status = "disabled";
+			};
+
+			i2c@83fc4000 { /* I2C2 */
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,imx51-i2c", "fsl,imx1-i2c";
+				reg = <0x83fc4000 0x4000>;
+				interrupts = <63>;
+				status = "disabled";
+			};
+
+			i2c@83fc8000 { /* I2C1 */
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,imx51-i2c", "fsl,imx1-i2c";
+				reg = <0x83fc8000 0x4000>;
+				interrupts = <62>;
+				status = "disabled";
+			};
+
+			ssi1: ssi@83fcc000 {
+				compatible = "fsl,imx-ssi";
+				reg = <0x83fcc000 0x4000>;
+				interrupts = <29>;
+				status = "disabled";
+			};
+
+			audmux@83fd0000 {
+				compatible = "fsl,imx31-audmux";
+				reg = <0x83fd0000 0x4000>;
+				ssi-ports = <0 1 2>;
+				ext-ports = <3 4 5 6>;
+				status = "disabled";
+			};
+
+			nand@83fdb000 {
+				compatible = "fsl,imx51-nand", "mxc_nand";
+				reg = <0xcfff0000 0x10000>, <0x83fdb000 0x4000>;
+				interrupts = <8>;
+				status = "disabled";
+			};
+
+			ssi3: ssi@83fe8000 {
+				compatible = "fsl,imx-ssi";
+				reg = <0x83fe8000 0x4000>;
+				interrupts = <96>;
+				status = "disabled";
+			};
+
+			fec0: ethernet@83fec000 {
+				compatible = "fsl,imx51-fec", "fsl,imx27-fec";
+				reg = <0x83fec000 0x4000>;
+				interrupts = <87>;
+				status = "disabled";
+			};
+		};
+	};
+};
