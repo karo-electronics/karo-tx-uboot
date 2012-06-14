@@ -37,7 +37,6 @@
  * IRQ Stack: 00ebff7c
  * FIQ Stack: 00ebef7c
  */
-#define DEBUG
 
 #include <common.h>
 #include <command.h>
@@ -292,21 +291,6 @@ void board_init_f(ulong bootflag)
 		if ((*init_fnc_ptr)() != 0) {
 			hang ();
 		}
-#if 1
-	{
-		u32 *data = (u32 *)(CONFIG_SYS_TEXT_BASE - 16);
-		int i;
-
-		debug("ip=%d\n", init_fnc_ptr - init_sequence);
-		debug("gd=%p..%p\n", gd, gd + 1);
-		debug("FDT=%p\n", gd->fdt_blob);
-		debug("spl_data=%p:\n", data);
-		for (i = 0; i < 16 / 4; i++) {
-			debug("%08x ", data[i]);
-		}
-		debug("\n");
-	}
-#endif
 	}
 
 #ifdef CONFIG_OF_CONTROL
