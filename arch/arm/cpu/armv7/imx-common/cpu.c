@@ -126,6 +126,11 @@ int cpu_mmc_init(bd_t *bis)
 
 void reset_cpu(ulong addr)
 {
+	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
+
+	/* Clear the reset status flags */
+	writel(readl(&src_regs->srsr), &src_regs->srsr);
+
 	__raw_writew(4, WDOG1_BASE_ADDR);
 }
 
