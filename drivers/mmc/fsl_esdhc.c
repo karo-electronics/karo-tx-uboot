@@ -115,7 +115,7 @@ static void
 esdhc_pio_read_write(struct mmc *mmc, struct mmc_data *data)
 {
 	struct fsl_esdhc_cfg *cfg = mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	uint blocks;
 	char *buffer;
 	uint databuf;
@@ -176,8 +176,8 @@ esdhc_pio_read_write(struct mmc *mmc, struct mmc_data *data)
 static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 {
 	int timeout;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 #ifndef CONFIG_SYS_FSL_ESDHC_USE_PIO
 	uint wml_value;
 
@@ -197,6 +197,8 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 			return TIMEOUT;
 		}
 
+		flush_dcache_range(data->src,
+				data->src + data->blocks * data->blocksize);
 		esdhc_clrsetbits32(&regs->wml, WML_WR_WML_MASK,
 					wml_value << 16);
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
@@ -209,8 +211,9 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 			return TIMEOUT;
 		}
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
-	} else
+	} else {
 		esdhc_write32(&regs->dsaddr, (u32)data->dest);
+	}
 #endif	/* CONFIG_SYS_FSL_ESDHC_USE_PIO */
 
 	esdhc_write32(&regs->blkattr, data->blocks << 16 | data->blocksize);
@@ -259,8 +262,8 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 {
 	uint	xfertyp;
 	uint	irqstat;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	volatile struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	volatile struct fsl_esdhc *regs = cfg->esdhc_base;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_ESDHC111
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
@@ -291,7 +294,7 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		int err;
 
 		err = esdhc_setup_data(mmc, data);
-		if(err)
+		if (err)
 			return err;
 	}
 
@@ -350,6 +353,8 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 				return COMM_ERR;
 		} while (!(irqstat & IRQSTAT_TC) &&
 				(esdhc_read32(&regs->prsstat) & PRSSTAT_DLA));
+		invalidate_dcache_range(data->dest,
+				data->dest + data->blocks * data->blocksize);
 #endif
 	}
 
@@ -362,8 +367,8 @@ void set_sysctl(struct mmc *mmc, uint clock)
 {
 	int sdhc_clk = gd->sdhc_clk;
 	int div, pre_div;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	volatile struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	volatile struct fsl_esdhc *regs = cfg->esdhc_base;
 	uint clk;
 
 	if (clock < mmc->f_min)
@@ -398,8 +403,8 @@ void set_sysctl(struct mmc *mmc, uint clock)
 
 static void esdhc_set_ios(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 
 	/* Set the clock speed */
 	set_sysctl(mmc, mmc->clock);
@@ -416,8 +421,8 @@ static void esdhc_set_ios(struct mmc *mmc)
 
 static int esdhc_init(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	int timeout = 1000;
 
 	/* Reset the entire host controller */
@@ -450,8 +455,8 @@ static int esdhc_init(struct mmc *mmc)
 
 static int esdhc_getcd(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	int timeout = 1000;
 
 	while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_CINS) && --timeout)
@@ -483,10 +488,10 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	if (!cfg)
 		return -1;
 
-	mmc = malloc(sizeof(struct mmc));
+	mmc = kzalloc(sizeof(struct mmc), GFP_KERNEL);
 
 	sprintf(mmc->name, "FSL_SDHC");
-	regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	regs = cfg->esdhc_base;
 
 	/* First reset the eSDHC controller */
 	esdhc_reset(regs);
@@ -539,9 +544,9 @@ int fsl_esdhc_mmc_init(bd_t *bis)
 {
 	struct fsl_esdhc_cfg *cfg;
 
-	cfg = malloc(sizeof(struct fsl_esdhc_cfg));
-	memset(cfg, 0, sizeof(struct fsl_esdhc_cfg));
-	cfg->esdhc_base = CONFIG_SYS_FSL_ESDHC_ADDR;
+	cfg = kzalloc(sizeof(struct fsl_esdhc_cfg), GFP_KERNEL);
+
+	cfg->esdhc_base = (void __iomem *)CONFIG_SYS_FSL_ESDHC_ADDR;
 	return fsl_esdhc_initialize(bis, cfg);
 }
 
