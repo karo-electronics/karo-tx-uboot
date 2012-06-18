@@ -19,6 +19,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <config.h>
 #include <asm/sizes.h>
 
 /*
@@ -35,30 +36,43 @@
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_SPLASH_SCREEN
+#define CONFIG_BOARD_EARLY_INIT_F
+
+#if CONFIG_SYS_CPU_CLK == 600
+#define TX51_MOD_PREFIX		"6"
+#elif CONFIG_SYS_CPU_CLK == 800
+#define TX51_MOD_PREFIX		"8"
+#define CONFIG_MX51_PLL_ERRATA
+#else
+#error Invalid CPU clock
+#endif
 
 /*
  * Memory configurations
  */
 #define PHYS_SDRAM_1		0x90000000	/* Base address of bank 1 */
 #define PHYS_SDRAM_1_SIZE	SZ_128M
-#ifndef CONFIG_TX51_80x0
+#if CONFIG_NR_DRAM_BANKS > 1
 #define PHYS_SDRAM_2		0x98000000	/* Base address of bank 2 */
 #define PHYS_SDRAM_2_SIZE	SZ_128M
-#define CONFIG_NR_DRAM_BANKS	2		/* # of banks of DRAM */
 #else
-#define CONFIG_NR_DRAM_BANKS	1		/* # of banks of DRAM */
+#define TX51_MOD_SUFFIX		"0"
 #endif
 #define CONFIG_STACKSIZE	0x00010000	/* 128 KB stack */
 #define CONFIG_SYS_MALLOC_LEN	0x00400000	/* 4 MB for malloc */
 #define CONFIG_SYS_GBL_DATA_SIZE 128		/* Reserved for initial data */
 #define CONFIG_SYS_MEMTEST_START 0x90000000	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END	 0x90400000	/* 4 MB RAM test */
-#ifdef CONFIG_TX51_80x1
+#if CONFIG_SYS_SDRAM_CLK == 200
 #define CONFIG_SYS_CLKTL_CBCDR	0x59e35180
-#define CONFIG_SYS_SDRAM_CLOCK	200
-#else
+#define TX51_MOD_SUFFIX		"1"
+#elif CONFIG_SYS_SDRAM_CLK == 166
 #define CONFIG_SYS_CLKTL_CBCDR	0x01e35180
-#define CONFIG_SYS_SDRAM_CLOCK	166
+#ifndef TX51_MOD_SUFFIX
+#define TX51_MOD_SUFFIX		"2"
+#endif
+#else
+#error Invalid SDRAM clock
 #endif
 
 /*
@@ -85,11 +99,7 @@
 */
 #define CONFIG_OF_LIBFDT
 #define CONFIG_OF_CONTROL
-#if 0
-#define CONFIG_OF_SEPARATE
-#else
 #define CONFIG_OF_EMBED
-#endif
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx51
 #define CONFIG_ARCH_DEVICE_TREE		mx51
