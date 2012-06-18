@@ -30,14 +30,11 @@
 #include <asm/string.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/arch/iomux-mx51.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/sys_proto.h>
-
-#if !defined(CONFIG_TX51_80x0) && !defined(CONFIG_TX51_80x1) && !defined(CONFIG_TX51_80x2)
-#error TX51 model not selected
-#endif
+#include <asm/arch/crm_regs.h>
 
 //#define TIMER_TEST
 
@@ -48,6 +45,94 @@
 #define TX51_LED_GPIO		IMX_GPIO_NR(4, 10)
 
 DECLARE_GLOBAL_DATA_PTR;
+
+enum gpio_flags {
+	GPIOF_INPUT,
+	GPIOF_OUTPUT_INIT_LOW,
+	GPIOF_OUTPUT_INIT_HIGH,
+};
+
+struct gpio {
+	unsigned int gpio;
+	enum gpio_flags flags;
+	const char *label;
+};
+
+static int gpio_request_array(const struct gpio *gp, int count)
+{
+	int ret;
+	int i;
+
+	for (i = 0; i < count; i++) {
+		ret = gpio_request(gp[i].gpio, gp[i].label);
+		if (ret)
+			goto error;
+
+		if (gp[i].flags == GPIOF_INPUT)
+			gpio_direction_input(gp[i].gpio);
+		else if (gp[i].flags == GPIOF_OUTPUT_INIT_LOW)
+			gpio_direction_output(gp[i].gpio, 0);
+		else if (gp[i].flags == GPIOF_OUTPUT_INIT_HIGH)
+			gpio_direction_output(gp[i].gpio, 1);
+	}
+	return 0;
+
+error:
+	while (--i >= 0)
+		gpio_free(gp[i].gpio);
+
+	return ret;
+}
+
+#define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
+
+static iomux_v3_cfg_t tx51_pads[] = {
+	MX51_PAD_GPIO1_0__GPIO1_0,
+	MX51_PAD_GPIO1_1__GPIO1_1,
+	MX51_PAD_GPIO1_4__GPIO1_4, /* USB PHY reset */
+	MX51_PAD_GPIO1_6__GPIO1_6, /* USBOTG OC */
+	MX51_PAD_GPIO1_7__GPIO1_7, /* USB PHY clock enable */
+	MX51_PAD_GPIO1_8__GPIO1_8, /* USBH1 VBUS enable */
+	MX51_PAD_GPIO1_9__GPIO1_9, /* USBH1 OC */
+
+	/* UART pads */
+	MX51_PAD_UART1_RXD__UART1_RXD,
+	MX51_PAD_UART1_TXD__UART1_TXD,
+	MX51_PAD_UART1_RTS__UART1_RTS,
+	MX51_PAD_UART1_CTS__UART1_CTS,
+
+	MX51_PAD_UART2_RXD__UART2_RXD,
+	MX51_PAD_UART2_TXD__UART2_TXD,
+	MX51_PAD_EIM_D26__UART2_RTS,
+	MX51_PAD_EIM_D25__UART2_CTS,
+
+	MX51_PAD_UART3_RXD__UART3_RXD,
+	MX51_PAD_UART3_TXD__UART3_TXD,
+	MX51_PAD_EIM_D18__UART3_RTS,
+	MX51_PAD_EIM_D17__UART3_CTS,
+
+	/* internal I2C */
+	MX51_PAD_I2C1_DAT__GPIO4_17 | IOMUX_SION,
+	MX51_PAD_I2C1_CLK__GPIO4_16 | IOMUX_SION,
+};
+
+static const struct gpio tx51_gpios[] = {
+	{ IMX_GPIO_NR(1, 0), GPIOF_OUTPUT_INIT_LOW, "unused", },
+	{ IMX_GPIO_NR(1, 1), GPIOF_OUTPUT_INIT_LOW, "unused", },
+	{ IMX_GPIO_NR(1, 4), GPIOF_OUTPUT_INIT_LOW, "ULPI PHY clk enable", },
+	{ IMX_GPIO_NR(1, 6), GPIOF_INPUT, "USBOTG OC", },
+	{ IMX_GPIO_NR(1, 7), GPIOF_OUTPUT_INIT_LOW, "ULPI PHY reset", },
+	{ IMX_GPIO_NR(1, 8), GPIOF_OUTPUT_INIT_LOW, "USBH1 VBUS enable", },
+	{ IMX_GPIO_NR(1, 9), GPIOF_INPUT, "USBH1 OC", },
+	{ IMX_GPIO_NR(4, 17), GPIOF_INPUT, "I2C1 SDA", },
+	{ IMX_GPIO_NR(4, 16), GPIOF_INPUT, "I2C1 SCL", },
+};
+
+static void tx51_module_init(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(tx51_pads, ARRAY_SIZE(tx51_pads));
+	gpio_request_array(tx51_gpios, ARRAY_SIZE(tx51_gpios));
+}
 
 /*
  * Functions
@@ -117,21 +202,22 @@ static void print_cpuinfo(void)
 	print_reset_cause();
 }
 
+#ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
-#ifdef CONFIG_USB_EHCI_MX5
-	setup_usb_h1();
-#endif
-	writel(0xffffffff, 0x73fd4068);
-	writel(0xffffffff, 0x73fd406c);
-	writel(0xffffffff, 0x73fd4070);
-	writel(0xffffffff, 0x73fd4074);
-	writel(0xffffffff, 0x73fd4078);
-	writel(0xffffffff, 0x73fd407c);
-	writel(0xffffffff, 0x73fd4080);
-	writel(0xffffffff, 0x73fd4084);
+	struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
+
+	writel(0xffccfffc, &ccm_regs->CCGR0);
+	writel(0x003fffff, &ccm_regs->CCGR1);
+	writel(0x030c003c, &ccm_regs->CCGR2);
+	writel(0x000000ff, &ccm_regs->CCGR3);
+	writel(0x00000000, &ccm_regs->CCGR4);
+	writel(0x003fc003, &ccm_regs->CCGR5);
+	writel(0x00000000, &ccm_regs->CCGR6);
+	writel(0x00000000, &ccm_regs->cmeor);
 	return 0;
 }
+#endif
 
 void coloured_LED_init(void)
 {
@@ -155,15 +241,15 @@ int dram_init(void)
 				PHYS_SDRAM_1_SIZE);
 
 	ret = mxc_set_clock(CONFIG_SYS_MX5_HCLK,
-		CONFIG_SYS_SDRAM_CLOCK, MXC_DDR_CLK);
+		CONFIG_SYS_SDRAM_CLK, MXC_DDR_CLK);
 	if (ret)
 		printf("%s: Failed to set DDR clock to %uMHz: %d\n", __func__,
-			CONFIG_SYS_SDRAM_CLOCK, ret);
+			CONFIG_SYS_SDRAM_CLK, ret);
 	else
 		debug("%s: DDR clock set to %u.%03uMHz (desig.: %u.000MHz)\n",
 			__func__, mxc_get_clock(MXC_DDR_CLK) / 1000000,
 			mxc_get_clock(MXC_DDR_CLK) / 1000 % 1000,
-			CONFIG_SYS_SDRAM_CLOCK);
+			CONFIG_SYS_SDRAM_CLK);
 	return ret;
 }
 
@@ -265,8 +351,6 @@ int board_mmc_init(bd_t *bis)
 #define ETH_ALEN 6
 #endif
 
-#define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
-
 void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 {
 	int i;
@@ -333,12 +417,17 @@ static iomux_v3_cfg_t tx51_fec_pads[] = {
 	NEW_PAD_CTRL(MX51_PAD_GPIO1_3__GPIO1_3, GPIO_PAD_CTL),
 };
 
+/* take bit 4 of PHY address from configured PHY address or
+ * set it to 0 if PHYADDR is -1 (probe for PHY)
+ */
+#define PHYAD4 ((CONFIG_FEC_MXC_PHYADDR >> 4) & !(CONFIG_FEC_MXC_PHYADDR >> 5))
+
 static struct {
 	unsigned gpio:8,
 		dir:1,
 		val:1;
 } tx51_fec_gpios[] = {
-	{ IMX_GPIO_NR(1, 3), 1, 0, },	/* PHY power */
+	{ IMX_GPIO_NR(1, 3), 1, 1, },	/* PHY power */
 	{ IMX_GPIO_NR(2, 14), 1, 0, },	/* PHY reset */
 	{ IMX_GPIO_NR(3, 19), 1, 0, },	/* MDC */
 	{ IMX_GPIO_NR(2, 22), 1, 0, },	/* MDIO */
@@ -356,7 +445,7 @@ static struct {
 	{ IMX_GPIO_NR(3, 21), 1, 0, },	/* TXD2 */
 	{ IMX_GPIO_NR(3, 22), 1, 0, },	/* TXD3 */
 	{ IMX_GPIO_NR(3, 10), 1, 0, },	/* COL */
-	{ IMX_GPIO_NR(2, 30), 1, (CONFIG_FEC_MXC_PHYADDR >> 4) & 1, }, /* PHYAD4 */
+	{ IMX_GPIO_NR(2, 30), 1, PHYAD4, }, /* PHYAD4 */
 	{ IMX_GPIO_NR(3, 18), 0, 1, },	/* PHY INT (TX_ER) */
 };
 
@@ -376,11 +465,11 @@ int board_eth_init(bd_t *bis)
 	}
 	mxc_iomux_v3_setup_multiple_pads(tx51_fec_gpio_pads,
 					ARRAY_SIZE(tx51_fec_gpio_pads));
+	udelay(3000);
 
 	/* Power on the external phy */
 	gpio_direction_output(TX51_FEC_POWER_GPIO, 1);
-
-	udelay(1000);
+	udelay(100);
 
 	for (i = 0; i < ARRAY_SIZE(tx51_fec_gpios); i++) {
 		int gpio = tx51_fec_gpios[i].gpio;
@@ -395,12 +484,10 @@ int board_eth_init(bd_t *bis)
 	}
 
 	udelay(25000);
-
 	/* Deassert RESET to the external phy */
 	gpio_set_value(TX51_FEC_RESET_GPIO, 1);
 
 	udelay(400);
-
 	mxc_iomux_v3_setup_multiple_pads(tx51_fec_pads,
 					ARRAY_SIZE(tx51_fec_pads));
 
@@ -457,50 +544,12 @@ static const iomux_v3_cfg_t stk5_pads[] = {
 	MX51_PAD_GPIO1_2__GPIO1_2,
 };
 
-enum gpio_flags {
-	GPIOF_INPUT,
-	GPIOF_OUTPUT_INIT_LOW,
-	GPIOF_OUTPUT_INIT_HIGH,
-};
-
-struct gpio {
-	unsigned int gpio;
-	enum gpio_flags flags;
-	const char *label;
-};
-
 static const struct gpio stk5_gpios[] = {
 	{ IMX_GPIO_NR(4, 10), GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
 	{ IMX_GPIO_NR(4, 13), GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
 	{ IMX_GPIO_NR(4, 14), GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
 	{ IMX_GPIO_NR(1, 2), GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
-
-static int gpio_request_array(const struct gpio *gp, int count)
-{
-	int ret;
-	int i;
-
-	for (i = 0; i < count; i++) {
-		ret = gpio_request(gp[i].gpio, gp[i].label);
-		if (ret)
-			goto error;
-
-		if (gp[i].flags == GPIOF_INPUT)
-			gpio_direction_input(gp[i].gpio);
-		else if (gp[i].flags == GPIOF_OUTPUT_INIT_LOW)
-			gpio_direction_output(gp[i].gpio, 0);
-		else if (gp[i].flags == GPIOF_OUTPUT_INIT_HIGH)
-			gpio_direction_output(gp[i].gpio, 1);
-	}
-	return 0;
-
-error:
-	while (--i >= 0)
-		gpio_free(gp[i].gpio);
-
-	return ret;
-}
 
 static void stk5_board_init(void)
 {
@@ -543,6 +592,8 @@ int board_late_init(void)
 {
 	const char *baseboard;
 
+	tx51_module_init();
+
 	baseboard = getenv("baseboard");
 	if (!baseboard)
 		return 0;
@@ -570,7 +621,8 @@ int checkboard(void)
 {
 	print_cpuinfo();
 
-	printf("Board: Ka-Ro TX51\n");
+	printf("Board: Ka-Ro TX51-%s0x%s\n",
+		TX51_MOD_PREFIX, TX51_MOD_SUFFIX);
 
 	tx51_move_fdt();
 
