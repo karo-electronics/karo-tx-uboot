@@ -391,8 +391,21 @@ static void fec_eth_phy_config(struct eth_device *dev)
 	struct fec_priv *fec = (struct fec_priv *)dev->priv;
 	struct phy_device *phydev;
 
-	phydev = phy_connect(fec->bus, fec->phy_id, dev,
-			PHY_INTERFACE_MODE_RGMII);
+	if (fec->phy_id < 0) {
+		int phy_id;
+
+		for (phy_id = 0; phy_id < 32; phy_id++) {
+			debug("%s: Probing PHY ID %02x\n", __func__, phy_id);
+			phydev = phy_connect(fec->bus, phy_id, dev,
+					PHY_INTERFACE_MODE_RGMII);
+
+			if (phydev)
+				break;
+		}
+	} else {
+		phydev = phy_connect(fec->bus, fec->phy_id, dev,
+				PHY_INTERFACE_MODE_RGMII);
+	}
 	if (phydev) {
 		fec->phydev = phydev;
 		phy_config(phydev);
