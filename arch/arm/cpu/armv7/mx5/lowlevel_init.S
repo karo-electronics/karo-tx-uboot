@@ -206,7 +206,13 @@
 	setup_pll PLL1_BASE_ADDR, 864
 	setup_pll_errata PLL1_BASE_ADDR, W_DP_MFN_800_DIT
 #else
+#if !defined(CONFIG_SYS_CPU_CLK) || CONFIG_SYS_CPU_CLK == 800
 	setup_pll PLL1_BASE_ADDR, 800
+#elif CONFIG_SYS_CPU_CLK == 600
+	setup_pll PLL1_BASE_ADDR, 600
+#else
+#error Unsupported CONFIG_SYS_CPU_CLK value
+#endif
 #endif
 
 #if defined(CONFIG_MX51)
@@ -361,6 +367,9 @@ W_DP_MFN_800:             .word DP_MFN_800
 W_DP_OP_665:              .word DP_OP_665
 W_DP_MFD_665:             .word DP_MFD_665
 W_DP_MFN_665:             .word DP_MFN_665
+W_DP_OP_600:              .word DP_OP_600
+W_DP_MFD_600:             .word DP_MFD_600
+W_DP_MFN_600:             .word DP_MFN_600
 W_DP_OP_216:              .word DP_OP_216
 W_DP_MFD_216:             .word DP_MFD_216
 W_DP_MFN_216:             .word DP_MFN_216
