@@ -1,13 +1,9 @@
 #include <config.h>
 #include <configs/tx51.h>
 
-#if !defined(CONFIG_TX51_80x0) && !defined(CONFIG_TX51_80x1) && !defined(CONFIG_TX51_80x2)
-#error TX51 model not selected
-#endif
-
 #define DCDGEN(type, addr, data)  .long type, addr, data
 
-#define SDRAM_CLK		CONFIG_SYS_SDRAM_CLOCK
+#define SDRAM_CLK		CONFIG_SYS_SDRAM_CLK
 
 #ifdef PHYS_SDRAM_2_SIZE
 #define SDRAM_SIZE		(PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE)
