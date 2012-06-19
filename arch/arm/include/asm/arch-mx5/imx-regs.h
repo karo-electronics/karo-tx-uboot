@@ -506,6 +506,8 @@ struct fuse_bank1_regs {
 	u32	fuse15_31[0x11];
 };
 
+extern void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
+
 #endif /* __ASSEMBLER__*/
 
 #endif				/* __ASM_ARCH_MX5_IMX_REGS_H__ */

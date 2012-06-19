@@ -8,6 +8,8 @@
  * (C) Copyright 2003
  * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
  *
+ * Adapted for U-Boot version 2012-04-01 by Lothar Waßmann <LW@KARO-electronics.de>
+ *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
@@ -27,13 +29,13 @@
  * MA 02111-1307 USA
  */
 
+#include <common.h>
+#include <command.h>
 #include <linux/types.h>
 #include <asm/io.h>
-#include <command.h>
-#include <common.h>
-#include <asm/imx_iim.h>
+#include <asm/arch/imx_iim.h>
 
-int do_iimops(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_iimops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int bank = 0,
 		row = 0,

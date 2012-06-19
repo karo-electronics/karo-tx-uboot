@@ -161,6 +161,7 @@
  */
 #include <config_cmd_default.h>
 #define CONFIG_CMD_CACHE
+#define CONFIG_CMD_IIM
 #define CONFIG_CMD_MMC
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
@@ -285,5 +286,9 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
 					GENERATED_GBL_DATA_SIZE)
+
+#ifdef CONFIG_CMD_IIM
+#define CONFIG_IMX_IIM
+#endif
 
 #endif /* __CONFIG_H */
