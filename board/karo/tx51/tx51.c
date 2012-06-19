@@ -365,44 +365,30 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 		mac[ETH_ALEN - i - 1] = readl(&fuse->mac_addr[i]);
 }
 
-#define FEC_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_PKE | PAD_CTL_DSE_HIGH | \
+#define FEC_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
 			PAD_CTL_SRE_FAST)
-#define FEC_PAD_CTL2	(PAD_CTL_DVS | PAD_CTL_PKE | PAD_CTL_PUE |	\
-			PAD_CTL_PUS_100K_UP | PAD_CTL_SRE_FAST)
+#define FEC_PAD_CTL2	(PAD_CTL_DVS | PAD_CTL_SRE_FAST)
 #define GPIO_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH)
 
 static iomux_v3_cfg_t tx51_fec_gpio_pads[] = {
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS3__GPIO3_19, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_EIM_EB2__GPIO2_22, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB3__GPIO3_11, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D11__GPIO3_29, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D9__GPIO3_31, GPIO_PAD_CTL) | IOMUX_SION, /* RXD0/Mode0 */
-	NEW_PAD_CTRL(MX51_PAD_EIM_EB3__GPIO2_23, GPIO_PAD_CTL) | IOMUX_SION, /* RXD1/Mode1 */
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS2__GPIO2_27, GPIO_PAD_CTL) | IOMUX_SION, /* RXD2/Mode2 */
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS3__GPIO2_28, GPIO_PAD_CTL) | IOMUX_SION, /* RXD3/nINTSEL */
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS4__GPIO2_29, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RDY_INT__GPIO3_24, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS7__GPIO3_23, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D8__GPIO4_0, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS4__GPIO3_20, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS5__GPIO3_21, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS6__GPIO3_22, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB2__GPIO3_10, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS5__GPIO2_30, GPIO_PAD_CTL) | IOMUX_SION,
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS2__GPIO3_18, GPIO_PAD_CTL) | IOMUX_SION, /* PHY INT */
-	NEW_PAD_CTRL(MX51_PAD_EIM_A20__GPIO2_14, GPIO_PAD_CTL) | IOMUX_SION, /* PHY RESET */
-	NEW_PAD_CTRL(MX51_PAD_GPIO1_3__GPIO1_3, GPIO_PAD_CTL) | IOMUX_SION,  /* PHY POWER */
-};
+	/* GPIO functions */
+	NEW_PAD_CTRL(MX51_PAD_GPIO1_3__GPIO1_3, GPIO_PAD_CTL),  /* PHY POWER */
+	NEW_PAD_CTRL(MX51_PAD_EIM_A20__GPIO2_14, GPIO_PAD_CTL), /* PHY RESET */
+	NEW_PAD_CTRL(MX51_PAD_NANDF_CS2__GPIO3_18, GPIO_PAD_CTL), /* PHY INT */
 
-static iomux_v3_cfg_t tx51_fec_pads[] = {
+	/* strap pins for PHY configuration */
+	NEW_PAD_CTRL(MX51_PAD_NANDF_RB3__GPIO3_11, GPIO_PAD_CTL), /* RX_CLK/REGOFF */
+	NEW_PAD_CTRL(MX51_PAD_NANDF_D9__GPIO3_31, GPIO_PAD_CTL), /* RXD0/Mode0 */
+	NEW_PAD_CTRL(MX51_PAD_EIM_EB3__GPIO2_23, GPIO_PAD_CTL), /* RXD1/Mode1 */
+	NEW_PAD_CTRL(MX51_PAD_EIM_CS2__GPIO2_27, GPIO_PAD_CTL), /* RXD2/Mode2 */
+	NEW_PAD_CTRL(MX51_PAD_EIM_CS3__GPIO2_28, GPIO_PAD_CTL), /* RXD3/nINTSEL */
+	NEW_PAD_CTRL(MX51_PAD_NANDF_RB2__GPIO3_10, GPIO_PAD_CTL), /* COL/RMII/CRSDV */
+	NEW_PAD_CTRL(MX51_PAD_EIM_CS5__GPIO2_30, GPIO_PAD_CTL), /* CRS/PHYAD4 */
+
+	/* FEC functions */
 	NEW_PAD_CTRL(MX51_PAD_NANDF_CS3__FEC_MDC, FEC_PAD_CTL),
 	NEW_PAD_CTRL(MX51_PAD_EIM_EB2__FEC_MDIO, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB3__FEC_RX_CLK, FEC_PAD_CTL2),
 	NEW_PAD_CTRL(MX51_PAD_NANDF_D11__FEC_RX_DV, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D9__FEC_RDATA0, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_EB3__FEC_RDATA1, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS2__FEC_RDATA2, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS3__FEC_RDATA3, FEC_PAD_CTL2),
 	NEW_PAD_CTRL(MX51_PAD_EIM_CS4__FEC_RX_ER, FEC_PAD_CTL2),
 	NEW_PAD_CTRL(MX51_PAD_NANDF_RDY_INT__FEC_TX_CLK, FEC_PAD_CTL2),
 	NEW_PAD_CTRL(MX51_PAD_NANDF_CS7__FEC_TX_EN, FEC_PAD_CTL),
@@ -410,11 +396,17 @@ static iomux_v3_cfg_t tx51_fec_pads[] = {
 	NEW_PAD_CTRL(MX51_PAD_NANDF_CS4__FEC_TDATA1, FEC_PAD_CTL),
 	NEW_PAD_CTRL(MX51_PAD_NANDF_CS5__FEC_TDATA2, FEC_PAD_CTL),
 	NEW_PAD_CTRL(MX51_PAD_NANDF_CS6__FEC_TDATA3, FEC_PAD_CTL),
+};
+
+static iomux_v3_cfg_t tx51_fec_pads[] = {
+	/* reconfigure strap pins for FEC function */
+	NEW_PAD_CTRL(MX51_PAD_NANDF_RB3__FEC_RX_CLK, FEC_PAD_CTL2),
+	NEW_PAD_CTRL(MX51_PAD_NANDF_D9__FEC_RDATA0, FEC_PAD_CTL2),
+	NEW_PAD_CTRL(MX51_PAD_EIM_EB3__FEC_RDATA1, FEC_PAD_CTL2),
+	NEW_PAD_CTRL(MX51_PAD_EIM_CS2__FEC_RDATA2, FEC_PAD_CTL2),
+	NEW_PAD_CTRL(MX51_PAD_EIM_CS3__FEC_RDATA3, FEC_PAD_CTL2),
 	NEW_PAD_CTRL(MX51_PAD_NANDF_RB2__FEC_COL, FEC_PAD_CTL2),
 	NEW_PAD_CTRL(MX51_PAD_EIM_CS5__FEC_CRS, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS2__GPIO3_18, GPIO_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_EIM_A20__GPIO2_14, GPIO_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_GPIO1_3__GPIO1_3, GPIO_PAD_CTL),
 };
 
 /* take bit 4 of PHY address from configured PHY address or
@@ -427,26 +419,16 @@ static struct {
 		dir:1,
 		val:1;
 } tx51_fec_gpios[] = {
-	{ IMX_GPIO_NR(1, 3), 1, 1, },	/* PHY power */
 	{ IMX_GPIO_NR(2, 14), 1, 0, },	/* PHY reset */
-	{ IMX_GPIO_NR(3, 19), 1, 0, },	/* MDC */
-	{ IMX_GPIO_NR(2, 22), 1, 0, },	/* MDIO */
-	{ IMX_GPIO_NR(3, 11), 0, 1, },	/* RX_CLK */
-	{ IMX_GPIO_NR(3, 29), 0, 0, },	/* RX_DV */
+	{ IMX_GPIO_NR(1, 3), 1, 0, },	/* PHY power */
+	{ IMX_GPIO_NR(3, 18), 0, },	/* PHY INT (TX_ER) */
+	{ IMX_GPIO_NR(3, 11), 1, 0, },	/* RX_CLK/REGOFF */
 	{ IMX_GPIO_NR(3, 31), 1, 1, },	/* RXD0/Mode0 */
 	{ IMX_GPIO_NR(2, 23), 1, 1, },	/* RXD1/Mode1 */
 	{ IMX_GPIO_NR(2, 27), 1, 1, },	/* RXD2/Mode2 */
 	{ IMX_GPIO_NR(2, 28), 1, 1, },	/* RXD3/nINTSEL */
-	{ IMX_GPIO_NR(2, 29), 0, 0, },	/* RX_ER */
-	{ IMX_GPIO_NR(3, 24), 0, 0, },	/* TX_CLK */
-	{ IMX_GPIO_NR(3, 23), 1, 0, },	/* TX_EN */
-	{ IMX_GPIO_NR(4, 0), 1, 0, },	/* TXD0 */
-	{ IMX_GPIO_NR(3, 20), 1, 0, },	/* TXD1 */
-	{ IMX_GPIO_NR(3, 21), 1, 0, },	/* TXD2 */
-	{ IMX_GPIO_NR(3, 22), 1, 0, },	/* TXD3 */
-	{ IMX_GPIO_NR(3, 10), 1, 0, },	/* COL */
-	{ IMX_GPIO_NR(2, 30), 1, PHYAD4, }, /* PHYAD4 */
-	{ IMX_GPIO_NR(3, 18), 0, 1, },	/* PHY INT (TX_ER) */
+	{ IMX_GPIO_NR(3, 10), 1, 0, },	/* COL/RMII/CRSDV */
+	{ IMX_GPIO_NR(2, 30), 1, PHYAD4, }, /* CRS/PHYAD4 */
 };
 
 int board_eth_init(bd_t *bis)
@@ -456,34 +438,33 @@ int board_eth_init(bd_t *bis)
 	char mac_str[ETH_ALEN * 3] = "";
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(tx51_fec_gpios); i++) {
-		int gpio = tx51_fec_gpios[i].gpio;
-
-		debug("Setting GPIO%d_%d as output LOW\n",
-			gpio / 32 + 1, gpio % 32);
-		gpio_direction_output(gpio, 0);
-	}
-	mxc_iomux_v3_setup_multiple_pads(tx51_fec_gpio_pads,
-					ARRAY_SIZE(tx51_fec_gpio_pads));
-	udelay(3000);
-
-	/* Power on the external phy */
-	gpio_direction_output(TX51_FEC_POWER_GPIO, 1);
-	udelay(100);
-
+	/* Initialize ethernet PHY related pads as GPIO and
+	 * drive strap pins to appropriate levels.
+	 * this will also switch off the PHY power supply.
+	 * This is necessary to get the PHY into a
+	 * well defined state independent from the duration of
+	 * the RESET_IN signal!
+	 */
 	for (i = 0; i < ARRAY_SIZE(tx51_fec_gpios); i++) {
 		int gpio = tx51_fec_gpios[i].gpio;
 		int dir = tx51_fec_gpios[i].dir;
 		int val = tx51_fec_gpios[i].val;
 
-		if (dir && val) {
+		if (dir)
 			gpio_direction_output(gpio, val);
-		} else if (!dir) {
+		else
 			gpio_direction_input(gpio);
-		}
 	}
+	mxc_iomux_v3_setup_multiple_pads(tx51_fec_gpio_pads,
+					ARRAY_SIZE(tx51_fec_gpio_pads));
 
-	udelay(25000);
+	/* Wait for the PHY power to drain */
+	udelay(50000);
+	/* Power up the external phy */
+	gpio_set_value(TX51_FEC_POWER_GPIO, 1);
+
+	/* delay at least 21ms for the PHY internal POR signal to deassert */
+	udelay(22000);
 	/* Deassert RESET to the external phy */
 	gpio_set_value(TX51_FEC_RESET_GPIO, 1);
 
