@@ -89,6 +89,7 @@
 #define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
 #define CONFIG_LOADADDR		0x40100000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+#define CONFIG_BOARD_EARLY_INIT_F
 
 /*
  * Extra Environments
