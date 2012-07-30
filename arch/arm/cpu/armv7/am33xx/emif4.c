@@ -1,8 +1,7 @@
 /*
  * DDR Configuration for AM33xx devices.
  *
- * Copyright (C) 2011 Texas Instruments Incorporated -
-http://www.ti.com/
+ * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -15,6 +14,7 @@ http://www.ti.com/
  * GNU General Public License for more details.
  */
 
+#include <common.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/ddr_defs.h>
 #include <asm/io.h>
@@ -113,24 +113,25 @@ int config_cmd_ctrl(struct cmd_control *cmd)
  */
 int config_ddr_data(int macrono, struct ddr_data *data)
 {
-	writel(data->datardsratio0, &ddr_reg[macrono]->dt0rdsratio0);
-	writel(data->datardsratio1, &ddr_reg[macrono]->dt0rdsratio1);
+	writel(data->datardsratio0, &ddr_reg[macrono]->dt0.rdsratio0);
+	writel(data->datardsratio1, &ddr_reg[macrono]->dt0.rdsratio1);
 
-	writel(data->datawdsratio0, &ddr_reg[macrono]->dt0wdsratio0);
-	writel(data->datawdsratio1, &ddr_reg[macrono]->dt0wdsratio1);
+	writel(data->datawdsratio0, &ddr_reg[macrono]->dt0.wdsratio0);
+	writel(data->datawdsratio1, &ddr_reg[macrono]->dt0.wdsratio1);
 
-	writel(data->datawiratio0, &ddr_reg[macrono]->dt0wiratio0);
-	writel(data->datawiratio1, &ddr_reg[macrono]->dt0wiratio1);
-	writel(data->datagiratio0, &ddr_reg[macrono]->dt0giratio0);
-	writel(data->datagiratio1, &ddr_reg[macrono]->dt0giratio1);
+	writel(data->datawiratio0, &ddr_reg[macrono]->dt0.wiratio0);
+	writel(data->datawiratio1, &ddr_reg[macrono]->dt0.wiratio1);
 
-	writel(data->datafwsratio0, &ddr_reg[macrono]->dt0fwsratio0);
-	writel(data->datafwsratio1, &ddr_reg[macrono]->dt0fwsratio1);
+	writel(data->datagiratio0, &ddr_reg[macrono]->dt0.giratio0);
+	writel(data->datagiratio1, &ddr_reg[macrono]->dt0.giratio1);
 
-	writel(data->datawrsratio0, &ddr_reg[macrono]->dt0wrsratio0);
-	writel(data->datawrsratio1, &ddr_reg[macrono]->dt0wrsratio1);
+	writel(data->datafwsratio0, &ddr_reg[macrono]->dt0.fwsratio0);
+	writel(data->datafwsratio1, &ddr_reg[macrono]->dt0.fwsratio1);
 
-	writel(data->datadldiff0, &ddr_reg[macrono]->dt0dldiff0);
+	writel(data->datawrsratio0, &ddr_reg[macrono]->dt0.wrsratio0);
+	writel(data->datawrsratio1, &ddr_reg[macrono]->dt0.wrsratio1);
+
+	writel(data->datadldiff0, &ddr_reg[macrono]->dt0.dldiff0);
 
 	return 0;
 }
