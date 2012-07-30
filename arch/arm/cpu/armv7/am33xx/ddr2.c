@@ -1,5 +1,6 @@
 /*
- * emif4.c
+ * ddr2.c
+ * renamed from emif4.c Lothar Waßmann <LW@KARO-electronics.de>
  *
  * AM33XX emif4 configuration file
  *
@@ -17,6 +18,7 @@
  */
 
 #include <common.h>
+#include <asm/sizes.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/hardware.h>
@@ -29,13 +31,38 @@ struct ddr_regs *ddrregs = (struct ddr_regs *)DDR_PHY_BASE_ADDR;
 struct vtp_reg *vtpreg = (struct vtp_reg *)VTP0_CTRL_ADDR;
 struct ddr_ctrl *ddrctrl = (struct ddr_ctrl *)DDR_CTRL_ADDR;
 
+#define EMIF_PHYCFG		0x2
+#define EMIF_SDMGT		0x80000000
+#define EMIF_SDRAM		0x00004650
+#define DDR2_RATIO		0x80
+#define CMD_FORCE		0x00
+#define CMD_DELAY		0x00
+
+#define EMIF_READ_LATENCY	0x05
+#define EMIF_TIM1		0x0666B3D6
+#define EMIF_TIM2		0x143731DA
+#define EMIF_TIM3		0x00000347
+#define EMIF_SDCFG		0x43805332
+#define EMIF_SDREF		0x0000081a
+#define DDR2_DLL_LOCK_DIFF	0x0f
+#define DDR2_RD_DQS		0x12
+#define DDR2_PHY_FIFO_WE	0x80
+
+#define DDR2_INVERT_CLKOUT	0x00
+#define DDR2_WR_DQS		0x00
+#define DDR2_PHY_WRLVL		0x00
+#define DDR2_PHY_GATELVL	0x00
+#define DDR2_PHY_WR_DATA	0x40
+#define PHY_RANK0_DELAY		0x01
+#define PHY_DLL_LOCK_DIFF	0x0
+#define DDR_IOCTRL_VALUE	0x18B
 
 int dram_init(void)
 {
 	/* dram_init must store complete ramsize in gd->ram_size */
-	gd->ram_size = get_ram_size(
-			(void *)CONFIG_SYS_SDRAM_BASE,
-			CONFIG_MAX_RAM_BANK_SIZE);
+	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
+				CONFIG_MAX_RAM_BANK_SIZE);
+	debug("SDRAM size: 0x%08x\n", gd->ram_size);
 	return 0;
 }
 
@@ -47,31 +74,32 @@ void dram_init_banksize(void)
 
 
 #ifdef CONFIG_SPL_BUILD
-static void data_macro_config(int dataMacroNum)
+static void data_macro_config(void)
 {
 	struct ddr_data data;
 
-	data.datardsratio0 = ((DDR2_RD_DQS<<30)|(DDR2_RD_DQS<<20)
-				|(DDR2_RD_DQS<<10)|(DDR2_RD_DQS<<0));
-	data.datardsratio1 = DDR2_RD_DQS>>2;
-	data.datawdsratio0 = ((DDR2_WR_DQS<<30)|(DDR2_WR_DQS<<20)
-				|(DDR2_WR_DQS<<10)|(DDR2_WR_DQS<<0));
-	data.datawdsratio1 = DDR2_WR_DQS>>2;
-	data.datawiratio0 = ((DDR2_PHY_WRLVL<<30)|(DDR2_PHY_WRLVL<<20)
-				|(DDR2_PHY_WRLVL<<10)|(DDR2_PHY_WRLVL<<0));
-	data.datawiratio1 = DDR2_PHY_WRLVL>>2;
-	data.datagiratio0 = ((DDR2_PHY_GATELVL<<30)|(DDR2_PHY_GATELVL<<20)
-				|(DDR2_PHY_GATELVL<<10)|(DDR2_PHY_GATELVL<<0));
-	data.datagiratio1 = DDR2_PHY_GATELVL>>2;
-	data.datafwsratio0 = ((DDR2_PHY_FIFO_WE<<30)|(DDR2_PHY_FIFO_WE<<20)
-				|(DDR2_PHY_FIFO_WE<<10)|(DDR2_PHY_FIFO_WE<<0));
-	data.datafwsratio1 = DDR2_PHY_FIFO_WE>>2;
-	data.datawrsratio0 = ((DDR2_PHY_WR_DATA<<30)|(DDR2_PHY_WR_DATA<<20)
-				|(DDR2_PHY_WR_DATA<<10)|(DDR2_PHY_WR_DATA<<0));
-	data.datawrsratio1 = DDR2_PHY_WR_DATA>>2;
+	data.datardsratio0 = ((DDR2_RD_DQS << 30) | (DDR2_RD_DQS << 20) |
+			(DDR2_RD_DQS << 10) | (DDR2_RD_DQS << 0));
+	data.datardsratio1 = DDR2_RD_DQS >> 2;
+	data.datawdsratio0 = ((DDR2_WR_DQS << 30) | (DDR2_WR_DQS << 20) |
+			(DDR2_WR_DQS << 10) | (DDR2_WR_DQS << 0));
+	data.datawdsratio1 = DDR2_WR_DQS >> 2;
+	data.datawiratio0 = ((DDR2_PHY_WRLVL << 30) | (DDR2_PHY_WRLVL << 20) |
+			(DDR2_PHY_WRLVL << 10) | (DDR2_PHY_WRLVL << 0));
+	data.datawiratio1 = DDR2_PHY_WRLVL >> 2;
+	data.datagiratio0 = ((DDR2_PHY_GATELVL << 30) | (DDR2_PHY_GATELVL << 20) |
+			(DDR2_PHY_GATELVL << 10) | (DDR2_PHY_GATELVL << 0));
+	data.datagiratio1 = DDR2_PHY_GATELVL >> 2;
+	data.datafwsratio0 = ((DDR2_PHY_FIFO_WE << 30) | (DDR2_PHY_FIFO_WE << 20) |
+			(DDR2_PHY_FIFO_WE << 10) | (DDR2_PHY_FIFO_WE << 0));
+	data.datafwsratio1 = DDR2_PHY_FIFO_WE >> 2;
+	data.datawrsratio0 = ((DDR2_PHY_WR_DATA << 30) | (DDR2_PHY_WR_DATA << 20) |
+			(DDR2_PHY_WR_DATA << 10) | (DDR2_PHY_WR_DATA << 0));
+	data.datawrsratio1 = DDR2_PHY_WR_DATA >> 2;
 	data.datadldiff0 = PHY_DLL_LOCK_DIFF;
 
-	config_ddr_data(dataMacroNum, &data);
+	config_ddr_data(0, &data);
+	config_ddr_data(1, &data);
 }
 
 static void cmd_macro_config(void)
@@ -97,14 +125,13 @@ static void cmd_macro_config(void)
 	cmd.cmd2iclkout = DDR2_INVERT_CLKOUT;
 
 	config_cmd_ctrl(&cmd);
-
 }
 
 static void config_vtp(void)
 {
 	writel(readl(&vtpreg->vtp0ctrlreg) | VTP_CTRL_ENABLE,
 			&vtpreg->vtp0ctrlreg);
-	writel(readl(&vtpreg->vtp0ctrlreg) & (~VTP_CTRL_START_EN),
+	writel(readl(&vtpreg->vtp0ctrlreg) & ~VTP_CTRL_START_EN,
 			&vtpreg->vtp0ctrlreg);
 	writel(readl(&vtpreg->vtp0ctrlreg) | VTP_CTRL_START_EN,
 			&vtpreg->vtp0ctrlreg);
@@ -123,7 +150,9 @@ static void config_emif_ddr2(void)
 	struct sdram_timing tmg;
 	struct ddr_phy_control phyc;
 
-	/*Program EMIF0 CFG Registers*/
+debug("%s\n", __func__);
+
+	/* Program EMIF0 CFG Registers */
 	phyc.reg = EMIF_READ_LATENCY;
 	phyc.reg_sh = EMIF_READ_LATENCY;
 	phyc.reg2 = EMIF_READ_LATENCY;
@@ -169,9 +198,9 @@ static void config_emif_ddr2(void)
 
 void config_ddr(void)
 {
-	int data_macro_0 = 0;
-	int data_macro_1 = 1;
 	struct ddr_ioctrl ioctrl;
+
+debug("%s\n", __func__);
 
 	enable_emif_clocks();
 
@@ -179,8 +208,7 @@ void config_ddr(void)
 
 	cmd_macro_config();
 
-	data_macro_config(data_macro_0);
-	data_macro_config(data_macro_1);
+	data_macro_config();
 
 	writel(PHY_RANK0_DELAY, &ddrregs->dt0rdelays0);
 	writel(PHY_RANK0_DELAY, &ddrregs->dt1rdelays0);
