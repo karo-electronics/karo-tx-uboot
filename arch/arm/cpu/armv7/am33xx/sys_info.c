@@ -71,7 +71,7 @@ u32 get_board_rev(void)
 u32 get_device_type(void)
 {
 	int mode;
-	mode = readl(&cstat->statusreg) & (DEVICE_MASK);
+	mode = readl(&cstat->statusreg) & DEVICE_MASK;
 	return mode >>= 8;
 }
 
@@ -92,15 +92,15 @@ u32 get_sysboot_value(void)
 int print_cpuinfo(void)
 {
 	char *cpu_s, *sec_s;
-	int arm_freq, ddr_freq;
+	unsigned long clk;
+	const struct cm_wkuppll *cmwkup = (struct cm_wkuppll *)CM_WKUP;
 
 	switch (get_cpu_type()) {
-	case AM335X:
+	case AM335X_ID:
 		cpu_s = "AM335X";
 		break;
 	default:
 		cpu_s = "Unknown cpu type";
-		break;
 	}
 
 	switch (get_device_type()) {
@@ -120,10 +120,24 @@ int print_cpuinfo(void)
 		sec_s = "?";
 	}
 
-	printf("AM%s-%s rev %d\n",
+	printf("%s-%s rev %d\n",
 			cpu_s, sec_s, get_cpu_rev());
 
 	/* TODO: Print ARM and DDR frequencies  */
+	clk = clk_get_rate(cmwkup, mpu);
+	printf("MPU clk: %lu.%03luMHz\n",
+		clk / 1000000, clk / 1000 % 1000);
+	clk = clk_get_rate(cmwkup, ddr);
+	printf("DDR clk: %lu.%03luMHz\n",
+		clk / 1000000, clk / 1000 % 1000);
+	clk = clk_get_rate(cmwkup, per);
+	printf("PER clk: %lu.%03luMHz\n",
+		clk / 1000000, clk / 1000 % 1000);
+#ifdef CONFIG_LCD
+	clk = clk_get_rate(cmwkup, disp);
+	printf("LCD clk: %lu.%03luMHz\n",
+		clk / 1000000, clk / 1000 % 1000);
+#endif
 
 	return 0;
 }
