@@ -200,24 +200,7 @@ void omap_rev_string(void)
 	u32 omap_variant = (omap_rev & 0xFFFF0000) >> 16;
 	u32 major_rev = (omap_rev & 0x00000F00) >> 8;
 	u32 minor_rev = (omap_rev & 0x000000F0) >> 4;
-	const struct cm_wkuppll *cmwkup = (struct cm_wkuppll *)CM_WKUP;
-	unsigned long clk;
 
 	printf("OMAP%x ES%x.%x\n", omap_variant, major_rev,
 		minor_rev);
-
-	clk = clk_get_rate(cmwkup, mpu);
-	printf("MPU clk: %lu.%03luMHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, ddr);
-	printf("DDR clk: %lu.%03luMHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, per);
-	printf("PER clk: %lu.%03luMHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-#ifdef CONFIG_LCD
-	clk = clk_get_rate(cmwkup, disp);
-	printf("LCD clk: %lu.%03luMHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-#endif
 }
