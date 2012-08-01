@@ -363,6 +363,7 @@ void lcd_show_board_info(void);
 #define LCD_COLOR4	2
 #define LCD_COLOR8	3
 #define LCD_COLOR16	4
+#define LCD_COLOR24	5
 
 /*----------------------------------------------------------------------*/
 #if defined(CONFIG_LCD_INFO_BELOW_LOGO)
@@ -414,14 +415,36 @@ void lcd_show_board_info(void);
 # define CONSOLE_COLOR_GREY	14
 # define CONSOLE_COLOR_WHITE	15	/* Must remain last / highest	*/
 
-#else
+#elif LCD_BPP == LCD_COLOR16
 
 /*
  * 16bpp color definitions
  */
 # define CONSOLE_COLOR_BLACK	0x0000
+# define CONSOLE_COLOR_RED	0xf800
+# define CONSOLE_COLOR_GREEN	0x07e0
+# define CONSOLE_COLOR_YELLOW	0xffe0
+# define CONSOLE_COLOR_BLUE	0x001f
+# define CONSOLE_COLOR_MAGENTA	0xf81f
+# define CONSOLE_COLOR_CYAN	0x07ff
+# define CONSOLE_COLOR_GREY	0xcccc
 # define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
 
+#elif LCD_BPP == LCD_COLOR24
+/*
+ * 16bpp color definitions
+ */
+# define CONSOLE_COLOR_BLACK	0x00000000
+# define CONSOLE_COLOR_RED	0x00ff0000
+# define CONSOLE_COLOR_GREEN	0x0000ff00
+# define CONSOLE_COLOR_YELLOW	0x00ffff00
+# define CONSOLE_COLOR_BLUE	0x000000ff
+# define CONSOLE_COLOR_MAGENTA	0x00ff00ff
+# define CONSOLE_COLOR_CYAN	0x0000ffff
+# define CONSOLE_COLOR_GREY	0x00cccccc
+# define CONSOLE_COLOR_WHITE	0x00ffffff	/* Must remain last / highest	*/
+#else
+#error Invalid LCD_BPP setting
 #endif /* color definitions */
 
 /************************************************************************/
@@ -451,7 +474,7 @@ void lcd_show_board_info(void);
 #if LCD_BPP == LCD_MONOCHROME
 # define COLOR_MASK(c)		((c)	  | (c) << 1 | (c) << 2 | (c) << 3 | \
 				 (c) << 4 | (c) << 5 | (c) << 6 | (c) << 7)
-#elif (LCD_BPP == LCD_COLOR8) || (LCD_BPP == LCD_COLOR16)
+#elif (LCD_BPP == LCD_COLOR8) || (LCD_BPP == LCD_COLOR16) || (LCD_BPP == LCD_COLOR24)
 # define COLOR_MASK(c)		(c)
 #else
 # error Unsupported LCD BPP.
