@@ -137,10 +137,10 @@ void s_init(void)
 	preloader_console_init();
 
 	config_ddr();
-#endif
 
 	/* Enable MMC0 */
 	enable_mmc0_pin_mux();
+#endif
 }
 
 /* Initialize timer */
