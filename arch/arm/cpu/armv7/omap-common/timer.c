@@ -33,7 +33,9 @@
  */
 
 #include <common.h>
+#include <div64.h>
 #include <asm/io.h>
+#include <asm/arch/cpu.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -44,8 +46,32 @@ static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
  */
 
 #define TIMER_CLOCK		(V_SCLK / (2 << CONFIG_SYS_PTV))
-#define TIMER_OVERFLOW_VAL	0xffffffff
 #define TIMER_LOAD_VAL		0
+
+#if TIMER_CLOCK < CONFIG_SYS_HZ
+#error TIMER_CLOCK must be > CONFIG_SYS_HZ
+#endif
+
+/*
+ * Start timer so that it will overflow 15 sec after boot,
+ * to catch misbehaving timer code early on!
+*/
+#define TIMER_START		(-time_to_tick(15 * CONFIG_SYS_HZ))
+
+static inline unsigned long tick_to_time(unsigned long tick)
+{
+	return tick / (TIMER_CLOCK / CONFIG_SYS_HZ);
+}
+
+static inline unsigned long time_to_tick(unsigned long time)
+{
+	return time * (TIMER_CLOCK / CONFIG_SYS_HZ);
+}
+
+static inline unsigned long us_to_ticks(unsigned long usec)
+{
+	return usec * (TIMER_CLOCK / CONFIG_SYS_HZ / 1000);
+}
 
 int timer_init(void)
 {
@@ -54,10 +80,12 @@ int timer_init(void)
 	/* enable timer */
 	writel((CONFIG_SYS_PTV << 2) | TCLR_PRE | TCLR_AR | TCLR_ST,
 		&timer_base->tclr);
+	writel(-30 * TIMER_CLOCK, &timer_base->tcrr);
 
 	/* reset time, capture current incrementer value time */
-	gd->lastinc = readl(&timer_base->tcrr) / (TIMER_CLOCK / CONFIG_SYS_HZ);
-	gd->tbl = 0;		/* start "advancing" time stamp from 0 */
+	gd->lastinc = -30 * TIMER_CLOCK;
+	gd->tbl = TIMER_START;
+	gd->timer_rate_hz = TIMER_CLOCK;
 
 	return 0;
 }
@@ -67,38 +95,26 @@ int timer_init(void)
  */
 ulong get_timer(ulong base)
 {
-	return get_timer_masked() - base;
+	return tick_to_time(get_ticks() - time_to_tick(base));
 }
 
 /* delay x useconds */
 void __udelay(unsigned long usec)
 {
-	long tmo = usec * (TIMER_CLOCK / 1000) / 1000;
-	unsigned long now, last = readl(&timer_base->tcrr);
+	unsigned long start = readl(&timer_base->tcrr);
+	unsigned long ticks = us_to_ticks(usec);
 
-	while (tmo > 0) {
-		now = readl(&timer_base->tcrr);
-		if (last > now) /* count up timer overflow */
-			tmo -= TIMER_OVERFLOW_VAL - last + now + 1;
-		else
-			tmo -= now - last;
-		last = now;
-	}
+	if (usec == 0)
+		return;
+
+	while (readl(&timer_base->tcrr) - start < ticks)
+		/* NOP */ ;
 }
 
 ulong get_timer_masked(void)
 {
 	/* current tick value */
-	ulong now = readl(&timer_base->tcrr) / (TIMER_CLOCK / CONFIG_SYS_HZ);
-
-	if (now >= gd->lastinc)	/* normal mode (non roll) */
-		/* move stamp fordward with absoulte diff ticks */
-		gd->tbl += (now - gd->lastinc);
-	else	/* we have rollover of incrementer */
-		gd->tbl += ((TIMER_LOAD_VAL / (TIMER_CLOCK / CONFIG_SYS_HZ))
-			     - gd->lastinc) + now;
-	gd->lastinc = now;
-	return gd->tbl;
+	return tick_to_time(get_ticks());
 }
 
 /*
@@ -107,7 +123,12 @@ ulong get_timer_masked(void)
  */
 unsigned long long get_ticks(void)
 {
-	return get_timer(0);
+	ulong now = readl(&timer_base->tcrr);
+	ulong inc = now - gd->lastinc;
+
+	gd->tbl += inc;
+	gd->lastinc = now;
+	return gd->tbl;
 }
 
 /*
@@ -116,5 +137,5 @@ unsigned long long get_ticks(void)
  */
 ulong get_tbclk(void)
 {
-	return CONFIG_SYS_HZ;
+	return gd->timer_rate_hz;
 }
