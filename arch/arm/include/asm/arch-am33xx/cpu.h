@@ -25,14 +25,14 @@
 
 #include <asm/arch/hardware.h>
 
-#define BIT(x)				(1 << x)
-#define CL_BIT(x)			(0 << x)
+#define BIT(x)				(1 << (x))
+#define CL_BIT(x)			(0 << (x))
 
 /* Timer register bits */
 #define TCLR_ST				BIT(0)	/* Start=1 Stop=0 */
 #define TCLR_AR				BIT(1)	/* Auto reload */
 #define TCLR_PRE			BIT(5)	/* Pre-scaler enable */
-#define TCLR_PTV_SHIFT			(2)	/* Pre-scaler shift value */
+#define TCLR_PTV_SHIFT			2	/* Pre-scaler shift value */
 #define TCLR_PRE_DISABLE		CL_BIT(5) /* Pre-scalar disable */
 
 /* device type */
@@ -43,17 +43,16 @@
 #define GP_DEVICE			0x3
 
 /* cpu-id for AM33XX family */
-#define AM335X				0xB944
+#define AM335X_ID			0xB944
 #define DEVICE_ID			0x44E10600
 
 /* This gives the status of the boot mode pins on the evm */
-#define SYSBOOT_MASK			(BIT(0) | BIT(1) | BIT(2)\
-					| BIT(3) | BIT(4))
+#define SYSBOOT_MASK			(BIT(0) | BIT(1) | BIT(2) | \
+						BIT(3) | BIT(4))
 
 /* Reset control */
-#ifdef CONFIG_AM33XX
 #define PRM_RSTCTRL			0x44E00F00
-#endif
+#define PRM_RSTST			0x44E00F08
 #define PRM_RSTCTRL_RESET		0x01
 
 #ifndef __KERNEL_STRICT_NAMES
@@ -62,7 +61,7 @@
 struct cm_wkuppll {
 	unsigned int wkclkstctrl;	/* offset 0x00 */
 	unsigned int wkctrlclkctrl;	/* offset 0x04 */
-	unsigned int resv1[1];
+	unsigned int gpio0clkctrl;
 	unsigned int wkl4wkclkctrl;	/* offset 0x0c */
 	unsigned int resv2[4];
 	unsigned int idlestdpllmpu;	/* offset 0x20 */
@@ -72,7 +71,9 @@ struct cm_wkuppll {
 	unsigned int idlestdpllddr;	/* offset 0x34 */
 	unsigned int resv5[2];
 	unsigned int clkseldpllddr;	/* offset 0x40 */
-	unsigned int resv6[4];
+	unsigned int autoidledplldisp;	/* offset 0x44 */
+	unsigned int idlestdplldisp;	/* offset 0x48 */
+	unsigned int resv6[2];
 	unsigned int clkseldplldisp;	/* offset 0x54 */
 	unsigned int resv7[1];
 	unsigned int idlestdpllcore;	/* offset 0x5c */
@@ -96,7 +97,8 @@ struct cm_wkuppll {
 	unsigned int resv11[1];
 	unsigned int wkup_uart0ctrl;	/* offset 0xB4 */
 	unsigned int wkup_i2c0ctrl;	/* offset 0xB8 */
-	unsigned int resv12[7];
+	unsigned int resv12[6];
+	unsigned int wdtimer1ctrl;
 	unsigned int divm6dpllcore;	/* offset 0xD8 */
 };
 
@@ -111,7 +113,9 @@ struct cm_perpll {
 	unsigned int l3clkstctrl;	/* offset 0x0c */
 	unsigned int resv1;
 	unsigned int cpgmac0clkctrl;	/* offset 0x14 */
-	unsigned int resv2[4];
+	unsigned int lcdcclkctrl;	/* offset 0x18 */
+	unsigned int usb0clkctrl;	/* offset 0x1c */
+	unsigned int resv2[2];
 	unsigned int emifclkctrl;	/* offset 0x28 */
 	unsigned int ocmcramclkctrl;	/* offset 0x2c */
 	unsigned int gpmcclkctrl;	/* offset 0x30 */
@@ -125,16 +129,23 @@ struct cm_perpll {
 	unsigned int resv4[3];
 	unsigned int l4lsclkctrl;	/* offset 0x60 */
 	unsigned int l4fwclkctrl;	/* offset 0x64 */
-	unsigned int resv5[6];
+	unsigned int resv4a[4];
+	unsigned int uart3clkctrl;	/* offset 0x74 */
+	unsigned int resv5[1];
 	unsigned int timer2clkctrl;	/* offset 0x80 */
-	unsigned int resv6[11];
+	unsigned int resv6[10];
+	unsigned int gpio1clkctrl;	/* offset 0xAC */
 	unsigned int gpio2clkctrl;	/* offset 0xB0 */
-	unsigned int resv7[7];
+	unsigned int gpio3clkctrl;	/* offset 0xB4 */
+	unsigned int resv7[6];
 	unsigned int emiffwclkctrl;	/* offset 0xD0 */
 	unsigned int resv8[2];
 	unsigned int l3instrclkctrl;	/* offset 0xDC */
 	unsigned int l3clkctrl;		/* Offset 0xE0 */
-	unsigned int resv9[14];
+	unsigned int resv8a[4];
+	unsigned int mmc1clkctrl;	/* Offset 0xF4 */
+	unsigned int mmc2clkctrl;	/* Offset 0xF8 */
+	unsigned int resv9[8];
 	unsigned int l4hsclkstctrl;	/* offset 0x11C */
 	unsigned int l4hsclkctrl;	/* offset 0x120 */
 	unsigned int resv10[8];
@@ -214,8 +225,74 @@ struct ctrl_stat {
 	unsigned int statusreg;		/* ofset 0x40 */
 };
 
+struct gpmc_cs {
+	u32 config1;		/* 0x00 */
+	u32 config2;		/* 0x04 */
+	u32 config3;		/* 0x08 */
+	u32 config4;		/* 0x0C */
+	u32 config5;		/* 0x10 */
+	u32 config6;		/* 0x14 */
+	u32 config7;		/* 0x18 */
+	u32 nand_cmd;		/* 0x1C */
+	u32 nand_adr;		/* 0x20 */
+	u32 nand_dat;		/* 0x24 */
+	u8 res[8];		/* blow up to 0x30 byte */
+};
+
+struct bch_res_0_3 {
+	u32 bch_result_x[4];
+};
+
+
+
+struct gpmc {
+	u8 res1[0x10];
+	u32 sysconfig;		/* 0x10 */
+	u8 res2[0x4];
+	u32 irqstatus;		/* 0x18 */
+	u32 irqenable;		/* 0x1C */
+	u8 res3[0x20];
+	u32 timeout_control;	/* 0x40 */
+	u8 res4[0xC];
+	u32 config;		/* 0x50 */
+	u32 status;		/* 0x54 */
+	u8 res5[0x8];		/* 0x58 */
+	struct gpmc_cs cs[8];	/* 0x60, 0x90, .. */
+	u8 res6[0x14];		/* 0x1E0 */
+	u32 ecc_config;		/* 0x1F4 */
+	u32 ecc_control;	/* 0x1F8 */
+	u32 ecc_size_config;	/* 0x1FC */
+	u32 ecc1_result;	/* 0x200 */
+	u32 ecc2_result;	/* 0x204 */
+	u32 ecc3_result;	/* 0x208 */
+	u32 ecc4_result;	/* 0x20C */
+	u32 ecc5_result;	/* 0x210 */
+	u32 ecc6_result;	/* 0x214 */
+	u32 ecc7_result;	/* 0x218 */
+	u32 ecc8_result;	/* 0x21C */
+	u32 ecc9_result;	/* 0x220 */
+	u8 res7[12];		/* 0x224 */
+	u32 testmomde_ctrl;	/* 0x230 */
+	u8 res8[12];		/* 0x234 */
+	struct bch_res_0_3 bch_result_0_3[2];	/* 0x240 */
+};
+
 void init_timer(void);
+
+#define clk_get_rate(c,p)					\
+	__clk_get_rate(readl(&(c)->clkseldpll##p),		\
+		readl(&(c)->divm2dpll##p))
+
+unsigned long __clk_get_rate(u32 m_n, u32 div_m2);
+
 #endif /* __ASSEMBLY__ */
 #endif /* __KERNEL_STRICT_NAMES */
+
+/* Ethernet MAC ID from EFuse */
+#define MAC_ID0_LO	(CTRL_BASE + 0x630)
+#define MAC_ID0_HI	(CTRL_BASE + 0x634)
+#define MAC_ID1_LO	(CTRL_BASE + 0x638)
+#define MAC_ID1_HI	(CTRL_BASE + 0x63c)
+#define MAC_MII_SEL	(CTRL_BASE + 0x650)
 
 #endif /* _AM33XX_CPU_H */
