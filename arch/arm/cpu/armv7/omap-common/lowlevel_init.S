@@ -38,7 +38,7 @@ ENTRY(save_boot_params)
 	 */
 	ldr     r2, =NON_SECURE_SRAM_START
 	cmp	r2, r0
-	bgt	1f
+	bge	1f
 	ldr	r2, =NON_SECURE_SRAM_END
 	cmp	r2, r0
 	blt	1f
@@ -69,8 +69,8 @@ ENTRY(save_boot_params)
 	ldr	r2, [r2, #BOOT_MODE_OFFSET]	@ get the boot mode
 	ldr	r3, =omap_bootmode
 	str	r2, [r3]
-#endif
 2:
+#endif
 	ldrb	r2, [r0, #CH_FLAGS_OFFSET]
 	ldr	r3, =boot_params
 	strb	r2, [r3, #CH_FLAGS_OFFSET]
