@@ -742,10 +742,6 @@ int checkboard(void)
 int board_late_init(void)
 {
 	const char *baseboard;
-	const char *arch_number = getenv("linux_id");
-
-	if (arch_number)
-		gd->bd->bi_arch_number = simple_strtoul(arch_number, NULL, 0);
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)
