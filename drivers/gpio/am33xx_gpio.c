@@ -1,0 +1,158 @@
+/*
+ * Copyright (C) 2012 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ * See file CREDITS for list of people who contributed to this
+ * project.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#include <common.h>
+#include <errno.h>
+#include <asm-generic/gpio.h>
+#include <asm/io.h>
+#include <asm/bitops.h>
+#include <asm/sizes.h>
+#include <asm/arch/hardware.h>
+
+struct gpio_regs {
+	unsigned int res1[0x134 / 4];
+	unsigned int oe;		/* 0x134 */
+	unsigned int datain;		/* 0x138 */
+	unsigned int res2[0x54 / 4];
+	unsigned int cleardataout;	/* 0x190 */
+	unsigned int setdataout;	/* 0x194 */
+};
+
+struct gpio_regs *gpio_base[] = {
+	(struct gpio_regs *)GPIO0_BASE,
+	(struct gpio_regs *)GPIO1_BASE,
+	(struct gpio_regs *)GPIO2_BASE,
+	(struct gpio_regs *)GPIO3_BASE,
+};
+
+static unsigned long gpio_map[ARRAY_SIZE(gpio_base)];
+
+#define MAX_GPIO	(ARRAY_SIZE(gpio_base) * 32)
+
+int gpio_request(unsigned gpio, const char *name)
+{
+	if (gpio >= MAX_GPIO)
+		return -EINVAL;
+	if (test_and_set_bit(gpio, gpio_map))
+		return -EBUSY;
+	return 0;
+}
+
+int gpio_free(unsigned gpio)
+{
+	if (gpio >= MAX_GPIO)
+		return -EINVAL;
+
+	if (test_bit(gpio, gpio_map))
+		__clear_bit(gpio, gpio_map);
+	else
+		printf("ERROR: trying to free unclaimed GPIO %u\n", gpio);
+
+	return 0;
+}
+
+int gpio_set_value(unsigned gpio, int val)
+{
+	int bank = gpio / 32;
+	int mask = 1 << (gpio % 32);
+
+	if (bank >= ARRAY_SIZE(gpio_base))
+		return -EINVAL;
+
+	if (val)
+		writel(mask, &gpio_base[bank]->setdataout);
+	else
+		writel(mask, &gpio_base[bank]->cleardataout);
+	return 0;
+}
+
+int gpio_direction_input(unsigned gpio)
+{
+	int bank = gpio / 32;
+	int mask = 1 << (gpio % 32);
+	u32 oe = readl(&gpio_base[bank]->oe);
+
+	if (bank >= ARRAY_SIZE(gpio_base))
+		return -EINVAL;
+
+	writel(oe | mask, &gpio_base[bank]->oe);
+	return 0;
+}
+
+int gpio_direction_output(unsigned gpio, int val)
+{
+	int bank = gpio / 32;
+	int mask = 1 << (gpio % 32);
+	u32 oe = readl(&gpio_base[bank]->oe);
+
+	if (bank >= ARRAY_SIZE(gpio_base))
+		return -EINVAL;
+
+	gpio_set_value(gpio, val);
+	writel(oe & ~mask, &gpio_base[bank]->oe);
+	return 0;
+}
+
+int gpio_request_one(unsigned int gpio, enum gpio_flags flags,
+		const char *label)
+{
+	int ret;
+
+	ret = gpio_request(gpio, label);
+	if (ret)
+		return ret;
+
+	if (flags == GPIOF_INPUT)
+		gpio_direction_input(gpio);
+	else if (flags == GPIOF_OUTPUT_INIT_LOW)
+		gpio_direction_output(gpio, 0);
+	else if (flags == GPIOF_OUTPUT_INIT_HIGH)
+		gpio_direction_output(gpio, 1);
+
+	return ret;
+}
+
+int gpio_request_array(const struct gpio *gpios, int count)
+{
+	int ret;
+	int i;
+
+	for (i = 0; i < count; i++) {
+		ret = gpio_request_one(gpios[i].gpio, gpios[i].flags,
+				gpios[i].label);
+		if (ret)
+			goto error;
+	}
+	return 0;
+
+error:
+	while (--i >= 0)
+		gpio_free(gpios[i].gpio);
+
+	return ret;
+}
+
+int gpio_free_array(const struct gpio *gpios, int count)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < count; i++)
+		ret |= gpio_free(gpios[i].gpio);
+
+	return ret;
+}
