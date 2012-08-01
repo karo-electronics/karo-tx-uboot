@@ -31,3 +31,6 @@ int print_cpuinfo(void);
 u32 get_device_type(void);
 void setup_clocks_for_console(void);
 #endif
+
+void gpmc_init(void);
+void sdelay(unsigned long);
