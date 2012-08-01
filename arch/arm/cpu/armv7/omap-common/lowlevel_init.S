@@ -53,12 +53,11 @@ ENTRY(save_boot_params)
 	str	r0, [r1]
 #ifdef CONFIG_SPL_BUILD
 	/* Store the boot device in omap_boot_device */
-	ldrb	r2, [r0, #BOOT_DEVICE_OFFSET]	@ r1 <- value of boot device
+	ldrb	r2, [r0, #BOOT_DEVICE_OFFSET]	@ r2 <- value of boot device
 	and	r2, #BOOT_DEVICE_MASK
-	ldr	r3, =boot_params
-	strb	r2, [r3, #BOOT_DEVICE_OFFSET]	@ omap_boot_device <- r1
+	strb	r2, [r1, #BOOT_DEVICE_OFFSET]	@ omap_boot_device <- r2
 
-	/* boot mode is passed only for devices that can raw/fat mode */
+	/* boot mode is passed only for devices that can do raw/fat mode */
 	cmp	r2, #2
 	blt	2f
 	cmp	r2, #7
@@ -72,8 +71,7 @@ ENTRY(save_boot_params)
 2:
 #endif
 	ldrb	r2, [r0, #CH_FLAGS_OFFSET]
-	ldr	r3, =boot_params
-	strb	r2, [r3, #CH_FLAGS_OFFSET]
+	strb	r2, [r1, #CH_FLAGS_OFFSET]
 1:
 	bx	lr
 ENDPROC(save_boot_params)
