@@ -47,8 +47,11 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 		off = last + nand->writesize;
 
 	last = off;
-
+#ifndef CONFIG_NAND_AM33XX
 	datbuf = malloc(nand->writesize);
+#else
+	datbuf = malloc(nand->writesize + nand->oobsize);
+#endif
 	oobbuf = malloc(nand->oobsize);
 	if (!datbuf || !oobbuf) {
 		puts("No memory for page buffer\n");
@@ -85,7 +88,9 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	}
 	puts("OOB:\n");
 	i = nand->oobsize >> 3;
+#ifndef CONFIG_NAND_AM33XX
 	p = oobbuf;
+#endif
 	while (i--) {
 		printf("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
 		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);

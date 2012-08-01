@@ -1208,9 +1208,6 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 	int ret = 0;
 	uint32_t readlen = ops->len;
 	uint32_t oobreadlen = ops->ooblen;
-	uint32_t max_oobsize = ops->mode == MTD_OOB_AUTO ?
-		mtd->oobavail : mtd->oobsize;
-
 	uint8_t *bufpoi, *oob, *buf;
 
 	stats = mtd->ecc_stats;
@@ -1265,14 +1262,18 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 			buf += bytes;
 
 			if (unlikely(oob)) {
-
-				int toread = min(oobreadlen, max_oobsize);
-
+				/* Raw mode does data:oob:data:oob */
+				if (ops->mode != MTD_OOB_RAW) {
+					int toread = min(oobreadlen,
+						chip->ecc.layout->oobavail);
 				if (toread) {
 					oob = nand_transfer_oob(chip,
 						oob, ops, toread);
 					oobreadlen -= toread;
 				}
+				} else
+					buf = nand_transfer_oob(chip,
+						buf, ops, mtd->oobsize);
 			}
 
 			if (!(chip->options & NAND_NO_READRDY)) {
@@ -1902,8 +1903,6 @@ static uint8_t *nand_fill_oob(struct nand_chip *chip, uint8_t *oob, size_t len,
 	}
 	return NULL;
 }
-
-#define NOTALIGNED(x)	((x & (chip->subpagesize - 1)) != 0)
 
 /**
  * nand_do_write_ops - [Internal] NAND write with ECC
@@ -2931,6 +2930,7 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
  */
 int nand_scan_tail(struct mtd_info *mtd)
 {
+	uint32_t dev_width;
 	int i;
 	struct nand_chip *chip = mtd->priv;
 
@@ -2941,6 +2941,8 @@ int nand_scan_tail(struct mtd_info *mtd)
 
 	/* Set the internal oob buffer location, just after the page data */
 	chip->oob_poi = chip->buffers->databuf + mtd->writesize;
+
+	dev_width = (chip->options & NAND_BUSWIDTH_16) >> 1;
 
 	/*
 	 * If no default placement scheme is given, select an appropriate one
