@@ -654,8 +654,9 @@ static void tx48_move_fdt(void)
 int board_init(void)
 {
 	/* mach type passed to kernel */
+#ifdef CONFIG_OF_LIBFDT
 	gd->bd->bi_arch_number = -1;
-
+#endif
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
@@ -701,8 +702,11 @@ int checkboard(void)
 	prm_rstst = readl(&prmdev->prmrstst);
 	show_reset_cause(prm_rstst);
 
+#ifdef CONFIG_OF_LIBFDT
+	printf("Board: Ka-Ro TX48-7020 with FDT support\n");
+#else
 	printf("Board: Ka-Ro TX48-7020\n");
-
+#endif
 	tx48_move_fdt();
 
 #ifdef TIMER_TEST

@@ -89,12 +89,19 @@
 /*
  * Flattened Device Tree (FDT) support
 */
-#define CONFIG_OF_LIBFDT
+#ifdef CONFIG_OF_LIBFDT /* set via cmdline parameter thru boards.cfg */
+#define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_CONTROL
 #define CONFIG_OF_EMBED
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx48
 #define CONFIG_ARCH_DEVICE_TREE		am33xx
+#else
+#ifndef MACH_TYPE_TIAM335EVM
+#define MACH_TYPE_TIAM335EVM		 3589	 /* Until the next sync */
+#endif
+#define CONFIG_MACH_TYPE	 MACH_TYPE_TIAM335EVM
+#endif
 
 /*
  * Boot Linux
@@ -118,6 +125,18 @@
 /*
  * Extra Environments
  */
+#ifdef CONFIG_OF_LIBFDT
+#define CONFIG_FDT_FIXUP_PARTITIONS
+
+#define TX48_BOOTM_CMD							\
+	"bootm_cmd=fdt addr ${fdtcontroladdr};"				\
+	"fdt board;"							\
+	"bootm ${loadaddr} - ${fdtaddr}\0"
+#else
+#define TX48_BOOTM_CMD							\
+	"bootm_cmd=bootm\0"
+#endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
@@ -136,8 +155,7 @@
 	"nboot linux;run bootm_cmd\0"					\
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
 	"run bootm_cmd\0"						\
-	"bootm_cmd=fdt addr ${fdtcontroladdr};fdt board;"		\
-	"bootm ${loadaddr} - ${fdtaddr}\0"				\
+	TX48_BOOTM_CMD							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
 	"fdtcontroladdr=80004000\0"					\
@@ -148,7 +166,6 @@
 
 #define MTD_NAME			"omap2-nand.0"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
-#define CONFIG_FDT_FIXUP_PARTITIONS
 
 /*
  * U-Boot Commands
