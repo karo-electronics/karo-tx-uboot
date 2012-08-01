@@ -21,8 +21,8 @@
 
 #define OSC	24
 
-/* MAIN PLL Fdll = 550 MHZ, */
-#define MPUPLL_M	550
+/* MAIN PLL Fdll = 700 MHZ, */
+#define MPUPLL_M	700
 #define MPUPLL_N	23
 #define MPUPLL_M2	1
 
@@ -48,6 +48,10 @@
 #define DDRPLL_M	266
 #define DDRPLL_N	23
 #define DDRPLL_M2	1
+
+#define DISPPLL_M	400
+#define DISPPLL_N	23
+#define DISPPLL_M2	1
 
 extern void pll_init(void);
 extern void enable_emif_clocks(void);
