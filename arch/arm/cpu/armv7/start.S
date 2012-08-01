@@ -161,7 +161,7 @@ reset:
 call_board_init_f:
 	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
 	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
-	ldr	r0,=0x00000000
+	ldr	r0, =0x00000000
 	bl	board_init_f
 
 /*------------------------------------------------------------------------------*/
@@ -343,7 +343,7 @@ ENTRY(cpu_init_crit)
 	 * basic memory. Go here to bump up clock rate and handle
 	 * wake up conditions.
 	 */
-	mov	ip, lr			@ persevere link reg across call
+	mov	ip, lr			@ preserve link reg across call
 	bl	lowlevel_init		@ go setup pll,mux,memory
 	mov	lr, ip			@ restore link
 	mov	pc, lr			@ back to my caller
