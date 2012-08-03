@@ -21,8 +21,13 @@
 
 #define OSC	24
 
-/* MAIN PLL Fdll = 700 MHZ, */
-#define MPUPLL_M	700
+/* MAIN PLL */
+#ifndef CONFIG_SYS_MPU_CLK
+/* default to 500 MHz */
+#define MPUPLL_M	500
+#else
+#define MPUPLL_M	CONFIG_SYS_MPU_CLK
+#endif
 #define MPUPLL_N	23
 #define MPUPLL_M2	1
 
@@ -45,11 +50,15 @@
 
 /* DDR Freq is 266 MHZ for now */
 /* Set Fdll = 400 MHZ , Fdll = M * 2 * CLKINP/ N + 1; clkout = Fdll /(2 * M2) */
+#ifndef CONFIG_SYS_DDR_CLK
 #define DDRPLL_M	266
+#else
+#define DDRPLL_M	CONFIG_SYS_DDR_CLK
+#endif
 #define DDRPLL_N	23
 #define DDRPLL_M2	1
 
-#define DISPPLL_M	400
+#define DISPPLL_M	200
 #define DISPPLL_N	23
 #define DISPPLL_M2	1
 
