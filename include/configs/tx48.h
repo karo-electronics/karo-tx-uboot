@@ -96,6 +96,7 @@
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx48
 #define CONFIG_ARCH_DEVICE_TREE		am33xx
+#define CONFIG_MACH_TYPE		(-1)
 #else
 #ifndef MACH_TYPE_TIAM335EVM
 #define MACH_TYPE_TIAM335EVM		 3589	 /* Until the next sync */
@@ -141,16 +142,14 @@
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mmcblk0p3 rootwait\0"				\
+	" root=/dev/mmcblk0p2 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock3 rootfstype=jffs2\0"		\
+	" root=/dev/mtdblock4 rootfstype=jffs2\0"		\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
-	"mmc read ${loadaddr} "						\
-	xstr(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR)			\
-	" 3000;run bootm_cmd\0"						\
+	"fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
 	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
 	"nboot linux;run bootm_cmd\0"					\
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
