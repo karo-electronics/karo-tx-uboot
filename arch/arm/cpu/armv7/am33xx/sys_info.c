@@ -26,7 +26,7 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/clock.h>
 
-struct ctrl_stat *cstat = (struct ctrl_stat *)CTRL_BASE;
+static struct ctrl_stat *cstat = (struct ctrl_stat *)CTRL_BASE;
 
 /**
  * get_cpu_rev(void) - extract rev info
@@ -81,8 +81,25 @@ u32 get_device_type(void)
 u32 get_sysboot_value(void)
 {
 	int mode;
-	mode = readl(&cstat->statusreg) & (SYSBOOT_MASK);
+	mode = readl(&cstat->statusreg) & SYSBOOT_MASK;
 	return mode;
+}
+
+#define SYSBOOT_FREQ_SHIFT	22
+#define SYSBOOT_FREQ_MASK	(3 << SYSBOOT_FREQ_SHIFT)
+
+static unsigned long bootfreqs[] = {
+	19200000,
+	24000000,
+	25000000,
+	26000000,
+};
+
+u32 get_sysboot_freq(void)
+{
+	int mode;
+	mode = readl(&cstat->statusreg) & SYSBOOT_FREQ_MASK;
+	return bootfreqs[mode >> SYSBOOT_FREQ_SHIFT];
 }
 
 #ifdef CONFIG_DISPLAY_CPUINFO
@@ -123,19 +140,21 @@ int print_cpuinfo(void)
 	printf("%s-%s rev %d\n",
 			cpu_s, sec_s, get_cpu_rev());
 
-	/* TODO: Print ARM and DDR frequencies  */
+	clk = get_sysboot_freq();
+	printf("OSC clk: %4lu.%03lu MHz\n",
+		clk / 1000000, clk / 1000 % 1000);
 	clk = clk_get_rate(cmwkup, mpu);
-	printf("MPU clk: %lu.%03luMHz\n",
+	printf("MPU clk: %4lu.%03lu MHz\n",
 		clk / 1000000, clk / 1000 % 1000);
 	clk = clk_get_rate(cmwkup, ddr);
-	printf("DDR clk: %lu.%03luMHz\n",
+	printf("DDR clk: %4lu.%03lu MHz\n",
 		clk / 1000000, clk / 1000 % 1000);
 	clk = clk_get_rate(cmwkup, per);
-	printf("PER clk: %lu.%03luMHz\n",
+	printf("PER clk: %4lu.%03lu MHz\n",
 		clk / 1000000, clk / 1000 % 1000);
 #ifdef CONFIG_LCD
 	clk = clk_get_rate(cmwkup, disp);
-	printf("LCD clk: %lu.%03luMHz\n",
+	printf("LCD clk: %4lu.%03lu MHz\n",
 		clk / 1000000, clk / 1000 % 1000);
 #endif
 
