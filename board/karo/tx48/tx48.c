@@ -629,28 +629,6 @@ static void stk5v5_board_init(void)
 }
 
 /* called with default environment! */
-static void tx48_move_fdt(void)
-{
-	unsigned long fdt_addr = getenv_ulong("fdtcontroladdr", 16, 0);
-	void *fdt = NULL;
-
-#ifdef CONFIG_OF_EMBED
-	fdt = _binary_dt_dtb_start;
-#elif defined CONFIG_OF_SEPARATE
-	fdt = (void *)(_end_ofs + _TEXT_BASE);
-#endif
-	if (fdt && fdt_addr != 0) {
-		if (fdt_check_header(fdt) == 0) {
-			size_t fdt_len = fdt_totalsize(fdt);
-
-			memmove((void *)fdt_addr, fdt, fdt_len);
-		} else {
-			printf("ERROR: No valid FDT found at %p\n", fdt);
-		}
-	}
-}
-
-/* called with default environment! */
 int board_init(void)
 {
 	/* mach type passed to kernel */
@@ -694,6 +672,30 @@ static void show_reset_cause(u32 prm_rstst)
 	printf(" RESET\n");
 }
 
+#ifdef CONFIG_OF_LIBFDT
+/* called with default environment! */
+static void tx48_move_fdt(void)
+{
+	unsigned long fdt_addr = getenv_ulong("fdtcontroladdr", 16, 0);
+	void *fdt = NULL;
+
+#ifdef CONFIG_OF_EMBED
+	fdt = _binary_dt_dtb_start;
+#elif defined CONFIG_OF_SEPARATE
+	fdt = (void *)(_end_ofs + _TEXT_BASE);
+#endif
+	if (fdt && fdt_addr != 0) {
+		if (fdt_check_header(fdt) == 0) {
+			size_t fdt_len = fdt_totalsize(fdt);
+
+			memmove((void *)fdt_addr, fdt, fdt_len);
+		} else {
+			printf("ERROR: No valid FDT found at %p\n", fdt);
+		}
+	}
+}
+#endif
+
 /* called with default environment! */
 int checkboard(void)
 {
@@ -704,10 +706,10 @@ int checkboard(void)
 
 #ifdef CONFIG_OF_LIBFDT
 	printf("Board: Ka-Ro TX48-7020 with FDT support\n");
+	tx48_move_fdt();
 #else
 	printf("Board: Ka-Ro TX48-7020\n");
 #endif
-	tx48_move_fdt();
 
 #ifdef TIMER_TEST
 	{
