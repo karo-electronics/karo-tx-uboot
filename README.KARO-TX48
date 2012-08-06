@@ -1,0 +1,29 @@
+                             Building & Flashing U-Boot for TX48
+                             ===================================
+
+Building U-Boot
+===============
+Unpacking the source
+--------------------
+mkdir u-boot
+cd u-boot
+tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Compiling U-Boot
+----------------
+export ARCH=arm
+export CROSS_COMPILE=arm-cortexa8-linux-gnueabi-
+make tx48-dt_config
+make
+
+
+Flashing U-Boot Image
+---------------------
+If you want to replace a working U-Boot with a new version, you can
+load the new U-Boot image via TFTP and program it like any other flash
+partition with:
+nand erase.part u-boot;nand write ${fileaddr} u-boot ${filesize}
+
+If you want to revive a bricked module, U-Boot can be downloaded via
+xmodem protocol over the serial port in recovery boot mode (Jumper ST3
+on Starterkit-5 baseboard closed).
