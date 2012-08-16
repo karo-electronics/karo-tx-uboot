@@ -195,8 +195,8 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 			return TIMEOUT;
 		}
 
-		flush_dcache_range(data->src,
-				data->src + data->blocks * data->blocksize);
+		flush_dcache_range((unsigned long)data->src,
+				(unsigned long)data->src + data->blocks * data->blocksize);
 		esdhc_clrsetbits32(&regs->wml, WML_WR_WML_MASK,
 					wml_value << 16);
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
@@ -351,8 +351,8 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 				return COMM_ERR;
 		} while (!(irqstat & IRQSTAT_TC) &&
 				(esdhc_read32(&regs->prsstat) & PRSSTAT_DLA));
-		invalidate_dcache_range(data->dest,
-				data->dest + data->blocks * data->blocksize);
+		invalidate_dcache_range((unsigned long)data->dest,
+			(unsigned long)data->dest + data->blocks * data->blocksize);
 #endif
 	}
 
