@@ -540,7 +540,7 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 
 	mxcfbi->ipu_di_pix_fmt = interface_pix_fmt;
 	fb_videomode_to_var(&fbi->var, mode);
-	fbi->var.bits_per_pixel = 16;
+	fbi->var.bits_per_pixel = default_bpp;
 	fbi->fix.line_length = fbi->var.xres * (fbi->var.bits_per_pixel / 8);
 	fbi->fix.smem_len = fbi->var.yres_virtual * fbi->fix.line_length;
 
@@ -599,11 +599,12 @@ void video_set_lut(unsigned int index, /* color number */
 	return;
 }
 
-int mx51_fb_init(struct fb_videomode *mode, uint8_t disp, uint32_t pixfmt)
+int mx5_fb_init(struct fb_videomode *mode, uint8_t disp, uint32_t pixfmt, int bpp)
 {
 	gmode = mode;
 	gdisp = disp;
 	gpixfmt = pixfmt;
+	default_bpp = bpp;
 
 	return 0;
 }
