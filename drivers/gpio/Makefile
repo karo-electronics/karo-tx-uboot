@@ -25,6 +25,8 @@ include $(TOPDIR)/config.mk
 
 LIB 	:= $(obj)libgpio.o
 
+COBJS-y				+= gpiolib.o
+
 COBJS-$(CONFIG_AM33XX_GPIO)	+= am33xx_gpio.o
 COBJS-$(CONFIG_AT91_GPIO)	+= at91_gpio.o
 COBJS-$(CONFIG_KIRKWOOD_GPIO)	+= kw_gpio.o
