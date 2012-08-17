@@ -435,17 +435,14 @@ static int mxcfb_unmap_video_memory(struct fb_info *fbi)
  */
 static struct fb_info *mxcfb_init_fbinfo(void)
 {
-#define BYTES_PER_LONG 4
-#define PADDING (BYTES_PER_LONG - (sizeof(struct fb_info) % BYTES_PER_LONG))
 	struct fb_info *fbi;
 	struct mxcfb_info *mxcfbi;
-	char *p;
-	int size = sizeof(struct mxcfb_info) + PADDING +
+	void *p;
+	int size = ALIGN(sizeof(struct mxcfb_info), sizeof(long)) +
 		sizeof(struct fb_info);
 
-	debug("%s: %d %d %d %d\n",
+	debug("%s: %d %d %d\n",
 		__func__,
-		PADDING,
 		size,
 		sizeof(struct mxcfb_info),
 		sizeof(struct fb_info));
@@ -460,7 +457,7 @@ static struct fb_info *mxcfb_init_fbinfo(void)
 	memset(p, 0, size);
 
 	fbi = p;
-	fbi->par = p + sizeof(struct fb_info) + PADDING;
+	fbi->par = p + ALIGN(sizeof(struct fb_info), sizeof(long));
 
 	mxcfbi = (struct mxcfb_info *)fbi->par;
 	debug("Framebuffer structures at: fbi=%p mxcfbi=%p\n",
