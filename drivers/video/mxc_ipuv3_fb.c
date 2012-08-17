@@ -464,7 +464,7 @@ static struct fb_info *mxcfb_init_fbinfo(void)
 	fbi = p;
 	fbi->par = p + ALIGN(sizeof(struct fb_info), sizeof(long));
 
-	mxcfbi = (struct mxcfb_info *)fbi->par;
+	mxcfbi = fbi->par;
 	debug("Framebuffer structures at: fbi=%p mxcfbi=%p\n",
 		fbi, mxcfbi);
 
@@ -489,17 +489,15 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 {
 	struct fb_info *fbi;
 	struct mxcfb_info *mxcfbi;
-	int ret = 0;
 
 	/*
 	 * Initialize FB structures
 	 */
 	fbi = mxcfb_init_fbinfo();
-	if (!fbi) {
-		ret = -ENOMEM;
-		goto err0;
-	}
-	mxcfbi = (struct mxcfb_info *)fbi->par;
+	if (!fbi)
+		return -ENOMEM;
+
+	mxcfbi = fbi->par;
 
 	if (!g_dp_in_use) {
 		mxcfbi->ipu_ch = MEM_BG_SYNC;
@@ -571,9 +569,6 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 	ipu_dump_registers();
 
 	return 0;
-
-err0:
-	return ret;
 }
 
 void *video_hw_init(void)
