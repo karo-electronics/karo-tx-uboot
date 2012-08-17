@@ -466,16 +466,20 @@ U_BOOT_CMD(
 static void wince_handler(uchar *pkt, unsigned dport, IPaddr_t sip,
 			unsigned sport, unsigned len)
 {
+	void *eth_pkt = pkt - IP_HDR_SIZE - ETHER_HDR_SIZE;
+	unsigned eth_len = len + IP_HDR_SIZE + ETHER_HDR_SIZE;
+
 	NetState = NETLOOP_SUCCESS;	/* got input - quit net loop */
 
-	if (memcmp(&g_net.data[g_net.align_offset],
-			eth_get_dev()->enetaddr, ETH_ALEN) == 0) {
-		g_net.got_packet_4me = 1;
-		g_net.dataLen = len;
-	} else {
+	if (memcmp(eth_pkt, eth_get_dev()->enetaddr, ETH_ALEN) != 0) {
 		g_net.got_packet_4me = 0;
 		return;
 	}
+	memcpy(&g_net.data[g_net.align_offset],
+		eth_pkt, eth_len);
+
+	g_net.dataLen = len;
+	g_net.got_packet_4me = 1;
 
 	g_net.srvAddrRecv.sin_port = *((unsigned short *)(&g_net.data[
 			ETHER_HDR_SIZE + IP_HDR_SIZE_NO_UDP + g_net.align_offset]));
@@ -491,7 +495,7 @@ static void wince_handler(uchar *pkt, unsigned dport, IPaddr_t sip,
 	ce_dump_block(pkt, len);
 
 	printf("Headers:\n");
-	ce_dump_block(pkt - ETHER_HDR_SIZE - IP_HDR_SIZE, ETHER_HDR_SIZE + IP_HDR_SIZE);
+	ce_dump_block(eth_pkt, ETHER_HDR_SIZE + IP_HDR_SIZE);
 	printf("my port should be: %d\n",
 		ntohs(*((unsigned short *)(&g_net.data[ETHER_HDR_SIZE +
 							IP_HDR_SIZE_NO_UDP +
@@ -508,8 +512,6 @@ static int ce_recv_packet(uchar *buf, int len, struct sockaddr_in *from,
 
 	g_net.got_packet_4me = 0;
 	time_started = get_timer(0);
-
-	NetRxPackets[0] = buf;
 	NetSetHandler(wince_handler);
 
 	while (1) {
@@ -544,8 +546,10 @@ static int ce_recv_frame(ce_net *net, int timeout)
 
 static int ce_send_frame(ce_net *net)
 {
-	/* Send UDP packet */
-	NetTxPacket = &net->data[net->align_offset];
+	uchar *pkt = (uchar *)NetTxPacket + ETHER_HDR_SIZE + IP_HDR_SIZE;
+
+	memcpy(pkt, &net->data[net->align_offset + ETHER_HDR_SIZE + IP_HDR_SIZE],
+		net->dataLen);
 	return NetSendUDPPacket(NetServerEther, net->srvAddrSend.sin_addr,
 				ntohs(net->srvAddrSend.sin_port),
 				ntohs(net->locAddr.sin_port), net->dataLen);
