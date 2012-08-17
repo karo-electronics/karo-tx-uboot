@@ -948,13 +948,24 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 			clk_set_parent(g_pixel_clk[disp], g_ipu_clk);
 	}
 	rounded_pixel_clk = clk_round_rate(g_pixel_clk[disp], pixel_clk);
-	clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
-	udelay(5000);
-	/* Get integer portion of divider */
-	div = clk_get_rate(clk_get_parent(g_pixel_clk[disp])) /
-		rounded_pixel_clk;
 
-	ipu_di_data_wave_config(disp, SYNC_WAVE, div - 1, div - 1);
+	di_gen = 0;
+
+	if (pixel_fmt != IPU_PIX_FMT_LVDS666 &&
+			pixel_fmt != IPU_PIX_FMT_LVDS888) {
+		clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
+		udelay(5000);
+		/* Get integer portion of divider */
+		div = clk_get_rate(clk_get_parent(g_pixel_clk[disp])) /
+			rounded_pixel_clk;
+		ipu_di_data_wave_config(disp, SYNC_WAVE, div - 1, div - 1);
+	} else {
+		clk_set_rate(g_pixel_clk[disp], clk_get_rate(g_ipu_clk));
+		div = 1;
+		ipu_di_data_wave_config(disp, SYNC_WAVE, 0, 0);
+		di_gen |= (6 << 24);
+		di_gen |= DI_GEN_DI_CLK_EXT;
+	}
 	ipu_di_data_pin_config(disp, SYNC_WAVE, DI_PIN15, 3, 0, div * 2);
 
 	map = ipu_pixfmt_to_map(pixel_fmt);
@@ -962,8 +973,6 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		debug("IPU_DISP: No MAP\n");
 		return -EINVAL;
 	}
-
-	di_gen = __raw_readl(DI_GENERAL(disp));
 
 	if (sig.interlaced) {
 		/* Setup internal HSYNC waveform */
