@@ -116,9 +116,13 @@ static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 	case 32:
 		pixfmt = IPU_PIX_FMT_BGR32;
 		break;
+
 	case 16:
 		pixfmt = IPU_PIX_FMT_RGB565;
 		break;
+
+	case 8:
+		pixfmt = IPU_PIX_FMT_GENERIC;
 	}
 	return pixfmt;
 }
@@ -338,6 +342,7 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		var->transp.offset = 0;
 		var->transp.msb_right = 0;
 		break;
+
 	case 16:
 		var->red.length = 5;
 		var->red.offset = 11;
