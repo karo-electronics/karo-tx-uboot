@@ -791,7 +791,7 @@ static int ce_send_bootme(ce_net *net)
 	}
 
 	/* IP address from environment */
-	data->ipAddr = (unsigned int)getenv_IPaddr("ipaddr");
+	data->ipAddr = getenv_IPaddr("ipaddr");
 
 	// Device name string (NULL terminated). Should include
 	// platform and number based on Ether address (e.g. Odo42, CEPCLS2346, etc)
