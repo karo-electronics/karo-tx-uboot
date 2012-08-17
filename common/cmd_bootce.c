@@ -398,16 +398,10 @@ static int ce_bin_load(void *image, int imglen)
 	return 0;
 }
 
-typedef void (*CeEntryPointPtr)(void);
-
-static void ce_run_bin(ce_bin *bin)
+static void ce_run_bin(void (*entry)(void))
 {
-	CeEntryPointPtr EnrtryPoint;
-
 	printf("Launching Windows CE ...\n");
-
-	EnrtryPoint = bin->eEntryPoint;
-	EnrtryPoint();
+	entry();
 }
 
 static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -448,7 +442,7 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				return 0;
 			}
 		}
-		ce_run_bin(&g_bin);		/* start the image */
+		ce_run_bin(g_bin.eEntryPoint);		/* start the image */
 	} else {
 		printf("Image does not seem to be a valid Windows CE image!\n");
 		return 1;
@@ -1010,7 +1004,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[
 
 		// Launch WinCE, if necessary
 		if (g_net.gotJumpingRequest)
-			ce_run_bin(&g_bin);
+			ce_run_bin(g_bin.eEntryPoint);
 	}
 	eth_halt();
 	return 0;
