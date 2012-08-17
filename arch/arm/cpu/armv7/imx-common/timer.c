@@ -42,16 +42,23 @@ static struct mxc_gpt *cur_gpt = (struct mxc_gpt *)GPT1_BASE_ADDR;
 /* General purpose timers bitfields */
 #define GPTCR_SWR		(1 << 15)	/* Software reset */
 #define GPTCR_FRR		(1 << 9)	/* Freerun / restart */
-#define GPTCR_CLKSOURCE_32	(4 << 6)	/* Clock source */
+#define GPTCR_CLKSOURCE_IPG	(1 << 6)	/* Clock source */
+#define GPTCR_CLKSOURCE_CKIH	(2 << 6)
+#define GPTCR_CLKSOURCE_32kHz	(4 << 6)
+#define GPTCR_CLKSOURCE_OSC	(5 << 6)
 #define GPTCR_TEN		1		/* Timer enable */
-#define CLK_32KHZ		32768		/* 32Khz input */
+
+#define GPT_CLKSOURCE		GPTCR_CLKSOURCE_32kHz
+#define GPT_REFCLK		32768
+#define GPT_PRESCALER		1
+#define GPT_CLK			(GPT_REFCLK / GPT_PRESCALER)
 
 #ifdef DEBUG_TIMER_WRAP
 /*
- * Let the timer wrap 15 seconds after start to catch misbehaving
+ * Let the timer wrap 30 seconds after start to catch misbehaving
  * timer related code early
  */
-#define TIMER_START		(-us_to_tick(10000000))
+#define TIMER_START		(-time_to_tick(30 * CONFIG_SYS_HZ))
 #else
 #define TIMER_START		0UL
 #endif
@@ -60,13 +67,16 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static inline unsigned long tick_to_time(unsigned long tick)
 {
-	return tick * CONFIG_SYS_HZ / CLK_32KHZ;
+	unsigned long long t = (unsigned long long)tick * CONFIG_SYS_HZ;
+	do_div(t, GPT_CLK);
+	return t;
 }
 
 static inline unsigned long time_to_tick(unsigned long time)
 {
 	unsigned long long ticks = (unsigned long long)time;
-	ticks *= CLK_32KHZ;
+
+	ticks *= GPT_CLK;
 	do_div(ticks, CONFIG_SYS_HZ);
 	return ticks;
 }
@@ -74,7 +84,8 @@ static inline unsigned long time_to_tick(unsigned long time)
 static inline unsigned long us_to_tick(unsigned long usec)
 {
 	unsigned long long ticks = (unsigned long long)usec;
-	ticks *= CLK_32KHZ;
+
+	ticks *= GPT_CLK;
 	do_div(ticks, 1000 * CONFIG_SYS_HZ);
 	return ticks;
 }
@@ -91,17 +102,17 @@ int timer_init(void)
 	for (i = 0; i < 100; i++)
 		__raw_writel(0, &cur_gpt->control);
 
-	__raw_writel(0, &cur_gpt->prescaler); /* 32Khz */
+	__raw_writel(0, &cur_gpt->prescaler);
 
 	/* Freerun Mode, PERCLK1 input */
 	i = __raw_readl(&cur_gpt->control);
-	__raw_writel(i | GPTCR_CLKSOURCE_32 | GPTCR_TEN, &cur_gpt->control);
+	__raw_writel(i | GPT_CLKSOURCE | GPTCR_TEN, &cur_gpt->control);
 
 	val = __raw_readl(&cur_gpt->counter);
-	gd->lastinc = val / (CLK_32KHZ / CONFIG_SYS_HZ);
+	gd->lastinc = val;
 	gd->tbu = 0;
 	gd->tbl = TIMER_START;
-	gd->timer_rate_hz = CLK_32KHZ;
+	gd->timer_rate_hz = GPT_CLK;
 
 	return 0;
 }
@@ -142,14 +153,14 @@ ulong get_timer(ulong base)
 /* delay x useconds AND preserve advance timstamp value */
 void __udelay(unsigned long usec)
 {
-	unsigned long start = get_ticks();	/* get current timestamp */
+	unsigned long start = __raw_readl(&cur_gpt->counter);
 	unsigned long ticks = us_to_tick(usec);
 
 	if (ticks == 0)
 		ticks++;
 
-	while (get_ticks() - start < ticks)	/* loop till event */
-		 /*NOP*/;
+	while (__raw_readl(&cur_gpt->counter) - start < ticks)
+		/* loop till event */;
 }
 
 /*
