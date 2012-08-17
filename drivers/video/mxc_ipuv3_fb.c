@@ -148,7 +148,7 @@ static int mxcfb_set_fix(struct fb_info *info)
 static int setup_disp_channel1(struct fb_info *fbi)
 {
 	ipu_channel_params_t params;
-	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
+	struct mxcfb_info *mxc_fbi = fbi->par;
 
 	memset(&params, 0, sizeof(params));
 	params.mem_dp_bg_sync.di = mxc_fbi->ipu_di;
@@ -183,7 +183,7 @@ static int setup_disp_channel1(struct fb_info *fbi)
 static int setup_disp_channel2(struct fb_info *fbi)
 {
 	int retval = 0;
-	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
+	struct mxcfb_info *mxc_fbi = fbi->par;
 
 	mxc_fbi->cur_ipu_buf = 1;
 	if (mxc_fbi->alpha_chan_en)
@@ -225,7 +225,7 @@ static int mxcfb_set_par(struct fb_info *fbi)
 	int retval = 0;
 	u32 mem_len;
 	ipu_di_signal_cfg_t sig_cfg;
-	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
+	struct mxcfb_info *mxc_fbi = fbi->par;
 	uint32_t out_pixel_fmt;
 
 	ipu_disable_channel(mxc_fbi->ipu_ch);
@@ -430,7 +430,7 @@ static int mxcfb_map_video_memory(struct fb_info *fbi)
 	fbi->screen_size = fbi->fix.smem_len;
 
 	/* Clear the screen */
-	memset((char *)fbi->screen_base, 0, fbi->fix.smem_len);
+	memset(fbi->screen_base, 0, fbi->fix.smem_len);
 
 	return 0;
 }
@@ -478,12 +478,12 @@ static struct fb_info *mxcfb_init_fbinfo(void)
 
 	memset(p, 0, size);
 
-	fbi = (struct fb_info *)p;
+	fbi = p;
 	fbi->par = p + sizeof(struct fb_info) + PADDING;
 
 	mxcfbi = (struct mxcfb_info *)fbi->par;
-	debug("Framebuffer structures at: fbi=0x%x mxcfbi=0x%x\n",
-		(unsigned int)fbi, (unsigned int)mxcfbi);
+	debug("Framebuffer structures at: fbi=%p mxcfbi=%p\n",
+		fbi, mxcfbi);
 
 	fbi->var.activate = FB_ACTIVATE_NOW;
 
@@ -585,9 +585,9 @@ void *video_hw_init(void)
 		puts("Error initializing IPU\n");
 
 	ret = mxcfb_probe(gpixfmt, gdisp, gmode);
-	debug("Framebuffer at 0x%x\n", (unsigned int)panel.frameAdrs);
+	debug("Framebuffer at 0x%08x\n", panel.frameAdrs);
 
-	return (void *)&panel;
+	return &panel;
 }
 
 void video_set_lut(unsigned int index, /* color number */
