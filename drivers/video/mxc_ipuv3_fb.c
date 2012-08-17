@@ -111,9 +111,6 @@ static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 		return fbi->var.nonstd;
 
 	switch (fbi->var.bits_per_pixel) {
-	case 24:
-		pixfmt = IPU_PIX_FMT_BGR24;
-		break;
 	case 32:
 		pixfmt = IPU_PIX_FMT_BGR32;
 		break;
@@ -315,8 +312,8 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	if (var->yres_virtual < var->yres)
 		var->yres_virtual = var->yres;
 
-	if ((var->bits_per_pixel != 32) && (var->bits_per_pixel != 24) &&
-	    (var->bits_per_pixel != 16) && (var->bits_per_pixel != 8))
+	if ((var->bits_per_pixel != 32) && (var->bits_per_pixel != 16) &&
+		(var->bits_per_pixel != 8))
 		var->bits_per_pixel = default_bpp;
 
 	switch (var->bits_per_pixel) {
@@ -354,23 +351,7 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		var->transp.offset = 0;
 		var->transp.msb_right = 0;
 		break;
-	case 24:
-		var->red.length = 8;
-		var->red.offset = 16;
-		var->red.msb_right = 0;
 
-		var->green.length = 8;
-		var->green.offset = 8;
-		var->green.msb_right = 0;
-
-		var->blue.length = 8;
-		var->blue.offset = 0;
-		var->blue.msb_right = 0;
-
-		var->transp.length = 0;
-		var->transp.offset = 0;
-		var->transp.msb_right = 0;
-		break;
 	case 32:
 		var->red.length = 8;
 		var->red.offset = 16;
@@ -565,8 +546,25 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 	panel.frameAdrs = (u32)fbi->screen_base;
 	panel.memSize = fbi->screen_size;
 
-	panel.gdfBytesPP = 2;
-	panel.gdfIndex = GDF_16BIT_565RGB;
+	switch (fbi->var.bits_per_pixel) {
+	case 8:
+		panel.gdfBytesPP = 1;
+		panel.gdfIndex = GDF__8BIT_INDEX;
+		break;
+
+	case 16:
+		panel.gdfBytesPP = 2;
+		panel.gdfIndex = GDF_16BIT_565RGB;
+		break;
+
+	case 32:
+		panel.gdfBytesPP = 4;
+		panel.gdfIndex = GDF_32BIT_X888RGB;
+		break;
+
+	default:
+		hang();
+	}
 
 	ipu_dump_registers();
 
