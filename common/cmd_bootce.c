@@ -27,8 +27,6 @@
 #include <wince.h>
 #include <asm/errno.h>
 
-#define _debug(fmt...) do {} while (0)
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #define WINCE_VRAM_BASE		0x80000000
@@ -71,7 +69,6 @@ static void ce_init_bin(ce_bin *bin, unsigned char *dataBuffer)
 	bin->data = dataBuffer;
 	bin->parseState = CE_PS_RTI_ADDR;
 	bin->parsePtr = (unsigned char *)bin;
-	debug("parsePtr=%p\n", bin->parsePtr);
 }
 
 static int ce_is_bin_image(void *image, int imglen)
@@ -135,9 +132,6 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb,
 				ce_bin *bin)
 {
 	if (eth_get_dev()) {
-		debug("Copying MAC from %p to %p..%p\n",
-			eth_get_dev()->enetaddr, &std_drv_glb->kitl.mac,
-			(void *)&std_drv_glb->kitl.mac + sizeof(std_drv_glb->kitl.mac) - 1);
 		memcpy(&std_drv_glb->kitl.mac, eth_get_dev()->enetaddr,
 			sizeof(std_drv_glb->kitl.mac));
 	}
@@ -278,7 +272,6 @@ static int ce_parse_bin(ce_bin *bin)
 	int copyLen;
 
 	debug("starting ce image parsing:\n\tbin->binLen: 0x%08X\n", bin->binLen);
-	debug("\tpbData: %p..%p len: %u\n", pbData, pbData + len - 1, len);
 
 	if (len) {
 		if (bin->binLen == 0) {
@@ -309,19 +302,11 @@ static int ce_parse_bin(ce_bin *bin)
 				pbData += copyLen;
 
 				if (bin->parseLen == sizeof(unsigned int)) {
-					if (bin->parseState == CE_PS_RTI_ADDR) {
-						debug("rtiPhysAddr: %p -> %p\n",
-							bin->rtiPhysAddr,
-							CE_FIX_ADDRESS(bin->rtiPhysAddr));
+					if (bin->parseState == CE_PS_RTI_ADDR)
 						bin->rtiPhysAddr = CE_FIX_ADDRESS(bin->rtiPhysAddr);
-					} else if (bin->parseState == CE_PS_E_ADDR) {
-						if (bin->ePhysAddr) {
-							_debug("ePhysAddr: %p -> %p\n",
-								bin->ePhysAddr,
-								CE_FIX_ADDRESS(bin->ePhysAddr));
-							bin->ePhysAddr = CE_FIX_ADDRESS(bin->ePhysAddr);
-						}
-					}
+					else if (bin->parseState == CE_PS_E_ADDR &&
+						bin->ePhysAddr)
+						bin->ePhysAddr = CE_FIX_ADDRESS(bin->ePhysAddr);
 
 					bin->parseState++;
 					bin->parseLen = 0;
@@ -346,8 +331,6 @@ static int ce_parse_bin(ce_bin *bin)
 					bin->parseLen += copyLen;
 					len -= copyLen;
 
-					_debug("copy %d bytes from: %p    to:  %p\n",
-						copyLen, pbData, bin->parsePtr);
 					while (copyLen--) {
 						bin->parseChkSum += *pbData;
 						*bin->parsePtr++ = *pbData++;
@@ -786,10 +769,6 @@ static int ce_send_bootme(ce_net *net)
 	memset(net->data, 0, PKTSIZE);
 	header = (eth_dbg_hdr *)&net->data[CE_DOFFSET];
 	data = (edbg_bootme_data *)header->data;
-
-	debug("header=%p data=%p\n", header, data);
-	debug("header=%p data=%p\n", (eth_dbg_hdr *)(net->data +CE_DOFFSET),
-		(edbg_bootme_data *)header->data);
 
 	header->id = EDBG_ID;
 	header->service = EDBG_SVC_ADMIN;
