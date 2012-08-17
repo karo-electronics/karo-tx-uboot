@@ -97,29 +97,30 @@
 .endm /* init_m4if */
 
 .macro setup_pll pll, freq
-	ldr r0, =\pll
+	ldr r2, =\pll
 	ldr r1, =0x00001232
-	str r1, [r0, #PLL_DP_CTL] /* Set DPLL ON (set UPEN bit): BRMO=1 */
+	str r1, [r2, #PLL_DP_CTL] /* Set DPLL ON (set UPEN bit): BRMO=1 */
 	mov r1, #0x2
-	str r1, [r0, #PLL_DP_CONFIG] /* Enable auto-restart AREN bit */
+	str r1, [r2, #PLL_DP_CONFIG] /* Enable auto-restart AREN bit */
 
 	ldr r1, W_DP_OP_\freq
-	str r1, [r0, #PLL_DP_OP]
-	str r1, [r0, #PLL_DP_HFS_OP]
+	str r1, [r2, #PLL_DP_OP]
+	str r1, [r2, #PLL_DP_HFS_OP]
 
 	ldr r1,	W_DP_MFD_\freq
-	str r1, [r0, #PLL_DP_MFD]
-	str r1, [r0, #PLL_DP_HFS_MFD]
+	str r1, [r2, #PLL_DP_MFD]
+	str r1, [r2, #PLL_DP_HFS_MFD]
 
 	ldr r1,  W_DP_MFN_\freq
-	str r1, [r0, #PLL_DP_MFN]
-	str r1, [r0, #PLL_DP_HFS_MFN]
+	str r1, [r2, #PLL_DP_MFN]
+	str r1, [r2, #PLL_DP_HFS_MFN]
 
 	ldr r1, =0x00001232
-	str r1, [r0, #PLL_DP_CTL]
-1:	ldr r1, [r0, #PLL_DP_CTL]
+	str r1, [r2, #PLL_DP_CTL]
+101:
+	ldr r1, [r2, #PLL_DP_CTL]
 	ands r1, r1, #0x1
-	beq 1b
+	beq 101b
 .endm
 
 .macro setup_pll_errata pll, freq
@@ -219,16 +220,14 @@
 	setup_pll PLL3_BASE_ADDR, 665
 
 	/* Switch peripheral to PLL 3 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x000010C0
-	orr r1,r1,#CONFIG_SYS_DDR_CLKSEL
+	orr r1, r1, #CONFIG_SYS_DDR_CLKSEL
 	str r1, [r0, #CLKCTL_CBCMR]
 	ldr r1, =0x13239145
 	str r1, [r0, #CLKCTL_CBCDR]
 	setup_pll PLL2_BASE_ADDR, 665
 
 	/* Switch peripheral to PLL2 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x19239145
 	str r1, [r0, #CLKCTL_CBCDR]
 	ldr r1, =0x000020C0
@@ -253,7 +252,6 @@
 	movhi r1, #0
 #else
 	mov r1, #0
-
 #endif
 	str r1, [r0, #CLKCTL_CACRR]
 	/* Switch ARM back to PLL 1 */
@@ -292,7 +290,6 @@
 	str r1, [r0, #CLKCTL_CSCDR1]
 #elif defined(CONFIG_MX53)
 	/* Switch peripheral to PLL2 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x00808145
 	orr r1, r1, #(2 << 10)
 	orr r1, r1, #(0 << 16)
@@ -303,11 +300,11 @@
 	str r1, [r0, #CLKCTL_CBCMR]
 	/* Change uart clk parent to pll2*/
 	ldr r1, [r0, #CLKCTL_CSCMR1]
-	and r1, r1, #0xfcffffff
-	orr r1, r1, #0x01000000
+	bic r1, #(0x3 << 24)
+	orr r1, r1, #(0x1 << 24)
 	str r1, [r0, #CLKCTL_CSCMR1]
 	ldr r1, [r0, #CLKCTL_CSCDR1]
-	and r1, r1, #0xffffffc0
+	bic r1, #(0x3f << 0)
 	orr r1, r1, #0x0a
 	str r1, [r0, #CLKCTL_CSCDR1]
 #endif
