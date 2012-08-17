@@ -46,44 +46,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-enum gpio_flags {
-	GPIOF_INPUT,
-	GPIOF_OUTPUT_INIT_LOW,
-	GPIOF_OUTPUT_INIT_HIGH,
-};
-
-struct gpio {
-	unsigned int gpio;
-	enum gpio_flags flags;
-	const char *label;
-};
-
-static int gpio_request_array(const struct gpio *gp, int count)
-{
-	int ret;
-	int i;
-
-	for (i = 0; i < count; i++) {
-		ret = gpio_request(gp[i].gpio, gp[i].label);
-		if (ret)
-			goto error;
-
-		if (gp[i].flags == GPIOF_INPUT)
-			gpio_direction_input(gp[i].gpio);
-		else if (gp[i].flags == GPIOF_OUTPUT_INIT_LOW)
-			gpio_direction_output(gp[i].gpio, 0);
-		else if (gp[i].flags == GPIOF_OUTPUT_INIT_HIGH)
-			gpio_direction_output(gp[i].gpio, 1);
-	}
-	return 0;
-
-error:
-	while (--i >= 0)
-		gpio_free(gp[i].gpio);
-
-	return ret;
-}
-
 #define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 static iomux_v3_cfg_t tx51_pads[] = {
