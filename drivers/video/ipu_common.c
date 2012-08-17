@@ -207,7 +207,11 @@ static void clk_ipu_disable(struct clk *clk)
 
 static struct clk ipu_clk = {
 	.name = "ipu_clk",
+#if defined(CONFIG_MX51)
 	.rate = 133000000,
+#elif defined(CONFIG_MX53)
+	.rate = 216000000,
+#endif
 	.enable_reg = (u32 *)(MXC_CCM_BASE +
 		offsetof(struct mxc_ccm_reg, CCGR5)),
 	.enable_shift = MXC_CCM_CCGR5_CG5_OFFSET,
@@ -397,8 +401,8 @@ void ipu_reset(void)
 int ipu_probe(void)
 {
 	unsigned long ipu_base;
+#ifdef CONFIG_MX51
 	u32 temp;
-
 	u32 *reg_hsc_mcd = (u32 *)MIPI_HSC_BASE_ADDR;
 	u32 *reg_hsc_mxt_conf = (u32 *)(MIPI_HSC_BASE_ADDR + 0x800);
 
@@ -410,7 +414,7 @@ int ipu_probe(void)
 
 	temp = __raw_readl(reg_hsc_mxt_conf);
 	__raw_writel(temp | 0x10000, reg_hsc_mxt_conf);
-
+#endif
 	ipu_base = IPU_CTRL_BASE_ADDR;
 	ipu_cpmem_base = (u32 *)(ipu_base + IPU_CPMEM_REG_BASE);
 	ipu_dc_tmpl_reg = (u32 *)(ipu_base + IPU_DC_TMPL_REG_BASE);
