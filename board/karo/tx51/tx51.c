@@ -99,9 +99,15 @@ static void tx51_module_init(void)
 /*
  * Functions
  */
+static u32 srsr;
+static u32 wrsr;
+
+#define WRSR_POR	(1 << 4)
+#define WRSR_TOUT	(1 << 1)
+#define WRSR_SFTW	(1 << 0)
+
 static void print_reset_cause(void)
 {
-	u32 srsr;
 	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
 	void __iomem *wdt_base = (void __iomem *)WDOG1_BASE_ADDR;
 	char *dlm = "";
@@ -109,7 +115,9 @@ static void print_reset_cause(void)
 	printf("Reset cause: ");
 
 	srsr = readl(&src_regs->srsr);
-	if (srsr & 0x00001) {
+	wrsr = readw(wdt_base + 4);
+
+	if (wrsr & WRSR_POR) {
 		printf("%sPOR", dlm);
 		dlm = " | ";
 	}
@@ -122,12 +130,11 @@ static void print_reset_cause(void)
 		dlm = " | ";
 	}
 	if (srsr & 0x00010) {
-		u32 wrsr = readw(wdt_base + 4);
-		if (wrsr & (1 << 0)) {
+		if (wrsr & WRSR_SFTW) {
 			printf("%sSOFT", dlm);
 			dlm = " | ";
 		}
-		if (wrsr & (1 << 1)) {
+		if (wrsr & WRSR_TOUT) {
 			printf("%sWDOG", dlm);
 			dlm = " | ";
 		}
