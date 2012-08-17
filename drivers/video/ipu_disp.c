@@ -916,7 +916,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	debug("pixel clk = %d\n", pixel_clk);
 
 	if (sig.ext_clk) {
-		if (!(g_di1_tvout && (disp == 1))) { /*not round div for tvout*/
+		if (!(g_di1_tvout && (disp == 1))) { /* don't round div for tvout */
 			/*
 			 * Set the  PLL to be an even multiple
 			 * of the pixel clock.
@@ -1121,7 +1121,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		/* set gentime select and tag sel */
 		reg = __raw_readl(DI_SW_GEN1(disp, 9));
 		reg &= 0x1FFFFFFF;
-		reg |= (3 - 1)<<29 | 0x00008000;
+		reg |= ((3 - 1) << 29) | 0x00008000;
 		__raw_writel(reg, DI_SW_GEN1(disp, 9));
 
 		__raw_writel(v_total / 2 - 1, DI_SCR_CONF(disp));
@@ -1179,13 +1179,13 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 		/* Init template microcode */
 		if (disp) {
-		   ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5);
-		   ipu_dc_write_tmpl(3, WROD(0), 0, map, SYNC_WAVE, 4, 5);
-		   ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5);
+			ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5);
+			ipu_dc_write_tmpl(3, WROD(0), 0, map, SYNC_WAVE, 4, 5);
+			ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 		} else {
-		   ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5);
-		   ipu_dc_write_tmpl(6, WROD(0), 0, map, SYNC_WAVE, 4, 5);
-		   ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5);
+			ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5);
+			ipu_dc_write_tmpl(6, WROD(0), 0, map, SYNC_WAVE, 4, 5);
+			ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 		}
 
 		if (sig.Hsync_pol)
@@ -1195,7 +1195,6 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 		if (sig.clk_pol)
 			di_gen |= DI_GEN_POL_CLK;
-
 	}
 
 	__raw_writel(di_gen, DI_GENERAL(disp));
