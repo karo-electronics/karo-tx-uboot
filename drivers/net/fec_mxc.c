@@ -71,6 +71,8 @@ struct nbuf {
 	uint8_t head[16];	/**< MAC header(6 + 6 + 2) + 2(aligned) */
 };
 
+static int rx_idx;
+
 #ifdef CONFIG_FEC_MXC_SWAP_PACKET
 static void swap_packet(uint32_t *packet, int length)
 {
@@ -803,7 +805,6 @@ static int fec_recv(struct eth_device *dev)
 	uint16_t bd_status;
 	uint32_t addr, size;
 	int i;
-	uchar buff[FEC_MAX_PKT_SIZE];
 
 	/*
 	 * Check if any critical events have happened
@@ -877,8 +878,9 @@ static int fec_recv(struct eth_device *dev)
 #ifdef CONFIG_FEC_MXC_SWAP_PACKET
 			swap_packet((uint32_t *)frame->data, frame_length);
 #endif
-			memcpy(buff, frame->data, frame_length);
-			NetReceive(buff, frame_length);
+			memcpy((void *)NetRxPackets[rx_idx], frame->data, frame_length);
+			NetReceive(NetRxPackets[rx_idx], frame_length);
+			rx_idx = (rx_idx + 1) % PKTBUFSRX;
 			len = frame_length;
 		} else {
 			if (bd_status & FEC_RBD_ERR)
