@@ -213,7 +213,6 @@ static struct clk ipu_clk = {
 	.enable_shift = MXC_CCM_CCGR5_CG5_OFFSET,
 	.enable = clk_ipu_enable,
 	.disable = clk_ipu_disable,
-	.usecount = 0,
 };
 
 /* Globals */
@@ -287,7 +286,7 @@ static unsigned long ipu_pixel_clk_round_rate(struct clk *clk,
 	 * Fractional part is 4 bits,
 	 * so simply multiply by 2^4 to get fractional part.
 	 */
-	tmp = (clk->parent->rate * 16);
+	tmp = clk->parent->rate * 16;
 	div = tmp / rate;
 
 	if (div < 0x10)            /* Min DI disp clock divider is 1 */
@@ -331,7 +330,6 @@ static void ipu_pixel_clk_disable(struct clk *clk)
 	u32 disp_gen = __raw_readl(IPU_DISP_GEN);
 	disp_gen &= clk->id ? ~DI1_COUNTER_RELEASE : ~DI0_COUNTER_RELEASE;
 	__raw_writel(disp_gen, IPU_DISP_GEN);
-
 }
 
 static int ipu_pixel_clk_set_parent(struct clk *clk, struct clk *parent)
@@ -352,26 +350,24 @@ static int ipu_pixel_clk_set_parent(struct clk *clk, struct clk *parent)
 
 static struct clk pixel_clk[] = {
 	{
-	.name = "pixel_clk",
-	.id = 0,
-	.recalc = ipu_pixel_clk_recalc,
-	.set_rate = ipu_pixel_clk_set_rate,
-	.round_rate = ipu_pixel_clk_round_rate,
-	.set_parent = ipu_pixel_clk_set_parent,
-	.enable = ipu_pixel_clk_enable,
-	.disable = ipu_pixel_clk_disable,
-	.usecount = 0,
+		.name = "pixel_clk",
+		.id = 0,
+		.recalc = ipu_pixel_clk_recalc,
+		.set_rate = ipu_pixel_clk_set_rate,
+		.round_rate = ipu_pixel_clk_round_rate,
+		.set_parent = ipu_pixel_clk_set_parent,
+		.enable = ipu_pixel_clk_enable,
+		.disable = ipu_pixel_clk_disable,
 	},
 	{
-	.name = "pixel_clk",
-	.id = 1,
-	.recalc = ipu_pixel_clk_recalc,
-	.set_rate = ipu_pixel_clk_set_rate,
-	.round_rate = ipu_pixel_clk_round_rate,
-	.set_parent = ipu_pixel_clk_set_parent,
-	.enable = ipu_pixel_clk_enable,
-	.disable = ipu_pixel_clk_disable,
-	.usecount = 0,
+		.name = "pixel_clk",
+		.id = 1,
+		.recalc = ipu_pixel_clk_recalc,
+		.set_rate = ipu_pixel_clk_set_rate,
+		.round_rate = ipu_pixel_clk_round_rate,
+		.set_parent = ipu_pixel_clk_set_parent,
+		.enable = ipu_pixel_clk_enable,
+		.disable = ipu_pixel_clk_disable,
 	},
 };
 
@@ -880,7 +876,6 @@ static void ipu_ch_param_init(int ch,
 		break;
 	default:
 		puts("mxc ipu: unimplemented pixel format\n");
-		break;
 	}
 
 
@@ -955,8 +950,7 @@ int32_t ipu_init_channel_buffer(ipu_channel_t channel, ipu_buffer_t type,
 		stride = width * bytes_per_pixel(pixel_fmt);
 
 	if (stride % 4) {
-		printf(
-			"Stride not 32-bit aligned, stride = %d\n", stride);
+		printf("Stride not 32-bit aligned, stride = %d\n", stride);
 		return -EINVAL;
 	}
 	/* Build parameter memory data for DMA channel */
@@ -1133,16 +1127,13 @@ uint32_t bytes_per_pixel(uint32_t fmt)
 	case IPU_PIX_FMT_YUV420P:
 	case IPU_PIX_FMT_YUV422P:
 		return 1;
-		break;
 	case IPU_PIX_FMT_RGB565:
 	case IPU_PIX_FMT_YUYV:
 	case IPU_PIX_FMT_UYVY:
 		return 2;
-		break;
 	case IPU_PIX_FMT_BGR24:
 	case IPU_PIX_FMT_RGB24:
 		return 3;
-		break;
 	case IPU_PIX_FMT_GENERIC_32:	/*generic data */
 	case IPU_PIX_FMT_BGR32:
 	case IPU_PIX_FMT_BGRA32:
@@ -1150,10 +1141,8 @@ uint32_t bytes_per_pixel(uint32_t fmt)
 	case IPU_PIX_FMT_RGBA32:
 	case IPU_PIX_FMT_ABGR32:
 		return 4;
-		break;
 	default:
 		return 1;
-		break;
 	}
 	return 0;
 }
@@ -1173,11 +1162,9 @@ ipu_color_space_t format_to_colorspace(uint32_t fmt)
 	case IPU_PIX_FMT_LVDS666:
 	case IPU_PIX_FMT_LVDS888:
 		return RGB;
-		break;
 
 	default:
 		return YCbCr;
-		break;
 	}
 	return RGB;
 }
