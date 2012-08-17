@@ -188,7 +188,7 @@ static int setup_disp_channel2(struct fb_info *fbi)
 
 	fbi->var.xoffset = fbi->var.yoffset = 0;
 
-	debug("%s: %x %d %d %d %lx %lx\n",
+	debug("%s: ch: %08x xres: %d yres: %d line_length: %d mem: %08lx .. %08lx\n",
 		__func__,
 		mxc_fbi->ipu_ch,
 		fbi->var.xres,
@@ -196,7 +196,7 @@ static int setup_disp_channel2(struct fb_info *fbi)
 		fbi->fix.line_length,
 		fbi->fix.smem_start,
 		fbi->fix.smem_start +
-		(fbi->fix.line_length * fbi->var.yres));
+		(fbi->fix.line_length * fbi->var.yres) - 1);
 
 	retval = ipu_init_channel_buffer(mxc_fbi->ipu_ch, IPU_INPUT_BUFFER,
 					 bpp_to_pixfmt(fbi),
@@ -267,10 +267,11 @@ static int mxcfb_set_par(struct fb_info *fbi)
 	if (fbi->var.sync & FB_SYNC_CLK_IDLE_EN)
 		sig_cfg.clkidle_en = 1;
 
-	debug("pixclock = %ul Hz\n",
-		(u32) (PICOS2KHZ(fbi->var.pixclock) * 1000UL));
+	debug("pixclock = %lu.%03lu MHz\n",
+		PICOS2KHZ(fbi->var.pixclock) / 1000,
+		PICOS2KHZ(fbi->var.pixclock) % 1000);
 
-	if (ipu_init_sync_panel(mxc_fbi->ipu_di,
+	retval = ipu_init_sync_panel(mxc_fbi->ipu_di,
 				(PICOS2KHZ(fbi->var.pixclock)) * 1000UL,
 				fbi->var.xres, fbi->var.yres,
 				out_pixel_fmt,
@@ -280,9 +281,10 @@ static int mxcfb_set_par(struct fb_info *fbi)
 				fbi->var.upper_margin,
 				fbi->var.vsync_len,
 				fbi->var.lower_margin,
-				0, sig_cfg) != 0) {
-		puts("mxcfb: Error initializing panel.\n");
-		return -EINVAL;
+				0, sig_cfg);
+	if (retval != 0) {
+		printf("mxc_ipuv3_fb: Error %d initializing panel\n", retval);
+		return retval;
 	}
 
 	retval = setup_disp_channel2(fbi);
