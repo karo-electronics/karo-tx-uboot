@@ -307,6 +307,10 @@
 #define DP_MFD_400	(3 - 1)
 #define DP_MFN_400	1
 
+#define DP_OP_333	((6 << 4) + ((2 - 1)  << 0))
+#define DP_MFD_333	(16 - 1)
+#define DP_MFN_333	15
+
 #define DP_OP_216	((6 << 4) + ((3 - 1)  << 0))
 #define DP_MFD_216	(4 - 1)
 #define DP_MFN_216	3
