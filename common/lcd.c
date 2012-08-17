@@ -762,7 +762,6 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	else if (y < 0)
 		y = max(0, panel_info.vl_row - height + y + 1);
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
-printf("x=%d, y=%d\n", x, y);
 	bmap = (uchar *)bmp + le32_to_cpu (bmp->header.data_offset);
 
 	if ((x + width) > pwidth)
@@ -774,8 +773,6 @@ printf("x=%d, y=%d\n", x, y);
 
 	fb   = (uchar *) (lcd_base +
 		(y + height - 1) * lcd_line_length + x * bpix / 8);
-debug("width=%d height=%d pwidth=%d lcd_line_length=%d padded_line=%d\n",
-	width, height, pwidth, lcd_line_length, padded_line);
 	switch (bmp_bpix) {
 	case 1: /* pass through */
 	case 8:
@@ -785,8 +782,6 @@ debug("width=%d height=%d pwidth=%d lcd_line_length=%d padded_line=%d\n",
 			byte_width = width * 2;
 		else
 			byte_width = width;
-debug("bpix=%d bmp_bpix=%d byte_width=%d\n",
-	bpix, bmp_bpix, byte_width);
 		for (i = 0; i < height; i++) {
 			WATCHDOG_RESET();
 			for (j = 0; j < width; j++) {
