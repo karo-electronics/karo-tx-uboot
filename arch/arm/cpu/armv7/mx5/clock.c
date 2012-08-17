@@ -662,7 +662,9 @@ static int config_core_clk(u32 ref, u32 freq)
 	/* The case that periph uses PLL1 is not considered here */
 	ret = calc_pll_params(ref, freq, &pll_param);
 	if (ret != 0) {
-		printf("Error:Can't find pll parameters: %d\n", ret);
+		printf("Error: Can't find pll parameters for %u.%03uMHz ref %u.%03uMHz\n",
+			freq / 1000000, freq / 1000 % 1000,
+			ref / 1000000, ref / 1000 % 1000);
 		return ret;
 	}
 
@@ -701,8 +703,9 @@ static int config_periph_clk(u32 ref, u32 freq)
 	if (__raw_readl(&mxc_ccm->cbcdr) & MXC_CCM_CBCDR_PERIPH_CLK_SEL) {
 		ret = calc_pll_params(ref, freq, &pll_param);
 		if (ret != 0) {
-			printf("Error:Can't find pll parameters: %d\n",
-				ret);
+			printf("Error: Can't find pll parameters for %u.%03uMHz ref %u.%03uMHz\n",
+				freq / 1000000, freq / 1000 % 1000,
+				ref / 1000000, ref / 1000 % 1000);
 			return ret;
 		}
 		switch ((__raw_readl(&mxc_ccm->cbcmr) & \
@@ -710,10 +713,10 @@ static int config_periph_clk(u32 ref, u32 freq)
 			MXC_CCM_CBCMR_PERIPH_CLK_SEL_OFFSET) {
 		case 0:
 			return config_pll_clk(PLL1_CLOCK, &pll_param);
-			break;
+
 		case 1:
 			return config_pll_clk(PLL3_CLOCK, &pll_param);
-			break;
+
 		default:
 			return -EINVAL;
 		}
@@ -846,12 +849,11 @@ int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk)
 */
 void mxc_set_sata_internal_clock(void)
 {
-	u32 *tmp_base =
-		(u32 *)(IIM_BASE_ADDR + 0x180c);
+	u32 *tmp_base = (u32 *)(IIM_BASE_ADDR + 0x180c);
 
 	set_usb_phy1_clk();
 
-	writel((readl(tmp_base) & (~0x7)) | 0x4, tmp_base);
+	writel((readl(tmp_base) & ~0x7) | 0x4, tmp_base);
 }
 #endif
 
