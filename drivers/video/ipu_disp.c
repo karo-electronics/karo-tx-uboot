@@ -804,8 +804,8 @@ void ipu_init_dc_mappings(void)
 	/* IPU_PIX_FMT_LVDS666 */
 	ipu_dc_map_clear(4);
 	ipu_dc_map_config(4, 0, 5, 0xFC);
-	ipu_dc_map_config(4, 1, 13, 0xFC);
-	ipu_dc_map_config(4, 2, 21, 0xFC);
+	ipu_dc_map_config(4, 1, 11, 0xFC);
+	ipu_dc_map_config(4, 2, 17, 0xFC);
 }
 
 int ipu_pixfmt_to_map(uint32_t fmt)
