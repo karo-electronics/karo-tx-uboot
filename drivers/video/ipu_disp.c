@@ -813,6 +813,7 @@ int ipu_pixfmt_to_map(uint32_t fmt)
 	switch (fmt) {
 	case IPU_PIX_FMT_GENERIC:
 	case IPU_PIX_FMT_RGB24:
+	case IPU_PIX_FMT_LVDS888:
 		return 0;
 	case IPU_PIX_FMT_RGB666:
 		return 1;
