@@ -428,7 +428,7 @@ static int lcd_init (void *lcdbase)
 {
 	/* Initialize the lcd controller */
 	debug ("[LCD] Initializing %ux%ux%u LCD framebuffer at %p\n",
-		panel_info.vl_col, panel_info.vl_row, panel_info.vl_bpix,
+		panel_info.vl_col, panel_info.vl_row, NBITS(panel_info.vl_bpix),
 		lcdbase);
 
 	lcd_ctrl_init (lcdbase);
