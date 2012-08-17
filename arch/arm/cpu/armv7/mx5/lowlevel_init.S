@@ -182,6 +182,8 @@
 1:	ldr r1, [r0, #CLKCTL_CDHIPR]
 	cmp r1, #0x0
 	bne 1b
+#elif defined(CONFIG_TX53)
+	@ CCGR registers have been setup via DCD
 #else
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -233,6 +235,46 @@
 	ldr r1, =0x000020C0
 	orr r1,r1,#CONFIG_SYS_DDR_CLKSEL
 	str r1, [r0, #CLKCTL_CBCMR]
+#elif defined(CONFIG_TX53)
+	setup_pll PLL3_BASE_ADDR, 400
+
+	/* Switch peripheral to PLL 3 */
+	ldr r1, [r0, #CLKCTL_CBCMR]
+	bic r1, #(0x3 << 12)
+	orr r1, r1, #(1 << 12)
+	str r1, [r0, #CLKCTL_CBCMR]
+
+	ldr r1, [r0, #CLKCTL_CBCDR]
+	orr r1, r1, #(1 << 25)
+	str r1, [r0, #CLKCTL_CBCDR]
+1:
+	/* make sure change is effective */
+	ldr	r1, [r0, #CLKCTL_CDHIPR]
+	tst	r1, #0x7f
+	bne	1b
+#if CONFIG_SYS_SDRAM_CLK == 400
+	setup_pll PLL2_BASE_ADDR, 400
+#elif CONFIG_SYS_SDRAM_CLK == 333
+ä	setup_pll PLL2_BASE_ADDR, 333
+#else
+#error Unsupported CONFIG_SYS_SDRAM_CLK
+#endif
+	/* Switch peripheral to PLL2 */
+	ldr r0, =CCM_BASE_ADDR
+	ldr r1, [r0, #CLKCTL_CBCDR]
+	bic r1, #(1 << 25)
+	str r1, [r0, #CLKCTL_CBCDR]
+
+	ldr r1, [r0, #CLKCTL_CBCMR]
+	bic r1, #(3 << 12)
+	orr r1, #(2 << 12)
+	str r1, [r0, #CLKCTL_CBCMR]
+
+	/* make sure change is effective */
+1:
+	ldr	r1, [r0, #CLKCTL_CDHIPR]
+	cmp	r1, #0x0
+	bne	1b
 #endif
 	setup_pll PLL3_BASE_ADDR, 216
 
@@ -268,7 +310,7 @@
 	ldr r1, =CONFIG_SYS_CLKTL_CBCDR
 	str r1, [r0, #CLKCTL_CBCDR]
 #endif
-
+#ifndef CONFIG_TX53
 	/* Restore the default values in the Gate registers */
 	ldr r1, =0xFFFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -281,7 +323,9 @@
 #if defined(CONFIG_MX53)
 	str r1, [r0, #CLKCTL_CCGR7]
 #endif
+#endif
 
+#if !defined(CONFIG_TX53)
 #if defined(CONFIG_MX51)
 	/* Use PLL 2 for UART's, get 66.5MHz from it */
 	ldr r1, =0xA5A2A020
@@ -312,7 +356,7 @@
 1:	ldr r1, [r0, #CLKCTL_CDHIPR]
 	cmp r1, #0x0
 	bne 1b
-
+#endif
 	mov r1, #0x0
 	str r1, [r0, #CLKCTL_CCDR]
 
@@ -367,6 +411,12 @@ W_DP_MFN_665:             .word DP_MFN_665
 W_DP_OP_600:              .word DP_OP_600
 W_DP_MFD_600:             .word DP_MFD_600
 W_DP_MFN_600:             .word DP_MFN_600
+W_DP_OP_400:              .word DP_OP_400
+W_DP_MFD_400:             .word DP_MFD_400
+W_DP_MFN_400:             .word DP_MFN_400
+W_DP_OP_333:              .word DP_OP_333
+W_DP_MFD_333:             .word DP_MFD_333
+W_DP_MFN_333:             .word DP_MFN_333
 W_DP_OP_216:              .word DP_OP_216
 W_DP_MFD_216:             .word DP_MFD_216
 W_DP_MFN_216:             .word DP_MFN_216

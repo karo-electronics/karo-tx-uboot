@@ -1,0 +1,36 @@
+                             Building & Flashing U-Boot for TX53
+                             ===================================
+
+Building U-Boot
+---------------
+
+Note: There are currently two variants of the TX53 module, that
+      require slightly different U-Boot configurations. They are
+      distinguished through the last digit of the module name. Replace
+      the '?' in the following description with the corresponding
+      number from your TX51 module.
+      E.g. TX53-8031 => 'make tx53-xx31_config'
+
+Unpacking the source
+--------------------
+mkdir u-boot
+cd u-boot
+tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Compiling U-Boot
+----------------
+export ARCH=arm
+export CROSS_COMPILE=arm-cortexa8-linux-gnueabi-
+make tx53-xx3?_config            (see above Note!)
+make
+
+
+Flashing U-Boot Image
+---------------------
+If you want to replace a working U-Boot with a new version, you can
+load the new U-Boot image via TFTP and program it like any other flash
+partition with:
+nand erase.part u-boot;nand write ${fileaddr} u-boot ${filesize}
+
+If you want to revive a bricked module, you can use one of the
+flashtools provided with the BSP to reprogram the flash.
