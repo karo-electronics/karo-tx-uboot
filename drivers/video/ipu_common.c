@@ -457,37 +457,37 @@ int ipu_probe(void)
 
 void ipu_dump_registers(void)
 {
-	debug("IPU_CONF = \t0x%08X\n", __raw_readl(IPU_CONF));
-	debug("IDMAC_CONF = \t0x%08X\n", __raw_readl(IDMAC_CONF));
-	debug("IDMAC_CHA_EN1 = \t0x%08X\n",
+	debug("IPU_CONF             0x%08X\n", __raw_readl(IPU_CONF));
+	debug("IDMAC_CONF           0x%08X\n", __raw_readl(IDMAC_CONF));
+	debug("IDMAC_CHA_EN1        0x%08X\n",
 	       __raw_readl(IDMAC_CHA_EN(0)));
-	debug("IDMAC_CHA_EN2 = \t0x%08X\n",
+	debug("IDMAC_CHA_EN2        0x%08X\n",
 	       __raw_readl(IDMAC_CHA_EN(32)));
-	debug("IDMAC_CHA_PRI1 = \t0x%08X\n",
+	debug("IDMAC_CHA_PRI1       0x%08X\n",
 	       __raw_readl(IDMAC_CHA_PRI(0)));
-	debug("IDMAC_CHA_PRI2 = \t0x%08X\n",
+	debug("IDMAC_CHA_PRI2       0x%08X\n",
 	       __raw_readl(IDMAC_CHA_PRI(32)));
-	debug("IPU_CHA_DB_MODE_SEL0 = \t0x%08X\n",
+	debug("IPU_CHA_DB_MODE_SEL0 0x%08X\n",
 	       __raw_readl(IPU_CHA_DB_MODE_SEL(0)));
-	debug("IPU_CHA_DB_MODE_SEL1 = \t0x%08X\n",
+	debug("IPU_CHA_DB_MODE_SEL1 0x%08X\n",
 	       __raw_readl(IPU_CHA_DB_MODE_SEL(32)));
-	debug("DMFC_WR_CHAN = \t0x%08X\n",
+	debug("DMFC_WR_CHAN         0x%08X\n",
 	       __raw_readl(DMFC_WR_CHAN));
-	debug("DMFC_WR_CHAN_DEF = \t0x%08X\n",
+	debug("DMFC_WR_CHAN_DEF     0x%08X\n",
 	       __raw_readl(DMFC_WR_CHAN_DEF));
-	debug("DMFC_DP_CHAN = \t0x%08X\n",
+	debug("DMFC_DP_CHAN         0x%08X\n",
 	       __raw_readl(DMFC_DP_CHAN));
-	debug("DMFC_DP_CHAN_DEF = \t0x%08X\n",
+	debug("DMFC_DP_CHAN_DEF     0x%08X\n",
 	       __raw_readl(DMFC_DP_CHAN_DEF));
-	debug("DMFC_IC_CTRL = \t0x%08X\n",
+	debug("DMFC_IC_CTRL         0x%08X\n",
 	       __raw_readl(DMFC_IC_CTRL));
-	debug("IPU_FS_PROC_FLOW1 = \t0x%08X\n",
+	debug("IPU_FS_PROC_FLOW1    0x%08X\n",
 	       __raw_readl(IPU_FS_PROC_FLOW1));
-	debug("IPU_FS_PROC_FLOW2 = \t0x%08X\n",
+	debug("IPU_FS_PROC_FLOW2    0x%08X\n",
 	       __raw_readl(IPU_FS_PROC_FLOW2));
-	debug("IPU_FS_PROC_FLOW3 = \t0x%08X\n",
+	debug("IPU_FS_PROC_FLOW3    0x%08X\n",
 	       __raw_readl(IPU_FS_PROC_FLOW3));
-	debug("IPU_FS_DISP_FLOW1 = \t0x%08X\n",
+	debug("IPU_FS_DISP_FLOW1    0x%08X\n",
 	       __raw_readl(IPU_FS_DISP_FLOW1));
 }
 
@@ -875,7 +875,8 @@ static void ipu_ch_param_init(int ch,
 		u_offset = (u == 0) ? stride * height : u;
 		break;
 	default:
-		puts("mxc ipu: unimplemented pixel format\n");
+		printf("mxc ipu: unimplemented pixel format: %08x\n",
+			pixel_fmt);
 	}
 
 
