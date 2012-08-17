@@ -39,6 +39,8 @@
 #include "ipu.h"
 #include "mxcfb.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 static int mxcfb_map_video_memory(struct fb_info *fbi);
 static int mxcfb_unmap_video_memory(struct fb_info *fbi);
 
@@ -397,15 +399,16 @@ static int mxcfb_map_video_memory(struct fb_info *fbi)
 		fbi->fix.smem_len = fbi->var.yres_virtual *
 				    fbi->fix.line_length;
 	}
-
-	fbi->screen_base = (char *)malloc(fbi->fix.smem_len);
-	fbi->fix.smem_start = (unsigned long)fbi->screen_base;
+	if (gd->fb_base)
+		fbi->screen_base = (void *)gd->fb_base;
+	else
+		fbi->screen_base = malloc(fbi->fix.smem_len);
 	if (fbi->screen_base == 0) {
 		puts("Unable to allocate framebuffer memory\n");
 		fbi->fix.smem_len = 0;
-		fbi->fix.smem_start = 0;
 		return -EBUSY;
 	}
+	fbi->fix.smem_start = (unsigned long)fbi->screen_base;
 
 	debug("allocated fb @ paddr=0x%08X, size=%d.\n",
 		(uint32_t) fbi->fix.smem_start, fbi->fix.smem_len);
