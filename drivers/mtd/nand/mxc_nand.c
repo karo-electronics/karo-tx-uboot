@@ -74,12 +74,24 @@ static int is_16bit_nand(void)
 	else
 		return 0;
 }
-#elif defined(CONFIG_MX51) || defined(CONFIG_MX53)
+#elif defined(CONFIG_MX51)
 static int is_16bit_nand(void)
 {
 	struct src *src = (struct src *)SRC_BASE_ADDR;
 
 	if (readl(&src->sbmr) & (1 << 2))
+		return 1;
+	else
+		return 0;
+}
+#elif defined(CONFIG_MX53)
+/* BOOT_CFG[1..3][0..7] */
+#define SRC_BOOT_CFG(m, n)		(1 << ((m) * 8 + (n)))
+static int is_16bit_nand(void)
+{
+	struct src *src = (struct src *)SRC_BASE_ADDR;
+
+	if (readl(&src->sbmr) & SRC_BOOT_CFG(2, 5))
 		return 1;
 	else
 		return 0;
