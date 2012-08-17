@@ -799,8 +799,9 @@ static int ce_send_bootme(ce_net *net)
 	// We will use lower MAC address segment to create device name
 	// eg. MAC '00-0C-C6-69-09-05', device name 'Triton05'
 
-	strcpy(data->platformId, "Triton");
-	sprintf(data->deviceName, "%s%02X", data->platformId, data->macAddr[5]);
+	strncpy(data->platformId, "Triton", sizeof(data->platformId));
+	snprintf(data->deviceName, sizeof(data->deviceName), "%s%02X",
+		data->platformId, data->macAddr[5]);
 
 #ifdef DEBUG
 	printf("header->id: %08X\r\n", header->id);
