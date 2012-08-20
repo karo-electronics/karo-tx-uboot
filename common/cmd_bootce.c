@@ -136,7 +136,7 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb,
 			sizeof(std_drv_glb->kitl.mac));
 	}
 	snprintf(std_drv_glb->deviceId, sizeof(std_drv_glb->deviceId),
-		"Triton%02X", std_drv_glb->kitl.mac[2] & 0xff);
+		"Triton%02X", eth_get_dev()->enetaddr[5]);
 
 	std_drv_glb->kitl.ipAddress = gd->bd->bi_ip_addr;
 	std_drv_glb->kitl.ipMask = getenv_IPaddr("netmask");
