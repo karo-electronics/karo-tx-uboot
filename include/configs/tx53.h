@@ -132,7 +132,7 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
 	"cpu_clk=800\0"							\
-	"fdtcontroladdr=70004000\0"					\
+	"fdtaddr=70004000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
