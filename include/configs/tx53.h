@@ -96,6 +96,8 @@
  */
 #define xstr(s)	str(s)
 #define str(s)	#s
+#define __pfx(x, s)	(x##s)
+#define _pfx(x, s)	__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
@@ -105,8 +107,8 @@
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_BOOTARGS		"console=ttymxc0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
-#define CONFIG_LOADADDR		0x78000000
-#define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+#define CONFIG_LOADADDR		78000000
+#define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
 #define CONFIG_HW_WATCHDOG
 
