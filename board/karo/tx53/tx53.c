@@ -985,6 +985,53 @@ static void tx53_fixup_usb_otg(void *blob)
 	}
 }
 
+static void tx53_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
+			const char *prop)
+{
+	int ret;
+	int offset;
+	const uint32_t *phandle;
+	uint32_t ph = 0;
+
+	offset = fdt_node_offset_by_compat_reg(blob, compat, offs);
+	if (offset <= 0)
+		return;
+
+	phandle = fdt_getprop(blob, offset, "transceiver-switch", NULL);
+	if (phandle) {
+		ph = be32_to_cpu(*phandle);
+		printf("phandle=%08x\n", ph);
+	}
+
+	debug("Removing property '%s' from node %s@%08lx\n", prop, compat, offs);
+	ret = fdt_delprop(blob, offset, prop);
+	if (ret)
+		printf("Failed to remove property '%s' from node %s@%08lx\n",
+			prop, compat, offs);
+
+	if (!ph)
+		return;
+
+	offset = fdt_node_offset_by_phandle(blob, ph);
+	printf("Node offset[%x]=%08x\n", ph, offset);
+	if (offset <= 0)
+		return;
+
+	debug("Removing node @ %08x\n", offset);
+	fdt_del_node(blob, offset);
+}
+
+static void tx53_fixup_flexcan(void *blob)
+{
+	const char *baseboard = getenv("baseboard");
+
+	if (baseboard && strcmp(baseboard, "stk5-v5") == 0)
+		return;
+
+	tx53_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fc8000, "transceiver-switch");
+	tx53_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fcc000, "transceiver-switch");
+}
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
@@ -992,5 +1039,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	tx53_fixup_touchpanel(blob);
 	tx53_fixup_usb_otg(blob);
+	tx53_fixup_flexcan(blob);
 }
 #endif
