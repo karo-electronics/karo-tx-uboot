@@ -828,6 +828,9 @@ static void tx53_set_cpu_clock(void)
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 	int ret;
 
+	if (tstc() || (wrsr & WRSR_TOUT))
+		return;
+
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
 
