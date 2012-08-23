@@ -907,16 +907,42 @@ static const char *tx53_touchpanels[] = {
 	"edt,edt-ft5x06",
 };
 
-static void fdt_del_node_by_name(void *blob, const char *name)
+static void fdt_del_tp_node(void *blob, const char *name)
 {
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
+	uint32_t ph1 = 0, ph2 = 0;
+	const uint32_t *prop;
 
 	if (offs < 0) {
 		debug("node '%s' not found: %d\n", name, offs);
 		return;
 	}
+
+	prop = fdt_getprop(blob, offs, "reset-switch", NULL);
+	if (prop)
+		ph1 = be32_to_cpu(*prop);
+
+	prop = fdt_getprop(blob, offs, "wake-switch", NULL);
+	if (prop)
+		ph2 = be32_to_cpu(*prop);
+
 	debug("Removing node '%s' from DT\n", name);
 	fdt_del_node(blob, offs);
+
+	if (ph1) {
+		offs = fdt_node_offset_by_phandle(blob, ph1);
+		if (offs > 0) {
+			debug("Removing node @ %08x\n", offs);
+			fdt_del_node(blob, offs);
+		}
+	}
+	if (ph2) {
+		offs = fdt_node_offset_by_phandle(blob, ph2);
+		if (offs > 0) {
+			debug("Removing node @ %08x\n", offs);
+			fdt_del_node(blob, offs);
+		}
+	}
 }
 
 static void tx53_fixup_touchpanel(void *blob)
@@ -934,7 +960,7 @@ static void tx53_fixup_touchpanel(void *blob)
 		if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
 			continue;
 
-		fdt_del_node_by_name(blob, tx53_touchpanels[i]);
+		fdt_del_tp_node(blob, tx53_touchpanels[i]);
 	}
 }
 
