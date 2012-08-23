@@ -101,6 +101,7 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_ZERO_BOOTDELAY_CHECK
+#define CONFIG_SYS_AUTOLOAD	"no"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_BOOTARGS		"console=ttymxc0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
