@@ -191,6 +191,24 @@ int board_early_init_f(void)
 	gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
 	mxc_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
 
+	writel(0x77777777, AIPS1_BASE_ADDR + 0x00);
+	writel(0x77777777, AIPS1_BASE_ADDR + 0x04);
+
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x40);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x44);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x48);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x4c);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x50);
+
+	writel(0x77777777, AIPS2_BASE_ADDR + 0x00);
+	writel(0x77777777, AIPS2_BASE_ADDR + 0x04);
+
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x40);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x44);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x48);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x4c);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x50);
+
 	return 0;
 }
 
