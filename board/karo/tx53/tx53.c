@@ -799,27 +799,20 @@ static void stk5v5_board_init(void)
 
 static void tx53_move_fdt(void)
 {
-	unsigned long fdt_addr = getenv_ulong("fdtcontroladdr", 16, 0);
-	void *fdt = NULL;
+	const void *fdt = gd->fdt_blob;
+	unsigned long fdt_addr = getenv_ulong("fdtaddr", 16, 0);
 
-	if (!fdt_addr)
+	if (!fdt || !fdt_addr) {
+		printf("fdt=%p fdt_addr=%08lx\n", fdt, fdt_addr);
 		return;
-
-#ifdef CONFIG_OF_EMBED
-	fdt = _binary_dt_dtb_start;
-#elif defined CONFIG_OF_SEPARATE
-	fdt = (void *)(_end_ofs + _TEXT_BASE);
-#endif
-	if (!fdt)
-		return;
+	}
 
 	if (fdt_check_header(fdt)) {
 		printf("ERROR: No valid FDT found at %p\n", fdt);
 		return;
 	}
-	size_t fdt_len = fdt_totalsize(fdt);
 
-	memmove((void *)fdt_addr, fdt, fdt_len);
+	memmove((void *)fdt_addr, fdt, fdt_totalsize(fdt));
 	set_working_fdt_addr((void *)fdt_addr);
 }
 
