@@ -137,7 +137,7 @@
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p2 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock4 rootfstype=jffs2\0"		\
+	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
@@ -150,9 +150,11 @@
 	TX48_BOOTM_CMD							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
+	"cpu_clk=400\0"							\
 	"fdtaddr=80004000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=640x480MR-24@60\0"
 
