@@ -125,8 +125,6 @@
  * Extra Environments
  */
 #ifdef CONFIG_OF_LIBFDT
-#define CONFIG_FDT_FIXUP_PARTITIONS
-
 #define TX48_BOOTM_CMD							\
 	"bootm_cmd=fdt addr ${fdtcontroladdr};"				\
 	"fdt board;"							\
@@ -353,8 +351,5 @@
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
-
-/* Unsupported features */
-#undef CONFIG_USE_IRQ
 
 #endif	/* __TX48_H */
