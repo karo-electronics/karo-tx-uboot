@@ -115,7 +115,7 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD	"no"
 #define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttymO0,115200 ro debug panic=1"
+#define CONFIG_BOOTARGS		"console=ttyO0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
 #define CONFIG_LOADADDR		83000000
 #define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
