@@ -46,44 +46,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-enum gpio_flags {
-	GPIOF_INPUT,
-	GPIOF_OUTPUT_INIT_LOW,
-	GPIOF_OUTPUT_INIT_HIGH,
-};
-
-struct gpio {
-	unsigned int gpio;
-	enum gpio_flags flags;
-	const char *label;
-};
-
-static int gpio_request_array(const struct gpio *gp, int count)
-{
-	int ret;
-	int i;
-
-	for (i = 0; i < count; i++) {
-		ret = gpio_request(gp[i].gpio, gp[i].label);
-		if (ret)
-			goto error;
-
-		if (gp[i].flags == GPIOF_INPUT)
-			gpio_direction_input(gp[i].gpio);
-		else if (gp[i].flags == GPIOF_OUTPUT_INIT_LOW)
-			gpio_direction_output(gp[i].gpio, 0);
-		else if (gp[i].flags == GPIOF_OUTPUT_INIT_HIGH)
-			gpio_direction_output(gp[i].gpio, 1);
-	}
-	return 0;
-
-error:
-	while (--i >= 0)
-		gpio_free(gp[i].gpio);
-
-	return ret;
-}
-
 #define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 static iomux_v3_cfg_t tx51_pads[] = {
@@ -137,9 +99,15 @@ static void tx51_module_init(void)
 /*
  * Functions
  */
+static u32 srsr;
+static u32 wrsr;
+
+#define WRSR_POR	(1 << 4)
+#define WRSR_TOUT	(1 << 1)
+#define WRSR_SFTW	(1 << 0)
+
 static void print_reset_cause(void)
 {
-	u32 srsr;
 	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
 	void __iomem *wdt_base = (void __iomem *)WDOG1_BASE_ADDR;
 	char *dlm = "";
@@ -147,7 +115,9 @@ static void print_reset_cause(void)
 	printf("Reset cause: ");
 
 	srsr = readl(&src_regs->srsr);
-	if (srsr & 0x00001) {
+	wrsr = readw(wdt_base + 4);
+
+	if (wrsr & WRSR_POR) {
 		printf("%sPOR", dlm);
 		dlm = " | ";
 	}
@@ -160,12 +130,11 @@ static void print_reset_cause(void)
 		dlm = " | ";
 	}
 	if (srsr & 0x00010) {
-		u32 wrsr = readw(wdt_base + 4);
-		if (wrsr & (1 << 0)) {
+		if (wrsr & WRSR_SFTW) {
 			printf("%sSOFT", dlm);
 			dlm = " | ";
 		}
-		if (wrsr & (1 << 1)) {
+		if (wrsr & WRSR_TOUT) {
 			printf("%sWDOG", dlm);
 			dlm = " | ";
 		}

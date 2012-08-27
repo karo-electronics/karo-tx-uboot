@@ -1,5 +1,6 @@
 #include <config.h>
 #include <configs/tx51.h>
+#include <asm/arch/imx-regs.h>
 
 #define DCDGEN(type, addr, data)  .long type, addr, data
 
@@ -11,7 +12,6 @@
 #define SDRAM_SIZE		PHYS_SDRAM_1_SIZE
 #endif
 
-#define ESDCTL_BASE_ADDR	0x83fd9000
 #define REG_ESDCTL0		0x00
 #define REG_ESDCFG0		0x04
 #define REG_ESDCTL1		0x08
@@ -19,8 +19,6 @@
 #define REG_ESDMISC		0x10
 #define REG_ESDSCR		0x14
 #define REG_ESDGPR		0x34
-
-#define IOMUXC_BASE_ADDR	0x73fa8000
 
 /* SDRAM timing setup */
 #define RALAT		1
@@ -99,6 +97,15 @@ NS_VAL	tRC,   60,  1	/* 0: 20 *: clks - 1 (0..15) */
 #define ESDMISC_VAL		(ESDMISC_AP(10) | ESDMISC_RALAT(RALAT) | \
 				(LHD << 5) | ESDMISC_DDR2_EN(0) | ESDMISC_DDR_EN(0))
 
+#define CLKCTL_CCGR0	0x68
+#define CLKCTL_CCGR1	0x6c
+#define CLKCTL_CCGR2	0x70
+#define CLKCTL_CCGR3	0x74
+#define CLKCTL_CCGR4	0x78
+#define CLKCTL_CCGR5	0x7c
+#define CLKCTL_CCGR6	0x80
+#define CLKCTL_CMEOR	0x84
+
 	b	_start
 	.org	0x400
 app_start_addr:
@@ -120,6 +127,15 @@ dcd_data:
 dcd_len:
 	.long	dcd_end - dcd_start
 dcd_start:
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR0, 0xffccfffc);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR1, 0x003fffff);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR2, 0x030c003c);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR3, 0x000000ff);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR4, 0x00000000);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR5, 0x003fc003);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CCGR6, 0x00000000);
+	DCDGEN(4, CCM_BASE_ADDR + CLKCTL_CMEOR, 0x00000000);
+
 	DCDGEN(4, ESDCTL_BASE_ADDR + REG_ESDCTL0, 0x80000000)
 	DCDGEN(4, ESDCTL_BASE_ADDR + REG_ESDSCR, 0x04008008)
 	DCDGEN(4, ESDCTL_BASE_ADDR + REG_ESDSCR, 0x00008010)
