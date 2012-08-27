@@ -172,6 +172,7 @@
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_BOOTCE
+#define CONFIG_CMD_TIME
 
 /*
  * Serial Driver
