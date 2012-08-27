@@ -857,10 +857,17 @@ static int ce_send_bootme(ce_net *net)
 	return ce_send_frame(net);
 }
 
-static void ce_init_download_link(ce_net *net, ce_bin *bin,
+static int ce_init_download_link(ce_net *net, ce_bin *bin,
 				struct sockaddr_in *host_addr, int verbose)
 {
+	int ret;
 	unsigned long aligned_address;
+
+	if (!eth_get_dev()) {
+		printf("No network interface available\n");
+		return -ENODEV;
+	}
+	printf("Usinge device '%s'\n", eth_get_name());
 
 	/* Initialize EDBG link for download */
 	memset(net, 0, sizeof(*net));
@@ -902,12 +909,11 @@ static void ce_init_download_link(ce_net *net, ce_bin *bin,
 #ifdef CONFIG_NET_MULTI
 	eth_set_current();
 #endif
-	if (eth_init(gd->bd) < 0) {
-#ifdef ET_DEBUG
-		puts("ceconnect: failed to init ethernet !\n");
-#endif
+	ret = eth_init(gd->bd);
+	if (ret < 0) {
+		printf("ceconnect: failed to init ethernet: %d\n", ret);
 		eth_halt();
-		return;
+		return ret;
 	}
 #ifdef ET_DEBUG
 	puts("ceconnect: init ethernet done!\n");
@@ -917,6 +923,7 @@ static void ce_init_download_link(ce_net *net, ce_bin *bin,
 	NetOurGatewayIP = getenv_IPaddr("gatewayip");
 	NetOurSubnetMask = getenv_IPaddr("netmask");
 	NetServerIP = getenv_IPaddr("serverip");
+	return 0;
 }
 
 static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -946,7 +953,9 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[
 
 	memset(&host_ip_addr, 0xff, sizeof(host_ip_addr));
 
-	ce_init_download_link(&g_net, &g_bin, &host_ip_addr, verbose);
+	if (ce_init_download_link(&g_net, &g_bin, &host_ip_addr, verbose) != 0)
+		return 1;
+
 	while (1) {
 		if (g_net.link) {
 			recv_timeout = 3;
