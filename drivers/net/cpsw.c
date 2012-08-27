@@ -559,6 +559,7 @@ static void cpsw_set_slave_mac(struct cpsw_slave *slave,
 	__raw_writel(mac_lo(priv->dev->enetaddr), &slave->regs->sa_lo);
 }
 
+#define NUM_TRIES 50
 static void cpsw_slave_update_link(struct cpsw_slave *slave,
 				   struct cpsw_priv *priv, int *link)
 {
@@ -567,37 +568,42 @@ static void cpsw_slave_update_link(struct cpsw_slave *slave,
 	int speed, duplex;
 	unsigned short reg;
 	u32 mac_control = 0;
+	int retries = NUM_TRIES;
 
-	if (miiphy_read(name, phy_id, MII_BMSR, &reg)) {
-		printf("Failed to read PHY reg\n");
-		return; /* could not read, assume no link */
-	}
-
-	if (reg & BMSR_LSTATUS) { /* link up */
-		speed = miiphy_speed(name, phy_id);
-		duplex = miiphy_duplex(name, phy_id);
-
-		*link = 1;
-		mac_control = priv->data->mac_control;
-		if (speed == 10)
-			mac_control |= BIT(18);	/* In Band mode	*/
-		else if (speed == 100)
-			mac_control |= BIT(15);
-		else if (speed == 1000) {
-			if (priv->data->gigabit_en)
-				mac_control |= BIT(7);
-			else {
-				/* Disable gigabit as it's non-functional */
-				mac_control &= ~BIT(7);
-				speed = 100;
-			}
+	while (retries-- > 0) {
+		if (miiphy_read(name, phy_id, MII_BMSR, &reg)) {
+			printf("Failed to read PHY reg\n");
+			return; /* could not read, assume no link */
 		}
 
-		if (duplex == FULL)
-			mac_control |= BIT(0);	/* FULLDUPLEXEN	*/
+		if (reg & BMSR_LSTATUS) { /* link up */
+			speed = miiphy_speed(name, phy_id);
+			duplex = miiphy_duplex(name, phy_id);
+
+			*link = 1;
+			mac_control = priv->data->mac_control;
+			if (speed == 10)
+				mac_control |= BIT(18);	/* In Band mode	*/
+			else if (speed == 100)
+				mac_control |= BIT(15);
+			else if (speed == 1000) {
+				if (priv->data->gigabit_en)
+					mac_control |= BIT(7);
+				else {
+					/* Disable gigabit as it's non-functional */
+					mac_control &= ~BIT(7);
+					speed = 100;
+				}
+			}
+
+			if (duplex == FULL)
+				mac_control |= BIT(0);	/* FULLDUPLEXEN	*/
+			break;
+		}
+		udelay(100000);
 	}
-	debug("%s: mac_control: %08x -> %08x\n", __func__,
-		slave->mac_control, mac_control);
+	debug("%s: mac_control: %08x -> %08x after %u loops\n", __func__,
+		slave->mac_control, mac_control, NUM_TRIES - retries);
 
 	if (mac_control == slave->mac_control)
 		return;
@@ -901,7 +907,9 @@ static int cpsw_send(struct eth_device *dev, volatile void *packet, int length)
 
 	debug("%s@%d: sending packet %p..%p\n", __func__, __LINE__,
 		packet, packet + length - 1);
-	if (!cpsw_update_link(priv))
+
+	if (!priv->data->mac_control && !cpsw_update_link(priv)) {
+		printf("%s: Cannot send packet; link is down\n", __func__);
 		return -EIO;
 	}
 
