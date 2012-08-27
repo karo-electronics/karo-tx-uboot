@@ -89,7 +89,6 @@
 */
 #ifdef CONFIG_OF_LIBFDT /* set via cmdline parameter thru boards.cfg */
 #define CONFIG_FDT_FIXUP_PARTITIONS
-#define CONFIG_OF_CONTROL
 #define CONFIG_OF_EMBED
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx48
@@ -126,9 +125,7 @@
  */
 #ifdef CONFIG_OF_LIBFDT
 #define TX48_BOOTM_CMD							\
-	"bootm_cmd=fdt addr ${fdtcontroladdr};"				\
-	"fdt board;"							\
-	"bootm ${loadaddr} - ${fdtaddr}\0"
+	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"
 #else
 #define TX48_BOOTM_CMD							\
 	"bootm_cmd=bootm\0"
@@ -153,7 +150,7 @@
 	TX48_BOOTM_CMD							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
-	"fdtcontroladdr=80004000\0"					\
+	"fdtaddr=80004000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"touchpanel=tsc2007\0"						\
