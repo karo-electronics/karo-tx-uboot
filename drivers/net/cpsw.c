@@ -887,7 +887,7 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static void cpsw_halt(struct eth_device *dev)
