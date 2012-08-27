@@ -32,14 +32,14 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
-#define CONFIG_VIDEO_DA8XX
-#define DAVINCI_LCD_CNTL_BASE		0x4830e000
 
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
 #ifdef CONFIG_LCD
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN
+#define CONFIG_VIDEO_DA8XX
+#define DAVINCI_LCD_CNTL_BASE		0x4830e000
 #define CONFIG_LCD_LOGO
 #define LCD_BPP				LCD_COLOR24
 #define CONFIG_CMD_BMP
@@ -184,6 +184,10 @@
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		48000000
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
+#define CONFIG_CONS_INDEX		1
+#define CONFIG_BAUDRATE			115200		/* Default baud rate */
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
+#define CONFIG_SYS_CONSOLE_INFO_QUIET
 
 /*
  * Ethernet Driver
@@ -194,10 +198,11 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
+/* Add for working with "strict" DHCP server */
+#define CONFIG_BOOTP_SUBNETMASK
+#define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_SUBNETMASK
 
 #define CONFIG_NET_RETRY_COUNT	       10
 #define CONFIG_NET_MULTI
@@ -292,16 +297,6 @@
  /* Platform/Board specific defs */
 #define CONFIG_SYS_TIMERBASE		0x48040000	/* Use Timer2 */
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
-
-#define CONFIG_BAUDRATE		115200
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 110, 300, 600, 1200, 2400, \
-		4800, 9600, 14400, 19200, 28800, 38400, 56000, 57600, 115200 }
-
-/*
- * select serial console configuration
- */
-#define CONFIG_CONS_INDEX		1
-#define CONFIG_SYS_CONSOLE_INFO_QUIET
 
 /* Defines for SPL */
 #define CONFIG_SPL
