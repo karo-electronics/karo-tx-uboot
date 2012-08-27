@@ -32,14 +32,14 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
-#define CONFIG_VIDEO_DA8XX
-#define DAVINCI_LCD_CNTL_BASE		0x4830e000
 
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
 #ifdef CONFIG_LCD
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN
+#define CONFIG_VIDEO_DA8XX
+#define DAVINCI_LCD_CNTL_BASE		0x4830e000
 #define CONFIG_LCD_LOGO
 #define LCD_BPP				LCD_COLOR24
 #define CONFIG_CMD_BMP
@@ -62,10 +62,8 @@
 #define CONFIG_STACKSIZE		SZ_64K
 #define CONFIG_SYS_MALLOC_LEN		SZ_4M
 
-#define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM_1 + (64 * 1024 * 1024))
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + \
-					(8 * 1024 * 1024))
-
+#define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM_1 + SZ_64M)
+#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_8M)
 
 /*
  * U-Boot general configurations
@@ -91,7 +89,6 @@
 */
 #ifdef CONFIG_OF_LIBFDT /* set via cmdline parameter thru boards.cfg */
 #define CONFIG_FDT_FIXUP_PARTITIONS
-#define CONFIG_OF_CONTROL
 #define CONFIG_OF_EMBED
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx48
@@ -109,6 +106,8 @@
  */
 #define xstr(s)	str(s)
 #define str(s)	#s
+#define __pfx(x, s)	(x##s)
+#define _pfx(x, s)	__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
@@ -116,10 +115,10 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD	"no"
 #define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttymO0,115200 ro debug panic=1"
+#define CONFIG_BOOTARGS		"console=ttyO0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
-#define CONFIG_LOADADDR		0x81000000
-#define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+#define CONFIG_LOADADDR		83000000
+#define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
 #define CONFIG_HW_WATCHDOG
 
@@ -127,12 +126,8 @@
  * Extra Environments
  */
 #ifdef CONFIG_OF_LIBFDT
-#define CONFIG_FDT_FIXUP_PARTITIONS
-
 #define TX48_BOOTM_CMD							\
-	"bootm_cmd=fdt addr ${fdtcontroladdr};"				\
-	"fdt board;"							\
-	"bootm ${loadaddr} - ${fdtaddr}\0"
+	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"
 #else
 #define TX48_BOOTM_CMD							\
 	"bootm_cmd=bootm\0"
@@ -144,7 +139,7 @@
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p2 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock4 rootfstype=jffs2\0"		\
+	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
@@ -157,9 +152,11 @@
 	TX48_BOOTM_CMD							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
-	"fdtcontroladdr=80004000\0"					\
+	"cpu_clk=400\0"							\
+	"fdtaddr=80004000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=640x480MR-24@60\0"
 
@@ -175,6 +172,7 @@
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_BOOTCE
+#define CONFIG_CMD_TIME
 
 /*
  * Serial Driver
@@ -184,6 +182,10 @@
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		48000000
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* UART0 */
+#define CONFIG_CONS_INDEX		1
+#define CONFIG_BAUDRATE			115200		/* Default baud rate */
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
+#define CONFIG_SYS_CONSOLE_INFO_QUIET
 
 /*
  * Ethernet Driver
@@ -194,12 +196,12 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
+/* Add for working with "strict" DHCP server */
+#define CONFIG_BOOTP_SUBNETMASK
+#define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_SUBNETMASK
 
-#define CONFIG_NET_RETRY_COUNT	       10
 #define CONFIG_NET_MULTI
 #define CONFIG_PHY_GIGE
 #endif
@@ -275,13 +277,13 @@
 	xstr(CONFIG_ENV_SIZE)						\
 	"(env),"							\
 	xstr(CONFIG_ENV_SIZE)						\
-	"(env2),4m(linux),16m(rootfs),-(userfs)"
+	"(env2),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
 #else
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"128k(u-boot-spl),"						\
 	"1m(u-boot),"							\
 	xstr(CONFIG_ENV_SIZE)						\
-	"(env),4m(linux),16m(rootfs),-(userfs)"
+	"(env),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
 #endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
@@ -293,21 +295,11 @@
 #define CONFIG_SYS_TIMERBASE		0x48040000	/* Use Timer2 */
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
-#define CONFIG_BAUDRATE		115200
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 110, 300, 600, 1200, 2400, \
-		4800, 9600, 14400, 19200, 28800, 38400, 56000, 57600, 115200 }
-
-/*
- * select serial console configuration
- */
-#define CONFIG_CONS_INDEX		1
-#define CONFIG_SYS_CONSOLE_INFO_QUIET
-
 /* Defines for SPL */
 #define CONFIG_SPL
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_TEXT_BASE		0x402F0400
-#define CONFIG_SPL_MAX_SIZE		(46 * 1024)
+#define CONFIG_SPL_MAX_SIZE		(46 * SZ_1K)
 #define CONFIG_SPL_GPIO_SUPPORT
 #ifdef CONFIG_NAND_AM33XX
 #define CONFIG_SPL_NAND_SUPPORT
@@ -326,11 +318,11 @@
 					 50, 51, 52, 53, 54, 55, 56, 57, }
 #endif
 
-#define CONFIG_SPL_BSS_START_ADDR	0x80000000
-#define CONFIG_SPL_BSS_MAX_SIZE		0x80000		/* 512 KB */
+#define CONFIG_SPL_BSS_START_ADDR	PHYS_SDRAM_1
+#define CONFIG_SPL_BSS_MAX_SIZE		SZ_512K
 
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x300 /* address 0x60000 */
-#define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS	0x200 /* 256 KB */
+#define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS	(SZ_512K / 512)
 #define CONFIG_SYS_MMC_SD_FAT_BOOT_PARTITION	1
 #define CONFIG_SPL_FAT_LOAD_PAYLOAD_NAME	"u-boot-tx48.img"
 #define CONFIG_SPL_MMC_SUPPORT
@@ -351,8 +343,8 @@
  * other needs.
  */
 #define CONFIG_SYS_TEXT_BASE		0x80800000
-#define CONFIG_SYS_SPL_MALLOC_START	0x80208000
-#define CONFIG_SYS_SPL_MALLOC_SIZE	0x100000
+#define CONFIG_SYS_SPL_MALLOC_START	(PHYS_SDRAM_1 + SZ_2M + SZ_32K)
+#define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_1M
 
 /* Since SPL did pll and ddr initialization for us,
  * we don't need to do it twice.
@@ -360,8 +352,5 @@
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
-
-/* Unsupported features */
-#undef CONFIG_USE_IRQ
 
 #endif	/* __TX48_H */
