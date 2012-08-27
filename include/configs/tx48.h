@@ -275,13 +275,13 @@
 	xstr(CONFIG_ENV_SIZE)						\
 	"(env),"							\
 	xstr(CONFIG_ENV_SIZE)						\
-	"(env2),4m(linux),16m(rootfs),-(userfs)"
+	"(env2),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
 #else
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"128k(u-boot-spl),"						\
 	"1m(u-boot),"							\
 	xstr(CONFIG_ENV_SIZE)						\
-	"(env),4m(linux),16m(rootfs),-(userfs)"
+	"(env),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
 #endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
