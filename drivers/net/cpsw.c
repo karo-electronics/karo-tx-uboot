@@ -724,6 +724,7 @@ static int cpdma_submit(struct cpsw_priv *priv, struct cpdma_chan *chan,
 
 	desc->sw_buffer = buffer;
 
+	cpdma_desc_put(desc);
 	if (!chan->head) {
 		/* simple case - first packet enqueued */
 		chan->head = desc;
@@ -731,7 +732,6 @@ static int cpdma_submit(struct cpsw_priv *priv, struct cpdma_chan *chan,
 		chan_write(chan, hdp, desc->dma_desc);
 		goto done;
 	}
-	cpdma_desc_put(desc);
 
 	/* not the first packet - enqueue at the tail */
 	prev = chan->tail;
@@ -766,6 +766,8 @@ static int cpdma_process(struct cpsw_priv *priv, struct cpdma_chan *chan,
 	cpdma_desc_get(desc);
 
 	status = desc_read(desc, hw_mode);
+	if (status & CPDMA_DESC_OWNER)
+		return -EBUSY;
 
 	if (len)
 		*len = status & 0x7ff;
@@ -773,9 +775,6 @@ static int cpdma_process(struct cpsw_priv *priv, struct cpdma_chan *chan,
 	if (buffer)
 		*buffer = desc->sw_buffer;
 	debug("%s@%d: buffer=%p\n", __func__, __LINE__, desc->sw_buffer);
-
-	if (status & CPDMA_DESC_OWNER)
-		return -EBUSY;
 
 	chan->head = desc->next;
 	chan_write(chan, cp, desc->dma_desc);
