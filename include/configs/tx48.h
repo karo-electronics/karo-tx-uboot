@@ -201,7 +201,6 @@
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 
-#define CONFIG_NET_RETRY_COUNT	       10
 #define CONFIG_NET_MULTI
 #define CONFIG_PHY_GIGE
 #endif
