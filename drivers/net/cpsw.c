@@ -18,7 +18,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-//#define DEBUG
+
 #include <common.h>
 #include <command.h>
 #include <net.h>
@@ -201,23 +201,9 @@ struct cpdma_chan {
 	void			*hdp, *cp, *rxfree;
 };
 
-#if 0
-#define desc_write(desc, fld, val)	__raw_writel((u32)(val), &(desc)->fld)
-#define desc_read(desc, fld)		__raw_readl(&(desc)->fld)
-#define desc_read_ptr(desc, fld)	((void *)__raw_readl(&(desc)->fld))
-#else
-#define desc_write(desc, fld, val)	((desc)->dma_desc->fld = (u32)(val))
-#define desc_read(desc, fld)		__desc_read(&(desc)->dma_desc->fld, #fld, __func__, __LINE__)
-static inline u32 __desc_read(u32 *fld, const char *name,
-			const char *fn, int ln)
-{
-	u32 val = *fld;
-
-	debug("%s@%d: %s@%p=%08x\n", fn, ln, name, fld, val);
-	return val;
-}
-#define desc_read_ptr(desc, fld)	((void *)desc_read(desc->dma_desc, fld))
-#endif
+#define desc_write(desc, fld, val)	__raw_writel((u32)(val), &(desc)->dma_desc->fld)
+#define desc_read(desc, fld)		__raw_readl(&(desc)->dma_desc->fld)
+#define desc_read_ptr(desc, fld)	((void *)__raw_readl(&(desc)->dma_desc->fld))
 
 #define chan_write(chan, fld, val)	__raw_writel((u32)(val), (chan)->fld)
 #define chan_read(chan, fld)		__raw_readl((chan)->fld)
@@ -240,11 +226,11 @@ struct cpsw_priv {
 	struct cpsw_slave		*slaves;
 };
 
-#define for_each_slave(priv, func, arg...)			\
-	do {							\
-		int idx;					\
+#define for_each_slave(priv, func, arg...)	\
+	do {								\
+		int idx;						\
 		for (idx = 0; idx < (priv)->data->slaves; idx++)	\
-			(func)((priv)->slaves + idx, ##arg);	\
+			(func)((priv)->slaves + idx, ##arg);		\
 	} while (0)
 
 static inline int cpsw_ale_get_field(u32 *ale_entry, u32 start, u32 bits)
@@ -554,7 +540,7 @@ static inline void soft_reset(void *reg)
 {
 	int loops = 0;
 
-	debug("%s\n", __func__);
+	debug("%s %p\n", __func__, reg);
 	__raw_writel(1, reg);
 	while (__raw_readl(reg) & 1) {
 		loops++;
@@ -582,7 +568,6 @@ static void cpsw_slave_update_link(struct cpsw_slave *slave,
 	unsigned short reg;
 	u32 mac_control = 0;
 
-	debug("%s@%d\n", __func__, __LINE__);
 	if (miiphy_read(name, phy_id, MII_BMSR, &reg)) {
 		printf("Failed to read PHY reg\n");
 		return; /* could not read, assume no link */
@@ -625,11 +610,8 @@ static void cpsw_slave_update_link(struct cpsw_slave *slave,
 		printf("link down on port %d\n", slave->slave_num);
 	}
 
-	debug("%s@%d\n", __func__, __LINE__);
 	__raw_writel(mac_control, &slave->sliver->mac_control);
-	debug("%s@%d\n", __func__, __LINE__);
 	slave->mac_control = mac_control;
-	debug("%s: done\n", __func__);
 }
 
 static int cpsw_update_link(struct cpsw_priv *priv)
@@ -674,26 +656,6 @@ static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	priv->data->phy_init(priv->dev->name, slave->data->phy_id);
 }
 
-#ifdef DEBUG
-#define cpdma_desc_get(d)	__cpdma_desc_get(d, __func__, __LINE__)
-#define cpdma_desc_put(d)	__cpdma_desc_put(d, __func__, __LINE__)
-
-static void __cpdma_desc_get(struct cpsw_desc *desc,
-			const char *fn, int ln)
-{
-	debug("%s@%d: Invalidating DCACHE range: %p..%p\n", fn, ln,
-		desc->dma_desc, &desc->dma_desc[1]);
-	invalidate_dcache_range((u32)desc->dma_desc, (u32)(&desc->dma_desc[1]));
-}
-
-static void __cpdma_desc_put(struct cpsw_desc *desc,
-			const char *fn, int ln)
-{
-	debug("%s@%d: Flushing DCACHE range: %p..%p\n", fn, ln,
-		desc->dma_desc, &desc->dma_desc[1]);
-	flush_dcache_range((u32)desc->dma_desc, (u32)(&desc->dma_desc[1]));
-}
-#else
 static void cpdma_desc_get(struct cpsw_desc *desc)
 {
 	invalidate_dcache_range((u32)desc->dma_desc, (u32)(&desc->dma_desc[1]));
@@ -703,7 +665,6 @@ static void cpdma_desc_put(struct cpsw_desc *desc)
 {
 	flush_dcache_range((u32)desc->dma_desc, (u32)(&desc->dma_desc[1]));
 }
-#endif
 
 static struct cpsw_desc *cpdma_desc_alloc(struct cpsw_priv *priv)
 {
@@ -736,9 +697,6 @@ static int cpdma_submit(struct cpsw_priv *priv, struct cpdma_chan *chan,
 		return -EINVAL;
 	}
 
-	debug("%s@%d: buffer %p..%p\n", __func__, __LINE__,
-		buffer, buffer + len);
-
 	flush_dcache_range((u32)buffer, (u32)buffer + len);
 
 	desc = cpdma_desc_alloc(priv);
@@ -757,9 +715,8 @@ static int cpdma_submit(struct cpsw_priv *priv, struct cpdma_chan *chan,
 	desc_write(desc, hw_buffer, buffer);
 	desc_write(desc, hw_len,    len);
 	desc_write(desc, hw_mode,   mode | len);
-	//desc_write(desc, sw_buffer, buffer);
+
 	desc->sw_buffer = buffer;
-//	desc_write(desc, sw_len,    len);
 
 	if (!chan->head) {
 		/* simple case - first packet enqueued */
@@ -802,13 +759,10 @@ static int cpdma_process(struct cpsw_priv *priv, struct cpdma_chan *chan,
 
 	cpdma_desc_get(desc);
 
-	debug("%s@%d desc=%p chan=%p\n", __func__, __LINE__, desc->dma_desc, chan);
 	status = desc_read(desc, hw_mode);
 
 	if (len)
 		*len = status & 0x7ff;
-	debug("%s@%d: status=%08x len=%u\n", __func__, __LINE__,
-		status, *len);
 
 	if (buffer)
 		*buffer = desc->sw_buffer;
@@ -933,7 +887,7 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 
 static void cpsw_halt(struct eth_device *dev)
 {
-	struct cpsw_priv	*priv = dev->priv;
+	struct cpsw_priv *priv = dev->priv;
 
 	debug("%s\n", __func__);
 	priv->data->control(0);
@@ -941,22 +895,19 @@ static void cpsw_halt(struct eth_device *dev)
 
 static int cpsw_send(struct eth_device *dev, volatile void *packet, int length)
 {
-	struct cpsw_priv	*priv = dev->priv;
-	volatile void *buffer = (volatile void *)0xeeeeeeee;
-	int len = 0x77777777;
+	struct cpsw_priv *priv = dev->priv;
+	volatile void *buffer;
+	int len;
 
-	debug("%s@%d sending packet %p..%p\n", __func__, __LINE__,
+	debug("%s@%d: sending packet %p..%p\n", __func__, __LINE__,
 		packet, packet + length - 1);
 	if (!cpsw_update_link(priv))
 		return -EIO;
-
-	debug("%s@%d\n", __func__, __LINE__);
-	/* first reap completed packets */
-	while (cpdma_process(priv, &priv->tx_chan, &buffer, &len) >= 0) {
-		debug("%s@%d: buffer=%p len=%d\n", __func__, __LINE__,
-			buffer, len);
 	}
-	debug("%s@%d\n", __func__, __LINE__);
+
+	/* first reap completed packets */
+	while (cpdma_process(priv, &priv->tx_chan, &buffer, &len) == 0)
+		/* NOP */;
 
 	return cpdma_submit(priv, &priv->tx_chan, packet, length);
 }
@@ -967,16 +918,15 @@ static int cpsw_recv(struct eth_device *dev)
 	volatile void *buffer;
 	int len;
 
-	debug("%s@%d\n", __func__, __LINE__);
-	while (cpdma_process(priv, &priv->rx_chan, &buffer, &len) >= 0) {
-		debug("invalidating %p..%p\n", buffer,
-			buffer + ALIGN(len, CONFIG_SYS_CACHELINE_SIZE));
-		invalidate_dcache_range((u32)buffer,
-			(u32)buffer + ALIGN(len, CONFIG_SYS_CACHELINE_SIZE));
-		NetReceive(buffer, len);
-		cpdma_submit(priv, &priv->rx_chan, buffer, PKTSIZE);
+	while (cpdma_process(priv, &priv->rx_chan, &buffer, &len) == 0) {
+		if (buffer) {
+			NetReceive(buffer, len);
+			cpdma_submit(priv, &priv->rx_chan, buffer, PKTSIZE);
+		} else {
+			printf("NULL buffer returned from cpdma_process\n");
+			return -EIO;
+		}
 	}
-	debug("%s@%d: done\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -1057,12 +1007,9 @@ int cpsw_register(struct cpsw_platform_data *data)
 	dev->recv	= cpsw_recv;
 	dev->priv	= priv;
 
-	debug("%s@%d\n", __func__, __LINE__);
 	eth_register(dev);
 
-	debug("%s@%d\n", __func__, __LINE__);
 	cpsw_mdio_init(dev->name, data->mdio_base, data->mdio_div);
 
-	debug("%s@%d: done\n", __func__, __LINE__);
 	return 1;
 }
