@@ -763,7 +763,7 @@ void __am33xx_nand_switch_ecc(struct nand_chip *nand,
 					bch->nibbles = ECC_BCH8_NIBBLES;
 					debug("8 Selected\n");
 			}
-			nand->ecc.mode = NAND_ECC_HW_SYNDROME;
+			nand->ecc.mode = NAND_ECC_HW;
 			nand->ecc.steps = 4;
 			nand->ecc.size = 512;
 			nand->ecc.total = nand->ecc.steps * nand->ecc.bytes;
@@ -921,7 +921,7 @@ int board_nand_init(struct nand_chip *nand)
 	/* The NAND chip present requires that we have written data in with
 	 * at least 4-bit ECC so we configure outself for that in SPL.
 	 */
-	nand->ecc.mode = NAND_ECC_HW_SYNDROME;
+	nand->ecc.mode = NAND_ECC_HW;
 	nand->ecc.layout = &hw_bch8_nand_oob;
 	nand->ecc.size = CONFIG_SYS_NAND_ECCSIZE;
 	nand->ecc.bytes = CONFIG_SYS_NAND_ECCBYTES;
