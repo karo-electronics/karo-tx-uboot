@@ -55,8 +55,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
-
 #define MX53_GPIO_PAD_CTRL	(PAD_CTL_PKE | PAD_CTL_PUE |		\
 				PAD_CTL_DSE_HIGH | PAD_CTL_PUS_22K_UP)
 
@@ -190,6 +188,24 @@ int board_early_init_f(void)
 {
 	gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
 	mxc_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
+
+	writel(0x77777777, AIPS1_BASE_ADDR + 0x00);
+	writel(0x77777777, AIPS1_BASE_ADDR + 0x04);
+
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x40);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x44);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x48);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x4c);
+	writel(0x00000000, AIPS1_BASE_ADDR + 0x50);
+
+	writel(0x77777777, AIPS2_BASE_ADDR + 0x00);
+	writel(0x77777777, AIPS2_BASE_ADDR + 0x04);
+
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x40);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x44);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x48);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x4c);
+	writel(0x00000000, AIPS2_BASE_ADDR + 0x50);
 
 	return 0;
 }
@@ -781,27 +797,20 @@ static void stk5v5_board_init(void)
 
 static void tx53_move_fdt(void)
 {
-	unsigned long fdt_addr = getenv_ulong("fdtcontroladdr", 16, 0);
-	void *fdt = NULL;
+	const void *fdt = gd->fdt_blob;
+	unsigned long fdt_addr = getenv_ulong("fdtaddr", 16, 0);
 
-	if (!fdt_addr)
+	if (!fdt || !fdt_addr) {
+		printf("fdt=%p fdt_addr=%08lx\n", fdt, fdt_addr);
 		return;
-
-#ifdef CONFIG_OF_EMBED
-	fdt = _binary_dt_dtb_start;
-#elif defined CONFIG_OF_SEPARATE
-	fdt = (void *)(_end_ofs + _TEXT_BASE);
-#endif
-	if (!fdt)
-		return;
+	}
 
 	if (fdt_check_header(fdt)) {
 		printf("ERROR: No valid FDT found at %p\n", fdt);
 		return;
 	}
-	size_t fdt_len = fdt_totalsize(fdt);
 
-	memmove((void *)fdt_addr, fdt, fdt_len);
+	memmove((void *)fdt_addr, fdt, fdt_totalsize(fdt));
 	set_working_fdt_addr((void *)fdt_addr);
 }
 
@@ -809,6 +818,9 @@ static void tx53_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 	int ret;
+
+	if (tstc() || (wrsr & WRSR_TOUT))
+		return;
 
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
@@ -889,16 +901,42 @@ static const char *tx53_touchpanels[] = {
 	"edt,edt-ft5x06",
 };
 
-static void fdt_del_node_by_name(void *blob, const char *name)
+static void fdt_del_tp_node(void *blob, const char *name)
 {
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
+	uint32_t ph1 = 0, ph2 = 0;
+	const uint32_t *prop;
 
 	if (offs < 0) {
 		debug("node '%s' not found: %d\n", name, offs);
 		return;
 	}
+
+	prop = fdt_getprop(blob, offs, "reset-switch", NULL);
+	if (prop)
+		ph1 = be32_to_cpu(*prop);
+
+	prop = fdt_getprop(blob, offs, "wake-switch", NULL);
+	if (prop)
+		ph2 = be32_to_cpu(*prop);
+
 	debug("Removing node '%s' from DT\n", name);
 	fdt_del_node(blob, offs);
+
+	if (ph1) {
+		offs = fdt_node_offset_by_phandle(blob, ph1);
+		if (offs > 0) {
+			debug("Removing node @ %08x\n", offs);
+			fdt_del_node(blob, offs);
+		}
+	}
+	if (ph2) {
+		offs = fdt_node_offset_by_phandle(blob, ph2);
+		if (offs > 0) {
+			debug("Removing node @ %08x\n", offs);
+			fdt_del_node(blob, offs);
+		}
+	}
 }
 
 static void tx53_fixup_touchpanel(void *blob)
@@ -916,7 +954,7 @@ static void tx53_fixup_touchpanel(void *blob)
 		if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
 			continue;
 
-		fdt_del_node_by_name(blob, tx53_touchpanels[i]);
+		fdt_del_tp_node(blob, tx53_touchpanels[i]);
 	}
 }
 
@@ -941,6 +979,53 @@ static void tx53_fixup_usb_otg(void *blob)
 	}
 }
 
+static void tx53_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
+			const char *prop)
+{
+	int ret;
+	int offset;
+	const uint32_t *phandle;
+	uint32_t ph = 0;
+
+	offset = fdt_node_offset_by_compat_reg(blob, compat, offs);
+	if (offset <= 0)
+		return;
+
+	phandle = fdt_getprop(blob, offset, "transceiver-switch", NULL);
+	if (phandle) {
+		ph = be32_to_cpu(*phandle);
+		printf("phandle=%08x\n", ph);
+	}
+
+	debug("Removing property '%s' from node %s@%08lx\n", prop, compat, offs);
+	ret = fdt_delprop(blob, offset, prop);
+	if (ret)
+		printf("Failed to remove property '%s' from node %s@%08lx\n",
+			prop, compat, offs);
+
+	if (!ph)
+		return;
+
+	offset = fdt_node_offset_by_phandle(blob, ph);
+	printf("Node offset[%x]=%08x\n", ph, offset);
+	if (offset <= 0)
+		return;
+
+	debug("Removing node @ %08x\n", offset);
+	fdt_del_node(blob, offset);
+}
+
+static void tx53_fixup_flexcan(void *blob)
+{
+	const char *baseboard = getenv("baseboard");
+
+	if (baseboard && strcmp(baseboard, "stk5-v5") == 0)
+		return;
+
+	tx53_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fc8000, "transceiver-switch");
+	tx53_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fcc000, "transceiver-switch");
+}
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
@@ -948,5 +1033,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	tx53_fixup_touchpanel(blob);
 	tx53_fixup_usb_otg(blob);
+	tx53_fixup_flexcan(blob);
 }
 #endif
