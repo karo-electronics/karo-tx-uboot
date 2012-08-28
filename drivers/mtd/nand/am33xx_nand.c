@@ -827,13 +827,26 @@ void am33xx_nand_switch_ecc(nand_ecc_modes_t hardware, int32_t mode)
 	nand->options &= ~NAND_OWN_BUFFERS;
 	return;
 }
-#endif
 
-#ifdef CONFIG_SPL_BUILD
+static int am33xx_scan_bbt(struct mtd_info *mtd)
+{
+	int ret;
+
+	am33xx_nand_switch_ecc(NAND_ECC_HW, 0);
+	ret = nand_default_bbt(mtd);
+	am33xx_nand_switch_ecc(NAND_ECC_HW, 2);
+	return ret;
+}
+#else /* CONFIG_SPL_BUILD */
 /* Check wait pin as dev ready indicator */
 static int am33xx_spl_dev_ready(struct mtd_info *mtd)
 {
 	return gpmc_cfg->status & (1 << 8);
+}
+
+static int am33xx_scan_bbt(struct mtd_info *mtd)
+{
+	return 0;
 }
 #endif
 
@@ -884,6 +897,8 @@ int board_nand_init(struct nand_chip *nand)
 
 	nand->cmd_ctrl = am33xx_nand_hwcontrol;
 	nand->options = NAND_NO_PADDING | NAND_CACHEPRG | NAND_NO_AUTOINCR;
+	nand->scan_bbt = am33xx_scan_bbt;
+
 	/* If we are 16 bit dev, our gpmc config tells us that */
 	if ((readl(&gpmc_cfg->cs[cs].config1) & 0x3000) == 0x1000) {
 		nand->options |= NAND_BUSWIDTH_16;
@@ -901,7 +916,7 @@ int board_nand_init(struct nand_chip *nand)
 	/* For undocumented reasons we need to currently keep our environment
 	 * in 1-bit ECC so we configure ourself thusly. */
 	nand_curr_device = 0;
-	am33xx_nand_switch_ecc(NAND_ECC_HW, 0);
+	am33xx_nand_switch_ecc(NAND_ECC_HW, 2);
 #else
 	/* The NAND chip present requires that we have written data in with
 	 * at least 4-bit ECC so we configure outself for that in SPL.
