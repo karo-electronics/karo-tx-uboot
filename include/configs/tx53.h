@@ -22,7 +22,7 @@
 #define CONFIG_TX53				/* TX53 SoM */
 #define CONFIG_MX53				/* i.MX53 SoC */
 #define CONFIG_SYS_MX5_IOMUX_V3
-#define	CONFIG_MXC_GPIO				/* GPIO control */
+#define CONFIG_MXC_GPIO				/* GPIO control */
 #define CONFIG_SYS_MX5_HCLK	24000000
 #define CONFIG_SYS_MX5_CLK32	32768
 #define CONFIG_SYS_DDR_CLKSEL	0
@@ -30,12 +30,12 @@
 #define CONFIG_SHOW_ACTIVITY
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
-#define CONFIG_SPLASH_SCREEN
 #define CONFIG_BOARD_EARLY_INIT_F
 
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
 #ifdef CONFIG_LCD
+#define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_VIDEO_MX5
 #define CONFIG_LCD_LOGO
@@ -96,23 +96,26 @@
  */
 #define xstr(s)	str(s)
 #define str(s)	#s
+#define __pfx(x, s)	(x##s)
+#define _pfx(x, s)	__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_ZERO_BOOTDELAY_CHECK
+#define CONFIG_SYS_AUTOLOAD	"no"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_BOOTARGS		"console=ttymxc0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
-#define CONFIG_LOADADDR		0x78000000
-#define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+#define CONFIG_LOADADDR		78000000
+#define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
 #define CONFIG_HW_WATCHDOG
 
 /*
  * Extra Environments
  */
-#define	CONFIG_EXTRA_ENV_SETTINGS					\
+#define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
@@ -132,7 +135,7 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${mtdparts} video=${video_mode} ${append_bootargs}\0"		\
 	"cpu_clk=800\0"							\
-	"fdtcontroladdr=70004000\0"					\
+	"fdtaddr=70004000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
@@ -161,12 +164,12 @@
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
 #define CONFIG_MXC_GPIO
-#define	CONFIG_CONS_INDEX		0
+#define CONFIG_CONS_INDEX		0
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
 
 /*
- * FEC Driver
+ * Ethernet Driver
  */
 #define CONFIG_FEC_MXC
 #ifdef CONFIG_FEC_MXC
@@ -177,7 +180,6 @@
 #define CONFIG_MII
 #define CONFIG_FEC_XCV_TYPE		MII100
 #define CONFIG_GET_FEC_MAC_ADDR_FROM_IIM
-#define CONFIG_ETH_PRIME
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
@@ -202,7 +204,7 @@
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define	CONFIG_SYS_NAND_5_ADDR_CYCLE
+#define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
 #ifdef CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OVERWRITE
@@ -231,13 +233,11 @@
 #define CONFIG_ENV_IS_IN_MMC
 #endif
 #define CONFIG_MMC
-#define	CONFIG_GENERIC_MMC
-#define	CONFIG_FSL_ESDHC
+#define CONFIG_GENERIC_MMC
+#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_USE_PIO
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	2
-#define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_FAT
 
 #define CONFIG_BOOT_PARTITION_ACCESS
 #define CONFIG_DOS_PARTITION
@@ -249,7 +249,6 @@
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV	0
-#define CONFIG_CMD_ENV
 #define CONFIG_ENV_OVERWRITE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		0x400 /* 1 KB */
