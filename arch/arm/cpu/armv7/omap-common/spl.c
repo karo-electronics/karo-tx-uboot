@@ -168,8 +168,9 @@ void board_init_r(gd_t *id, ulong dummy)
 #endif
 #ifdef CONFIG_SPL_NAND_SUPPORT
 	case BOOT_DEVICE_NAND:
-		spl_nand_load_image();
-		break;
+		if (spl_nand_load_image() == 0)
+			break;
+		/* fall thru to ymodem (if supported) */
 #endif
 #ifdef CONFIG_SPL_YMODEM_SUPPORT
 	case BOOT_DEVICE_UART:
