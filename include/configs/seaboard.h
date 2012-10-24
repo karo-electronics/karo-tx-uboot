@@ -25,7 +25,20 @@
 #define __CONFIG_H
 
 #include <asm/sizes.h>
+
+/* LP0 suspend / resume */
+#define CONFIG_TEGRA2_LP0
+#define CONFIG_AES
+#define CONFIG_TEGRA_PMU
+#define CONFIG_TPS6586X_POWER
+#define CONFIG_TEGRA_CLOCK_SCALING
+
 #include "tegra2-common.h"
+
+/* Enable fdt support for Seaboard. Flash the image in u-boot-dtb.bin */
+#define CONFIG_DEFAULT_DEVICE_TREE	tegra2-seaboard
+#define CONFIG_OF_CONTROL
+#define CONFIG_OF_SEPARATE
 
 /* High-level configuration options */
 #define TEGRA2_SYSMEM		"mem=384M@0M nvmem=128M@384M mem=512M@512M"
@@ -54,6 +67,14 @@
 #define CONFIG_CMD_SF
 #define CONFIG_SPI_FLASH_SIZE		(4 << 20)
 
+/* I2C */
+#define CONFIG_TEGRA_I2C
+#define CONFIG_SYS_I2C_INIT_BOARD
+#define CONFIG_I2C_MULTI_BUS
+#define CONFIG_SYS_MAX_I2C_BUS		4
+#define CONFIG_SYS_I2C_SPEED		100000
+#define CONFIG_CMD_I2C
+
 /* SD/MMC */
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
@@ -72,4 +93,19 @@
 
 #define CONFIG_ENV_SECT_SIZE    CONFIG_ENV_SIZE
 #define CONFIG_ENV_OFFSET       (CONFIG_SPI_FLASH_SIZE - CONFIG_ENV_SECT_SIZE)
+
+/* USB Host support */
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_TEGRA
+#define CONFIG_USB_STORAGE
+#define CONFIG_CMD_USB
+
+/* Enable keyboard */
+#define CONFIG_TEGRA2_KEYBOARD
+#define CONFIG_KEYBOARD
+
+#undef TEGRA2_DEVICE_SETTINGS
+#define TEGRA2_DEVICE_SETTINGS	"stdin=serial,tegra-kbc\0" \
+					"stdout=serial\0" \
+					"stderr=serial\0"
 #endif /* __CONFIG_H */

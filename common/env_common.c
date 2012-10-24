@@ -228,7 +228,7 @@ void env_relocate(void)
 #if defined(CONFIG_ENV_IS_NOWHERE)	/* Environment not changable */
 		set_default_env(NULL);
 #else
-		show_boot_progress(-60);
+		bootstage_error(BOOTSTAGE_ID_NET_CHECKSUM);
 		set_default_env("!bad CRC");
 #endif
 	} else {

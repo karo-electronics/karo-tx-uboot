@@ -19,32 +19,32 @@
 /*
  * OMAP HSMMC register definitions
  */
-#define OMAP_HSMMC1_BASE		0x48060100
+#define OMAP_HSMMC1_BASE		0x48060000
 #define OMAP_HSMMC2_BASE		0x481D8000
-#define OMAP_HSMMC3_BASE		0x47C24000
+#define OMAP_HSMMC3_BASE		0x47810000
 
 typedef struct hsmmc {
-	unsigned char res1[0x10];
-	unsigned int sysconfig;		/* 0x10 */
-	unsigned int sysstatus;		/* 0x14 */
+	unsigned char res1[0x110];
+	unsigned int sysconfig;		/* 0x110 */
+	unsigned int sysstatus;		/* 0x114 */
 	unsigned char res2[0x14];
-	unsigned int con;		/* 0x2C */
+	unsigned int con;		/* 0x12C */
 	unsigned char res3[0xD4];
-	unsigned int blk;		/* 0x104 */
-	unsigned int arg;		/* 0x108 */
-	unsigned int cmd;		/* 0x10C */
-	unsigned int rsp10;		/* 0x110 */
-	unsigned int rsp32;		/* 0x114 */
-	unsigned int rsp54;		/* 0x118 */
-	unsigned int rsp76;		/* 0x11C */
-	unsigned int data;		/* 0x120 */
-	unsigned int pstate;		/* 0x124 */
-	unsigned int hctl;		/* 0x128 */
-	unsigned int sysctl;		/* 0x12C */
-	unsigned int stat;		/* 0x130 */
-	unsigned int ie;		/* 0x134 */
+	unsigned int blk;		/* 0x204 */
+	unsigned int arg;		/* 0x208 */
+	unsigned int cmd;		/* 0x20C */
+	unsigned int rsp10;		/* 0x210 */
+	unsigned int rsp32;		/* 0x214 */
+	unsigned int rsp54;		/* 0x218 */
+	unsigned int rsp76;		/* 0x21C */
+	unsigned int data;		/* 0x220 */
+	unsigned int pstate;		/* 0x224 */
+	unsigned int hctl;		/* 0x228 */
+	unsigned int sysctl;		/* 0x22C */
+	unsigned int stat;		/* 0x230 */
+	unsigned int ie;		/* 0x234 */
 	unsigned char res4[0x8];
-	unsigned int capa;		/* 0x140 */
+	unsigned int capa;		/* 0x240 */
 } hsmmc_t;
 
 /*
@@ -72,7 +72,7 @@ typedef struct hsmmc {
 #define BCE_DISABLE			(0x0 << 1)
 #define BCE_ENABLE			(0x1 << 1)
 #define ACEN_DISABLE			(0x0 << 2)
-#define DDIR_OFFSET			(4)
+#define DDIR_OFFSET			4
 #define DDIR_MASK			(0x1 << 4)
 #define DDIR_WRITE			(0x0 << 4)
 #define DDIR_READ			(0x1 << 4)
@@ -88,19 +88,19 @@ typedef struct hsmmc {
 #define CCCE_CHECK			(0x1 << 19)
 #define CICE_NOCHECK			(0x0 << 20)
 #define CICE_CHECK			(0x1 << 20)
-#define DP_OFFSET			(21)
+#define DP_OFFSET			21
 #define DP_MASK				(0x1 << 21)
 #define DP_NO_DATA			(0x0 << 21)
 #define DP_DATA				(0x1 << 21)
 #define CMD_TYPE_NORMAL			(0x0 << 22)
-#define INDEX_OFFSET			(24)
+#define INDEX_OFFSET			24
 #define INDEX_MASK			(0x3f << 24)
-#define INDEX(i)			(i << 24)
+#define INDEX(i)			((i) << 24)
 #define DATI_MASK			(0x1 << 1)
 #define CMDI_MASK			(0x1 << 0)
 #define DTW_1_BITMODE			(0x0 << 1)
 #define DTW_4_BITMODE			(0x1 << 1)
-#define DTW_8_BITMODE                   (0x1 << 5) /* CON[DW8]*/
+#define DTW_8_BITMODE			(0x1 << 5) /* CON[DW8]*/
 #define SDBP_PWROFF			(0x0 << 8)
 #define SDBP_PWRON			(0x1 << 8)
 #define SDVS_1V8			(0x5 << 9)
@@ -113,7 +113,7 @@ typedef struct hsmmc {
 #define CEN_MASK			(0x1 << 2)
 #define CEN_DISABLE			(0x0 << 2)
 #define CEN_ENABLE			(0x1 << 2)
-#define CLKD_OFFSET			(6)
+#define CLKD_OFFSET			6
 #define CLKD_MASK			(0x3FF << 6)
 #define DTO_MASK			(0xF << 16)
 #define DTO_15THDTO			(0xE << 16)
@@ -157,8 +157,8 @@ typedef struct hsmmc {
 #define MMC_CLOCK_REFERENCE	96 /* MHz */
 
 #define mmc_reg_out(addr, mask, val)\
-	writel((readl(addr) & (~(mask))) | ((val) & (mask)), (addr))
+	writel((readl(addr) & (~(mask))) | ((val) & (mask)), addr)
 
-int omap_mmc_init(int dev_index);
+int omap_mmc_init(int dev_index, uint host_caps_mask, uint f_max);
 
 #endif /* MMC_HOST_DEF_H */

@@ -34,13 +34,15 @@ enum mxc_gpio_direction {
 	MXC_GPIO_DIRECTION_OUT,
 };
 
+#define GPIO_TO_PORT(n)		((n) / 32)
 
 /* GPIO port description */
 static unsigned long gpio_ports[] = {
 	[0] = GPIO1_BASE_ADDR,
 	[1] = GPIO2_BASE_ADDR,
 	[2] = GPIO3_BASE_ADDR,
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
+#if defined(CONFIG_MX25) || defined(CONFIG_MX51) || defined(CONFIG_MX53) || \
+		defined(CONFIG_MX6Q)
 	[3] = GPIO4_BASE_ADDR,
 #endif
 #if defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
@@ -53,7 +55,7 @@ static unsigned long gpio_ports[] = {
 static int mxc_gpio_direction(unsigned int gpio,
 	enum mxc_gpio_direction direction)
 {
-	unsigned int port = gpio >> 5;
+	unsigned int port = GPIO_TO_PORT(gpio);
 	struct gpio_regs *regs;
 	u32 l;
 
@@ -80,7 +82,7 @@ static int mxc_gpio_direction(unsigned int gpio,
 
 int gpio_set_value(unsigned gpio, int value)
 {
-	unsigned int port = gpio >> 5;
+	unsigned int port = GPIO_TO_PORT(gpio);
 	struct gpio_regs *regs;
 	u32 l;
 
@@ -103,7 +105,7 @@ int gpio_set_value(unsigned gpio, int value)
 
 int gpio_get_value(unsigned gpio)
 {
-	unsigned int port = gpio >> 5;
+	unsigned int port = GPIO_TO_PORT(gpio);
 	struct gpio_regs *regs;
 	u32 val;
 
@@ -121,7 +123,7 @@ int gpio_get_value(unsigned gpio)
 
 int gpio_request(unsigned gpio, const char *label)
 {
-	unsigned int port = gpio >> 5;
+	unsigned int port = GPIO_TO_PORT(gpio);
 	if (port >= ARRAY_SIZE(gpio_ports))
 		return -1;
 	return 0;
@@ -139,11 +141,10 @@ int gpio_direction_input(unsigned gpio)
 
 int gpio_direction_output(unsigned gpio, int value)
 {
-	int ret = mxc_gpio_direction(gpio, MXC_GPIO_DIRECTION_OUT);
+	int ret = gpio_set_value(gpio, value);
 
 	if (ret < 0)
 		return ret;
 
-	gpio_set_value(gpio, value);
-	return 0;
+	return mxc_gpio_direction(gpio, MXC_GPIO_DIRECTION_OUT);
 }

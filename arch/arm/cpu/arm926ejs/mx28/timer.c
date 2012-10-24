@@ -113,8 +113,11 @@ int timer_init(void)
 void __udelay(unsigned long usec)
 {
 	uint32_t start = readl(MX28_HW_DIGCTL_MICROSECONDS);
-	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start < usec)
-		/* No need for fancy rollover checks
+
+	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= usec)
+		/* use '<=' to guarantee a delay of _at least_
+		 * the given number of microseconds.
+		 * No need for fancy rollover checks
 		 * Two's complement arithmetic applied correctly
 		 * does everything that's needed  automagically!
 		 */
@@ -143,6 +146,11 @@ unsigned long long get_ticks(void)
 	 * it doesn't make sense to return a real 64 bit value here.
 	 */
 	return gd->tbl;
+}
+
+ulong get_timer_masked(void)
+{
+	return tick_to_time(get_ticks());
 }
 
 ulong get_timer(ulong base)

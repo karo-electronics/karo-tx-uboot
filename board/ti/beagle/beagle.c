@@ -252,6 +252,39 @@ void beagle_display_init(void)
 }
 
 /*
+ * Enable DVI power
+ */
+static void beagle_dvi_pup(void)
+{
+	uchar val;
+
+	switch (get_board_revision()) {
+	case REVISION_AXBX:
+	case REVISION_CX:
+	case REVISION_C4:
+	case REVISION_XM_A:
+		gpio_request(170, "");
+		gpio_direction_output(170, 0);
+		gpio_set_value(170, 1);
+		break;
+	case REVISION_XM_B:
+	case REVISION_XM_C:
+	default:
+		#define GPIODATADIR1 (TWL4030_BASEADD_GPIO+3)
+		#define GPIODATAOUT1 (TWL4030_BASEADD_GPIO+6)
+
+		i2c_read(TWL4030_CHIP_GPIO, GPIODATADIR1, 1, &val, 1);
+		val |= 4;
+		i2c_write(TWL4030_CHIP_GPIO, GPIODATADIR1, 1, &val, 1);
+
+		i2c_read(TWL4030_CHIP_GPIO, GPIODATAOUT1, 1, &val, 1);
+		val |= 4;
+		i2c_write(TWL4030_CHIP_GPIO, GPIODATAOUT1, 1, &val, 1);
+		break;
+	}
+}
+
+/*
  * Routine: misc_init_r
  * Description: Configure board specific parts
  */
@@ -422,6 +455,8 @@ int misc_init_r(void)
 		GPIO15 | GPIO14 | GPIO13 | GPIO12), &gpio5_base->oe);
 
 	dieid_num_r();
+
+	beagle_dvi_pup();
 	beagle_display_init();
 	omap3_dss_enable();
 
@@ -442,7 +477,7 @@ void set_muxconf_regs(void)
 #if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
-	omap_mmc_init(0);
+	omap_mmc_init(0, 0, 0);
 	return 0;
 }
 #endif
@@ -451,7 +486,7 @@ int board_mmc_init(bd_t *bis)
 /* Call usb_stop() before starting the kernel */
 void show_boot_progress(int val)
 {
-	if(val == 15)
+	if (val == BOOTSTAGE_ID_RUN_OS)
 		usb_stop();
 }
 
@@ -472,58 +507,3 @@ int ehci_hcd_stop(void)
 }
 
 #endif /* CONFIG_USB_EHCI */
-
-#ifndef CONFIG_SPL_BUILD
-/*
- * This command returns the status of the user button on beagle xM
- * Input - none
- * Returns - 	1 if button is held down
- *		0 if button is not held down
- */
-int do_userbutton(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-	int     button = 0;
-	int	gpio;
-
-	/*
-	 * pass address parameter as argv[0] (aka command name),
-	 * and all remaining args
-	 */
-	switch (get_board_revision()) {
-	case REVISION_AXBX:
-	case REVISION_CX:
-	case REVISION_C4:
-		gpio = 7;
-		break;
-	case REVISION_XM_A:
-	case REVISION_XM_B:
-	case REVISION_XM_C:
-	default:
-		gpio = 4;
-		break;
-	}
-	gpio_request(gpio, "");
-	gpio_direction_input(gpio);
-	printf("The user button is currently ");
-	if (gpio_get_value(gpio))
-	{
-		button = 1;
-		printf("PRESSED.\n");
-	}
-	else
-	{
-		button = 0;
-		printf("NOT pressed.\n");
-	}
-
-	return !button;
-}
-
-/* -------------------------------------------------------------------- */
-
-U_BOOT_CMD(
-	userbutton, CONFIG_SYS_MAXARGS, 1,	do_userbutton,
-	"Return the status of the BeagleBoard USER button",
-	""
-);
-#endif

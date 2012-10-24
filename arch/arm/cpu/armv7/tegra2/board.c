@@ -23,12 +23,12 @@
 
 #include <common.h>
 #include <asm/io.h>
-#include "ap20.h"
+#include <asm/arch/ap20.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
+#include <asm/arch/pmc.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/tegra2.h>
-#include <asm/arch/pmc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -47,7 +47,7 @@ enum {
 
 unsigned int query_sdram_size(void)
 {
-	struct pmc_ctlr *const pmc = (struct pmc_ctlr *)NV_PA_PMC_BASE;
+	struct pmc_ctlr *const pmc = (struct pmc_ctlr *)TEGRA2_PMC_BASE;
 	u32 reg;
 
 	reg = readl(&pmc->pmc_scratch20);

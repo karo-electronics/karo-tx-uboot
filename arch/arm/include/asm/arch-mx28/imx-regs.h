@@ -27,8 +27,11 @@
 #include <asm/arch/regs-base.h>
 #include <asm/arch/regs-bch.h>
 #include <asm/arch/regs-clkctrl.h>
+#include <asm/arch/regs-digctl.h>
 #include <asm/arch/regs-gpmi.h>
 #include <asm/arch/regs-i2c.h>
+#include <asm/arch/regs-lcdif.h>
+#include <asm/arch/regs-lradc.h>
 #include <asm/arch/regs-ocotp.h>
 #include <asm/arch/regs-pinctrl.h>
 #include <asm/arch/regs-power.h>
@@ -36,4 +39,7 @@
 #include <asm/arch/regs-ssp.h>
 #include <asm/arch/regs-timrot.h>
 
+extern void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
+
 #endif	/* __IMX_REGS_H__ */
+

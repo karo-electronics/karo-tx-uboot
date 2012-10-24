@@ -55,12 +55,16 @@ DECLARE_GLOBAL_DATA_PTR;
 #error	"Console port 3 defined but not configured."
 #elif CONFIG_CONS_INDEX == 4 && !defined(CONFIG_SYS_NS16550_COM4)
 #error	"Console port 4 defined but not configured."
+#elif CONFIG_CONS_INDEX == 5 && !defined(CONFIG_SYS_NS16550_COM5)
+#error	"Console port 5 defined but not configured."
+#elif CONFIG_CONS_INDEX == 6 && !defined(CONFIG_SYS_NS16550_COM6)
+#error	"Console port 6 defined but not configured."
 #endif
 
 /* Note: The port number specified in the functions is 1 based.
  *	 the array is 0 based.
  */
-static NS16550_t serial_ports[4] = {
+static NS16550_t serial_ports[] = {
 #ifdef CONFIG_SYS_NS16550_COM1
 	(NS16550_t)CONFIG_SYS_NS16550_COM1,
 #else
@@ -77,9 +81,19 @@ static NS16550_t serial_ports[4] = {
 	NULL,
 #endif
 #ifdef CONFIG_SYS_NS16550_COM4
-	(NS16550_t)CONFIG_SYS_NS16550_COM4
+	(NS16550_t)CONFIG_SYS_NS16550_COM4,
 #else
-	NULL
+	NULL,
+#endif
+#ifdef CONFIG_SYS_NS16550_COM5
+	(NS16550_t)CONFIG_SYS_NS16550_COM5,
+#else
+	NULL,
+#endif
+#ifdef CONFIG_SYS_NS16550_COM6
+	(NS16550_t)CONFIG_SYS_NS16550_COM6,
+#else
+	NULL,
 #endif
 };
 
@@ -177,6 +191,14 @@ int serial_init (void)
 #ifdef CONFIG_SYS_NS16550_COM4
 	clock_divisor = calc_divisor(serial_ports[3]);
 	NS16550_init(serial_ports[3], clock_divisor);
+#endif
+#ifdef CONFIG_SYS_NS16550_COM5
+	clock_divisor = calc_divisor(serial_ports[4]);
+	NS16550_init(serial_ports[4], clock_divisor);
+#endif
+#ifdef CONFIG_SYS_NS16550_COM6
+	clock_divisor = calc_divisor(serial_ports[5]);
+	NS16550_init(serial_ports[5], clock_divisor);
 #endif
 
 	return (0);

@@ -222,6 +222,31 @@ typedef void (interrupt_handler_t)(void *);
 #define MIN(x, y)  min(x, y)
 #define MAX(x, y)  max(x, y)
 
+/*
+ * Return the absolute value of a number.
+ *
+ * This handles unsigned and signed longs, ints, shorts and chars.  For all
+ * input types abs() returns a signed long.
+ *
+ * For 64-bit types, use abs64()
+ */
+#define abs(x) ({						\
+		long ret;					\
+		if (sizeof(x) == sizeof(long)) {		\
+			long __x = (x);				\
+			ret = (__x < 0) ? -__x : __x;		\
+		} else {					\
+			int __x = (x);				\
+			ret = (__x < 0) ? -__x : __x;		\
+		}						\
+		ret;						\
+	})
+
+#define abs64(x) ({				\
+		s64 __x = (x);			\
+		(__x < 0) ? -__x : __x;		\
+	})
+
 #if defined(CONFIG_ENV_IS_EMBEDDED)
 #define TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
 #elif ( ((CONFIG_ENV_ADDR+CONFIG_ENV_SIZE) < CONFIG_SYS_MONITOR_BASE) || \
@@ -260,10 +285,7 @@ int	print_buffer (ulong addr, void* data, uint width, uint count, uint linelen);
 
 /* common/main.c */
 void	main_loop	(void);
-int	run_command	(const char *cmd, int flag);
-#ifdef CONFIG_CMD_PXE
-int run_command2(const char *cmd, int flag);
-#endif
+int run_command(const char *cmd, int flag);
 int	readline	(const char *const prompt);
 int	readline_into_buffer(const char *const prompt, char *buffer,
 			int timeout);
@@ -286,13 +308,6 @@ extern ulong monitor_flash_len;
 int mac_read_from_eeprom(void);
 extern u8 _binary_dt_dtb_start[];	/* embedded device tree blob */
 int set_cpu_clk_info(void);
-
-/*
- * Called when console output is requested before the console is available.
- * The board should do its best to get the character out to the user any way
- * it can.
- */
-void board_pre_console_putc(int ch);
 
 /* common/flash.c */
 void flash_perror (int);
@@ -801,10 +816,8 @@ int	pcmcia_init (void);
 #ifdef CONFIG_STATUS_LED
 # include <status_led.h>
 #endif
-/*
- * Board-specific Platform code can reimplement show_boot_progress () if needed
- */
-void show_boot_progress(int val);
+
+#include <bootstage.h>
 
 /* Multicore arch functions */
 #ifdef CONFIG_MP

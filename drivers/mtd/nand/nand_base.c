@@ -39,7 +39,7 @@
 #include <malloc.h>
 #include <watchdog.h>
 #include <linux/err.h>
-#include <linux/mtd/compat.h>
+#include <linux/compat.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
@@ -478,6 +478,11 @@ static int nand_block_checkbad(struct mtd_info *mtd, loff_t ofs, int getchip,
 			       int allowbbt)
 {
 	struct nand_chip *chip = mtd->priv;
+
+	if (!(chip->options & NAND_BBT_SCANNED)) {
+		chip->options |= NAND_BBT_SCANNED;
+		chip->scan_bbt(mtd);
+	}
 
 	if (!chip->bbt)
 		return chip->block_bad(mtd, ofs, getchip);
@@ -1898,8 +1903,6 @@ static uint8_t *nand_fill_oob(struct nand_chip *chip, uint8_t *oob, size_t len,
 	return NULL;
 }
 
-#define NOTALIGNED(x)	((x & (chip->subpagesize - 1)) != 0)
-
 /**
  * nand_do_write_ops - [Internal] NAND write with ECC
  * @mtd:	MTD device structure
@@ -2926,6 +2929,7 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
  */
 int nand_scan_tail(struct mtd_info *mtd)
 {
+	uint32_t dev_width;
 	int i;
 	struct nand_chip *chip = mtd->priv;
 
@@ -2936,6 +2940,8 @@ int nand_scan_tail(struct mtd_info *mtd)
 
 	/* Set the internal oob buffer location, just after the page data */
 	chip->oob_poi = chip->buffers->databuf + mtd->writesize;
+
+	dev_width = (chip->options & NAND_BUSWIDTH_16) >> 1;
 
 	/*
 	 * If no default placement scheme is given, select an appropriate one
@@ -3028,10 +3034,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 		chip->ecc.mode = NAND_ECC_SOFT;
 
 	case NAND_ECC_SOFT:
-		if (!mtd_nand_has_ecc_soft()) {
-			printk(KERN_WARNING "CONFIG_MTD_ECC_SOFT not enabled\n");
-			return -EINVAL;
-		}
 		chip->ecc.calculate = nand_calculate_ecc;
 		chip->ecc.correct = nand_correct_data;
 		chip->ecc.read_page = nand_read_page_swecc;
@@ -3170,10 +3172,9 @@ int nand_scan_tail(struct mtd_info *mtd)
 
 	/* Check, if we should skip the bad block table scan */
 	if (chip->options & NAND_SKIP_BBTSCAN)
-		return 0;
+		chip->options |= NAND_BBT_SCANNED;
 
-	/* Build bad block table */
-	return chip->scan_bbt(mtd);
+	return 0;
 }
 
 /**

@@ -115,57 +115,69 @@ static void
 esdhc_pio_read_write(struct mmc *mmc, struct mmc_data *data)
 {
 	struct fsl_esdhc_cfg *cfg = mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	uint blocks;
 	char *buffer;
 	uint databuf;
 	uint size;
-	uint irqstat;
 	uint timeout;
+	int wml = esdhc_read32(&regs->wml);
 
 	if (data->flags & MMC_DATA_READ) {
+		wml &= WML_RD_WML_MASK;
 		blocks = data->blocks;
 		buffer = data->dest;
 		while (blocks) {
 			timeout = PIO_TIMEOUT;
 			size = data->blocksize;
-			irqstat = esdhc_read32(&regs->irqstat);
-			while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_BREN)
-				&& --timeout);
-			if (timeout <= 0) {
-				printf("\nData Read Failed in PIO Mode.");
-				return;
-			}
-			while (size && (!(irqstat & IRQSTAT_TC))) {
-				udelay(100); /* Wait before last byte transfer complete */
-				irqstat = esdhc_read32(&regs->irqstat);
-				databuf = in_le32(&regs->datport);
-				*((uint *)buffer) = databuf;
-				buffer += 4;
-				size -= 4;
+			while (size &&
+				!(esdhc_read32(&regs->irqstat) & IRQSTAT_TC)) {
+				int i;
+				u32 prsstat;
+
+				while (!((prsstat = esdhc_read32(&regs->prsstat)) &
+						PRSSTAT_BREN) && --timeout)
+					/* NOP */;
+				if (!(prsstat & PRSSTAT_BREN)) {
+					printf("%s: Data Read Failed in PIO Mode\n",
+						__func__);
+					return;
+				}
+				for (i = 0; i < wml && size; i++) {
+					databuf = in_le32(&regs->datport);
+					memcpy(buffer, &databuf, sizeof(databuf));
+					buffer += 4;
+					size -= 4;
+				}
 			}
 			blocks--;
 		}
 	} else {
+		wml = (wml & WML_WR_WML_MASK) >> 16;
 		blocks = data->blocks;
-		buffer = (char *)data->src;
+		buffer = (char *)data->src; /* cast away 'const' */
 		while (blocks) {
 			timeout = PIO_TIMEOUT;
 			size = data->blocksize;
-			irqstat = esdhc_read32(&regs->irqstat);
-			while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_BWEN)
-				&& --timeout);
-			if (timeout <= 0) {
-				printf("\nData Write Failed in PIO Mode.");
-				return;
-			}
-			while (size && (!(irqstat & IRQSTAT_TC))) {
-				udelay(100); /* Wait before last byte transfer complete */
-				databuf = *((uint *)buffer);
-				buffer += 4;
-				size -= 4;
-				irqstat = esdhc_read32(&regs->irqstat);
-				out_le32(&regs->datport, databuf);
+			while (size &&
+				!(esdhc_read32(&regs->irqstat) & IRQSTAT_TC)) {
+				int i;
+				u32 prsstat;
+
+				while (!((prsstat = esdhc_read32(&regs->prsstat)) &
+						PRSSTAT_BWEN) && --timeout)
+					/* NOP */;
+				if (!(prsstat & PRSSTAT_BWEN)) {
+					printf("%s: Data Write Failed in PIO Mode\n",
+						__func__);
+					return;
+				}
+				for (i = 0; i < wml && size; i++) {
+					memcpy(&databuf, buffer, sizeof(databuf));
+					out_le32(&regs->datport, databuf);
+					buffer += 4;
+					size -= 4;
+				}
 			}
 			blocks--;
 		}
@@ -176,8 +188,8 @@ esdhc_pio_read_write(struct mmc *mmc, struct mmc_data *data)
 static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 {
 	int timeout;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 #ifndef CONFIG_SYS_FSL_ESDHC_USE_PIO
 	uint wml_value;
 
@@ -197,6 +209,8 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 			return TIMEOUT;
 		}
 
+		flush_dcache_range((unsigned long)data->src,
+				(unsigned long)data->src + data->blocks * data->blocksize);
 		esdhc_clrsetbits32(&regs->wml, WML_WR_WML_MASK,
 					wml_value << 16);
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
@@ -209,8 +223,9 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 			return TIMEOUT;
 		}
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
-	} else
+	} else {
 		esdhc_write32(&regs->dsaddr, (u32)data->dest);
+	}
 #endif	/* CONFIG_SYS_FSL_ESDHC_USE_PIO */
 
 	esdhc_write32(&regs->blkattr, data->blocks << 16 | data->blocksize);
@@ -259,8 +274,8 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 {
 	uint	xfertyp;
 	uint	irqstat;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	volatile struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	volatile struct fsl_esdhc *regs = cfg->esdhc_base;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_ESDHC111
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
@@ -291,7 +306,7 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		int err;
 
 		err = esdhc_setup_data(mmc, data);
-		if(err)
+		if (err)
 			return err;
 	}
 
@@ -350,6 +365,8 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 				return COMM_ERR;
 		} while (!(irqstat & IRQSTAT_TC) &&
 				(esdhc_read32(&regs->prsstat) & PRSSTAT_DLA));
+		invalidate_dcache_range((unsigned long)data->dest,
+			(unsigned long)data->dest + data->blocks * data->blocksize);
 #endif
 	}
 
@@ -362,8 +379,8 @@ void set_sysctl(struct mmc *mmc, uint clock)
 {
 	int sdhc_clk = gd->sdhc_clk;
 	int div, pre_div;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	volatile struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	volatile struct fsl_esdhc *regs = cfg->esdhc_base;
 	uint clk;
 
 	if (clock < mmc->f_min)
@@ -398,8 +415,8 @@ void set_sysctl(struct mmc *mmc, uint clock)
 
 static void esdhc_set_ios(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 
 	/* Set the clock speed */
 	set_sysctl(mmc, mmc->clock);
@@ -416,8 +433,8 @@ static void esdhc_set_ios(struct mmc *mmc)
 
 static int esdhc_init(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	int timeout = 1000;
 
 	/* Reset the entire host controller */
@@ -450,8 +467,8 @@ static int esdhc_init(struct mmc *mmc)
 
 static int esdhc_getcd(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	int timeout = 1000;
 
 	while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_CINS) && --timeout)
@@ -483,10 +500,10 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	if (!cfg)
 		return -1;
 
-	mmc = malloc(sizeof(struct mmc));
+	mmc = kzalloc(sizeof(struct mmc), GFP_KERNEL);
 
 	sprintf(mmc->name, "FSL_SDHC");
-	regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	regs = cfg->esdhc_base;
 
 	/* First reset the eSDHC controller */
 	esdhc_reset(regs);
@@ -539,9 +556,9 @@ int fsl_esdhc_mmc_init(bd_t *bis)
 {
 	struct fsl_esdhc_cfg *cfg;
 
-	cfg = malloc(sizeof(struct fsl_esdhc_cfg));
-	memset(cfg, 0, sizeof(struct fsl_esdhc_cfg));
-	cfg->esdhc_base = CONFIG_SYS_FSL_ESDHC_ADDR;
+	cfg = kzalloc(sizeof(struct fsl_esdhc_cfg), GFP_KERNEL);
+
+	cfg->esdhc_base = (void __iomem *)CONFIG_SYS_FSL_ESDHC_ADDR;
 	return fsl_esdhc_initialize(bis, cfg);
 }
 

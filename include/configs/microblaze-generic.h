@@ -65,11 +65,12 @@
 
 /* ethernet */
 #undef CONFIG_SYS_ENET
-#ifdef XILINX_EMACLITE_BASEADDR
-# define CONFIG_XILINX_EMACLITE		1
+#if defined(XILINX_EMACLITE_BASEADDR)
+# define CONFIG_XILINX_EMACLITE	1
 # define CONFIG_SYS_ENET
-#elif XILINX_LLTEMAC_BASEADDR
-# define CONFIG_XILINX_LL_TEMAC		1
+#endif
+#if defined(XILINX_LLTEMAC_BASEADDR)
+# define CONFIG_XILINX_LL_TEMAC	1
 # define CONFIG_SYS_ENET
 #endif
 #if defined(XILINX_AXIEMAC_BASEADDR)
@@ -255,6 +256,7 @@
 #else
 # define CONFIG_CMD_PING
 # define CONFIG_CMD_DHCP
+# define CONFIG_CMD_TFTPPUT
 #endif
 
 #if defined(CONFIG_SYSTEMACE)
@@ -337,5 +339,26 @@
 #define CONFIG_LMB		1
 #define CONFIG_FIT		1
 #define CONFIG_OF_LIBFDT	1
+
+#if defined(CONFIG_XILINX_LL_TEMAC) || defined(CONFIG_XILINX_AXIEMAC)
+# define CONFIG_MII		1
+# define CONFIG_CMD_MII		1
+# define CONFIG_PHY_GIGE	1
+# define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	1
+# define CONFIG_PHYLIB		1
+# define CONFIG_PHY_ATHEROS	1
+# define CONFIG_PHY_BROADCOM	1
+# define CONFIG_PHY_DAVICOM	1
+# define CONFIG_PHY_LXT		1
+# define CONFIG_PHY_MARVELL	1
+# define CONFIG_PHY_MICREL	1
+# define CONFIG_PHY_NATSEMI	1
+# define CONFIG_PHY_REALTEK	1
+# define CONFIG_PHY_VITESSE	1
+#else
+# undef CONFIG_MII
+# undef CONFIG_CMD_MII
+# undef CONFIG_PHYLIB
+#endif
 
 #endif	/* __CONFIG_H */

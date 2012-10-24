@@ -27,7 +27,12 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(SOC).o
 
-COBJS	= soc.o clock.o iomux.o
+COBJS	= soc.o clock.o
+ifneq ($(CONFIG_SYS_MX5_IOMUX_V3),)
+	COBJS +=  iomux-v3.o
+else
+	COBJS +=  iomux.o
+endif
 SOBJS = lowlevel_init.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)

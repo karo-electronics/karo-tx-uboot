@@ -34,6 +34,7 @@
 #define CONFIG_MX35_HCLK_FREQ	24000000
 
 #define CONFIG_SYS_DCACHE_OFF
+#define CONFIG_SYS_CACHELINE_SIZE	32
 
 #define CONFIG_DISPLAY_CPUINFO
 
@@ -46,8 +47,6 @@
 
 /* Set TEXT at the beginning of the NOR flash */
 #define CONFIG_SYS_TEXT_BASE	0xA0000000
-
-#define CONFIG_SYS_64BIT_VSPRINTF
 
 /* This is required to setup the ESDC controller */
 #define CONFIG_BOARD_EARLY_INIT_F
@@ -98,6 +97,7 @@
 #define CONFIG_BOOTP_DNS
 
 #define CONFIG_CMD_NAND
+#define CONFIG_CMD_CACHE
 
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_SPI

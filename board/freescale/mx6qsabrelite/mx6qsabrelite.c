@@ -11,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -25,24 +25,33 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx6x_pins.h>
 #include <asm/arch/iomux-v3.h>
+#include <asm/arch/clock.h>
 #include <asm/errno.h>
 #include <asm/gpio.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
+#include <micrel.h>
 #include <miiphy.h>
 #include <netdev.h>
-
 DECLARE_GLOBAL_DATA_PTR;
 
-#define UART_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |            \
-       PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |               \
+#define UART_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |	       \
+       PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |	       \
        PAD_CTL_DSE_40ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
-#define USDHC_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |            \
-       PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |               \
+#define USDHC_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |	       \
+       PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |	       \
        PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
 #define ENET_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |		\
+	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED	  |		\
+	PAD_CTL_DSE_40ohm   | PAD_CTL_HYS)
+
+#define SPI_PAD_CTRL (PAD_CTL_HYS |				\
+	PAD_CTL_PUS_100K_DOWN | PAD_CTL_SPEED_MED |		\
+	PAD_CTL_DSE_40ohm     | PAD_CTL_SRE_FAST)
+
+#define BUTTON_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |		\
 	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED   |		\
 	PAD_CTL_DSE_40ohm   | PAD_CTL_HYS)
 
@@ -118,6 +127,22 @@ iomux_v3_cfg_t enet_pads2[] = {
 	MX6Q_PAD_RGMII_RX_CTL__RGMII_RX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 };
 
+/* Button assignments for J14 */
+static iomux_v3_cfg_t button_pads[] = {
+	/* Menu */
+	MX6Q_PAD_NANDF_D1__GPIO_2_1	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
+	/* Back */
+	MX6Q_PAD_NANDF_D2__GPIO_2_2	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
+	/* Labelled Search (mapped to Power under Android) */
+	MX6Q_PAD_NANDF_D3__GPIO_2_3	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
+	/* Home */
+	MX6Q_PAD_NANDF_D4__GPIO_2_4	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
+	/* Volume Down */
+	MX6Q_PAD_GPIO_19__GPIO_4_5	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
+	/* Volume Up */
+	MX6Q_PAD_GPIO_18__GPIO_7_13	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
+};
+
 static void setup_iomux_enet(void)
 {
 	gpio_direction_output(87, 0);  /* GPIO 3-23 */
@@ -131,16 +156,34 @@ static void setup_iomux_enet(void)
 
 	/* Need delay 10ms according to KSZ9021 spec */
 	udelay(1000 * 10);
-	gpio_direction_output(87, 1);  /* GPIO 3-23 */
+	gpio_set_value(87, 1);  /* GPIO 3-23 */
 
 	imx_iomux_v3_setup_multiple_pads(enet_pads2, ARRAY_SIZE(enet_pads2));
 }
+
+iomux_v3_cfg_t usb_pads[] = {
+	MX6Q_PAD_GPIO_17__GPIO_7_12 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
 
 static void setup_iomux_uart(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
        imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
 }
+
+#ifdef CONFIG_USB_EHCI_MX6
+int board_ehci_hcd_init(int port)
+{
+	imx_iomux_v3_setup_multiple_pads(usb_pads, ARRAY_SIZE(usb_pads));
+
+	/* Reset USB hub */
+	gpio_direction_output(GPIO_NUMBER(7, 12), 0);
+	mdelay(2);
+	gpio_set_value(GPIO_NUMBER(7, 12), 1);
+
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_FSL_ESDHC
 struct fsl_esdhc_cfg usdhc_cfg[2] = {
@@ -154,11 +197,11 @@ int board_mmc_getcd(struct mmc *mmc)
        int ret;
 
        if (cfg->esdhc_base == USDHC3_BASE_ADDR) {
-               gpio_direction_input(192); /*GPIO7_0*/
-               ret = !gpio_get_value(192);
+	       gpio_direction_input(192); /*GPIO7_0*/
+	       ret = !gpio_get_value(192);
        } else {
-               gpio_direction_input(38); /*GPIO2_6*/
-               ret = !gpio_get_value(38);
+	       gpio_direction_input(38); /*GPIO2_6*/
+	       ret = !gpio_get_value(38);
        }
 
        return ret;
@@ -170,89 +213,133 @@ int board_mmc_init(bd_t *bis)
        u32 index = 0;
 
        for (index = 0; index < CONFIG_SYS_FSL_USDHC_NUM; ++index) {
-               switch (index) {
-               case 0:
-                       imx_iomux_v3_setup_multiple_pads(
-                               usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
-                       break;
-               case 1:
-                       imx_iomux_v3_setup_multiple_pads(
-                               usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
-                       break;
-               default:
-                       printf("Warning: you configured more USDHC controllers"
-                               "(%d) then supported by the board (%d)\n",
-                               index + 1, CONFIG_SYS_FSL_USDHC_NUM);
-                       return status;
-               }
+	       switch (index) {
+	       case 0:
+		       imx_iomux_v3_setup_multiple_pads(
+			       usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+		       break;
+	       case 1:
+		       imx_iomux_v3_setup_multiple_pads(
+			       usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
+		       break;
+	       default:
+		       printf("Warning: you configured more USDHC controllers"
+			       "(%d) then supported by the board (%d)\n",
+			       index + 1, CONFIG_SYS_FSL_USDHC_NUM);
+		       return status;
+	       }
 
-               status |= fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
+	       status |= fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
        }
 
        return status;
 }
 #endif
 
-#define MII_1000BASET_CTRL		0x9
-#define MII_EXTENDED_CTRL		0xb
-#define MII_EXTENDED_DATAW		0xc
-
-int fecmxc_mii_postcall(int phy)
+u32 get_board_rev(void)
 {
-	/* prefer master mode */
-	miiphy_write("FEC", phy, MII_1000BASET_CTRL, 0x0f00);
+	return 0x63000 ;
+}
 
+#ifdef CONFIG_MXC_SPI
+iomux_v3_cfg_t ecspi1_pads[] = {
+	/* SS1 */
+	MX6Q_PAD_EIM_D19__GPIO_3_19   | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6Q_PAD_EIM_D17__ECSPI1_MISO | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6Q_PAD_EIM_D18__ECSPI1_MOSI | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6Q_PAD_EIM_D16__ECSPI1_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
+};
+
+void setup_spi(void)
+{
+	gpio_direction_output(CONFIG_SF_DEFAULT_CS, 1);
+	imx_iomux_v3_setup_multiple_pads(ecspi1_pads,
+					 ARRAY_SIZE(ecspi1_pads));
+}
+#endif
+
+int board_phy_config(struct phy_device *phydev)
+{
 	/* min rx data delay */
-	miiphy_write("FEC", phy, MII_EXTENDED_CTRL, 0x8105);
-	miiphy_write("FEC", phy, MII_EXTENDED_DATAW, 0x0000);
-
-	/* max rx/tx clock delay, min rx/tx control delay */
-	miiphy_write("FEC", phy, MII_EXTENDED_CTRL, 0x8104);
-	miiphy_write("FEC", phy, MII_EXTENDED_DATAW, 0xf0f0);
-	miiphy_write("FEC", phy, MII_EXTENDED_CTRL, 0x104);
+	ksz9021_phy_extended_write(phydev,
+			MII_KSZ9021_EXT_RGMII_RX_DATA_SKEW, 0x0);
+	/* min tx data delay */
+	ksz9021_phy_extended_write(phydev,
+			MII_KSZ9021_EXT_RGMII_TX_DATA_SKEW, 0x0);
+	/* max rx/tx clock delay, min rx/tx control */
+	ksz9021_phy_extended_write(phydev,
+			MII_KSZ9021_EXT_RGMII_CLOCK_SKEW, 0xf0f0);
+	if (phydev->drv->config)
+		phydev->drv->config(phydev);
 
 	return 0;
 }
 
 int board_eth_init(bd_t *bis)
 {
-	struct eth_device *dev;
 	int ret;
 
 	setup_iomux_enet();
 
 	ret = cpu_eth_init(bis);
-	if (ret) {
+	if (ret)
 		printf("FEC MXC: %s:failed\n", __func__);
-		return ret;
-	}
-
-	dev = eth_get_dev_by_name("FEC");
-	if (!dev) {
-		printf("FEC MXC: Unable to get FEC device entry\n");
-		return -EINVAL;
-	}
-
-	ret = fecmxc_register_mii_postcall(dev, fecmxc_mii_postcall);
-	if (ret) {
-		printf("FEC MXC: Unable to register FEC mii postcall\n");
-		return ret;
-	}
 
 	return 0;
 }
 
+static void setup_buttons(void)
+{
+	imx_iomux_v3_setup_multiple_pads(button_pads,
+					 ARRAY_SIZE(button_pads));
+}
+
+#ifdef CONFIG_CMD_SATA
+
+int setup_sata(void)
+{
+	struct iomuxc_base_regs *const iomuxc_regs
+		= (struct iomuxc_base_regs *) IOMUXC_BASE_ADDR;
+	int ret = enable_sata_clock();
+	if (ret)
+		return ret;
+
+	clrsetbits_le32(&iomuxc_regs->gpr[13],
+			IOMUXC_GPR13_SATA_MASK,
+			IOMUXC_GPR13_SATA_PHY_8_RXEQ_3P0DB
+			|IOMUXC_GPR13_SATA_PHY_7_SATA2M
+			|IOMUXC_GPR13_SATA_SPEED_3G
+			|(3<<IOMUXC_GPR13_SATA_PHY_6_SHIFT)
+			|IOMUXC_GPR13_SATA_SATA_PHY_5_SS_DISABLED
+			|IOMUXC_GPR13_SATA_SATA_PHY_4_ATTEN_9_16
+			|IOMUXC_GPR13_SATA_PHY_3_TXBOOST_0P00_DB
+			|IOMUXC_GPR13_SATA_PHY_2_TX_1P104V
+			|IOMUXC_GPR13_SATA_PHY_1_SLOW);
+
+	return 0;
+}
+#endif
+
 int board_early_init_f(void)
 {
-       setup_iomux_uart();
+	setup_iomux_uart();
+	setup_buttons();
 
-       return 0;
+	return 0;
 }
 
 int board_init(void)
 {
        /* address of boot parameters */
        gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
+
+#ifdef CONFIG_MXC_SPI
+	setup_spi();
+#endif
+
+#ifdef CONFIG_CMD_SATA
+	setup_sata();
+#endif
 
        return 0;
 }
@@ -262,4 +349,95 @@ int checkboard(void)
        puts("Board: MX6Q-Sabre Lite\n");
 
        return 0;
+}
+
+struct button_key {
+	char const	*name;
+	unsigned	gpnum;
+	char		ident;
+};
+
+static struct button_key const buttons[] = {
+	{"back",	GPIO_NUMBER(2, 2),	'B'},
+	{"home",	GPIO_NUMBER(2, 4),	'H'},
+	{"menu",	GPIO_NUMBER(2, 1),	'M'},
+	{"search",	GPIO_NUMBER(2, 3),	'S'},
+	{"volup",	GPIO_NUMBER(7, 13),	'V'},
+	{"voldown",	GPIO_NUMBER(4, 5),	'v'},
+};
+
+/*
+ * generate a null-terminated string containing the buttons pressed
+ * returns number of keys pressed
+ */
+static int read_keys(char *buf)
+{
+	int i, numpressed = 0;
+	for (i = 0; i < ARRAY_SIZE(buttons); i++) {
+		if (!gpio_get_value(buttons[i].gpnum))
+			buf[numpressed++] = buttons[i].ident;
+	}
+	buf[numpressed] = '\0';
+	return numpressed;
+}
+
+static int do_kbd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	char envvalue[ARRAY_SIZE(buttons)+1];
+	int numpressed = read_keys(envvalue);
+	setenv("keybd", envvalue);
+	return numpressed == 0;
+}
+
+U_BOOT_CMD(
+	kbd, 1, 1, do_kbd,
+	"Tests for keypresses, sets 'keybd' environment variable",
+	"Returns 0 (true) to shell if key is pressed."
+);
+
+#ifdef CONFIG_PREBOOT
+static char const kbd_magic_prefix[] = "key_magic";
+static char const kbd_command_prefix[] = "key_cmd";
+
+static void preboot_keys(void)
+{
+	int numpressed;
+	char keypress[ARRAY_SIZE(buttons)+1];
+	numpressed = read_keys(keypress);
+	if (numpressed) {
+		char *kbd_magic_keys = getenv("magic_keys");
+		char *suffix;
+		/*
+		 * loop over all magic keys
+		 */
+		for (suffix = kbd_magic_keys; *suffix; ++suffix) {
+			char *keys;
+			char magic[sizeof(kbd_magic_prefix) + 1];
+			sprintf(magic, "%s%c", kbd_magic_prefix, *suffix);
+			keys = getenv(magic);
+			if (keys) {
+				if (!strcmp(keys, keypress))
+					break;
+			}
+		}
+		if (*suffix) {
+			char cmd_name[sizeof(kbd_command_prefix) + 1];
+			char *cmd;
+			sprintf(cmd_name, "%s%c", kbd_command_prefix, *suffix);
+			cmd = getenv(cmd_name);
+			if (cmd) {
+				setenv("preboot", cmd);
+				return;
+			}
+		}
+	}
+}
+#endif
+
+int misc_init_r(void)
+{
+#ifdef CONFIG_PREBOOT
+	preboot_keys();
+#endif
+	return 0;
 }

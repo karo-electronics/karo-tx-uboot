@@ -37,6 +37,7 @@ ifneq ($(CONFIG_OMAP44XX)$(CONFIG_OMAP54XX),)
 COBJS	+= hwinit-common.o
 COBJS	+= clocks-common.o
 COBJS	+= emif-common.o
+COBJS	+= vc.o
 endif
 
 ifneq ($(CONFIG_AM33XX)$(CONFIG_OMAP44XX)$(CONFIG_OMAP54XX),)
@@ -51,6 +52,9 @@ COBJS	+= spl_nand.o
 endif
 ifdef CONFIG_SPL_MMC_SUPPORT
 COBJS	+= spl_mmc.o
+endif
+ifdef CONFIG_SPL_YMODEM_SUPPORT
+COBJS	+= spl_ymodem.o
 endif
 endif
 

@@ -50,6 +50,7 @@ struct mxs_nand_info {
 	int		cur_chip;
 
 	uint32_t	cmd_queue_len;
+	uint32_t	data_buf_size;
 
 	uint8_t		*cmd_buf;
 	uint8_t		*data_buf;
@@ -72,6 +73,36 @@ struct mxs_nand_info {
 };
 
 struct nand_ecclayout fake_ecc_layout;
+
+/*
+ * Cache management functions
+ */
+#ifndef	CONFIG_SYS_DCACHE_OFF
+static void mxs_nand_flush_data_buf(struct mxs_nand_info *info)
+{
+	uint32_t addr = (uint32_t)info->data_buf;
+
+	flush_dcache_range(addr, addr + info->data_buf_size);
+}
+
+static void mxs_nand_inval_data_buf(struct mxs_nand_info *info)
+{
+	uint32_t addr = (uint32_t)info->data_buf;
+
+	invalidate_dcache_range(addr, addr + info->data_buf_size);
+}
+
+static void mxs_nand_flush_cmd_buf(struct mxs_nand_info *info)
+{
+	uint32_t addr = (uint32_t)info->cmd_buf;
+
+	flush_dcache_range(addr, addr + MXS_NAND_COMMAND_BUFFER_SIZE);
+}
+#else
+static inline void mxs_nand_flush_data_buf(struct mxs_nand_info *info) {}
+static inline void mxs_nand_inval_data_buf(struct mxs_nand_info *info) {}
+static inline void mxs_nand_flush_cmd_buf(struct mxs_nand_info *info) {}
+#endif
 
 static struct mxs_dma_desc *mxs_nand_get_dma_desc(struct mxs_nand_info *info)
 {
@@ -286,6 +317,9 @@ static void mxs_nand_cmd_ctrl(struct mtd_info *mtd, int data, unsigned int ctrl)
 
 	mxs_dma_desc_append(channel, d);
 
+	/* Flush caches */
+	mxs_nand_flush_cmd_buf(nand_info);
+
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
 	if (ret)
@@ -435,6 +469,9 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		goto rtn;
 	}
 
+	/* Invalidate caches */
+	mxs_nand_inval_data_buf(nand_info);
+
 	memcpy(buf, nand_info->data_buf, length);
 
 rtn:
@@ -484,6 +521,9 @@ static void mxs_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf,
 
 	mxs_dma_desc_append(channel, d);
 
+	/* Flush caches */
+	mxs_nand_flush_data_buf(nand_info);
+
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
 	if (ret)
@@ -500,16 +540,6 @@ static uint8_t mxs_nand_read_byte(struct mtd_info *mtd)
 	uint8_t buf;
 	mxs_nand_read_buf(mtd, &buf, 1);
 	return buf;
-}
-
-static void invalidate_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
-{
-	invalidate_dcache_range((unsigned long)nand_info->data_buf,
-				(unsigned long)nand_info->data_buf +
-				mtd->writesize);
-	invalidate_dcache_range((unsigned long)nand_info->oob_buf,
-				(unsigned long)nand_info->oob_buf +
-				mtd->oobsize);
 }
 
 static void flush_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
@@ -622,7 +652,8 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 		goto rtn;
 	}
 
-	invalidate_buffers(mtd, nand_info);
+	/* Invalidate caches */
+	mxs_nand_inval_data_buf(nand_info);
 
 	/* Read DMA completed, now do the mark swapping. */
 	mxs_nand_swap_block_mark(mtd, nand_info->data_buf, nand_info->oob_buf);
@@ -712,6 +743,9 @@ static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
 	flush_buffers(mtd, nand_info);
 
 	mxs_dma_desc_append(channel, d);
+
+	/* Flush caches */
+	mxs_nand_flush_data_buf(nand_info);
 
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
@@ -1011,18 +1045,19 @@ int mxs_nand_alloc_buffers(struct mxs_nand_info *nand_info)
 	uint8_t *buf;
 	const int size = NAND_MAX_PAGESIZE + NAND_MAX_OOBSIZE;
 
+	nand_info->data_buf_size = roundup(size, MXS_DMA_ALIGNMENT);
+
 	/* DMA buffers */
-	buf = memalign(MXS_DMA_ALIGNMENT, size);
+	buf = memalign(MXS_DMA_ALIGNMENT, nand_info->data_buf_size);
 	if (!buf) {
 		printf("MXS NAND: Error allocating DMA buffers\n");
 		return -ENOMEM;
 	}
 
-	memset(buf, 0, size);
+	memset(buf, 0, nand_info->data_buf_size);
 
 	nand_info->data_buf = buf;
 	nand_info->oob_buf = buf + NAND_MAX_PAGESIZE;
-
 	/* Command buffers */
 	nand_info->cmd_buf = memalign(MXS_DMA_ALIGNMENT,
 				MXS_NAND_COMMAND_BUFFER_SIZE);
@@ -1044,7 +1079,7 @@ int mxs_nand_init(struct mxs_nand_info *info)
 {
 	struct mx28_gpmi_regs *gpmi_regs =
 		(struct mx28_gpmi_regs *)MXS_GPMI_BASE;
-	int i = 0;
+	int i = 0, j;
 
 	info->desc = malloc(sizeof(struct mxs_dma_desc *) *
 				MXS_NAND_DMA_DESCRIPTOR_COUNT);
@@ -1059,7 +1094,11 @@ int mxs_nand_init(struct mxs_nand_info *info)
 	}
 
 	/* Init the DMA controller. */
-	mxs_dma_init();
+	for (j = MXS_DMA_CHANNEL_AHB_APBH_GPMI0;
+		j <= MXS_DMA_CHANNEL_AHB_APBH_GPMI7; j++) {
+		if (mxs_dma_init_channel(j))
+			goto err3;
+	}
 
 	/* Reset the GPMI block. */
 	mx28_reset_block(&gpmi_regs->hw_gpmi_ctrl0_reg);
@@ -1075,6 +1114,9 @@ int mxs_nand_init(struct mxs_nand_info *info)
 
 	return 0;
 
+err3:
+	for (--j; j >= 0; j--)
+		mxs_dma_release(j);
 err2:
 	free(info->desc);
 err1:

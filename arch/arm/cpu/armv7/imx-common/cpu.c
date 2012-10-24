@@ -29,12 +29,13 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/arch/crm_regs.h>
 
 #ifdef CONFIG_FSL_ESDHC
 #include <fsl_esdhc.h>
 #endif
 
-static char *get_reset_cause(void)
+char *get_reset_cause(void)
 {
 	u32 cause;
 	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
@@ -44,6 +45,7 @@ static char *get_reset_cause(void)
 
 	switch (cause) {
 	case 0x00001:
+	case 0x00011:
 		return "POR";
 	case 0x00004:
 		return "CSU";
@@ -63,13 +65,33 @@ static char *get_reset_cause(void)
 }
 
 #if defined(CONFIG_DISPLAY_CPUINFO)
+
+static char *get_imx_type(u32 imxtype)
+{
+	switch (imxtype) {
+	case 0x63:
+		return "6Q";	/* Quad-core version of the mx6 */
+	case 0x61:
+		return "6DS";	/* Dual/Solo version of the mx6 */
+	case 0x60:
+		return "6SL";	/* Solo-Lite version of the mx6 */
+	case 0x51:
+		return "51";
+	case 0x53:
+		return "53";
+	default:
+		return "unknown";
+	}
+}
+
 int print_cpuinfo(void)
 {
 	u32 cpurev;
 
 	cpurev = get_cpu_rev();
-	printf("CPU:   Freescale i.MX%x family rev%d.%d at %d MHz\n",
-		(cpurev & 0xFF000) >> 12,
+
+	printf("CPU:   Freescale i.MX%s rev%d.%d at %d MHz\n",
+		get_imx_type((cpurev & 0xFF000) >> 12),
 		(cpurev & 0x000F0) >> 4,
 		(cpurev & 0x0000F) >> 0,
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
@@ -104,5 +126,22 @@ int cpu_mmc_init(bd_t *bis)
 
 void reset_cpu(ulong addr)
 {
+	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
+
+	/* Clear the reset status flags */
+	writel(readl(&src_regs->srsr), &src_regs->srsr);
+
 	__raw_writew(4, WDOG1_BASE_ADDR);
+}
+
+u32 get_ahb_clk(void)
+{
+	struct mxc_ccm_reg *imx_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
+	u32 reg, ahb_podf;
+
+	reg = __raw_readl(&imx_ccm->cbcdr);
+	reg &= MXC_CCM_CBCDR_AHB_PODF_MASK;
+	ahb_podf = reg >> MXC_CCM_CBCDR_AHB_PODF_OFFSET;
+
+	return get_periph_clk() / (ahb_podf + 1);
 }

@@ -167,6 +167,7 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_SETEXPR	/* Evaluate expressions		*/
+#define CONFIG_CMD_GPIO     /* Enable gpio command */
 
 #undef CONFIG_CMD_FLASH		/* flinfo, erase, protect	*/
 #undef CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
@@ -280,10 +281,16 @@
 	"ramboot=echo Booting from ramdisk ...; " \
 		"run ramargs; " \
 		"bootm ${loadaddr}\0" \
-
+	"userbutton=if gpio input 173; then run userbutton_xm; " \
+		"else run userbutton_nonxm; fi;\0" \
+	"userbutton_xm=gpio input 4;\0" \
+	"userbutton_nonxm=gpio input 7;\0"
+/* "run userbutton" will return 1 (false) if is pressed and 0 (false) if not */
 #define CONFIG_BOOTCOMMAND \
 	"if mmc rescan ${mmcdev}; then " \
-		"if userbutton; then " \
+		"if run userbutton; then " \
+			"setenv bootenv uEnv.txt;" \
+		"else " \
 			"setenv bootenv user.txt;" \
 		"fi;" \
 		"echo SD/MMC found on device ${mmcdev};" \
@@ -392,7 +399,7 @@
 #define CONFIG_SPL
 #define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SPL_TEXT_BASE		0x40200800
-#define CONFIG_SPL_MAX_SIZE		(45 * 1024)
+#define CONFIG_SPL_MAX_SIZE		(54 * 1024)	/* 8 KB for stack */
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
 
 #define CONFIG_SPL_BSS_START_ADDR	0x80000000
@@ -403,6 +410,7 @@
 #define CONFIG_SYS_MMC_SD_FAT_BOOT_PARTITION	1
 #define CONFIG_SPL_FAT_LOAD_PAYLOAD_NAME	"u-boot.img"
 
+#define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBDISK_SUPPORT
 #define CONFIG_SPL_I2C_SUPPORT

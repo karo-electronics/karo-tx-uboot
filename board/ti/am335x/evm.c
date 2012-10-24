@@ -29,11 +29,8 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Basic board specific setup
  */
-int init_basic_setup(void)
+static int init_basic_setup(void)
 {
-	/* Initialize the Timer */
-	init_timer();
-
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_DRAM_1 + 0x100;
 

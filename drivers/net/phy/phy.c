@@ -612,10 +612,9 @@ struct phy_device *get_phy_device(struct mii_dev *bus, int addr,
 
 		/* If the phy_id is mostly Fs, there is no device there */
 		if ((phy_id & 0x1fffffff) != 0x1fffffff)
-			break;
+			return phy_device_create(bus, addr, phy_id, interface);
 	}
-
-	return phy_device_create(bus, addr, phy_id, interface);
+	return NULL;
 }
 
 int phy_reset(struct phy_device *phydev)
@@ -733,6 +732,8 @@ int phy_startup(struct phy_device *phydev)
 
 static int __board_phy_config(struct phy_device *phydev)
 {
+	if (phydev->drv->config)
+		return phydev->drv->config(phydev);
 	return 0;
 }
 
@@ -741,9 +742,6 @@ int board_phy_config(struct phy_device *phydev)
 
 int phy_config(struct phy_device *phydev)
 {
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-
 	/* Invoke an optional board-specific helper */
 	board_phy_config(phydev);
 

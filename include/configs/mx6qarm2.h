@@ -168,5 +168,8 @@
 #define CONFIG_SYS_MMC_ENV_DEV		1
 
 #define CONFIG_OF_LIBFDT
+#define CONFIG_CMD_BOOTZ
+
+#define CONFIG_SYS_DCACHE_OFF
 
 #endif				/* __CONFIG_H */

@@ -29,10 +29,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
-struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
-struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
-
 /* UART Defines */
 #ifdef CONFIG_SPL_BUILD
 #define UART_RESET		(0x1 << 1)
@@ -40,11 +36,68 @@ struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
 #define UART_SMART_IDLE_EN	(0x1 << 0x3)
 #endif
 
+void reset_cpu(unsigned long ignored)
+{
+	/* clear RESET flags */
+	writel(~0, PRM_RSTST);
+	writel(PRM_RSTCTRL_RESET, PRM_RSTCTRL);
+}
+
+#ifdef CONFIG_HW_WATCHDOG
+void hw_watchdog_reset(void)
+{
+	struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
+	static int trg __attribute__((section(".data")));
+
+	switch (trg) {
+	case 0:
+	case 1:
+		if (readl(&wdtimer->wdtwwps) & (1 << 4))
+			return;
+		writel(trg ? 0x5555 : 0xaaaa, &wdtimer->wdtwspr);
+		break;
+	case 2:
+		if (readl(&wdtimer->wdtwwps) & (1 << 2))
+			return;
+		/* 10 sec timeout */
+		writel(-32768 * 10, &wdtimer->wdtwldr);
+
+		if (readl(&wdtimer->wdtwwps) & (1 << 0))
+			return;
+		/* prescaler = 1 */
+		writel(0, &wdtimer->wdtwclr);
+		break;
+
+	case 3:
+	case 4:
+		/* enable watchdog */
+		if (readl(&wdtimer->wdtwwps) & (1 << 4))
+			return;
+		writel((trg & 1) ? 0xBBBB : 0x4444, &wdtimer->wdtwspr);
+		break;
+
+	default:
+		/* retrigger watchdog */
+		if (readl(&wdtimer->wdtwwps) & (1 << 3))
+			return;
+
+		writel(trg, &wdtimer->wdtwtgr);
+		trg ^= 0x2;
+		return;
+	}
+	trg++;
+}
+#endif
+
 /*
  * early system init of muxing and clocks.
  */
 void s_init(void)
 {
+#ifdef CONFIG_SPL_BUILD
+#ifndef CONFIG_HW_WATCHDOG
+	struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
+
 	/* WDT1 is already running when the bootloader gets control
 	 * Disable it to avoid "random" resets
 	 */
@@ -54,13 +107,13 @@ void s_init(void)
 	writel(0x5555, &wdtimer->wdtwspr);
 	while (readl(&wdtimer->wdtwwps) != 0x0)
 		;
-
-#ifdef CONFIG_SPL_BUILD
+#endif
 	/* Setup the PLLs and the clocks for the peripherals */
 	pll_init();
 
 	/* UART softreset */
 	u32 regVal;
+	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
 
 	enable_uart0_pin_mux();
 
@@ -77,40 +130,61 @@ void s_init(void)
 	writel(regVal, &uart_base->uartsyscfg);
 
 	/* Initialize the Timer */
-	init_timer();
+	timer_init();
 
 	preloader_console_init();
 
 	config_ddr();
-#endif
 
 	/* Enable MMC0 */
 	enable_mmc0_pin_mux();
-}
-
-/* Initialize timer */
-void init_timer(void)
-{
-	/* Reset the Timer */
-	writel(0x2, (&timer_base->tscir));
-
-	/* Wait until the reset is done */
-	while (readl(&timer_base->tiocp_cfg) & 1)
-		;
-
-	/* Start the Timer */
-	writel(0x1, (&timer_base->tclr));
+#endif
 }
 
 #if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
-	return omap_mmc_init(0);
+	int ret = 0;
+#ifdef CONFIG_OMAP_MMC_DEV_0
+	ret = omap_mmc_init(0, 0, 0);
+	if (ret)
+		printf("Error %d while initializing MMC dev 0\n", ret);
+#endif
+#ifdef CONFIG_OMAP_MMC_DEV_1
+	ret = omap_mmc_init(1, 0, 0);
+	if (ret)
+		printf("Error %d while initializing MMC dev 1\n", ret);
+#endif
+	return ret;
 }
 #endif
 
-void setup_clocks_for_console(void)
+#ifndef CONFIG_SYS_DCACHE_OFF
+void enable_caches(void)
 {
-	/* Not yet implemented */
-	return;
+	/* Enable D-cache. I-cache is already enabled in start.S */
+	dcache_enable();
+}
+#endif
+
+static u32 cortex_rev(void)
+{
+
+	unsigned int rev;
+
+	/* Read Main ID Register (MIDR) */
+	asm ("mrc p15, 0, %0, c0, c0, 0" : "=r" (rev));
+
+	return rev;
+}
+
+void omap_rev_string(void)
+{
+	u32 omap_rev = cortex_rev();
+	u32 omap_variant = (omap_rev & 0xFFFF0000) >> 16;
+	u32 major_rev = (omap_rev & 0x00000F00) >> 8;
+	u32 minor_rev = (omap_rev & 0x000000F0) >> 4;
+
+	printf("OMAP%x ES%x.%x\n", omap_variant, major_rev,
+		minor_rev);
 }

@@ -28,7 +28,7 @@
 
 #include <common.h>
 #include <malloc.h>
-#include <linux/mtd/compat.h>
+#include <linux/compat.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/onenand.h>
 #include <linux/mtd/samsung_onenand.h>
@@ -588,6 +588,16 @@ static void s3c_set_width_regs(struct onenand_chip *this)
 	DBS_DFS_WIDTH0_REG = dbs_dfs;
 }
 #endif
+
+int s5pc110_chip_probe(struct mtd_info *mtd)
+{
+	return 0;
+}
+
+int s5pc210_chip_probe(struct mtd_info *mtd)
+{
+	return 0;
+}
 
 void s3c_onenand_init(struct mtd_info *mtd)
 {

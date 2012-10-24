@@ -804,8 +804,8 @@ void ipu_init_dc_mappings(void)
 	/* IPU_PIX_FMT_LVDS666 */
 	ipu_dc_map_clear(4);
 	ipu_dc_map_config(4, 0, 5, 0xFC);
-	ipu_dc_map_config(4, 1, 13, 0xFC);
-	ipu_dc_map_config(4, 2, 21, 0xFC);
+	ipu_dc_map_config(4, 1, 11, 0xFC);
+	ipu_dc_map_config(4, 2, 17, 0xFC);
 }
 
 int ipu_pixfmt_to_map(uint32_t fmt)
@@ -813,6 +813,7 @@ int ipu_pixfmt_to_map(uint32_t fmt)
 	switch (fmt) {
 	case IPU_PIX_FMT_GENERIC:
 	case IPU_PIX_FMT_RGB24:
+	case IPU_PIX_FMT_LVDS888:
 		return 0;
 	case IPU_PIX_FMT_RGB666:
 		return 1;
@@ -916,7 +917,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	debug("pixel clk = %d\n", pixel_clk);
 
 	if (sig.ext_clk) {
-		if (!(g_di1_tvout && (disp == 1))) { /*not round div for tvout*/
+		if (!(g_di1_tvout && (disp == 1))) { /* don't round div for tvout */
 			/*
 			 * Set the  PLL to be an even multiple
 			 * of the pixel clock.
@@ -947,13 +948,24 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 			clk_set_parent(g_pixel_clk[disp], g_ipu_clk);
 	}
 	rounded_pixel_clk = clk_round_rate(g_pixel_clk[disp], pixel_clk);
-	clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
-	udelay(5000);
-	/* Get integer portion of divider */
-	div = clk_get_rate(clk_get_parent(g_pixel_clk[disp])) /
-		rounded_pixel_clk;
 
-	ipu_di_data_wave_config(disp, SYNC_WAVE, div - 1, div - 1);
+	di_gen = 0;
+
+	if (pixel_fmt != IPU_PIX_FMT_LVDS666 &&
+			pixel_fmt != IPU_PIX_FMT_LVDS888) {
+		clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
+		udelay(5000);
+		/* Get integer portion of divider */
+		div = clk_get_rate(clk_get_parent(g_pixel_clk[disp])) /
+			rounded_pixel_clk;
+		ipu_di_data_wave_config(disp, SYNC_WAVE, div - 1, div - 1);
+	} else {
+		clk_set_rate(g_pixel_clk[disp], clk_get_rate(g_ipu_clk));
+		div = 1;
+		ipu_di_data_wave_config(disp, SYNC_WAVE, 0, 0);
+		di_gen |= (6 << 24);
+		di_gen |= DI_GEN_DI_CLK_EXT;
+	}
 	ipu_di_data_pin_config(disp, SYNC_WAVE, DI_PIN15, 3, 0, div * 2);
 
 	map = ipu_pixfmt_to_map(pixel_fmt);
@@ -961,8 +973,6 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		debug("IPU_DISP: No MAP\n");
 		return -EINVAL;
 	}
-
-	di_gen = __raw_readl(DI_GENERAL(disp));
 
 	if (sig.interlaced) {
 		/* Setup internal HSYNC waveform */
@@ -1121,7 +1131,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		/* set gentime select and tag sel */
 		reg = __raw_readl(DI_SW_GEN1(disp, 9));
 		reg &= 0x1FFFFFFF;
-		reg |= (3 - 1)<<29 | 0x00008000;
+		reg |= ((3 - 1) << 29) | 0x00008000;
 		__raw_writel(reg, DI_SW_GEN1(disp, 9));
 
 		__raw_writel(v_total / 2 - 1, DI_SCR_CONF(disp));
@@ -1179,13 +1189,13 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 		/* Init template microcode */
 		if (disp) {
-		   ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5);
-		   ipu_dc_write_tmpl(3, WROD(0), 0, map, SYNC_WAVE, 4, 5);
-		   ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5);
+			ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5);
+			ipu_dc_write_tmpl(3, WROD(0), 0, map, SYNC_WAVE, 4, 5);
+			ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 		} else {
-		   ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5);
-		   ipu_dc_write_tmpl(6, WROD(0), 0, map, SYNC_WAVE, 4, 5);
-		   ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5);
+			ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5);
+			ipu_dc_write_tmpl(6, WROD(0), 0, map, SYNC_WAVE, 4, 5);
+			ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 		}
 
 		if (sig.Hsync_pol)
@@ -1195,7 +1205,6 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 		if (sig.clk_pol)
 			di_gen |= DI_GEN_POL_CLK;
-
 	}
 
 	__raw_writel(di_gen, DI_GENERAL(disp));

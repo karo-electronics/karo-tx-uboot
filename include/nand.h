@@ -34,10 +34,13 @@
 #if defined(CONFIG_NAND_FSL_ELBC)
 #define CONFIG_SYS_NAND_SELF_INIT
 #endif
+#if defined(CONFIG_NAND_MXC)
+#define CONFIG_SYS_NAND_SELF_INIT
+#endif
 
 extern void nand_init(void);
 
-#include <linux/mtd/compat.h>
+#include <linux/compat.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 

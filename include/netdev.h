@@ -102,6 +102,18 @@ int xilinx_axiemac_initialize(bd_t *bis, unsigned long base_addr,
 							unsigned long dma_addr);
 int xilinx_emaclite_initialize(bd_t *bis, unsigned long base_addr,
 							int txpp, int rxpp);
+int xilinx_ll_temac_eth_init(bd_t *bis, unsigned long base_addr, int flags,
+						unsigned long ctrl_addr);
+
+/*
+ * As long as the Xilinx xps_ll_temac ethernet driver has not its own interface
+ * exported by a public hader file, we need a global definition at this point.
+ */
+#if defined(CONFIG_XILINX_LL_TEMAC)
+#define XILINX_LL_TEMAC_M_FIFO		0	/* use FIFO Ctrl */
+#define XILINX_LL_TEMAC_M_SDMA_PLB	(1 << 0)/* use SDMA Ctrl via PLB */
+#define XILINX_LL_TEMAC_M_SDMA_DCR	(1 << 1)/* use SDMA Ctrl via DCR */
+#endif
 
 /* Boards with PCI network controllers can call this from their board_eth_init()
  * function to initialize whatever's on board.
@@ -192,6 +204,42 @@ struct mv88e61xx_config {
 int mv88e61xx_switch_initialize(struct mv88e61xx_config *swconfig);
 #endif /* CONFIG_MV88E61XX_SWITCH */
 
+#ifdef CONFIG_DRIVER_TI_CPSW
+
+enum {
+	CPSW_CTRL_VERSION_1 = 0, /* version1 devices */
+	CPSW_CTRL_VERSION_2      /* version2 devices */
+};
+
+struct cpsw_slave_data {
+	u32		slave_reg_ofs;
+	u32		sliver_reg_ofs;
+	int		phy_id;
+};
+
+struct cpsw_platform_data {
+	u32	mdio_base;
+	u32	cpsw_base;
+	int	mdio_div;
+	int	channels;       /* number of cpdma channels (symmetric)	*/
+	u32     cpdma_reg_ofs;  /* cpdma register offset		*/
+	int     slaves;         /* number of slave cpgmac ports		*/
+	u32     ale_reg_ofs;    /* address lookup engine reg offset	*/
+	int     ale_entries;	/* ale table size			*/
+	u32	host_port_reg_ofs;	/* cpdma host port registers	*/
+	u32	hw_stats_reg_ofs;	/* cpsw hw stats counters	*/
+	u32	mac_control;
+	struct cpsw_slave_data  *slave_data;
+	void	(*control)(int enabled);
+	void	(*phy_init)(char *name, int addr);
+	u32	gigabit_en;	/* gigabit capable AND enabled		*/
+	u32	host_port_num;
+	u8	version;
+};
+
+int cpsw_register(struct cpsw_platform_data *data);
+
+#endif /* CONFIG_DRIVER_TI_CPSW */
 /*
  * Allow FEC to fine-tune MII configuration on boards which require this.
  */

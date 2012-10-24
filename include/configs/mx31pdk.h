@@ -99,6 +99,7 @@
 #define CONFIG_CMD_SPI
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_NAND
+#define CONFIG_CMD_BOOTZ
 
 /*
  * Disabled due to compilation errors in cmd_bootm.c (IMLS seems to require
@@ -141,7 +142,7 @@
 
 /* memtest works on */
 #define CONFIG_SYS_MEMTEST_START	0x80000000
-#define CONFIG_SYS_MEMTEST_END		0x10000
+#define CONFIG_SYS_MEMTEST_END		0x80010000
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		0x81000000

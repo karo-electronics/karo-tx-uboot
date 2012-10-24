@@ -41,6 +41,14 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/arch/dma.h>
+
+/*
+ * CONFIG_MXS_MMC_DMA: This feature is highly experimental and has no
+ *                     performance benefit unless you operate the platform with
+ *                     data cache enabled. This is disabled by default, enable
+ *                     only if you know what you're doing.
+ */
 
 struct mxsmmc_priv {
 	int			id;
@@ -49,6 +57,7 @@ struct mxsmmc_priv {
 	uint32_t		*clkctrl_ssp;
 	uint32_t		buswidth;
 	int			(*mmc_is_wp)(int);
+	struct mxs_dma_desc	*desc;
 };
 
 #define	MXSMMC_MAX_TIMEOUT	10000
@@ -65,24 +74,25 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	uint32_t reg;
 	int timeout;
 	uint32_t data_count;
-	uint32_t *data_ptr;
 	uint32_t ctrl0;
+	const uint32_t busy_stat = SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
+		SSP_STATUS_CMD_BUSY;
+#ifndef CONFIG_MXS_MMC_DMA
+	uint32_t *data_ptr;
+#else
+	uint32_t cache_data_count;
+#endif
 
 	debug("MMC%d: CMD%d\n", mmc->block_dev.dev, cmd->cmdidx);
 
 	/* Check bus busy */
 	timeout = MXSMMC_MAX_TIMEOUT;
-	while (--timeout) {
-		udelay(1000);
-		reg = readl(&ssp_regs->hw_ssp_status);
-		if (!(reg &
-			(SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
-			SSP_STATUS_CMD_BUSY))) {
+	while ((reg = readl(&ssp_regs->hw_ssp_status)) & busy_stat) {
+		if (timeout-- <= 0)
 			break;
-		}
+		udelay(1000);
 	}
-
-	if (!timeout) {
+	if (reg & busy_stat && readl(&ssp_regs->hw_ssp_status) & busy_stat) {
 		printf("MMC%d: Bus busy timeout!\n", mmc->block_dev.dev);
 		return TIMEOUT;
 	}
@@ -120,7 +130,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		/* READ or WRITE */
 		if (data->flags & MMC_DATA_READ) {
 			ctrl0 |= SSP_CTRL0_READ;
-		} else if (priv->mmc_is_wp(mmc->block_dev.dev)) {
+		} else if (priv->mmc_is_wp &&
+			priv->mmc_is_wp(mmc->block_dev.dev)) {
 			printf("MMC%d: Can not write a locked card!\n",
 				mmc->block_dev.dev);
 			return UNUSABLE_ERR;
@@ -149,8 +160,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		if (!(reg & SSP_STATUS_CMD_BUSY))
 			break;
 	}
-
-	if (!timeout) {
+	if ((reg & SSP_STATUS_CMD_BUSY) &&
+		(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_CMD_BUSY)) {
 		printf("MMC%d: Command %d busy\n",
 			mmc->block_dev.dev, cmd->cmdidx);
 		return TIMEOUT;
@@ -183,39 +194,77 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	if (!data)
 		return 0;
 
-	/* Process the data */
 	data_count = data->blocksize * data->blocks;
-	timeout = MXSMMC_MAX_TIMEOUT;
+	timeout = get_timer(0);
+
+#ifdef CONFIG_MXS_MMC_DMA
+	if (data_count % ARCH_DMA_MINALIGN)
+		cache_data_count = roundup(data_count, ARCH_DMA_MINALIGN);
+	else
+		cache_data_count = data_count;
+
+	if (data->flags & MMC_DATA_READ) {
+		priv->desc->cmd.data = MXS_DMA_DESC_COMMAND_DMA_WRITE;
+		priv->desc->cmd.address = (dma_addr_t)data->dest;
+	} else {
+		priv->desc->cmd.data = MXS_DMA_DESC_COMMAND_DMA_READ;
+		priv->desc->cmd.address = (dma_addr_t)data->src;
+
+		/* Flush data to DRAM so DMA can pick them up */
+		flush_dcache_range((uint32_t)priv->desc->cmd.address,
+			(uint32_t)(priv->desc->cmd.address + cache_data_count));
+	}
+
+	priv->desc->cmd.data |= MXS_DMA_DESC_IRQ | MXS_DMA_DESC_DEC_SEM |
+				(data_count << MXS_DMA_DESC_BYTES_OFFSET);
+
+
+	mxs_dma_desc_append(MXS_DMA_CHANNEL_AHB_APBH_SSP0, priv->desc);
+	if (mxs_dma_go(MXS_DMA_CHANNEL_AHB_APBH_SSP0)) {
+		printf("MMC%d: DMA transfer failed\n", mmc->block_dev.dev);
+		return COMM_ERR;
+	}
+
+	/* The data arrived into DRAM, invalidate cache over them */
+	if (data->flags & MMC_DATA_READ) {
+		invalidate_dcache_range((uint32_t)priv->desc->cmd.address,
+			(uint32_t)(priv->desc->cmd.address + cache_data_count));
+	}
+#else
 	if (data->flags & MMC_DATA_READ) {
 		data_ptr = (uint32_t *)data->dest;
-		while (data_count && --timeout) {
+		while (data_count) {
 			reg = readl(&ssp_regs->hw_ssp_status);
 			if (!(reg & SSP_STATUS_FIFO_EMPTY)) {
 				*data_ptr++ = readl(&ssp_regs->hw_ssp_data);
 				data_count -= 4;
-				timeout = MXSMMC_MAX_TIMEOUT;
-			} else
-				udelay(1000);
+				timeout = get_timer(0);
+			} else if ((get_timer(timeout) > MXSMMC_MAX_TIMEOUT) &&
+				(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_FIFO_EMPTY)) {
+				break;
+			}
 		}
 	} else {
 		data_ptr = (uint32_t *)data->src;
-		timeout *= 100;
-		while (data_count && --timeout) {
+		while (data_count) {
 			reg = readl(&ssp_regs->hw_ssp_status);
 			if (!(reg & SSP_STATUS_FIFO_FULL)) {
 				writel(*data_ptr++, &ssp_regs->hw_ssp_data);
 				data_count -= 4;
-				timeout = MXSMMC_MAX_TIMEOUT;
-			} else
-				udelay(1000);
+				timeout = get_timer(0);
+			} else if ((get_timer(timeout) > MXSMMC_MAX_TIMEOUT * 100) &&
+				(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_FIFO_FULL)) {
+					break;
+			}
 		}
 	}
 
-	if (!timeout) {
+	if (data_count) {
 		printf("MMC%d: Data timeout with command %d (status 0x%08x)!\n",
 			mmc->block_dev.dev, cmd->cmdidx, reg);
 		return COMM_ERR;
 	}
+#endif
 
 	/* Check data errors */
 	reg = readl(&ssp_regs->hw_ssp_status);
@@ -270,7 +319,8 @@ static int mxsmmc_init(struct mmc *mmc)
 	/* 8 bits word length in MMC mode */
 	clrsetbits_le32(&ssp_regs->hw_ssp_ctrl1,
 		SSP_CTRL1_SSP_MODE_MASK | SSP_CTRL1_WORD_LENGTH_MASK,
-		SSP_CTRL1_SSP_MODE_SD_MMC | SSP_CTRL1_WORD_LENGTH_EIGHT_BITS);
+		SSP_CTRL1_SSP_MODE_SD_MMC | SSP_CTRL1_WORD_LENGTH_EIGHT_BITS |
+		SSP_CTRL1_DMA_ENABLE);
 
 	/* Set initial bit clock 400 KHz */
 	mx28_set_ssp_busclock(priv->id, 400);
@@ -289,6 +339,7 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	struct mmc *mmc = NULL;
 	struct mxsmmc_priv *priv = NULL;
+	int ret;
 
 	mmc = calloc(sizeof(struct mmc), 1);
 	if (!mmc)
@@ -299,6 +350,17 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 		free(mmc);
 		return -ENOMEM;
 	}
+
+	priv->desc = mxs_dma_desc_alloc();
+	if (!priv->desc) {
+		free(priv);
+		free(mmc);
+		return -ENOMEM;
+	}
+
+	ret = mxs_dma_init_channel(id);
+	if (ret)
+		return ret;
 
 	priv->mmc_is_wp = wp;
 	priv->id = id;
@@ -337,17 +399,9 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT |
 			 MMC_MODE_HS_52MHz | MMC_MODE_HS;
 
-	/*
-	 * SSPCLK = 480 * 18 / 29 / 1 = 297.731 MHz
-	 * SSP bit rate = SSPCLK / (CLOCK_DIVIDE * (1 + CLOCK_RATE)),
-	 * CLOCK_DIVIDE has to be an even value from 2 to 254, and
-	 * CLOCK_RATE could be any integer from 0 to 255.
-	 */
-	writel(CLKCTRL_SSP_DIV_FRAC_EN | 29, priv->clkctrl_ssp);
-
 	mmc->f_min = 400000;
 	mmc->f_max = mxc_get_clock(MXC_SSP0_CLK + id) * 1000 / 2;
-	mmc->b_max = 0;
+	mmc->b_max = 0x40;
 
 	mmc_register(mmc);
 	return 0;

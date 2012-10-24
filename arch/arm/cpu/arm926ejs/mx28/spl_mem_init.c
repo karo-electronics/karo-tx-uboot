@@ -45,14 +45,19 @@ static void mx28_mem_init_clock(void)
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
 
 	/* Gate EMI clock */
-	writel(CLKCTRL_FRAC0_CLKGATEEMI,
-		&clkctrl_regs->hw_clkctrl_frac0_set);
+	writeb(CLKCTRL_FRAC_CLKGATE,
+		&clkctrl_regs->hw_clkctrl_frac0_set[CLKCTRL_FRAC0_EMI]);
 
-	/* EMI = 205MHz */
-	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_frac0,
-			CLKCTRL_FRAC0_CLKGATEEMI | CLKCTRL_FRAC0_EMIFRAC_MASK,
-			21 << CLKCTRL_FRAC0_EMIFRAC_OFFSET);
+	/* Set fractional divider for ref_emi to 480 * 18 / 21 = 411MHz */
+	writeb(CLKCTRL_FRAC_CLKGATE | (21 & CLKCTRL_FRAC_FRAC_MASK),
+		&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_EMI]);
 
+	/* Ungate EMI clock */
+	writeb(CLKCTRL_FRAC_CLKGATE,
+		&clkctrl_regs->hw_clkctrl_frac0_clr[CLKCTRL_FRAC0_EMI]);
+
+
+	/* Set EMI clock divider for EMI clock to 411 / 2 = 205MHz */
 	writel((2 << CLKCTRL_EMI_DIV_EMI_OFFSET) |
 		(1 << CLKCTRL_EMI_DIV_XTAL_OFFSET),
 		&clkctrl_regs->hw_clkctrl_emi);
@@ -69,10 +74,10 @@ static void mx28_mem_setup_cpu_and_hbus(void)
 	struct mx28_clkctrl_regs *clkctrl_regs =
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
 
-	/* CPU = 454MHz and ungate CPU clock */
-	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_frac0,
-		CLKCTRL_FRAC0_CPUFRAC_MASK | CLKCTRL_FRAC0_CLKGATECPU,
-		19 << CLKCTRL_FRAC0_CPUFRAC_OFFSET);
+	/* Set fractional divider for ref_cpu to 480 * 18 / 19 = 454MHz
+	 * and ungate CPU clock */
+	writeb(19 & CLKCTRL_FRAC_FRAC_MASK,
+		(uint8_t *)&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_CPU]);
 
 	/* Set CPU bypass */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
@@ -95,6 +100,8 @@ static void mx28_mem_setup_cpu_and_hbus(void)
 	/* Disable CPU bypass */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
+
+	early_delay(15000);
 }
 
 #define	HW_DIGCTRL_SCRATCH0	0x8001c280
@@ -105,21 +112,21 @@ static void data_abort_memdetect_handler(void)
 	asm volatile("subs pc, r14, #4");
 }
 
-static void mx28_mem_get_size(void)
+uint32_t mx28_mem_get_size(void)
 {
 	uint32_t sz, da;
 	uint32_t *vt = (uint32_t *)0x20;
 
 	/* Replace the DABT handler. */
 	da = vt[4];
-	vt[4] = (uint32_t)&data_abort_memdetect_handler;
+	vt[4] = (uint32_t)data_abort_memdetect_handler;
 
 	sz = get_ram_size((long *)PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE);
-	writel(sz, HW_DIGCTRL_SCRATCH0);
-	writel(sz, HW_DIGCTRL_SCRATCH1);
 
 	/* Restore the old DABT handler. */
 	vt[4] = da;
+
+	return sz;
 }
 
 void mx28_mem_init(void)
@@ -162,6 +169,4 @@ void mx28_mem_init(void)
 		;
 
 	mx28_mem_setup_cpu_and_hbus();
-
-	mx28_mem_get_size();
 }
