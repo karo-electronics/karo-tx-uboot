@@ -18,9 +18,12 @@ LIB	= $(obj)lib$(SOC).o
 
 COBJS	+= clock.o
 COBJS	+= sys_info.o
-COBJS	+= ddr.o
+COBJS-$(CONFIG_SYS_SDRAM_DDR3)	+= ddr3.o
+COBJS-$(CONFIG_SYS_SDRAM_DDR2)	+= ddr2.o
+COBJS	+= mem.o
 COBJS	+= emif4.o
 COBJS	+= board.o
+COBJS-$(CONFIG_NAND_AM33XX) += elm.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS) $(COBJS-y) $(SOBJS))

@@ -33,6 +33,7 @@
 #include <config.h>
 #include <version.h>
 #include <asm/system.h>
+#include <linux/linkage.h>
 
 .globl _start
 _start: b	reset
@@ -80,7 +81,11 @@ _end_vect:
 
 .globl _TEXT_BASE
 _TEXT_BASE:
+#ifndef CONFIG_SPL_BUILD
 	.word	CONFIG_SYS_TEXT_BASE
+#else
+	.word	CONFIG_SPL_TEXT_BASE
+#endif
 
 /*
  * These are defined in the board-specific linker script.
@@ -160,7 +165,7 @@ reset:
 call_board_init_f:
 	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
 	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
-	ldr	r0,=0x00000000
+	ldr	r0, =0x00000000
 	bl	board_init_f
 
 /*------------------------------------------------------------------------------*/
@@ -172,8 +177,7 @@ call_board_init_f:
  * after relocating the monitor code.
  *
  */
-	.globl	relocate_code
-relocate_code:
+ENTRY(relocate_code)
 	mov	r4, r0	/* save addr_sp */
 	mov	r5, r1	/* save addr of gd */
 	mov	r6, r2	/* save addr of destination */
@@ -183,8 +187,7 @@ stack_setup:
 	mov	sp, r4
 
 	adr	r0, _start
-	cmp	r0, r6
-	moveq	r9, #0		/* no relocation. relocation offset(r9) = 0 */
+	subs	r9, r6, r0
 	beq	clear_bss		/* skip relocation */
 	mov	r1, r6			/* r1 <- scratch for copy_loop */
 	ldr	r3, _image_copy_end_ofs
@@ -200,7 +203,7 @@ copy_loop:
 	/*
 	 * fix .rel.dyn relocations
 	 */
-	ldr	r0, _TEXT_BASE		/* r0 <- Text base */
+	adr	r0, _start		/* r0 <- beginning of code */
 	sub	r9, r6, r0		/* r9 <- relocation offset */
 	ldr	r10, _dynsym_start_ofs	/* r10 <- sym table ofs */
 	add	r10, r10, r0		/* r10 <- sym table in FLASH */
@@ -259,11 +262,14 @@ clear_bss:
 #endif
 	mov	r2, #0x00000000		/* clear			    */
 
-clbss_l:str	r2, [r0]		/* clear loop...		    */
+clbss_l:
+	cmp	r0, r1			/* clear loop... */
+	bhs	clbss_e			/* if reached end of bss, exit */
+	str	r2, [r0]
 	add	r0, r0, #4
-	cmp	r0, r1
-	bne	clbss_l
-
+	b	clbss_l
+clbss_e:
+	
 /*
  * We are done. Do not return, instead branch to second part of board
  * initialization, now running from RAM.
@@ -289,6 +295,7 @@ jump_2_ram:
 
 _board_init_r_ofs:
 	.word board_init_r - _start
+ENDPROC(relocate_code)
 
 /*************************************************************************
  *
@@ -298,8 +305,7 @@ _board_init_r_ofs:
  * CONFIG_SYS_ICACHE_OFF is defined.
  *
  *************************************************************************/
-.globl cpu_init_cp15
-cpu_init_cp15:
+ENTRY(cpu_init_cp15)
 	/*
 	 * Invalidate L1 I/D
 	 */
@@ -325,7 +331,7 @@ cpu_init_cp15:
 #endif
 	mcr	p15, 0, r0, c1, c0, 0
 	mov	pc, lr			@ back to my caller
-
+ENDPROC(cpu_init_cp15)
 
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
 /*************************************************************************
@@ -336,17 +342,18 @@ cpu_init_cp15:
  * setup memory timing
  *
  *************************************************************************/
-cpu_init_crit:
+ENTRY(cpu_init_crit)
 	/*
 	 * Jump to board specific initialization...
 	 * The Mask ROM will have already initialized
 	 * basic memory. Go here to bump up clock rate and handle
 	 * wake up conditions.
 	 */
-	mov	ip, lr			@ persevere link reg across call
+	mov	ip, lr			@ preserve link reg across call
 	bl	lowlevel_init		@ go setup pll,mux,memory
 	mov	lr, ip			@ restore link
 	mov	pc, lr			@ back to my caller
+ENDPROC(cpu_init_crit)
 #endif
 
 #ifndef CONFIG_SPL_BUILD

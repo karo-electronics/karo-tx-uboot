@@ -35,16 +35,16 @@
 #define CONFIG_DHCP_MIN_EXT_LEN 64
 #endif
 
-ulong		BootpID;
+static ulong		BootpID;
 int		BootpTry;
 #ifdef CONFIG_BOOTP_RANDOM_DELAY
-ulong		seed1, seed2;
+static ulong		seed1, seed2;
 #endif
 
 #if defined(CONFIG_CMD_DHCP)
-dhcp_state_t dhcp_state = INIT;
-unsigned long dhcp_leasetime = 0;
-IPaddr_t NetDHCPServerIP = 0;
+static dhcp_state_t dhcp_state = INIT;
+static unsigned long dhcp_leasetime = 0;
+static IPaddr_t NetDHCPServerIP = 0;
 static void DhcpHandler(uchar *pkt, unsigned dest, IPaddr_t sip, unsigned src,
 			unsigned len);
 

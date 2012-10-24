@@ -542,6 +542,16 @@ static uint8_t mxs_nand_read_byte(struct mtd_info *mtd)
 	return buf;
 }
 
+static void flush_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
+{
+	flush_dcache_range((unsigned long)nand_info->data_buf,
+			(unsigned long)nand_info->data_buf +
+			mtd->writesize);
+	flush_dcache_range((unsigned long)nand_info->oob_buf,
+			(unsigned long)nand_info->oob_buf +
+			mtd->oobsize);
+}
+
 /*
  * Read a page from NAND.
  */
@@ -594,6 +604,8 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 	d->cmd.pio_words[3] = mtd->writesize + mtd->oobsize;
 	d->cmd.pio_words[4] = (dma_addr_t)nand_info->data_buf;
 	d->cmd.pio_words[5] = (dma_addr_t)nand_info->oob_buf;
+
+	flush_buffers(mtd, nand_info);
 
 	mxs_dma_desc_append(channel, d);
 
@@ -724,9 +736,11 @@ static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
 		GPMI_ECCCTRL_ENABLE_ECC |
 		GPMI_ECCCTRL_ECC_CMD_ENCODE |
 		GPMI_ECCCTRL_BUFFER_MASK_BCH_PAGE;
-	d->cmd.pio_words[3] = (mtd->writesize + mtd->oobsize);
+	d->cmd.pio_words[3] = mtd->writesize + mtd->oobsize;
 	d->cmd.pio_words[4] = (dma_addr_t)nand_info->data_buf;
 	d->cmd.pio_words[5] = (dma_addr_t)nand_info->oob_buf;
+
+	flush_buffers(mtd, nand_info);
 
 	mxs_dma_desc_append(channel, d);
 
@@ -953,7 +967,7 @@ static int mxs_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 /*
  * Nominally, the purpose of this function is to look for or create the bad
  * block table. In fact, since the we call this function at the very end of
- * the initialization process started by nand_scan(), and we doesn't have a
+ * the initialization process started by nand_scan(), and we don't have a
  * more formal mechanism, we "hook" this function to continue init process.
  *
  * At this point, the physical NAND Flash chips have been identified and
@@ -972,7 +986,14 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 	uint32_t tmp;
 
 	/* Configure BCH and set NFC geometry */
-	mx28_reset_block(&bch_regs->hw_bch_ctrl_reg);
+	if (readl(&bch_regs->hw_bch_ctrl_reg) &
+		(BCH_CTRL_SFTRST | BCH_CTRL_CLKGATE))
+		/* When booting from NAND the BCH engine will already
+		 * be operational and obviously does not like being reset here.
+		 * There will be occasional read errors upon boot when this
+		 * reset is done.
+		 */
+		mx28_reset_block(&bch_regs->hw_bch_ctrl_reg);
 
 	/* Configure layout 0 */
 	tmp = (mxs_nand_ecc_chunk_cnt(mtd->writesize) - 1)
@@ -1138,7 +1159,9 @@ int board_nand_init(struct nand_chip *nand)
 
 	nand->priv = nand_info;
 	nand->options |= NAND_NO_SUBPAGE_WRITE;
-
+#ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
+	nand->options |= NAND_USE_FLASH_BBT | NAND_USE_FLASH_BBT_NO_OOB;
+#endif
 	nand->cmd_ctrl		= mxs_nand_cmd_ctrl;
 
 	nand->dev_ready		= mxs_nand_device_ready;

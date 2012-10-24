@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2004-2010 Freescale Semiconductor, Inc.
+ *
  * MPC823 and PXA LCD Controller
  *
  * Modeled after video interface by Paolo Scaffardi
@@ -183,6 +185,129 @@ typedef struct vidinfo {
 	u_long	mmio;		/* Memory mapped registers */
 } vidinfo_t;
 
+#elif defined(CONFIG_EXYNOS_FB)
+
+enum {
+	FIMD_RGB_INTERFACE = 1,
+	FIMD_CPU_INTERFACE = 2,
+};
+
+typedef struct vidinfo {
+	ushort vl_col;		/* Number of columns (i.e. 640) */
+	ushort vl_row;		/* Number of rows (i.e. 480) */
+	ushort vl_width;	/* Width of display area in millimeters */
+	ushort vl_height;	/* Height of display area in millimeters */
+
+	/* LCD configuration register */
+	u_char vl_freq;		/* Frequency */
+	u_char vl_clkp;		/* Clock polarity */
+	u_char vl_oep;		/* Output Enable polarity */
+	u_char vl_hsp;		/* Horizontal Sync polarity */
+	u_char vl_vsp;		/* Vertical Sync polarity */
+	u_char vl_dp;		/* Data polarity */
+	u_char vl_bpix;		/* Bits per pixel */
+
+	/* Horizontal control register. Timing from data sheet */
+	u_char vl_hspw;		/* Horz sync pulse width */
+	u_char vl_hfpd;		/* Wait before of line */
+	u_char vl_hbpd;		/* Wait end of line */
+
+	/* Vertical control register. */
+	u_char	vl_vspw;	/* Vertical sync pulse width */
+	u_char	vl_vfpd;	/* Wait before of frame */
+	u_char	vl_vbpd;	/* Wait end of frame */
+	u_char  vl_cmd_allow_len; /* Wait end of frame */
+
+	void (*cfg_gpio)(void);
+	void (*backlight_on)(unsigned int onoff);
+	void (*reset_lcd)(void);
+	void (*lcd_power_on)(void);
+	void (*cfg_ldo)(void);
+	void (*enable_ldo)(unsigned int onoff);
+	void (*mipi_power)(void);
+	void (*backlight_reset)(void);
+
+	unsigned int win_id;
+	unsigned int init_delay;
+	unsigned int power_on_delay;
+	unsigned int reset_delay;
+	unsigned int interface_mode;
+	unsigned int mipi_enabled;
+	unsigned int cs_setup;
+	unsigned int wr_setup;
+	unsigned int wr_act;
+	unsigned int wr_hold;
+
+	/* parent clock name(MPLL, EPLL or VPLL) */
+	unsigned int pclk_name;
+	/* ratio value for source clock from parent clock. */
+	unsigned int sclk_div;
+
+	unsigned int dual_lcd_enabled;
+
+} vidinfo_t;
+
+void init_panel_info(vidinfo_t *vid);
+
+#elif defined(CONFIG_MXC2_LCD)
+
+typedef struct vidinfo {
+	u_long vl_refresh;	/* Refresh Rate Hz */
+	u_long vl_row;		/* resolution in x */
+	u_long vl_col;		/* resolution in y */
+	u_long vl_pixclock;	/* pixel clock in picoseconds */
+	u_long vl_left_margin;	/* Horizontal back porch */
+	u_long vl_right_margin; /* Horizontal front porch */
+	u_long vl_upper_margin; /* Vertical back porch */
+	u_long vl_lower_margin; /* Vertical front porch */
+	u_long vl_hsync;	/* Horizontal sync pulse length */
+	u_long vl_vsync;	/* Vertical sync pulse length */
+	u_long vl_sync;		/* Polarity on data enable */
+	u_long vl_mode;		/* Video Mode */
+	u_long vl_flag;
+	u_char	vl_bpix;
+	ushort	*cmap;
+} vidinfo_t;
+
+#elif defined(CONFIG_MXC_EPDC)
+
+struct waveform_modes {
+	int mode_init;
+	int mode_du;
+	int mode_gc4;
+	int mode_gc8;
+	int mode_gc16;
+	int mode_gc32;
+};
+
+struct epdc_data_struct {
+	/* EPDC buffer pointers */
+	u_long working_buf_addr;
+	u_long waveform_buf_addr;
+
+	/* Waveform mode definitions */
+	struct waveform_modes wv_modes;
+};
+
+typedef struct vidinfo {
+	u_long vl_refresh;      /* Refresh Rate Hz */
+	u_long vl_row;          /* resolution in x */
+	u_long vl_col;          /* resolution in y */
+	u_long vl_pixclock;     /* pixel clock in picoseconds */
+	u_long vl_left_margin;  /* Horizontal back porch */
+	u_long vl_right_margin; /* Horizontal front porch */
+	u_long vl_upper_margin; /* Vertical back porch */
+	u_long vl_lower_margin; /* Vertical front porch */
+	u_long vl_hsync;        /* Horizontal sync pulse length */
+	u_long vl_vsync;        /* Vertical sync pulse length */
+	u_long vl_sync;         /* Polarity on data enable */
+	u_long vl_mode;         /* Video Mode */
+	u_long vl_flag;
+	u_char  vl_bpix;
+	ushort  *cmap;
+	struct epdc_data_struct epdc_data;
+} vidinfo_t;
+
 #else
 
 typedef struct vidinfo {
@@ -202,10 +327,8 @@ extern vidinfo_t panel_info;
 
 /* Video functions */
 
-#if defined(CONFIG_RBC823)
 void	lcd_disable	(void);
-#endif
-
+void	lcd_panel_disable(void);
 
 /* int	lcd_init	(void *lcdbase); */
 void	lcd_putc	(const char c);
@@ -238,6 +361,7 @@ void lcd_show_board_info(void);
 #define LCD_COLOR4	2
 #define LCD_COLOR8	3
 #define LCD_COLOR16	4
+#define LCD_COLOR24	5
 
 /*----------------------------------------------------------------------*/
 #if defined(CONFIG_LCD_INFO_BELOW_LOGO)
@@ -289,14 +413,36 @@ void lcd_show_board_info(void);
 # define CONSOLE_COLOR_GREY	14
 # define CONSOLE_COLOR_WHITE	15	/* Must remain last / highest	*/
 
-#else
+#elif LCD_BPP == LCD_COLOR16
 
 /*
  * 16bpp color definitions
  */
 # define CONSOLE_COLOR_BLACK	0x0000
+# define CONSOLE_COLOR_RED	0xf800
+# define CONSOLE_COLOR_GREEN	0x07e0
+# define CONSOLE_COLOR_YELLOW	0xffe0
+# define CONSOLE_COLOR_BLUE	0x001f
+# define CONSOLE_COLOR_MAGENTA	0xf81f
+# define CONSOLE_COLOR_CYAN	0x07ff
+# define CONSOLE_COLOR_GREY	0xcccc
 # define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
 
+#elif LCD_BPP == LCD_COLOR24
+/*
+ * 16bpp color definitions
+ */
+# define CONSOLE_COLOR_BLACK	0x00000000
+# define CONSOLE_COLOR_RED	0x00ff0000
+# define CONSOLE_COLOR_GREEN	0x0000ff00
+# define CONSOLE_COLOR_YELLOW	0x00ffff00
+# define CONSOLE_COLOR_BLUE	0x000000ff
+# define CONSOLE_COLOR_MAGENTA	0x00ff00ff
+# define CONSOLE_COLOR_CYAN	0x0000ffff
+# define CONSOLE_COLOR_GREY	0x00cccccc
+# define CONSOLE_COLOR_WHITE	0x00ffffff	/* Must remain last / highest	*/
+#else
+#error Invalid LCD_BPP setting
 #endif /* color definitions */
 
 /************************************************************************/
@@ -326,7 +472,7 @@ void lcd_show_board_info(void);
 #if LCD_BPP == LCD_MONOCHROME
 # define COLOR_MASK(c)		((c)	  | (c) << 1 | (c) << 2 | (c) << 3 | \
 				 (c) << 4 | (c) << 5 | (c) << 6 | (c) << 7)
-#elif (LCD_BPP == LCD_COLOR8) || (LCD_BPP == LCD_COLOR16)
+#elif (LCD_BPP == LCD_COLOR8) || (LCD_BPP == LCD_COLOR16) || (LCD_BPP == LCD_COLOR24)
 # define COLOR_MASK(c)		(c)
 #else
 # error Unsupported LCD BPP.

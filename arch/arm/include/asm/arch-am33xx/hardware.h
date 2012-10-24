@@ -21,6 +21,7 @@
 
 /* Module base addresses */
 #define LOW_LEVEL_SRAM_STACK		0x4030B7FC
+#define SRAM0_START			0x402F0400
 #define UART0_BASE			0x44E09000
 
 /* DM Timer base addresses */
@@ -34,9 +35,10 @@
 #define DM_TIMER7_BASE			0x4804A000
 
 /* GPIO Base address */
-#define GPIO0_BASE			0x48032000
+#define GPIO0_BASE			0x44E07000
 #define GPIO1_BASE			0x4804C000
 #define GPIO2_BASE			0x481AC000
+#define GPIO3_BASE			0x481AE000
 
 /* BCH Error Location Module */
 #define ELM_BASE			0x48080000
@@ -77,5 +79,17 @@
 
 #define DDRPHY_0_CONFIG_BASE		(CTRL_BASE + 0x1400)
 #define DDRPHY_CONFIG_BASE		DDRPHY_0_CONFIG_BASE
+
+/* GPMC Base address */
+#define GPMC_BASE			0x50000000
+
+/* CPSW Config space */
+#define CPSW_BASE			0x4A100000
+#define CPSW_MDIO_BASE			0x4A101000
+
+/* RTC base address */
+#define AM335X_RTC_BASE			0x44E3E000
+
+extern unsigned long lcdc_clk_rate(void);
 
 #endif /* __AM33XX_HARDWARE_H */

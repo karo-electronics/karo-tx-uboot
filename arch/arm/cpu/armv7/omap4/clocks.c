@@ -46,8 +46,6 @@
 #define puts(s)
 #endif
 
-#define abs(x) (((x) < 0) ? ((x)*-1) : (x))
-
 struct omap4_prcm_regs *const prcm = (struct omap4_prcm_regs *)0x4A004100;
 
 const u32 sys_clk_array[8] = {
@@ -378,7 +376,6 @@ void enable_basic_clocks(void)
 		&prcm->cm_l4per_gptimer2_clkctrl,
 		&prcm->cm_wkup_wdtimer2_clkctrl,
 		&prcm->cm_l4per_uart3_clkctrl,
-		&prcm->cm_l3init_fsusb_clkctrl,
 		&prcm->cm_l3init_hsusbhost_clkctrl,
 		0
 	};
@@ -455,10 +452,6 @@ void enable_non_essential_clocks(void)
 	};
 
 	u32 *const clk_modules_hw_auto_non_essential[] = {
-		&prcm->cm_mpu_m3_mpu_m3_clkctrl,
-		&prcm->cm_ivahd_ivahd_clkctrl,
-		&prcm->cm_ivahd_sl2_clkctrl,
-		&prcm->cm_dsp_dsp_clkctrl,
 		&prcm->cm_l3_2_gpmc_clkctrl,
 		&prcm->cm_l3instr_l3_3_clkctrl,
 		&prcm->cm_l3instr_l3_instr_clkctrl,
@@ -505,7 +498,6 @@ void enable_non_essential_clocks(void)
 		&prcm->cm_dss_dss_clkctrl,
 		&prcm->cm_sgx_sgx_clkctrl,
 		&prcm->cm_l3init_hsusbhost_clkctrl,
-		&prcm->cm_l3init_fsusb_clkctrl,
 		0
 	};
 

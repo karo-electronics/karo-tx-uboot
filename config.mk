@@ -104,7 +104,7 @@ HOSTCFLAGS	+= -pedantic
 
 #########################################################################
 #
-# Option checker (courtesy linux kernel) to ensure
+# Option checker, gcc version (courtesy linux kernel) to ensure
 # only supported compiler options are used
 #
 CC_OPTIONS_CACHE_FILE := $(OBJTREE)/include/generated/cc_options.mk
@@ -124,6 +124,10 @@ else
 cc-option = $(strip $(if $(findstring $1,$(CC_OPTIONS)),$1,\
 		$(if $(call cc-option-sys,$1),$1,$2)))
 endif
+
+# cc-version
+# Usage gcc-ver := $(call cc-version)
+cc-version = $(shell $(SHELL) $(SRCTREE)/tools/gcc-version.sh $(CC))
 
 #
 # Include the make variables (CC, etc...)
@@ -217,20 +221,17 @@ CPPFLAGS += -I$(TOPDIR)/include
 CPPFLAGS += -fno-builtin -ffreestanding -nostdinc	\
 	-isystem $(gccincdir) -pipe $(PLATFORM_CPPFLAGS)
 
-ifdef BUILD_TAG
-CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes \
-	-DBUILD_TAG='"$(BUILD_TAG)"'
-else
-CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
-endif
-
 CFLAGS_SSP := $(call cc-option,-fno-stack-protector)
-CFLAGS += $(CFLAGS_SSP)
+
 # Some toolchains enable security related warning flags by default,
 # but they don't make much sense in the u-boot world, so disable them.
 CFLAGS_WARN := $(call cc-option,-Wno-format-nonliteral) \
 	       $(call cc-option,-Wno-format-security)
-CFLAGS += $(CFLAGS_WARN)
+
+CFLAGS := $(CFLAGS_SSP) $(CFLAGS_WARN) $(CPPFLAGS) -Wall -Wstrict-prototypes
+ifdef BUILD_TAG
+	CFLAGS += -DBUILD_TAG='"$(BUILD_TAG)"'
+endif
 
 # Report stack usage if supported
 CFLAGS_STACK := $(call cc-option,-fstack-usage)

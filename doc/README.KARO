@@ -1,0 +1,39 @@
+                             Building & Flashing U-Boot for TX28
+                             ===================================
+
+Building U-Boot
+---------------
+
+Unpacking the source
+--------------------
+mkdir u-boot
+cd u-boot
+tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Compiling U-Boot
+----------------
+export ARCH=arm
+export CROSS_COMPILE=arm-926ejs-linux-gnueabi-
+make tx28_config
+make
+
+
+Flashing U-Boot Image
+---------------------
+Load the U-Boot image with sbloader (either the Windows version or the
+Linux version) and use the builtin 'romupdate' command to program the
+image into the flash.
+
+Put the u-boot.sb file in the TFTP server data directory (usually
+/tftpboot).
+
+Load the U-Boot image:
+Enter the following commands at the U-Boot prompt
+set autostart no
+set autoload yes
+set bootfile u-boot.sb
+bootp
+romupdate
+
+Power down the module, make sure the BOOT_MODE jumper (ST3) is removed
+and re-apply power to start from flash.

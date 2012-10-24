@@ -30,7 +30,67 @@
 
 #include "mx28_init.h"
 
-void mx28_power_clock2xtal(void)
+#ifdef CONFIG_SYS_SPL_VDDD_VAL
+#define VDDD_VAL	CONFIG_SYS_SPL_VDDD_VAL
+#else
+#define VDDD_VAL	1350
+#endif
+#ifdef CONFIG_SYS_SPL_VDDIO_VAL
+#define VDDIO_VAL	CONFIG_SYS_SPL_VDDIO_VAL
+#else
+#define VDDIO_VAL	3300
+#endif
+#ifdef CONFIG_SYS_SPL_VDDA_VAL
+#define VDDA_VAL	CONFIG_SYS_SPL_VDDA_VAL
+#else
+#define VDDA_VAL	1800
+#endif
+#ifdef CONFIG_SYS_SPL_VDDMEM_VAL
+#define VDDMEM_VAL	CONFIG_SYS_SPL_VDDMEM_VAL
+#else
+#define VDDMEM_VAL	1500
+#endif
+
+#ifdef CONFIG_SYS_SPL_VDDD_BO_VAL
+#define VDDD_BO_VAL	CONFIG_SYS_SPL_VDDD_BO_VAL
+#else
+#define VDDD_BO_VAL	150
+#endif
+#ifdef CONFIG_SYS_SPL_VDDIO_BO_VAL
+#define VDDIO_BO_VAL	CONFIG_SYS_SPL_VDDIO_BO_VAL
+#else
+#define VDDIO_BO_VAL	150
+#endif
+#ifdef CONFIG_SYS_SPL_VDDA_BO_VAL
+#define VDDA_BO_VAL	CONFIG_SYS_SPL_VDDA_BO_VAL
+#else
+#define VDDA_BO_VAL	175
+#endif
+#ifdef CONFIG_SYS_SPL_VDDMEM_BO_VAL
+#define VDDMEM_BO_VAL	CONFIG_SYS_SPL_VDDMEM_BO_VAL
+#else
+#define VDDMEM_BO_VAL	25
+#endif
+
+#ifdef CONFIG_SYS_SPL_BATT_BO_LEVEL
+#if CONFIG_SYS_SPL_BATT_BO_LEVEL < 2400 || CONFIG_SYS_SPL_BATT_BO_LEVEL > 3640
+#error CONFIG_SYS_SPL_BATT_BO_LEVEL out of range
+#endif
+#define BATT_BO_VAL	(((CONFIG_SYS_SPL_BATT_BO_LEVEL) - 2400) / 40)
+#else
+/* Brownout default at 3V */
+#define BATT_BO_VAL	((3000 - 2400) / 40)
+#endif
+
+#ifdef CONFIG_SYS_SPL_FIXED_BATT_SUPPLY
+static const int fixed_batt_supply = 1;
+#else
+static const int fixed_batt_supply;
+#endif
+
+static struct mx28_power_regs *power_regs = (void *)MXS_POWER_BASE;
+
+static void mx28_power_clock2xtal(void)
 {
 	struct mx28_clkctrl_regs *clkctrl_regs =
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
@@ -40,19 +100,19 @@ void mx28_power_clock2xtal(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_set);
 }
 
-void mx28_power_clock2pll(void)
+static void mx28_power_clock2pll(void)
 {
 	struct mx28_clkctrl_regs *clkctrl_regs =
 		(struct mx28_clkctrl_regs *)MXS_CLKCTRL_BASE;
 
-	writel(CLKCTRL_PLL0CTRL0_POWER,
-		&clkctrl_regs->hw_clkctrl_pll0ctrl0_set);
+	setbits_le32(&clkctrl_regs->hw_clkctrl_pll0ctrl0,
+			CLKCTRL_PLL0CTRL0_POWER);
 	early_delay(100);
-	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
-		&clkctrl_regs->hw_clkctrl_clkseq_clr);
+	setbits_le32(&clkctrl_regs->hw_clkctrl_clkseq,
+			CLKCTRL_CLKSEQ_BYPASS_CPU);
 }
 
-void mx28_power_clear_auto_restart(void)
+static void mx28_power_clear_auto_restart(void)
 {
 	struct mx28_rtc_regs *rtc_regs =
 		(struct mx28_rtc_regs *)MXS_RTC_BASE;
@@ -85,11 +145,8 @@ void mx28_power_clear_auto_restart(void)
 		;
 }
 
-void mx28_power_set_linreg(void)
+static void mx28_power_set_linreg(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Set linear regulator 25mV below switching converter */
 	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
 			POWER_VDDDCTRL_LINREG_OFFSET_MASK,
@@ -104,11 +161,64 @@ void mx28_power_set_linreg(void)
 			POWER_VDDIOCTRL_LINREG_OFFSET_1STEPS_BELOW);
 }
 
-void mx28_power_setup_5v_detect(void)
+int mx28_get_batt_volt(void)
 {
 	struct mx28_power_regs *power_regs =
 		(struct mx28_power_regs *)MXS_POWER_BASE;
+	uint32_t volt = readl(&power_regs->hw_power_battmonitor);
+	volt &= POWER_BATTMONITOR_BATT_VAL_MASK;
+	volt >>= POWER_BATTMONITOR_BATT_VAL_OFFSET;
+	volt *= 8;
+	return volt;
+}
 
+int mx28_is_batt_ready(void)
+{
+	return (mx28_get_batt_volt() >= 3600);
+}
+
+int mx28_is_batt_good(void)
+{
+	struct mx28_power_regs *power_regs =
+		(struct mx28_power_regs *)MXS_POWER_BASE;
+	uint32_t volt = mx28_get_batt_volt();
+
+	if ((volt >= 2400) && (volt <= 4300))
+		return 1;
+
+	clrsetbits_le32(&power_regs->hw_power_5vctrl,
+		POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK,
+		0x3 << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
+	writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
+		&power_regs->hw_power_5vctrl_clr);
+
+	clrsetbits_le32(&power_regs->hw_power_charge,
+		POWER_CHARGE_STOP_ILIMIT_MASK | POWER_CHARGE_BATTCHRG_I_MASK,
+		POWER_CHARGE_STOP_ILIMIT_10MA | 0x3);
+
+	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_clr);
+	writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
+		&power_regs->hw_power_5vctrl_clr);
+
+	early_delay(500000);
+
+	volt = mx28_get_batt_volt();
+
+	if (volt >= 3500)
+		return 0;
+
+	if (volt >= 2400)
+		return 1;
+
+	writel(POWER_CHARGE_STOP_ILIMIT_MASK | POWER_CHARGE_BATTCHRG_I_MASK,
+		&power_regs->hw_power_charge_clr);
+	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
+
+	return 0;
+}
+
+static void mx28_power_setup_5v_detect(void)
+{
 	/* Start 5V detection */
 	clrsetbits_le32(&power_regs->hw_power_5vctrl,
 			POWER_5VCTRL_VBUSVALID_TRSH_MASK,
@@ -116,11 +226,8 @@ void mx28_power_setup_5v_detect(void)
 			POWER_5VCTRL_PWRUP_VBUS_CMPS);
 }
 
-void mx28_src_power_init(void)
+static void mx28_src_power_init(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Improve efficieny and reduce transient ripple */
 	writel(POWER_LOOPCTRL_TOGGLE_DIF | POWER_LOOPCTRL_EN_CM_HYST |
 		POWER_LOOPCTRL_EN_DF_HYST, &power_regs->hw_power_loopctrl_set);
@@ -129,8 +236,14 @@ void mx28_src_power_init(void)
 			POWER_DCLIMITS_POSLIMIT_BUCK_MASK,
 			0x30 << POWER_DCLIMITS_POSLIMIT_BUCK_OFFSET);
 
-	setbits_le32(&power_regs->hw_power_battmonitor,
+	if (!fixed_batt_supply) {
+		/* FIXME: This requires the LRADC to be set up! */
+		setbits_le32(&power_regs->hw_power_battmonitor,
 			POWER_BATTMONITOR_EN_BATADJ);
+	} else {
+		clrbits_le32(&power_regs->hw_power_battmonitor,
+			POWER_BATTMONITOR_EN_BATADJ);
+	}
 
 	/* Increase the RCSCALE level for quick DCDC response to dynamic load */
 	clrsetbits_le32(&power_regs->hw_power_loopctrl,
@@ -141,17 +254,16 @@ void mx28_src_power_init(void)
 	clrsetbits_le32(&power_regs->hw_power_minpwr,
 			POWER_MINPWR_HALFFETS, POWER_MINPWR_DOUBLE_FETS);
 
-	/* 5V to battery handoff ... FIXME */
-	setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
-	early_delay(30);
-	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	if (!fixed_batt_supply) {
+		/* 5V to battery handoff ... FIXME */
+		setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+		early_delay(30);
+		clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	}
 }
 
-void mx28_power_init_4p2_params(void)
+static void mx28_power_init_4p2_params(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/* Setup 4P2 parameters */
 	clrsetbits_le32(&power_regs->hw_power_dcdc4p2,
 		POWER_DCDC4P2_CMPTRIP_MASK | POWER_DCDC4P2_TRG_MASK,
@@ -171,10 +283,8 @@ void mx28_power_init_4p2_params(void)
 		0x3f << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
 }
 
-void mx28_enable_4p2_dcdc_input(int xfer)
+static void mx28_enable_4p2_dcdc_input(int xfer)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp, vbus_thresh, vbus_5vdetect, pwd_bo;
 	uint32_t prev_5v_brnout, prev_5v_droop;
 
@@ -267,10 +377,8 @@ void mx28_enable_4p2_dcdc_input(int xfer)
 				POWER_CTRL_ENIRQ_VDD5V_DROOP);
 }
 
-void mx28_power_init_4p2_regulator(void)
+static void mx28_power_init_4p2_regulator(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp, tmp2;
 
 	setbits_le32(&power_regs->hw_power_dcdc4p2, POWER_DCDC4P2_ENABLE_4P2);
@@ -351,11 +459,8 @@ void mx28_power_init_4p2_regulator(void)
 	writel(POWER_CTRL_DCDC4P2_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 }
 
-void mx28_power_init_dcdc_4p2_source(void)
+static void mx28_power_init_dcdc_4p2_source(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	if (!(readl(&power_regs->hw_power_dcdc4p2) &
 		POWER_DCDC4P2_ENABLE_DCDC)) {
 		hang();
@@ -373,10 +478,8 @@ void mx28_power_init_dcdc_4p2_source(void)
 	}
 }
 
-void mx28_power_enable_4p2(void)
+static void mx28_power_enable_4p2(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t vdddctrl, vddactrl, vddioctrl;
 	uint32_t tmp;
 
@@ -399,9 +502,14 @@ void mx28_power_enable_4p2(void)
 	mx28_power_init_4p2_regulator();
 
 	/* Shutdown battery (none present) */
-	clrbits_le32(&power_regs->hw_power_dcdc4p2, POWER_DCDC4P2_BO_MASK);
-	writel(POWER_CTRL_DCDC4P2_BO_IRQ, &power_regs->hw_power_ctrl_clr);
-	writel(POWER_CTRL_ENIRQ_DCDC4P2_BO, &power_regs->hw_power_ctrl_clr);
+	if (!mx28_is_batt_ready()) {
+		clrbits_le32(&power_regs->hw_power_dcdc4p2,
+				POWER_DCDC4P2_BO_MASK);
+		writel(POWER_CTRL_DCDC4P2_BO_IRQ,
+				&power_regs->hw_power_ctrl_clr);
+		writel(POWER_CTRL_ENIRQ_DCDC4P2_BO,
+				&power_regs->hw_power_ctrl_clr);
+	}
 
 	mx28_power_init_dcdc_4p2_source();
 
@@ -427,11 +535,8 @@ void mx28_power_enable_4p2(void)
 			&power_regs->hw_power_charge_clr);
 }
 
-void mx28_boot_valid_5v(void)
+static void mx28_boot_valid_5v(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/*
 	 * Use VBUSVALID level instead of VDD5V_GT_VDDIO level to trigger a 5V
 	 * disconnect event. FIXME
@@ -450,19 +555,59 @@ void mx28_boot_valid_5v(void)
 	mx28_power_enable_4p2();
 }
 
-void mx28_powerdown(void)
+static void mx28_powerdown(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	writel(POWER_RESET_UNLOCK_KEY, &power_regs->hw_power_reset);
 	writel(POWER_RESET_UNLOCK_KEY | POWER_RESET_PWD_OFF,
 		&power_regs->hw_power_reset);
 }
 
-void mx28_handle_5v_conflict(void)
+void mx28_batt_boot(void)
 {
 	struct mx28_power_regs *power_regs =
 		(struct mx28_power_regs *)MXS_POWER_BASE;
+
+	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_PWDN_5VBRNOUT);
+	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_ENABLE_DCDC);
+
+	clrbits_le32(&power_regs->hw_power_dcdc4p2,
+			POWER_DCDC4P2_ENABLE_DCDC | POWER_DCDC4P2_ENABLE_4P2);
+	writel(POWER_CHARGE_ENABLE_LOAD, &power_regs->hw_power_charge_clr);
+
+	/* 5V to battery handoff. */
+	setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	early_delay(30);
+	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+
+	writel(POWER_CTRL_ENIRQ_DCDC4P2_BO, &power_regs->hw_power_ctrl_clr);
+
+	clrsetbits_le32(&power_regs->hw_power_minpwr,
+			POWER_MINPWR_HALFFETS, POWER_MINPWR_DOUBLE_FETS);
+
+	mx28_power_set_linreg();
+
+	clrbits_le32(&power_regs->hw_power_vdddctrl,
+		POWER_VDDDCTRL_DISABLE_FET | POWER_VDDDCTRL_ENABLE_LINREG);
+
+	clrbits_le32(&power_regs->hw_power_vddactrl,
+		POWER_VDDACTRL_DISABLE_FET | POWER_VDDACTRL_ENABLE_LINREG);
+
+	clrbits_le32(&power_regs->hw_power_vddioctrl,
+		POWER_VDDIOCTRL_DISABLE_FET);
+
+	setbits_le32(&power_regs->hw_power_5vctrl,
+		POWER_5VCTRL_PWD_CHARGE_4P2_MASK);
+
+	setbits_le32(&power_regs->hw_power_5vctrl,
+		POWER_5VCTRL_ENABLE_DCDC);
+
+	clrsetbits_le32(&power_regs->hw_power_5vctrl,
+		POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK,
+		0x8 << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
+}
+
+void mx28_handle_5v_conflict(void)
+{
 	uint32_t tmp;
 
 	setbits_le32(&power_regs->hw_power_vddioctrl,
@@ -483,30 +628,16 @@ void mx28_handle_5v_conflict(void)
 			mx28_powerdown();
 			break;
 		}
+
+		if (tmp & POWER_STS_PSWITCH_MASK) {
+			mx28_batt_boot();
+			break;
+		}
 	}
 }
 
-int mx28_get_batt_volt(void)
+static void mx28_5v_boot(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-	uint32_t volt = readl(&power_regs->hw_power_battmonitor);
-	volt &= POWER_BATTMONITOR_BATT_VAL_MASK;
-	volt >>= POWER_BATTMONITOR_BATT_VAL_OFFSET;
-	volt *= 8;
-	return volt;
-}
-
-int mx28_is_batt_ready(void)
-{
-	return (mx28_get_batt_volt() >= 3600);
-}
-
-void mx28_5v_boot(void)
-{
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	/*
 	 * NOTE: In original IMX-Bootlets, this also checks for VBUSVALID,
 	 * but their implementation always returns 1 so we omit it here.
@@ -525,25 +656,49 @@ void mx28_5v_boot(void)
 	mx28_handle_5v_conflict();
 }
 
-void mx28_init_batt_bo(void)
+static void mx28_fixed_batt_boot(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
+	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
 
-	/* Brownout at 3V */
+	setbits_le32(&power_regs->hw_power_5vctrl,
+		POWER_5VCTRL_PWDN_5VBRNOUT |
+		POWER_5VCTRL_ENABLE_DCDC |
+		POWER_5VCTRL_ILIMIT_EQ_ZERO |
+		POWER_5VCTRL_PWDN_5VBRNOUT |
+		POWER_5VCTRL_PWD_CHARGE_4P2_MASK);
+
+	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
+
+	clrbits_le32(&power_regs->hw_power_vdddctrl,
+		POWER_VDDDCTRL_DISABLE_FET |
+		POWER_VDDDCTRL_ENABLE_LINREG |
+		POWER_VDDDCTRL_DISABLE_STEPPING);
+
+	clrbits_le32(&power_regs->hw_power_vddactrl,
+		POWER_VDDACTRL_DISABLE_FET | POWER_VDDACTRL_ENABLE_LINREG |
+		POWER_VDDACTRL_DISABLE_STEPPING);
+
+	clrbits_le32(&power_regs->hw_power_vddioctrl,
+		POWER_VDDIOCTRL_DISABLE_FET |
+		POWER_VDDIOCTRL_DISABLE_STEPPING);
+
+	/* Stop 5V detection */
+	writel(POWER_5VCTRL_PWRUP_VBUS_CMPS,
+		&power_regs->hw_power_5vctrl_clr);
+}
+
+static void mx28_init_batt_bo(void)
+{
 	clrsetbits_le32(&power_regs->hw_power_battmonitor,
 		POWER_BATTMONITOR_BRWNOUT_LVL_MASK,
-		15 << POWER_BATTMONITOR_BRWNOUT_LVL_OFFSET);
+		BATT_BO_VAL << POWER_BATTMONITOR_BRWNOUT_LVL_OFFSET);
 
 	writel(POWER_CTRL_BATT_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
 }
 
-void mx28_switch_vddd_to_dcdc_source(void)
+static void mx28_switch_vddd_to_dcdc_source(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
 		POWER_VDDDCTRL_LINREG_OFFSET_MASK,
 		POWER_VDDDCTRL_LINREG_OFFSET_1STEPS_BELOW);
@@ -553,70 +708,24 @@ void mx28_switch_vddd_to_dcdc_source(void)
 		POWER_VDDDCTRL_DISABLE_STEPPING);
 }
 
-int mx28_is_batt_good(void)
-{
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-	uint32_t volt;
-
-	volt = readl(&power_regs->hw_power_battmonitor);
-	volt &= POWER_BATTMONITOR_BATT_VAL_MASK;
-	volt >>= POWER_BATTMONITOR_BATT_VAL_OFFSET;
-	volt *= 8;
-
-	if ((volt >= 2400) && (volt <= 4300))
-		return 1;
-
-	clrsetbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK,
-		0x3 << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
-	writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
-		&power_regs->hw_power_5vctrl_clr);
-
-	clrsetbits_le32(&power_regs->hw_power_charge,
-		POWER_CHARGE_STOP_ILIMIT_MASK | POWER_CHARGE_BATTCHRG_I_MASK,
-		POWER_CHARGE_STOP_ILIMIT_10MA | 0x3);
-
-	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_clr);
-	writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
-		&power_regs->hw_power_5vctrl_clr);
-
-	early_delay(500000);
-
-	volt = readl(&power_regs->hw_power_battmonitor);
-	volt &= POWER_BATTMONITOR_BATT_VAL_MASK;
-	volt >>= POWER_BATTMONITOR_BATT_VAL_OFFSET;
-	volt *= 8;
-
-	if (volt >= 3500)
-		return 0;
-
-	if (volt >= 2400)
-		return 1;
-
-	writel(POWER_CHARGE_STOP_ILIMIT_MASK | POWER_CHARGE_BATTCHRG_I_MASK,
-		&power_regs->hw_power_charge_clr);
-	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
-
-	return 0;
-}
-
-void mx28_power_configure_power_source(void)
+static void mx28_power_configure_power_source(void)
 {
 	mx28_src_power_init();
 
-	mx28_5v_boot();
+	if (!fixed_batt_supply)
+		mx28_5v_boot();
+	else
+		mx28_fixed_batt_boot();
+
 	mx28_power_clock2pll();
 
 	mx28_init_batt_bo();
+
 	mx28_switch_vddd_to_dcdc_source();
 }
 
-void mx28_enable_output_rail_protection(void)
+static void mx28_enable_output_rail_protection(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
 		POWER_CTRL_VDDIO_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 
@@ -630,13 +739,14 @@ void mx28_enable_output_rail_protection(void)
 			POWER_VDDIOCTRL_PWDN_BRNOUT);
 }
 
-int mx28_get_vddio_power_source_off(void)
+static inline int mx28_get_vddio_power_source_off(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp;
 
-	if (readl(&power_regs->hw_power_sts) & POWER_STS_VDD5V_GT_VDDIO) {
+	if ((readl(&power_regs->hw_power_sts) & POWER_STS_VDD5V_GT_VDDIO) &&
+		!(readl(&power_regs->hw_power_5vctrl) &
+			POWER_5VCTRL_ILIMIT_EQ_ZERO)) {
+
 		tmp = readl(&power_regs->hw_power_vddioctrl);
 		if (tmp & POWER_VDDIOCTRL_DISABLE_FET) {
 			if ((tmp & POWER_VDDIOCTRL_LINREG_OFFSET_MASK) ==
@@ -655,13 +765,10 @@ int mx28_get_vddio_power_source_off(void)
 	}
 
 	return 0;
-
 }
 
-int mx28_get_vddd_power_source_off(void)
+static inline int mx28_get_vddd_power_source_off(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
 	uint32_t tmp;
 
 	tmp = readl(&power_regs->hw_power_vdddctrl);
@@ -689,164 +796,89 @@ int mx28_get_vddd_power_source_off(void)
 	return 0;
 }
 
-void mx28_power_set_vddio(uint32_t new_target, uint32_t new_brownout)
+static inline int mx28_get_vdda_power_source_off(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-	uint32_t cur_target, diff, bo_int = 0;
-	uint32_t powered_by_linreg = 0;
+	uint32_t tmp;
 
-	new_brownout = new_target - new_brownout;
-
-	cur_target = readl(&power_regs->hw_power_vddioctrl);
-	cur_target &= POWER_VDDIOCTRL_TRG_MASK;
-	cur_target *= 50;	/* 50 mV step*/
-	cur_target += 2800;	/* 2800 mV lowest */
-
-	powered_by_linreg = mx28_get_vddio_power_source_off();
-	if (new_target > cur_target) {
-
-		if (powered_by_linreg) {
-			bo_int = readl(&power_regs->hw_power_vddioctrl);
-			clrbits_le32(&power_regs->hw_power_vddioctrl,
-					POWER_CTRL_ENIRQ_VDDIO_BO);
-		}
-
-		setbits_le32(&power_regs->hw_power_vddioctrl,
-				POWER_VDDIOCTRL_BO_OFFSET_MASK);
-		do {
-			if (new_target - cur_target > 100)
-				diff = cur_target + 100;
-			else
-				diff = new_target;
-
-			diff -= 2800;
-			diff /= 50;
-
-			clrsetbits_le32(&power_regs->hw_power_vddioctrl,
-				POWER_VDDIOCTRL_TRG_MASK, diff);
-
-			if (powered_by_linreg ||
-				(readl(&power_regs->hw_power_sts) &
-					POWER_STS_VDD5V_GT_VDDIO))
-				early_delay(500);
-			else {
-				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
-			}
-
-			cur_target = readl(&power_regs->hw_power_vddioctrl);
-			cur_target &= POWER_VDDIOCTRL_TRG_MASK;
-			cur_target *= 50;	/* 50 mV step*/
-			cur_target += 2800;	/* 2800 mV lowest */
-		} while (new_target > cur_target);
-
-		if (powered_by_linreg) {
-			writel(POWER_CTRL_VDDIO_BO_IRQ,
-				&power_regs->hw_power_ctrl_clr);
-			if (bo_int & POWER_CTRL_ENIRQ_VDDIO_BO)
-				setbits_le32(&power_regs->hw_power_vddioctrl,
-						POWER_CTRL_ENIRQ_VDDIO_BO);
-		}
-	} else {
-		do {
-			if (cur_target - new_target > 100)
-				diff = cur_target - 100;
-			else
-				diff = new_target;
-
-			diff -= 2800;
-			diff /= 50;
-
-			clrsetbits_le32(&power_regs->hw_power_vddioctrl,
-				POWER_VDDIOCTRL_TRG_MASK, diff);
-
-			if (powered_by_linreg ||
-				(readl(&power_regs->hw_power_sts) &
-					POWER_STS_VDD5V_GT_VDDIO))
-				early_delay(500);
-			else {
-				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
-			}
-
-			cur_target = readl(&power_regs->hw_power_vddioctrl);
-			cur_target &= POWER_VDDIOCTRL_TRG_MASK;
-			cur_target *= 50;	/* 50 mV step*/
-			cur_target += 2800;	/* 2800 mV lowest */
-		} while (new_target < cur_target);
+	tmp = readl(&power_regs->hw_power_vddactrl);
+	if (tmp & POWER_VDDACTRL_DISABLE_FET) {
+		if ((tmp & POWER_VDDACTRL_LINREG_OFFSET_MASK) ==
+			POWER_VDDACTRL_LINREG_OFFSET_0STEPS)
+			return 1;
 	}
 
-	clrsetbits_le32(&power_regs->hw_power_vddioctrl,
-			POWER_VDDDCTRL_BO_OFFSET_MASK,
-			new_brownout << POWER_VDDDCTRL_BO_OFFSET_OFFSET);
+	if (readl(&power_regs->hw_power_sts) & POWER_STS_VDD5V_GT_VDDIO) {
+		if (!(readl(&power_regs->hw_power_5vctrl) &
+			POWER_5VCTRL_ENABLE_DCDC))
+			return 1;
+	}
+
+	if (!(tmp & POWER_VDDACTRL_ENABLE_LINREG)) {
+		if ((tmp & POWER_VDDACTRL_LINREG_OFFSET_MASK) ==
+			POWER_VDDACTRL_LINREG_OFFSET_1STEPS_BELOW)
+			return 1;
+	}
+	return 0;
 }
 
-void mx28_power_set_vddd(uint32_t new_target, uint32_t new_brownout)
+static inline void mx28_power_set_vddx(
+	uint32_t new_target, uint32_t new_brownout,
+	uint32_t *reg, const char *name,
+	uint32_t min_trg, uint32_t max_trg,
+	uint8_t step_size,
+	uint32_t trg_mask, uint32_t trg_shift,
+	uint32_t bo_mask, uint32_t bo_shift,
+	int powered_by_linreg)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-	uint32_t cur_target, diff, bo_int = 0;
-	uint32_t powered_by_linreg = 0;
+	uint32_t cur_target, cur_brownout;
+	uint32_t diff;
 
-	new_brownout = new_target - new_brownout;
+	if (new_target < min_trg || new_target > max_trg)
+		new_target = (new_target > max_trg) ? max_trg : min_trg;
 
-	cur_target = readl(&power_regs->hw_power_vdddctrl);
-	cur_target &= POWER_VDDDCTRL_TRG_MASK;
-	cur_target *= 25;	/* 25 mV step*/
-	cur_target += 800;	/* 800 mV lowest */
+	if (new_brownout / step_size > 7)
+		new_brownout = 7 * step_size;
 
-	powered_by_linreg = mx28_get_vddd_power_source_off();
+	cur_target = readl(reg);
+
+	cur_brownout = (cur_target & bo_mask) >> bo_shift;
+	cur_brownout *= step_size;
+
+	cur_target = (cur_target & trg_mask) >> trg_shift;
+	cur_target *= step_size;
+	cur_target += min_trg;
+	if (cur_target > max_trg)
+		cur_target = max_trg;
+
+	if (new_target == cur_target && new_brownout == cur_brownout)
+		return;
+
 	if (new_target > cur_target) {
-		if (powered_by_linreg) {
-			bo_int = readl(&power_regs->hw_power_vdddctrl);
-			clrbits_le32(&power_regs->hw_power_vdddctrl,
-					POWER_CTRL_ENIRQ_VDDD_BO);
-		}
-
-		setbits_le32(&power_regs->hw_power_vdddctrl,
-				POWER_VDDDCTRL_BO_OFFSET_MASK);
-
+		setbits_le32(reg, bo_mask);
 		do {
 			if (new_target - cur_target > 100)
 				diff = cur_target + 100;
 			else
 				diff = new_target;
 
-			diff -= 800;
-			diff /= 25;
+			diff -= min_trg;
+			diff /= step_size;
 
-			clrsetbits_le32(&power_regs->hw_power_vdddctrl,
-				POWER_VDDDCTRL_TRG_MASK, diff);
+			clrsetbits_le32(reg, trg_mask, diff);
 
-			if (powered_by_linreg ||
-				(readl(&power_regs->hw_power_sts) &
-					POWER_STS_VDD5V_GT_VDDIO))
-				early_delay(500);
-			else {
+			if (powered_by_linreg) {
+				early_delay(1500);
+			} else {
 				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
+					POWER_STS_DC_OK)) {
+				}
 			}
 
-			cur_target = readl(&power_regs->hw_power_vdddctrl);
-			cur_target &= POWER_VDDDCTRL_TRG_MASK;
-			cur_target *= 25;	/* 25 mV step*/
-			cur_target += 800;	/* 800 mV lowest */
+			cur_target = readl(reg);
+			cur_target &= trg_mask;
+			cur_target *= step_size;
+			cur_target += min_trg;
 		} while (new_target > cur_target);
-
-		if (powered_by_linreg) {
-			writel(POWER_CTRL_VDDD_BO_IRQ,
-				&power_regs->hw_power_ctrl_clr);
-			if (bo_int & POWER_CTRL_ENIRQ_VDDD_BO)
-				setbits_le32(&power_regs->hw_power_vdddctrl,
-						POWER_CTRL_ENIRQ_VDDD_BO);
-		}
 	} else {
 		do {
 			if (cur_target - new_target > 100)
@@ -854,67 +886,151 @@ void mx28_power_set_vddd(uint32_t new_target, uint32_t new_brownout)
 			else
 				diff = new_target;
 
-			diff -= 800;
-			diff /= 25;
+			diff -= min_trg;
+			diff /= step_size;
 
-			clrsetbits_le32(&power_regs->hw_power_vdddctrl,
-					POWER_VDDDCTRL_TRG_MASK, diff);
+			clrsetbits_le32(reg, trg_mask, diff);
 
-			if (powered_by_linreg ||
-				(readl(&power_regs->hw_power_sts) &
-					POWER_STS_VDD5V_GT_VDDIO))
-				early_delay(500);
-			else {
+			if (powered_by_linreg) {
+				early_delay(1500);
+			} else {
 				while (!(readl(&power_regs->hw_power_sts) &
-					POWER_STS_DC_OK))
-					;
-
+					POWER_STS_DC_OK)) {
+				}
 			}
 
-			cur_target = readl(&power_regs->hw_power_vdddctrl);
-			cur_target &= POWER_VDDDCTRL_TRG_MASK;
-			cur_target *= 25;	/* 25 mV step*/
-			cur_target += 800;	/* 800 mV lowest */
+			cur_target = readl(reg);
+			cur_target &= trg_mask;
+			cur_target *= step_size;
+			cur_target += min_trg;
 		} while (new_target < cur_target);
 	}
 
-	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
-			POWER_VDDDCTRL_BO_OFFSET_MASK,
-			new_brownout << POWER_VDDDCTRL_BO_OFFSET_OFFSET);
+	clrsetbits_le32(reg, bo_mask, (new_brownout / step_size) << bo_shift);
+}
+
+#define __mx28_power_set_vddx(trg, bo, min, max, step, reg, name, lr)	\
+	mx28_power_set_vddx(trg, bo,					\
+			&power_regs->hw_power_##reg##ctrl, #name,	\
+			min, max, step,					\
+			POWER_##name##CTRL_TRG_MASK,			\
+			POWER_##name##CTRL_TRG_OFFSET,			\
+			POWER_##name##CTRL_BO_OFFSET_MASK,		\
+			POWER_##name##CTRL_BO_OFFSET_OFFSET, lr)
+
+static inline void mx28_power_set_vddd(uint32_t target, uint32_t brownout)
+{
+	int powered_by_linreg = mx28_get_vddd_power_source_off();
+	uint32_t bo_int = 0;
+
+	if (powered_by_linreg) {
+		bo_int = readl(&power_regs->hw_power_vdddctrl);
+		clrbits_le32(&power_regs->hw_power_vdddctrl,
+			POWER_CTRL_ENIRQ_VDDD_BO);
+	}
+
+	__mx28_power_set_vddx(target, brownout, 800, 1575, 25, vddd, VDDD,
+			powered_by_linreg);
+
+	if (powered_by_linreg) {
+		writel(POWER_CTRL_VDDD_BO_IRQ,
+			&power_regs->hw_power_ctrl_clr);
+		if (bo_int & POWER_CTRL_ENIRQ_VDDD_BO)
+			setbits_le32(&power_regs->hw_power_vdddctrl,
+				POWER_CTRL_ENIRQ_VDDD_BO);
+	}
+}
+
+static inline void mx28_power_set_vddio(uint32_t target, uint32_t brownout)
+{
+	int powered_by_linreg = mx28_get_vddio_power_source_off();
+	uint32_t bo_int = 0;
+
+	if (powered_by_linreg) {
+		bo_int = readl(&power_regs->hw_power_vddioctrl);
+		clrbits_le32(&power_regs->hw_power_vddioctrl,
+			POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+	__mx28_power_set_vddx(target, brownout, 2800, 3600, 50, vddio, VDDIO,
+			powered_by_linreg);
+	if (powered_by_linreg) {
+		writel(POWER_CTRL_VDDIO_BO_IRQ,
+			&power_regs->hw_power_ctrl_clr);
+		if (bo_int & POWER_CTRL_ENIRQ_VDDIO_BO)
+			setbits_le32(&power_regs->hw_power_vddioctrl,
+				POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+}
+
+static inline void mx28_power_set_vdda(uint32_t target, uint32_t brownout)
+{
+	int powered_by_linreg = mx28_get_vdda_power_source_off();
+	uint32_t bo_int = 0;
+
+	if (powered_by_linreg) {
+		bo_int = readl(&power_regs->hw_power_vddioctrl);
+		clrbits_le32(&power_regs->hw_power_vddioctrl,
+			POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+	__mx28_power_set_vddx(target, brownout, 1500, 2275, 25, vdda, VDDA,
+		powered_by_linreg);
+	if (powered_by_linreg) {
+		writel(POWER_CTRL_VDDIO_BO_IRQ,
+			&power_regs->hw_power_ctrl_clr);
+		if (bo_int & POWER_CTRL_ENIRQ_VDDIO_BO)
+			setbits_le32(&power_regs->hw_power_vddioctrl,
+				POWER_CTRL_ENIRQ_VDDIO_BO);
+	}
+}
+
+static inline void mx28_power_set_vddmem(uint32_t target, uint32_t brownout)
+{
+	__mx28_power_set_vddx(target, brownout, 1100, 1750, 25, vddmem, VDDMEM,
+			0);
+
+	clrbits_le32(&power_regs->hw_power_vddmemctrl,
+		POWER_VDDMEMCTRL_ENABLE_LINREG |
+		POWER_VDDMEMCTRL_ENABLE_ILIMIT);
+}
+
+void mx28_setup_batt_detect(void)
+{
+	mx28_lradc_init();
+	mx28_lradc_enable_batt_measurement();
+	early_delay(10);
 }
 
 void mx28_power_init(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	mx28_power_clock2xtal();
 	mx28_power_clear_auto_restart();
 	mx28_power_set_linreg();
-	mx28_power_setup_5v_detect();
+	if (!fixed_batt_supply)
+		mx28_power_setup_5v_detect();
+
 	mx28_power_configure_power_source();
 	mx28_enable_output_rail_protection();
 
-	mx28_power_set_vddio(3300, 3150);
+	mx28_power_set_vddio(VDDIO_VAL, VDDIO_BO_VAL);
 
-	mx28_power_set_vddd(1350, 1200);
+	mx28_power_set_vddd(VDDD_VAL, VDDD_BO_VAL);
+
+	mx28_power_set_vdda(VDDA_VAL, VDDA_BO_VAL);
+
+	mx28_power_set_vddmem(VDDMEM_VAL, VDDMEM_BO_VAL);
 
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
 		POWER_CTRL_VDDIO_BO_IRQ | POWER_CTRL_VDD5V_DROOP_IRQ |
 		POWER_CTRL_VBUS_VALID_IRQ | POWER_CTRL_BATT_BO_IRQ |
 		POWER_CTRL_DCDC4P2_BO_IRQ, &power_regs->hw_power_ctrl_clr);
-
-	writel(POWER_5VCTRL_PWDN_5VBRNOUT, &power_regs->hw_power_5vctrl_set);
-
-	early_delay(1000);
+	if (!fixed_batt_supply)
+		writel(POWER_5VCTRL_PWDN_5VBRNOUT,
+			&power_regs->hw_power_5vctrl_set);
 }
 
 #ifdef	CONFIG_SPL_MX28_PSWITCH_WAIT
 void mx28_power_wait_pswitch(void)
 {
-	struct mx28_power_regs *power_regs =
-		(struct mx28_power_regs *)MXS_POWER_BASE;
-
 	while (!(readl(&power_regs->hw_power_sts) & POWER_STS_PSWITCH_MASK))
 		;
 }

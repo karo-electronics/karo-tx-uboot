@@ -75,6 +75,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	int timeout;
 	uint32_t data_count;
 	uint32_t ctrl0;
+	const uint32_t busy_stat = SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
+		SSP_STATUS_CMD_BUSY;
 #ifndef CONFIG_MXS_MMC_DMA
 	uint32_t *data_ptr;
 #else
@@ -85,17 +87,12 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 
 	/* Check bus busy */
 	timeout = MXSMMC_MAX_TIMEOUT;
-	while (--timeout) {
-		udelay(1000);
-		reg = readl(&ssp_regs->hw_ssp_status);
-		if (!(reg &
-			(SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
-			SSP_STATUS_CMD_BUSY))) {
+	while ((reg = readl(&ssp_regs->hw_ssp_status)) & busy_stat) {
+		if (timeout-- <= 0)
 			break;
-		}
+		udelay(1000);
 	}
-
-	if (!timeout) {
+	if (reg & busy_stat && readl(&ssp_regs->hw_ssp_status) & busy_stat) {
 		printf("MMC%d: Bus busy timeout!\n", mmc->block_dev.dev);
 		return TIMEOUT;
 	}
@@ -133,7 +130,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		/* READ or WRITE */
 		if (data->flags & MMC_DATA_READ) {
 			ctrl0 |= SSP_CTRL0_READ;
-		} else if (priv->mmc_is_wp(mmc->block_dev.dev)) {
+		} else if (priv->mmc_is_wp &&
+			priv->mmc_is_wp(mmc->block_dev.dev)) {
 			printf("MMC%d: Can not write a locked card!\n",
 				mmc->block_dev.dev);
 			return UNUSABLE_ERR;
@@ -162,8 +160,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		if (!(reg & SSP_STATUS_CMD_BUSY))
 			break;
 	}
-
-	if (!timeout) {
+	if ((reg & SSP_STATUS_CMD_BUSY) &&
+		(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_CMD_BUSY)) {
 		printf("MMC%d: Command %d busy\n",
 			mmc->block_dev.dev, cmd->cmdidx);
 		return TIMEOUT;
@@ -197,7 +195,7 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		return 0;
 
 	data_count = data->blocksize * data->blocks;
-	timeout = MXSMMC_MAX_TIMEOUT;
+	timeout = get_timer(0);
 
 #ifdef CONFIG_MXS_MMC_DMA
 	if (data_count % ARCH_DMA_MINALIGN)
@@ -235,30 +233,33 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 #else
 	if (data->flags & MMC_DATA_READ) {
 		data_ptr = (uint32_t *)data->dest;
-		while (data_count && --timeout) {
+		while (data_count) {
 			reg = readl(&ssp_regs->hw_ssp_status);
 			if (!(reg & SSP_STATUS_FIFO_EMPTY)) {
 				*data_ptr++ = readl(&ssp_regs->hw_ssp_data);
 				data_count -= 4;
-				timeout = MXSMMC_MAX_TIMEOUT;
-			} else
-				udelay(1000);
+				timeout = get_timer(0);
+			} else if ((get_timer(timeout) > MXSMMC_MAX_TIMEOUT) &&
+				(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_FIFO_EMPTY)) {
+				break;
+			}
 		}
 	} else {
 		data_ptr = (uint32_t *)data->src;
-		timeout *= 100;
-		while (data_count && --timeout) {
+		while (data_count) {
 			reg = readl(&ssp_regs->hw_ssp_status);
 			if (!(reg & SSP_STATUS_FIFO_FULL)) {
 				writel(*data_ptr++, &ssp_regs->hw_ssp_data);
 				data_count -= 4;
-				timeout = MXSMMC_MAX_TIMEOUT;
-			} else
-				udelay(1000);
+				timeout = get_timer(0);
+			} else if ((get_timer(timeout) > MXSMMC_MAX_TIMEOUT * 100) &&
+				(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_FIFO_FULL)) {
+					break;
+			}
 		}
 	}
 
-	if (!timeout) {
+	if (data_count) {
 		printf("MMC%d: Data timeout with command %d (status 0x%08x)!\n",
 			mmc->block_dev.dev, cmd->cmdidx, reg);
 		return COMM_ERR;
@@ -340,11 +341,11 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 	struct mxsmmc_priv *priv = NULL;
 	int ret;
 
-	mmc = malloc(sizeof(struct mmc));
+	mmc = calloc(sizeof(struct mmc), 1);
 	if (!mmc)
 		return -ENOMEM;
 
-	priv = malloc(sizeof(struct mxsmmc_priv));
+	priv = calloc(sizeof(struct mxsmmc_priv), 1);
 	if (!priv) {
 		free(mmc);
 		return -ENOMEM;
@@ -398,12 +399,6 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int))
 	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT |
 			 MMC_MODE_HS_52MHz | MMC_MODE_HS;
 
-	/*
-	 * SSPCLK = 480 * 18 / 29 / 1 = 297.731 MHz
-	 * SSP bit rate = SSPCLK / (CLOCK_DIVIDE * (1 + CLOCK_RATE)),
-	 * CLOCK_DIVIDE has to be an even value from 2 to 254, and
-	 * CLOCK_RATE could be any integer from 0 to 255.
-	 */
 	mmc->f_min = 400000;
 	mmc->f_max = mxc_get_clock(MXC_SSP0_CLK + id) * 1000 / 2;
 	mmc->b_max = 0x40;

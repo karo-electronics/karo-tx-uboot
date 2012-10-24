@@ -1903,8 +1903,6 @@ static uint8_t *nand_fill_oob(struct nand_chip *chip, uint8_t *oob, size_t len,
 	return NULL;
 }
 
-#define NOTALIGNED(x)	((x & (chip->subpagesize - 1)) != 0)
-
 /**
  * nand_do_write_ops - [Internal] NAND write with ECC
  * @mtd:	MTD device structure
@@ -2931,6 +2929,7 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
  */
 int nand_scan_tail(struct mtd_info *mtd)
 {
+	uint32_t dev_width;
 	int i;
 	struct nand_chip *chip = mtd->priv;
 
@@ -2941,6 +2940,8 @@ int nand_scan_tail(struct mtd_info *mtd)
 
 	/* Set the internal oob buffer location, just after the page data */
 	chip->oob_poi = chip->buffers->databuf + mtd->writesize;
+
+	dev_width = (chip->options & NAND_BUSWIDTH_16) >> 1;
 
 	/*
 	 * If no default placement scheme is given, select an appropriate one

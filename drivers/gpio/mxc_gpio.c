@@ -34,14 +34,15 @@ enum mxc_gpio_direction {
 	MXC_GPIO_DIRECTION_OUT,
 };
 
-#define GPIO_TO_PORT(n)		(n / 32)
+#define GPIO_TO_PORT(n)		((n) / 32)
 
 /* GPIO port description */
 static unsigned long gpio_ports[] = {
 	[0] = GPIO1_BASE_ADDR,
 	[1] = GPIO2_BASE_ADDR,
 	[2] = GPIO3_BASE_ADDR,
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
+#if defined(CONFIG_MX25) || defined(CONFIG_MX51) || defined(CONFIG_MX53) || \
+		defined(CONFIG_MX6Q)
 	[3] = GPIO4_BASE_ADDR,
 #endif
 #if defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
@@ -140,10 +141,10 @@ int gpio_direction_input(unsigned gpio)
 
 int gpio_direction_output(unsigned gpio, int value)
 {
-	int ret = mxc_gpio_direction(gpio, MXC_GPIO_DIRECTION_OUT);
+	int ret = gpio_set_value(gpio, value);
 
 	if (ret < 0)
 		return ret;
 
-	return gpio_set_value(gpio, value);
+	return mxc_gpio_direction(gpio, MXC_GPIO_DIRECTION_OUT);
 }

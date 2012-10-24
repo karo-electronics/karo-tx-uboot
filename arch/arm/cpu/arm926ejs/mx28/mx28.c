@@ -51,9 +51,16 @@ void reset_cpu(ulong ignored) __attribute__((noreturn));
 
 void reset_cpu(ulong ignored)
 {
-
 	struct mx28_rtc_regs *rtc_regs =
 		(struct mx28_rtc_regs *)MXS_RTC_BASE;
+	struct mx28_lcdif_regs *lcdif_regs =
+		(struct mx28_lcdif_regs *)MXS_LCDIF_BASE;
+
+	/*
+	 * Shut down the LCD controller as it interferes with BootROM boot mode
+	 * pads sampling.
+	 */
+	writel(LCDIF_CTRL_RUN, &lcdif_regs->hw_lcdif_ctrl_clr);
 
 	/* Wait 1 uS before doing the actual watchdog reset */
 	writel(1, &rtc_regs->hw_rtc_watchdog);
@@ -74,11 +81,19 @@ void enable_caches(void)
 #endif
 }
 
+#define	MX28_HW_DIGCTL_MICROSECONDS	(void *)0x8001c0c0
+
 int mx28_wait_mask_set(struct mx28_register_32 *reg, uint32_t mask, int timeout)
 {
-	while (--timeout) {
-		if ((readl(&reg->reg) & mask) == mask)
-			break;
+	uint32_t start = readl(MX28_HW_DIGCTL_MICROSECONDS);
+
+	/* Wait for at least one microsecond for the bit mask to be set */
+	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1 || --timeout) {
+		if ((readl(&reg->reg) & mask) == mask) {
+			while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1)
+				;
+			return 0;
+		}
 		udelay(1);
 	}
 
@@ -87,9 +102,15 @@ int mx28_wait_mask_set(struct mx28_register_32 *reg, uint32_t mask, int timeout)
 
 int mx28_wait_mask_clr(struct mx28_register_32 *reg, uint32_t mask, int timeout)
 {
-	while (--timeout) {
-		if ((readl(&reg->reg) & mask) == 0)
-			break;
+	uint32_t start = readl(MX28_HW_DIGCTL_MICROSECONDS);
+
+	/* Wait for at least one microsecond for the bit mask to be cleared */
+	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1 || --timeout) {
+		if ((readl(&reg->reg) & mask) == 0) {
+			while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1)
+				;
+			return 0;
+		}
 		udelay(1);
 	}
 
@@ -101,8 +122,11 @@ int mx28_reset_block(struct mx28_register_32 *reg)
 	/* Clear SFTRST */
 	writel(MX28_BLOCK_SFTRST, &reg->reg_clr);
 
-	if (mx28_wait_mask_clr(reg, MX28_BLOCK_SFTRST, RESET_MAX_TIMEOUT))
+	if (mx28_wait_mask_clr(reg, MX28_BLOCK_SFTRST, RESET_MAX_TIMEOUT)) {
+		printf("TIMEOUT waiting for SFTRST[%p] to clear: %08x\n",
+			reg, readl(&reg->reg));
 		return 1;
+	}
 
 	/* Clear CLKGATE */
 	writel(MX28_BLOCK_CLKGATE, &reg->reg_clr);
@@ -111,20 +135,29 @@ int mx28_reset_block(struct mx28_register_32 *reg)
 	writel(MX28_BLOCK_SFTRST, &reg->reg_set);
 
 	/* Wait for CLKGATE being set */
-	if (mx28_wait_mask_set(reg, MX28_BLOCK_CLKGATE, RESET_MAX_TIMEOUT))
+	if (mx28_wait_mask_set(reg, MX28_BLOCK_CLKGATE, RESET_MAX_TIMEOUT)) {
+		printf("TIMEOUT waiting for CLKGATE[%p] to set: %08x\n",
+			reg, readl(&reg->reg));
 		return 1;
+	}
 
 	/* Clear SFTRST */
 	writel(MX28_BLOCK_SFTRST, &reg->reg_clr);
 
-	if (mx28_wait_mask_clr(reg, MX28_BLOCK_SFTRST, RESET_MAX_TIMEOUT))
+	if (mx28_wait_mask_clr(reg, MX28_BLOCK_SFTRST, RESET_MAX_TIMEOUT)) {
+		printf("TIMEOUT waiting for SFTRST[%p] to clear: %08x\n",
+			reg, readl(&reg->reg));
 		return 1;
+	}
 
 	/* Clear CLKGATE */
 	writel(MX28_BLOCK_CLKGATE, &reg->reg_clr);
 
-	if (mx28_wait_mask_clr(reg, MX28_BLOCK_CLKGATE, RESET_MAX_TIMEOUT))
+	if (mx28_wait_mask_clr(reg, MX28_BLOCK_CLKGATE, RESET_MAX_TIMEOUT)) {
+		printf("TIMEOUT waiting for CLKGATE[%p] to clear: %08x\n",
+			reg, readl(&reg->reg));
 		return 1;
+	}
 
 	return 0;
 }
@@ -185,8 +218,12 @@ int arch_cpu_init(void)
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo(void)
 {
+	struct mx28_spl_data *data = (struct mx28_spl_data *)
+		((CONFIG_SYS_TEXT_BASE - sizeof(struct mx28_spl_data)) & ~0xf);
+
 	printf("Freescale i.MX28 family at %d MHz\n",
 			mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	printf("BOOT:  %s\n", mx28_boot_modes[data->boot_mode_idx].mode);
 	return 0;
 }
 #endif
@@ -220,12 +257,15 @@ int cpu_eth_init(bd_t *bis)
 
 	udelay(10);
 
+	/*
+	 * Enable pad output; must be done BEFORE enabling PLL
+	 * according to i.MX28 Ref. Manual Rev. 1, 2010 p. 883
+	 */
+	setbits_le32(&clkctrl_regs->hw_clkctrl_enet, CLKCTRL_ENET_CLK_OUT_EN);
+
 	/* Gate on ENET PLL */
 	writel(CLKCTRL_PLL2CTRL0_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_pll2ctrl0_clr);
-
-	/* Enable pad output */
-	setbits_le32(&clkctrl_regs->hw_clkctrl_enet, CLKCTRL_ENET_CLK_OUT_EN);
 
 	return 0;
 }
@@ -279,22 +319,16 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 
 int mx28_dram_init(void)
 {
-	struct mx28_digctl_regs *digctl_regs =
-		(struct mx28_digctl_regs *)MXS_DIGCTL_BASE;
-	uint32_t sz[2];
+	struct mx28_spl_data *data = (struct mx28_spl_data *)
+		((CONFIG_SYS_TEXT_BASE - sizeof(struct mx28_spl_data)) & ~0xf);
 
-	sz[0] = readl(&digctl_regs->hw_digctl_scratch0);
-	sz[1] = readl(&digctl_regs->hw_digctl_scratch1);
-
-	if (sz[0] != sz[1]) {
+	if (data->mem_dram_size == 0) {
 		printf("MX28:\n"
-			"Error, the RAM size in HW_DIGCTRL_SCRATCH0 and\n"
-			"HW_DIGCTRL_SCRATCH1 is not the same. Please\n"
-			"verify these two registers contain valid RAM size!\n");
+			"Error, the RAM size passed up from SPL is 0!\n");
 		hang();
 	}
 
-	gd->ram_size = sz[0];
+	gd->ram_size = data->mem_dram_size;
 	return 0;
 }
 

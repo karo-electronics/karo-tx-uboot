@@ -27,9 +27,9 @@
  */
 
 #include <asm/arch/omap.h>
+#include <linux/linkage.h>
 
-.global save_boot_params
-save_boot_params:
+ENTRY(save_boot_params)
 	/*
 	 * See if the rom code passed pointer is valid:
 	 * It is not valid if it is not in non-secure SRAM
@@ -38,7 +38,7 @@ save_boot_params:
 	 */
 	ldr     r2, =NON_SECURE_SRAM_START
 	cmp	r2, r0
-	bgt	1f
+	bge	1f
 	ldr	r2, =NON_SECURE_SRAM_END
 	cmp	r2, r0
 	blt	1f
@@ -53,12 +53,11 @@ save_boot_params:
 	str	r0, [r1]
 #ifdef CONFIG_SPL_BUILD
 	/* Store the boot device in omap_boot_device */
-	ldrb	r2, [r0, #BOOT_DEVICE_OFFSET]	@ r1 <- value of boot device
+	ldrb	r2, [r0, #BOOT_DEVICE_OFFSET]	@ r2 <- value of boot device
 	and	r2, #BOOT_DEVICE_MASK
-	ldr	r3, =boot_params
-	strb	r2, [r3, #BOOT_DEVICE_OFFSET]	@ omap_boot_device <- r1
+	strb	r2, [r1, #BOOT_DEVICE_OFFSET]	@ omap_boot_device <- r2
 
-	/* boot mode is passed only for devices that can raw/fat mode */
+	/* boot mode is passed only for devices that can do raw/fat mode */
 	cmp	r2, #2
 	blt	2f
 	cmp	r2, #7
@@ -69,17 +68,15 @@ save_boot_params:
 	ldr	r2, [r2, #BOOT_MODE_OFFSET]	@ get the boot mode
 	ldr	r3, =omap_bootmode
 	str	r2, [r3]
-#endif
 2:
+#endif
 	ldrb	r2, [r0, #CH_FLAGS_OFFSET]
-	ldr	r3, =boot_params
-	strb	r2, [r3, #CH_FLAGS_OFFSET]
+	strb	r2, [r1, #CH_FLAGS_OFFSET]
 1:
 	bx	lr
+ENDPROC(save_boot_params)
 
-
-.globl lowlevel_init
-lowlevel_init:
+ENTRY(lowlevel_init)
 	/*
 	 * Setup a temporary stack
 	 */
@@ -95,12 +92,13 @@ lowlevel_init:
 	 */
 	bl	s_init
 	pop	{ip, pc}
+ENDPROC(lowlevel_init)
 
-.globl set_pl310_ctrl_reg
-set_pl310_ctrl_reg:
+ENTRY(set_pl310_ctrl_reg)
 	PUSH	{r4-r11, lr}	@ save registers - ROM code may pollute
 				@ our registers
 	LDR	r12, =0x102	@ Set PL310 control register - value in R0
 	.word	0xe1600070	@ SMC #0 - hand assembled because -march=armv5
 				@ call ROM Code API to set control register
 	POP	{r4-r11, pc}
+ENDPROC(set_pl310_ctrl_reg)

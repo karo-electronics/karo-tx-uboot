@@ -114,9 +114,9 @@ static void do_lpddr2_init(u32 base, u32 cs)
 static void lpddr2_init(u32 base, const struct emif_regs *regs)
 {
 	struct emif_reg_struct *emif = (struct emif_reg_struct *)base;
-	u32 *ext_phy_ctrl_base = 0;
-	u32 *emif_ext_phy_ctrl_base = 0;
-	u32 i = 0;
+	u32 *ext_phy_ctrl_base;
+	u32 *emif_ext_phy_ctrl_base;
+	u32 i;
 
 	/* Not NVM */
 	clrbits_le32(&emif->emif_lpddr2_nvm_config, EMIF_REG_CS1NVMEN_MASK);
@@ -134,8 +134,8 @@ static void lpddr2_init(u32 base, const struct emif_regs *regs)
 	writel(regs->sdram_config_init, &emif->emif_sdram_config);
 	writel(regs->emif_ddr_phy_ctlr_1, &emif->emif_ddr_phy_ctrl_1);
 
-	ext_phy_ctrl_base = (u32 *) &(regs->emif_ddr_ext_phy_ctrl_1);
-	emif_ext_phy_ctrl_base = (u32 *) &(emif->emif_ddr_ext_phy_ctrl_1);
+	ext_phy_ctrl_base = &regs->emif_ddr_ext_phy_ctrl_1;
+	emif_ext_phy_ctrl_base = &emif->emif_ddr_ext_phy_ctrl_1;
 
 	if (omap_revision() >= OMAP5430_ES1_0) {
 		/* Configure external phy control timing registers */

@@ -38,7 +38,6 @@
 #define CONFIG_OMAP54XX	/* which is a 54XX */
 #define CONFIG_OMAP5430	/* which is in a 5430 */
 #define CONFIG_5430EVM	/* working with EVM */
-#define CONFIG_ARCH_CPU_INIT
 
 /* Get CPU defs */
 #include <asm/arch/cpu.h>
@@ -99,6 +98,11 @@
 #define CONFIG_DRIVER_OMAP34XX_I2C
 #define CONFIG_I2C_MULTI_BUS
 
+/* TWL6035 */
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_TWL6035_POWER
+#endif
+
 /* MMC */
 #define CONFIG_GENERIC_MMC
 #define CONFIG_MMC
@@ -109,6 +113,7 @@
 #define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		1	/* SLOT2: eMMC(1) */
 #define CONFIG_ENV_OFFSET		0xE0000
+#define CONFIG_CMD_SAVEENV
 
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV
 

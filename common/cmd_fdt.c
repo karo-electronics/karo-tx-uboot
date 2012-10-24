@@ -824,6 +824,6 @@ U_BOOT_CMD(
 	"fdt rsvmem delete <index>           - Delete a mem reserves\n"
 	"fdt chosen [<start> <end>]          - Add/update the /chosen branch in the tree\n"
 	"                                        <start>/<end> - initrd start/end addr\n"
-	"NOTE: Dereference aliases by omiting the leading '/', "
+	"NOTE: Dereference aliases by omitting the leading '/', "
 		"e.g. fdt print ethernet0."
 );

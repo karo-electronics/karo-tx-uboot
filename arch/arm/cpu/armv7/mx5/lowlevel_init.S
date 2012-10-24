@@ -22,6 +22,7 @@
 #include <config.h>
 #include <asm/arch/imx-regs.h>
 #include <generated/asm-offsets.h>
+#include <linux/linkage.h>
 
 /*
  * L2CC Cache setup/invalidation/disable
@@ -96,29 +97,30 @@
 .endm /* init_m4if */
 
 .macro setup_pll pll, freq
-	ldr r0, =\pll
+	ldr r2, =\pll
 	ldr r1, =0x00001232
-	str r1, [r0, #PLL_DP_CTL] /* Set DPLL ON (set UPEN bit): BRMO=1 */
+	str r1, [r2, #PLL_DP_CTL] /* Set DPLL ON (set UPEN bit): BRMO=1 */
 	mov r1, #0x2
-	str r1, [r0, #PLL_DP_CONFIG] /* Enable auto-restart AREN bit */
+	str r1, [r2, #PLL_DP_CONFIG] /* Enable auto-restart AREN bit */
 
 	ldr r1, W_DP_OP_\freq
-	str r1, [r0, #PLL_DP_OP]
-	str r1, [r0, #PLL_DP_HFS_OP]
+	str r1, [r2, #PLL_DP_OP]
+	str r1, [r2, #PLL_DP_HFS_OP]
 
 	ldr r1,	W_DP_MFD_\freq
-	str r1, [r0, #PLL_DP_MFD]
-	str r1, [r0, #PLL_DP_HFS_MFD]
+	str r1, [r2, #PLL_DP_MFD]
+	str r1, [r2, #PLL_DP_HFS_MFD]
 
 	ldr r1,  W_DP_MFN_\freq
-	str r1, [r0, #PLL_DP_MFN]
-	str r1, [r0, #PLL_DP_HFS_MFN]
+	str r1, [r2, #PLL_DP_MFN]
+	str r1, [r2, #PLL_DP_HFS_MFN]
 
 	ldr r1, =0x00001232
-	str r1, [r0, #PLL_DP_CTL]
-1:	ldr r1, [r0, #PLL_DP_CTL]
+	str r1, [r2, #PLL_DP_CTL]
+101:
+	ldr r1, [r2, #PLL_DP_CTL]
 	ands r1, r1, #0x1
-	beq 1b
+	beq 101b
 .endm
 
 .macro setup_pll_errata pll, freq
@@ -180,6 +182,8 @@
 1:	ldr r1, [r0, #CLKCTL_CDHIPR]
 	cmp r1, #0x0
 	bne 1b
+#elif defined(CONFIG_TX53)
+	@ CCGR registers have been setup via DCD
 #else
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -205,28 +209,72 @@
 	setup_pll PLL1_BASE_ADDR, 864
 	setup_pll_errata PLL1_BASE_ADDR, W_DP_MFN_800_DIT
 #else
+#if !defined(CONFIG_SYS_CPU_CLK) || CONFIG_SYS_CPU_CLK == 800
 	setup_pll PLL1_BASE_ADDR, 800
+#elif CONFIG_SYS_CPU_CLK == 600
+	setup_pll PLL1_BASE_ADDR, 600
+#else
+#error Unsupported CONFIG_SYS_CPU_CLK value
+#endif
 #endif
 
 #if defined(CONFIG_MX51)
 	setup_pll PLL3_BASE_ADDR, 665
 
 	/* Switch peripheral to PLL 3 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x000010C0
-	orr r1,r1,#CONFIG_SYS_DDR_CLKSEL
+	orr r1, r1, #CONFIG_SYS_DDR_CLKSEL
 	str r1, [r0, #CLKCTL_CBCMR]
 	ldr r1, =0x13239145
 	str r1, [r0, #CLKCTL_CBCDR]
 	setup_pll PLL2_BASE_ADDR, 665
 
 	/* Switch peripheral to PLL2 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x19239145
 	str r1, [r0, #CLKCTL_CBCDR]
 	ldr r1, =0x000020C0
 	orr r1,r1,#CONFIG_SYS_DDR_CLKSEL
 	str r1, [r0, #CLKCTL_CBCMR]
+#elif defined(CONFIG_TX53)
+	setup_pll PLL3_BASE_ADDR, 400
+
+	/* Switch peripheral to PLL 3 */
+	ldr r1, [r0, #CLKCTL_CBCMR]
+	bic r1, #(0x3 << 12)
+	orr r1, r1, #(1 << 12)
+	str r1, [r0, #CLKCTL_CBCMR]
+
+	ldr r1, [r0, #CLKCTL_CBCDR]
+	orr r1, r1, #(1 << 25)
+	str r1, [r0, #CLKCTL_CBCDR]
+1:
+	/* make sure change is effective */
+	ldr	r1, [r0, #CLKCTL_CDHIPR]
+	tst	r1, #0x7f
+	bne	1b
+#if CONFIG_SYS_SDRAM_CLK == 400
+	setup_pll PLL2_BASE_ADDR, 400
+#elif CONFIG_SYS_SDRAM_CLK == 333
+	setup_pll PLL2_BASE_ADDR, 333
+#else
+#error Unsupported CONFIG_SYS_SDRAM_CLK
+#endif
+	/* Switch peripheral to PLL2 */
+	ldr r0, =CCM_BASE_ADDR
+	ldr r1, [r0, #CLKCTL_CBCDR]
+	bic r1, #(1 << 25)
+	str r1, [r0, #CLKCTL_CBCDR]
+
+	ldr r1, [r0, #CLKCTL_CBCMR]
+	bic r1, #(3 << 12)
+	orr r1, #(2 << 12)
+	str r1, [r0, #CLKCTL_CBCMR]
+
+	/* make sure change is effective */
+1:
+	ldr	r1, [r0, #CLKCTL_CDHIPR]
+	cmp	r1, #0x0
+	bne	1b
 #endif
 	setup_pll PLL3_BASE_ADDR, 216
 
@@ -246,7 +294,6 @@
 	movhi r1, #0
 #else
 	mov r1, #0
-
 #endif
 	str r1, [r0, #CLKCTL_CACRR]
 	/* Switch ARM back to PLL 1 */
@@ -263,7 +310,7 @@
 	ldr r1, =CONFIG_SYS_CLKTL_CBCDR
 	str r1, [r0, #CLKCTL_CBCDR]
 #endif
-
+#ifndef CONFIG_TX53
 	/* Restore the default values in the Gate registers */
 	ldr r1, =0xFFFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -276,7 +323,9 @@
 #if defined(CONFIG_MX53)
 	str r1, [r0, #CLKCTL_CCGR7]
 #endif
+#endif
 
+#if !defined(CONFIG_TX53)
 #if defined(CONFIG_MX51)
 	/* Use PLL 2 for UART's, get 66.5MHz from it */
 	ldr r1, =0xA5A2A020
@@ -285,7 +334,6 @@
 	str r1, [r0, #CLKCTL_CSCDR1]
 #elif defined(CONFIG_MX53)
 	/* Switch peripheral to PLL2 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x00808145
 	orr r1, r1, #(2 << 10)
 	orr r1, r1, #(0 << 16)
@@ -296,11 +344,11 @@
 	str r1, [r0, #CLKCTL_CBCMR]
 	/* Change uart clk parent to pll2*/
 	ldr r1, [r0, #CLKCTL_CSCMR1]
-	and r1, r1, #0xfcffffff
-	orr r1, r1, #0x01000000
+	bic r1, #(0x3 << 24)
+	orr r1, r1, #(0x1 << 24)
 	str r1, [r0, #CLKCTL_CSCMR1]
 	ldr r1, [r0, #CLKCTL_CSCDR1]
-	and r1, r1, #0xffffffc0
+	bic r1, #(0x3f << 0)
 	orr r1, r1, #0x0a
 	str r1, [r0, #CLKCTL_CSCDR1]
 #endif
@@ -308,7 +356,7 @@
 1:	ldr r1, [r0, #CLKCTL_CDHIPR]
 	cmp r1, #0x0
 	bne 1b
-
+#endif
 	mov r1, #0x0
 	str r1, [r0, #CLKCTL_CCDR]
 
@@ -326,8 +374,7 @@
 
 .section ".text.init", "x"
 
-.globl lowlevel_init
-lowlevel_init:
+ENTRY(lowlevel_init)
 #if defined(CONFIG_MX51)
 	ldr r0, =GPIO1_BASE_ADDR
 	ldr r1, [r0, #0x0]
@@ -348,6 +395,7 @@ lowlevel_init:
 
 	/* r12 saved upper lr*/
 	mov pc,lr
+ENDPROC(lowlevel_init)
 
 /* Board level setting value */
 W_DP_OP_864:              .word DP_OP_864
@@ -360,6 +408,15 @@ W_DP_MFN_800:             .word DP_MFN_800
 W_DP_OP_665:              .word DP_OP_665
 W_DP_MFD_665:             .word DP_MFD_665
 W_DP_MFN_665:             .word DP_MFN_665
+W_DP_OP_600:              .word DP_OP_600
+W_DP_MFD_600:             .word DP_MFD_600
+W_DP_MFN_600:             .word DP_MFN_600
+W_DP_OP_400:              .word DP_OP_400
+W_DP_MFD_400:             .word DP_MFD_400
+W_DP_MFN_400:             .word DP_MFN_400
+W_DP_OP_333:              .word DP_OP_333
+W_DP_MFD_333:             .word DP_MFD_333
+W_DP_MFN_333:             .word DP_MFN_333
 W_DP_OP_216:              .word DP_OP_216
 W_DP_MFD_216:             .word DP_MFD_216
 W_DP_MFN_216:             .word DP_MFN_216

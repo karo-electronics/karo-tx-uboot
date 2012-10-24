@@ -105,6 +105,18 @@ extern unsigned long nand_env_oob_offset;
 # endif
 #endif /* CONFIG_ENV_IS_IN_MG_DISK */
 
+#if defined(CONFIG_ENV_IS_IN_MMC)
+# ifndef	CONFIG_ENV_ADDR
+#  define	CONFIG_ENV_ADDR	CONFIG_ENV_OFFSET
+# endif
+# ifndef	CONFIG_ENV_OFFSET
+#  define	CONFIG_ENV_OFFSET CONFIG_ENV_ADDR
+# endif
+# ifdef CONFIG_ENV_OFFSET_REDUND
+#  define CONFIG_SYS_REDUNDAND_ENVIRONMENT
+# endif
+#endif /* CONFIG_ENV_IS_IN_MMC */
+
 /* Embedded env is only supported for some flash types */
 #ifdef CONFIG_ENV_IS_EMBEDDED
 # if	!defined(CONFIG_ENV_IS_IN_FLASH)	&& \

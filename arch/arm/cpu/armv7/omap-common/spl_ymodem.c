@@ -31,6 +31,7 @@
 #include <asm/utils.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/omap_common.h>
+#include <watchdog.h>
 
 #define BUF_SIZE 1024
 
@@ -51,22 +52,23 @@ void spl_ymodem_load_image(void)
 	ulong store_addr = ~0;
 	ulong addr = 0;
 
+loop:
 	info.mode = xyzModem_ymodem;
 	ret = xyzModem_stream_open(&info, &err);
-
-	if (!ret) {
-		while ((res =
-			xyzModem_stream_read(buf, BUF_SIZE, &err)) > 0) {
+	if (ret == 0) {
+		while ((res = xyzModem_stream_read(buf, BUF_SIZE, &err)) > 0) {
+			WATCHDOG_RESET();
 			if (addr == 0)
 				spl_parse_image_header((struct image_header *)buf);
 			store_addr = addr + spl_image.load_addr;
 			size += res;
 			addr += res;
-			memcpy((char *)(store_addr), buf, res);
+			memcpy((char *)store_addr, buf, res);
 		}
 	} else {
-		printf("spl: ymodem err - %s\n", xyzModem_error(err));
-		hang();
+		WATCHDOG_RESET();
+		printf("Retrying...\n");
+		goto loop;
 	}
 
 	xyzModem_stream_close(&err);

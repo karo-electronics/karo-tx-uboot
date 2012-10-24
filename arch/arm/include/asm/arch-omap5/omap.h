@@ -98,17 +98,6 @@
 #define TCLR_AR			(0x1 << 1)
 #define TCLR_PRE		(0x1 << 5)
 
-/*
- * PRCM
- */
-
-/* PRM */
-#define PRM_BASE		0x4AE06000
-#define PRM_DEVICE_BASE		(PRM_BASE + 0x1B00)
-
-#define PRM_RSTCTRL		PRM_DEVICE_BASE
-#define PRM_RSTCTRL_RESET	0x01
-
 /* Control Module */
 #define LDOSRAM_ACTMODE_VSET_IN_MASK	(0x1F << 5)
 #define LDOSRAM_VOLT_CTRL_OVERRIDE	0x0401040f
@@ -125,9 +114,10 @@
 /* CONTROL_EFUSE_2 */
 #define CONTROL_EFUSE_2_NMOS_PMOS_PTV_CODE_1		0x00ffc000
 
-#define MMC1_PWRDNZ					(1 << 26)
-#define MMC1_PBIASLITE_PWRDNZ				(1 << 22)
-#define MMC1_PBIASLITE_VMODE				(1 << 21)
+#define SDCARD_PWRDNZ					(1 << 26)
+#define SDCARD_BIAS_HIZ_MODE				(1 << 25)
+#define SDCARD_BIAS_PWRDNZ				(1 << 22)
+#define SDCARD_PBIASLITE_VMODE				(1 << 21)
 
 #ifndef __ASSEMBLY__
 
