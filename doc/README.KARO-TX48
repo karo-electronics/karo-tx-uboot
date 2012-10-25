@@ -10,6 +10,10 @@ mkdir u-boot
 cd u-boot
 tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
 
+Alternatively you can access the current source via the git repository:
+git://git.kernelconcepts.de/karo-tx-uboot.git master
+
+
 Compiling U-Boot
 ----------------
 export ARCH=arm
@@ -41,11 +45,22 @@ otg_mode      [host|device|none]
 video_mode    <video mode as understood by Linux fb_find_mode() function>
               e.g.: 640x480MR-24@60
 baseboard     {stk5-v3|stk5-v5} selects type of baseboard
-splashimage   memory address of a BMP file to be displayed instead of
-	      the built-in logo. Since NAND flash is not accessible in
-	      a memory mapped fashion, U-Boot will try to load the
-	      contents of the flash partition 'logo' to the address
-	      given with 'splashimage'.
+splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
+	      to be displayed instead of the built-in logo. Since NAND
+	      flash is not accessible in a memory mapped fashion,
+	      U-Boot will try to load the contents of the flash
+	      partition 'logo.bmp' to the address given with
+	      'splashimage'.
+
+	      or: the name of an MTD partition, that contains a raw
+	      dump of the frame buffer contents which will be loaded
+	      to the framebuffer.
+
+splashpos     (when 'splashimage' contains a memory address) the
+	      position ('x,y') on the screen at which the BMP image
+	      will be displayed.
+	      Setting splashpos to 'm,m' will center the image on the
+	      screen.
 
 Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
       board unbootable if incorrectly set. Therefore these variables

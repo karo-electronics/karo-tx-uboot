@@ -4,11 +4,11 @@
 Building U-Boot
 ---------------
 
-Note: There are currently three variants of the TX51 module, that
+Note: There are currently six variants of the TX51 module, that
       require slightly different U-Boot configurations. They are
-      distinguished through the last digit of the module name. Replace
-      the '?' in the following description with the corresponding
-      numbers from your TX51 module.
+      distinguished through the first and last digit of the module
+      name suffix. Replace the '?' in the following description with
+      the corresponding numbers from your TX51 module.
       E.g. TX51-8021 => 'make tx51-8xx1_config'
 
 Unpacking the source
@@ -16,6 +16,10 @@ Unpacking the source
 mkdir u-boot
 cd u-boot
 tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Alternatively you can access the current source via the git repository:
+git://git.kernelconcepts.de/karo-tx-uboot.git master
+
 
 Compiling U-Boot
 ----------------
@@ -50,11 +54,22 @@ baseboard     {stk5-v3|stk5-v5} selects type of baseboard
 	      'stk5-v5' setting disables USB Host mode on USBOTG port.
 	      strings not starting in 'stk5' prevent the STK5 specific
 	      pad initialization to be done.
-splashimage   memory address of a BMP file to be displayed instead of
-	      the built-in logo. Since NAND flash is not accessible in
-	      a memory mapped fashion, U-Boot will try to load the
-	      contents of the flash partition 'logo' to the address
-	      given with 'splashimage'.
+splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
+	      to be displayed instead of the built-in logo. Since NAND
+	      flash is not accessible in a memory mapped fashion,
+	      U-Boot will try to load the contents of the flash
+	      partition 'logo.bmp' to the address given with
+	      'splashimage'.
+
+	      or: the name of an MTD partition, that contains a raw
+	      dump of the frame buffer contents which will be loaded
+	      to the framebuffer.
+
+splashpos     (when 'splashimage' contains a memory address) the
+	      position ('x,y') on the screen at which the BMP image
+	      will be displayed.
+	      Setting splashpos to 'm,m' will center the image on the
+	      screen.
 
 Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
       board unbootable if incorrectly set. Therefore these variables

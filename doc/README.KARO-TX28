@@ -4,18 +4,22 @@
 Building U-Boot
 ---------------
 
-Note: There are currently two variants of the TX53 module, that
+Note: There are currently two variants of the TX28 module, that
       require slightly different U-Boot configurations. They are
       distinguished through the last digit of the module name. Replace
       the '?' in the following description with the corresponding
-      number from your TX51 module.
-      E.g. TX53-8031 => 'make tx53-xx31_config'
+      number from your TX28 module.
+      E.g. TX28-4031 => 'make tx28-40xx_config'
 
 Unpacking the source
 --------------------
 mkdir u-boot
 cd u-boot
 tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Alternatively you can access the current source via the git repository:
+git://git.kernelconcepts.de/karo-tx-uboot.git master
+
 
 Compiling U-Boot
 ----------------
