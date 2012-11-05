@@ -136,9 +136,9 @@ static void enable_per_clocks(void)
 #ifdef CONFIG_OMAP_MMC_DEV_1
 	enable_clk(cmper->mmc1clkctrl, PRCM_MOD_EN);
 #endif
-#ifdef CONFIG_LCD
+	/* LCD */
 	enable_clk(cmper->lcdcclkctrl, PRCM_MOD_EN);
-#endif
+
 	/* i2c0 */
 	enable_clk(cmwkup->wkup_i2c0ctrl, PRCM_MOD_EN);
 
@@ -249,7 +249,6 @@ static void per_pll_config(void)
 
 static void disp_pll_config(void)
 {
-#ifdef CONFIG_LCD
 	u32 clkmode, clksel, div_m2;
 
 	clkmode = readl(&cmwkup->clkmoddplldisp);
@@ -276,7 +275,6 @@ static void disp_pll_config(void)
 
 	while (!(readl(&cmwkup->idlestdplldisp) & ST_DPLL_CLK))
 		;
-#endif
 }
 
 static void ddr_pll_config(void)
