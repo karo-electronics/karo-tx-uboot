@@ -23,12 +23,14 @@
 #include <asm/arch/mxsfb.h>
 #include <asm/arch/sys_proto.h>
 
+static ushort mxsfb_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 800,
 	.vl_row = 480,
 
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.cmap = mxsfb_cmap,
 };
 
 static int bits_per_pixel;
