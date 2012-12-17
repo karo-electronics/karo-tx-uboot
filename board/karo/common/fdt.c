@@ -104,11 +104,11 @@ static void fdt_del_tp_node(void *blob, const char *name)
 
 	prop = fdt_getprop(blob, offs, "reset-switch", NULL);
 	if (prop)
-		ph1 = be32_to_cpu(*prop);
+		ph1 = fdt32_to_cpu(*prop);
 
 	prop = fdt_getprop(blob, offs, "wake-switch", NULL);
 	if (prop)
-		ph2 = be32_to_cpu(*prop);
+		ph2 = fdt32_to_cpu(*prop);
 
 	debug("Removing node '%s' from DT\n", name);
 	fdt_del_node(blob, offs);
@@ -182,7 +182,7 @@ void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 
 	phandle = fdt_getprop(blob, offset, "transceiver-switch", NULL);
 	if (phandle) {
-		ph = be32_to_cpu(*phandle);
+		ph = fdt32_to_cpu(*phandle);
 	}
 
 	debug("Removing property '%s' from node %s@%08lx\n", prop, compat, offs);
