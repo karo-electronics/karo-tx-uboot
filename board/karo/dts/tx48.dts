@@ -18,42 +18,44 @@
 		reg = <0x80000000 0x10000000>; /* 256 MB */
 	};
 
-	i2c@44E0B000 {
-		rtc1: ds1339@68 {
-			compatible = "dallas,ds1339";
-			reg = <0x68>;
-			trickle-charge = <0xa5>;
-		};
+	ocp {
+		i2c@44E0B000 {
+			rtc1: ds1339@68 {
+				compatible = "dallas,ds1339";
+				reg = <0x68>;
+				trickle-charge = <0xa5>;
+			};
 
-		pmic: lt3589@48 {
-			compatible = "lt,lt3589";
-			reg = <0x48>;
-		};
+			pmic: lt3589@48 {
+				compatible = "lt,lt3589";
+				reg = <0x48>;
+			};
 
-		codec: sgtl5000@0a {
-			compatible = "fsl,sgtl5000";
-			reg = <0x0a>;
-			VDDA-supply = <&reg_2p5v>;
-			VDDIO-supply = <&reg_3p3v>;
-		};
+			codec: sgtl5000@0a {
+				compatible = "fsl,sgtl5000";
+				reg = <0x0a>;
+				VDDA-supply = <&reg_2p5v>;
+				VDDIO-supply = <&reg_3p3v>;
+			};
 
-		touchscreen: tsc2007@48 {
-			compatible = "ti,tsc2007";
-			reg = <0x48>;
-			interrupt-parent = <&gpio3>;
-			interrupts = <16 0>;
-			pendown-gpio = <&gpio3 16 1>;
-			model = "2007";
-			x-plate-ohms = <660>;
-		};
+			touchscreen: tsc2007@48 {
+				compatible = "ti,tsc2007";
+				reg = <0x48>;
+				interrupt-parent = <&gpio3>;
+				interrupts = <16 0>;
+				pendown-gpio = <&gpio3 16 1>;
+				model = "2007";
+				x-plate-ohms = <660>;
+			};
 
-		polytouch: edt-ft5x06@38 {
-			compatible = "edt,edt-ft5x06";
-			reg = <0x38>;
-			interrupt-parent = <&gpio1>;
-			interrupts = <17>;
-			reset-switch = <&edt_ft5x06_reset>;
-			wake-switch = <&edt_ft5x06_wake>;
+			polytouch: edt-ft5x06@38 {
+				compatible = "edt,edt-ft5x06";
+				reg = <0x38>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <17>;
+				reset-switch = <&edt_ft5x06_reset>;
+				wake-switch = <&edt_ft5x06_wake>;
+			};
 		};
 	};
 
