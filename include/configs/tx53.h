@@ -120,7 +120,7 @@
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
+	" ${mtdparts} root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
