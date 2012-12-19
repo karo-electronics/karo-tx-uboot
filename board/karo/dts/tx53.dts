@@ -24,9 +24,7 @@
 	};
 
 	aliases {
-		usbh1 = &usbh1;
-		usbotg = &usbotg;
-		usbphy = &usbphy;
+		ipu = &ipu;
 	};
 
 	clocks {
@@ -52,25 +50,16 @@
 					status = "okay";
 					cd-gpios = <&gpio3 24 0>;
 					fsl,wp-controller;
-					pinctrl-names = "default";
-					pinctrl-0 = <
-						&pinctrl_esdhc1_1
-						&pinctrl_esdhc1_cd
-					>;
+					status = "okay";
 				};
 
 				mmc1: esdhc@50008000 { /* ESDHC2 */
 					status = "okay";
 					cd-gpios = <&gpio3 25 0>;
 					fsl,wp-controller;
-					pinctrl-names = "default";
-					pinctrl-0 = <
-						&pinctrl_esdhc2_1
-						&pinctrl_esdhc2_cd
-					>;
 				};
 
-				serial@5000c000 {
+				uart3: uart@5000c000 {
 					status = "okay";
 					pinctrl-names = "default";
 					pinctrl-0 = <&pinctrl_uart3_1>;
@@ -143,6 +132,8 @@
 			};
 
 			iomuxc@53fa8000 {
+				compatible = "fsl,imx53-iomuxc-tx53";
+
 				pinctrl-names = "default";
 
 				pincontroller {
@@ -183,26 +174,26 @@
 				status = "okay";
 			};
 
-			serial@53fbc000 {
+			uart1: uart@53fbc000 {
 				status = "okay";
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_uart1_2>;
 				fsl,uart-has-rtscts;
 			};
 
-			serial@53fc0000 {
+			uart2: uart@53fc0000 {
 				status = "okay";
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_uart2_1>;
 				fsl,uart-has-rtscts;
 			};
 
-			can@53fc8000 {
+			can1: flexcan@53fc8000 {
 				status = "okay";
 				transceiver-switch = <&flexcan_transceiver>;
 			};
 
-			can@53fcc000 {
+			can2: flexcan@53fcc000 {
 				status = "okay";
 				transceiver-switch = <&flexcan_transceiver>;
 			};
@@ -273,9 +264,9 @@
 
 			ssi@63fcc000 {
 				status = "okay";
-
-				fsl,mode = "i2s-slave";
-				codec-handle = <&sgtl5000>;
+				rx-dma = <28>;
+				tx-dma = <29>;
+				i2s-sync-mode;
 			};
 
 			ssi@50014000 {
@@ -400,6 +391,7 @@
 
 	lcd {
 		compatible = "of-gpio-lcd";
+		parent = <&ipu>;
 
 		power-switch = <&lcd_power>;
 /*
