@@ -61,8 +61,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MX53_GPIO_PAD_CTRL	(PAD_CTL_PKE | PAD_CTL_PUE |		\
 				PAD_CTL_DSE_HIGH | PAD_CTL_PUS_22K_UP)
 
-#define TX53_SDHC_PAD_CTRL      (PAD_CTL_HYS | PAD_CTL_DSE_HIGH |	\
-				PAD_CTL_SRE_FAST | PAD_CTL_PUS_100K_DOWN)
+#define TX53_SDHC_PAD_CTRL	(PAD_CTL_HYS | PAD_CTL_DSE_HIGH |	\
+				PAD_CTL_SRE_FAST | PAD_CTL_PUS_47K_UP)
 
 static iomux_v3_cfg_t tx53_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
