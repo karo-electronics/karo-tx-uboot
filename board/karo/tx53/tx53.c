@@ -886,7 +886,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
-	karo_fdt_fixup_usb_otg(blob);
+	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", 0x53f80000);
 	tx53_fixup_flexcan(blob);
 	tx53_fixup_rtc(blob);
 }

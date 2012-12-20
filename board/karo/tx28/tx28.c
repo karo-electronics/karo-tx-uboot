@@ -762,6 +762,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
-	karo_fdt_fixup_usb_otg(blob);
+	karo_fdt_fixup_usb_otg(blob, "fsl,imx28-usbphy", 0x8007c000);
 }
 #endif

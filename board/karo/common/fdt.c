@@ -81,8 +81,33 @@ void karo_fdt_move_fdt(void)
 
 void karo_fdt_remove_node(void *blob, const char *node)
 {
-	debug("Removing node %s from DT\n", node);
-	fdt_del_node_and_alias(blob, node);
+	debug("Removing node '%s' from DT\n", node);
+	int off = fdt_path_offset(blob, node);
+	int ret;
+
+	if (off < 0) {
+		printf("Could not find node '%s': %d\n", node, off);
+	} else {
+		ret = fdt_del_node(blob, off);
+		if (ret)
+			printf("Failed to remove node '%s': %d\n",
+				node, ret);
+	}
+	karo_set_fdtsize(blob);
+}
+
+void karo_fdt_enable_node(void *blob, const char *node, int enable)
+{
+	int off = fdt_path_offset(blob, node);
+
+	debug("%sabling node '%s'\n", enable ? "En" : "Dis", node);
+	if (off < 0) {
+		printf("Could not find node '%s': %d\n", node, off);
+		return;
+	}
+	fdt_set_node_status(blob, off,
+			enable ? FDT_STATUS_OKAY : FDT_STATUS_DISABLED, 0);
+
 	karo_set_fdtsize(blob);
 }
 
@@ -149,21 +174,28 @@ void karo_fdt_fixup_touchpanel(void *blob)
 	}
 }
 
-void karo_fdt_fixup_usb_otg(void *blob)
+void karo_fdt_fixup_usb_otg(void *blob, const char *compat, phys_addr_t offs)
 {
 	const char *otg_mode = getenv("otg_mode");
-	int usbphy = 2;
+	int off;
 
-	if (otg_mode == NULL || strcmp(otg_mode, "host") != 0) {
-		karo_fdt_remove_node(blob, "usbh1");
-		usbphy--;
+	debug("OTG mode is '%s'\n", otg_mode ? otg_mode : "<UNSET>");
+
+	off = fdt_node_offset_by_compat_reg(blob, compat, offs);
+	if (off < 0) {
+		printf("Failed to find node %s@%08lx\n", compat, offs);
+		return;
 	}
-	if (otg_mode == NULL || strcmp(otg_mode, "device") != 0) {
-		karo_fdt_remove_node(blob, "usbotg");
-		usbphy--;
+
+	if (!otg_mode || strcmp(otg_mode, "device") != 0) {
+		printf("Deleting property gadget-device-name from node %s@%08lx\n",
+			compat, offs);
+		fdt_delprop(blob, off, "gadget-device-name");
 	}
-	if (!usbphy) {
-		karo_fdt_remove_node(blob, "usbphy");
+	if (!otg_mode || strcmp(otg_mode, "host") != 0) {
+		printf("Deleting property host-device-name from node %s@%08lx\n",
+			compat, offs);
+		fdt_delprop(blob, off, "host-device-name");
 	}
 	karo_set_fdtsize(blob);
 }
@@ -180,7 +212,7 @@ void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 	if (offset <= 0)
 		return;
 
-	phandle = fdt_getprop(blob, offset, "transceiver-switch", NULL);
+	phandle = fdt_getprop(blob, offset, prop, NULL);
 	if (phandle) {
 		ph = fdt32_to_cpu(*phandle);
 	}
