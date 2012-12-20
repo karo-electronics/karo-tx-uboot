@@ -22,7 +22,7 @@
 	compatible = "karo,tx53", "fsl,imx53";
 
 	chosen {
-		bootargs = "init=/linuxrc console=ttymxc0,115200 root=/dev/mtdblock4 rootfstype=jffs2 ro debug panic=1";
+		bootargs = "init=/linuxrc console=ttymxc0,115200 root=/dev/mtdblock3 rootfstype=jffs2 ro debug panic=1";
 	};
 
 	aliases {
@@ -52,7 +52,6 @@
 					status = "okay";
 					cd-gpios = <&gpio3 24 0>;
 					fsl,wp-controller;
-					status = "okay";
 				};
 
 				mmc1: esdhc@50008000 { /* ESDHC2 */
@@ -137,6 +136,7 @@
 				compatible = "fsl,imx53-iomuxc-tx53";
 
 				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_tsc2007_pd>;
 
 				pincontroller {
 					pinctrl_stk5_led: stk5-led-gpios {
@@ -160,11 +160,17 @@
 
 					pinctrl_esdhc1_cd: esdhc1-cd-gpios {
 						fsl,pins = <
-							501 0x1f0 /* MX53_PAD_EIM_D25__GPIO3_25 */
+							493 0x1f0 /* MX53_PAD_EIM_D24__GPIO3_24 */
 						>;
 					};
 
 					pinctrl_esdhc2_cd: esdhc2-cd-gpios {
+						fsl,pins = <
+							501 0x1f0 /* MX53_PAD_EIM_D25__GPIO3_25 */
+						>;
+					};
+
+					pinctrl_tsc2007_pd: pendown-gpios {
 						fsl,pins = <
 							517 0x1f0 /* MX53_PAD_EIM_D27__GPIO3_27 */
 						>;
@@ -311,18 +317,12 @@
 	};
 
 	sound {
-		compatible = "karo,tx53x-audio-sgtl5000", "fsl,imx-audio-sgtl5000";
+		compatible = "fsl,imx-sgtl5000";
 		status = "okay";
-		model = "tx53x-audio-sgtl5000";
-		ssi-controller = <&ssi1>;
-		audio-codec = <&sgtl5000>;
-		audio-routing =
-			"MIC_IN", "Mic Jack",
-			"Mic Jack", "Mic Bias",
-			"Headphone Jack", "HP_OUT";
 		/* '1' based port numbers according to datasheet names */
-		mux-int-port = <1>;
-		mux-ext-port = <5>;
+		ssi-port = <1>;
+		audmux-port = <5>;
+		sysclk = <26000000>;
 	};
 
 	gpio-switch {
