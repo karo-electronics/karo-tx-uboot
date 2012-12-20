@@ -21,6 +21,7 @@ void karo_fdt_fixup_touchpanel(void *blob);
 void karo_fdt_fixup_usb_otg(void *blob, const char *compat, phys_addr_t offs);
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 		const char *prop);
+void karo_fdt_enable_node(void *blob, const char *node, int enable);
 void *karo_fdt_load_dtb(void);
 
 int karo_load_splashimage(int mode);

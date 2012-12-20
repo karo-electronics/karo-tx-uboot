@@ -885,6 +885,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
+	karo_fdt_enable_node(blob, "ipu", getenv("video_mode") != NULL);
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", 0x53f80000);
 	tx53_fixup_flexcan(blob);
