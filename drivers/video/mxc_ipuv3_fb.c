@@ -575,7 +575,9 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 void mxcfb_disable(void)
 {
 	ipu_disable_channel(MEM_BG_SYNC);
+	ipu_disable_channel(MEM_DC_SYNC);
 	ipu_uninit_channel(MEM_BG_SYNC);
+	ipu_uninit_channel(MEM_DC_SYNC);
 }
 
 void *video_hw_init(void)

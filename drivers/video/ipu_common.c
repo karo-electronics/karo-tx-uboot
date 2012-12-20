@@ -615,8 +615,7 @@ void ipu_uninit_channel(ipu_channel_t channel)
 
 	if (idma_is_set(IDMAC_CHA_EN, in_dma) ||
 	    idma_is_set(IDMAC_CHA_EN, out_dma)) {
-		printf(
-			"Channel %d is not disabled, disable first\n",
+		printf("Channel %d is not disabled, disable first\n",
 			IPU_CHAN_ID(channel));
 		return;
 	}
@@ -671,11 +670,13 @@ void ipu_uninit_channel(ipu_channel_t channel)
 
 	__raw_writel(ipu_conf, IPU_CONF);
 
+	/* clear interrupt status */
+	__raw_writel(__raw_readl(IPU_STAT), IPU_STAT);
+
 	if (ipu_conf == 0) {
 		clk_disable(g_ipu_clk);
 		g_ipu_clk_enabled = 0;
 	}
-
 }
 
 static inline void ipu_ch_param_dump(int ch)
@@ -1127,7 +1128,7 @@ int32_t ipu_disable_channel(ipu_channel_t channel)
 uint32_t bytes_per_pixel(uint32_t fmt)
 {
 	switch (fmt) {
-	case IPU_PIX_FMT_GENERIC:	/*generic data */
+	case IPU_PIX_FMT_GENERIC:	/* generic data */
 	case IPU_PIX_FMT_RGB332:
 	case IPU_PIX_FMT_YUV420P:
 	case IPU_PIX_FMT_YUV422P:
@@ -1139,7 +1140,7 @@ uint32_t bytes_per_pixel(uint32_t fmt)
 	case IPU_PIX_FMT_BGR24:
 	case IPU_PIX_FMT_RGB24:
 		return 3;
-	case IPU_PIX_FMT_GENERIC_32:	/*generic data */
+	case IPU_PIX_FMT_GENERIC_32:	/* generic data */
 	case IPU_PIX_FMT_BGR32:
 	case IPU_PIX_FMT_BGRA32:
 	case IPU_PIX_FMT_RGB32:
