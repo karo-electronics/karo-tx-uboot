@@ -53,8 +53,9 @@ void karo_fdt_move_fdt(void)
 	unsigned long fdt_addr = getenv_ulong("fdtaddr", 16, 0);
 
 	if (!fdt_addr) {
-		printf("fdtaddr is not set\n");
-		return;
+		fdt_addr = CONFIG_SYS_FDT_ADDR;
+		printf("fdtaddr is not set; using default: %08lx\n",
+			fdt_addr);
 	}
 
 	fdt = karo_fdt_load_dtb();

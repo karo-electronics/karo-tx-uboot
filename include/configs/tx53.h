@@ -89,6 +89,7 @@
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx53
 #define CONFIG_ARCH_DEVICE_TREE		mx53
+#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 
 /*
  * Boot Linux
@@ -134,7 +135,6 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" video=${video_mode} ${append_bootargs}\0"			\
 	"cpu_clk=800\0"							\
-	"fdtaddr=71000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
