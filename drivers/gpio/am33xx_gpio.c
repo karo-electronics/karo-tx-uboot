@@ -17,11 +17,11 @@
 
 #include <common.h>
 #include <errno.h>
-#include <asm-generic/gpio.h>
 #include <asm/io.h>
 #include <asm/bitops.h>
 #include <asm/sizes.h>
 #include <asm/arch/hardware.h>
+#include <asm/arch/gpio.h>
 
 struct gpio_regs {
 	unsigned int res1[0x134 / 4];
@@ -32,11 +32,11 @@ struct gpio_regs {
 	unsigned int setdataout;	/* 0x194 */
 };
 
-struct gpio_regs *gpio_base[] = {
-	(struct gpio_regs *)GPIO0_BASE,
-	(struct gpio_regs *)GPIO1_BASE,
-	(struct gpio_regs *)GPIO2_BASE,
-	(struct gpio_regs *)GPIO3_BASE,
+static const struct gpio_regs *gpio_base[] = {
+	(struct gpio_regs *)AM33XX_GPIO0_BASE,
+	(struct gpio_regs *)AM33XX_GPIO1_BASE,
+	(struct gpio_regs *)AM33XX_GPIO2_BASE,
+	(struct gpio_regs *)AM33XX_GPIO3_BASE,
 };
 
 static unsigned long gpio_map[ARRAY_SIZE(gpio_base)];

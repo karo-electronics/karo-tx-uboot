@@ -101,9 +101,9 @@ int timer_init(void)
 	writel(TCLR_VAL, &timer_base->tclr);
 #endif
 #ifndef CONFIG_SPL_BUILD
-	gd->lastinc = -30 * TIMER_CLOCK;
-	gd->tbl = TIMER_START;
-	gd->timer_rate_hz = TIMER_CLOCK;
+	gd->arch.lastinc = -30 * TIMER_CLOCK;
+	gd->arch.tbl = TIMER_START;
+	gd->arch.timer_rate_hz = TIMER_CLOCK;
 #endif
 	return 0;
 }
@@ -145,11 +145,11 @@ ulong get_timer_masked(void)
 unsigned long long get_ticks(void)
 {
 	ulong now = readl(&timer_base->tcrr);
-	ulong inc = now - gd->lastinc;
+	ulong inc = now - gd->arch.lastinc;
 
-	gd->tbl += inc;
-	gd->lastinc = now;
-	return gd->tbl;
+	gd->arch.tbl += inc;
+	gd->arch.lastinc = now;
+	return gd->arch.tbl;
 }
 
 /*
@@ -158,5 +158,5 @@ unsigned long long get_ticks(void)
  */
 ulong get_tbclk(void)
 {
-	return gd->timer_rate_hz;
+	return gd->arch.timer_rate_hz;
 }

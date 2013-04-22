@@ -26,7 +26,7 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/clock.h>
 
-static struct ctrl_stat *cstat = (struct ctrl_stat *)CTRL_BASE;
+struct ctrl_stat *cstat = (struct ctrl_stat *)CTRL_BASE;
 
 /**
  * get_cpu_rev(void) - extract rev info
@@ -85,6 +85,7 @@ u32 get_sysboot_value(void)
 	return mode;
 }
 
+#ifdef CONFIG_DISPLAY_CPUINFO
 #define SYSBOOT_FREQ_SHIFT	22
 #define SYSBOOT_FREQ_MASK	(3 << SYSBOOT_FREQ_SHIFT)
 
@@ -95,14 +96,13 @@ static unsigned long bootfreqs[] = {
 	26000000,
 };
 
-u32 get_sysboot_freq(void)
+static u32 get_sysboot_freq(void)
 {
 	int mode;
 	mode = readl(&cstat->statusreg) & SYSBOOT_FREQ_MASK;
 	return bootfreqs[mode >> SYSBOOT_FREQ_SHIFT];
 }
 
-#ifdef CONFIG_DISPLAY_CPUINFO
 /**
  * Print CPU information
  */

@@ -28,9 +28,12 @@ u32 get_sysboot_value(void);
 int print_cpuinfo(void);
 #endif
 
+extern struct ctrl_stat *cstat;
 u32 get_device_type(void);
 void setup_clocks_for_console(void);
-#endif
+void ddr_pll_config(unsigned int ddrpll_M);
 
-void gpmc_init(void);
 void sdelay(unsigned long);
+void gpmc_init(void);
+void omap_nand_switch_ecc(int);
+#endif

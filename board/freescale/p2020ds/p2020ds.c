@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2011 Freescale Semiconductor, Inc.
+ * Copyright 2007-2012 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -84,7 +84,7 @@ int checkboard(void)
 
 phys_size_t fixed_sdram(void)
 {
-	volatile ccsr_ddr_t *ddr = (ccsr_ddr_t *)CONFIG_SYS_MPC85xx_DDR_ADDR;
+	volatile ccsr_ddr_t *ddr = (ccsr_ddr_t *)CONFIG_SYS_MPC8xxx_DDR_ADDR;
 	uint d_init;
 
 	ddr->cs0_config = CONFIG_SYS_DDR_CS0_CONFIG;
@@ -256,6 +256,10 @@ void ft_board_setup(void *blob, bd_t *bd)
 	size = getenv_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
+
+#ifdef CONFIG_HAS_FSL_DR_USB
+	fdt_fixup_dr_usb(blob, bd);
+#endif
 
 	FT_FSL_PCI_SETUP;
 

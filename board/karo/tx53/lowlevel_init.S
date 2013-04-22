@@ -105,7 +105,7 @@
 #define ESDOR_CLK_PERIOD_ns		(1000000000 / CKIL_FREQ_Hz / 2)	/* base clock for ESDOR values */
 
 /* DDR3 SDRAM */
-#if SDRAM_SIZE > RAM_BANK0_SIZE
+#if SDRAM_SIZE > PHYS_SDRAM_1_SIZE
 #define BANK_ADDR_BITS			2
 #else
 #define BANK_ADDR_BITS			1

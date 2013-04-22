@@ -78,7 +78,7 @@ static void display_global_data(void)
 	printf(" gd: %p\n", gd);
 	printf(" |-flags: %lx\n", gd->flags);
 	printf(" |-board_type: %lx\n", gd->board_type);
-	printf(" |-baudrate: %lu\n", gd->baudrate);
+	printf(" |-baudrate: %u\n", gd->baudrate);
 	printf(" |-have_console: %lx\n", gd->have_console);
 	printf(" |-ram_size: %lx\n", gd->ram_size);
 	printf(" |-env_addr: %lx\n", gd->env_addr);
@@ -86,7 +86,6 @@ static void display_global_data(void)
 	printf(" |-jt(%p): %p\n", gd->jt, *(gd->jt));
 	printf(" \\-bd: %p\n", gd->bd);
 	printf("   |-bi_baudrate: %x\n", bd->bi_baudrate);
-	printf("   |-bi_ip_addr: %lx\n", bd->bi_ip_addr);
 	printf("   |-bi_boot_params: %lx\n", bd->bi_boot_params);
 	printf("   |-bi_memstart: %lx\n", bd->bi_memstart);
 	printf("   |-bi_memsize: %lx\n", bd->bi_memsize);
@@ -210,7 +209,7 @@ static int global_board_data_init(void)
 	gd->bd = bd;
 
 	bd->bi_r_version = version_string;
-	bd->bi_cpu = MK_STR(CONFIG_BFIN_CPU);
+	bd->bi_cpu = __stringify(CONFIG_BFIN_CPU);
 	bd->bi_board_name = BFIN_BOARD_NAME;
 	bd->bi_vco = get_vco();
 	bd->bi_cclk = get_cclk();
@@ -285,9 +284,7 @@ void board_init_f(ulong bootflag)
 	init_baudrate();
 	serial_early_puts("Serial init\n");
 	serial_init();
-#ifdef CONFIG_SERIAL_MULTI
 	serial_initialize();
-#endif
 	serial_early_puts("Console init flash\n");
 	console_init_f();
 	serial_early_puts("End of early debugging\n");
@@ -320,15 +317,8 @@ static void board_net_init_r(bd_t *bd)
 	bb_miiphy_init();
 #endif
 #ifdef CONFIG_CMD_NET
-	char *s;
-
-	if ((s = getenv("bootfile")) != NULL)
-		copy_filename(BootFile, s, sizeof(BootFile));
-
-	bd->bi_ip_addr = getenv_IPaddr("ipaddr");
-
 	printf("Net:   ");
-	eth_initialize(gd->bd);
+	eth_initialize(bd);
 #endif
 }
 

@@ -4,9 +4,9 @@
  * (C) Copyright 2010
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
- * MX51 Linux framebuffer:
+ * IPUv3 Linux framebuffer:
  *
- * (C) Copyright 2004-2010 Freescale Semiconductor, Inc.
+ * (C) Copyright 2004-2011 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -27,6 +27,8 @@
  * MA 02111-1307 USA
  */
 
+/* #define DEBUG */
+// #define DEBUG
 #include <common.h>
 #include <asm/errno.h>
 #include <linux/string.h>
@@ -34,21 +36,44 @@
 #include <linux/fb.h>
 #include <asm/io.h>
 #include <malloc.h>
+#include <lcd.h>
+#include <ipu.h>
 #include <video_fb.h>
 #include "videomodes.h"
-#include "ipu.h"
 #include "mxcfb.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
+extern vidinfo_t panel_info;
+
+void *lcd_base;			/* Start of framebuffer memory	*/
+void *lcd_console_address;	/* Start of console buffer	*/
+
+int lcd_line_length;
+int lcd_color_fg;
+int lcd_color_bg;
+
+short console_col;
+short console_row;
+
 static int mxcfb_map_video_memory(struct fb_info *fbi);
 static int mxcfb_unmap_video_memory(struct fb_info *fbi);
 
-/* graphics setup */
-static GraphicDevice panel;
-static struct fb_videomode *gmode;
-static uint8_t gdisp;
-static uint32_t gpixfmt;
+void lcd_initcolregs(void)
+{
+}
+
+void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
+{
+}
+
+void lcd_disable(void)
+{
+}
+
+void lcd_panel_disable(void)
+{
+}
 
 static void fb_videomode_to_var(struct fb_var_screeninfo *var,
 			 const struct fb_videomode *mode)
@@ -113,14 +138,15 @@ static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 		return fbi->var.nonstd;
 
 	switch (fbi->var.bits_per_pixel) {
+	case 24:
+		pixfmt = IPU_PIX_FMT_BGR24;
+		break;
 	case 32:
 		pixfmt = IPU_PIX_FMT_BGR32;
 		break;
-
 	case 16:
 		pixfmt = IPU_PIX_FMT_RGB565;
 		break;
-
 	case 8:
 		pixfmt = IPU_PIX_FMT_GENERIC;
 	}
@@ -320,8 +346,8 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	if (var->yres_virtual < var->yres)
 		var->yres_virtual = var->yres;
 
-	if ((var->bits_per_pixel != 32) && (var->bits_per_pixel != 16) &&
-		(var->bits_per_pixel != 8))
+	if ((var->bits_per_pixel != 32) && (var->bits_per_pixel != 24) &&
+	    (var->bits_per_pixel != 16) && (var->bits_per_pixel != 8))
 		var->bits_per_pixel = default_bpp;
 
 	switch (var->bits_per_pixel) {
@@ -342,7 +368,6 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		var->transp.offset = 0;
 		var->transp.msb_right = 0;
 		break;
-
 	case 16:
 		var->red.length = 5;
 		var->red.offset = 11;
@@ -360,7 +385,23 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		var->transp.offset = 0;
 		var->transp.msb_right = 0;
 		break;
+	case 24:
+		var->red.length = 8;
+		var->red.offset = 16;
+		var->red.msb_right = 0;
 
+		var->green.length = 8;
+		var->green.offset = 8;
+		var->green.msb_right = 0;
+
+		var->blue.length = 8;
+		var->blue.offset = 0;
+		var->blue.msb_right = 0;
+
+		var->transp.length = 0;
+		var->transp.offset = 0;
+		var->transp.msb_right = 0;
+		break;
 	case 32:
 		var->red.length = 8;
 		var->red.offset = 16;
@@ -419,9 +460,6 @@ static int mxcfb_map_video_memory(struct fb_info *fbi)
 		(uint32_t) fbi->fix.smem_start, fbi->fix.smem_len);
 
 	fbi->screen_size = fbi->fix.smem_len;
-
-	/* Clear the screen */
-	memset(fbi->screen_base, 0, fbi->fix.smem_len);
 
 	return 0;
 }
@@ -489,8 +527,7 @@ static struct fb_info *mxcfb_init_fbinfo(void)
  *
  * @return      Appropriate error code to the kernel common code
  */
-static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
-			struct fb_videomode *mode)
+static int mxcfb_probe(u32 interface_pix_fmt, struct fb_videomode *mode, int di)
 {
 	struct fb_info *fbi;
 	struct mxcfb_info *mxcfbi;
@@ -512,7 +549,7 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 		mxcfbi->blank = FB_BLANK_POWERDOWN;
 	}
 
-	mxcfbi->ipu_di = disp;
+	mxcfbi->ipu_di = di;
 
 	ipu_disp_set_global_alpha(mxcfbi->ipu_ch, 1, 0x80);
 	ipu_disp_set_color_key(mxcfbi->ipu_ch, 0, 0);
@@ -523,10 +560,12 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 	mxcfb_info[mxcfbi->ipu_di] = fbi;
 
 	/* Need dummy values until real panel is configured */
+	fbi->var.xres = panel_info.vl_col;
+	fbi->var.yres = panel_info.vl_row;
 
 	mxcfbi->ipu_di_pix_fmt = interface_pix_fmt;
 	fb_videomode_to_var(&fbi->var, mode);
-	fbi->var.bits_per_pixel = default_bpp;
+	fbi->var.bits_per_pixel = NBITS(panel_info.vl_bpix);
 	fbi->fix.line_length = fbi->var.xres * (fbi->var.bits_per_pixel / 8);
 	fbi->fix.smem_len = fbi->var.yres_virtual * fbi->fix.line_length;
 
@@ -539,76 +578,64 @@ static int mxcfb_probe(u32 interface_pix_fmt, uint8_t disp,
 
 	mxcfb_set_par(fbi);
 
-	panel.winSizeX = mode->xres;
-	panel.winSizeY = mode->yres;
-	panel.plnSizeX = mode->xres;
-	panel.plnSizeY = mode->yres;
+	lcd_line_length = (panel_info.vl_col * NBITS(panel_info.vl_bpix)) / 8;
 
-	panel.frameAdrs = (u32)fbi->screen_base;
-	panel.memSize = fbi->screen_size;
-
-	switch (fbi->var.bits_per_pixel) {
-	case 8:
-		panel.gdfBytesPP = 1;
-		panel.gdfIndex = GDF__8BIT_INDEX;
-		break;
-
-	case 16:
-		panel.gdfBytesPP = 2;
-		panel.gdfIndex = GDF_16BIT_565RGB;
-		break;
-
-	case 32:
-		panel.gdfBytesPP = 4;
-		panel.gdfIndex = GDF_32BIT_X888RGB;
-		break;
-
-	default:
-		hang();
-	}
+	debug("MXC IPUV3 configured\n"
+		"XRES = %d YRES = %d BitsXpixel = %d\n",
+		panel_info.vl_col,
+		panel_info.vl_row,
+		panel_info.vl_bpix);
 
 	ipu_dump_registers();
 
 	return 0;
 }
 
-void mxcfb_disable(void)
+ulong calc_fbsize(void)
 {
-	ipu_disable_channel(MEM_BG_SYNC);
-	ipu_disable_channel(MEM_DC_SYNC);
-	ipu_uninit_channel(MEM_BG_SYNC);
-	ipu_uninit_channel(MEM_DC_SYNC);
+	return (panel_info.vl_col * panel_info.vl_row *
+		NBITS(panel_info.vl_bpix)) / 8;
 }
 
-void *video_hw_init(void)
+int overwrite_console(void)
+{
+	/* Keep stdout / stderr on serial, our LCD is for splashscreen only */
+	return 1;
+}
+
+#if 0
+void lcd_ctrl_init(void *lcdbase)
+{
+	u32 mem_len = panel_info.vl_col *
+		panel_info.vl_row *
+		NBITS(panel_info.vl_bpix) / 8;
+
+	/*
+	 * We rely on lcdbase being a physical address, i.e., either MMU off,
+	 * or 1-to-1 mapping. Might want to add some virt2phys here.
+	 */
+	if (!lcdbase)
+		return;
+
+	memset(lcdbase, 0, mem_len);
+}
+#endif
+
+int ipuv3_fb_init(struct fb_videomode *mode, int di, unsigned int interface_pix_fmt,
+		ipu_di_clk_parent_t di_clk_parent, unsigned long di_clk_val, int bpp)
 {
 	int ret;
 
-	ret = ipu_probe();
-	if (ret)
-		puts("Error initializing IPU\n");
+//	default_bpp = bpp;
 
-	ret = mxcfb_probe(gpixfmt, gdisp, gmode);
-	debug("Framebuffer at 0x%08x\n", panel.frameAdrs);
+	ret = ipu_probe(di, di_clk_parent, di_clk_val);
+	if (ret) {
+		printf("Error initializing IPU\n");
+		return ret;
+	}
 
-	return &panel;
-}
+	debug("Framebuffer at %p\n", lcd_base);
+	ret = mxcfb_probe(interface_pix_fmt, mode, di);
 
-void video_set_lut(unsigned int index, /* color number */
-			unsigned char r,    /* red */
-			unsigned char g,    /* green */
-			unsigned char b     /* blue */
-			)
-{
-	return;
-}
-
-int mx5_fb_init(struct fb_videomode *mode, uint8_t disp, uint32_t pixfmt, int bpp)
-{
-	gmode = mode;
-	gdisp = disp;
-	gpixfmt = pixfmt;
-	default_bpp = bpp;
-
-	return 0;
+	return ret;
 }

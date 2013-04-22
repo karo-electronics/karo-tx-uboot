@@ -126,7 +126,7 @@ int board_init(void)
 
 int dram_init(void)
 {
-	return mx28_dram_init();
+	return mxs_dram_init();
 }
 
 #ifdef	CONFIG_CMD_MMC
@@ -154,8 +154,8 @@ static int fec_get_mac_addr(int index)
 {
 	u32 val1, val2;
 	int timeout = 1000;
-	struct mx28_ocotp_regs *ocotp_regs =
-		(struct mx28_ocotp_regs *)MXS_OCOTP_BASE;
+	struct mxs_ocotp_regs *ocotp_regs =
+		(struct mxs_ocotp_regs *)MXS_OCOTP_BASE;
 	u32 *cust = &ocotp_regs->hw_ocotp_cust0;
 	char mac[6 * 3];
 	char env_name[] = "eth.addr";

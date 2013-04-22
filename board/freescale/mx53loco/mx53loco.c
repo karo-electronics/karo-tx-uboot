@@ -31,14 +31,19 @@
 #include <asm/arch/iomux.h>
 #include <asm/arch/clock.h>
 #include <asm/errno.h>
+#include <asm/imx-common/mx5_video.h>
 #include <netdev.h>
 #include <i2c.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <asm/gpio.h>
-#include <pmic.h>
+#include <power/pmic.h>
 #include <dialog_pmic.h>
 #include <fsl_pmic.h>
+#include <linux/fb.h>
+#include <ipu_pixfmt.h>
+
+#define MX53LOCO_LCD_POWER		IMX_GPIO_NR(3, 24)
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -70,6 +75,9 @@ u32 get_board_rev(void)
 		(struct fuse_bank0_regs *)bank->fuse_regs;
 
 	int rev = readl(&fuse->gp[6]);
+
+	if (!i2c_probe(CONFIG_SYS_DIALOG_PMIC_I2C_ADDR))
+		rev = 0;
 
 	return (get_cpu_rev() & ~(0xF << 8)) | (rev & 0xF) << 8;
 }
@@ -158,8 +166,8 @@ static void setup_iomux_fec(void)
 
 #ifdef CONFIG_FSL_ESDHC
 struct fsl_esdhc_cfg esdhc_cfg[2] = {
-	{MMC_SDHC1_BASE_ADDR, 1},
-	{MMC_SDHC3_BASE_ADDR, 1},
+	{MMC_SDHC1_BASE_ADDR},
+	{MMC_SDHC3_BASE_ADDR},
 };
 
 int board_mmc_getcd(struct mmc *mmc)
@@ -168,14 +176,14 @@ int board_mmc_getcd(struct mmc *mmc)
 	int ret;
 
 	mxc_request_iomux(MX53_PIN_EIM_DA11, IOMUX_CONFIG_ALT1);
-	gpio_direction_input(75);
+	gpio_direction_input(IMX_GPIO_NR(3, 11));
 	mxc_request_iomux(MX53_PIN_EIM_DA13, IOMUX_CONFIG_ALT1);
-	gpio_direction_input(77);
+	gpio_direction_input(IMX_GPIO_NR(3, 13));
 
 	if (cfg->esdhc_base == MMC_SDHC1_BASE_ADDR)
-		ret = !gpio_get_value(77); /* GPIO3_13 */
+		ret = !gpio_get_value(IMX_GPIO_NR(3, 13));
 	else
-		ret = !gpio_get_value(75); /* GPIO3_11 */
+		ret = !gpio_get_value(IMX_GPIO_NR(3, 11));
 
 	return ret;
 }
@@ -184,6 +192,9 @@ int board_mmc_init(bd_t *bis)
 {
 	u32 index;
 	s32 status = 0;
+
+	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
+	esdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 
 	for (index = 0; index < CONFIG_SYS_FSL_ESDHC_NUM; index++) {
 		switch (index) {
@@ -332,62 +343,113 @@ static void setup_iomux_i2c(void)
 static int power_init(void)
 {
 	unsigned int val;
-	int ret = -1;
+	int ret;
 	struct pmic *p;
 
 	if (!i2c_probe(CONFIG_SYS_DIALOG_PMIC_I2C_ADDR)) {
-		pmic_dialog_init();
-		p = get_pmic();
+		ret = pmic_dialog_init(I2C_PMIC);
+		if (ret)
+			return ret;
+
+		p = pmic_get("DIALOG_PMIC");
+		if (!p)
+			return -ENODEV;
 
 		/* Set VDDA to 1.25V */
 		val = DA9052_BUCKCORE_BCOREEN | DA_BUCKCORE_VBCORE_1_250V;
 		ret = pmic_reg_write(p, DA9053_BUCKCORE_REG, val);
+		if (ret) {
+			printf("Writing to BUCKCORE_REG failed: %d\n", ret);
+			return ret;
+		}
 
-		ret |= pmic_reg_read(p, DA9053_SUPPLY_REG, &val);
+		pmic_reg_read(p, DA9053_SUPPLY_REG, &val);
 		val |= DA9052_SUPPLY_VBCOREGO;
-		ret |= pmic_reg_write(p, DA9053_SUPPLY_REG, val);
+		ret = pmic_reg_write(p, DA9053_SUPPLY_REG, val);
+		if (ret) {
+			printf("Writing to SUPPLY_REG failed: %d\n", ret);
+			return ret;
+		}
 
 		/* Set Vcc peripheral to 1.30V */
-		ret |= pmic_reg_write(p, DA9053_BUCKPRO_REG, 0x62);
-		ret |= pmic_reg_write(p, DA9053_SUPPLY_REG, 0x62);
+		ret = pmic_reg_write(p, DA9053_BUCKPRO_REG, 0x62);
+		if (ret) {
+			printf("Writing to BUCKPRO_REG failed: %d\n", ret);
+			return ret;
+		}
+
+		ret = pmic_reg_write(p, DA9053_SUPPLY_REG, 0x62);
+		if (ret) {
+			printf("Writing to SUPPLY_REG failed: %d\n", ret);
+			return ret;
+		}
+
+		return ret;
 	}
 
 	if (!i2c_probe(CONFIG_SYS_FSL_PMIC_I2C_ADDR)) {
-		pmic_init();
-		p = get_pmic();
+		ret = pmic_init(I2C_PMIC);
+		if (ret)
+			return ret;
+
+		p = pmic_get("FSL_PMIC");
+		if (!p)
+			return -ENODEV;
 
 		/* Set VDDGP to 1.25V for 1GHz on SW1 */
 		pmic_reg_read(p, REG_SW_0, &val);
 		val = (val & ~SWx_VOLT_MASK_MC34708) | SWx_1_250V_MC34708;
 		ret = pmic_reg_write(p, REG_SW_0, val);
+		if (ret) {
+			printf("Writing to REG_SW_0 failed: %d\n", ret);
+			return ret;
+		}
 
 		/* Set VCC as 1.30V on SW2 */
 		pmic_reg_read(p, REG_SW_1, &val);
 		val = (val & ~SWx_VOLT_MASK_MC34708) | SWx_1_300V_MC34708;
-		ret |= pmic_reg_write(p, REG_SW_1, val);
+		ret = pmic_reg_write(p, REG_SW_1, val);
+		if (ret) {
+			printf("Writing to REG_SW_1 failed: %d\n", ret);
+			return ret;
+		}
 
 		/* Set global reset timer to 4s */
 		pmic_reg_read(p, REG_POWER_CTL2, &val);
 		val = (val & ~TIMER_MASK_MC34708) | TIMER_4S_MC34708;
-		ret |= pmic_reg_write(p, REG_POWER_CTL2, val);
+		ret = pmic_reg_write(p, REG_POWER_CTL2, val);
+		if (ret) {
+			printf("Writing to REG_POWER_CTL2 failed: %d\n", ret);
+			return ret;
+		}
 
 		/* Set VUSBSEL and VUSBEN for USB PHY supply*/
 		pmic_reg_read(p, REG_MODE_0, &val);
 		val |= (VUSBSEL_MC34708 | VUSBEN_MC34708);
-		ret |= pmic_reg_write(p, REG_MODE_0, val);
+		ret = pmic_reg_write(p, REG_MODE_0, val);
+		if (ret) {
+			printf("Writing to REG_MODE_0 failed: %d\n", ret);
+			return ret;
+		}
 
 		/* Set SWBST to 5V in auto mode */
 		val = SWBST_AUTO;
-		ret |= pmic_reg_write(p, SWBST_CTRL, val);
+		ret = pmic_reg_write(p, SWBST_CTRL, val);
+		if (ret) {
+			printf("Writing to SWBST_CTRL failed: %d\n", ret);
+			return ret;
+		}
+
+		return ret;
 	}
 
-	return ret;
+	return -1;
 }
 
 static void clock_1GHz(void)
 {
 	int ret;
-	u32 ref_clk = CONFIG_SYS_MX5_HCLK;
+	u32 ref_clk = MXC_HCLK;
 	/*
 	 * After increasing voltage to 1.25V, we can switch
 	 * CPU clock to 1GHz and DDR to 400MHz safely
@@ -406,6 +468,7 @@ int board_early_init_f(void)
 {
 	setup_iomux_uart();
 	setup_iomux_fec();
+	setup_iomux_lcd();
 
 	return 0;
 }
@@ -424,23 +487,30 @@ int print_cpuinfo(void)
 	return 0;
 }
 
-#ifdef CONFIG_BOARD_LATE_INIT
-int board_late_init(void)
+/*
+ * Do not overwrite the console
+ * Use always serial for U-Boot console
+ */
+int overwrite_console(void)
 {
-	setup_iomux_i2c();
-	if (!power_init())
-		clock_1GHz();
-	print_cpuinfo();
-
-	return 0;
+	return 1;
 }
-#endif
 
 int board_init(void)
 {
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
 	mxc_set_sata_internal_clock();
+	setup_iomux_i2c();
+
+	return 0;
+}
+
+int board_late_init(void)
+{
+	if (!power_init())
+		clock_1GHz();
+	print_cpuinfo();
 
 	return 0;
 }

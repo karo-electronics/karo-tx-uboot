@@ -10,10 +10,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  */
-#ifndef __TX28_H
-#define __TX28_H
+#ifndef __CONFIGS_TX28_H
+#define __CONFIGS_TX28_H
 
-#include <config.h>
 #include <asm/sizes.h>
 #include <asm/arch/regs-base.h>
 
@@ -92,6 +91,7 @@
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx28
 #define CONFIG_ARCH_DEVICE_TREE		mx28
+#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif
 
 /*
@@ -99,20 +99,20 @@
  */
 #define xstr(s)	str(s)
 #define str(s)	#s
-#define __pfx(x, s)	(x##s)
-#define _pfx(x, s)	__pfx(x, s)
+#define __pfx(x, s)			(x##s)
+#define _pfx(x, s)			__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	3
+#define CONFIG_BOOTDELAY		3
 #define CONFIG_ZERO_BOOTDELAY_CHECK
-#define CONFIG_SYS_AUTOLOAD	"no"
-#define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttyAMA0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
-#define CONFIG_LOADADDR		43000000
-#define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
-#define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
+#define CONFIG_SYS_AUTOLOAD		"no"
+#define CONFIG_BOOTFILE			"uImage"
+#define CONFIG_BOOTARGS			"console=ttyAMA0,115200 ro debug panic=1"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_LOADADDR			43000000
+#define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 
 /*
  * Extra Environments
@@ -124,21 +124,21 @@
 	" root=/dev/mmcblk0p3 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
-	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
-	" fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
+	"fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
 	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
-	" nboot linux;run bootm_cmd\0"					\
+	"nboot linux;run bootm_cmd\0"					\
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
-	" run bootm_cmd\0"						\
+	"run bootm_cmd\0"						\
 	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"	\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" mxsfb.mode=${video_mode} ${append_bootargs}\0"		\
 	"fdtaddr=41000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
@@ -237,6 +237,7 @@
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_MXS_MMC
+#define CONFIG_BOUNCE_BUFFER
 
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
@@ -276,13 +277,14 @@
 /* Defines for SPL */
 #define CONFIG_SPL
 #define CONFIG_SPL_NO_CPU_SUPPORT_CODE
-#define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mx28"
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mx28/u-boot-spl.lds"
+#define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mxs"
+#define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 #define CONFIG_SYS_SPL_VDDD_VAL		1500
 #define CONFIG_SYS_SPL_BATT_BO_LEVEL	2800
+#define CONFIG_SYS_SPL_VDDMEM_VAL	0	/* VDDMEM is not utilized on TX28 */
 
-#endif /* __CONFIG_H */
+#endif /* __CONFIGS_TX28_H */

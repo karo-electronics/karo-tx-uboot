@@ -152,10 +152,8 @@ static int calc_bb_offset(nand_info_t *mtd, struct mx28_fcb *fcb)
 static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block,
 				int fw2_start_block, size_t fw_size)
 {
-	struct mx28_gpmi_regs *gpmi_base =
-		(struct mx28_gpmi_regs *)MXS_GPMI_BASE;
-	struct mx28_bch_regs *bch_base =
-		(struct mx28_bch_regs *)MXS_BCH_BASE;
+	struct gpmi_regs *gpmi_base = (void *)GPMI_BASE_ADDRESS;
+	struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
 	u32 fl0, fl1;
 	u32 t0, t1;
 	int metadata_size;

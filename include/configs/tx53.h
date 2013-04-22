@@ -10,10 +10,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  */
-#ifndef __TX53_H
-#define __TX53_H
+#ifndef __CONFIGS_TX53_H
+#define __CONFIGS_TX53_H
 
-#include <config.h>
 #include <asm/sizes.h>
 
 /*
@@ -23,10 +22,10 @@
 #define CONFIG_MX53				/* i.MX53 SoC */
 #define CONFIG_SYS_MX5_IOMUX_V3
 #define CONFIG_MXC_GPIO				/* GPIO control */
-#define CONFIG_SYS_MX5_HCLK	24000000
-#define CONFIG_SYS_MX5_CLK32	32768
-#define CONFIG_SYS_DDR_CLKSEL	0
-#define CONFIG_SYS_HZ		1000		/* Ticks per second */
+#define CONFIG_SYS_MX5_HCLK		24000000
+#define CONFIG_SYS_MX5_CLK32		32768
+#define CONFIG_SYS_DDR_CLKSEL		0
+#define CONFIG_SYS_HZ			1000	/* Ticks per second */
 #define CONFIG_SHOW_ACTIVITY
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
@@ -37,9 +36,10 @@
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
-#define CONFIG_VIDEO_MX5
+#define CONFIG_VIDEO_IPUV3
+#define CONFIG_IPUV3_CLK		200000000
 #define CONFIG_LCD_LOGO
-#define LCD_BPP			LCD_COLOR24
+#define LCD_BPP				LCD_COLOR24
 #define CONFIG_CMD_BMP
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
@@ -47,32 +47,32 @@
 /*
  * Memory configurations
  */
-#define PHYS_SDRAM_1		0x70000000	/* Base address of bank 1 */
-#define PHYS_SDRAM_1_SIZE	SZ_512M
+#define PHYS_SDRAM_1			0x70000000	/* Base address of bank 1 */
+#define PHYS_SDRAM_1_SIZE		SZ_512M
 #if CONFIG_NR_DRAM_BANKS > 1
-#define PHYS_SDRAM_2		0xb0000000	/* Base address of bank 2 */
-#define PHYS_SDRAM_2_SIZE	SZ_512M
-#define TX53_MOD_SUFFIX		"1"
+#define PHYS_SDRAM_2			0xb0000000	/* Base address of bank 2 */
+#define PHYS_SDRAM_2_SIZE		SZ_512M
+#define TX53_MOD_SUFFIX			"1"
 #else
-#define TX53_MOD_SUFFIX		"0"
+#define TX53_MOD_SUFFIX			"0"
 #endif
-#define CONFIG_STACKSIZE	SZ_128K
-#define CONFIG_SYS_MALLOC_LEN	SZ_8M
-#define CONFIG_SYS_MEMTEST_START PHYS_SDRAM_1	/* Memtest start address */
-#define CONFIG_SYS_MEMTEST_END	(PHYS_SDRAM_1 + SZ_4M)	/* 4 MB RAM test */
-#define CONFIG_SYS_SDRAM_CLK	400
+#define CONFIG_STACKSIZE		SZ_128K
+#define CONFIG_SYS_MALLOC_LEN		SZ_8M
+#define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
+#define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1 + SZ_4M)	/* 4 MB RAM test */
+#define CONFIG_SYS_SDRAM_CLK		400
 
 /*
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT	"TX53 U-Boot > "
-#define CONFIG_SYS_CBSIZE	2048		/* Console I/O buffer size */
+#define CONFIG_SYS_PROMPT		"TX53 U-Boot > "
+#define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 						/* Print buffer size */
-#define CONFIG_SYS_MAXARGS	64		/* Max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
+#define CONFIG_SYS_MAXARGS		64	/* Max number of command args */
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 						/* Boot argument buffer size */
 #define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
 #define CONFIG_AUTO_COMPLETE			/* Command auto complete */
@@ -94,22 +94,22 @@
 /*
  * Boot Linux
  */
-#define xstr(s)	str(s)
-#define str(s)	#s
-#define __pfx(x, s)	(x##s)
-#define _pfx(x, s)	__pfx(x, s)
+#define xstr(s)				str(s)
+#define str(s)				#s
+#define __pfx(x, s)			(x##s)
+#define _pfx(x, s)			__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	3
+#define CONFIG_BOOTDELAY		3
 #define CONFIG_ZERO_BOOTDELAY_CHECK
-#define CONFIG_SYS_AUTOLOAD	"no"
-#define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttymxc0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
-#define CONFIG_LOADADDR		78000000
-#define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
-#define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
+#define CONFIG_SYS_AUTOLOAD		"no"
+#define CONFIG_BOOTFILE			"uImage"
+#define CONFIG_BOOTARGS			"console=ttymxc0,115200 ro debug panic=1"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_LOADADDR			78000000
+#define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 #define CONFIG_HW_WATCHDOG
 
 /*
@@ -121,7 +121,7 @@
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" ${mtdparts} root=/dev/mtdblock3 rootfstype=jffs2\0"			\
+	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
@@ -135,6 +135,7 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" video=${video_mode} ${append_bootargs}\0"			\
 	"cpu_clk=800\0"							\
+	"fdtaddr=71000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
@@ -243,7 +244,7 @@
  * Environments on MMC
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV	0
+#define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_OVERWRITE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
@@ -274,4 +275,4 @@
 #define CONFIG_IMX_IIM
 #endif
 
-#endif /* __CONFIG_H */
+#endif /* __CONFIGS_TX53_H */

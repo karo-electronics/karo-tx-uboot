@@ -1,22 +1,16 @@
 /*
  * CPSW Ethernet Switch Driver
  *
- * See file CREDITS for list of people who contributed to this
- * project.
+ * Copyright (C) 2010 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * This program is distributed "as is" WITHOUT ANY WARRANTY of any
+ * kind, whether express or implied; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <common.h>
@@ -28,14 +22,19 @@
 #include <netdev.h>
 #include <asm/errno.h>
 #include <asm/io.h>
+#include <phy.h>
 #include <asm/arch/cpu.h>
 
-#define BITMASK(bits)		((1 << (bits)) - 1)
+#define BITMASK(bits)		(BIT(bits) - 1)
 #define PHY_REG_MASK		0x1f
 #define PHY_ID_MASK		0x1f
 #define NUM_DESCS		(PKTBUFSRX * 2)
 #define PKT_MIN			60
 #define PKT_MAX			(1500 + 14 + 4 + 4)
+#define CLEAR_BIT		1
+#define GIGABITEN		BIT(7)
+#define FULLDUPLEXEN		BIT(0)
+#define MIIEN			BIT(15)
 
 /* DMA Registers */
 #define CPDMA_TXCONTROL		0x004
@@ -51,21 +50,27 @@
 #define CPDMA_RXCP_VER1		0x160
 #define CPDMA_RXCP_VER2		0x260
 
+#define CPDMA_RAM_ADDR		0x4a102000
+
 /* Descriptor mode bits */
 #define CPDMA_DESC_SOP		BIT(31)
 #define CPDMA_DESC_EOP		BIT(30)
 #define CPDMA_DESC_OWNER	BIT(29)
 #define CPDMA_DESC_EOQ		BIT(28)
 
-#ifndef CONFIG_SYS_CACHELINE_SIZE
-#define CONFIG_SYS_CACHELINE_SIZE	64
-#endif
+/*
+ * This timeout definition is a worst-case ultra defensive measure against
+ * unexpected controller lock ups.  Ideally, we should never ever hit this
+ * scenario in practice.
+ */
+#define MDIO_TIMEOUT            100 /* msecs */
+#define CPDMA_TIMEOUT		100 /* msecs */
 
 struct cpsw_mdio_regs {
 	u32	version;
 	u32	control;
-#define CONTROL_IDLE		(1 << 31)
-#define CONTROL_ENABLE		(1 << 30)
+#define CONTROL_IDLE		BIT(31)
+#define CONTROL_ENABLE		BIT(30)
 
 	u32	alive;
 	u32	link;
@@ -79,11 +84,11 @@ struct cpsw_mdio_regs {
 	u32	__reserved_1[20];
 
 	struct {
-		u32 access;
-		u32 physel;
-#define USERACCESS_GO		(1 << 31)
-#define USERACCESS_WRITE	(1 << 30)
-#define USERACCESS_ACK		(1 << 29)
+		u32		access;
+		u32		physel;
+#define USERACCESS_GO		BIT(31)
+#define USERACCESS_WRITE	BIT(30)
+#define USERACCESS_ACK		BIT(29)
 #define USERACCESS_READ		0
 #define USERACCESS_DATA		0xffff
 	} user[0];
@@ -103,12 +108,7 @@ struct cpsw_slave_regs {
 	u32	flow_thresh;
 	u32	port_vlan;
 	u32	tx_pri_map;
-	u32	ts_seq_mtype;
-#ifdef CONFIG_TI814X
-	u32     ts_ctl;
-	u32     ts_seq_ltype;
-	u32     ts_vlan;
-#endif
+	u32	gap_thresh;
 	u32	sa_lo;
 	u32	sa_hi;
 };
@@ -191,7 +191,7 @@ struct cpdma_desc {
 } __attribute__((aligned(CONFIG_SYS_CACHELINE_SIZE)));
 
 struct cpsw_desc {
-	volatile void *sw_buffer;
+	void *sw_buffer;
 	struct cpsw_desc *next;
 	struct cpdma_desc *dma_desc;
 };
@@ -209,6 +209,10 @@ struct cpdma_chan {
 #define chan_read(chan, fld)		__raw_readl((chan)->fld)
 #define chan_read_ptr(chan, fld)	((void *)__raw_readl((chan)->fld))
 
+#define for_each_slave(slave, priv) \
+	for (slave = (priv)->slaves; slave != (priv)->slaves + \
+				(priv)->data->slaves; slave++)
+
 struct cpsw_priv {
 	struct eth_device		*dev;
 	struct cpsw_platform_data	*data;
@@ -224,14 +228,9 @@ struct cpsw_priv {
 	struct cpdma_chan		rx_chan, tx_chan;
 
 	struct cpsw_slave		*slaves;
+	struct phy_device		*phydev;
+	struct mii_dev			*bus;
 };
-
-#define for_each_slave(priv, func, arg...)	\
-	do {								\
-		int idx;						\
-		for (idx = 0; idx < (priv)->data->slaves; idx++)	\
-			(func)((priv)->slaves + idx, ##arg);		\
-	} while (0)
 
 static inline int cpsw_ale_get_field(u32 *ale_entry, u32 start, u32 bits)
 {
@@ -444,7 +443,7 @@ static inline void cpsw_ale_port_state(struct cpsw_priv *priv, int port,
 
 	tmp  = __raw_readl(priv->ale_regs + offset);
 	tmp &= ~mask;
-	tmp |= val & 0x3;
+	tmp |= val & mask;
 	__raw_writel(tmp, priv->ale_regs + offset);
 }
 
@@ -453,7 +452,7 @@ static struct cpsw_mdio_regs *mdio_regs;
 /* wait until hardware is ready for another user access */
 static inline u32 wait_for_user_access(void)
 {
-	int timeout = 1000;
+	int timeout = MDIO_TIMEOUT;
 	u32 reg;
 
 	while ((reg = __raw_readl(&mdio_regs->user[0].access)) & USERACCESS_GO) {
@@ -470,7 +469,7 @@ static inline u32 wait_for_user_access(void)
 /* wait until hardware state machine is idle */
 static inline void wait_for_idle(void)
 {
-	int timeout = 1000;
+	int timeout = MDIO_TIMEOUT;
 
 	while ((__raw_readl(&mdio_regs->control) & CONTROL_IDLE) == 0) {
 		if (--timeout <= 0) {
@@ -481,9 +480,10 @@ static inline void wait_for_idle(void)
 	}
 }
 
-static int cpsw_mdio_read(const char *devname, unsigned char phy_id,
-			  unsigned char phy_reg, unsigned short *data)
+static int cpsw_mdio_read(struct mii_dev *bus, int phy_id,
+				int dev_addr, int phy_reg)
 {
+	unsigned short data;
 	u32 reg;
 
 	if (phy_reg & ~PHY_REG_MASK || phy_id & ~PHY_ID_MASK)
@@ -495,12 +495,12 @@ static int cpsw_mdio_read(const char *devname, unsigned char phy_id,
 	__raw_writel(reg, &mdio_regs->user[0].access);
 	reg = wait_for_user_access();
 
-	*data = (reg & USERACCESS_ACK) ? (reg & USERACCESS_DATA) : -1;
-	return (reg & USERACCESS_ACK) ? 0 : -EIO;
+	data = (reg & USERACCESS_ACK) ? (reg & USERACCESS_DATA) : -1;
+	return data;
 }
 
-static int cpsw_mdio_write(const char *devname, unsigned char phy_id,
-			   unsigned char phy_reg, unsigned short data)
+static int cpsw_mdio_write(struct mii_dev *bus, int phy_id, int dev_addr,
+				int phy_reg, u16 data)
 {
 	u32 reg;
 
@@ -518,6 +518,8 @@ static int cpsw_mdio_write(const char *devname, unsigned char phy_id,
 
 static void cpsw_mdio_init(char *name, u32 mdio_base, u32 div)
 {
+	struct mii_dev *bus = mdio_alloc();
+
 	mdio_regs = (struct cpsw_mdio_regs *)mdio_base;
 
 	/* set enable and clock divider */
@@ -533,18 +535,21 @@ static void cpsw_mdio_init(char *name, u32 mdio_base, u32 div)
 	 */
 	udelay(1000);
 
-	miiphy_register(name, cpsw_mdio_read, cpsw_mdio_write);
+	bus->read = cpsw_mdio_read;
+	bus->write = cpsw_mdio_write;
+	sprintf(bus->name, name);
+
+	mdio_register(bus);
 }
 
-static inline void soft_reset(void *reg)
+/* Set a self-clearing bit in a register, and wait for it to clear */
+static inline void setbit_and_wait_for_clear32(void *addr)
 {
 	int loops = 0;
 
-	debug("%s %p\n", __func__, reg);
-	__raw_writel(1, reg);
-	while (__raw_readl(reg) & 1) {
+	__raw_writel(CLEAR_BIT, addr);
+	while (__raw_readl(addr) & CLEAR_BIT)
 		loops++;
-	}
 	debug("%s: reset finished after %u loops\n", __func__, loops);
 }
 
@@ -560,47 +565,65 @@ static void cpsw_set_slave_mac(struct cpsw_slave *slave,
 }
 
 #define NUM_TRIES 50
+#if 1
 static void cpsw_slave_update_link(struct cpsw_slave *slave,
 				   struct cpsw_priv *priv, int *link)
 {
-	char *name = priv->dev->name;
-	int phy_id = slave->data->phy_id;
-	int speed, duplex;
-	unsigned short reg;
+	struct phy_device *phy = priv->phydev;
 	u32 mac_control = 0;
 	int retries = NUM_TRIES;
 
-	while (retries-- > 0) {
-		if (miiphy_read(name, phy_id, MII_BMSR, &reg)) {
-			printf("Failed to read PHY reg\n");
-			return; /* could not read, assume no link */
-		}
+	do {
+		phy_startup(phy);
+		*link = phy->link;
 
-		if (reg & BMSR_LSTATUS) { /* link up */
-			speed = miiphy_speed(name, phy_id);
-			duplex = miiphy_duplex(name, phy_id);
-
-			*link = 1;
+		if (*link) { /* link up */
 			mac_control = priv->data->mac_control;
-			if (speed == 10)
-				mac_control |= BIT(18);	/* In Band mode	*/
-			else if (speed == 100)
-				mac_control |= BIT(15);
-			else if (speed == 1000) {
-				if (priv->data->gigabit_en)
-					mac_control |= BIT(7);
-				else {
-					/* Disable gigabit as it's non-functional */
-					mac_control &= ~BIT(7);
-					speed = 100;
-				}
-			}
-
-			if (duplex == FULL)
-				mac_control |= BIT(0);	/* FULLDUPLEXEN	*/
-			break;
+			if (phy->speed == 1000)
+				mac_control |= GIGABITEN;
+			if (phy->duplex == DUPLEX_FULL)
+				mac_control |= FULLDUPLEXEN;
+			if (phy->speed == 100)
+				mac_control |= MIIEN;
+		} else {
+			udelay(10000);
 		}
-		udelay(100000);
+	} while (!*link && retries-- > 0);
+	debug("%s: mac_control: %08x -> %08x after %u loops\n", __func__,
+		slave->mac_control, mac_control, NUM_TRIES - retries);
+
+	if (mac_control == slave->mac_control)
+		return;
+
+	if (mac_control) {
+		printf("link up on port %d, speed %d, %s duplex\n",
+				slave->slave_num, phy->speed,
+				(phy->duplex == DUPLEX_FULL) ? "full" : "half");
+	} else {
+		printf("link down on port %d\n", slave->slave_num);
+	}
+
+	__raw_writel(mac_control, &slave->sliver->mac_control);
+	slave->mac_control = mac_control;
+}
+#else
+static void cpsw_slave_update_link(struct cpsw_slave *slave,
+				   struct cpsw_priv *priv, int *link)
+{
+	struct phy_device *phy = priv->phydev;
+	u32 mac_control = 0;
+
+	phy_startup(phy);
+	*link = phy->link;
+
+	if (*link) { /* link up */
+		mac_control = priv->data.mac_control;
+		if (phy->speed == 1000)
+			mac_control |= GIGABITEN;
+		if (phy->duplex == DUPLEX_FULL)
+			mac_control |= FULLDUPLEXEN;
+		if (phy->speed == 100)
+			mac_control |= MIIEN;
 	}
 	debug("%s: mac_control: %08x -> %08x after %u loops\n", __func__,
 		slave->mac_control, mac_control, NUM_TRIES - retries);
@@ -610,8 +633,8 @@ static void cpsw_slave_update_link(struct cpsw_slave *slave,
 
 	if (mac_control) {
 		printf("link up on port %d, speed %d, %s duplex\n",
-				slave->slave_num, speed,
-				(duplex == FULL) ?  "full" : "half");
+				slave->slave_num, phy->speed,
+				(phy->duplex == DUPLEX_FULL) ? "full" : "half");
 	} else {
 		printf("link down on port %d\n", slave->slave_num);
 	}
@@ -619,11 +642,16 @@ static void cpsw_slave_update_link(struct cpsw_slave *slave,
 	__raw_writel(mac_control, &slave->sliver->mac_control);
 	slave->mac_control = mac_control;
 }
+#endif
 
 static int cpsw_update_link(struct cpsw_priv *priv)
 {
 	int link = 0;
-	for_each_slave(priv, cpsw_slave_update_link, priv, &link);
+	struct cpsw_slave *slave;
+
+	for_each_slave(slave, priv)
+		cpsw_slave_update_link(slave, priv, &link);
+
 	return link;
 }
 
@@ -637,11 +665,10 @@ static inline u32 cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
 
 static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv)
 {
-	u32	slave_port;
+	u32     slave_port;
 
 	debug("%s\n", __func__);
-
-	soft_reset(&slave->sliver->soft_reset);
+	setbit_and_wait_for_clear32(&slave->sliver->soft_reset);
 
 	/* setup priority mapping */
 	__raw_writel(0x76543210, &slave->sliver->rx_pri_map);
@@ -658,8 +685,6 @@ static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	cpsw_ale_port_state(priv, slave_port, ALE_PORT_STATE_FORWARD);
 
 	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << slave_port);
-
-	priv->data->phy_init(priv->dev->name, slave->data->phy_id);
 }
 
 static void cpdma_desc_get(struct cpsw_desc *desc)
@@ -692,8 +717,9 @@ static void cpdma_desc_free(struct cpsw_priv *priv, struct cpsw_desc *desc)
 		priv->desc_free = desc;
 	}
 }
+
 static int cpdma_submit(struct cpsw_priv *priv, struct cpdma_chan *chan,
-			volatile void *buffer, int len)
+			void *buffer, int len)
 {
 	struct cpsw_desc *desc, *prev;
 	u32 mode;
@@ -755,7 +781,7 @@ done:
 }
 
 static int cpdma_process(struct cpsw_priv *priv, struct cpdma_chan *chan,
-			 volatile void **buffer, int *len)
+			 void **buffer, int *len)
 {
 	struct cpsw_desc *desc = chan->head;
 	u32 status;
@@ -786,14 +812,12 @@ static int cpdma_process(struct cpsw_priv *priv, struct cpdma_chan *chan,
 static int cpsw_init(struct eth_device *dev, bd_t *bis)
 {
 	struct cpsw_priv	*priv = dev->priv;
+	struct cpsw_slave	*slave;
 	int i, ret;
 
 	debug("%s\n", __func__);
-
-	priv->data->control(1);
-
 	/* soft reset the controller and initialize priv */
-	soft_reset(&priv->regs->soft_reset);
+	setbit_and_wait_for_clear32(&priv->regs->soft_reset);
 
 	/* initialize and reset the address lookup engine */
 	cpsw_ale_enable(priv, 1);
@@ -816,7 +840,8 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 			   ALE_SECURE);
 	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << priv->host_port);
 
-	for_each_slave(priv, cpsw_slave_init, priv);
+	for_each_slave(slave, priv)
+		cpsw_slave_init(slave, priv);
 
 	cpsw_update_link(priv);
 
@@ -854,7 +879,7 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 	}
 
 	/* clear dma state */
-	soft_reset(priv->dma_regs + CPDMA_SOFTRESET);
+	setbit_and_wait_for_clear32(priv->dma_regs + CPDMA_SOFTRESET);
 
 	if (priv->data->version == CPSW_CTRL_VERSION_2) {
 		for (i = 0; i < priv->data->channels; i++) {
@@ -874,6 +899,7 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 
 		}
 	}
+
 	__raw_writel(1, priv->dma_regs + CPDMA_TXCONTROL);
 	__raw_writel(1, priv->dma_regs + CPDMA_RXCONTROL);
 
@@ -892,16 +918,25 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 
 static void cpsw_halt(struct eth_device *dev)
 {
-	struct cpsw_priv *priv = dev->priv;
+	struct cpsw_priv	*priv = dev->priv;
+
+	writel(0, priv->dma_regs + CPDMA_TXCONTROL);
+	writel(0, priv->dma_regs + CPDMA_RXCONTROL);
+
+	/* soft reset the controller and initialize priv */
+	setbit_and_wait_for_clear32(&priv->regs->soft_reset);
+
+	/* clear dma state */
+	setbit_and_wait_for_clear32(priv->dma_regs + CPDMA_SOFTRESET);
 
 	debug("%s\n", __func__);
 	priv->data->control(0);
 }
 
-static int cpsw_send(struct eth_device *dev, volatile void *packet, int length)
+static int cpsw_send(struct eth_device *dev, void *packet, int length)
 {
 	struct cpsw_priv *priv = dev->priv;
-	volatile void *buffer;
+	void *buffer;
 	int len;
 
 	debug("%s@%d: sending packet %p..%p\n", __func__, __LINE__,
@@ -922,7 +957,7 @@ static int cpsw_send(struct eth_device *dev, volatile void *packet, int length)
 static int cpsw_recv(struct eth_device *dev)
 {
 	struct cpsw_priv	*priv = dev->priv;
-	volatile void *buffer;
+	void *buffer;
 	int len;
 
 	while (cpdma_process(priv, &priv->rx_chan, &buffer, &len) == 0) {
@@ -934,6 +969,7 @@ static int cpsw_recv(struct eth_device *dev)
 			return -EIO;
 		}
 	}
+
 	return 0;
 }
 
@@ -951,12 +987,38 @@ static void cpsw_slave_setup(struct cpsw_slave *slave, int slave_num,
 	slave->sliver	= regs + data->sliver_reg_ofs;
 }
 
+static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
+{
+	struct cpsw_priv *priv = (struct cpsw_priv *)dev->priv;
+	struct phy_device *phydev;
+	u32 supported = (SUPPORTED_10baseT_Half |
+			SUPPORTED_10baseT_Full |
+			SUPPORTED_100baseT_Half |
+			SUPPORTED_100baseT_Full |
+			SUPPORTED_1000baseT_Full);
+
+	phydev = phy_connect(priv->bus,
+			CONFIG_PHY_ADDR,
+			dev,
+			slave->data->phy_if);
+
+	phydev->supported &= supported;
+	phydev->advertising = phydev->supported;
+
+	priv->phydev = phydev;
+	phy_config(phydev);
+
+	return 1;
+}
+
 int cpsw_register(struct cpsw_platform_data *data)
 {
 	struct cpsw_priv	*priv;
+	struct cpsw_slave	*slave;
 	void			*regs = (void *)data->cpsw_base;
 	struct eth_device	*dev;
 	int i;
+	int idx = 0;
 
 	debug("%s@%d\n", __func__, __LINE__);
 
@@ -971,7 +1033,7 @@ int cpsw_register(struct cpsw_platform_data *data)
 	}
 
 	priv->data = data;
-	priv->dev  = dev;
+	priv->dev = dev;
 
 	priv->slaves = calloc(sizeof(struct cpsw_slave), data->slaves);
 	if (!priv->slaves) {
@@ -1003,8 +1065,10 @@ int cpsw_register(struct cpsw_platform_data *data)
 	priv->dma_regs		= regs + data->cpdma_reg_ofs;
 	priv->ale_regs		= regs + data->ale_reg_ofs;
 
-	for_each_slave(priv, cpsw_slave_setup, idx, priv);
-	debug("%s@%d\n", __func__, __LINE__);
+	for_each_slave(slave, priv) {
+		cpsw_slave_setup(slave, idx, priv);
+		idx = idx + 1;
+	}
 
 	strcpy(dev->name, "cpsw");
 	dev->iobase	= 0;
@@ -1017,6 +1081,9 @@ int cpsw_register(struct cpsw_platform_data *data)
 	eth_register(dev);
 
 	cpsw_mdio_init(dev->name, data->mdio_base, data->mdio_div);
+	priv->bus = miiphy_get_dev_by_name(dev->name);
+	for_each_slave(slave, priv)
+		cpsw_phy_init(dev, slave);
 
 	return 1;
 }

@@ -57,6 +57,15 @@ extern void lcd_initcolregs (void);
 
 /* gunzip_bmp used if CONFIG_VIDEO_BMP_GZIP */
 extern struct bmp_image *gunzip_bmp(unsigned long addr, unsigned long *lenp);
+extern int bmp_display(ulong addr, int x, int y);
+
+/**
+ * Set whether we need to flush the dcache when changing the LCD image. This
+ * defaults to off.
+ *
+ * @param flush		non-zero to flush cache after update, 0 to skip
+ */
+void lcd_set_flush_dcache(int flush);
 
 #if defined CONFIG_MPC823
 /*
@@ -159,7 +168,7 @@ typedef struct vidinfo {
 	struct	pxafb_info pxa;
 } vidinfo_t;
 
-#elif defined(CONFIG_ATMEL_LCD)
+#elif defined(CONFIG_ATMEL_LCD) || defined(CONFIG_ATMEL_HLCD)
 
 typedef struct vidinfo {
 	ushort vl_col;		/* Number of columns (i.e. 640) */
@@ -171,6 +180,7 @@ typedef struct vidinfo {
 	u_long vl_bpix;		/* Bits per pixel, 0 = 1, 1 = 2, 2 = 4, 3 = 8, 4 = 16 */
 	u_long vl_tft;		/* 0 = passive, 1 = TFT */
 	u_long vl_cont_pol_low;	/* contrast polarity is low */
+	u_long vl_clk_pol;	/* clock polarity */
 
 	/* Horizontal control register. */
 	u_long vl_hsync_len;	/* Length of horizontal sync */
@@ -190,6 +200,13 @@ typedef struct vidinfo {
 enum {
 	FIMD_RGB_INTERFACE = 1,
 	FIMD_CPU_INTERFACE = 2,
+};
+
+enum exynos_fb_rgb_mode_t {
+	MODE_RGB_P = 0,
+	MODE_BGR_P = 1,
+	MODE_RGB_S = 2,
+	MODE_BGR_S = 3,
 };
 
 typedef struct vidinfo {
@@ -233,10 +250,17 @@ typedef struct vidinfo {
 	unsigned int reset_delay;
 	unsigned int interface_mode;
 	unsigned int mipi_enabled;
+	unsigned int dp_enabled;
 	unsigned int cs_setup;
 	unsigned int wr_setup;
 	unsigned int wr_act;
 	unsigned int wr_hold;
+	unsigned int logo_on;
+	unsigned int logo_width;
+	unsigned int logo_height;
+	unsigned long logo_addr;
+	unsigned int rgb_mode;
+	unsigned int resolution;
 
 	/* parent clock name(MPLL, EPLL or VPLL) */
 	unsigned int pclk_name;
@@ -248,65 +272,6 @@ typedef struct vidinfo {
 } vidinfo_t;
 
 void init_panel_info(vidinfo_t *vid);
-
-#elif defined(CONFIG_MXC2_LCD)
-
-typedef struct vidinfo {
-	u_long vl_refresh;	/* Refresh Rate Hz */
-	u_long vl_row;		/* resolution in x */
-	u_long vl_col;		/* resolution in y */
-	u_long vl_pixclock;	/* pixel clock in picoseconds */
-	u_long vl_left_margin;	/* Horizontal back porch */
-	u_long vl_right_margin; /* Horizontal front porch */
-	u_long vl_upper_margin; /* Vertical back porch */
-	u_long vl_lower_margin; /* Vertical front porch */
-	u_long vl_hsync;	/* Horizontal sync pulse length */
-	u_long vl_vsync;	/* Vertical sync pulse length */
-	u_long vl_sync;		/* Polarity on data enable */
-	u_long vl_mode;		/* Video Mode */
-	u_long vl_flag;
-	u_char	vl_bpix;
-	ushort	*cmap;
-} vidinfo_t;
-
-#elif defined(CONFIG_MXC_EPDC)
-
-struct waveform_modes {
-	int mode_init;
-	int mode_du;
-	int mode_gc4;
-	int mode_gc8;
-	int mode_gc16;
-	int mode_gc32;
-};
-
-struct epdc_data_struct {
-	/* EPDC buffer pointers */
-	u_long working_buf_addr;
-	u_long waveform_buf_addr;
-
-	/* Waveform mode definitions */
-	struct waveform_modes wv_modes;
-};
-
-typedef struct vidinfo {
-	u_long vl_refresh;      /* Refresh Rate Hz */
-	u_long vl_row;          /* resolution in x */
-	u_long vl_col;          /* resolution in y */
-	u_long vl_pixclock;     /* pixel clock in picoseconds */
-	u_long vl_left_margin;  /* Horizontal back porch */
-	u_long vl_right_margin; /* Horizontal front porch */
-	u_long vl_upper_margin; /* Vertical back porch */
-	u_long vl_lower_margin; /* Vertical front porch */
-	u_long vl_hsync;        /* Horizontal sync pulse length */
-	u_long vl_vsync;        /* Vertical sync pulse length */
-	u_long vl_sync;         /* Polarity on data enable */
-	u_long vl_mode;         /* Video Mode */
-	u_long vl_flag;
-	u_char  vl_bpix;
-	ushort  *cmap;
-	struct epdc_data_struct epdc_data;
-} vidinfo_t;
 
 #else
 
@@ -337,8 +302,47 @@ void	lcd_printf	(const char *fmt, ...);
 void	lcd_clear(void);
 int	lcd_display_bitmap(ulong bmp_image, int x, int y);
 
+/**
+ * Get the width of the LCD in pixels
+ *
+ * @return width of LCD in pixels
+ */
+int lcd_get_pixel_width(void);
+
+/**
+ * Get the height of the LCD in pixels
+ *
+ * @return height of LCD in pixels
+ */
+int lcd_get_pixel_height(void);
+
+/**
+ * Get the number of text lines/rows on the LCD
+ *
+ * @return number of rows
+ */
+int lcd_get_screen_rows(void);
+
+/**
+ * Get the number of text columns on the LCD
+ *
+ * @return number of columns
+ */
+int lcd_get_screen_columns(void);
+
+/**
+ * Set the position of the text cursor
+ *
+ * @param col	Column to place cursor (0 = left side)
+ * @param row	Row to place cursor (0 = top line)
+ */
+void lcd_position_cursor(unsigned col, unsigned row);
+
 /* Allow boards to customize the information displayed */
 void lcd_show_board_info(void);
+
+/* Return the size of the LCD frame buffer, and the line length */
+int lcd_get_size(int *line_length);
 
 /************************************************************************/
 /* ** BITMAP DISPLAY SUPPORT						*/

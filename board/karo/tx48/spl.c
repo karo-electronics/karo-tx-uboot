@@ -21,6 +21,7 @@
 #include <fdt_support.h>
 #include <nand.h>
 #include <net.h>
+#include <spl.h>
 #include <linux/mtd/nand.h>
 #include <asm/gpio.h>
 #include <asm/cache.h>
@@ -29,10 +30,10 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/mmc_host_def.h>
+#include <asm/arch/ddr_defs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/nand.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/common_def.h>
 #include <video_fb.h>
 #include <asm/arch/da8xx-fb.h>
 
@@ -368,15 +369,6 @@ static inline void tx48_set_pin_mux(const struct pin_mux *pin_mux,
 		MUX_CFG(pin_mux[i].val, pin_mux[i].reg_offset);
 }
 
-#ifdef CONFIG_SPL_BOARD_INIT
-void spl_board_init(void)
-{
-	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
-	tx48_set_pin_mux(tx48_pins, ARRAY_SIZE(tx48_pins));
-	gpmc_init();
-}
-#endif /* CONFIG_SPL_BOARD_INIT */
-
 static struct pin_mux tx48_uart0_pins[] = {
 #ifdef CONFIG_SYS_NS16550_COM1
 	/* UART0 for early boot messages */
@@ -412,4 +404,87 @@ void enable_uart0_pin_mux(void)
 void enable_mmc0_pin_mux(void)
 {
 	tx48_set_pin_mux(tx48_mmc_pins, ARRAY_SIZE(tx48_mmc_pins));
+}
+
+static const struct ddr_data tx48_ddr3_data = {
+	.datardsratio0 = MT41J128MJT125_RD_DQS,
+	.datawdsratio0 = MT41J128MJT125_WR_DQS,
+	.datafwsratio0 = MT41J128MJT125_PHY_FIFO_WE,
+	.datawrsratio0 = MT41J128MJT125_PHY_WR_DATA,
+	.datadldiff0 = PHY_DLL_LOCK_DIFF,
+};
+
+static const struct cmd_control tx48_ddr3_cmd_ctrl_data = {
+	.cmd0csratio = MT41J128MJT125_RATIO,
+	.cmd0dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
+	.cmd0iclkout = MT41J128MJT125_INVERT_CLKOUT,
+
+	.cmd1csratio = MT41J128MJT125_RATIO,
+	.cmd1dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
+	.cmd1iclkout = MT41J128MJT125_INVERT_CLKOUT,
+
+	.cmd2csratio = MT41J128MJT125_RATIO,
+	.cmd2dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
+	.cmd2iclkout = MT41J128MJT125_INVERT_CLKOUT,
+};
+
+static struct emif_regs tx48_ddr3_emif_reg_data = {
+	.sdram_config = MT41J128MJT125_EMIF_SDCFG,
+	.ref_ctrl = MT41J128MJT125_EMIF_SDREF,
+	.sdram_tim1 = MT41J128MJT125_EMIF_TIM1,
+	.sdram_tim2 = MT41J128MJT125_EMIF_TIM2,
+	.sdram_tim3 = MT41J128MJT125_EMIF_TIM3,
+	.zq_config = MT41J128MJT125_ZQ_CFG,
+	.emif_ddr_phy_ctlr_1 = MT41J128MJT125_EMIF_READ_LATENCY,
+};
+
+void s_init(void)
+{
+#ifndef CONFIG_HW_WATCHDOG
+	struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
+
+	/* WDT1 is already running when the bootloader gets control
+	 * Disable it to avoid "random" resets
+	 */
+	writel(0xAAAA, &wdtimer->wdtwspr);
+	while (readl(&wdtimer->wdtwwps) != 0x0)
+		;
+	writel(0x5555, &wdtimer->wdtwspr);
+	while (readl(&wdtimer->wdtwwps) != 0x0)
+		;
+#endif
+	/* Setup the PLLs and the clocks for the peripherals */
+	pll_init();
+
+	/* UART softreset */
+	u32 regVal;
+	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
+
+	enable_uart0_pin_mux();
+
+	regVal = readl(&uart_base->uartsyscfg);
+	regVal |= UART_RESET;
+	writel(regVal, &uart_base->uartsyscfg);
+	while ((readl(&uart_base->uartsyssts) &
+		UART_CLK_RUNNING_MASK) != UART_CLK_RUNNING_MASK)
+		;
+
+	/* Disable smart idle */
+	regVal = readl(&uart_base->uartsyscfg);
+	regVal |= UART_SMART_IDLE_EN;
+	writel(regVal, &uart_base->uartsyscfg);
+
+	/* Initialize the Timer */
+	timer_init();
+
+	preloader_console_init();
+
+	config_ddr(303, MT41J128MJT125_IOCTRL_VALUE, &tx48_ddr3_data,
+		&tx48_ddr3_cmd_ctrl_data, &tx48_ddr3_emif_reg_data);
+
+	/* Enable MMC0 */
+	enable_mmc0_pin_mux();
+
+	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
+	tx48_set_pin_mux(tx48_pins, ARRAY_SIZE(tx48_pins));
 }

@@ -26,7 +26,7 @@
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <video_fb.h>
-#include <ipu_pixfmt.h>
+#include <ipu.h>
 #include <mx2fb.h>
 #include <linux/fb.h>
 #include <asm/io.h>
@@ -39,7 +39,7 @@
 
 #include "../common/karo.h"
 
-#define IMX_GPIO_NR(b, o)	((((b) - 1) << 5) | (o))
+//#define IMX_GPIO_NR(b, o)	((((b) - 1) << 5) | (o))
 
 #define TX51_FEC_RST_GPIO	IMX_GPIO_NR(2, 14)
 #define TX51_FEC_PWR_GPIO	IMX_GPIO_NR(1, 3)
@@ -54,18 +54,18 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
+#define IOMUX_SION		IOMUX_PAD(0, 0, MUX_CONFIG_SION, 0, 0, 0)
 
-#define FEC_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
+#define FEC_PAD_CTRL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
 			PAD_CTL_SRE_FAST)
-#define FEC_PAD_CTL2	(PAD_CTL_DVS | PAD_CTL_SRE_FAST)
-#define GPIO_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH)
+#define FEC_PAD_CTRL2	(PAD_CTL_DVS | PAD_CTL_SRE_FAST)
+#define GPIO_PAD_CTRL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH)
 
 static iomux_v3_cfg_t tx51_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
 
 	/* RESET_OUT */
-	NEW_PAD_CTRL(MX51_PAD_EIM_A21__GPIO2_15, GPIO_PAD_CTL),
+	MX51_PAD_EIM_A21__GPIO2_15 | GPIO_PAD_CTRL,
 
 	/* UART pads */
 #if CONFIG_MXC_UART_BASE == UART1_BASE
@@ -91,30 +91,30 @@ static iomux_v3_cfg_t tx51_pads[] = {
 	MX51_PAD_I2C1_CLK__GPIO4_16 | IOMUX_SION,
 
 	/* FEC PHY GPIO functions */
-	NEW_PAD_CTRL(MX51_PAD_GPIO1_3__GPIO1_3, GPIO_PAD_CTL),    /* PHY POWER */
-	NEW_PAD_CTRL(MX51_PAD_EIM_A20__GPIO2_14, GPIO_PAD_CTL),   /* PHY RESET */
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS2__GPIO3_18, GPIO_PAD_CTL), /* PHY INT */
+	MX51_PAD_GPIO1_3__GPIO1_3 | GPIO_PAD_CTRL,    /* PHY POWER */
+	MX51_PAD_EIM_A20__GPIO2_14 | GPIO_PAD_CTRL,   /* PHY RESET */
+	MX51_PAD_NANDF_CS2__GPIO3_18 | GPIO_PAD_CTRL, /* PHY INT */
 
 	/* FEC functions */
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS3__FEC_MDC, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_EIM_EB2__FEC_MDIO, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D11__FEC_RX_DV, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS4__FEC_RX_ER, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RDY_INT__FEC_TX_CLK, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS7__FEC_TX_EN, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D8__FEC_TDATA0, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS4__FEC_TDATA1, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS5__FEC_TDATA2, FEC_PAD_CTL),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_CS6__FEC_TDATA3, FEC_PAD_CTL),
+	MX51_PAD_NANDF_CS3__FEC_MDC | FEC_PAD_CTRL,
+	MX51_PAD_EIM_EB2__FEC_MDIO | FEC_PAD_CTRL,
+	MX51_PAD_NANDF_D11__FEC_RX_DV | FEC_PAD_CTRL2,
+	MX51_PAD_EIM_CS4__FEC_RX_ER | FEC_PAD_CTRL2,
+	MX51_PAD_NANDF_RDY_INT__FEC_TX_CLK | FEC_PAD_CTRL2,
+	MX51_PAD_NANDF_CS7__FEC_TX_EN | FEC_PAD_CTRL,
+	MX51_PAD_NANDF_D8__FEC_TDATA0 | FEC_PAD_CTRL,
+	MX51_PAD_NANDF_CS4__FEC_TDATA1 | FEC_PAD_CTRL,
+	MX51_PAD_NANDF_CS5__FEC_TDATA2 | FEC_PAD_CTRL,
+	MX51_PAD_NANDF_CS6__FEC_TDATA3 | FEC_PAD_CTRL,
 
 	/* strap pins for PHY configuration */
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB3__GPIO3_11, GPIO_PAD_CTL), /* RX_CLK/REGOFF */
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D9__GPIO3_31, GPIO_PAD_CTL),  /* RXD0/Mode0 */
-	NEW_PAD_CTRL(MX51_PAD_EIM_EB3__GPIO2_23, GPIO_PAD_CTL),   /* RXD1/Mode1 */
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS2__GPIO2_27, GPIO_PAD_CTL),   /* RXD2/Mode2 */
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS3__GPIO2_28, GPIO_PAD_CTL),   /* RXD3/nINTSEL */
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB2__GPIO3_10, GPIO_PAD_CTL), /* COL/RMII/CRSDV */
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS5__GPIO2_30, GPIO_PAD_CTL),   /* CRS/PHYAD4 */
+	MX51_PAD_NANDF_RB3__GPIO3_11 | GPIO_PAD_CTRL, /* RX_CLK/REGOFF */
+	MX51_PAD_NANDF_D9__GPIO3_31 | GPIO_PAD_CTRL,  /* RXD0/Mode0 */
+	MX51_PAD_EIM_EB3__GPIO2_23 | GPIO_PAD_CTRL,   /* RXD1/Mode1 */
+	MX51_PAD_EIM_CS2__GPIO2_27 | GPIO_PAD_CTRL,   /* RXD2/Mode2 */
+	MX51_PAD_EIM_CS3__GPIO2_28 | GPIO_PAD_CTRL,   /* RXD3/nINTSEL */
+	MX51_PAD_NANDF_RB2__GPIO3_10 | GPIO_PAD_CTRL, /* COL/RMII/CRSDV */
+	MX51_PAD_EIM_CS5__GPIO2_30 | GPIO_PAD_CTRL,   /* CRS/PHYAD4 */
 
 	/* unusable pins on TX51 */
 	MX51_PAD_GPIO1_0__GPIO1_0,
@@ -237,7 +237,7 @@ int board_early_init_f(void)
 	writel(readl(&ccm_regs->CCGR6) | 0x00000300, &ccm_regs->CCGR6); /* emi_garb */
 #endif
 	gpio_request_array(tx51_gpios, ARRAY_SIZE(tx51_gpios));
-	mxc_iomux_v3_setup_multiple_pads(tx51_pads, ARRAY_SIZE(tx51_pads));
+	imx_iomux_v3_setup_multiple_pads(tx51_pads, ARRAY_SIZE(tx51_pads));
 
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x00);
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x04);
@@ -314,13 +314,11 @@ int board_mmc_getcd(struct mmc *mmc)
 static struct fsl_esdhc_cfg esdhc_cfg[] = {
 	{
 		.esdhc_base = (void __iomem *)MMC_SDHC1_BASE_ADDR,
-		.no_snoop = 1,
 		.cd_gpio = IMX_GPIO_NR(3, 8),
 		.wp_gpio = -EINVAL,
 	},
 	{
 		.esdhc_base = (void __iomem *)MMC_SDHC2_BASE_ADDR,
-		.no_snoop = 1,
 		.cd_gpio = IMX_GPIO_NR(3, 6),
 		.wp_gpio = -EINVAL,
 	},
@@ -334,8 +332,7 @@ static const iomux_v3_cfg_t mmc0_pads[] = {
 	MX51_PAD_SD1_DATA2__SD1_DATA2,
 	MX51_PAD_SD1_DATA3__SD1_DATA3,
 	/* SD1 CD */
-	NEW_PAD_CTRL(MX51_PAD_DISPB2_SER_RS__GPIO3_8,
-		PAD_CTL_PUE | PAD_CTL_PKE),
+	MX51_PAD_DISPB2_SER_RS__GPIO3_8 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
@@ -346,8 +343,7 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 	MX51_PAD_SD2_DATA2__SD2_DATA2,
 	MX51_PAD_SD2_DATA3__SD2_DATA3,
 	/* SD2 CD */
-	NEW_PAD_CTRL(MX51_PAD_DISPB2_SER_DIO__GPIO3_6,
-		PAD_CTL_PUE | PAD_CTL_PKE),
+	MX51_PAD_DISPB2_SER_DIO__GPIO3_6 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
 };
 
 static struct {
@@ -364,13 +360,17 @@ int board_mmc_init(bd_t *bis)
 
 	for (i = 0; i < ARRAY_SIZE(esdhc_cfg); i++) {
 		struct mmc *mmc;
+		struct fsl_esdhc_cfg *cfg;
 
 		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
 			break;
 
-		mxc_iomux_v3_setup_multiple_pads(mmc_pad_config[i].pads,
+		imx_iomux_v3_setup_multiple_pads(mmc_pad_config[i].pads,
 						mmc_pad_config[i].count);
-		fsl_esdhc_initialize(bis, &esdhc_cfg[i]);
+
+		cfg = &esdhc_cfg[i];
+		cfg->sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
+		fsl_esdhc_initialize(bis, cfg);
 
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
@@ -404,13 +404,13 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 
 static iomux_v3_cfg_t tx51_fec_pads[] = {
 	/* reconfigure strap pins for FEC function */
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB3__FEC_RX_CLK, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_D9__FEC_RDATA0, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_EB3__FEC_RDATA1, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS2__FEC_RDATA2, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS3__FEC_RDATA3, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_NANDF_RB2__FEC_COL, FEC_PAD_CTL2),
-	NEW_PAD_CTRL(MX51_PAD_EIM_CS5__FEC_CRS, FEC_PAD_CTL),
+	MX51_PAD_NANDF_RB3__FEC_RX_CLK | FEC_PAD_CTRL2,
+	MX51_PAD_NANDF_D9__FEC_RDATA0 | FEC_PAD_CTRL2,
+	MX51_PAD_EIM_EB3__FEC_RDATA1 | FEC_PAD_CTRL2,
+	MX51_PAD_EIM_CS2__FEC_RDATA2 | FEC_PAD_CTRL2,
+	MX51_PAD_EIM_CS3__FEC_RDATA3 | FEC_PAD_CTRL2,
+	MX51_PAD_NANDF_RB2__FEC_COL | FEC_PAD_CTRL2,
+	MX51_PAD_EIM_CS5__FEC_CRS | FEC_PAD_CTRL,
 };
 
 /* take bit 4 of PHY address from configured PHY address or
@@ -450,7 +450,7 @@ int board_eth_init(bd_t *bis)
 	 * the datasheets suggests that it should be necessary!
 	 */
 	udelay(400);
-	mxc_iomux_v3_setup_multiple_pads(tx51_fec_pads,
+	imx_iomux_v3_setup_multiple_pads(tx51_fec_pads,
 					ARRAY_SIZE(tx51_fec_pads));
 
 	ret = cpu_eth_init(bis);
@@ -550,24 +550,6 @@ static struct fb_videomode tx51_fb_mode = {
 	.vmode		= FB_VMODE_NONINTERLACED,
 };
 
-void *lcd_base;			/* Start of framebuffer memory	*/
-void *lcd_console_address;	/* Start of console buffer	*/
-
-int lcd_line_length;
-int lcd_color_fg;
-int lcd_color_bg;
-
-short console_col;
-short console_row;
-
-void lcd_initcolregs(void)
-{
-}
-
-void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
-{
-}
-
 static int lcd_enabled = 1;
 
 void lcd_enable(void)
@@ -587,23 +569,6 @@ void lcd_enable(void)
 		gpio_set_value(TX51_LCD_RST_GPIO, 1);
 		udelay(300000);
 		gpio_set_value(TX51_LCD_BACKLIGHT_GPIO, 0);
-	}
-}
-
-void mxcfb_disable(void);
-
-void lcd_disable(void)
-{
-	mxcfb_disable();
-}
-
-void lcd_panel_disable(void)
-{
-	if (lcd_enabled) {
-		debug("Switching LCD off\n");
-		gpio_set_value(TX51_LCD_BACKLIGHT_GPIO, 1);
-		gpio_set_value(TX51_LCD_RST_GPIO, 0);
-		gpio_set_value(TX51_LCD_PWR_GPIO, 0);
 	}
 }
 
@@ -659,6 +624,8 @@ void lcd_ctrl_init(void *lcdbase)
 	struct fb_videomode *p = &tx51_fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 	int pix_fmt = 0;
+	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
+	unsigned long di_clk_rate = 65000000;
 
 	if (!lcd_enabled) {
 		debug("LCD disabled\n");
@@ -755,7 +722,6 @@ void lcd_ctrl_init(void *lcdbase)
 	case 24:
 		panel_info.vl_bpix = 5;
 	}
-	lcd_line_length = NBITS(panel_info.vl_bpix) / 8 * panel_info.vl_col;
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
@@ -766,7 +732,7 @@ void lcd_ctrl_init(void *lcdbase)
 		PICOS2KHZ(p->pixclock) % 1000);
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
-	mxc_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
+	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
 
 	debug("Initializing FB driver\n");
@@ -777,12 +743,12 @@ void lcd_ctrl_init(void *lcdbase)
 		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
 		u32 ccgr4 = readl(&ccm_regs->CCGR4);
 
-		debug("Initializing LCD controller\n");
-		mx5_fb_init(p, 0, pix_fmt, 1 << panel_info.vl_bpix);
-
 		/* MIPI HSC clock is required for initialization */
 		writel(ccgr4 | (3 << 12), &ccm_regs->CCGR4);
-		video_hw_init();
+
+		debug("Initializing LCD controller\n");
+		ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
+
 		writel(ccgr4 & ~(3 << 12), &ccm_regs->CCGR4);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
@@ -795,7 +761,7 @@ void lcd_ctrl_init(void *lcdbase)
 static void stk5_board_init(void)
 {
 	gpio_request_array(stk5_gpios, ARRAY_SIZE(stk5_gpios));
-	mxc_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
+	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
 }
 
 static void stk5v3_board_init(void)

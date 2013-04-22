@@ -4,9 +4,9 @@
  * (C) Copyright 2010
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
- * Linux IPU driver for MX51:
+ * Linux IPU driver
  *
- * (C) Copyright 2005-2010 Freescale Semiconductor, Inc.
+ * (C) Copyright 2005-2011 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -30,12 +30,12 @@
 /* #define DEBUG */
 
 #include <common.h>
+#include <ipu.h>
 #include <linux/types.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/sys_proto.h>
-#include "ipu.h"
+
 #include "ipu_regs.h"
 
 enum csc_type_t {
@@ -59,16 +59,18 @@ struct dp_csc_param_t {
 #define DC_DISP_ID_SERIAL	2
 #define DC_DISP_ID_ASYNC	3
 
-int dmfc_type_setup;
+static int dmfc_type_setup;
 static int dmfc_size_28, dmfc_size_29, dmfc_size_24, dmfc_size_27, dmfc_size_23;
-int g_di1_tvout;
+static int g_di1_tvout;
 
+#if 0
 extern struct clk *g_ipu_clk;
 extern struct clk *g_di_clk[2];
 extern struct clk *g_pixel_clk[2];
 
 extern unsigned char g_ipu_clk_enabled;
 extern unsigned char g_dc_di_assignment[];
+#endif
 
 void ipu_dmfc_init(int dmfc_type, int first)
 {
@@ -887,13 +889,13 @@ void adapt_panel_to_ipu_restricitions(uint32_t *pixel_clk,
  *              fail.
  */
 
-int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
-			    uint16_t width, uint16_t height,
-			    uint32_t pixel_fmt,
-			    uint16_t h_start_width, uint16_t h_sync_width,
-			    uint16_t h_end_width, uint16_t v_start_width,
-			    uint16_t v_sync_width, uint16_t v_end_width,
-			    uint32_t v_to_h_sync, ipu_di_signal_cfg_t sig)
+int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
+			uint16_t width, uint16_t height,
+			uint32_t pixel_fmt,
+			uint16_t h_start_width, uint16_t h_sync_width,
+			uint16_t h_end_width, uint16_t v_start_width,
+			uint16_t v_sync_width, uint16_t v_end_width,
+			uint32_t v_to_h_sync, ipu_di_signal_cfg_t sig)
 {
 	uint32_t reg;
 	uint32_t di_gen, vsync_cnt;
@@ -928,18 +930,20 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				rounded_pixel_clk =
 					clk_round_rate(g_pixel_clk[disp],
 						pixel_clk);
-				div  = clk_get_rate(di_parent) /
-					rounded_pixel_clk;
-				if (div % 2)
-					div++;
-				if (clk_get_rate(di_parent) != div *
-					rounded_pixel_clk)
-					clk_set_rate(di_parent,
-						div * rounded_pixel_clk);
-				udelay(10000);
-				clk_set_rate(g_di_clk[disp],
-					2 * rounded_pixel_clk);
-				udelay(10000);
+				if (di_parent != NULL) {
+					div  = clk_get_rate(di_parent) /
+						rounded_pixel_clk;
+					if (div % 2)
+						div++;
+					if (clk_get_rate(di_parent) != div *
+						rounded_pixel_clk)
+						clk_set_rate(di_parent,
+							div * rounded_pixel_clk);
+					udelay(10000);
+					clk_set_rate(g_di_clk[disp],
+						2 * rounded_pixel_clk);
+					udelay(10000);
+				}
 			}
 		}
 		clk_set_parent(g_pixel_clk[disp], g_di_clk[disp]);
@@ -948,6 +952,19 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 			clk_set_parent(g_pixel_clk[disp], g_ipu_clk);
 	}
 	rounded_pixel_clk = clk_round_rate(g_pixel_clk[disp], pixel_clk);
+	clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
+	udelay(5000);
+	/* Get integer portion of divider */
+	div = clk_get_rate(clk_get_parent(g_pixel_clk[disp])) /
+		rounded_pixel_clk;
+
+	/* Enable for a divide by 2 clock change. */
+	reg = __raw_readl(IPU_PM);
+	reg &= ~(0x7f << 7);
+	reg |= 0x20 << 7;
+	reg &= ~(0x7f << 23);
+	reg |= 0x20 << 23;
+	__raw_writel(reg, IPU_PM);
 
 	di_gen = 0;
 
@@ -1187,6 +1204,11 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		__raw_writel(0, DI_STP_REP(disp, 7));
 		__raw_writel(0, DI_STP_REP(disp, 9));
 
+		h_total = ((width + h_start_width + h_sync_width) / 2) - 2;
+		ipu_di_sync_config(disp, 6, 1, 0, 2, DI_SYNC_CLK, h_total,
+				DI_SYNC_INT_HSYNC, 0, DI_SYNC_NONE,
+				DI_SYNC_NONE, 0, 0);
+
 		/* Init template microcode */
 		if (disp) {
 			ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5);
@@ -1205,12 +1227,19 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 		if (sig.clk_pol)
 			di_gen |= DI_GEN_POL_CLK;
+
+		/* Set the clock to stop at counter 6. */
+		di_gen |= 0x6000000;
 	}
 
 	__raw_writel(di_gen, DI_GENERAL(disp));
 
-	__raw_writel((--vsync_cnt << DI_VSYNC_SEL_OFFSET) |
-			0x00000002, DI_SYNC_AS_GEN(disp));
+	if (sig.interlaced)
+		__raw_writel((--vsync_cnt << DI_VSYNC_SEL_OFFSET) |
+				0x00000002, DI_SYNC_AS_GEN(disp));
+	else
+		__raw_writel((--vsync_cnt << DI_VSYNC_SEL_OFFSET),
+				DI_SYNC_AS_GEN(disp));
 
 	reg = __raw_readl(DI_POL(disp));
 	reg &= ~(DI_POL_DRDY_DATA_POLARITY | DI_POL_DRDY_POLARITY_15);
@@ -1239,9 +1268,10 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
  *
  * @return      Returns 0 on success or negative error code on fail
  */
-int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, unsigned char enable,
+int ipu_disp_set_global_alpha(ipu_channel_t channel, unsigned char enable,
 				  uint8_t alpha)
 {
+	int ret;
 	uint32_t reg;
 
 	unsigned char bg_chan;
@@ -1257,8 +1287,9 @@ int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, unsigned char enable,
 	else
 		bg_chan = 0;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
+	ret = clk_enable(g_ipu_clk);
+	if (ret)
+		return ret;
 
 	if (bg_chan) {
 		reg = __raw_readl(DP_COM_CONF());
@@ -1283,8 +1314,7 @@ int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, unsigned char enable,
 	reg = __raw_readl(IPU_SRM_PRI2) | 0x8;
 	__raw_writel(reg, IPU_SRM_PRI2);
 
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	clk_disable(g_ipu_clk);
 
 	return 0;
 }
@@ -1300,9 +1330,10 @@ int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, unsigned char enable,
  *
  * @return      Returns 0 on success or negative error code on fail
  */
-int32_t ipu_disp_set_color_key(ipu_channel_t channel, unsigned char enable,
+int ipu_disp_set_color_key(ipu_channel_t channel, unsigned char enable,
 			       uint32_t color_key)
 {
+	int ret;
 	uint32_t reg;
 	int y, u, v;
 	int red, green, blue;
@@ -1312,8 +1343,9 @@ int32_t ipu_disp_set_color_key(ipu_channel_t channel, unsigned char enable,
 		(channel == MEM_BG_ASYNC1 || channel == MEM_FG_ASYNC1)))
 		return -EINVAL;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
+	ret = clk_enable(g_ipu_clk);
+	if (ret)
+		return ret;
 
 	color_key_4rgb = 1;
 	/* Transform color key from rgb to yuv if CSC is enabled */
@@ -1352,8 +1384,7 @@ int32_t ipu_disp_set_color_key(ipu_channel_t channel, unsigned char enable,
 	reg = __raw_readl(IPU_SRM_PRI2) | 0x8;
 	__raw_writel(reg, IPU_SRM_PRI2);
 
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	clk_disable(g_ipu_clk);
 
 	return 0;
 }

@@ -30,10 +30,90 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
+#include <asm/arch/regs-apbh.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/dma.h>
 
+#ifdef DEBUG_
+static inline u32 mxs_readl(void *addr,
+			const char *fn, int ln)
+{
+	u32 val = readl(addr);
+	static void *last_addr;
+	static u32 last_val;
+
+	if (addr != last_addr || last_val != val) {
+		printf("%s@%d: Read %08x from %p\n", fn, ln, val, addr);
+		last_addr = addr;
+		last_val = val;
+	}
+	return val;
+}
+
+static inline void mxs_writel(u32 val, void *addr,
+			const char *name, const char *fn, int ln)
+{
+#if 0
+	printf("%s@%d: Writing %08x to %s[%p]...", fn, ln, val, name, addr);
+#else
+	printf("%s@%d: Writing %08x to %p...", fn, ln, val, addr);
+#endif
+	writel(val, addr);
+	printf(" result: %08x\n", readl(addr));
+}
+
+#undef readl
+#define readl(a) mxs_readl(a, __func__, __LINE__)
+
+#undef writel
+#define writel(v, a) mxs_writel(v, a, #a, __func__, __LINE__)
+#endif
+
+#define pr_dma_flag(c,f)	do { if ((c) & MXS_DMA_DESC_##f) printf("%s ", #f); } while (0)
+static inline void dump_dma_desc(struct mxs_dma_desc *desc)
+{
+	struct mxs_dma_cmd *cmd = &desc->cmd;
+
+	printf("DMA desc %p:\n", desc);
+	printf("NXT: %08lx\n", cmd->next);
+	printf("CMD: %08lx - ", cmd->data);
+	printf("CNT: %04lx ", (cmd->data & MXS_DMA_DESC_BYTES_MASK) >> MXS_DMA_DESC_BYTES_OFFSET);
+	printf("PIO: %ld ", (cmd->data & MXS_DMA_DESC_PIO_WORDS_MASK) >> MXS_DMA_DESC_PIO_WORDS_OFFSET);
+	pr_dma_flag(cmd->data, HALT_ON_TERMINATE);
+	pr_dma_flag(cmd->data, WAIT4END);
+	pr_dma_flag(cmd->data, DEC_SEM);
+	pr_dma_flag(cmd->data, NAND_WAIT_4_READY);
+	pr_dma_flag(cmd->data, NAND_LOCK);
+	pr_dma_flag(cmd->data, IRQ);
+	pr_dma_flag(cmd->data, CHAIN);
+	printf("\nMOD: ");
+	switch (cmd->data & MXS_DMA_DESC_COMMAND_MASK) {
+	case MXS_DMA_DESC_COMMAND_NO_DMAXFER:
+		printf("NO_DMA\n");
+		break;
+	case MXS_DMA_DESC_COMMAND_DMA_WRITE:
+		printf("WRITE\n");
+		break;
+	case MXS_DMA_DESC_COMMAND_DMA_READ:
+		printf("READ\n");
+		break;
+	case MXS_DMA_DESC_COMMAND_DMA_SENSE:
+		printf("SENSE\n");
+	}
+	if (cmd->data & MXS_DMA_DESC_PIO_WORDS_MASK) {
+		int pio_words = (cmd->data & MXS_DMA_DESC_PIO_WORDS_MASK) >> MXS_DMA_DESC_PIO_WORDS_OFFSET;
+		int i;
+
+		printf("PIO: ");
+		for (i = 0; i < pio_words; i++) {
+			printf("%08lx ", cmd->pio_words[i]);
+		}
+		printf("\n");
+	}
+}
+
 static struct mxs_dma_chan mxs_dma_channels[MXS_MAX_DMA_CHANNELS];
+static struct apbh_regs *apbh_regs = (struct apbh_regs *)MXS_APBH_BASE;
 
 /*
  * Test is the DMA channel is valid channel
@@ -42,12 +122,16 @@ int mxs_dma_validate_chan(int channel)
 {
 	struct mxs_dma_chan *pchan;
 
-	if ((channel < 0) || (channel >= MXS_MAX_DMA_CHANNELS))
+	if ((channel < 0) || (channel >= MXS_MAX_DMA_CHANNELS)) {
+		printf("Invalid DMA channel %d\n", channel);
 		return -EINVAL;
+	}
 
 	pchan = mxs_dma_channels + channel;
-	if (!(pchan->flags & MXS_DMA_FLAGS_ALLOCATED))
+	if (!(pchan->flags & MXS_DMA_FLAGS_ALLOCATED)) {
+		printf("DMA channel %d not allocated\n", channel);
 		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -76,8 +160,6 @@ static unsigned int mxs_dma_cmd_address(struct mxs_dma_desc *desc)
  */
 static int mxs_dma_read_semaphore(int channel)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	uint32_t tmp;
 	int ret;
 
@@ -119,8 +201,6 @@ inline void mxs_dma_flush_desc(struct mxs_dma_desc *desc) {}
  */
 static int mxs_dma_enable(int channel)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	unsigned int sem;
 	struct mxs_dma_chan *pchan;
 	struct mxs_dma_desc *pdesc;
@@ -139,7 +219,7 @@ static int mxs_dma_enable(int channel)
 
 	pdesc = list_first_entry(&pchan->active, struct mxs_dma_desc, node);
 	if (pdesc == NULL)
-		return -EFAULT;
+		return -EINVAL;
 
 	if (pchan->flags & MXS_DMA_FLAGS_BUSY) {
 		if (!(pdesc->cmd.data & MXS_DMA_DESC_CHAIN))
@@ -162,12 +242,14 @@ static int mxs_dma_enable(int channel)
 	} else {
 		pchan->active_num += pchan->pending_num;
 		pchan->pending_num = 0;
+#if 1
+		writel(1 << (channel + APBH_CTRL0_CLKGATE_CHANNEL_OFFSET),
+			&apbh_regs->hw_apbh_ctrl0_clr);
+#endif
 		writel(mxs_dma_cmd_address(pdesc),
 			&apbh_regs->ch[channel].hw_apbh_ch_nxtcmdar);
 		writel(pchan->active_num,
 			&apbh_regs->ch[channel].hw_apbh_ch_sema);
-		writel(1 << (channel + APBH_CTRL0_CLKGATE_CHANNEL_OFFSET),
-			&apbh_regs->hw_apbh_ctrl0_clr);
 	}
 
 	pchan->flags |= MXS_DMA_FLAGS_BUSY;
@@ -191,8 +273,6 @@ static int mxs_dma_enable(int channel)
 static int mxs_dma_disable(int channel)
 {
 	struct mxs_dma_chan *pchan;
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	int ret;
 
 	ret = mxs_dma_validate_chan(channel);
@@ -201,13 +281,14 @@ static int mxs_dma_disable(int channel)
 
 	pchan = mxs_dma_channels + channel;
 
-	if (!(pchan->flags & MXS_DMA_FLAGS_BUSY))
+	if ((pchan->flags & MXS_DMA_FLAGS_BUSY)) {
+		printf("%s: DMA channel %d busy\n", __func__, channel);
 		return -EINVAL;
-
+	}
+#if 0
 	writel(1 << (channel + APBH_CTRL0_CLKGATE_CHANNEL_OFFSET),
 		&apbh_regs->hw_apbh_ctrl0_set);
-
-	pchan->flags &= ~MXS_DMA_FLAGS_BUSY;
+#endif
 	pchan->active_num = 0;
 	pchan->pending_num = 0;
 	list_splice_init(&pchan->active, &pchan->done);
@@ -220,8 +301,6 @@ static int mxs_dma_disable(int channel)
  */
 static int mxs_dma_reset(int channel)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	int ret;
 
 	ret = mxs_dma_validate_chan(channel);
@@ -241,8 +320,6 @@ static int mxs_dma_reset(int channel)
  */
 static int mxs_dma_enable_irq(int channel, int enable)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	int ret;
 
 	ret = mxs_dma_validate_chan(channel);
@@ -267,8 +344,6 @@ static int mxs_dma_enable_irq(int channel, int enable)
  */
 static int mxs_dma_ack_irq(int channel)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	int ret;
 
 	ret = mxs_dma_validate_chan(channel);
@@ -504,15 +579,13 @@ static int mxs_dma_finish(int channel, struct list_head *head)
  */
 static int mxs_dma_wait_complete(uint32_t timeout, unsigned int chan)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
 	int ret;
 
 	ret = mxs_dma_validate_chan(chan);
 	if (ret)
 		return ret;
 
-	if (mx28_wait_mask_set(&apbh_regs->hw_apbh_ctrl1_reg,
+	if (mxs_wait_mask_set(&apbh_regs->hw_apbh_ctrl1_reg,
 				1 << chan, timeout)) {
 		ret = -ETIMEDOUT;
 		mxs_dma_reset(chan);
@@ -554,10 +627,7 @@ int mxs_dma_go(int chan)
  */
 void mxs_dma_init(void)
 {
-	struct mx28_apbh_regs *apbh_regs =
-		(struct mx28_apbh_regs *)MXS_APBH_BASE;
-
-	mx28_reset_block(&apbh_regs->hw_apbh_ctrl0_reg);
+	mxs_reset_block(&apbh_regs->hw_apbh_ctrl0_reg);
 
 #ifdef CONFIG_APBH_DMA_BURST8
 	writel(APBH_CTRL0_AHB_BURST8_EN,

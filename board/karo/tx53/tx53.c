@@ -15,10 +15,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -30,7 +26,7 @@
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <video_fb.h>
-#include <ipu_pixfmt.h>
+#include <ipu.h>
 #include <mx2fb.h>
 #include <linux/fb.h>
 #include <asm/io.h>
@@ -42,8 +38,6 @@
 #include <asm/arch/sys_proto.h>
 
 #include "../common/karo.h"
-
-#define IMX_GPIO_NR(b, o)	((((b) - 1) << 5) | (o))
 
 #define TX53_FEC_RST_GPIO	IMX_GPIO_NR(7, 6)
 #define TX53_FEC_PWR_GPIO	IMX_GPIO_NR(3, 20)
@@ -58,10 +52,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define MX53_GPIO_PAD_CTRL	(PAD_CTL_PKE | PAD_CTL_PUE |		\
+#define MX53_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PKE | PAD_CTL_PUE | \
 				PAD_CTL_DSE_HIGH | PAD_CTL_PUS_22K_UP)
 
-#define TX53_SDHC_PAD_CTRL	(PAD_CTL_HYS | PAD_CTL_DSE_HIGH |	\
+#define TX53_SDHC_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_HYS | PAD_CTL_DSE_HIGH |	\
 				PAD_CTL_SRE_FAST | PAD_CTL_PUS_47K_UP)
 
 static iomux_v3_cfg_t tx53_pads[] = {
@@ -90,8 +84,8 @@ static iomux_v3_cfg_t tx53_pads[] = {
 	MX53_PAD_PATA_DA_1__UART3_CTS,
 #endif
 	/* internal I2C */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D28__I2C1_SDA, MX53_GPIO_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_EIM_D21__I2C1_SCL, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_EIM_D28__I2C1_SDA | MX53_GPIO_PAD_CTRL,
+	MX53_PAD_EIM_D21__I2C1_SCL | MX53_GPIO_PAD_CTRL,
 
 	/* FEC PHY GPIO functions */
 	MX53_PAD_EIM_D20__GPIO3_20, /* PHY POWER */
@@ -199,7 +193,7 @@ static void print_cpuinfo(void)
 int board_early_init_f(void)
 {
 	gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
-	mxc_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
+	imx_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
 
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x00);
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x04);
@@ -276,38 +270,36 @@ int board_mmc_getcd(struct mmc *mmc)
 static struct fsl_esdhc_cfg esdhc_cfg[] = {
 	{
 		.esdhc_base = (void __iomem *)MMC_SDHC1_BASE_ADDR,
-		.no_snoop = 1,
 		.cd_gpio = IMX_GPIO_NR(3, 24),
 		.wp_gpio = -EINVAL,
 	},
 	{
 		.esdhc_base = (void __iomem *)MMC_SDHC2_BASE_ADDR,
-		.no_snoop = 1,
 		.cd_gpio = IMX_GPIO_NR(3, 25),
 		.wp_gpio = -EINVAL,
 	},
 };
 
 static const iomux_v3_cfg_t mmc0_pads[] = {
-	NEW_PAD_CTRL(MX53_PAD_SD1_CMD__ESDHC1_CMD, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD1_CLK__ESDHC1_CLK, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD1_DATA0__ESDHC1_DAT0, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD1_DATA1__ESDHC1_DAT1, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD1_DATA2__ESDHC1_DAT2, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD1_DATA3__ESDHC1_DAT3, TX53_SDHC_PAD_CTRL),
+	MX53_PAD_SD1_CMD__ESDHC1_CMD | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD1_CLK__ESDHC1_CLK | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD1_DATA0__ESDHC1_DAT0 | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD1_DATA1__ESDHC1_DAT1 | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD1_DATA2__ESDHC1_DAT2 | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD1_DATA3__ESDHC1_DAT3 | TX53_SDHC_PAD_CTRL,
 	/* SD1 CD */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D24__GPIO3_24, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_EIM_D24__GPIO3_24 | MX53_GPIO_PAD_CTRL,
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
-	NEW_PAD_CTRL(MX53_PAD_SD2_CMD__ESDHC2_CMD, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD2_CLK__ESDHC2_CLK, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD2_DATA0__ESDHC2_DAT0, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD2_DATA1__ESDHC2_DAT1, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD2_DATA2__ESDHC2_DAT2, TX53_SDHC_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_SD2_DATA3__ESDHC2_DAT3, TX53_SDHC_PAD_CTRL),
+	MX53_PAD_SD2_CMD__ESDHC2_CMD | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD2_CLK__ESDHC2_CLK | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD2_DATA0__ESDHC2_DAT0 | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD2_DATA1__ESDHC2_DAT1 | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD2_DATA2__ESDHC2_DAT2 | TX53_SDHC_PAD_CTRL,
+	MX53_PAD_SD2_DATA3__ESDHC2_DAT3 | TX53_SDHC_PAD_CTRL,
 	/* SD2 CD */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D25__GPIO3_25, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_EIM_D25__GPIO3_25 | MX53_GPIO_PAD_CTRL,
 };
 
 static struct {
@@ -328,7 +320,7 @@ int board_mmc_init(bd_t *bis)
 		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
 			break;
 
-		mxc_iomux_v3_setup_multiple_pads(mmc_pad_config[i].pads,
+		imx_iomux_v3_setup_multiple_pads(mmc_pad_config[i].pads,
 						mmc_pad_config[i].count);
 		fsl_esdhc_initialize(bis, &esdhc_cfg[i]);
 
@@ -427,26 +419,26 @@ static const iomux_v3_cfg_t stk5_pads[] = {
 	MX53_PAD_EIM_A18__GPIO2_20,
 
 	/* I2C bus on DIMM pins 40/41 */
-	NEW_PAD_CTRL(MX53_PAD_GPIO_6__I2C3_SDA, MX53_GPIO_PAD_CTRL),
-	NEW_PAD_CTRL(MX53_PAD_GPIO_3__I2C3_SCL, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_GPIO_6__I2C3_SDA | MX53_GPIO_PAD_CTRL,
+	MX53_PAD_GPIO_3__I2C3_SCL | MX53_GPIO_PAD_CTRL,
 
 	/* TSC200x PEN IRQ */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D26__GPIO3_26, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_EIM_D26__GPIO3_26 | MX53_GPIO_PAD_CTRL,
 
 	/* EDT-FT5x06 Polytouch panel */
-	NEW_PAD_CTRL(MX53_PAD_NANDF_CS2__GPIO6_15, MX53_GPIO_PAD_CTRL), /* IRQ */
-	NEW_PAD_CTRL(MX53_PAD_EIM_A16__GPIO2_22, MX53_GPIO_PAD_CTRL), /* RESET */
-	NEW_PAD_CTRL(MX53_PAD_EIM_A17__GPIO2_21, MX53_GPIO_PAD_CTRL), /* WAKE */
+	MX53_PAD_NANDF_CS2__GPIO6_15 | MX53_GPIO_PAD_CTRL, /* IRQ */
+	MX53_PAD_EIM_A16__GPIO2_22 | MX53_GPIO_PAD_CTRL, /* RESET */
+	MX53_PAD_EIM_A17__GPIO2_21 | MX53_GPIO_PAD_CTRL, /* WAKE */
 
 	/* USBH1 */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D31__GPIO3_31, MX53_GPIO_PAD_CTRL), /* VBUSEN */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D30__GPIO3_30, MX53_GPIO_PAD_CTRL), /* OC */
+	MX53_PAD_EIM_D31__GPIO3_31 | MX53_GPIO_PAD_CTRL, /* VBUSEN */
+	MX53_PAD_EIM_D30__GPIO3_30 | MX53_GPIO_PAD_CTRL, /* OC */
 	/* USBOTG */
 	MX53_PAD_GPIO_7__GPIO1_7, /* VBUSEN */
 	MX53_PAD_GPIO_8__GPIO1_8, /* OC */
 
 	/* DS1339 Interrupt */
-	NEW_PAD_CTRL(MX53_PAD_DI0_PIN4__GPIO4_20, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_DI0_PIN4__GPIO4_20 | MX53_GPIO_PAD_CTRL,
 };
 
 static const struct gpio stk5_gpios[] = {
@@ -486,24 +478,6 @@ static struct fb_videomode tx53_fb_mode = {
 	.vmode		= FB_VMODE_NONINTERLACED,
 };
 
-void *lcd_base;			/* Start of framebuffer memory	*/
-void *lcd_console_address;	/* Start of console buffer	*/
-
-int lcd_line_length;
-int lcd_color_fg;
-int lcd_color_bg;
-
-short console_col;
-short console_row;
-
-void lcd_initcolregs(void)
-{
-}
-
-void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
-{
-}
-
 static int lcd_enabled = 1;
 
 void lcd_enable(void)
@@ -526,30 +500,13 @@ void lcd_enable(void)
 	}
 }
 
-void mxcfb_disable(void);
-
-void lcd_disable(void)
-{
-	mxcfb_disable();
-}
-
-void lcd_panel_disable(void)
-{
-	if (lcd_enabled) {
-		debug("Switching LCD off\n");
-		gpio_set_value(TX53_LCD_BACKLIGHT_GPIO, 1);
-		gpio_set_value(TX53_LCD_RST_GPIO, 0);
-		gpio_set_value(TX53_LCD_PWR_GPIO, 0);
-	}
-}
-
 static const iomux_v3_cfg_t stk5_lcd_pads[] = {
 	/* LCD RESET */
-	NEW_PAD_CTRL(MX53_PAD_EIM_D29__GPIO3_29, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_EIM_D29__GPIO3_29 | MX53_GPIO_PAD_CTRL,
 	/* LCD POWER_ENABLE */
-	NEW_PAD_CTRL(MX53_PAD_EIM_EB3__GPIO2_31, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_EIM_EB3__GPIO2_31 | MX53_GPIO_PAD_CTRL,
 	/* LCD Backlight (PWM) */
-	NEW_PAD_CTRL(MX53_PAD_GPIO_1__GPIO1_1, MX53_GPIO_PAD_CTRL),
+	MX53_PAD_GPIO_1__GPIO1_1 | MX53_GPIO_PAD_CTRL,
 
 	/* Display */
 	MX53_PAD_DI0_DISP_CLK__IPU_DI0_DISP_CLK,
@@ -609,6 +566,8 @@ void lcd_ctrl_init(void *lcdbase)
 	struct fb_videomode *p = &tx53_fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 	int pix_fmt = 0;
+	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
+	unsigned long di_clk_rate = 65000000;
 
 	if (!lcd_enabled) {
 		debug("LCD disabled\n");
@@ -693,10 +652,12 @@ void lcd_ctrl_init(void *lcdbase)
 			if (!pix_fmt) {
 				char *tmp;
 
-				if (strncmp(vm, "LVDS", 4) == 0)
+				if (strncmp(vm, "LVDS", 4) == 0) {
 					pix_fmt = IPU_PIX_FMT_LVDS666;
-				else
+					di_clk_parent = DI_PCLK_LDB;
+				} else {
 					pix_fmt = IPU_PIX_FMT_RGB24;
+				}
 				tmp = strchr(vm, ':');
 				if (tmp)
 					vm = tmp;
@@ -718,7 +679,6 @@ void lcd_ctrl_init(void *lcdbase)
 	case 24:
 		panel_info.vl_bpix = 5;
 	}
-	lcd_line_length = NBITS(panel_info.vl_bpix) / 8 * panel_info.vl_col;
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
@@ -729,7 +689,7 @@ void lcd_ctrl_init(void *lcdbase)
 		PICOS2KHZ(p->pixclock) % 1000);
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
-	mxc_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
+	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
 
 	debug("Initializing FB driver\n");
@@ -741,17 +701,17 @@ void lcd_ctrl_init(void *lcdbase)
 		writel(0x21, IOMUXC_BASE_ADDR + 8);
 	}
 	if (pix_fmt != IPU_PIX_FMT_RGB24) {
-		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
+		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
 		/* enable LDB & DI0 clock */
 		writel(readl(&ccm_regs->CCGR6) | (3 << 28) | (3 << 10),
 			&ccm_regs->CCGR6);
 	}
 
-	mx5_fb_init(p, 0, pix_fmt, 1 << panel_info.vl_bpix);
-
 	if (karo_load_splashimage(0) == 0) {
+		ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
+
 		debug("Initializing LCD controller\n");
-		video_hw_init();
+//		video_hw_init();
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -763,7 +723,7 @@ void lcd_ctrl_init(void *lcdbase)
 static void stk5_board_init(void)
 {
 	gpio_request_array(stk5_gpios, ARRAY_SIZE(stk5_gpios));
-	mxc_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
+	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
 }
 
 static void stk5v3_board_init(void)
@@ -777,7 +737,7 @@ static void stk5v5_board_init(void)
 
 	gpio_request_one(IMX_GPIO_NR(4, 21), GPIOF_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
-	mxc_iomux_v3_setup_pad(MX53_PAD_DISP0_DAT0__GPIO4_21);
+	imx_iomux_v3_setup_pad(MX53_PAD_DISP0_DAT0__GPIO4_21);
 }
 
 static void tx53_set_cpu_clock(void)

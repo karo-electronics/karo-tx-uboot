@@ -149,19 +149,17 @@ int elm_check_error(u8 *syndrome, u32 nibbles, u32 *error_count,
 /**
  * elm_config - Configure ELM module
  * @level: 4 / 8 / 16 bit BCH
- * @buffer_size: Buffer size in bytes
  *
- * Configure ELM module based on BCH level and buffer size passed.
+ * Configure ELM module based on BCH level.
  * Set mode as continuous mode.
  * Currently we are using only syndrome 0 and syndromes 1 to 6 are not used.
  * Also, the mode is set only for syndrome 0
  */
-/* int elm_config(enum bch_level level, u32 buffer_size) */
 int elm_config(enum bch_level level)
 {
 	u32 val;
 	u8 poly = ELM_DEFAULT_POLY;
-	u32 buffer_size= 0x7FF;
+	u32 buffer_size = 0x7FF;
 
 	/* config size and level */
 	val = (u32)(level) & ELM_LOCATION_CONFIG_ECC_BCH_LEVEL_MASK;
@@ -169,11 +167,13 @@ int elm_config(enum bch_level level)
 				ELM_LOCATION_CONFIG_ECC_SIZE_MASK);
 	writel(val, &elm_cfg->location_config);
 
-	/* config continuous mode */
+	/* config continous mode */
 	/* enable interrupt generation for syndrome polynomial set */
-	writel((readl(&elm_cfg->irqenable) | (0x1 << poly)), &elm_cfg->irqenable);
+	writel((readl(&elm_cfg->irqenable) | (0x1 << poly)),
+			&elm_cfg->irqenable);
 	/* set continuous mode for the syndrome polynomial set */
-	writel((readl(&elm_cfg->page_ctrl) & ~(0x1 << poly)), &elm_cfg->page_ctrl);
+	writel((readl(&elm_cfg->page_ctrl) & ~(0x1 << poly)),
+			&elm_cfg->page_ctrl);
 
 	return 0;
 }
@@ -190,8 +190,9 @@ void elm_reset(void)
 				&elm_cfg->sysconfig);
 
 	/* wait for reset complete and normal operation */
-	while((readl(&elm_cfg->sysstatus) & ELM_SYSSTATUS_RESETDONE) !=
-		ELM_SYSSTATUS_RESETDONE);
+	while ((readl(&elm_cfg->sysstatus) & ELM_SYSSTATUS_RESETDONE) !=
+		ELM_SYSSTATUS_RESETDONE)
+		;
 }
 
 /**
@@ -205,4 +206,3 @@ void elm_init(void)
 	elm_cfg = (struct elm *)ELM_BASE;
 	elm_reset();
 }
-

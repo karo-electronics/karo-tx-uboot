@@ -99,9 +99,9 @@ unsigned long get_sdram_size(void)
 	struct cpu_type *cpu;
 	phys_size_t ddr_size;
 
-	cpu = gd->cpu;
+	cpu = gd->arch.cpu;
 	/* P1014 and it's derivatives support max 16it DDR width */
-	if (cpu->soc_ver == SVR_P1014 || cpu->soc_ver == SVR_P1014_E)
+	if (cpu->soc_ver == SVR_P1014)
 		ddr_size = (CONFIG_SYS_DRAM_SIZE / 2);
 	else
 		ddr_size = CONFIG_SYS_DRAM_SIZE;
@@ -144,13 +144,14 @@ phys_size_t fixed_sdram(void)
 		panic("Unsupported DDR data rate %s MT/s data rate\n",
 					strmhz(buf, ddr_freq));
 
-	cpu = gd->cpu;
+	cpu = gd->arch.cpu;
 	/* P1014 and it's derivatives support max 16bit DDR width */
-	if (cpu->soc_ver == SVR_P1014 || cpu->soc_ver == SVR_P1014_E) {
+	if (cpu->soc_ver == SVR_P1014) {
+		ddr_cfg_regs.ddr_sdram_cfg &= ~SDRAM_CFG_DBW_MASK;
 		ddr_cfg_regs.ddr_sdram_cfg |= SDRAM_CFG_16_BE;
-		ddr_cfg_regs.cs[0].bnds = CONFIG_SYS_DDR_CS0_BNDS >> 1;
-		ddr_cfg_regs.ddr_sdram_cfg &= ~0x00180000;
-		ddr_cfg_regs.ddr_sdram_cfg |= 0x001080000;
+		/* divide SA and EA by two and then mask the rest so we don't
+		 * write to reserved fields */
+		ddr_cfg_regs.cs[0].bnds = (CONFIG_SYS_DDR_CS0_BNDS >> 1) & 0x0fff0fff;
 	}
 
 	ddr_size = (phys_size_t) CONFIG_SYS_SDRAM_SIZE * 1024 * 1024;
@@ -236,9 +237,9 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 	popts->trwt_override = 1;
 	popts->trwt = 0;
 
-	cpu = gd->cpu;
+	cpu = gd->arch.cpu;
 	/* P1014 and it's derivatives support max 16it DDR width */
-	if (cpu->soc_ver == SVR_P1014 || cpu->soc_ver == SVR_P1014_E)
+	if (cpu->soc_ver == SVR_P1014)
 		popts->data_bus_width = DDR_DATA_BUS_WIDTH_16;
 
 	for (i = 0; i < CONFIG_CHIP_SELECTS_PER_CTRL; i++) {

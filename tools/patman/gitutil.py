@@ -38,7 +38,7 @@ def CountCommitsToBranch():
     Return:
         Number of patches that exist on top of the branch
     """
-    pipe = [['git', 'log', '--oneline', '@{upstream}..'],
+    pipe = [['git', 'log', '--no-color', '--oneline', '@{upstream}..'],
             ['wc', '-l']]
     stdout = command.RunPipe(pipe, capture=True, oneline=True)
     patch_count = int(stdout)
@@ -217,6 +217,10 @@ def EmailPatches(series, cover_fname, args, dry_run, cc_fname,
     Returns:
         Git command that was/would be run
 
+    # For the duration of this doctest pretend that we ran patman with ./patman
+    >>> _old_argv0 = sys.argv[0]
+    >>> sys.argv[0] = './patman'
+
     >>> alias = {}
     >>> alias['fred'] = ['f.bloggs@napier.co.nz']
     >>> alias['john'] = ['j.bloggs@napier.co.nz']
@@ -244,6 +248,9 @@ def EmailPatches(series, cover_fname, args, dry_run, cc_fname,
     'git send-email --annotate --to "f.bloggs@napier.co.nz" --cc \
 "f.bloggs@napier.co.nz" --cc "j.bloggs@napier.co.nz" --cc \
 "m.poppins@cloud.net" --cc-cmd "./patman --cc-cmd cc-fname" cover p1 p2'
+
+    # Restore argv[0] since we clobbered it.
+    >>> sys.argv[0] = _old_argv0
     """
     to = BuildEmailList(series.get('to'), '--to', alias)
     if not to:
@@ -340,8 +347,8 @@ def GetTopLevel():
 
     This test makes sure that we are running tests in the right subdir
 
-    >>> os.path.realpath(os.getcwd()) == \
-            os.path.join(GetTopLevel(), 'tools', 'scripts', 'patman')
+    >>> os.path.realpath(os.path.dirname(__file__)) == \
+            os.path.join(GetTopLevel(), 'tools', 'patman')
     True
     """
     return command.OutputOneLine('git', 'rev-parse', '--show-toplevel')
@@ -357,10 +364,26 @@ def GetAliasFile():
         fname = os.path.join(GetTopLevel(), fname.strip())
     return fname
 
+def GetDefaultUserName():
+    """Gets the user.name from .gitconfig file.
+
+    Returns:
+        User name found in .gitconfig file, or None if none
+    """
+    uname = command.OutputOneLine('git', 'config', '--global', 'user.name')
+    return uname
+
+def GetDefaultUserEmail():
+    """Gets the user.email from the global .gitconfig file.
+
+    Returns:
+        User's email found in .gitconfig file, or None if none
+    """
+    uemail = command.OutputOneLine('git', 'config', '--global', 'user.email')
+    return uemail
+
 def Setup():
     """Set up git utils, by reading the alias files."""
-    settings.Setup('')
-
     # Check for a git alias file also
     alias_fname = GetAliasFile()
     if alias_fname:

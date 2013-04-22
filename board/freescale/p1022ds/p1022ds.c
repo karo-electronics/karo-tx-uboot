@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2011 Freescale Semiconductor, Inc.
+ * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * Authors: Srikanth Srinivasan <srikanth.srinivasan@freescale.com>
  *          Timur Tabi <timur@freescale.com>
  *
@@ -39,6 +39,10 @@ int board_early_init_f(void)
 
 	/* Set pmuxcr to allow both i2c1 and i2c2 */
 	setbits_be32(&gur->pmuxcr, 0x1000);
+#ifdef CONFIG_SYS_RAMBOOT
+	setbits_be32(&gur->pmuxcr,
+		in_be32(&gur->pmuxcr) | MPC85xx_PMUXCR_SD_DATA);
+#endif
 
 	/* Read back the register to synchronize the write. */
 	in_be32(&gur->pmuxcr);
@@ -336,6 +340,10 @@ void ft_board_setup(void *blob, bd_t *bd)
 	size = getenv_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
+
+#ifdef CONFIG_HAS_FSL_DR_USB
+	fdt_fixup_dr_usb(blob, bd);
+#endif
 
 	FT_FSL_PCI_SETUP;
 

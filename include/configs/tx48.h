@@ -16,10 +16,9 @@
  * GNU General Public License for more details.
  */
 
-#ifndef __TX48_H
-#define __TX48_H
+#ifndef __CONFIGS_TX48_H
+#define __CONFIGS_TX48_H
 
-#include <config.h>
 #include <asm/sizes.h>
 
 /*
@@ -67,6 +66,9 @@
 
 #define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM_1 + SZ_64M)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_8M)
+#define CONFIG_SYS_SDRAM_CLK		266
+
+#define CONFIG_SYS_CACHELINE_SIZE	64
 
 /*
  * U-Boot general configurations
@@ -97,6 +99,7 @@
 #define CONFIG_DEFAULT_DEVICE_TREE	tx48
 #define CONFIG_ARCH_DEVICE_TREE		am33xx
 #define CONFIG_MACH_TYPE		(-1)
+#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #else
 #ifndef MACH_TYPE_TIAM335EVM
 #define MACH_TYPE_TIAM335EVM		 3589	 /* Until the next sync */
@@ -123,7 +126,9 @@
 #define CONFIG_LOADADDR		83000000
 #define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
+#if 0
 #define CONFIG_HW_WATCHDOG
+#endif
 
 /*
  * Extra Environments
@@ -207,6 +212,9 @@
 #define CONFIG_DRIVER_TI_CPSW
 #define CONFIG_NET_MULTI
 #define CONFIG_PHY_GIGE
+#define CONFIG_PHY_SMSC
+#define CONFIG_PHYLIB
+#define CONFIG_PHY_ADDR			(-1)
 #define CONFIG_MII
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_DHCP
@@ -268,7 +276,7 @@
  * Environments on MMC
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV	0
+#define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_OVERWRITE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
@@ -304,10 +312,12 @@
 
 /* Defines for SPL */
 #define CONFIG_SPL
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_MAX_SIZE		(46 * SZ_1K)
 #define CONFIG_SPL_GPIO_SUPPORT
-#ifdef CONFIG_NAND_AM33XX
+#ifdef CONFIG_NAND_OMAP_GPMC
+#define CONFIG_SPL_NAND_AM33XX_BCH
 #define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
@@ -344,4 +354,4 @@
 #define CONFIG_SYS_SPL_MALLOC_START	(PHYS_SDRAM_1 + SZ_2M + SZ_32K)
 #define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_1M
 
-#endif	/* __TX48_H */
+#endif	/* __CONFIGS_TX48_H */

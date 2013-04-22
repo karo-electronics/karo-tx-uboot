@@ -24,49 +24,12 @@
 
 #ifndef __ASM_GBL_DATA_H
 #define __ASM_GBL_DATA_H
-/*
- * The following data structure is placed in some memory wich is
- * available very early after boot (like DPRAM on MPC8xx/MPC82xx, or
- * some locked parts of the data cache) to allow for a minimum set of
- * global variables during system initialization (until we have set
- * up the memory controller so that we can use RAM).
- *
- * Keep it *SMALL* and remember to set GENERATED_GBL_DATA_SIZE > sizeof(gd_t)
- */
 
-typedef struct global_data {
-	bd_t		*bd;
-	unsigned long	flags;
-	unsigned long	baudrate;
-	unsigned long	cpu_clk;	/* CPU clock in Hz! */
-	unsigned long	have_console;	/* serial_init() was called */
-	phys_size_t	ram_size;	/* RAM size */
-	unsigned long	env_addr;	/* Address  of Environment struct */
-	unsigned long	env_valid;	/* Checksum of Environment valid? */
-	unsigned long	fb_base;	/* base address of frame buffer */
-	void		**jt;		/* jump table */
-	char		env_buf[32];	/* buffer for getenv() before reloc. */
-} gd_t;
+/* Architecture-specific global data */
+struct arch_global_data {
+};
 
-/*
- * Global Data Flags
- */
-/* Code was relocated to RAM */
-#define GD_FLG_RELOC		0x00001
-/* Devices have been initialized */
-#define GD_FLG_DEVINIT		0x00002
-/* Silent mode */
-#define GD_FLG_SILENT		0x00004
-/* Critical POST test failed */
-#define GD_FLG_POSTFAIL		0x00008
-/* POST seqeunce aborted */
-#define GD_FLG_POSTSTOP		0x00010
-/* Log Buffer has been initialized */
-#define GD_FLG_LOGINIT		0x00020
-/* Disable console (in & out) */
-#define GD_FLG_DISABLE_CONSOLE	0x00040
-/* Environment imported into hash table */
-#define GD_FLG_ENV_READY	0x00080
+#include <asm-generic/global_data.h>
 
 /* OR32 GCC already has r10 set as fixed-use */
 #define DECLARE_GLOBAL_DATA_PTR	register volatile gd_t *gd asm ("r10")

@@ -304,7 +304,7 @@ int mpc512x_fec_init_phy (struct eth_device *dev, bd_t * bis)
 		 * and do not drop the Preamble.
 		 */
 		out_be32(&fec->eth->mii_speed,
-			 (((gd->ips_clk / 1000000) / 5) + 1) << 1);
+			 (((gd->arch.ips_clk / 1000000) / 5) + 1) << 1);
 
 		/*
 		 * Reset PHY, then delay 300ns
@@ -452,8 +452,8 @@ static void mpc512x_fec_halt (struct eth_device *dev)
 
 /********************************************************************/
 
-static int mpc512x_fec_send (struct eth_device *dev, volatile void *eth_data,
-		int data_length)
+static int mpc512x_fec_send(struct eth_device *dev, void *eth_data,
+			    int data_length)
 {
 	/*
 	 * This routine transmits one frame.  This routine only accepts

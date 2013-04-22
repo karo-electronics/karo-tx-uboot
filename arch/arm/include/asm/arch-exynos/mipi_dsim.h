@@ -329,6 +329,7 @@ struct mipi_dsim_lcd_device {
 	char			*name;
 	int			id;
 	int			bus_id;
+	int			reverse_panel;
 
 	struct mipi_dsim_device *master;
 	void			*platform_data;
@@ -357,7 +358,14 @@ struct mipi_dsim_lcd_driver {
 	void	(*mipi_display_on)(struct mipi_dsim_device *dsim_dev);
 };
 
+#ifdef CONFIG_EXYNOS_MIPI_DSIM
 int exynos_mipi_dsi_init(void);
+#else
+static inline int exynos_mipi_dsi_init(void)
+{
+	return 0;
+}
+#endif
 
 /*
  * register mipi_dsim_lcd_driver object defined by lcd panel driver

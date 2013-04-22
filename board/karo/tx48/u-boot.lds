@@ -32,8 +32,8 @@ SECTIONS
 	.text :
 	{
 		__image_copy_start = .;
-		CPUDIR/start.o (.text)
-		*(.text)
+		CPUDIR/start.o (.text*)
+		*(.text*)
 	}
 
 	. = ALIGN(4);
@@ -41,15 +41,17 @@ SECTIONS
 
 	. = ALIGN(4);
 	.data : {
-		*(.data)
+		*(.data*)
 	}
 
 	. = ALIGN(4);
 
 	. = .;
-	__u_boot_cmd_start = .;
-	.u_boot_cmd : { *(.u_boot_cmd) }
-	__u_boot_cmd_end = .;
+
+	. = ALIGN(4);
+	.u_boot_list : {
+	#include <u-boot.lst>
+	}
 
 	. = ALIGN(4);
 

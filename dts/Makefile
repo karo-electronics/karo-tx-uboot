@@ -36,7 +36,8 @@ $(error Your architecture does not have device tree support enabled. \
 Please define CONFIG_ARCH_DEVICE_TREE))
 
 # We preprocess the device tree file provide a useful define
-DTS_CPPFLAGS := -DARCH_CPU_DTS=\"$(SRCTREE)/arch/$(ARCH)/dts/$(CONFIG_ARCH_DEVICE_TREE).dtsi\"
+DTS_CPPFLAGS := -DARCH_CPU_DTS=\"$(SRCTREE)/arch/$(ARCH)/dts/$(CONFIG_ARCH_DEVICE_TREE).dtsi\" \
+		-DBOARD_DTS=\"$(SRCTREE)/board/$(VENDOR)/$(BOARD)/dts/$(DEVICE_TREE).dts\"
 
 all:	$(obj).depend $(LIB)
 
@@ -51,7 +52,7 @@ $(DT_BIN): $(TOPDIR)/board/$(VENDOR)/dts/$(DEVICE_TREE).dts
 		{ { $(DTC) -R 4 -p 0x1000 -O dtb -o ${DT_BIN} - >&2 ; \
 		    echo $$? >&3 ; } | \
 		  grep -v '^DTC: dts->dtb  on file' ; \
-	        } 3>&1 ) ; \
+	        } 3>&1 1>&2 ) ; \
 	exit $$rc
 
 process_lds = \
@@ -66,8 +67,10 @@ $(obj)dt.o: $(DT_BIN)
 	# We look in the LDSCRIPT first.
 	# Then try the linker which should give us the answer.
 	# Then check it worked.
-	[ -n "$${LDSCRIPT}" ] && oformat=`$(call process_lds,cat $(LDSCRIPT),FORMAT)` &&\
+	[ -n "$(LDSCRIPT)" ] && \
+		oformat=`$(call process_lds,cat $(LDSCRIPT),FORMAT)` && \
 		oarch=`$(call process_lds,cat $(LDSCRIPT),ARCH)` ;\
+	\
 	[ -z "$${oformat}" ] && \
 		oformat=`$(call process_lds,$(GET_LDS),FORMAT)` ;\
 	[ -z "$${oarch}" ] && \

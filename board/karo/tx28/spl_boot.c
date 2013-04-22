@@ -221,7 +221,7 @@ static void tx28_stk5_led_on(void)
 
 void board_init_ll(void)
 {
-	mx28_common_spl_init(tx28_stk5_pads, ARRAY_SIZE(tx28_stk5_pads));
+	mxs_common_spl_init(tx28_stk5_pads, ARRAY_SIZE(tx28_stk5_pads));
 	tx28_stk5_lcd_init();
 	tx28_stk5_led_on();
 }
@@ -332,10 +332,7 @@ static uint32_t tx28_dram_vals[] = {
 };
 #endif
 
-void mx28_ddr2_setup(void)
+void mxs_adjust_memory_params(uint32_t *dram_vals)
 {
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(tx28_dram_vals); i++)
-		writel(tx28_dram_vals[i], MXS_DRAM_BASE + (4 * i));
+	memcpy(dram_vals, tx28_dram_vals, sizeof(tx28_dram_vals));
 }

@@ -174,7 +174,7 @@ void board_init_f(ulong bootflag)
 	mem = os_malloc(CONFIG_SYS_SDRAM_SIZE);
 
 	assert(mem);
-	gd->ram_buf = mem;
+	gd->arch.ram_buf = mem;
 	addr = (ulong)(mem + size);
 
 	/*
@@ -220,23 +220,18 @@ void board_init_r(gd_t *id, ulong dest_addr)
 
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
 
-#ifdef CONFIG_SERIAL_MULTI
 	serial_initialize();
-#endif
 
 #ifdef CONFIG_POST
 	post_output_backlog();
 #endif
 
 	/* The Malloc area is at the top of simulated DRAM */
-	mem_malloc_init((ulong)gd->ram_buf + gd->ram_size - TOTAL_MALLOC_LEN,
-			TOTAL_MALLOC_LEN);
+	mem_malloc_init((ulong)gd->arch.ram_buf + gd->ram_size -
+			TOTAL_MALLOC_LEN, TOTAL_MALLOC_LEN);
 
 	/* initialize environment */
 	env_relocate();
-
-	/* IP Address */
-	gd->bd->bi_ip_addr = getenv_IPaddr("ipaddr");
 
 	stdio_init();	/* get the devices list going. */
 

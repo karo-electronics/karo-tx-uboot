@@ -29,21 +29,12 @@
 #
 MIPSFLAGS := -march=mips32r2
 
-# Handle special prefix in ELDK 4.0 toolchain
-ifneq (,$(findstring 4KCle,$(CROSS_COMPILE)))
-ENDIANNESS := -EL
-endif
-
-ifdef CONFIG_SYS_LITTLE_ENDIAN
-ENDIANNESS := -EL
-endif
-
+PLATFORM_CPPFLAGS += $(MIPSFLAGS)
+PLATFORM_CPPFLAGS += -mabi=32 -DCONFIG_32BIT
 ifdef CONFIG_SYS_BIG_ENDIAN
-ENDIANNESS := -EB
+PLATFORM_LDFLAGS  += -m elf32btsmip
+else
+PLATFORM_LDFLAGS  += -m elf32ltsmip
 endif
 
-# Default to EB if no endianess is configured
-ENDIANNESS ?= -EB
-
-PLATFORM_CPPFLAGS += $(MIPSFLAGS) $(ENDIANNESS)
-PLATFORM_LDFLAGS += $(ENDIANNESS)
+CONFIG_STANDALONE_LOAD_ADDR ?= 0x80200000 -T mips.lds

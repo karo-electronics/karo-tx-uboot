@@ -58,6 +58,45 @@ int board_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_SPL_BUILD
+/*
+ * Routine: omap_rev_string
+ * Description: For SPL builds output board rev
+ */
+void omap_rev_string(void)
+{
+}
+
+/*
+ * Routine: get_board_mem_timings
+ * Description: If we use SPL then there is no x-loader nor config header
+ * so we have to setup the DDR timings ourself on both banks.
+ */
+void get_board_mem_timings(struct board_sdrc_timings *timings)
+{
+	timings->mr = MICRON_V_MR_165;
+#ifdef CONFIG_BOOT_NAND
+	timings->mcfg = MICRON_V_MCFG_200(256 << 20);
+	timings->ctrla = MICRON_V_ACTIMA_200;
+	timings->ctrlb = MICRON_V_ACTIMB_200;
+	timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_200MHz;
+#else
+	if (get_cpu_family() == CPU_OMAP34XX) {
+		timings->mcfg = NUMONYX_V_MCFG_165(256 << 20);
+		timings->ctrla = NUMONYX_V_ACTIMA_165;
+		timings->ctrlb = NUMONYX_V_ACTIMB_165;
+		timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_165MHz;
+
+	} else {
+		timings->mcfg = NUMONYX_V_MCFG_200(256 << 20);
+		timings->ctrla = NUMONYX_V_ACTIMA_200;
+		timings->ctrlb = NUMONYX_V_ACTIMB_200;
+		timings->rfr_ctrl = SDP_3430_SDRC_RFR_CTRL_200MHz;
+	}
+#endif
+}
+#endif
+
 /*
  * Routine: setup_net_chip
  * Description: Setting up the configuration GPMC registers specific to the
@@ -91,7 +130,7 @@ static void setup_net_chip(void)
 }
 #endif
 
-#ifdef CONFIG_GENERIC_MMC
+#if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
 	omap_mmc_init(0, 0, 0);

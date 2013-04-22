@@ -27,7 +27,21 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(CPU).o
 
+MINIMAL=
+
+ifdef CONFIG_SPL_BUILD
+ifdef CONFIG_SPL_INIT_MINIMAL
+MINIMAL=y
+endif
+endif
+
 START	= start.o
+
+ifdef MINIMAL
+
+COBJS-y	+= spl_minimal.o
+
+else
 
 COBJS-y += traps.o
 COBJS-y += cpu.o
@@ -41,12 +55,17 @@ COBJS-$(CONFIG_PCI) += pci.o
 COBJS-$(CONFIG_PCIE) += pcie.o
 COBJS-$(CONFIG_OF_LIBFDT) += fdt.o
 
+# Stub implementations of cache management functions for USB
+COBJS-y += cache.o
+
 ifdef CONFIG_FSL_DDR2
 COBJS_LN-$(CONFIG_MPC8349) += ddr-gen2.o
 else
 COBJS-y += spd_sdram.o
 endif
 COBJS-$(CONFIG_FSL_DDR2) += law.o
+
+endif # not minimal
 
 COBJS	:= $(COBJS-y)
 SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c) $(addprefix $(obj),$(COBJS_LN-y:.o=.c))

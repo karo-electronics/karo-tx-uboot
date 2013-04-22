@@ -24,28 +24,39 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+//#define DEBUG
 
+#include <common.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 #include <linux/types.h>
-#include <common.h>
 #include <malloc.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
+#include <asm/arch/regs-bch.h>
+#include <asm/arch/regs-gpmi.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/dma.h>
 
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
+#ifndef CONFIG_MX6Q
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		512
+#else
+#define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		(512 / 4)
+#endif
+
 #define	MXS_NAND_METADATA_SIZE			10
 
 #define	MXS_NAND_COMMAND_BUFFER_SIZE		32
 
+/* BCH timeout in microseconds */
 #define	MXS_NAND_BCH_TIMEOUT			10000
 
+static struct bch_regs *bch_regs = (void *)BCH_BASE_ADDRESS;
+static struct gpmi_regs *gpmi_regs = (void *)GPMI_BASE_ADDRESS;
 struct mxs_nand_info {
 	int		cur_chip;
 
@@ -71,6 +82,109 @@ struct mxs_nand_info {
 	struct mxs_dma_desc	**desc;
 	uint32_t		desc_index;
 };
+
+#ifdef DEBUG
+#define dump_reg(b, r)	__dump_reg(&b->r, #r)
+static inline void __dump_reg(void *addr, const char *name)
+{
+	printf("%16s[%p]=%08x\n", name, addr, readl(addr));
+}
+
+#define dump_bch_reg(n) __dump_reg(&bch_regs->hw_bch_##n, #n)
+#define dump_gpmi_reg(n) __dump_reg(&gpmi_regs->hw_gpmi_##n, #n)
+static inline void dump_regs(void)
+{
+	printf("BCH:\n");
+	dump_bch_reg(ctrl);
+	dump_bch_reg(status0);
+	dump_bch_reg(mode);
+	dump_bch_reg(debug0);
+	dump_bch_reg(dbgkesread);
+	dump_bch_reg(dbgcsferead);
+	dump_bch_reg(dbgsyndegread);
+	dump_bch_reg(dbgahbmread);
+	dump_bch_reg(blockname);
+	dump_bch_reg(version);
+
+	printf("\nGPMI:\n");
+	dump_gpmi_reg(ctrl0);
+	dump_gpmi_reg(eccctrl);
+	dump_gpmi_reg(ecccount);
+	dump_gpmi_reg(payload);
+	dump_gpmi_reg(auxiliary);
+	dump_gpmi_reg(ctrl1);
+	dump_gpmi_reg(data);
+	dump_gpmi_reg(stat);
+	dump_gpmi_reg(debug);
+	dump_gpmi_reg(version);
+	dump_gpmi_reg(debug2);
+	dump_gpmi_reg(debug3);
+}
+
+static inline int dbg_addr(void *addr)
+{
+	if (((unsigned long)addr & ~0xfff) == BCH_BASE_ADDRESS)
+		return 1;
+	return 1;
+}
+
+static inline u32 mxs_readl(void *addr,
+			const char *fn, int ln)
+{
+	u32 val = readl(addr);
+	static void *last_addr;
+	static u32 last_val;
+
+	if (!dbg_addr(addr))
+		return val;
+
+	if (addr != last_addr || last_val != val) {
+		printf("%s@%d: Read %08x from %p\n", fn, ln, val, addr);
+		last_addr = addr;
+		last_val = val;
+	}
+	return val;
+}
+
+static inline void mxs_writel(u32 val, void *addr,
+			const char *fn, int ln)
+{
+	if (dbg_addr(addr))
+		printf("%s@%d: Writing %08x to %p...", fn, ln, val, addr);
+	writel(val, addr);
+	if (dbg_addr(addr))
+		printf(" result: %08x\n", readl(addr));
+}
+
+#undef readl
+#define readl(a) mxs_readl(a, __func__, __LINE__)
+
+#undef writel
+#define writel(v, a) mxs_writel(v, a, __func__, __LINE__)
+static inline void memdump(const void *addr, size_t len)
+{
+	const char *buf = addr;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		if (i % 16 == 0) {
+			if (i > 0)
+				printf("\n");
+			printf("%p:", &buf[i]);
+		}
+		printf(" %02x", buf[i]);
+	}
+	printf("\n");
+}
+#else
+static inline void memdump(void *addr, size_t len)
+{
+}
+
+static inline void dump_regs(void)
+{
+}
+#endif
 
 struct nand_ecclayout fake_ecc_layout;
 
@@ -133,9 +247,10 @@ static void mxs_nand_return_dma_descs(struct mxs_nand_info *info)
 	info->desc_index = 0;
 }
 
-static uint32_t mxs_nand_ecc_chunk_cnt(uint32_t page_data_size)
+static uint32_t mxs_nand_ecc_chunk_cnt(struct mtd_info *mtd)
 {
-	return page_data_size / MXS_NAND_CHUNK_DATA_CHUNK_SIZE;
+	struct nand_chip *nand = mtd->priv;
+	return mtd->writesize / nand->ecc.size;
 }
 
 static uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
@@ -146,6 +261,27 @@ static uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
 static uint32_t mxs_nand_aux_status_offset(void)
 {
 	return (MXS_NAND_METADATA_SIZE + 0x3) & ~0x3;
+}
+
+static int mxs_nand_gpmi_init(void)
+{
+	int ret;
+
+	/* Reset the GPMI block. */
+	ret = mxs_reset_block(&gpmi_regs->hw_gpmi_ctrl0_reg);
+	if (ret)
+		return ret;
+
+	/*
+	 * Choose NAND mode, set IRQ polarity, disable write protection and
+	 * select BCH ECC.
+	 */
+	clrsetbits_le32(&gpmi_regs->hw_gpmi_ctrl1,
+			GPMI_CTRL1_GPMI_MODE,
+			GPMI_CTRL1_ATA_IRQRDY_POLARITY | GPMI_CTRL1_DEV_RESET |
+			GPMI_CTRL1_BCH_MODE);
+	writel(0x500 << 16, &gpmi_regs->hw_gpmi_timing1);
+	return 0;
 }
 
 static inline uint32_t mxs_nand_get_ecc_strength(uint32_t page_data_size,
@@ -233,12 +369,15 @@ static uint32_t mxs_nand_mark_bit_offset(struct mtd_info *mtd)
  */
 static int mxs_nand_wait_for_bch_complete(void)
 {
-	struct mx28_bch_regs *bch_regs = (struct mx28_bch_regs *)MXS_BCH_BASE;
 	int timeout = MXS_NAND_BCH_TIMEOUT;
 	int ret;
 
-	ret = mx28_wait_mask_set(&bch_regs->hw_bch_ctrl_reg,
+	ret = mxs_wait_mask_set(&bch_regs->hw_bch_ctrl_reg,
 		BCH_CTRL_COMPLETE_IRQ, timeout);
+	if (ret) {
+		debug("%s@%d: %d\n", __func__, __LINE__, ret);
+		mxs_nand_gpmi_init();
+	}
 
 	writel(BCH_CTRL_COMPLETE_IRQ, &bch_regs->hw_bch_ctrl_clr);
 
@@ -322,8 +461,15 @@ static void mxs_nand_cmd_ctrl(struct mtd_info *mtd, int data, unsigned int ctrl)
 
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
-	if (ret)
-		printf("MXS NAND: Error sending command\n");
+	if (ret) {
+		int i;
+
+		printf("MXS NAND: Error sending command %08lx\n", d->cmd.pio_words[0]);
+		for (i = 0; i < nand_info->cmd_queue_len; i++) {
+			printf("%02x ", nand_info->cmd_buf[i]);
+		}
+		printf("\n");
+	}
 
 	mxs_nand_return_dma_descs(nand_info);
 
@@ -338,8 +484,6 @@ static int mxs_nand_device_ready(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 	struct mxs_nand_info *nand_info = chip->priv;
-	struct mx28_gpmi_regs *gpmi_regs =
-		(struct mx28_gpmi_regs *)MXS_GPMI_BASE;
 	uint32_t tmp;
 
 	tmp = readl(&gpmi_regs->hw_gpmi_stat);
@@ -374,7 +518,7 @@ static void mxs_nand_swap_block_mark(struct mtd_info *mtd,
 
 	uint32_t src;
 	uint32_t dst;
-
+return;
 	bit_offset = mxs_nand_mark_bit_offset(mtd);
 	buf_offset = mxs_nand_mark_byte_offset(mtd);
 
@@ -388,6 +532,9 @@ static void mxs_nand_swap_block_mark(struct mtd_info *mtd,
 	src |= data_buf[buf_offset + 1] << (8 - bit_offset);
 
 	dst = oob_buf[0];
+
+	debug("Swapping byte %02x @ %03x.%d with %02x @ %03x\n",
+		src & 0xff, buf_offset, bit_offset, dst & 0xff, 0);
 
 	oob_buf[0] = src;
 
@@ -419,6 +566,8 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		return;
 	}
 
+	memset(buf, 0xee, length);
+
 	/* Compile the DMA descriptor - a descriptor that reads data. */
 	d = mxs_nand_get_dma_desc(nand_info);
 	d->cmd.data =
@@ -437,7 +586,7 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		length;
 
 	mxs_dma_desc_append(channel, d);
-
+#ifndef CONFIG_MX6Q
 	/*
 	 * A DMA descriptor that waits for the command to end and the chip to
 	 * become ready.
@@ -461,11 +610,11 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		GPMI_CTRL0_ADDRESS_NAND_DATA;
 
 	mxs_dma_desc_append(channel, d);
-
+#endif
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
 	if (ret) {
-		printf("MXS NAND: DMA read error\n");
+		printf("%s: DMA read error\n", __func__);
 		goto rtn;
 	}
 
@@ -527,7 +676,7 @@ static void mxs_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf,
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
 	if (ret)
-		printf("MXS NAND: DMA write error\n");
+		printf("%s: DMA write error\n", __func__);
 
 	mxs_nand_return_dma_descs(nand_info);
 }
@@ -642,7 +791,7 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
 	if (ret) {
-		printf("MXS NAND: DMA read error\n");
+		printf("%s: DMA read error\n", __func__);
 		goto rtn;
 	}
 
@@ -660,7 +809,7 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 
 	/* Loop over status bytes, accumulating ECC status. */
 	status = nand_info->oob_buf + mxs_nand_aux_status_offset();
-	for (i = 0; i < mxs_nand_ecc_chunk_cnt(mtd->writesize); i++) {
+	for (i = 0; i < mxs_nand_ecc_chunk_cnt(mtd); i++) {
 		if (status[i] == 0x00)
 			continue;
 
@@ -750,13 +899,13 @@ static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
 	/* Execute the DMA chain. */
 	ret = mxs_dma_go(channel);
 	if (ret) {
-		printf("MXS NAND: DMA write error\n");
+		printf("%s: DMA write error\n", __func__);
 		goto rtn;
 	}
 
 	ret = mxs_nand_wait_for_bch_complete();
 	if (ret) {
-		printf("MXS NAND: BCH write timeout\n");
+		printf("%s: BCH write timeout\n", __func__);
 		goto rtn;
 	}
 
@@ -982,7 +1131,6 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 {
 	struct nand_chip *nand = mtd->priv;
 	struct mxs_nand_info *nand_info = nand->priv;
-	struct mx28_bch_regs *bch_regs = (struct mx28_bch_regs *)MXS_BCH_BASE;
 	uint32_t tmp;
 
 	/* Configure BCH and set NFC geometry */
@@ -993,10 +1141,15 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 		 * There will be occasional read errors upon boot when this
 		 * reset is done.
 		 */
-		mx28_reset_block(&bch_regs->hw_bch_ctrl_reg);
+		mxs_reset_block(&bch_regs->hw_bch_ctrl_reg);
+	readl(&bch_regs->hw_bch_ctrl_reg);
+
+	debug("mtd->writesize=%d\n", mtd->writesize);
+	debug("mtd->oobsize=%d\n", mtd->oobsize);
+	debug("ecc_strength=%d\n", mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize));
 
 	/* Configure layout 0 */
-	tmp = (mxs_nand_ecc_chunk_cnt(mtd->writesize) - 1)
+	tmp = (mxs_nand_ecc_chunk_cnt(mtd) - 1)
 		<< BCH_FLASHLAYOUT0_NBLOCKS_OFFSET;
 	tmp |= MXS_NAND_METADATA_SIZE << BCH_FLASHLAYOUT0_META_SIZE_OFFSET;
 	tmp |= (mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize) >> 1)
@@ -1050,7 +1203,7 @@ int mxs_nand_alloc_buffers(struct mxs_nand_info *nand_info)
 	/* DMA buffers */
 	buf = memalign(MXS_DMA_ALIGNMENT, nand_info->data_buf_size);
 	if (!buf) {
-		printf("MXS NAND: Error allocating DMA buffers\n");
+		printf("%s: Error allocating DMA buffers\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -1077,53 +1230,56 @@ int mxs_nand_alloc_buffers(struct mxs_nand_info *nand_info)
  */
 int mxs_nand_init(struct mxs_nand_info *info)
 {
-	struct mx28_gpmi_regs *gpmi_regs =
-		(struct mx28_gpmi_regs *)MXS_GPMI_BASE;
-	int i = 0, j;
+	int ret;
+	int i;
 
 	info->desc = malloc(sizeof(struct mxs_dma_desc *) *
 				MXS_NAND_DMA_DESCRIPTOR_COUNT);
-	if (!info->desc)
+	if (!info->desc) {
+		printf("MXS NAND: Unable to allocate DMA descriptor table\n");
+		ret = -ENOMEM;
 		goto err1;
+	}
+
+	mxs_dma_init();
 
 	/* Allocate the DMA descriptors. */
 	for (i = 0; i < MXS_NAND_DMA_DESCRIPTOR_COUNT; i++) {
 		info->desc[i] = mxs_dma_desc_alloc();
-		if (!info->desc[i])
+		if (!info->desc[i]) {
+			printf("MXS NAND: Unable to allocate DMA descriptors\n");
+			ret = -ENOMEM;
 			goto err2;
+		}
 	}
 
 	/* Init the DMA controller. */
-	for (j = MXS_DMA_CHANNEL_AHB_APBH_GPMI0;
-		j <= MXS_DMA_CHANNEL_AHB_APBH_GPMI7; j++) {
-		if (mxs_dma_init_channel(j))
+	for (i = 0; i < CONFIG_SYS_NAND_MAX_CHIPS; i++) {
+		const int chan = MXS_DMA_CHANNEL_AHB_APBH_GPMI0 + i;
+
+		ret = mxs_dma_init_channel(chan);
+		if (ret) {
+			printf("Failed to initialize DMA channel %d\n", chan);
 			goto err3;
+		}
 	}
 
-	/* Reset the GPMI block. */
-	mx28_reset_block(&gpmi_regs->hw_gpmi_ctrl0_reg);
-
-	/*
-	 * Choose NAND mode, set IRQ polarity, disable write protection and
-	 * select BCH ECC.
-	 */
-	clrsetbits_le32(&gpmi_regs->hw_gpmi_ctrl1,
-			GPMI_CTRL1_GPMI_MODE,
-			GPMI_CTRL1_ATA_IRQRDY_POLARITY | GPMI_CTRL1_DEV_RESET |
-			GPMI_CTRL1_BCH_MODE);
+	ret = mxs_nand_gpmi_init();
+	if (ret)
+		goto err3;
 
 	return 0;
 
 err3:
-	for (--j; j >= 0; j--)
-		mxs_dma_release(j);
+	for (--i; i >= 0; i--)
+		mxs_dma_release(i + MXS_DMA_CHANNEL_AHB_APBH_GPMI0);
+	i = MXS_NAND_DMA_DESCRIPTOR_COUNT - 1;
 err2:
 	free(info->desc);
-err1:
 	for (--i; i >= 0; i--)
 		mxs_dma_desc_free(info->desc[i]);
-	printf("MXS NAND: Unable to allocate DMA descriptors\n");
-	return -ENOMEM;
+err1:
+	return ret;
 }
 
 /*!

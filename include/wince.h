@@ -18,8 +18,6 @@
 #ifndef __WINCE_H__
 #define __WINCE_H__
 
-#define CE_DOFFSET		(net->align_offset + ETHER_HDR_SIZE + IP_HDR_SIZE)
-
 /* Bin image parse results */
 #define CE_PR_EOF	0
 #define CE_PR_MORE	1
@@ -161,8 +159,6 @@ typedef struct {
 	unsigned short  e32_subsys;     /* The subsystem type                  */
 } e32_rom;
 
-
-
 /* OS config msg */
 
 #define EDBG_FL_DBGMSG    0x01  /* Debug messages */
@@ -249,8 +245,6 @@ typedef struct
 	char		mtdparts[];
 } ce_std_driver_globals;
 
-#pragma pack()
-
 typedef struct {
 	void	     *rtiPhysAddr;
 	unsigned int rtiPhysLen;
@@ -276,7 +270,7 @@ typedef struct {
 	int endOfBin;
 
 	edbg_os_config_data edbgConfig;
-} __attribute__((packed)) ce_bin;
+} ce_bin;
 
 /* IPv4 support */
 
@@ -294,19 +288,38 @@ struct sockaddr_in {
 #define ETH_ALEN	6
 #endif
 
+enum bootme_state {
+	BOOTME_INIT,
+	BOOTME_DOWNLOAD,
+	BOOTME_DEBUG,
+	BOOTME_DONE,
+	BOOTME_ERROR,
+};
+
 typedef struct {
 	int verbose;
 	int link;
+#ifdef BORKED
 	struct sockaddr_in locAddr;
 	struct sockaddr_in srvAddrSend;
 	struct sockaddr_in srvAddrRecv;
+#else
+	IPaddr_t server_ip;
+#endif
 	int gotJumpingRequest;
-	unsigned char seqNum;
-	unsigned short blockNum;
 	int dataLen;
-	int align_offset;
-	int got_packet_4me;
+//	int align_offset;
+//	int got_packet_4me;
+//	int status;
+	enum bootme_state state;
+	unsigned short blockNum;
+	unsigned char seqNum;
+	unsigned char pad;
+#if 0
 	unsigned char data[PKTSIZE_ALIGN];
+#else
+	unsigned char *data;
+#endif
 } ce_net;
 
 struct timeval {
@@ -423,4 +436,14 @@ struct timeval {
 #define EDBG_CPU_PPC821					(EDBG_CPU_TYPE_PPC | 0)
 #define EDBG_CPU_PPC403					(EDBG_CPU_TYPE_PPC | 1)
 #define EDBG_CPU_THUMB720				(EDBG_CPU_TYPE_THUMB | 0)
+
+typedef enum bootme_state bootme_hand_f(const void *pkt, size_t len);
+
+int bootme_recv_frame(void *buf, size_t len, int timeout);
+int bootme_send_frame(const void *buf, size_t len);
+//void bootme_init(IPaddr_t server_ip);
+int BootMeRequest(IPaddr_t server_ip, const void *buf, size_t len, int timeout);
+//int ce_download_handler(const void *buf, size_t len);
+int BootMeDownload(bootme_hand_f *pkt_handler);
+int BootMeDebugStart(bootme_hand_f *pkt_handler);
 #endif

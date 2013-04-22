@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009-2010 Amit Kucheria <amit.kucheria@canonical.com>
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
+ * Copyright (C) 2009-2012 Genesi USA, Inc.
  *
  * The code contained herein is licensed under the GNU General Public
  * License. You may obtain a copy of the GNU General Public License
@@ -10,12 +11,36 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#ifndef __MACH_IOMUX_MX51_H__
-#define __MACH_IOMUX_MX51_H__
+/*
+ * The vast majority of this file is taken from the Linux kernel at
+ * commit 5d23b39
+ */
 
-#include "iomux-v3.h"
-#define __NA_	0x000
+#ifndef __IOMUX_MX51_H__
+#define __IOMUX_MX51_H__
 
+#include <asm/imx-common/iomux-v3.h>
+
+#define PAD_CTL_DVS			(1 << 13)
+#define PAD_CTL_INPUT_DDR		(1 << 9)
+#define PAD_CTL_HYS			(1 << 8)
+
+#define PAD_CTL_PKE			(1 << 7)
+#define PAD_CTL_PUE			(1 << 6 | PAD_CTL_PKE)
+#define PAD_CTL_PUS_100K_DOWN		(0 << 4 | PAD_CTL_PUE)
+#define PAD_CTL_PUS_47K_UP		(1 << 4 | PAD_CTL_PUE)
+#define PAD_CTL_PUS_100K_UP		(2 << 4 | PAD_CTL_PUE)
+#define PAD_CTL_PUS_22K_UP		(3 << 4 | PAD_CTL_PUE)
+
+#define PAD_CTL_ODE			(1 << 3)
+
+#define PAD_CTL_DSE_LOW			(0 << 1)
+#define PAD_CTL_DSE_MED			(1 << 1)
+#define PAD_CTL_DSE_HIGH		(2 << 1)
+#define PAD_CTL_DSE_MAX			(3 << 1)
+
+#define PAD_CTL_SRE_FAST		(1 << 0)
+#define PAD_CTL_SRE_SLOW		(0 << 0)
 
 /* Pad control groupings */
 #define MX51_UART_PAD_CTRL	(PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_DSE_HIGH | \
@@ -36,6 +61,8 @@
 				PAD_CTL_SRE_FAST | PAD_CTL_DVS)
 #define MX51_GPIO_PAD_CTRL	(PAD_CTL_DSE_HIGH | PAD_CTL_PKE | PAD_CTL_SRE_FAST)
 
+#define __NA_ 0x000
+
 #define MX51_PAD_CTRL_2		(PAD_CTL_PKE | PAD_CTL_HYS)
 #define MX51_PAD_CTRL_3		(PAD_CTL_PKE | PAD_CTL_PUS_100K_UP)
 #define MX51_PAD_CTRL_4		(PAD_CTL_PKE | PAD_CTL_DVS | PAD_CTL_HYS)
@@ -47,10 +74,7 @@
  * See also iomux-v3.h
  */
 
-/* Raw pin modes without pad control */
 /*							  PAD    MUX ALT INPSE PATH PADCTRL */
-
-/* The same pins as above but with the default pad control values applied */
 #define MX51_PAD_EIM_D16__AUD4_RXFS		IOMUX_PAD(0x3f0, 0x05c, 5, __NA_, 0, NO_PAD_CTRL)
 #define MX51_PAD_EIM_D16__AUD5_TXD		IOMUX_PAD(0x3f0, 0x05c, 7, 0x8d8, 0, NO_PAD_CTRL)
 #define MX51_PAD_EIM_D16__EIM_D16		IOMUX_PAD(0x3f0, 0x05c, 0, __NA_, 0, NO_PAD_CTRL)
@@ -810,4 +834,4 @@
 #define MX51_PAD_GPIO1_9__SD2_LCTL		IOMUX_PAD(0x818, 0x3ec, 6, __NA_, 0, NO_PAD_CTRL)
 #define MX51_PAD_GPIO1_9__USBH3_OC		IOMUX_PAD(0x818, 0x3ec, 1, __NA_, 0, NO_PAD_CTRL)
 
-#endif /* __MACH_IOMUX_MX51_H__ */
+#endif /* __IOMUX_MX51_H__ */

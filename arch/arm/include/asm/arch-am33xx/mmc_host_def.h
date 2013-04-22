@@ -24,12 +24,12 @@
 #define OMAP_HSMMC3_BASE		0x47810000
 
 typedef struct hsmmc {
-	unsigned char res1[0x110];
+	unsigned int res1[0x110 / 4];
 	unsigned int sysconfig;		/* 0x110 */
 	unsigned int sysstatus;		/* 0x114 */
-	unsigned char res2[0x14];
+	unsigned int res2[0x14 / 4];
 	unsigned int con;		/* 0x12C */
-	unsigned char res3[0xD4];
+	unsigned int res3[0xD4 / 4];
 	unsigned int blk;		/* 0x204 */
 	unsigned int arg;		/* 0x208 */
 	unsigned int cmd;		/* 0x20C */
@@ -43,7 +43,7 @@ typedef struct hsmmc {
 	unsigned int sysctl;		/* 0x22C */
 	unsigned int stat;		/* 0x230 */
 	unsigned int ie;		/* 0x234 */
-	unsigned char res4[0x8];
+	unsigned int res4[2];
 	unsigned int capa;		/* 0x240 */
 } hsmmc_t;
 
@@ -78,7 +78,7 @@ typedef struct hsmmc {
 #define DDIR_READ			(0x1 << 4)
 #define MSBS_SGLEBLK			(0x0 << 5)
 #define MSBS_MULTIBLK			(0x1 << 5)
-#define RSP_TYPE_OFFSET			(16)
+#define RSP_TYPE_OFFSET			16
 #define RSP_TYPE_MASK			(0x3 << 16)
 #define RSP_TYPE_NORSP			(0x0 << 16)
 #define RSP_TYPE_LGHT136		(0x1 << 16)

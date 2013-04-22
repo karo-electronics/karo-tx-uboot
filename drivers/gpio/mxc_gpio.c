@@ -41,13 +41,15 @@ static unsigned long gpio_ports[] = {
 	[0] = GPIO1_BASE_ADDR,
 	[1] = GPIO2_BASE_ADDR,
 	[2] = GPIO3_BASE_ADDR,
-#if defined(CONFIG_MX25) || defined(CONFIG_MX51) || defined(CONFIG_MX53) || \
-		defined(CONFIG_MX6Q)
+#if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX51) || \
+		defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	[3] = GPIO4_BASE_ADDR,
 #endif
-#if defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
+#if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
 	[4] = GPIO5_BASE_ADDR,
 	[5] = GPIO6_BASE_ADDR,
+#endif
+#if defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
 	[6] = GPIO7_BASE_ADDR,
 #endif
 };
@@ -59,8 +61,10 @@ static int mxc_gpio_direction(unsigned int gpio,
 	struct gpio_regs *regs;
 	u32 l;
 
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 
 	gpio &= 0x1f;
 
@@ -86,8 +90,10 @@ int gpio_set_value(unsigned gpio, int value)
 	struct gpio_regs *regs;
 	u32 l;
 
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 
 	gpio &= 0x1f;
 
@@ -109,28 +115,42 @@ int gpio_get_value(unsigned gpio)
 	struct gpio_regs *regs;
 	u32 val;
 
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 
 	gpio &= 0x1f;
 
 	regs = (struct gpio_regs *)gpio_ports[port];
 
-	val = (readl(&regs->gpio_dr) >> gpio) & 0x01;
-
+	if (readl(&regs->gpio_dir) & (1 << gpio)) {
+		printf("WARNING: Reading status of output GPIO_%d_%d\n",
+			port - GPIO_TO_PORT(0), gpio);
+		val = (readl(&regs->gpio_dr) >> gpio) & 0x01;
+	} else {
+		val = (readl(&regs->gpio_psr) >> gpio) & 0x01;
+	}
 	return val;
 }
 
 int gpio_request(unsigned gpio, const char *label)
 {
 	unsigned int port = GPIO_TO_PORT(gpio);
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 	return 0;
 }
 
 int gpio_free(unsigned gpio)
 {
+	unsigned int port = GPIO_TO_PORT(gpio);
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
+		return -1;
+	}
 	return 0;
 }
 

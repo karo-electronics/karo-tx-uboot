@@ -20,6 +20,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
+//#define DEBUG
+//#define TEST_LAUNCH
+//#define DDEBUG
+#ifdef DDEBUG
+#define _debug printf
+#else
+#define _debug debug
+#endif
 
 #include <common.h>
 #include <command.h>
@@ -33,7 +41,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CE_FIX_ADDRESS(a)	((void *)((a) - WINCE_VRAM_BASE + CONFIG_SYS_SDRAM_BASE))
 
 #ifndef INT_MAX
-#define INT_MAX			((1U << (sizeof(int) * 8 - 1)) - 1)
+#define INT_MAX			((int)(~0 >> 1))
 #endif
 
 /* Bin image parse states */
@@ -52,23 +60,17 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static ce_bin __attribute__ ((aligned (32))) g_bin;
 static ce_net __attribute__ ((aligned (32))) g_net;
-
-static inline void print_IPaddr(IPaddr_t ip)
-{
-	printf("%d.%d.%d.%d",
-		ip & 0xff,
-		(ip >> 8) & 0xff,
-		(ip >> 16) & 0xff,
-		(ip >> 24) & 0xff);
-}
+static IPaddr_t server_ip;
 
 static void ce_init_bin(ce_bin *bin, unsigned char *dataBuffer)
 {
 	memset(bin, 0, sizeof(*bin));
 
+debug("%s@%d: \n", __func__, __LINE__);
 	bin->data = dataBuffer;
 	bin->parseState = CE_PS_RTI_ADDR;
 	bin->parsePtr = (unsigned char *)bin;
+debug("%s@%d: \n", __func__, __LINE__);
 }
 
 static int ce_is_bin_image(void *image, int imglen)
@@ -128,8 +130,7 @@ static inline void ce_dump_block(void *ptr, int length)
 }
 #endif
 
-static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb,
-				ce_bin *bin)
+static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 {
 	char *mtdparts = getenv("mtdparts");
 	size_t max_len = ALIGN((unsigned long)std_drv_glb, SZ_4K) -
@@ -142,7 +143,7 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb,
 	snprintf(std_drv_glb->deviceId, sizeof(std_drv_glb->deviceId),
 		"Triton%02X", eth_get_dev()->enetaddr[5]);
 
-	std_drv_glb->kitl.ipAddress = gd->bd->bi_ip_addr;
+	NetCopyIP(&std_drv_glb->kitl.ipAddress, &NetOurIP);
 	std_drv_glb->kitl.ipMask = getenv_IPaddr("netmask");
 	std_drv_glb->kitl.ipRoute = getenv_IPaddr("gatewayip");
 
@@ -177,7 +178,7 @@ static void ce_prepare_run_bin(ce_bin *bin)
 			(void *)ce_magic + sizeof(*ce_magic) - 1);
 		memcpy(ce_magic, &ce_magic_template, sizeof(*ce_magic));
 
-		ce_setup_std_drv_globals(std_drv_glb, bin);
+		ce_setup_std_drv_globals(std_drv_glb);
 		ce_magic->size = sizeof(*std_drv_glb) +
 			strlen(std_drv_glb->mtdparts) + 1;
 		ce_dump_block(ce_magic, offsetof(struct ce_magic, drv_glb) +
@@ -205,15 +206,9 @@ static void ce_prepare_run_bin(ce_bin *bin)
 		/* Gateway config */
 		drv_glb->ipGate = getenv_IPaddr("gatewayip");
 #ifdef DEBUG
-		debug("got IP address ");
-		print_IPaddr(drv_glb->ipAddr);
-		debug(" from environment\n");
-		debug("got IP mask ");
-		print_IPaddr(drv_glb->ipMask);
-		debug(" from environment\n");
-		debug("got gateway address ");
-		print_IPaddr(drv_glb->ipGate);
-		debug(" from environment\n");
+		debug("got IP address %pI4 from environment\n", &drv_glb->ipAddr);
+		debug("got IP mask %pI4 from environment\n", &drv_glb->ipMask);
+		debug("got gateway address %pI4 from environment\n", &drv_glb->ipGate);
 #endif
 		/* EDBG services config */
 		memcpy(&drv_glb->edbgConfig, &bin->edbgConfig,
@@ -282,13 +277,20 @@ static int ce_lookup_ep_bin(ce_bin *bin)
 
 static int ce_parse_bin(ce_bin *bin)
 {
-	unsigned char *pbData = bin->data;
+	unsigned char *pbData = g_net.data + 4;//bin->data;
 	int len = bin->dataLen;
 	int copyLen;
 
 	debug("starting ce image parsing:\n\tbin->binLen: 0x%08X\n", bin->binLen);
+	debug("\tlen=%d\n", len);
+	debug("\tparse_state=%d\n", bin->parseState);
 
 	if (len) {
+		ce_dump_block(pbData, len);
+#if 0
+if (bin->binLen > 1024)
+	return CE_PR_EOF;
+#endif
 		if (bin->binLen == 0) {
 			// Check for the .BIN signature first
 			if (!ce_is_bin_image(pbData, len)) {
@@ -341,6 +343,8 @@ static int ce_parse_bin(ce_bin *bin)
 				break;
 
 			case CE_PS_E_DATA:
+				debug("ePhysAddr=%p physlen=%08x parselen=%08x\n",
+					bin->ePhysAddr, bin->ePhysLen, bin->parseLen);
 				if (bin->ePhysAddr) {
 					copyLen = CE_MIN(bin->ePhysLen - bin->parseLen, len);
 					bin->parseLen += copyLen;
@@ -416,6 +420,9 @@ static int ce_bin_load(void *image, int imglen)
 static void ce_run_bin(void (*entry)(void))
 {
 	printf("Launching Windows CE ...\n");
+#ifdef TEST_LAUNCH
+return;
+#endif
 	entry();
 }
 
@@ -472,127 +479,63 @@ U_BOOT_CMD(
 	"\taddr\t\t-boot image from address addr\n"
 );
 
-static void wince_handler(uchar *pkt, unsigned dport, IPaddr_t sip,
-			unsigned sport, unsigned len)
-{
-	void *eth_pkt = pkt - IP_HDR_SIZE - ETHER_HDR_SIZE;
-	unsigned eth_len = len + IP_HDR_SIZE + ETHER_HDR_SIZE;
-
-	NetState = NETLOOP_SUCCESS;	/* got input - quit net loop */
-
-	if (memcmp(eth_pkt, eth_get_dev()->enetaddr, ETH_ALEN) != 0) {
-		g_net.got_packet_4me = 0;
-		return;
-	}
-	memcpy(&g_net.data[g_net.align_offset],
-		eth_pkt, eth_len);
-
-	g_net.dataLen = len;
-	g_net.got_packet_4me = 1;
-
-	g_net.srvAddrRecv.sin_port = *((unsigned short *)(&g_net.data[
-			ETHER_HDR_SIZE + IP_HDR_SIZE_NO_UDP + g_net.align_offset]));
-	NetCopyIP(&g_net.srvAddrRecv.sin_addr, &g_net.data[ETHER_HDR_SIZE +
-		g_net.align_offset + 12]);
-	memcpy(NetServerEther, &g_net.data[g_net.align_offset + 6], ETH_ALEN);
-#if 0
-	printf("received packet:   buffer %p   Laenge %d \n", pkt, len);
-	printf("from ");
-	print_IPaddr(g_net.srvAddrRecv.sin_addr);
-	printf(", port: %d\n", ntohs(g_net.srvAddrRecv.sin_port));
-
-	ce_dump_block(pkt, len);
-
-	printf("Headers:\n");
-	ce_dump_block(eth_pkt, ETHER_HDR_SIZE + IP_HDR_SIZE);
-	printf("my port should be: %d\n",
-		ntohs(*((unsigned short *)(&g_net.data[ETHER_HDR_SIZE +
-							IP_HDR_SIZE_NO_UDP +
-							g_net.align_offset + 2]))));
-#endif
-}
-
-/* returns packet length if successfull */
-static int ce_recv_packet(uchar *buf, int len, struct sockaddr_in *from,
-		struct sockaddr_in *local, struct timeval *timeout)
-{
-	int rxlength;
-	ulong time_started;
-
-	g_net.got_packet_4me = 0;
-	time_started = get_timer(0);
-	NetSetHandler(wince_handler);
-
-	while (1) {
-		rxlength = eth_rx();
-		if (g_net.got_packet_4me)
-			return g_net.dataLen;
-		/* check for timeout */
-		if (get_timer(time_started) > timeout->tv_sec * CONFIG_SYS_HZ) {
-			return -ETIMEDOUT;
-		}
-	}
-}
-
-static int ce_recv_frame(ce_net *net, int timeout)
-{
-	struct timeval timeo;
-
-	timeo.tv_sec = timeout;
-	timeo.tv_usec = 0;
-
-	net->dataLen = ce_recv_packet(&net->data[net->align_offset],
-				sizeof(net->data) - net->align_offset,
-				&net->srvAddrRecv, &net->locAddr, &timeo);
-
-	if (net->dataLen < 0 || net->dataLen > sizeof(net->data)) {
-		/* Error! No data available */
-		net->dataLen = 0;
-	}
-
-	return net->dataLen;
-}
-
-static int ce_send_frame(ce_net *net)
-{
-	uchar *pkt = (uchar *)NetTxPacket + ETHER_HDR_SIZE + IP_HDR_SIZE;
-
-	memcpy(pkt, &net->data[net->align_offset + ETHER_HDR_SIZE + IP_HDR_SIZE],
-		net->dataLen);
-	return NetSendUDPPacket(NetServerEther, net->srvAddrSend.sin_addr,
-				ntohs(net->srvAddrSend.sin_port),
-				ntohs(net->locAddr.sin_port), net->dataLen);
-}
-
 static int ce_send_write_ack(ce_net *net)
 {
-	unsigned short *wdata;
-	unsigned long aligned_address;
+	int ret;
+	unsigned short wdata[2];
+	int retries = 0;
 
-	aligned_address = (unsigned long)&net->data[ETHER_HDR_SIZE + IP_HDR_SIZE + net->align_offset];
-
-	wdata = (unsigned short *)aligned_address;
 	wdata[0] = htons(EDBG_CMD_WRITE_ACK);
 	wdata[1] = htons(net->blockNum);
+	net->dataLen = sizeof(wdata);
+	memcpy(net->data, wdata, net->dataLen);
 
-	net->dataLen = 4;
-
-	return ce_send_frame(net);
+	do {
+		ret = bootme_send_frame(net->data, net->dataLen);
+		if (ret) {
+			printf("Failed to send write ack %d; retries=%d\n",
+				ret, retries);
+		}
+debug("*");
+	} while (ret != 0 && retries-- > 0);
+	return ret;
 }
 
-static int ce_process_download(ce_net *net, ce_bin *bin)
+static enum bootme_state ce_process_download(ce_net *net, ce_bin *bin)
 {
-	int ret = CE_PR_MORE;
+	int ret = net->state;
 
-	if (net->dataLen >= 2) {
+	if (net->dataLen >= 4) {
 		unsigned short command;
+		unsigned short blknum;
 
-		command = ntohs(*(unsigned short *)&net->data[CE_DOFFSET]);
+		memcpy(&command, net->data, sizeof(command));
+		command = ntohs(command);
 		debug("command found: 0x%04X\n", command);
+
+		if (net->state == BOOTME_DOWNLOAD) {
+			unsigned short nxt = net->blockNum + 1;
+
+			memcpy(&blknum, &net->data[2], sizeof(blknum));
+			blknum = ntohs(blknum);
+			if (blknum == nxt) {
+				net->blockNum = blknum;
+debug("#");
+			} else {
+				int rc = ce_send_write_ack(net);
+
+				printf("Dropping out of sequence packet with ID %d (expected %d)\n",
+					blknum, nxt);
+				if (rc != 0)
+					return rc;
+
+				return ret;
+			}
+		}
 
 		switch (command) {
 		case EDBG_CMD_WRITE_REQ:
-			if (!net->link) {
+			if (net->state == BOOTME_INIT) {
 				// Check file name for WRITE request
 				// CE EShell uses "boot.bin" file name
 #if 0
@@ -600,48 +543,49 @@ static int ce_process_download(ce_net *net, ce_bin *bin)
 					inet_ntoa((in_addr_t *)&net->srvAddrRecv),
 					ntohs(net->srvAddrRecv.sin_port));
 #endif
-				if (strncmp((char *)&net->data[CE_DOFFSET + 2],
+				if (strncmp((char *)&net->data[2],
 						"boot.bin", 8) == 0) {
 					// Some diag output
 					if (net->verbose) {
-						printf("Locked Down download link, IP: ");
-						print_IPaddr(net->srvAddrRecv.sin_addr);
-						printf(", port: %d\n", ntohs(net->srvAddrRecv.sin_port));
-
-						printf("Sending BOOTME request [%d] to ",
-							net->seqNum);
-						print_IPaddr(net->srvAddrSend.sin_addr);
-						printf("\n");
+						printf("Locked Down download link, IP: %pI4\n",
+							&NetServerIP);
+						printf("Sending BOOTME request [%d] to %pI4\n",
+							net->seqNum, &NetServerIP);
 					}
 
 					// Lock down EShell download link
-					net->locAddr.sin_port = htons(EDBG_DOWNLOAD_PORT + 1);
-					net->srvAddrSend.sin_port = net->srvAddrRecv.sin_port;
-					net->srvAddrSend.sin_addr = net->srvAddrRecv.sin_addr;
-					net->link = 1;
+//					net->link = 1;
+					ret = BOOTME_DOWNLOAD;
 				} else {
 					// Unknown link
-					net->srvAddrRecv.sin_port = 0;
+					printf("Unknown link\n");
 				}
 
-				if (net->link) {
-					ce_send_write_ack(net);
+				if (ret == BOOTME_DOWNLOAD) {
+					int rc = ce_send_write_ack(net);
+					if (rc != 0)
+						return rc;
 				}
 			}
 			break;
 
 		case EDBG_CMD_WRITE:
-			/* Fix data len */
+			/* Fixup data len */
 			bin->dataLen = net->dataLen - 4;
-
 			ret = ce_parse_bin(bin);
 			if (ret != CE_PR_ERROR) {
-				net->blockNum++;
-				ce_send_write_ack(net);
+				int rc = ce_send_write_ack(net);
+				if (rc)
+					return rc;
+				if (ret == CE_PR_EOF)
+					ret = BOOTME_DONE;
+			} else {
+				ret = BOOTME_ERROR;
 			}
 			break;
 
 		case EDBG_CMD_READ_REQ:
+			printf("Ignoring EDBG_CMD_READ_REQ\n");
 			/* Read requests are not supported
 			 * Do nothing ...
 			 */
@@ -651,67 +595,64 @@ static int ce_process_download(ce_net *net, ce_bin *bin)
 			printf("Error: unknown error on the host side\n");
 
 			bin->binLen = 0;
-			ret = CE_PR_ERROR;
+			ret = BOOTME_ERROR;
 			break;
 
 		default:
 			printf("unknown command 0x%04X\n", command);
-			return -EINVAL;
+			net->state = BOOTME_ERROR;
 		}
 	}
 	return ret;
 }
 
-static void ce_init_edbg_link(ce_net *net)
+static enum bootme_state ce_process_edbg(ce_net *net, ce_bin *bin)
 {
-	/* Initialize EDBG link for commands */
+	enum bootme_state ret = net->state;
+	eth_dbg_hdr header;
 
-	net->locAddr.sin_port = htons(EDBG_DOWNLOAD_PORT);
-	net->srvAddrSend.sin_port = htons(EDBG_DOWNLOAD_PORT);
-	net->srvAddrRecv.sin_port = 0;
-	net->link = 0;
-}
-
-static void ce_process_edbg(ce_net *net, ce_bin *bin)
-{
-	eth_dbg_hdr *header;
-
-	if (net->dataLen < sizeof(eth_dbg_hdr)) {
+debug("%s: received packet of %u byte @ %p\n", __func__, net->dataLen, net->data);
+	if (net->dataLen < sizeof(header)) {
 		/* Bad packet */
-
-		net->srvAddrRecv.sin_port = 0;
-		return;
+		printf("Invalid packet size %u\n", net->dataLen);
+		net->dataLen = 0;
+		return ret;
+	}
+debug("%s@%d: Copying header from %p..%p to %p\n", __func__, __LINE__,
+	net->data, net->data + sizeof(header) - 1, &header);
+	memcpy(&header, net->data, sizeof(header));
+	if (header.id != EDBG_ID) {
+		/* Bad packet */
+		printf("Bad EDBG ID %08x\n", header.id);
+		net->dataLen = 0;
+		return ret;
 	}
 
-	header = (eth_dbg_hdr *)&net->data[net->align_offset + ETHER_HDR_SIZE + IP_HDR_SIZE];
-
-	if (header->id != EDBG_ID) {
-		/* Bad packet */
-
-		net->srvAddrRecv.sin_port = 0;
-		return;
-	}
-
-	if (header->service != EDBG_SVC_ADMIN) {
+debug("%s@%d\n", __func__, __LINE__);
+	if (header.service != EDBG_SVC_ADMIN) {
 		/* Unknown service */
-		return;
+		printf("Bad EDBG service %02x\n", header.service);
+		net->dataLen = 0;
+		return ret;
 	}
 
-	if (!net->link) {
+debug("%s@%d\n", __func__, __LINE__);
+	if (net->state == BOOTME_INIT) {
 		/* Some diag output */
 		if (net->verbose) {
-			printf("Locked Down EDBG service link, IP: ");
-			print_IPaddr(net->srvAddrRecv.sin_addr);
-			printf(", port: %d\n", ntohs(net->srvAddrRecv.sin_port));
+			printf("Locked Down EDBG service link, IP: %pI4\n",
+				&NetServerIP);
 		}
 
 		/* Lock down EDBG link */
-		net->srvAddrSend.sin_port = net->srvAddrRecv.sin_port;
-		net->link = 1;
+//		net->link = 1;
+		net->state = BOOTME_DEBUG;
 	}
 
-	switch (header->cmd) {
+debug("%s@%d\n", __func__, __LINE__);
+	switch (header.cmd) {
 	case EDBG_CMD_JUMPIMG:
+debug("%s@%d\n", __func__, __LINE__);
 		net->gotJumpingRequest = 1;
 
 		if (net->verbose) {
@@ -719,8 +660,9 @@ static void ce_process_edbg(ce_net *net, ce_bin *bin)
 		}
 		/* Just pass through and copy CONFIG structure */
 	case EDBG_CMD_OS_CONFIG:
+debug("%s@%d\n", __func__, __LINE__);
 		/* Copy config structure */
-		memcpy(&bin->edbgConfig, header->data,
+		memcpy(&bin->edbgConfig, header.data,
 			sizeof(edbg_os_config_data));
 		if (net->verbose) {
 			printf("Received CONFIG command\n");
@@ -755,32 +697,91 @@ static void ce_process_edbg(ce_net *net, ce_bin *bin)
 				printf("--> Force clean boot\n");
 			}
 		}
+		ret = BOOTME_DEBUG;
 		break;
 
 	default:
 		if (net->verbose) {
-			printf("Received unknown command: %08X\n", header->cmd);
+			printf("Received unknown command: %08X\n", header.cmd);
 		}
-		return;
+		return BOOTME_ERROR;
 	}
 
 	/* Respond with ack */
-	header->flags = EDBG_FL_FROM_DEV | EDBG_FL_ACK;
+	header.flags = EDBG_FL_FROM_DEV | EDBG_FL_ACK;
 	net->dataLen = EDBG_DATA_OFFSET;
-	ce_send_frame(net);
+debug("%s@%d: sending packet %p len %u\n", __func__, __LINE__,
+	net->data, net->dataLen);
+	bootme_send_frame(net->data, net->dataLen);
+	return ret;
+}
+
+static enum bootme_state ce_edbg_handler(const void *buf, size_t len)
+{
+	enum bootme_state ret;
+
+	if (len == 0) {
+		_debug("%s: EOF\n", __func__);
+		return BOOTME_DONE;
+	}
+#if 0
+	if (len > sizeof(g_net.data)) {
+		debug("Dropping oversized packet of %u bytes (max. size %u)\n",
+			len, sizeof(g_net.data));
+		return g_net.state;
+	}
+	debug("Copying network packet of %u bytes from %p to %p\n",
+		len, buf, g_net.data);
+	memcpy(g_net.data, buf, len);
+	g_net.dataLen = len;
+#else
+	g_net.data = (void *)buf;
+	g_net.dataLen = len;
+#endif
+	ret = ce_process_edbg(&g_net, &g_bin);
+	return ret;
+}
+
+static void ce_init_edbg_link(ce_net *net)
+{
+	/* Initialize EDBG link for commands */
+	net->state = BOOTME_INIT;
+}
+
+static enum bootme_state ce_download_handler(const void *buf, size_t len)
+{
+#if 0
+	if (len > sizeof(g_net.data)) {
+		debug("Dropping oversized packet of %u bytes (max. size %u)\n",
+			len, sizeof(g_net.data));
+		return g_net.state;
+	}
+	debug("Copying network packet of %u bytes from %p to %p\n",
+		len, buf, g_net.data);
+	memcpy(g_net.data, buf, len);
+	g_net.dataLen = len;
+#else
+	g_net.data = (void *)buf;
+	g_net.dataLen = len;
+#endif
+	g_net.state = ce_process_download(&g_net, &g_bin);
+	return g_net.state;
 }
 
 static int ce_send_bootme(ce_net *net)
 {
 	eth_dbg_hdr *header;
 	edbg_bootme_data *data;
-#ifdef DEBUG
+	unsigned char txbuf[PKTSIZE_ALIGN];
+#ifdef DEBUG_
 	int	i;
 	unsigned char	*pkt;
 #endif
 	/* Fill out BOOTME packet */
+net->data = txbuf;
+assert(net->data != NULL);
 	memset(net->data, 0, PKTSIZE);
-	header = (eth_dbg_hdr *)&net->data[CE_DOFFSET];
+	header = (eth_dbg_hdr *)net->data;
 	data = (edbg_bootme_data *)header->data;
 
 	header->id = EDBG_ID;
@@ -803,8 +804,8 @@ static int ce_send_bootme(ce_net *net)
 		memset(data->macAddr, 0, sizeof(data->macAddr));
 	}
 
-	/* IP address from environment */
-	data->ipAddr = getenv_IPaddr("ipaddr");
+	/* IP address from active config */
+	NetCopyIP(&data->ipAddr, &NetOurIP);
 
 	// Device name string (NULL terminated). Should include
 	// platform and number based on Ether address (e.g. Odo42, CEPCLS2346, etc)
@@ -816,7 +817,7 @@ static int ce_send_bootme(ce_net *net)
 	snprintf(data->deviceName, sizeof(data->deviceName), "%s%02X",
 		data->platformId, data->macAddr[5]);
 
-#ifdef DEBUG
+#ifdef DEBUG_
 	printf("header->id: %08X\r\n", header->id);
 	printf("header->service: %08X\r\n", header->service);
 	printf("header->flags: %08X\r\n", header->flags);
@@ -847,106 +848,105 @@ static int ce_send_bootme(ce_net *net)
 #endif
 	// Some diag output ...
 	if (net->verbose) {
-		printf("Sending BOOTME request [%d] to ", net->seqNum);
-		print_IPaddr(net->srvAddrSend.sin_addr);
-		printf("\n");
+		printf("Sending BOOTME request [%d] to %pI4\n", net->seqNum,
+			&server_ip);
 	}
 
 	net->dataLen = BOOTME_PKT_SIZE;
-#ifdef DEBUG
+//	net->status = CE_PR_MORE;
+	net->state = BOOTME_INIT;
+#ifdef DEBUG_
 	debug("Start of buffer:      %p\n", net->data);
-	debug("Start of ethernet buffer:   %p\n", &net->data[net->align_offset]);
+	debug("Start of ethernet buffer:   %p\n", net->data);
 	debug("Start of CE header:         %p\n", header);
 	debug("Start of CE data:           %p\n", data);
 
-	pkt = &net->data[net->align_offset];
+	pkt = net->data;
 	debug("packet to send (ceconnect): \n");
-	for (i = 0; i < net->dataLen + ETHER_HDR_SIZE + IP_HDR_SIZE; i++) {
+	for (i = 0; i < net->dataLen; i++) {
 		debug("0x%02X ", pkt[i]);
 		if (!((i + 1) % 16))
 			debug("\n");
 	}
 	debug("\n");
 #endif
-	memcpy(NetServerEther, NetBcastAddr, 6);
-	return ce_send_frame(net);
+	return BootMeRequest(server_ip, net->data, net->dataLen, 1);
 }
 
-static int ce_init_download_link(ce_net *net, ce_bin *bin,
-				struct sockaddr_in *host_addr, int verbose)
+static inline int ce_init_download_link(ce_net *net, ce_bin *bin, int verbose)
 {
-	int ret;
-	unsigned long aligned_address;
-
 	if (!eth_get_dev()) {
 		printf("No network interface available\n");
 		return -ENODEV;
 	}
-	printf("Usinge device '%s'\n", eth_get_name());
+	printf("Using device '%s'\n", eth_get_name());
 
 	/* Initialize EDBG link for download */
 	memset(net, 0, sizeof(*net));
 
-	/* our buffer contains space for ethernet- ip- and udp- headers */
-	/* calculate an offset so that our ce field is aligned to 4 bytes */
-	aligned_address = (unsigned long)net->data;
-	/* we need 42 bytes room for headers (14 Ethernet , 20 IPv4, 8 UDP) */
-	aligned_address += ETHER_HDR_SIZE + IP_HDR_SIZE;
-	/* want CE header aligned to 4 Byte boundary */
-	net->align_offset = (4 - (aligned_address % 4)) % 4;
-
-	net->locAddr.sin_family = AF_INET;
-	net->locAddr.sin_addr = getenv_IPaddr("ipaddr");
-	net->locAddr.sin_port = htons(EDBG_DOWNLOAD_PORT);
-
-	net->srvAddrSend.sin_family = AF_INET;
-	net->srvAddrSend.sin_port = htons(EDBG_DOWNLOAD_PORT);
-
-	net->srvAddrRecv.sin_family = AF_INET;
-	net->srvAddrRecv.sin_port = 0;
-
-	if (host_addr->sin_addr) {
-		/* Use specified host address ... */
-		net->srvAddrSend.sin_addr = host_addr->sin_addr;
-		net->srvAddrRecv.sin_addr = host_addr->sin_addr;
-	} else {
-		/* ... or default server address */
-		net->srvAddrSend.sin_addr = getenv_IPaddr("serverip");
-		net->srvAddrRecv.sin_addr = getenv_IPaddr("serverip");
-	}
-
 	net->verbose = verbose;
 
-	ce_init_bin(bin, &net->data[CE_DOFFSET + 4]);
-
-	eth_halt();
-
-#ifdef CONFIG_NET_MULTI
-	eth_set_current();
-#endif
-	ret = eth_init(gd->bd);
-	if (ret < 0) {
-		printf("ceconnect: failed to init ethernet: %d\n", ret);
-		eth_halt();
-		return ret;
-	}
-#ifdef ET_DEBUG
-	puts("ceconnect: init ethernet done!\n");
-#endif
-	memcpy(NetOurEther, eth_get_dev()->enetaddr, ETH_ALEN);
-	NetCopyIP(&NetOurIP, &gd->bd->bi_ip_addr);
-	NetOurGatewayIP = getenv_IPaddr("gatewayip");
-	NetOurSubnetMask = getenv_IPaddr("netmask");
-	NetServerIP = getenv_IPaddr("serverip");
+	ce_init_bin(bin, NULL);//&net->data[4]);
 	return 0;
 }
 
-static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+#define UINT_MAX ~0UL
+
+static inline int ce_download_file(ce_net *net, ulong timeout)
 {
+	ulong start = get_timer_masked();
+
+	while (net->state == BOOTME_INIT) {
+		int ret;
+
+		if (timeout && get_timer(start) > timeout) {
+			printf("CELOAD - Canceled, timeout\n");
+			return 1;
+		}
+
+		if (ctrlc()) {
+			printf("CELOAD - canceled by user\n");
+			return 1;
+		}
+
+		if (ce_send_bootme(&g_net)) {
+			printf("CELOAD - error while sending BOOTME request\n");
+			return 1;
+		}
+		if (net->verbose) {
+			if (timeout) {
+				printf("Waiting for connection, timeout %lu sec\n",
+					DIV_ROUND_UP(timeout - get_timer(start),
+						CONFIG_SYS_HZ));
+			} else {
+				printf("Waiting for connection, enter ^C to abort\n");
+			}
+		}
+
+		ret = BootMeDownload(ce_download_handler);
+		printf("BootMeDownload() returned %d\n", ret);
+		if (ret == BOOTME_ERROR) {
+			printf("CELOAD - aborted\n");
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void ce_disconnect(void)
+{
+	net_set_udp_handler(NULL);
+	eth_halt();
+}
+
+static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int verbose = 0;
+	ulong timeout = 0;
+	int ret = 1;
 	int i;
-	int verbose = 0, use_timeout = 0;
-	int timeout = 0, recv_timeout, ret;
-	struct sockaddr_in host_ip_addr;
+
+	server_ip = 0;
 
 	for (i = 1; i < argc; i++){
 		if (*argv[i] != '-')
@@ -958,80 +958,64 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[
 			if (argc > i) {
 				timeout = simple_strtoul(argv[i],
 							NULL, 10);
-				use_timeout = 1;
+				if (timeout >= UINT_MAX / CONFIG_SYS_HZ) {
+					printf("Timeout value %lu out of range (max.: %lu)\n",
+						timeout, UINT_MAX / CONFIG_SYS_HZ - 1);
+					return 1;
+				}
+				timeout *= CONFIG_SYS_HZ;
+			} else {
+				printf("Option requires an argument - t\n");
+				return 1;
+			}
+		} else if (argv[i][1] == 'h') {
+			i++;
+			if (argc > i) {
+				server_ip = string_to_ip(argv[i]);
+				printf("Using server %pI4\n", &server_ip);
 			} else {
 				printf("Option requires an argument - t\n");
 				return 1;
 			}
 		}
 	}
+#ifndef TEST_LAUNCH
+	if (ce_init_download_link(&g_net, &g_bin, verbose) != 0)
+		goto err;
 
-	memset(&host_ip_addr, 0xff, sizeof(host_ip_addr));
-
-	if (ce_init_download_link(&g_net, &g_bin, &host_ip_addr, verbose) != 0)
-		return 1;
-
-	while (1) {
-		if (g_net.link) {
-			recv_timeout = 3;
-		} else {
-			recv_timeout = 1;
-
-			if (use_timeout && timeout <= 0) {
-				printf("CELOAD - Canceled, timeout\n");
-				eth_halt();
-				return 1;
-			}
-			if (ctrlc()) {
-				printf("CELOAD - canceled by user\n");
-				eth_halt();
-				return 1;
-			}
-
-			debug("sending broadcast frame bootme\n");
-
-			if (ce_send_bootme(&g_net)) {
-				printf("CELOAD - error while sending BOOTME request\n");
-				eth_halt();
-				return 1;
-			}
-			debug("net state is: %d\n", NetState);
-			if (verbose) {
-				if (use_timeout) {
-					printf("Waiting for connection, timeout %d sec\n", timeout);
-				} else {
-					printf("Waiting for connection, enter ^C to abort\n");
-				}
-			}
-		}
-
-		if (ce_recv_frame(&g_net, recv_timeout)) {
-			ret = ce_process_download(&g_net, &g_bin);
-			if (ret != CE_PR_MORE)
-				break;
-		} else if (use_timeout) {
-			timeout -= recv_timeout;
-		}
-	}
-
+	if (ce_download_file(&g_net, timeout))
+		goto err;
+#else
+g_bin.binLen = 1;
+#endif
 	if (g_bin.binLen) {
 		// Try to receive edbg commands from host
+_debug("%s@%d: \n", __func__, __LINE__);
 		ce_init_edbg_link(&g_net);
+_debug("%s@%d: \n", __func__, __LINE__);
 		if (verbose)
 			printf("Waiting for EDBG commands ...\n");
 
-		while (ce_recv_frame(&g_net, 3))
-			ce_process_edbg(&g_net, &g_bin);
+_debug("%s@%d: \n", __func__, __LINE__);
+		ret = BootMeDebugStart(ce_edbg_handler);
+_debug("%s@%d: ret=%d\n", __func__, __LINE__, ret);
+		if (ret != BOOTME_DONE)
+			goto err;
+_debug("%s@%d: \n", __func__, __LINE__);
 
 		// Prepare WinCE image for execution
 		ce_prepare_run_bin(&g_bin);
+_debug("%s@%d: \n", __func__, __LINE__);
 
 		// Launch WinCE, if necessary
 		if (g_net.gotJumpingRequest)
 			ce_run_bin(g_bin.eEntryPoint);
+_debug("%s@%d: \n", __func__, __LINE__);
 	}
-	eth_halt();
-	return 0;
+	ret = 0;
+err:
+	ce_disconnect();
+	return ret;
 }
 
 U_BOOT_CMD(

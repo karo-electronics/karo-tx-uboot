@@ -54,10 +54,11 @@ struct gpio {
 };
 
 /**
- * Request ownership of a GPIO.
+ * Request a gpio. This should be called before any of the other functions
+ * are used on this gpio.
  *
- * @param gpio	GPIO number
- * @param label	Name given to the GPIO
+ * @param gp	GPIO number
+ * @param label	User label for this GPIO
  * @return 0 if ok, -1 on error
  */
 int gpio_request(unsigned gpio, const char *label);

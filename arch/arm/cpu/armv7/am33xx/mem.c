@@ -44,9 +44,6 @@ static const u32 gpmc_m_nand[GPMC_MAX_REG] = {
 	M_NAND_GPMC_CONFIG5,
 	M_NAND_GPMC_CONFIG6, 0
 };
-
-#define GPMC_CS 0
-
 #endif
 
 
@@ -78,7 +75,7 @@ void gpmc_init(void)
 	/* putting a blanket check on GPMC based on ZeBu for now */
 	gpmc_cfg = (struct gpmc *)GPMC_BASE;
 
-#if defined(CONFIG_CMD_NAND) || defined(CONFIG_CMD_ONENAND)
+#ifdef CONFIG_CMD_NAND
 	const u32 *gpmc_config = NULL;
 	u32 base = 0;
 	u32 size = 0;
@@ -94,7 +91,7 @@ void gpmc_init(void)
 	writel(0, &gpmc_cfg->cs[0].config7);
 	sdelay(1000);
 
-#if defined(CONFIG_CMD_NAND)	/* CS 0 */
+#ifdef CONFIG_CMD_NAND
 	gpmc_config = gpmc_m_nand;
 
 	base = PISMO1_NAND_BASE;

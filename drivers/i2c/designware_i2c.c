@@ -26,7 +26,12 @@
 #include <asm/arch/hardware.h>
 #include "designware_i2c.h"
 
-static struct i2c_regs *const i2c_regs_p =
+#ifdef CONFIG_I2C_MULTI_BUS
+static unsigned int bus_initialized[CONFIG_SYS_I2C_BUS_MAX];
+static unsigned int current_bus = 0;
+#endif
+
+static struct i2c_regs *i2c_regs_p =
     (struct i2c_regs *)CONFIG_SYS_I2C_BASE;
 
 /*
@@ -39,7 +44,6 @@ static void set_speed(int i2c_spd)
 {
 	unsigned int cntl;
 	unsigned int hcnt, lcnt;
-	unsigned int high, low;
 	unsigned int enbl;
 
 	/* to set speed cltr must be disabled */
@@ -47,39 +51,38 @@ static void set_speed(int i2c_spd)
 	enbl &= ~IC_ENABLE_0B;
 	writel(enbl, &i2c_regs_p->ic_enable);
 
-
 	cntl = (readl(&i2c_regs_p->ic_con) & (~IC_CON_SPD_MSK));
 
 	switch (i2c_spd) {
 	case IC_SPEED_MODE_MAX:
 		cntl |= IC_CON_SPD_HS;
-		high = MIN_HS_SCL_HIGHTIME;
-		low = MIN_HS_SCL_LOWTIME;
+		hcnt = (IC_CLK * MIN_HS_SCL_HIGHTIME) / NANO_TO_MICRO;
+		writel(hcnt, &i2c_regs_p->ic_hs_scl_hcnt);
+		lcnt = (IC_CLK * MIN_HS_SCL_LOWTIME) / NANO_TO_MICRO;
+		writel(lcnt, &i2c_regs_p->ic_hs_scl_lcnt);
 		break;
 
 	case IC_SPEED_MODE_STANDARD:
 		cntl |= IC_CON_SPD_SS;
-		high = MIN_SS_SCL_HIGHTIME;
-		low = MIN_SS_SCL_LOWTIME;
+		hcnt = (IC_CLK * MIN_SS_SCL_HIGHTIME) / NANO_TO_MICRO;
+		writel(hcnt, &i2c_regs_p->ic_ss_scl_hcnt);
+		lcnt = (IC_CLK * MIN_SS_SCL_LOWTIME) / NANO_TO_MICRO;
+		writel(lcnt, &i2c_regs_p->ic_ss_scl_lcnt);
 		break;
 
 	case IC_SPEED_MODE_FAST:
 	default:
 		cntl |= IC_CON_SPD_FS;
-		high = MIN_FS_SCL_HIGHTIME;
-		low = MIN_FS_SCL_LOWTIME;
+		hcnt = (IC_CLK * MIN_FS_SCL_HIGHTIME) / NANO_TO_MICRO;
+		writel(hcnt, &i2c_regs_p->ic_fs_scl_hcnt);
+		lcnt = (IC_CLK * MIN_FS_SCL_LOWTIME) / NANO_TO_MICRO;
+		writel(lcnt, &i2c_regs_p->ic_fs_scl_lcnt);
 		break;
 	}
 
 	writel(cntl, &i2c_regs_p->ic_con);
 
-	hcnt = (IC_CLK * high) / NANO_TO_MICRO;
-	writel(hcnt, &i2c_regs_p->ic_fs_scl_hcnt);
-
-	lcnt = (IC_CLK * low) / NANO_TO_MICRO;
-	writel(lcnt, &i2c_regs_p->ic_fs_scl_lcnt);
-
-	/* re-enable i2c ctrl back now that speed is set */
+	/* Enable back i2c now speed set */
 	enbl |= IC_ENABLE_0B;
 	writel(enbl, &i2c_regs_p->ic_enable);
 }
@@ -90,7 +93,7 @@ static void set_speed(int i2c_spd)
  *
  * Set the i2c speed.
  */
-void i2c_set_bus_speed(int speed)
+int i2c_set_bus_speed(int speed)
 {
 	if (speed >= I2C_MAX_SPEED)
 		set_speed(IC_SPEED_MODE_MAX);
@@ -98,6 +101,8 @@ void i2c_set_bus_speed(int speed)
 		set_speed(IC_SPEED_MODE_FAST);
 	else
 		set_speed(IC_SPEED_MODE_STANDARD);
+
+	return 0;
 }
 
 /*
@@ -148,6 +153,10 @@ void i2c_init(int speed, int slaveadd)
 	enbl = readl(&i2c_regs_p->ic_enable);
 	enbl |= IC_ENABLE_0B;
 	writel(enbl, &i2c_regs_p->ic_enable);
+
+#ifdef CONFIG_I2C_MULTI_BUS
+	bus_initialized[current_bus] = 1;
+#endif
 }
 
 /*
@@ -215,10 +224,8 @@ static int check_params(uint addr, int alen, uchar *buffer, int len)
 
 static int i2c_xfer_init(uchar chip, uint addr)
 {
-	if (i2c_wait_for_bb()) {
-		printf("Timed out waiting for bus\n");
+	if (i2c_wait_for_bb())
 		return 1;
-	}
 
 	i2c_setaddress(chip);
 	writel(addr, &i2c_regs_p->ic_cmd_data);
@@ -274,7 +281,10 @@ int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len)
 
 	start_time_rx = get_timer(0);
 	while (len) {
-		writel(IC_CMD, &i2c_regs_p->ic_cmd_data);
+		if (len == 1)
+			writel(IC_CMD | IC_STOP, &i2c_regs_p->ic_cmd_data);
+		else
+			writel(IC_CMD, &i2c_regs_p->ic_cmd_data);
 
 		if (readl(&i2c_regs_p->ic_status) & IC_STATUS_RFNE) {
 			*buffer++ = (uchar)readl(&i2c_regs_p->ic_cmd_data);
@@ -282,7 +292,6 @@ int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len)
 			start_time_rx = get_timer(0);
 
 		} else if (get_timer(start_time_rx) > I2C_BYTE_TO) {
-				printf("Timed out. i2c read Failed\n");
 				return 1;
 		}
 	}
@@ -314,9 +323,11 @@ int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len)
 	start_time_tx = get_timer(0);
 	while (len) {
 		if (readl(&i2c_regs_p->ic_status) & IC_STATUS_TFNF) {
-			writel(*buffer, &i2c_regs_p->ic_cmd_data);
+			if (--len == 0)
+				writel(*buffer | IC_STOP, &i2c_regs_p->ic_cmd_data);
+			else
+				writel(*buffer, &i2c_regs_p->ic_cmd_data);
 			buffer++;
-			len--;
 			start_time_tx = get_timer(0);
 
 		} else if (get_timer(start_time_tx) > (nb * I2C_BYTE_TO)) {
@@ -334,9 +345,85 @@ int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len)
 int i2c_probe(uchar chip)
 {
 	u32 tmp;
+	int ret;
 
 	/*
 	 * Try to read the first location of the chip.
 	 */
-	return i2c_read(chip, 0, 1, (uchar *)&tmp, 1);
+	ret = i2c_read(chip, 0, 1, (uchar *)&tmp, 1);
+	if (ret)
+		i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+
+	return ret;
 }
+
+#ifdef CONFIG_I2C_MULTI_BUS
+int i2c_set_bus_num(unsigned int bus)
+{
+	switch (bus) {
+	case 0:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE;
+		break;
+#ifdef CONFIG_SYS_I2C_BASE1
+	case 1:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE1;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE2
+	case 2:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE2;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE3
+	case 3:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE3;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE4
+	case 4:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE4;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE5
+	case 5:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE5;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE6
+	case 6:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE6;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE7
+	case 7:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE7;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE8
+	case 8:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE8;
+		break;
+#endif
+#ifdef CONFIG_SYS_I2C_BASE9
+	case 9:
+		i2c_regs_p = (void *)CONFIG_SYS_I2C_BASE9;
+		break;
+#endif
+	default:
+		printf("Bad bus: %d\n", bus);
+		return -1;
+	}
+
+	current_bus = bus;
+
+	if (!bus_initialized[current_bus])
+		i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+
+	return 0;
+}
+
+int i2c_get_bus_num(void)
+{
+	return current_bus;
+}
+#endif

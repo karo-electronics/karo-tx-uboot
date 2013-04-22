@@ -18,8 +18,8 @@
  * MA 02111-1307 USA
  */
 
-#ifndef __CONFIG_H
-#define __CONFIG_H
+#ifndef __CONFIGS_TX25_H
+#define __CONFIGS_TX25_H
 
 
 /*
@@ -84,7 +84,6 @@
 /* 8MB DRAM test */
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1+0x0800000)
-#define CONFIG_STACKSIZE	(256 * 1024)	/* regular stack */
 
 /*
  * Serial Info
@@ -93,7 +92,6 @@
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 #define CONFIG_CONS_INDEX	1	/* use UART0 for console */
 #define CONFIG_BAUDRATE		115200	/* Default baud rate */
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 #define CONFIG_MXC_GPIO
 
@@ -109,7 +107,6 @@
 
 /* NAND */
 #define CONFIG_NAND_MXC
-#define CONFIG_NAND_MXC_V1_1
 #define CONFIG_MXC_NAND_REGS_BASE	(0xBB000000)
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		(0xBB000000)
@@ -149,9 +146,6 @@
 #define CONFIG_LOADADDR		0x81000000	/* loadaddr env var */
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 
-#define xstr(s)	str(s)
-#define str(s)	#s
-
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
@@ -165,7 +159,7 @@
 	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"		\
 	"addmisc=setenv bootargs ${bootargs}\0"				\
 	"u-boot=tx25/u-boot.bin\0"					\
-	"kernel_addr_r=" xstr(CONFIG_LOADADDR) "\0"			\
+	"kernel_addr_r=" __stringify(CONFIG_LOADADDR) "\0"		\
 	"hostname=tx25\0"						\
 	"bootfile=tx25/uImage\0"					\
 	"rootpath=/opt/eldk/arm\0"					\
@@ -182,4 +176,4 @@
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
 					GENERATED_GBL_DATA_SIZE)
 
-#endif /* __CONFIG_H */
+#endif /* __CONFIGS_TX25_H */

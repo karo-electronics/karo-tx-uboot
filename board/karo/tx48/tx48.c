@@ -36,7 +36,6 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/nand.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/common_def.h>
 #include <video_fb.h>
 #include <asm/arch/da8xx-fb.h>
 
@@ -306,6 +305,7 @@ struct pin_mux {
 #define PAD_CTRL_BASE	0x800
 #define OFFSET(x)	(unsigned int) (&((struct pad_signals *) \
 				(PAD_CTRL_BASE))->x)
+
 /*
  * Configure the pin mux for the module
  */
@@ -709,9 +709,13 @@ static struct cpsw_slave_data cpsw_slaves[] = {
 	},
 };
 
+void s_init(void)
+{
+}
+
 static struct cpsw_platform_data cpsw_data = {
-	.mdio_base		= CPSW_MDIO_BASE,
-	.cpsw_base		= CPSW_BASE,
+	.mdio_base		= AM335X_CPSW_MDIO_BASE,
+	.cpsw_base		= AM335X_CPSW_BASE,
 	.mdio_div		= 0xff,
 	.channels		= 8,
 	.cpdma_reg_ofs		= 0x800,

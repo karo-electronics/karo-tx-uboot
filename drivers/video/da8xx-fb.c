@@ -34,7 +34,7 @@
 
 #include <asm/errno.h>
 #include <asm/io.h>
-#include <asm/arch/hardware.h>
+#include <asm/arch/cpu.h>
 
 #include "videomodes.h"
 #include <asm/arch/da8xx-fb.h>

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2012 Lothar Waßmann <LW@KARO-electronics.de>
  *
- * LCD driver for i.MX28
+ * LCD driver for i.MXS
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,14 +23,12 @@
 #include <asm/arch/mxsfb.h>
 #include <asm/arch/sys_proto.h>
 
-static ushort mxsfb_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 800,
 	.vl_row = 480,
 
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
-	.cmap = mxsfb_cmap,
 };
 
 static int bits_per_pixel;
@@ -38,7 +36,7 @@ static int color_depth;
 static uint32_t pix_fmt;
 static struct fb_var_screeninfo mxsfb_var;
 
-static struct mx28_lcdif_regs *lcd_regs = (void *)MXS_LCDIF_BASE;
+static struct mxs_lcdif_regs *lcd_regs = (void *)MXS_LCDIF_BASE;
 
 void *lcd_base;			/* Start of framebuffer memory	*/
 void *lcd_console_address;	/* Start of console buffer	*/
@@ -91,7 +89,7 @@ void video_hw_init(void *lcdbase)
 	u32 lcd_vdctrl2 = LCD_VDCTRL2_DEFAULT;
 	u32 lcd_vdctrl3 = LCD_VDCTRL3_DEFAULT;
 	u32 lcd_vdctrl4 = LCD_VDCTRL4_DEFAULT;
-	struct mx28_clkctrl_regs *clk_regs = (void *)MXS_CLKCTRL_BASE;
+	struct mxs_clkctrl_regs *clk_regs = (void *)MXS_CLKCTRL_BASE;
 	char buf1[16], buf2[16];
 
 	/* pixel format in memory */
@@ -196,7 +194,7 @@ void video_hw_init(void *lcdbase)
 	while (readl(&clk_regs->hw_clkctrl_lcdif_reg) & (1 << 29))
 		;
 
-	ret = mx28_reset_block(&lcd_regs->hw_lcdif_ctrl_reg);
+	ret = mxs_reset_block(&lcd_regs->hw_lcdif_ctrl_reg);
 	if (ret) {
 		printf("Failed to reset LCD controller: LCDIF_CTRL: %08x CLKCTRL_LCDIF: %08x\n",
 			readl(&lcd_regs->hw_lcdif_ctrl_reg),

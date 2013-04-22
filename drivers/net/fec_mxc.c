@@ -25,14 +25,23 @@
 #include <malloc.h>
 #include <net.h>
 #include <miiphy.h>
-#include "fec_mxc.h"
 
+#include <asm/arch/sys_proto.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/io.h>
 #include <asm/errno.h>
+#include <linux/compiler.h>
+
+#include "fec_mxc.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+/*
+ * Timeout the transfer after 5 mS. This is usually a bit more, since
+ * the code in the tightloops this timeout is used in adds some overhead.
+ */
+#define FEC_XFER_TIMEOUT	5000
 
 #ifndef CONFIG_MII
 #error "CONFIG_MII has to be defined!"
@@ -439,14 +448,12 @@ static void fec_reg_setup(struct fec_priv *fec)
 
 	/* Start with frame length = 1518, common for all modes. */
 	rcntrl = PKTSIZE << FEC_RCNTRL_MAX_FL_SHIFT;
-	if (fec->xcv_type == SEVENWIRE)
-		rcntrl |= FEC_RCNTRL_FCE;
-	else if (fec->xcv_type == RGMII)
+	if (fec->xcv_type != SEVENWIRE)		/* xMII modes */
+		rcntrl |= FEC_RCNTRL_FCE | FEC_RCNTRL_MII_MODE;
+	if (fec->xcv_type == RGMII)
 		rcntrl |= FEC_RCNTRL_RGMII;
 	else if (fec->xcv_type == RMII)
 		rcntrl |= FEC_RCNTRL_RMII;
-	else	/* MII mode */
-		rcntrl |= FEC_RCNTRL_FCE | FEC_RCNTRL_MII_MODE;
 
 	writel(rcntrl, &fec->eth->r_cntrl);
 }
@@ -525,7 +532,13 @@ static int fec_open(struct eth_device *edev)
 		fec_eth_phy_config(edev);
 	if (fec->phydev) {
 		/* Start up the PHY */
-		phy_startup(fec->phydev);
+		int ret = phy_startup(fec->phydev);
+
+		if (ret) {
+			printf("Could not initialize PHY %s\n",
+			       fec->phydev->dev->name);
+			return ret;
+		}
 		speed = fec->phydev->speed;
 	} else {
 		speed = _100BASET;
@@ -539,9 +552,8 @@ static int fec_open(struct eth_device *edev)
 #ifdef FEC_QUIRK_ENET_MAC
 	{
 		u32 ecr = readl(&fec->eth->ecntrl) & ~FEC_ECNTRL_SPEED;
-		u32 rcr = (readl(&fec->eth->r_cntrl) &
-				~(FEC_RCNTRL_RMII | FEC_RCNTRL_RMII_10T)) |
-				FEC_RCNTRL_RGMII | FEC_RCNTRL_MII_MODE;
+		u32 rcr = readl(&fec->eth->r_cntrl) & ~FEC_RCNTRL_RMII_10T;
+
 		if (speed == _1000BASET)
 			ecr |= FEC_ECNTRL_SPEED;
 		else if (speed != _100BASET)
@@ -557,7 +569,7 @@ static int fec_open(struct eth_device *edev)
 	 */
 	fec_rx_task_enable(fec);
 
-	udelay(100000);
+//	udelay(100000);
 	return 0;
 }
 
@@ -614,7 +626,7 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 
 	fec_reg_setup(fec);
 
-	if (fec->xcv_type == MII10 || fec->xcv_type == MII100)
+	if (fec->xcv_type != SEVENWIRE)
 		fec_mii_setspeed(fec);
 
 	/*
@@ -702,12 +714,12 @@ static void fec_halt(struct eth_device *dev)
  * @param[in] length Data count in bytes
  * @return 0 on success
  */
-static int fec_send(struct eth_device *dev, volatile void *packet, int length)
+static int fec_send(struct eth_device *dev, void *packet, int length)
 {
 	unsigned int status;
-	int timeout = 1000;
-	uint32_t size;
+	uint32_t size, end;
 	uint32_t addr;
+	int timeout = FEC_XFER_TIMEOUT;
 
 	/*
 	 * This routine transmits one frame.  This routine only accepts
@@ -733,8 +745,9 @@ static int fec_send(struct eth_device *dev, volatile void *packet, int length)
 #endif
 
 	addr = (uint32_t)packet;
-	size = roundup(length, ARCH_DMA_MINALIGN);
-	flush_dcache_range(addr, addr + size);
+	end = roundup(addr + length, ARCH_DMA_MINALIGN);
+	addr &= ~(ARCH_DMA_MINALIGN - 1);
+	flush_dcache_range(addr, end);
 
 	writew(length, &fec->tbd_base[fec->tbd_index].data_length);
 	writel(addr, &fec->tbd_base[fec->tbd_index].data_pointer);
@@ -803,14 +816,15 @@ static int fec_recv(struct eth_device *dev)
 	int frame_length, len = 0;
 	struct nbuf *frame;
 	uint16_t bd_status;
-	uint32_t addr, size;
+	uint32_t addr, size, end;
 	int i;
 
 	/*
 	 * Check if any critical events have happened
 	 */
 	ievent = readl(&fec->eth->ievent);
-	writel(ievent, &fec->eth->ievent);
+	if (ievent)
+		writel(ievent, &fec->eth->ievent);
 
 	if (ievent)
 		debug("fec_recv: ievent 0x%lx\n", ievent);
@@ -869,8 +883,9 @@ static int fec_recv(struct eth_device *dev)
 			 * Invalidate data cache over the buffer
 			 */
 			addr = (uint32_t)frame;
-			size = roundup(frame_length, ARCH_DMA_MINALIGN);
-			invalidate_dcache_range(addr, addr + size);
+			end = roundup(addr + frame_length, ARCH_DMA_MINALIGN);
+			addr &= ~(ARCH_DMA_MINALIGN - 1);
+			invalidate_dcache_range(addr, end);
 
 			/*
 			 *  Fill the buffer and pass it to upper layers
@@ -1003,7 +1018,10 @@ static int fec_probe(bd_t *bd, int dev_id, int phy_id, uint32_t base_addr)
 	eth_register(edev);
 
 	if (fec_get_hwaddr(edev, dev_id, ethaddr) == 0) {
-		debug("got MAC%d address from fuse: %pM\n", dev_id, ethaddr);
+		if (dev_id < 0)
+			debug("got MAC address from fuse: %pM\n", ethaddr);
+		else
+			debug("got MAC%d address from fuse: %pM\n", dev_id, ethaddr);
 		memcpy(edev->enetaddr, ethaddr, 6);
 	}
 	/* Configure phy */

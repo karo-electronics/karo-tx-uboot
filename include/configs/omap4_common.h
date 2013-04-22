@@ -35,6 +35,7 @@
 #define CONFIG_OMAP		1	/* in a TI OMAP core */
 #define CONFIG_OMAP44XX		1	/* which is a 44XX */
 #define CONFIG_OMAP4430		1	/* which is in a 4430 */
+#define CONFIG_OMAP_GPIO
 
 /* Get CPU defs */
 #include <asm/arch/cpu.h>
@@ -48,7 +49,6 @@
 #define V_OSCK			38400000	/* Clock output from T2 */
 #define V_SCLK                   V_OSCK
 
-#undef CONFIG_USE_IRQ				/* no support for IRQs */
 #define CONFIG_MISC_INIT_R
 
 #define CONFIG_OF_LIBFDT		1
@@ -91,8 +91,6 @@
 #define CONFIG_HARD_I2C			1
 #define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_SYS_I2C_SLAVE		1
-#define CONFIG_SYS_I2C_BUS		0
-#define CONFIG_SYS_I2C_BUS_SELECT	1
 #define CONFIG_DRIVER_OMAP34XX_I2C	1
 #define CONFIG_I2C_MULTI_BUS		1
 
@@ -119,9 +117,6 @@
 
 /* Flash */
 #define CONFIG_SYS_NO_FLASH	1
-
-/* clocks */
-#define CONFIG_SYS_CLOCKS_ENABLE_ALL
 
 /* commands to include */
 #include <config_cmd_default.h>
@@ -168,7 +163,7 @@
 		"bootm ${loadaddr}\0" \
 
 #define CONFIG_BOOTCOMMAND \
-	"if mmc rescan ${mmcdev}; then " \
+	"mmc dev ${mmcdev}; if mmc rescan; then " \
 		"if run loadbootscript; then " \
 			"run bootscript; " \
 		"else " \
@@ -186,7 +181,6 @@
 
 #define CONFIG_SYS_LONGHELP	/* undef to save memory */
 #define CONFIG_SYS_HUSH_PARSER	/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #define CONFIG_SYS_CBSIZE		512
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
@@ -210,17 +204,6 @@
 #define CONFIG_SYS_HZ			1000
 
 /*
- * Stack sizes
- *
- * The stack sizes are set up in start.S using the settings below
- */
-#define CONFIG_STACKSIZE	(128 << 10)	/* Regular stack */
-#ifdef CONFIG_USE_IRQ
-#define CONFIG_STACKSIZE_IRQ	(4 << 10)	/* IRQ stack */
-#define CONFIG_STACKSIZE_FIQ	(4 << 10)	/* FIQ stack */
-#endif
-
-/*
  * SDRAM Memory Map
  * Even though we use two CS all the memory
  * is mapped to one contiguous block
@@ -228,10 +211,7 @@
 #define CONFIG_NR_DRAM_BANKS	1
 
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
-#define CONFIG_SYS_INIT_RAM_ADDR	0x4030D800
-#define CONFIG_SYS_INIT_RAM_SIZE	0x800
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
-					 CONFIG_SYS_INIT_RAM_SIZE - \
+#define CONFIG_SYS_INIT_SP_ADDR         (NON_SECURE_SRAM_END - \
 					 GENERATED_GBL_DATA_SIZE)
 
 #ifndef CONFIG_SYS_L2CACHE_OFF
@@ -250,9 +230,11 @@
 
 /* Defines for SPL */
 #define CONFIG_SPL
+#define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_TEXT_BASE		0x40304350
 #define CONFIG_SPL_MAX_SIZE		(38 * 1024)
-#define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
+#define CONFIG_SPL_STACK		CONFIG_SYS_INIT_SP_ADDR
+#define CONFIG_SPL_DISPLAY_PRINT
 
 /*
  * 64 bytes before this address should be set aside for u-boot.img's
@@ -282,9 +264,8 @@
 #define CONFIG_SPL_FAT_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_LDSCRIPT "arch/arm/cpu/armv7/omap-common/u-boot-spl.lds"
-
-#define CONFIG_SYS_ENABLE_PADS_ALL
+#define CONFIG_SPL_GPIO_SUPPORT
+#define CONFIG_SPL_LDSCRIPT "$(CPUDIR)/omap-common/u-boot-spl.lds"
 
 #define CONFIG_SYS_THUMB_BUILD
 

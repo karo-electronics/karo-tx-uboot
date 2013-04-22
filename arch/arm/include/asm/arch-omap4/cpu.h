@@ -138,6 +138,7 @@ struct watchdog {
 #define I2C_BASE1		(OMAP44XX_L4_PER_BASE + 0x70000)
 #define I2C_BASE2		(OMAP44XX_L4_PER_BASE + 0x72000)
 #define I2C_BASE3		(OMAP44XX_L4_PER_BASE + 0x60000)
+#define I2C_BASE4		(OMAP44XX_L4_PER_BASE + 0x350000)
 
 /* MUSB base */
 #define MUSB_BASE		(OMAP44XX_L4_CORE_BASE + 0xAB000)
@@ -178,5 +179,7 @@ struct watchdog {
 
 #define PRM_RSTCTRL		PRM_DEVICE_BASE
 #define PRM_RSTCTRL_RESET	0x01
+#define PRM_RSTST		(PRM_DEVICE_BASE + 0x4)
+#define PRM_RSTST_WARM_RESET_MASK	0x07EA
 
 #endif /* _CPU_H */
