@@ -15,6 +15,7 @@
  *
 */
 
+#ifdef CONFIG_OF_LIBFDT
 void karo_fdt_remove_node(void *blob, const char *node);
 void karo_fdt_move_fdt(void);
 void karo_fdt_fixup_touchpanel(void *blob);
@@ -23,5 +24,30 @@ void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 		const char *prop);
 void karo_fdt_enable_node(void *blob, const char *node, int enable);
 void *karo_fdt_load_dtb(void);
+#else
+static inline void karo_fdt_remove_node(void *blob, const char *node)
+{
+}
+static inline void karo_fdt_move_fdt(void)
+{
+}
+static inline void karo_fdt_fixup_touchpanel(void *blob)
+{
+}
+static inline void karo_fdt_fixup_usb_otg(void *blob, const char *compat, phys_addr_t offs)
+{
+}
+static inline void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
+		const char *prop)
+{
+}
+static inline void karo_fdt_enable_node(void *blob, const char *node, int enable)
+{
+}
+static inline void *karo_fdt_load_dtb(void)
+{
+	return NULL;
+}
+#endif
 
 int karo_load_splashimage(int mode);
