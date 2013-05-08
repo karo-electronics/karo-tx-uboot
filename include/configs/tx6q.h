@@ -31,6 +31,7 @@
 #define CONFIG_NETCONSOLE
 #endif
 
+#ifndef CONFIG_MFG
 /* LCD Logo and Splash screen support */
 #if 1
 #define CONFIG_LCD
@@ -46,6 +47,7 @@
 #define CONFIG_CMD_BMP
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
+#endif /* CONFIG_MFG */
 
 /*
  * Memory configuration options
@@ -80,6 +82,7 @@
 /*
  * Flattened Device Tree (FDT) support
 */
+#ifndef CONFIG_MFG
 #define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT
 #define CONFIG_FDT_FIXUP_PARTITIONS
@@ -88,7 +91,8 @@
 #define CONFIG_DEFAULT_DEVICE_TREE	tx6q
 #define CONFIG_ARCH_DEVICE_TREE		mx6q
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
-#endif
+#endif /* CONFIG_OF_LIBFDT */
+#endif /* CONFIG_MFG */
 
 /*
  * Boot Linux
@@ -99,13 +103,24 @@
 #define _pfx(x, s)			__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
+#define CONFIG_INITRD_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
+#ifndef CONFIG_MFG
 #define CONFIG_BOOTDELAY		1
+#else
+#define CONFIG_BOOTDELAY		0
+#endif
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
+#ifndef CONFIG_MFG
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"console=ttymxc0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#else
+#define CONFIG_BOOTCOMMAND		"env import " xstr(CONFIG_BOOTCMD_MFG_LOADADDR) ";run bootcmd_mfg"
+#define CONFIG_BOOTCMD_MFG_LOADADDR	10500000
+#define CONFIG_DELAY_ENVIRONMENT
+#endif /* CONFIG_MFG */
 #define CONFIG_LOADADDR			18000000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
@@ -115,6 +130,7 @@
 /*
  * Extra Environments
  */
+#ifndef CONFIG_MFG
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
@@ -130,7 +146,6 @@
 	"nboot linux;run bootm_cmd\0"					\
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
 	"run bootm_cmd\0"						\
-	"bootdelay=-1\0"						\
 	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"	\
 	"cpu_clk=800\0"							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
@@ -142,9 +157,11 @@
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA-1:640x480MR-24@60\0"
+#endif
 
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
+#define CONFIG_SYS_NAND_ONFI_DETECTION
 
 /*
  * U-Boot Commands
