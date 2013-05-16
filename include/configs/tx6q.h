@@ -27,15 +27,10 @@
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
-#if 0
-#define CONFIG_NETCONSOLE
-#endif
 
 #ifndef CONFIG_MFG
 /* LCD Logo and Splash screen support */
-#if 1
 #define CONFIG_LCD
-#endif
 #define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
@@ -171,9 +166,7 @@
 #define CONFIG_CMD_MMC
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
-#if 1
 #define CONFIG_CMD_BOOTCE
-#endif
 #define CONFIG_CMD_TIME
 #define CONFIG_CMD_I2C
 
@@ -275,9 +268,6 @@
 #define CONFIG_GENERIC_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
-#if 0
-#define CONFIG_SYS_FSL_ESDHC_USE_PIO
-#endif
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	2
 
