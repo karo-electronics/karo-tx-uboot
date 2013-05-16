@@ -56,6 +56,8 @@ static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
 #endif
 #define TIMER_LOAD_VAL		0
 
+#define TIOCP_CFG_SOFTRESET	(1 << 0)
+
 #if TIMER_CLOCK < CONFIG_SYS_HZ
 #error TIMER_CLOCK must be > CONFIG_SYS_HZ
 #endif
@@ -85,10 +87,10 @@ int timer_init(void)
 {
 #if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
 	/* Reset the Timer */
-	writel(0x2, &timer_base->tsicr);
+	writel(TIOCP_CFG_SOFTRESET, &timer_base->tiocp_cfg);
 
 	/* Wait until the reset is done */
-	while (readl(&timer_base->tiocp_cfg) & 1)
+	while (readl(&timer_base->tiocp_cfg) & TIOCP_CFG_SOFTRESET)
 		;
 
 	/* preload the counter to make overflow occur early */
