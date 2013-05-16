@@ -275,7 +275,7 @@ struct gptimer {
 	unsigned int twpc;		/* offset 0x48 */
 	unsigned int tmar;		/* offset 0x4c */
 	unsigned int tcar1;		/* offset 0x50 */
-	unsigned int tscir;		/* offset 0x54 */
+	unsigned int tsicr;		/* offset 0x54 */
 	unsigned int tcar2;		/* offset 0x58 */
 };
 

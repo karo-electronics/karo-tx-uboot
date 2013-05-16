@@ -85,7 +85,7 @@ int timer_init(void)
 {
 #if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
 	/* Reset the Timer */
-	writel(0x2, &timer_base->tscir);
+	writel(0x2, &timer_base->tsicr);
 
 	/* Wait until the reset is done */
 	while (readl(&timer_base->tiocp_cfg) & 1)
