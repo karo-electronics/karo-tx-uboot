@@ -1485,7 +1485,7 @@ int run_command(const char *cmd, int flag)
 	 * builtin_run_command can return 0 or 1 for success, so clean up
 	 * its result.
 	 */
-	if (builtin_run_command(cmd, flag) == -1)
+	if (builtin_run_command(cmd, flag) != 1)
 		return 1;
 
 	return 0;
