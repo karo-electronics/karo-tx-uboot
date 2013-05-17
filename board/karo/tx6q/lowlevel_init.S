@@ -158,32 +158,33 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 	(PRCT << 24) |		\
 	(tCKE << 16) |		\
 	(SLOW_PD << 7) |	\
-	(BOTH_CS_PD << 6) | 	\
+	(BOTH_CS_PD << 6) |	\
 	(tCKSRX << 3) |		\
 	(tCKSRE << 0)		\
 	)
 
-#define MDPDC_VAL_1	(MDPDC_VAL_0 |	\
-	(PWDT << 12) |		\
-	(PWDT << 8)		\
+#define MDPDC_VAL_1	(MDPDC_VAL_0 |		\
+	(PWDT << 12) |				\
+	(PWDT << 8)				\
 	)
 
 #define ROW_ADDR_BITS	14
 #define COL_ADDR_BITS	10
 
 	.iflt	tWR - 7
-	.set	mr0_val, ((1 << 8) /* DLL Reset */ | \
-			((tWR + 1 - 4) << 9) | \
+	.set	mr0_val, ((1 << 8) /* DLL Reset */ |	\
+			((tWR + 1 - 4) << 9) |		\
 			(((tCL + 3) - 4) << 4))
 	.else
-	.set	mr0_val, ((1 << 8) /* DLL Reset */ | \
-			(((tWR + 1) / 2) << 9) | \
+	.set	mr0_val, ((1 << 8) /* DLL Reset */ |	\
+			(((tWR + 1) / 2) << 9) |	\
 			(((tCL + 3) - 4) << 4))
 	.endif
-#define MDSCR_MRS_VAL(cs, mr, val)	(((val) << 16) | \
-					(1 << 15) /* CON REQ */ | \
-					(3 << 4) /* MRS command */ | \
-					((cs) << 3) | \
+
+#define MDSCR_MRS_VAL(cs, mr, val)	(((val) << 16) |		\
+					(1 << 15) /* CON REQ */ |	\
+					(3 << 4) /* MRS command */ |	\
+					((cs) << 3) |			\
 					((mr) << 0))
 
 #define mr1_val				0x0040
@@ -214,15 +215,15 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 	(tRRD << 0))
 
 #define BURST_LEN	(SDRAM_BURST_LENGTH / 8) /* 0: 4 byte 1: 8 byte */
-#define MDCTL_VAL	(((ROW_ADDR_BITS - 11) << 24) | \
-			((COL_ADDR_BITS - 9) << 20) | \
-			(BURST_LEN << 19) | \
-			(2 << 16) | /* SDRAM bus width */ \
+#define MDCTL_VAL	(((ROW_ADDR_BITS - 11) << 24) |		\
+			((COL_ADDR_BITS - 9) << 20) |		\
+			(BURST_LEN << 19) |			\
+			(2 << 16) | /* SDRAM bus width */	\
 			((-1) << (32 - BANK_ADDR_BITS)))
 
 #define MDMISC_VAL	((ADDR_MIRROR << 19) |	\
 			(WALAT << 16) |		\
-			(BI_ON << 12) |	\
+			(BI_ON << 12) |		\
 			(0x3 << 9) |		\
 			(RALAT << 6) |		\
 			(DDR_TYPE << 3))
