@@ -64,6 +64,8 @@
 	.else
 	.ifle		\clks - \offs - \max
 	.set		\name, \clks - \offs
+	.else
+	.error		"Value \clks out of range for parameter \name"
 	.endif
 	.endif
 	.endm
@@ -593,5 +595,5 @@ con_ack_clr:
 	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x021b001c, 0x00004000)
 dcd_end:
 	.ifgt	dcd_end - dcd_start - 1768
-	DCD too large!
+	.error	"DCD too large!"
 	.endif
