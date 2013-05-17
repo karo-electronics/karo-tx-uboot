@@ -601,11 +601,11 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
 	u32 min_err = ~0;
 	u32 reg;
 
-	if (freq_khz > ref * 108 / 2000 || freq_khz < ref * 54 / 16000) {
+	if (freq_khz > ref / 1000 * 108 / 2 || freq_khz < ref / 1000 * 54 / 8 / 2) {
 		printf("Frequency %u.%03uMHz is out of range: %u.%03u..%u.%03u\n",
 			freq_khz / 1000, freq_khz % 1000,
-			54 * ref / 16000000, 54 * ref / 16000 % 1000,
-			108 * ref / 2000000, 108 * ref / 2000 % 1000);
+			54 * ref / 1000000 / 8 / 2, 54 * ref / 1000 / 8 / 2 % 1000,
+			108 * ref / 1000000 / 2, 108 * ref / 1000 / 2 % 1000);
 		return -EINVAL;
 	}
 
@@ -614,10 +614,10 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
 		u32 f;
 		u32 err;
 
-		if (m > 108 || m < 54) {
+		if (m > 108) {
 			debug("%s@%d: d=%d m=%d\n", __func__, __LINE__,
 				d, m);
-			continue;
+			break;
 		}
 
 		f = ref * m / d / 2;
