@@ -704,6 +704,18 @@ int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk)
 		__clk / 1000000, __clk / 1000 % 1000);	\
 	}
 
+#define print_pfd(pll, pfd)	{					\
+	u32 __pfd = readl(&anatop->pfd_##pll);				\
+	if (__pfd & (0x80 << 8 * pfd)) {				\
+		printf("PFD_%s[%d]      OFF\n", #pll, pfd);		\
+	} else {							\
+		__pfd = (__pfd >> 8 * pfd) & 0x3f;			\
+		printf("PFD_%s[%d]   %4d.%03d MHz\n", #pll, pfd,	\
+			pll * 18 / __pfd,				\
+			pll * 18 * 1000 / __pfd % 1000);		\
+	}								\
+}
+
 static void do_mx6_showclocks(void)
 {
 	print_pll(PLL_ARM);
@@ -713,8 +725,18 @@ static void do_mx6_showclocks(void)
 	print_pll(PLL_VIDEO);
 	print_pll(PLL_ENET);
 	print_pll(PLL_USB2);
-
 	printf("\n");
+
+	print_pfd(480, 0);
+	print_pfd(480, 1);
+	print_pfd(480, 2);
+	print_pfd(480, 3);
+	print_pfd(528, 0);
+	print_pfd(528, 1);
+	print_pfd(528, 2);
+	print_pfd(528, 3);
+	printf("\n");
+
 	print_clk(IPG);
 	print_clk(UART);
 	print_clk(CSPI);
