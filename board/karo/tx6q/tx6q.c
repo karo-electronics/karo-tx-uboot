@@ -287,45 +287,9 @@ static int setup_pmic_voltages(void)
 
 int board_early_init_f(void)
 {
-#if 0
-	writel(0xffffffff, 0x020c4068); /* CCGR0 */
-	writel(0xffffffff, 0x020c406c); /* CCGR1 */
-	writel(0xffffffff, 0x020c4070); /* CCGR2 */
-	writel(0xffffffff, 0x020c4074); /* CCGR3 */
-	writel(0xffffffff, 0x020c4078); /* CCGR4 */
-	writel(0xffffffff, 0x020c407c); /* CCGR5 */
-	writel(0xffffffff, 0x020c4080); /* CCGR6 */
-	writel(0xffffffff, 0x020c4084); /* CCGR7 */
-#endif
-#if 0
-	writel(0x00000000, 0x020e02d4);	/* NANDF_CLE: NANDF_CLE */
-	writel(0x00000000, 0x020e02d8);	/* NANDF_ALE: NANDF_ALE */
-	writel(0x00000000, 0x020e02dc);	/* NANDF_WP_B: NANDF_WPn */
-	writel(0x00000000, 0x020e02e0);	/* NANDF_RB0: NANDF_READY0 */
-	writel(0x00000000, 0x020e02e4);	/* NANDF_CS0: NANDF_CS0 */
-	writel(0x00000001, 0x020e02f4);	/* SD4_CMD: NANDF_RDn */
-	writel(0x00000001, 0x020e02f8);	/* SD4_CLK: NANDF_WRn */
-
-	writel(0x00000000, 0x020e02fc);	/* NANDF_D0: NANDF_D0 */
-	writel(0x00000000, 0x020e0300);	/* NANDF_D1: NANDF_D1 */
-	writel(0x00000000, 0x020e0304);	/* NANDF_D2: NANDF_D2 */
-	writel(0x00000000, 0x020e0308);	/* NANDF_D3: NANDF_D3 */
-	writel(0x00000000, 0x020e030c);	/* NANDF_D4: NANDF_D4 */
-	writel(0x00000000, 0x020e0310);	/* NANDF_D5: NANDF_D5 */
-	writel(0x00000000, 0x020e0314);	/* NANDF_D6: NANDF_D6 */
-	writel(0x00000000, 0x020e0318);	/* NANDF_D7: NANDF_D7 */
-#endif
 	gpio_request_array(tx6q_gpios, ARRAY_SIZE(tx6q_gpios));
 	imx_iomux_v3_setup_multiple_pads(tx6q_pads, ARRAY_SIZE(tx6q_pads));
 
-#if 0
-	int ret;
-	ret = setup_pmic_voltages();
-	if (ret) {
-		printf("Failed to setup PMIC voltages\n");
-//		hang();
-	}
-#endif
 	return 0;
 }
 
@@ -478,39 +442,19 @@ int board_mmc_init(bd_t *bis)
 int board_eth_init(bd_t *bis)
 {
 	int ret;
-#if 0
-	unsigned char mac[ETH_ALEN];
-	char mac_str[ETH_ALEN * 3] = "";
-#endif
+
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
 
 	imx_iomux_v3_setup_multiple_pads(tx6q_fec_pads, ARRAY_SIZE(tx6q_fec_pads));
-#if 0
-	printf("RXD0(MODE0)=%d\n", gpio_get_value(IMX_GPIO_NR(1, 27)));
-	printf("RXD1(MODE1)=%d\n", gpio_get_value(IMX_GPIO_NR(1, 26)));
-	printf("CRS_DV(MODE2)=%d\n", gpio_get_value(IMX_GPIO_NR(1, 25)));
-
-	printf("RX_ER(PHYAD0)=%d\n", gpio_get_value(IMX_GPIO_NR(1, 24)));
-
-	printf("GPIO7[6](FEC RESET)=%d\n", gpio_get_value(IMX_GPIO_NR(7, 6)));
-	printf("GPIO3[20](FEC PWR)=%d\n", gpio_get_value(IMX_GPIO_NR(3, 20)));
-#endif
 
 	/* Deassert RESET to the external phy */
 	gpio_set_value(TX6Q_FEC_RST_GPIO, 1);
 
 	ret = cpu_eth_init(bis);
-	if (ret) {
+	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
-		return ret;
-	}
-#if 0
-	imx_get_mac_from_fuse(-1, mac);
-	snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	setenv("ethaddr", mac_str);
-#endif
+
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -1075,12 +1019,6 @@ static void tx6q_fixup_flexcan(void *blob)
 	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x02094000, "transceiver-switch");
 }
 
-void tx6q_fixup_rtc(void *blob)
-{
-	karo_fdt_del_prop(blob, "dallas,ds1339", 0x68, "interrupt-parent");
-	karo_fdt_del_prop(blob, "dallas,ds1339", 0x68, "interrupts");
-}
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
@@ -1089,6 +1027,5 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "", 0);
 	tx6q_fixup_flexcan(blob);
-	tx6q_fixup_rtc(blob);
 }
 #endif
