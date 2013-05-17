@@ -317,7 +317,8 @@ dcd_start:
 	/* RESET_OUT GPIO_7_12 */
 	MXC_DCD_ITEM(0x020e024c, 0x00000005)
 
-	MXC_DCD_ITEM(0x020c402c, 0x01e436c1) /* CSC2CDR default: 0x007236c1 */
+	MXC_DCD_ITEM(0x020c402c, 0x006336c1) /* CS2CDR default: 0x007236c1 */
+
 	MXC_DCD_ITEM(0x020c80e0, 0x00002001) /* ENET PLL */
 
 	/* enable all relevant clocks... */
