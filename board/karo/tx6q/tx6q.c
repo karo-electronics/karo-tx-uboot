@@ -862,11 +862,13 @@ static void tx6q_set_cpu_clock(void)
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
 
-	mxc_set_clock(CONFIG_SYS_MX6_HCLK, cpu_clk, MXC_ARM_CLK);
-
-	printf("CPU clock set to %u.%03u MHz\n",
-		mxc_get_clock(MXC_ARM_CLK) / 1000000,
-		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
+	if (mxc_set_clock(CONFIG_SYS_MX6_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
+		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
+		printf("CPU clock set to %lu.%03lu MHz\n",
+			cpu_clk / 1000000, cpu_clk / 1000 % 1000);
+	} else {
+		printf("Failed to set CPU clock to %lu MHz\n", cpu_clk);
+	}
 }
 
 static void tx6_init_mac(void)
