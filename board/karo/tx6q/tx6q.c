@@ -305,7 +305,7 @@ int board_init(void)
 	ret = setup_pmic_voltages();
 	if (ret) {
 		printf("Failed to setup PMIC voltages\n");
-//		hang();
+		hang();
 	}
 	return 0;
 }
