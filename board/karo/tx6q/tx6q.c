@@ -1003,7 +1003,7 @@ int checkboard(void)
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
 struct node_info nodes[] = {
-	{ "fsl,imx53-nand", MTD_DEV_TYPE_NAND, },
+	{ "fsl,imx6q-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
 
 #else
