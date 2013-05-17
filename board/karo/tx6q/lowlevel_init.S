@@ -21,15 +21,24 @@
 	(((l) >> 8) & 0x0000FF00) |	\
 	(((l) >> 24) & 0x000000FF))
 
-#define MXC_DCD_ITEM(addr, val)		.word	CPU_2_BE_32(addr), CPU_2_BE_32(val)
+#define CHECK_DCD_ADDR(a)	(			\
+	((a) >= 0x020E0000 && (a) <= 0x020E3FFF) /* IOMUXC */ ||	\
+	((a) >= 0x020C4000 && (a) <= 0x020C7FFF) /* CCM */ ||	\
+	((a) >= 0x020C8000 && (a) <= 0x020C8FFF) /* ANALOG */ ||	\
+	((a) >= 0x021B0000 && (a) <= 0x021B7FFF) /* MMDC */ ||	\
+	((a) >= 0x00907000 && (a) <= 0x00937FF0) /* OCRAM */ ||	\
+	((a) >= 0x08000000 && (a) <= 0x0FFEFFFF) /* EIM (CS0) */ ||	\
+	((a) >= 0x10000000 && (a) <= 0xFFFFFFFF) /* SDRAM */)
 
-#define CHECK_DCD_ADDR(a)	((((a) >= 0x00907000) && ((a) <= 0x00937FF0)) || \
-	(((a) >= 0x020C4000) && ((a) < 0x020C8000)) || \
-	(((a) >= 0x020C8000) && ((a) < 0x020C9000)) || \
-	(((a) >= 0x020E0000) && ((a) < 0x020E4000)) || \
-	(((a) >= 0x021B0000) && ((a) < 0x021B8000)) || \
-	(((a) >= 0x08000000) && ((a) < 0x0FFF0000)) || \
-	(((a) >= 0x10000000)))
+	.macro	mxc_dcd_item	addr, val
+	.ifne	CHECK_DCD_ADDR(\addr)
+	.word	CPU_2_BE_32(\addr), CPU_2_BE_32(\val)
+	.else
+	.error	"Address \addr not accessible from DCD"
+	.endif
+	.endm
+
+#define MXC_DCD_ITEM(addr, val)		mxc_dcd_item	addr, val
 
 #define MXC_DCD_CMD_SZ_BYTE		1
 #define MXC_DCD_CMD_SZ_SHORT		2
