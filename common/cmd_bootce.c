@@ -25,7 +25,10 @@
 #include <command.h>
 #include <net.h>
 #include <wince.h>
+#include <nand.h>
+#include <malloc.h>
 #include <asm/errno.h>
+#include <jffs2/load_kernel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -454,6 +457,108 @@ U_BOOT_CMD(
 	"bootce [addr]\t- Boot a Windows CE image from memory\n",
 	"[args..]\n"
 	"\taddr\t\t-boot image from address addr\n"
+);
+
+static int ce_nand_load(ce_bin *bin, size_t offset, void *buf, size_t max_len)
+{
+	int ret;
+	size_t len = max_len;
+
+	ret = nand_read_skip_bad(&nand_info[0], offset, &len, buf);
+	if (ret < 0) {
+		printf("NBOOTCE - aborted\n");
+		return ret;
+	}
+	bin->dataLen = len;
+	return len;
+}
+
+#define CE_NAND_BUF_SIZE	2048
+
+static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int ret;
+	struct mtd_device *dev;
+	struct part_info *part_info;
+	u8 part_num;
+	size_t offset;
+	char *end;
+	void *buffer;
+	size_t len = CE_NAND_BUF_SIZE;
+
+	if (argc < 2 || argc > 3)
+		return CMD_RET_USAGE;
+
+	offset = simple_strtoul(argv[1], &end, 16);
+	if (*end != '\0') {
+		ret = find_dev_and_part(argv[1], &dev, &part_num,
+					&part_info);
+		if (ret == 0) {
+			offset = part_info->offset;
+			printf ("## Booting Windows CE Image from NAND partition %s at offset %08x\n",
+				argv[1], offset);
+		} else {
+			printf ("## Booting Windows CE Image from NAND offset %08x\n",
+				offset);
+		}
+	}
+
+	ret = mtdparts_init();
+	if (ret)
+		return CMD_RET_FAILURE;
+
+	buffer = malloc(CE_NAND_BUF_SIZE);
+	if (buffer == NULL) {
+		printf("Failed to allocate %u byte buffer\n", CE_NAND_BUF_SIZE);
+		return CMD_RET_FAILURE;
+	}
+
+	ce_init_bin(&g_bin, buffer);
+
+	ret = ce_nand_load(&g_bin, offset, buffer,
+			CE_NAND_BUF_SIZE);
+	if (ret < 0) {
+		printf("Failed to read NAND: %d\n", ret);
+		goto err;
+	}
+	len = ret;
+	/* check if there is a valid windows CE image header */
+	if (ce_is_bin_image(buffer, len)) {
+		while (ce_parse_bin(&g_bin) == CE_PR_MORE) {
+			if (ctrlc()) {
+				printf("NBOOTCE - canceled by user\n");
+				goto err;
+			}
+			offset += len;
+			ret = ce_nand_load(&g_bin, offset, buffer,
+					CE_NAND_BUF_SIZE);
+			if (ret < 0)
+				goto err;
+			len = ret;
+		}
+		free(buffer);
+		if (getenv_yesno("autostart") != 1) {
+			/*
+			 * just use bootce to load the image to SDRAM;
+			 * Do not start it automatically.
+			 */
+			setenv_addr("fileaddr", g_bin.eEntryPoint);
+			return CMD_RET_SUCCESS;
+		}
+		ce_run_bin(g_bin.eEntryPoint);		/* start the image */
+	} else {
+		printf("Image does not seem to be a valid Windows CE image!\n");
+	}
+err:
+	free(buffer);
+	return CMD_RET_FAILURE;
+}
+U_BOOT_CMD(
+	nbootce, 2, 0, do_nbootce,
+	"Boot a Windows CE image from NAND\n",
+	"off|partitition\n"
+	"\toff\t\t- flash offset (hex)\n"
+	"\tpartition\t- partition name\n"
 );
 
 static int ce_send_write_ack(ce_net *net)
