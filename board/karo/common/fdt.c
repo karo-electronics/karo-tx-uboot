@@ -166,10 +166,13 @@ void karo_fdt_fixup_touchpanel(void *blob)
 		if (model != NULL && strcmp(model, tp) == 0)
 			continue;
 
-		tp = strchr(tp, ',');
-		if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
-			continue;
-
+		if (model != NULL) {
+			if (strcmp(model, tp) == 0)
+				continue;
+			tp = strchr(tp, ',');
+			if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
+				continue;
+		}
 		fdt_del_tp_node(blob, karo_touchpanels[i]);
 		karo_set_fdtsize(blob);
 	}
