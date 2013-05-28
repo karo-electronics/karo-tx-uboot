@@ -457,7 +457,10 @@ void lcd_enable(void)
 
 void lcd_disable(void)
 {
-	da8xx_fb_disable();
+	if (lcd_enabled) {
+		da8xx_fb_disable();
+		lcd_enabled = 0;
+	}
 }
 
 void lcd_panel_disable(void)
