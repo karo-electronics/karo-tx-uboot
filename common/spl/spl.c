@@ -194,8 +194,9 @@ void board_init_r(gd_t *dummy1, ulong dummy2)
 #endif
 #ifdef CONFIG_SPL_NAND_SUPPORT
 	case BOOT_DEVICE_NAND:
-		spl_nand_load_image();
-		break;
+		if (spl_nand_load_image() == 0)
+			break;
+		/* fallthru in case of failure to activate ymodem download */
 #endif
 #ifdef CONFIG_SPL_NOR_SUPPORT
 	case BOOT_DEVICE_NOR:
