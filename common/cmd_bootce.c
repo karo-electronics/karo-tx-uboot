@@ -489,23 +489,25 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (argc < 2 || argc > 3)
 		return CMD_RET_USAGE;
 
+	ret = mtdparts_init();
+	if (ret)
+		return CMD_RET_FAILURE;
+
 	offset = simple_strtoul(argv[1], &end, 16);
 	if (*end != '\0') {
 		ret = find_dev_and_part(argv[1], &dev, &part_num,
 					&part_info);
-		if (ret == 0) {
-			offset = part_info->offset;
-			printf ("## Booting Windows CE Image from NAND partition %s at offset %08x\n",
-				argv[1], offset);
-		} else {
-			printf ("## Booting Windows CE Image from NAND offset %08x\n",
-				offset);
+		if (ret != 0) {
+			printf("Partition '%s' not found\n", argv[1]);
+			return CMD_RET_FAILURE;
 		}
+		offset = part_info->offset;
+		printf ("## Booting Windows CE Image from NAND partition %s at offset %08x\n",
+			argv[1], offset);
+	} else {
+		printf ("## Booting Windows CE Image from NAND offset %08x\n",
+			offset);
 	}
-
-	ret = mtdparts_init();
-	if (ret)
-		return CMD_RET_FAILURE;
 
 	buffer = malloc(CE_NAND_BUF_SIZE);
 	if (buffer == NULL) {
