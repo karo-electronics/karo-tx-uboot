@@ -1013,6 +1013,17 @@ int checkboard(void)
 	return 0;
 }
 
+#ifdef CONFIG_SERIAL_TAG
+void get_board_serial(struct tag_serialnr *serialnr)
+{
+	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
+	struct fuse_bank0_regs *fuse = (void *)iim->bank[0].fuse_regs;
+
+	serialnr->low = readl(&fuse->cfg0);
+	serialnr->high = readl(&fuse->cfg1);
+}
+#endif
+
 #if defined(CONFIG_OF_BOARD_SETUP)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
@@ -1023,17 +1034,6 @@ struct node_info nodes[] = {
 
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
-#endif
-
-#ifdef CONFIG_SERIAL_TAG
-void get_board_serial(struct tag_serialnr *serialnr)
-{
-	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
-	struct fuse_bank0_regs *fuse = (void *)iim->bank[0].fuse_regs;
-
-	serialnr->low = readl(&fuse->cfg0);
-	serialnr->high = readl(&fuse->cfg1);
-}
 #endif
 
 static void tx6q_fixup_flexcan(void *blob)
