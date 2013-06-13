@@ -270,12 +270,15 @@
 	"(env),"							\
 	xstr(CONFIG_ENV_RANGE)						\
 	"(env2),"
+#define CONFIG_SYS_USERFS_PART_STR	"91520k(userfs)"
 #else
 #define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
 	"(env),"
+#define CONFIG_SYS_USERFS_PART_STR	"91904k(userfs)"
 #endif /* CONFIG_ENV_OFFSET_REDUND */
 #else
 #define CONFIG_SYS_ENV_PART_STR		/* no env partition in NAND */
+#define CONFIG_SYS_USERFS_PART_STR	"92288k(userfs)"
 #endif /* CONFIG_ENV_IS_IN_NAND */
 
 /*
@@ -315,7 +318,8 @@
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
 	CONFIG_SYS_ENV_PART_STR						\
-	"4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+	"4m(linux),32m(rootfs),256k(dtb),"				\
+	CONFIG_SYS_USERFS_PART_STR ",512k(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
