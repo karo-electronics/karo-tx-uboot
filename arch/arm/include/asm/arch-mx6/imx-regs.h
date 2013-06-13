@@ -389,30 +389,17 @@ struct cspi_regs {
 	ECSPI5_BASE_ADDR
 
 struct iim_regs {
-	u32	ctrl;
-	u32	ctrl_set;
-	u32	ctrl_clr;
-	u32	ctrl_tog;
-	u32	timing;
-	u32	rsvd0[3];
-	u32	data;
-	u32	rsvd1[3];
-	u32	read_ctrl;
-	u32	rsvd2[3];
-	u32	fuse_data;
-	u32	rsvd3[3];
-	u32	sticky;
-	u32	rsvd4[3];
-	u32	scs;
-	u32	scs_set;
-	u32	scs_clr;
-	u32	scs_tog;
-	u32	crc_addr;
-	u32	rsvd5[3];
-	u32	crc_value;
-	u32	rsvd6[3];
-	u32	version;
-	u32	rsvd7[0xdb];
+	mx6_reg_32(ctrl);
+	reg_32(timing);
+	reg_32(data);
+	reg_32(read_ctrl);
+	reg_32(fuse_data);
+	reg_32(sticky);
+	mx6_reg_32(scs);
+	reg_32(crc_addr);
+	reg_32(crc_value);
+	reg_32(version);
+	u32	rsvd7[0xd8];
 
 	struct fuse_bank {
 		u32	fuse_regs[0x20];
@@ -420,14 +407,10 @@ struct iim_regs {
 };
 
 struct fuse_bank4_regs {
-	u32	sjc_resp_low;
-	u32	rsvd0[3];
-	u32	sjc_resp_high;
-	u32	rsvd1[3];
-	u32	mac_addr_low;
-	u32	rsvd2[3];
-	u32	mac_addr_high;
-	u32	rsvd3[0x13];
+	reg_32(sjc_resp_low);
+	reg_32(sjc_resp_high);
+	reg_32(mac_addr_low);
+	reg_32(mac_addr_high);
 };
 
 struct aipstz_regs {
