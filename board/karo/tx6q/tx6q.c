@@ -204,11 +204,26 @@ int check_cpu_temperature(int boot);
 
 static void print_cpuinfo(void)
 {
-	u32 cpurev;
+	u32 cpurev = get_cpu_rev();
+	char *cpu_str = "?";
 
-	cpurev = get_cpu_rev();
+	switch ((cpurev >> 12) & 0xff) {
+	case MXC_CPU_MX6SL:
+		cpu_str = "SL";
+		break;
+	case MXC_CPU_MX6DL:
+		cpu_str = "DL";
+		break;
+	case MXC_CPU_MX6SOLO:
+		cpu_str = "SOLO";
+		break;
+	case MXC_CPU_MX6Q:
+		cpu_str = "Q";
+		break;
+	}
 
-	printf("CPU:   Freescale i.MX6Q rev%d.%d at %d MHz\n",
+	printf("CPU:   Freescale i.MX6%s rev%d.%d at %d MHz\n",
+		cpu_str,
 		(cpurev & 0x000F0) >> 4,
 		(cpurev & 0x0000F) >> 0,
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
