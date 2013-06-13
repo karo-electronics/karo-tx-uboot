@@ -386,10 +386,12 @@ static int patch_ivt(void *buf, size_t fsize)
 	}							\
 } while (0)
 
+#ifdef CONFIG_ENV_IS_IN_NAND
 #ifndef CONFIG_ENV_OFFSET_REDUND
 #define TOTAL_ENV_SIZE CONFIG_ENV_RANGE
 #else
 #define TOTAL_ENV_SIZE (CONFIG_ENV_RANGE * 2)
+#endif
 #endif
 
 #define pr_fcb_offset(n)	printf("%s: %04x (%d)\n", #n, \
@@ -408,9 +410,11 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	void *addr = NULL;
 	struct mx6_fcb *fcb;
 	unsigned long mtd_num_blocks = mtd->size / mtd->erasesize;
+#ifdef CONFIG_ENV_IS_IN_NAND
 	unsigned long env_start_block = CONFIG_ENV_OFFSET / mtd->erasesize;
 	unsigned long env_end_block = env_start_block +
 		DIV_ROUND_UP(TOTAL_ENV_SIZE, mtd->erasesize) - 1;
+#endif
 	int optind;
 	int fw1_set = 0;
 	int fw2_set = 0;
@@ -507,12 +511,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (!fw1_set) {
 		fw1_start_block = CONFIG_SYS_NAND_U_BOOT_OFFS / mtd->erasesize;
 		fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
-#if 0
-		if (chk_overlap(fw1, env)) {
-			fw1_start_block = env_end_block + 1;
-			fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
-		}
-#endif
 	} else {
 		fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
 	}
@@ -520,22 +518,20 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (fw2_set && fw2_start_block == 0) {
 		fw2_start_block = fw1_end_block + 1;
 		fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
-#if 0
-		if (chk_overlap(fw2, env)) {
-			fw2_start_block = env_end_block + 1;
-			fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
-		}
-#endif
 	} else {
 		fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
 	}
 
+#ifdef CONFIG_ENV_IS_IN_NAND
 	fail_if_overlap(fcb, env, "FCB", "Environment");
-	fail_if_overlap(fcb, fw1, "FCB", "FW1");
 	fail_if_overlap(fw1, env, "FW1", "Environment");
+#endif
+	fail_if_overlap(fcb, fw1, "FCB", "FW1");
 	if (fw2_set) {
 		fail_if_overlap(fcb, fw2, "FCB", "FW2");
+#ifdef CONFIG_ENV_IS_IN_NAND
 		fail_if_overlap(fw2, env, "FW2", "Environment");
+#endif
 		fail_if_overlap(fw1, fw2, "FW1", "FW2");
 	}
 
