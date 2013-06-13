@@ -319,7 +319,7 @@
 	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
 	CONFIG_SYS_ENV_PART_STR						\
 	"4m(linux),32m(rootfs),256k(dtb),"				\
-	CONFIG_SYS_USERFS_PART_STR ",512k(bbt)ro"
+	CONFIG_SYS_USERFS_PART_STR ",512k@0x7f80000(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
