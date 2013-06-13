@@ -454,9 +454,9 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 U_BOOT_CMD(
 	bootce, 2, 0, do_bootce,
-	"bootce [addr]\t- Boot a Windows CE image from memory\n",
-	"[args..]\n"
-	"\taddr\t\t-boot image from address addr\n"
+	"Boot a Windows CE image from RAM\n",
+	"[addr]\n"
+	"\taddr\t\tboot image from address addr (default ${fileaddr})\n"
 );
 
 static int ce_nand_load(ce_bin *bin, size_t offset, void *buf, size_t max_len)
