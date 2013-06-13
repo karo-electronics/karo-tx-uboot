@@ -406,6 +406,17 @@ struct iim_regs {
 	} bank[15];
 };
 
+struct fuse_bank0_regs {
+	reg_32(misc_conf_lock);
+	reg_32(cfg0);
+	reg_32(cfg1);
+	reg_32(cfg2);
+	reg_32(cfg3);
+	reg_32(cfg4);
+	reg_32(cfg5);
+	reg_32(cfg6);
+};
+
 struct fuse_bank4_regs {
 	reg_32(sjc_resp_low);
 	reg_32(sjc_resp_high);
