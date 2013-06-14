@@ -459,21 +459,27 @@ U_BOOT_CMD(
 	"\taddr\t\tboot image from address addr (default ${fileaddr})\n"
 );
 
-static int ce_nand_load(ce_bin *bin, size_t offset, void *buf, size_t max_len)
+static int ce_nand_load(ce_bin *bin, loff_t *offset, void *buf, size_t max_len)
 {
 	int ret;
 	size_t len = max_len;
+	nand_info_t *nand = &nand_info[0];
 
-	ret = nand_read_skip_bad(&nand_info[0], offset, &len, buf);
-	if (ret < 0) {
-		printf("NBOOTCE - aborted\n");
-		return ret;
+	while (nand_block_isbad(nand, *offset & ~(max_len - 1))) {
+		printf("Skipping bad block 0x%08llx\n",
+			*offset & ~(max_len - 1));
+		*offset += max_len;
+		if (*offset + max_len > nand->size)
+			return -EINVAL;
 	}
+
+	ret = nand_read(nand, *offset, &len, buf);
+	if (ret < 0)
+		return ret;
+
 	bin->dataLen = len;
 	return len;
 }
-
-#define CE_NAND_BUF_SIZE	2048
 
 static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
@@ -481,10 +487,10 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	struct mtd_device *dev;
 	struct part_info *part_info;
 	u8 part_num;
-	size_t offset;
+	loff_t offset;
 	char *end;
 	void *buffer;
-	size_t len = CE_NAND_BUF_SIZE;
+	size_t bufsize = nand_info[0].erasesize, len;
 
 	if (argc < 2 || argc > 3)
 		return CMD_RET_USAGE;
@@ -502,23 +508,22 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			return CMD_RET_FAILURE;
 		}
 		offset = part_info->offset;
-		printf ("## Booting Windows CE Image from NAND partition %s at offset %08x\n",
+		printf ("## Booting Windows CE Image from NAND partition %s at offset %08llx\n",
 			argv[1], offset);
 	} else {
-		printf ("## Booting Windows CE Image from NAND offset %08x\n",
+		printf ("## Booting Windows CE Image from NAND offset %08llx\n",
 			offset);
 	}
 
-	buffer = malloc(CE_NAND_BUF_SIZE);
+	buffer = malloc(bufsize);
 	if (buffer == NULL) {
-		printf("Failed to allocate %u byte buffer\n", CE_NAND_BUF_SIZE);
+		printf("Failed to allocate %u byte buffer\n", bufsize);
 		return CMD_RET_FAILURE;
 	}
 
 	ce_init_bin(&g_bin, buffer);
 
-	ret = ce_nand_load(&g_bin, offset, buffer,
-			CE_NAND_BUF_SIZE);
+	ret = ce_nand_load(&g_bin, &offset, buffer, bufsize);
 	if (ret < 0) {
 		printf("Failed to read NAND: %d\n", ret);
 		goto err;
@@ -526,18 +531,34 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	len = ret;
 	/* check if there is a valid windows CE image header */
 	if (ce_is_bin_image(buffer, len)) {
-		while (ce_parse_bin(&g_bin) == CE_PR_MORE) {
-			if (ctrlc()) {
-				printf("NBOOTCE - canceled by user\n");
-				goto err;
+		do {
+			ret = ce_parse_bin(&g_bin);
+			switch (ret) {
+			case CE_PR_MORE:
+			{
+				if (ctrlc()) {
+					printf("NBOOTCE - canceled by user\n");
+					goto err;
+				}
+				offset += len;
+				len = ce_nand_load(&g_bin, &offset, buffer,
+						bufsize);
+				if (len < 0) {
+					printf("Nand read error: %d\n", len);
+					ret = len;
+					goto err;
+				}
 			}
-			offset += len;
-			ret = ce_nand_load(&g_bin, offset, buffer,
-					CE_NAND_BUF_SIZE);
-			if (ret < 0)
-				goto err;
-			len = ret;
-		}
+			break;
+
+			case CE_PR_EOF:
+			case CE_PR_ERROR:
+				break;
+			}
+		} while (ret == CE_PR_MORE);
+		if (ret != CE_PR_EOF)
+			return CMD_RET_FAILURE;
+
 		free(buffer);
 		if (getenv_yesno("autostart") != 1) {
 			/*
