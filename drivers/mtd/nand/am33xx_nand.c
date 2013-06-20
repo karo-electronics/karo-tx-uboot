@@ -814,6 +814,31 @@ static int am33xx_spl_dev_ready(struct mtd_info *mtd)
 }
 #endif
 
+#ifdef CONFIG_SPL_BUILD
+/*
+ * usually implemented in nand_base.c which is not compiled in SPL_BUILD
+ */
+void nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
+{
+	int i;
+	struct nand_chip *chip = mtd->priv;
+
+	for (i = 0; i < len; i++)
+		buf[i] = readb(chip->IO_ADDR_R);
+}
+
+void nand_read_buf16(struct mtd_info *mtd, uint8_t *buf, int len)
+{
+	int i;
+	struct nand_chip *chip = mtd->priv;
+	u16 *p = (u16 *) buf;
+	len >>= 1;
+
+	for (i = 0; i < len; i++)
+		p[i] = readw(chip->IO_ADDR_R);
+}
+#endif
+
 /*
  * Board-specific NAND initialization. The following members of the
  * argument are board-specific:
