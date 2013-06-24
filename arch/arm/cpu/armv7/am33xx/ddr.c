@@ -1,8 +1,7 @@
 /*
  * DDR Configuration for AM33xx devices.
  *
- * Copyright (C) 2011 Texas Instruments Incorporated -
-http://www.ti.com/
+ * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -24,8 +23,7 @@ http://www.ti.com/
 /**
  * Base address for EMIF instances
  */
-static struct emif_reg_struct *emif_reg = {
-				(struct emif_reg_struct *)EMIF4_0_CFG_BASE};
+static struct emif_reg_struct *emif_reg = (void *)EMIF4_0_CFG_BASE;
 
 /**
  * Base address for DDR instance
@@ -47,7 +45,7 @@ void config_sdram(const struct emif_regs *regs)
 {
 	writel(regs->ref_ctrl, &emif_reg->emif_sdram_ref_ctrl);
 	writel(regs->ref_ctrl, &emif_reg->emif_sdram_ref_ctrl_shdw);
-	if (regs->zq_config){
+	if (regs->zq_config) {
 		writel(regs->zq_config, &emif_reg->emif_zq_config);
 		writel(regs->sdram_config, &cstat->secure_emif_sdram_config);
 	}
