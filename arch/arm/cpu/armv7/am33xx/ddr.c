@@ -47,7 +47,7 @@ void config_sdram(const struct emif_regs *regs)
 	writel(regs->ref_ctrl, &emif_reg->emif_sdram_ref_ctrl_shdw);
 	if (regs->zq_config) {
 		writel(regs->zq_config, &emif_reg->emif_zq_config);
-		writel(regs->sdram_config, &cstat->secure_emif_sdram_config);
+		writel(regs->sdram_config, &cstat->emif_sdram_config);
 	}
 	writel(regs->sdram_config, &emif_reg->emif_sdram_config);
 }
