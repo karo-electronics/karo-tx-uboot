@@ -324,13 +324,6 @@ static inline void tx48_set_pin_mux(const struct pin_mux *pin_mux,
 #define PRM_RSTST_EXTERNAL_WARM_RST	(1 << 5)
 #define PRM_RSTST_ICEPICK_RST		(1 << 9)
 
-struct prm_device {
-	unsigned int prmrstctrl;	/* offset 0x00 */
-	unsigned int prmrsttime;	/* offset 0x04 */
-	unsigned int prmrstst;		/* offset 0x08 */
-	/* ... */
-};
-
 static u32 prm_rstst __attribute__((section(".data")));
 
 /*
@@ -636,9 +629,7 @@ static void show_reset_cause(u32 prm_rstst)
 /* called with default environment! */
 int checkboard(void)
 {
-	struct prm_device *prmdev = (struct prm_device *)PRM_DEVICE;
-
-	prm_rstst = readl(&prmdev->prmrstst);
+	prm_rstst = readl(PRM_RSTST);
 	show_reset_cause(prm_rstst);
 
 #ifdef CONFIG_OF_LIBFDT
@@ -732,6 +723,7 @@ static struct cpsw_slave_data cpsw_slaves[] = {
 
 void s_init(void)
 {
+	/* Nothing to be done here */
 }
 
 static struct cpsw_platform_data cpsw_data = {

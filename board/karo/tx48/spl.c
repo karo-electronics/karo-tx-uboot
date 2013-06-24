@@ -50,8 +50,9 @@
 #define UART_SYSSTS_OFFSET	0x58
 
 #define UART_RESET		(0x1 << 1)
-#define UART_CLK_RUNNING_MASK	0x1
-#define UART_SMART_IDLE_EN	(0x1 << 0x3)
+#define UART_RESETDONE		(1 << 0)
+#define UART_IDLE_MODE(m)	(((m) << 3) & UART_IDLE_MODE_MASK)
+#define UART_IDLE_MODE_MASK	(0x3 << 3)
 
 /* Timer Defines */
 #define TSICR_REG		0x54
@@ -77,6 +78,8 @@
 #define PULLUDEN	(0x0 << 3) /* Pull up enabled */
 #define PULLUDDIS	(0x1 << 3) /* Pull up disabled */
 #define MODE(val)	(val)
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * PAD CONTROL OFFSETS
@@ -396,12 +399,12 @@ static struct pin_mux tx48_uart0_pins[] = {
 /*
  * early system init of muxing and clocks.
  */
-void enable_uart0_pin_mux(void)
+static void enable_uart0_pin_mux(void)
 {
 	tx48_set_pin_mux(tx48_uart0_pins, ARRAY_SIZE(tx48_uart0_pins));
 }
 
-void enable_mmc0_pin_mux(void)
+static void enable_mmc0_pin_mux(void)
 {
 	tx48_set_pin_mux(tx48_mmc_pins, ARRAY_SIZE(tx48_mmc_pins));
 }
@@ -438,9 +441,13 @@ static struct emif_regs tx48_ddr3_emif_reg_data = {
 	.emif_ddr_phy_ctlr_1 = MT41J128MJT125_EMIF_READ_LATENCY,
 };
 
-void s_init(void)
+#ifdef CONFIG_HW_WATCHDOG
+static inline void tx48_wdog_disable(void)
 {
-#ifndef CONFIG_HW_WATCHDOG
+}
+#else
+static inline void tx48_wdog_disable(void)
+{
 	struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
 
 	/* WDT1 is already running when the bootloader gets control
@@ -452,32 +459,43 @@ void s_init(void)
 	writel(0x5555, &wdtimer->wdtwspr);
 	while (readl(&wdtimer->wdtwwps) != 0x0)
 		;
+}
 #endif
+
+void s_init(void)
+{
+	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
+	int timeout = 1000;
+
 	/* Setup the PLLs and the clocks for the peripherals */
 	pll_init();
 
-	/* UART softreset */
-	u32 regVal;
-	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
+	tx48_wdog_disable();
 
 	enable_uart0_pin_mux();
 
-	regVal = readl(&uart_base->uartsyscfg);
-	regVal |= UART_RESET;
-	writel(regVal, &uart_base->uartsyscfg);
-	while ((readl(&uart_base->uartsyssts) &
-		UART_CLK_RUNNING_MASK) != UART_CLK_RUNNING_MASK)
-		;
+	/* UART softreset */
+	writel(readl(&uart_base->uartsyscfg) | UART_RESET,
+		&uart_base->uartsyscfg);
+	while (!(readl(&uart_base->uartsyssts) & UART_RESETDONE)) {
+		udelay(1);
+		if (timeout-- <= 0)
+			break;
+	}
 
 	/* Disable smart idle */
-	regVal = readl(&uart_base->uartsyscfg);
-	regVal |= UART_SMART_IDLE_EN;
-	writel(regVal, &uart_base->uartsyscfg);
+	writel((readl(&uart_base->uartsyscfg) & ~UART_IDLE_MODE_MASK) |
+		UART_IDLE_MODE(1), &uart_base->uartsyscfg);
 
-	/* Initialize the Timer */
-	timer_init();
+	gd = &gdata;
 
 	preloader_console_init();
+
+	if (timeout <= 0)
+		printf("Timeout waiting for UART RESET\n");
+
+
+	timer_init();
 
 	config_ddr(303, MT41J128MJT125_IOCTRL_VALUE, &tx48_ddr3_data,
 		&tx48_ddr3_cmd_ctrl_data, &tx48_ddr3_emif_reg_data);
