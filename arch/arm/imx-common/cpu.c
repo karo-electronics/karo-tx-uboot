@@ -64,7 +64,7 @@ char *get_reset_cause(void)
 	}
 }
 
-#if defined(CONFIG_MX53) || defined(CONFIG_MX6Q)
+#if defined(CONFIG_MX53) || defined(CONFIG_MX6)
 #if defined(CONFIG_MX53)
 #define MEMCTL_BASE	ESDCTL_BASE_ADDR;
 #else

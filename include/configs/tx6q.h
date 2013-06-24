@@ -18,6 +18,7 @@
 /*
  * Ka-Ro TX6Q board - SoC configuration
  */
+#define CONFIG_MX6
 #define CONFIG_MX6Q
 #define CONFIG_SYS_MX6_HCLK		24000000
 #define CONFIG_SYS_MX6_CLK32		32768
