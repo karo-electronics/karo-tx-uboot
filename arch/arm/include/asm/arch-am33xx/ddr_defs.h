@@ -25,7 +25,10 @@
 /* AM335X EMIF Register values */
 #define VTP_CTRL_READY		(0x1 << 5)
 #define VTP_CTRL_ENABLE		(0x1 << 6)
-#define VTP_CTRL_START_EN	(0x1)
+#define VTP_CTRL_FILTER_SHIFT	1
+#define VTP_CTRL_FILTER_MASK	(0x7 << VTP_CTRL_FILTER_SHIFT)
+#define VTP_CTRL_FILTER(n)	(((n) << VTP_CTRL_FILTER_SHIFT) & VTP_CTRL_FILTER_MASK)
+#define VTP_CTRL_START_EN	(0x1 << 0)
 #define PHY_DLL_LOCK_DIFF	0x0
 #define DDR_CKE_CTRL_NORMAL	0x1
 

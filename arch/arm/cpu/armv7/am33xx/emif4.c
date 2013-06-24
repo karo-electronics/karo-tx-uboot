@@ -51,14 +51,15 @@ static void config_vtp(void)
 {
 	writel(readl(&vtpreg->vtp0ctrlreg) | VTP_CTRL_ENABLE,
 			&vtpreg->vtp0ctrlreg);
-	writel(readl(&vtpreg->vtp0ctrlreg) & (~VTP_CTRL_START_EN),
+	writel(readl(&vtpreg->vtp0ctrlreg) & ~(VTP_CTRL_START_EN |
+						VTP_CTRL_FILTER_MASK),
 			&vtpreg->vtp0ctrlreg);
-	writel(readl(&vtpreg->vtp0ctrlreg) | VTP_CTRL_START_EN,
+	writel(readl(&vtpreg->vtp0ctrlreg) | VTP_CTRL_START_EN |
+			VTP_CTRL_FILTER(3),
 			&vtpreg->vtp0ctrlreg);
 
 	/* Poll for READY */
-	while ((readl(&vtpreg->vtp0ctrlreg) & VTP_CTRL_READY) !=
-			VTP_CTRL_READY)
+	while (!(readl(&vtpreg->vtp0ctrlreg) & VTP_CTRL_READY))
 		;
 }
 
