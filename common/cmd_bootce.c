@@ -20,20 +20,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-//#define DEBUG
-//#define TEST_LAUNCH
-//#define DDEBUG
-#ifdef DDEBUG
-#define _debug printf
-#else
-#define _debug debug
-#endif
 
 #include <common.h>
 #include <command.h>
 #include <net.h>
 #include <wince.h>
+#include <nand.h>
+#include <malloc.h>
 #include <asm/errno.h>
+#include <jffs2/load_kernel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -41,7 +36,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CE_FIX_ADDRESS(a)	((void *)((a) - WINCE_VRAM_BASE + CONFIG_SYS_SDRAM_BASE))
 
 #ifndef INT_MAX
-#define INT_MAX			((int)(~0 >> 1))
+#define INT_MAX			((int)(~0U >> 1))
 #endif
 
 /* Bin image parse states */
@@ -66,11 +61,9 @@ static void ce_init_bin(ce_bin *bin, unsigned char *dataBuffer)
 {
 	memset(bin, 0, sizeof(*bin));
 
-debug("%s@%d: \n", __func__, __LINE__);
 	bin->data = dataBuffer;
 	bin->parseState = CE_PS_RTI_ADDR;
 	bin->parsePtr = (unsigned char *)bin;
-debug("%s@%d: \n", __func__, __LINE__);
 }
 
 static int ce_is_bin_image(void *image, int imglen)
@@ -277,20 +270,13 @@ static int ce_lookup_ep_bin(ce_bin *bin)
 
 static int ce_parse_bin(ce_bin *bin)
 {
-	unsigned char *pbData = g_net.data + 4;//bin->data;
+	unsigned char *pbData = bin->data;
 	int len = bin->dataLen;
 	int copyLen;
 
 	debug("starting ce image parsing:\n\tbin->binLen: 0x%08X\n", bin->binLen);
-	debug("\tlen=%d\n", len);
-	debug("\tparse_state=%d\n", bin->parseState);
 
 	if (len) {
-		ce_dump_block(pbData, len);
-#if 0
-if (bin->binLen > 1024)
-	return CE_PR_EOF;
-#endif
 		if (bin->binLen == 0) {
 			// Check for the .BIN signature first
 			if (!ce_is_bin_image(pbData, len)) {
@@ -426,11 +412,10 @@ return;
 	entry();
 }
 
-static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
 	void *addr;
 	size_t image_size;
-	char *s;
 
 	if (argc > 1) {
 		addr = (void *)simple_strtoul(argv[1], NULL, 16);
@@ -439,8 +424,7 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		addr = (void *)getenv_ulong("fileaddr", 16, 0);
 		image_size = getenv_ulong("filesize", 16, INT_MAX);
 	} else {
-		printf ("Usage:\n%s\n", cmdtp->usage);
-		return 1;
+		return CMD_RET_USAGE;
 	}
 
 	printf ("## Booting Windows CE Image from address %p ...\n", addr);
@@ -451,32 +435,153 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			/* Ops! Corrupted .BIN image! */
 			/* Handle error here ...      */
 			printf("corrupted .BIN image !!!\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
-		if ((s = getenv("autostart")) != NULL) {
-			if (*s != 'y') {
-				/*
-				 * just use bootce to load the image to SDRAM;
-				 * Do not start it automatically.
-				 */
-				setenv_addr("fileaddr",
-					g_bin.eEntryPoint);
-				return 0;
-			}
+		if (getenv_yesno("autostart") != 1) {
+			/*
+			 * just use bootce to load the image to SDRAM;
+			 * Do not start it automatically.
+			 */
+			setenv_addr("fileaddr", g_bin.eEntryPoint);
+			return CMD_RET_SUCCESS;
 		}
 		ce_run_bin(g_bin.eEntryPoint);		/* start the image */
 	} else {
 		printf("Image does not seem to be a valid Windows CE image!\n");
-		return 1;
+		return CMD_RET_FAILURE;
 	}
-	return 1;	/* never reached - just to keep compiler happy */
+	return CMD_RET_FAILURE;	/* never reached - just to keep compiler happy */
+}
+U_BOOT_CMD(
+	bootce, 2, 0, do_bootce,
+	"Boot a Windows CE image from RAM\n",
+	"[addr]\n"
+	"\taddr\t\tboot image from address addr (default ${fileaddr})\n"
+);
+
+static int ce_nand_load(ce_bin *bin, loff_t *offset, void *buf, size_t max_len)
+{
+	int ret;
+	size_t len = max_len;
+	nand_info_t *nand = &nand_info[0];
+
+	while (nand_block_isbad(nand, *offset & ~(max_len - 1))) {
+		printf("Skipping bad block 0x%08llx\n",
+			*offset & ~(max_len - 1));
+		*offset += max_len;
+		if (*offset + max_len > nand->size)
+			return -EINVAL;
+	}
+
+	ret = nand_read(nand, *offset, &len, buf);
+	if (ret < 0)
+		return ret;
+
+	bin->dataLen = len;
+	return len;
 }
 
+static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int ret;
+	struct mtd_device *dev;
+	struct part_info *part_info;
+	u8 part_num;
+	loff_t offset;
+	char *end;
+	void *buffer;
+	size_t bufsize = nand_info[0].erasesize, len;
+
+	if (argc < 2 || argc > 3)
+		return CMD_RET_USAGE;
+
+	ret = mtdparts_init();
+	if (ret)
+		return CMD_RET_FAILURE;
+
+	offset = simple_strtoul(argv[1], &end, 16);
+	if (*end != '\0') {
+		ret = find_dev_and_part(argv[1], &dev, &part_num,
+					&part_info);
+		if (ret != 0) {
+			printf("Partition '%s' not found\n", argv[1]);
+			return CMD_RET_FAILURE;
+		}
+		offset = part_info->offset;
+		printf ("## Booting Windows CE Image from NAND partition %s at offset %08llx\n",
+			argv[1], offset);
+	} else {
+		printf ("## Booting Windows CE Image from NAND offset %08llx\n",
+			offset);
+	}
+
+	buffer = malloc(bufsize);
+	if (buffer == NULL) {
+		printf("Failed to allocate %u byte buffer\n", bufsize);
+		return CMD_RET_FAILURE;
+	}
+
+	ce_init_bin(&g_bin, buffer);
+
+	ret = ce_nand_load(&g_bin, &offset, buffer, bufsize);
+	if (ret < 0) {
+		printf("Failed to read NAND: %d\n", ret);
+		goto err;
+	}
+	len = ret;
+	/* check if there is a valid windows CE image header */
+	if (ce_is_bin_image(buffer, len)) {
+		do {
+			ret = ce_parse_bin(&g_bin);
+			switch (ret) {
+			case CE_PR_MORE:
+			{
+				if (ctrlc()) {
+					printf("NBOOTCE - canceled by user\n");
+					goto err;
+				}
+				offset += len;
+				len = ce_nand_load(&g_bin, &offset, buffer,
+						bufsize);
+				if (len < 0) {
+					printf("Nand read error: %d\n", len);
+					ret = len;
+					goto err;
+				}
+			}
+			break;
+
+			case CE_PR_EOF:
+			case CE_PR_ERROR:
+				break;
+			}
+		} while (ret == CE_PR_MORE);
+		if (ret != CE_PR_EOF)
+			return CMD_RET_FAILURE;
+
+		free(buffer);
+		if (getenv_yesno("autostart") != 1) {
+			/*
+			 * just use bootce to load the image to SDRAM;
+			 * Do not start it automatically.
+			 */
+			setenv_addr("fileaddr", g_bin.eEntryPoint);
+			return CMD_RET_SUCCESS;
+		}
+		ce_run_bin(g_bin.eEntryPoint);		/* start the image */
+	} else {
+		printf("Image does not seem to be a valid Windows CE image!\n");
+	}
+err:
+	free(buffer);
+	return CMD_RET_FAILURE;
+}
 U_BOOT_CMD(
-	bootce,	2,	0,	do_bootce,
-	"bootce\t- Boot a Windows CE image from memory \n",
-	"[args..]\n"
-	"\taddr\t\t-boot image from address addr\n"
+	nbootce, 2, 0, do_nbootce,
+	"Boot a Windows CE image from NAND\n",
+	"off|partitition\n"
+	"\toff\t\t- flash offset (hex)\n"
+	"\tpartition\t- partition name\n"
 );
 
 static int ce_send_write_ack(ce_net *net)
@@ -496,7 +601,6 @@ static int ce_send_write_ack(ce_net *net)
 			printf("Failed to send write ack %d; retries=%d\n",
 				ret, retries);
 		}
-debug("*");
 	} while (ret != 0 && retries-- > 0);
 	return ret;
 }
@@ -520,7 +624,6 @@ static enum bootme_state ce_process_download(ce_net *net, ce_bin *bin)
 			blknum = ntohs(blknum);
 			if (blknum == nxt) {
 				net->blockNum = blknum;
-debug("#");
 			} else {
 				int rc = ce_send_write_ack(net);
 
@@ -538,11 +641,6 @@ debug("#");
 			if (net->state == BOOTME_INIT) {
 				// Check file name for WRITE request
 				// CE EShell uses "boot.bin" file name
-#if 0
-				printf(">>>>>>>> First Frame, IP: %s, port: %d\n",
-					inet_ntoa((in_addr_t *)&net->srvAddrRecv),
-					ntohs(net->srvAddrRecv.sin_port));
-#endif
 				if (strncmp((char *)&net->data[2],
 						"boot.bin", 8) == 0) {
 					// Some diag output
@@ -554,7 +652,6 @@ debug("#");
 					}
 
 					// Lock down EShell download link
-//					net->link = 1;
 					ret = BOOTME_DOWNLOAD;
 				} else {
 					// Unknown link
@@ -571,6 +668,7 @@ debug("#");
 
 		case EDBG_CMD_WRITE:
 			/* Fixup data len */
+			bin->data = &net->data[4];
 			bin->dataLen = net->dataLen - 4;
 			ret = ce_parse_bin(bin);
 			if (ret != CE_PR_ERROR) {
@@ -611,15 +709,12 @@ static enum bootme_state ce_process_edbg(ce_net *net, ce_bin *bin)
 	enum bootme_state ret = net->state;
 	eth_dbg_hdr header;
 
-debug("%s: received packet of %u byte @ %p\n", __func__, net->dataLen, net->data);
 	if (net->dataLen < sizeof(header)) {
 		/* Bad packet */
 		printf("Invalid packet size %u\n", net->dataLen);
 		net->dataLen = 0;
 		return ret;
 	}
-debug("%s@%d: Copying header from %p..%p to %p\n", __func__, __LINE__,
-	net->data, net->data + sizeof(header) - 1, &header);
 	memcpy(&header, net->data, sizeof(header));
 	if (header.id != EDBG_ID) {
 		/* Bad packet */
@@ -628,7 +723,6 @@ debug("%s@%d: Copying header from %p..%p to %p\n", __func__, __LINE__,
 		return ret;
 	}
 
-debug("%s@%d\n", __func__, __LINE__);
 	if (header.service != EDBG_SVC_ADMIN) {
 		/* Unknown service */
 		printf("Bad EDBG service %02x\n", header.service);
@@ -636,7 +730,6 @@ debug("%s@%d\n", __func__, __LINE__);
 		return ret;
 	}
 
-debug("%s@%d\n", __func__, __LINE__);
 	if (net->state == BOOTME_INIT) {
 		/* Some diag output */
 		if (net->verbose) {
@@ -645,7 +738,6 @@ debug("%s@%d\n", __func__, __LINE__);
 		}
 
 		/* Lock down EDBG link */
-//		net->link = 1;
 		net->state = BOOTME_DEBUG;
 	}
 
@@ -718,28 +810,13 @@ debug("%s@%d: sending packet %p len %u\n", __func__, __LINE__,
 
 static enum bootme_state ce_edbg_handler(const void *buf, size_t len)
 {
-	enum bootme_state ret;
-
-	if (len == 0) {
-		_debug("%s: EOF\n", __func__);
+	if (len == 0)
 		return BOOTME_DONE;
-	}
-#if 0
-	if (len > sizeof(g_net.data)) {
-		debug("Dropping oversized packet of %u bytes (max. size %u)\n",
-			len, sizeof(g_net.data));
-		return g_net.state;
-	}
-	debug("Copying network packet of %u bytes from %p to %p\n",
-		len, buf, g_net.data);
-	memcpy(g_net.data, buf, len);
-	g_net.dataLen = len;
-#else
+
 	g_net.data = (void *)buf;
 	g_net.dataLen = len;
-#endif
-	ret = ce_process_edbg(&g_net, &g_bin);
-	return ret;
+
+	return ce_process_edbg(&g_net, &g_bin);
 }
 
 static void ce_init_edbg_link(ce_net *net)
@@ -750,20 +827,9 @@ static void ce_init_edbg_link(ce_net *net)
 
 static enum bootme_state ce_download_handler(const void *buf, size_t len)
 {
-#if 0
-	if (len > sizeof(g_net.data)) {
-		debug("Dropping oversized packet of %u bytes (max. size %u)\n",
-			len, sizeof(g_net.data));
-		return g_net.state;
-	}
-	debug("Copying network packet of %u bytes from %p to %p\n",
-		len, buf, g_net.data);
-	memcpy(g_net.data, buf, len);
-	g_net.dataLen = len;
-#else
 	g_net.data = (void *)buf;
 	g_net.dataLen = len;
-#endif
+
 	g_net.state = ce_process_download(&g_net, &g_bin);
 	return g_net.state;
 }
@@ -773,13 +839,13 @@ static int ce_send_bootme(ce_net *net)
 	eth_dbg_hdr *header;
 	edbg_bootme_data *data;
 	unsigned char txbuf[PKTSIZE_ALIGN];
-#ifdef DEBUG_
+#ifdef DEBUG
 	int	i;
 	unsigned char	*pkt;
 #endif
 	/* Fill out BOOTME packet */
-net->data = txbuf;
-assert(net->data != NULL);
+	net->data = txbuf;
+
 	memset(net->data, 0, PKTSIZE);
 	header = (eth_dbg_hdr *)net->data;
 	data = (edbg_bootme_data *)header->data;
@@ -817,7 +883,7 @@ assert(net->data != NULL);
 	snprintf(data->deviceName, sizeof(data->deviceName), "%s%02X",
 		data->platformId, data->macAddr[5]);
 
-#ifdef DEBUG_
+#ifdef DEBUG
 	printf("header->id: %08X\r\n", header->id);
 	printf("header->service: %08X\r\n", header->service);
 	printf("header->flags: %08X\r\n", header->flags);
@@ -855,7 +921,7 @@ assert(net->data != NULL);
 	net->dataLen = BOOTME_PKT_SIZE;
 //	net->status = CE_PR_MORE;
 	net->state = BOOTME_INIT;
-#ifdef DEBUG_
+#ifdef DEBUG
 	debug("Start of buffer:      %p\n", net->data);
 	debug("Start of ethernet buffer:   %p\n", net->data);
 	debug("Start of CE header:         %p\n", header);
@@ -886,7 +952,8 @@ static inline int ce_init_download_link(ce_net *net, ce_bin *bin, int verbose)
 
 	net->verbose = verbose;
 
-	ce_init_bin(bin, NULL);//&net->data[4]);
+	/* buffer will be dynamically assigned in ce_download_handler() */
+	ce_init_bin(bin, NULL);
 	return 0;
 }
 
@@ -924,7 +991,6 @@ static inline int ce_download_file(ce_net *net, ulong timeout)
 		}
 
 		ret = BootMeDownload(ce_download_handler);
-		printf("BootMeDownload() returned %d\n", ret);
 		if (ret == BOOTME_ERROR) {
 			printf("CELOAD - aborted\n");
 			return 1;
@@ -961,12 +1027,12 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 				if (timeout >= UINT_MAX / CONFIG_SYS_HZ) {
 					printf("Timeout value %lu out of range (max.: %lu)\n",
 						timeout, UINT_MAX / CONFIG_SYS_HZ - 1);
-					return 1;
+					return CMD_RET_USAGE;
 				}
 				timeout *= CONFIG_SYS_HZ;
 			} else {
 				printf("Option requires an argument - t\n");
-				return 1;
+				return CMD_RET_USAGE;
 			}
 		} else if (argv[i][1] == 'h') {
 			i++;
@@ -975,53 +1041,44 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 				printf("Using server %pI4\n", &server_ip);
 			} else {
 				printf("Option requires an argument - t\n");
-				return 1;
+				return CMD_RET_USAGE;
 			}
 		}
 	}
-#ifndef TEST_LAUNCH
+
 	if (ce_init_download_link(&g_net, &g_bin, verbose) != 0)
 		goto err;
 
 	if (ce_download_file(&g_net, timeout))
 		goto err;
-#else
-g_bin.binLen = 1;
-#endif
+
 	if (g_bin.binLen) {
 		// Try to receive edbg commands from host
-_debug("%s@%d: \n", __func__, __LINE__);
 		ce_init_edbg_link(&g_net);
-_debug("%s@%d: \n", __func__, __LINE__);
 		if (verbose)
 			printf("Waiting for EDBG commands ...\n");
 
-_debug("%s@%d: \n", __func__, __LINE__);
 		ret = BootMeDebugStart(ce_edbg_handler);
-_debug("%s@%d: ret=%d\n", __func__, __LINE__, ret);
 		if (ret != BOOTME_DONE)
 			goto err;
-_debug("%s@%d: \n", __func__, __LINE__);
 
 		// Prepare WinCE image for execution
 		ce_prepare_run_bin(&g_bin);
-_debug("%s@%d: \n", __func__, __LINE__);
 
 		// Launch WinCE, if necessary
 		if (g_net.gotJumpingRequest)
 			ce_run_bin(g_bin.eEntryPoint);
-_debug("%s@%d: \n", __func__, __LINE__);
 	}
 	ret = 0;
 err:
 	ce_disconnect();
-	return ret;
+	return ret == 0 ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
-
 U_BOOT_CMD(
-	ceconnect,	4,	1,	do_ceconnect,
-	"ceconnect    - Set up a connection to the CE host PC over TCP/IP and download the run-time image\n",
-	"ceconnect [-v] [-t <timeout>]\n"
-	"  -v verbose operation\n"
-	"  -t <timeout> - max wait time (#sec) for the connection\n"
+	ceconnect, 6, 1, do_ceconnect,
+	"Set up a connection to the CE host PC over TCP/IP and download the run-time image\n",
+	"[-v] [-t <timeout>] [-h host]\n"
+	"  -v            - verbose operation\n"
+	"  -t <timeout>  - max wait time (#sec) for the connection\n"
+	"  -h <host>     - send BOOTME requests to <host> (default: broadcast address 255.255.255.255)"
 );

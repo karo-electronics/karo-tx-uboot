@@ -97,8 +97,6 @@ static inline void ce_dump_block(void *ptr, int length)
 
 static void bootme_timeout_handler(void)
 {
-printf("%s\n", __func__);
-
 	net_set_state(NETLOOP_SUCCESS);
 	bootme_timed_out++;
 }

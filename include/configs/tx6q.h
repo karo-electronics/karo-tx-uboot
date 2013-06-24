@@ -27,15 +27,10 @@
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
-#if 0
-#define CONFIG_NETCONSOLE
-#endif
 
 #ifndef CONFIG_MFG
 /* LCD Logo and Splash screen support */
-#if 1
 #define CONFIG_LCD
-#endif
 #define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
@@ -105,6 +100,7 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_INITRD_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
+#define CONFIG_SERIAL_TAG
 #ifndef CONFIG_MFG
 #define CONFIG_BOOTDELAY		1
 #else
@@ -171,9 +167,7 @@
 #define CONFIG_CMD_MMC
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
-#if 1
 #define CONFIG_CMD_BOOTCE
-#endif
 #define CONFIG_CMD_TIME
 #define CONFIG_CMD_I2C
 
@@ -228,6 +222,13 @@
 #define CONFIG_MX6_INTER_LDO_BYPASS	0
 #endif
 
+/* define one of the following options:
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_IS_IN_MMC
+#define CONFIG_ENV_IS_NOWHERE
+*/
+#define CONFIG_ENV_IS_IN_NAND
+
 /*
  * NAND flash driver
  */
@@ -237,7 +238,6 @@
 #define CONFIG_MTD_DEBUG
 #define CONFIG_MTD_DEBUG_VERBOSE	4
 #endif
-#define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_NAND_MXS
 #define CONFIG_NAND_PAGE_SIZE		2048
 #define CONFIG_NAND_OOB_SIZE		64
@@ -254,30 +254,41 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
+#define CONFIG_SYS_NAND_BASE		0x00000000
+#define CONFIG_CMD_ROMUPDATE
+#else
+#undef CONFIG_ENV_IS_IN_NAND
+#endif /* CONFIG_CMD_NAND */
+
 #ifdef CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
 #define CONFIG_ENV_SIZE			SZ_128K
 #define CONFIG_ENV_RANGE		0x60000
-#endif
-#define CONFIG_SYS_NAND_BASE		0x00000000
-#define CONFIG_CMD_ROMUPDATE
-#endif /* CONFIG_CMD_NAND */
+#ifdef CONFIG_ENV_OFFSET_REDUND
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
+	"(env),"							\
+	xstr(CONFIG_ENV_RANGE)						\
+	"(env2),"
+#define CONFIG_SYS_USERFS_PART_STR	"91520k(userfs)"
+#else
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
+	"(env),"
+#define CONFIG_SYS_USERFS_PART_STR	"91904k(userfs)"
+#endif /* CONFIG_ENV_OFFSET_REDUND */
+#else
+#define CONFIG_SYS_ENV_PART_STR		/* no env partition in NAND */
+#define CONFIG_SYS_USERFS_PART_STR	"92288k(userfs)"
+#endif /* CONFIG_ENV_IS_IN_NAND */
 
 /*
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#ifndef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_IS_IN_MMC
-#endif
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
-#if 0
-#define CONFIG_SYS_FSL_ESDHC_USE_PIO
-#endif
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	2
 
@@ -289,28 +300,26 @@
  * Environments on MMC
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV	0
+#define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_OVERWRITE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
 #define CONFIG_ENV_SIZE			(SZ_128K - CONFIG_ENV_OFFSET)
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
+#else
+#undef CONFIG_ENV_IS_IN_MMC
 #endif /* CONFIG_CMD_MMC */
 
-#ifdef CONFIG_ENV_OFFSET_REDUND
-#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env),"							\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
-#else
-#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+#ifdef CONFIG_ENV_IS_NOWHERE
+#define CONFIG_ENV_SIZE			SZ_4K
 #endif
+
+#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
+	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
+	CONFIG_SYS_ENV_PART_STR						\
+	"4m(linux),32m(rootfs),256k(dtb),"				\
+	CONFIG_SYS_USERFS_PART_STR ",512k@0x7f80000(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \

@@ -36,16 +36,18 @@ GLSOBJS	+= _umodsi3.o
 
 GLCOBJS	+= div0.o
 
-SOBJS-y += crt0.o
-
 ifndef CONFIG_SPL_BUILD
 COBJS-y	+= board.o
 COBJS-y	+= bootm.o
 COBJS-$(CONFIG_SYS_L2_PL310) += cache-pl310.o
+SOBJS-y += crt0.o
 SOBJS-$(CONFIG_USE_ARCH_MEMSET) += memset.o
 SOBJS-$(CONFIG_USE_ARCH_MEMCPY) += memcpy.o
 else
 COBJS-$(CONFIG_SPL_FRAMEWORK) += spl.o
+ifndef CONFIG_SPL_NO_CPU_SUPPORT_CODE
+SOBJS-y += crt0.o
+endif
 endif
 
 COBJS-y	+= interrupts.o

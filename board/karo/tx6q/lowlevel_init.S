@@ -21,15 +21,24 @@
 	(((l) >> 8) & 0x0000FF00) |	\
 	(((l) >> 24) & 0x000000FF))
 
-#define MXC_DCD_ITEM(addr, val)		.word	CPU_2_BE_32(addr), CPU_2_BE_32(val)
+#define CHECK_DCD_ADDR(a)	(			\
+	((a) >= 0x020E0000 && (a) <= 0x020E3FFF) /* IOMUXC */ ||	\
+	((a) >= 0x020C4000 && (a) <= 0x020C7FFF) /* CCM */ ||	\
+	((a) >= 0x020C8000 && (a) <= 0x020C8FFF) /* ANALOG */ ||	\
+	((a) >= 0x021B0000 && (a) <= 0x021B7FFF) /* MMDC */ ||	\
+	((a) >= 0x00907000 && (a) <= 0x00937FF0) /* OCRAM */ ||	\
+	((a) >= 0x08000000 && (a) <= 0x0FFEFFFF) /* EIM (CS0) */ ||	\
+	((a) >= 0x10000000 && (a) <= 0xFFFFFFFF) /* SDRAM */)
 
-#define CHECK_DCD_ADDR(a)	((((a) >= 0x00907000) && ((a) <= 0x00937FF0)) || \
-	(((a) >= 0x020C4000) && ((a) < 0x020C8000)) || \
-	(((a) >= 0x020C8000) && ((a) < 0x020C9000)) || \
-	(((a) >= 0x020E0000) && ((a) < 0x020E4000)) || \
-	(((a) >= 0x021B0000) && ((a) < 0x021B8000)) || \
-	(((a) >= 0x08000000) && ((a) < 0x0FFF0000)) || \
-	(((a) >= 0x10000000)))
+	.macro	mxc_dcd_item	addr, val
+	.ifne	CHECK_DCD_ADDR(\addr)
+	.word	CPU_2_BE_32(\addr), CPU_2_BE_32(\val)
+	.else
+	.error	"Address \addr not accessible from DCD"
+	.endif
+	.endm
+
+#define MXC_DCD_ITEM(addr, val)		mxc_dcd_item	addr, val
 
 #define MXC_DCD_CMD_SZ_BYTE		1
 #define MXC_DCD_CMD_SZ_SHORT		2
@@ -64,6 +73,8 @@
 	.else
 	.ifle		\clks - \offs - \max
 	.set		\name, \clks - \offs
+	.else
+	.error		"Value \clks out of range for parameter \name"
 	.endif
 	.endif
 	.endm
@@ -158,32 +169,33 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 	(PRCT << 24) |		\
 	(tCKE << 16) |		\
 	(SLOW_PD << 7) |	\
-	(BOTH_CS_PD << 6) | 	\
+	(BOTH_CS_PD << 6) |	\
 	(tCKSRX << 3) |		\
 	(tCKSRE << 0)		\
 	)
 
-#define MDPDC_VAL_1	(MDPDC_VAL_0 |	\
-	(PWDT << 12) |		\
-	(PWDT << 8)		\
+#define MDPDC_VAL_1	(MDPDC_VAL_0 |		\
+	(PWDT << 12) |				\
+	(PWDT << 8)				\
 	)
 
 #define ROW_ADDR_BITS	14
 #define COL_ADDR_BITS	10
 
 	.iflt	tWR - 7
-	.set	mr0_val, ((1 << 8) /* DLL Reset */ | \
-			((tWR + 1 - 4) << 9) | \
+	.set	mr0_val, ((1 << 8) /* DLL Reset */ |	\
+			((tWR + 1 - 4) << 9) |		\
 			(((tCL + 3) - 4) << 4))
 	.else
-	.set	mr0_val, ((1 << 8) /* DLL Reset */ | \
-			(((tWR + 1) / 2) << 9) | \
+	.set	mr0_val, ((1 << 8) /* DLL Reset */ |	\
+			(((tWR + 1) / 2) << 9) |	\
 			(((tCL + 3) - 4) << 4))
 	.endif
-#define MDSCR_MRS_VAL(cs, mr, val)	(((val) << 16) | \
-					(1 << 15) /* CON REQ */ | \
-					(3 << 4) /* MRS command */ | \
-					((cs) << 3) | \
+
+#define MDSCR_MRS_VAL(cs, mr, val)	(((val) << 16) |		\
+					(1 << 15) /* CON REQ */ |	\
+					(3 << 4) /* MRS command */ |	\
+					((cs) << 3) |			\
 					((mr) << 0))
 
 #define mr1_val				0x0040
@@ -214,15 +226,15 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 	(tRRD << 0))
 
 #define BURST_LEN	(SDRAM_BURST_LENGTH / 8) /* 0: 4 byte 1: 8 byte */
-#define MDCTL_VAL	(((ROW_ADDR_BITS - 11) << 24) | \
-			((COL_ADDR_BITS - 9) << 20) | \
-			(BURST_LEN << 19) | \
-			(2 << 16) | /* SDRAM bus width */ \
+#define MDCTL_VAL	(((ROW_ADDR_BITS - 11) << 24) |		\
+			((COL_ADDR_BITS - 9) << 20) |		\
+			(BURST_LEN << 19) |			\
+			(2 << 16) | /* SDRAM bus width */	\
 			((-1) << (32 - BANK_ADDR_BITS)))
 
 #define MDMISC_VAL	((ADDR_MIRROR << 19) |	\
 			(WALAT << 16) |		\
-			(BI_ON << 12) |	\
+			(BI_ON << 12) |		\
 			(0x3 << 9) |		\
 			(RALAT << 6) |		\
 			(DDR_TYPE << 3))
@@ -305,7 +317,8 @@ dcd_start:
 	/* RESET_OUT GPIO_7_12 */
 	MXC_DCD_ITEM(0x020e024c, 0x00000005)
 
-	MXC_DCD_ITEM(0x020c402c, 0x01e436c1) /* CSC2CDR default: 0x007236c1 */
+	MXC_DCD_ITEM(0x020c402c, 0x006336c1) /* CS2CDR default: 0x007236c1 */
+
 	MXC_DCD_ITEM(0x020c80e0, 0x00002001) /* ENET PLL */
 
 	/* enable all relevant clocks... */
@@ -326,7 +339,7 @@ dcd_start:
 	MXC_DCD_ITEM(0x020e02c0, 0x00000001)	/* UART1 CTS */
 	MXC_DCD_ITEM(0x020e02c4, 0x00000001)	/* UART1 RTS */
 	MXC_DCD_ITEM(0x020e091c, 0x00000003)	/* UART1 RTS INPUT_SEL */
-#if 0
+
 	/* NAND */
 	MXC_DCD_ITEM(0x020e02d4, 0x00000000)	/* NANDF_CLE: NANDF_CLE */
 	MXC_DCD_ITEM(0x020e02d8, 0x00000000)	/* NANDF_ALE: NANDF_ALE */
@@ -343,7 +356,7 @@ dcd_start:
 	MXC_DCD_ITEM(0x020e0310, 0x00000000)	/* NANDF_D5: NANDF_D5 */
 	MXC_DCD_ITEM(0x020e0314, 0x00000000)	/* NANDF_D6: NANDF_D6 */
 	MXC_DCD_ITEM(0x020e0318, 0x00000000)	/* NANDF_D7: NANDF_D7 */
-#endif
+
 	/* ext. mem CS */
 	MXC_DCD_ITEM(0x020e02ec, 0x00000000)	/* NANDF_CS2: NANDF_CS2 */
 	/* DRAM_DQM[0..7] */
@@ -592,5 +605,5 @@ con_ack_clr:
 	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x021b001c, 0x00004000)
 dcd_end:
 	.ifgt	dcd_end - dcd_start - 1768
-	DCD too large!
+	.error	"DCD too large!"
 	.endif
