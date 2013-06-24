@@ -214,7 +214,6 @@
 #define CONFIG_PHY_GIGE
 #define CONFIG_PHY_SMSC
 #define CONFIG_PHYLIB
-#define CONFIG_PHY_ADDR			(-1)
 #define CONFIG_MII
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_DHCP

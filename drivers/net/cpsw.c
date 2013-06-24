@@ -968,10 +968,27 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 			SUPPORTED_100baseT_Full |
 			SUPPORTED_1000baseT_Full);
 
-	phydev = phy_connect(priv->bus,
-			CONFIG_PHY_ADDR,
-			dev,
-			slave->data->phy_if);
+	if (slave->data->phy_id < 0) {
+		u32 phy_addr;
+
+		for (phy_addr = 0; phy_addr < 32; phy_addr++) {
+			debug("Trying to connect to PHY @ addr %02x\n",
+				phy_addr);
+			phydev = phy_connect(priv->bus, phy_addr,
+					dev, slave->data->phy_if);
+			if (phydev)
+				break;
+		}
+	} else {
+		phydev = phy_connect(priv->bus,
+				slave->data->phy_id,
+				dev,
+				slave->data->phy_if);
+	}
+	if (!phydev) {
+		printf("Failed to connect to PHY\n");
+		return -EINVAL;
+	}
 
 	phydev->supported &= supported;
 	phydev->advertising = phydev->supported;
@@ -979,7 +996,7 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 	priv->phydev = phydev;
 	phy_config(phydev);
 
-	return 1;
+	return 0;
 }
 
 int cpsw_register(struct cpsw_platform_data *data)
