@@ -59,7 +59,7 @@ static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
 #define TIOCP_CFG_SOFTRESET	(1 << 0)
 
 #if TIMER_CLOCK < CONFIG_SYS_HZ
-#error TIMER_CLOCK must be > CONFIG_SYS_HZ
+#error TIMER_CLOCK must be >= CONFIG_SYS_HZ
 #endif
 
 /*
@@ -102,11 +102,10 @@ int timer_init(void)
 	/* enable timer */
 	writel(TCLR_VAL, &timer_base->tclr);
 #endif
-#ifndef CONFIG_SPL_BUILD
 	gd->arch.lastinc = -30 * TIMER_CLOCK;
 	gd->arch.tbl = TIMER_START;
 	gd->arch.timer_rate_hz = TIMER_CLOCK;
-#endif
+
 	return 0;
 }
 
