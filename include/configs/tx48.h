@@ -66,7 +66,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM_1 + SZ_64M)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_8M)
-#define CONFIG_SYS_SDRAM_CLK		266
 
 #define CONFIG_SYS_CACHELINE_SIZE	64
 
@@ -74,13 +73,13 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT	"TX48 U-Boot > "
-#define CONFIG_SYS_CBSIZE	2048		/* Console I/O buffer size */
+#define CONFIG_SYS_PROMPT		"TX48 U-Boot > "
+#define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 						/* Print buffer size */
-#define CONFIG_SYS_MAXARGS	64		/* Max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
+#define CONFIG_SYS_MAXARGS		64	/* Max number of command args */
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 						/* Boot argument buffer size */
 #define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
 #define CONFIG_AUTO_COMPLETE			/* Command auto complete */
@@ -102,9 +101,9 @@
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #else
 #ifndef MACH_TYPE_TIAM335EVM
-#define MACH_TYPE_TIAM335EVM		 3589	 /* Until the next sync */
+#define MACH_TYPE_TIAM335EVM		3589	 /* Until the next sync */
 #endif
-#define CONFIG_MACH_TYPE	 MACH_TYPE_TIAM335EVM
+#define CONFIG_MACH_TYPE		MACH_TYPE_TIAM335EVM
 #endif
 
 /*
@@ -112,23 +111,21 @@
  */
 #define xstr(s)	str(s)
 #define str(s)	#s
-#define __pfx(x, s)	(x##s)
-#define _pfx(x, s)	__pfx(x, s)
+#define __pfx(x, s)			(x##s)
+#define _pfx(x, s)			__pfx(x, s)
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	3
+#define CONFIG_BOOTDELAY		3
 #define CONFIG_ZERO_BOOTDELAY_CHECK
-#define CONFIG_SYS_AUTOLOAD	"no"
-#define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTARGS		"console=ttyO0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND	"run bootcmd_nand"
-#define CONFIG_LOADADDR		83000000
-#define CONFIG_SYS_LOAD_ADDR	_pfx(0x, CONFIG_LOADADDR)
-#define CONFIG_U_BOOT_IMG_SIZE	SZ_1M
-#if 0
+#define CONFIG_SYS_AUTOLOAD		"no"
+#define CONFIG_BOOTFILE			"uImage"
+#define CONFIG_BOOTARGS			"console=ttyO0,115200 ro debug panic=1"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_LOADADDR			83000000
+#define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 #define CONFIG_HW_WATCHDOG
-#endif
 
 /*
  * Extra Environments
@@ -140,7 +137,7 @@
 #else
 #define TX48_BOOTM_CMD							\
 	"bootm_cmd=bootm\0"
-#define TX48_MTDPARTS_CMD "${mtdparts} "
+#define TX48_MTDPARTS_CMD " ${mtdparts}"
 #endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
@@ -163,7 +160,7 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	TX48_MTDPARTS_CMD						\
 	" video=${video_mode} ${append_bootargs}\0"			\
-	"cpu_clk=400\0"							\
+	"cpu_clk=" xstr(CONFIG_SYS_MPU_CLK) "\0"			\
 	"fdtaddr=81000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
@@ -291,19 +288,20 @@
 	xstr(CONFIG_ENV_RANGE)						\
 	"(env),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+	"(env2),4m(linux),16m(rootfs),256k(dtb),0x6a60000(userfs),512k@0x7f80000(bbt)"
 #else
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"128k(u-boot-spl),"						\
 	"1m(u-boot),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+	"(env),4m(linux),16m(rootfs),256k(dtb),0x6ac0000(userfs),512k@0x7f80000(bbt)"
 #endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define SRAM0_SIZE			SZ_64K
-#define CONFIG_SYS_INIT_SP_ADDR		0x4030B7FC
-#define CONFIG_SPL_STACK		CONFIG_SYS_INIT_SP_ADDR
+#define OCMC_SRAM_BASE			0x40300000
+#define CONFIG_SPL_STACK		(OCMC_SRAM_BASE + 0xb800)
+#define CONFIG_SYS_INIT_SP_ADDR		(PHYS_SDRAM_1 + SZ_32K)
 
  /* Platform/Board specific defs */
 #define CONFIG_SYS_TIMERBASE		0x48040000	/* Use Timer2 */
@@ -315,10 +313,10 @@
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_MAX_SIZE		(46 * SZ_1K)
 #define CONFIG_SPL_GPIO_SUPPORT
-#ifdef CONFIG_NAND_OMAP_GPMC
+#ifdef CONFIG_NAND_AM33XX
+#define CONFIG_SPL_NAND_DRIVERS
 #define CONFIG_SPL_NAND_AM33XX_BCH
 #define CONFIG_SPL_NAND_SUPPORT
-#define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_PAGE_COUNT	(CONFIG_SYS_NAND_BLOCK_SIZE /	\
 					CONFIG_SYS_NAND_PAGE_SIZE)
