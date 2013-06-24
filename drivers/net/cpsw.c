@@ -456,7 +456,7 @@ static inline u32 wait_for_user_access(void)
 	u32 reg;
 
 	while ((reg = __raw_readl(&mdio_regs->user[0].access)) & USERACCESS_GO) {
-		udelay(1);
+		udelay(1000);
 		if (--timeout <= 0) {
 			printf("TIMEOUT waiting for USERACCESS_GO\n");
 			return -1;
@@ -476,7 +476,7 @@ static inline void wait_for_idle(void)
 			printf("TIMEOUT waiting for state machine idle\n");
 			break;
 		}
-		udelay(1);
+		udelay(1000);
 	}
 }
 
