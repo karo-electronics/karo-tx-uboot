@@ -409,37 +409,249 @@ static void enable_mmc0_pin_mux(void)
 	tx48_set_pin_mux(tx48_mmc_pins, ARRAY_SIZE(tx48_mmc_pins));
 }
 
-static const struct ddr_data tx48_ddr3_data = {
-	.datardsratio0 = MT41J128MJT125_RD_DQS,
-	.datawdsratio0 = MT41J128MJT125_WR_DQS,
-	.datafwsratio0 = MT41J128MJT125_PHY_FIFO_WE,
-	.datawrsratio0 = MT41J128MJT125_PHY_WR_DATA,
-	.datadldiff0 = PHY_DLL_LOCK_DIFF,
+#define SDRAM_CLK		CONFIG_SYS_DDR_CLK
+
+#define ns_TO_ck(ns)		(((ns) * SDRAM_CLK + 999) / 1000)
+#define ck_TO_ns(ck)		((ck) * 1000 / SDRAM_CLK)
+
+#ifdef DEBUG
+static inline unsigned ck_val_check(unsigned ck, unsigned offs, unsigned max,
+			const char *name)
+{
+	if (ck < offs) {
+		printf("value %u for parameter %s is out of range (min: %u\n",
+			ck, name, offs);
+		hang();
+	}
+	if (ck > max) {
+		printf("value %u for parameter %s is out of range (max: %u\n",
+			ck, name, max);
+		hang();
+	}
+	return ck - offs;
+}
+#define CK_VAL(ck, offs, max)	ck_val_check(ck, offs, max, #ck)
+#else
+#define CK_VAL(ck, offs, max)	((ck) - (offs))
+#endif
+
+#define DDR3_NT5CB128		1
+#define DDR3_H5TQ2G8		2
+
+#if 1
+#define SDRAM_TYPE DDR3_NT5CB128
+#else
+#define SDRAM_TYPE DDR3_H5TQ2G8
+#endif
+
+#ifndef SDRAM_TYPE
+#error No SDRAM_TYPE specified
+#elif (SDRAM_TYPE == DDR3_NT5CB128) || (SDRAM_TYPE == DDR3_H5TQ2G8)
+#define tRP			ns_TO_ck(14)
+#define tRCD			ns_TO_ck(14)
+#define tWR			ns_TO_ck(15)
+#define tRAS			ns_TO_ck(35)
+#define tRC			ns_TO_ck(49)
+#define tRRD			max(ns_TO_ck(8), 4)
+#define tWTR			max(ns_TO_ck(8), 4)
+
+#define tXP			max(ns_TO_ck(6), 3)
+#define tXPR			max(5, ns_TO_ck(ck_TO_ns(tRFC + 1) + 10))
+#define tODT			ns_TO_ck(9)
+#define tXSNR			max(5, ns_TO_ck(ck_TO_ns(tRFC + 1) + 10))
+#define tXSRD			512
+#define tRTP			max(ns_TO_ck(8), 4)
+#define tCKE			max(ns_TO_ck(6), 3)
+
+#define tPDLL_UL		512
+#define tZQCS			64
+#define tRFC			ns_TO_ck(160)
+#define tRAS_MAX		0xf
+
+static inline int cwl(u32 sdram_clk)
+{
+	if (sdram_clk <= 300)
+		return 5;
+	else if (sdram_clk > 300 && sdram_clk <= 333)
+		return 5;
+	else if (sdram_clk > 333 && sdram_clk <= 400)
+		return 5;
+	else if (sdram_clk > 400 && sdram_clk <= 533)
+		return 6;
+	else if (sdram_clk > 533 && sdram_clk <= 666)
+		return 7;
+	else if (SDRAM_TYPE != DDR3_H5TQ2G8)
+		;
+	else if (sdram_clk > 666 && sdram_clk <= 800)
+		return 8;
+
+	printf("SDRAM clock out of range\n");
+	hang();
+}
+#define CWL cwl(SDRAM_CLK)
+
+static inline int cl(u32 sdram_clk)
+{
+	if (sdram_clk <= 300)
+		return 5;
+	else if (sdram_clk > 300 && sdram_clk <= 333)
+		return 5;
+	else if (sdram_clk > 333 && sdram_clk <= 400)
+		return 6;
+	else if (sdram_clk > 400 && sdram_clk <= 533)
+		return 8;
+	else if (sdram_clk > 533 && sdram_clk <= 666)
+		return (SDRAM_TYPE == DDR3_H5TQ2G8) ? 10 : 9;
+	else if (SDRAM_TYPE != DDR3_H5TQ2G8)
+		;
+	else if (sdram_clk > 666 && sdram_clk <= 800)
+		return 11;
+
+	printf("SDRAM clock out of range\n");
+	hang();
+}
+#define CL cl(SDRAM_CLK)
+
+#define ROW_ADDR_BITS		14
+#define SDRAM_PG_SIZE		1024
+#else
+#error Unsupported SDRAM_TYPE specified
+#endif
+
+#define SDRAM_CONFIG_VAL	(					\
+		(3 << 29) /* SDRAM type: 0: DDR1 1: LPDDR1 2: DDR2 3: DDR3 */ | \
+		(0 << 27) /* IBANK pos */ |				\
+		(2 << 24) /* termination resistor value 0: disable 1: RZQ/4 2: RZQ/2 3: RZQ/6 4: RZQ/12 5: RZQ/8 */ | \
+		(0 << 23) /* DDR2 differential DQS */ |			\
+		(1 << 21) /* dynamic ODT 0: off 1: RZQ/4 2: RZQ/2 */ |	\
+		(0 << 20) /* DLL disable */ |				\
+		(1 << 18) /* drive strength 0: RZQ/6 1: RZQ/7 */ |	\
+		((CWL - 5) << 16) /* CWL 0: 5 ... 3: 8 */ |		\
+		(1 << 14) /* SDRAM data bus width 0: 32 1: 16 */ |	\
+		(((CL - 4) * 2) << 10) /* CAS latency 2: 5 4: 6 6: 8 ... 14: 11 (DDR3) */ | \
+		((ROW_ADDR_BITS - 9) << 7) /* # of row addr bits 0: 9 ... 7: 16 */ | \
+		(3 << 4) /* # of SDRAM internal banks 0: 1 1: 2 2: 4 3: 8 */ | \
+		(0 << 3) /* # of CS lines */ |				\
+		((ffs(SDRAM_PG_SIZE / 256) - 1) << 0) /* page size 0: 256 1: 512 2: 1024 3:2048 */ | \
+		0)
+
+#define SDREF_VAL		(					\
+		(0 << 31) /* */ |					\
+		(1 << 29) /* self refresh temperature range 1: extended temp range */ | \
+		(0 << 28) /* auto self refresh enable */ |		\
+		(0 << 24) /* partial array self refresh */ |		\
+		((SDRAM_CLK * 7800 / 1000) << 0) /* refresh interval */ | \
+		0)
+
+#define tFAW		ns_TO_ck(45)
+
+#define SDRAM_TIM1_VAL	((CK_VAL(tRP, 1, 16) << 25) |	\
+			 (CK_VAL(tRCD, 1, 16) << 21) |	\
+			 (CK_VAL(tWR, 1, 16) << 17) |	\
+			 (CK_VAL(tRAS, 1, 32) << 12) |	\
+			 (CK_VAL(tRC, 1, 64) << 6) |	\
+			 (CK_VAL(tRRD, 1, 8) << 3) |	\
+			 (CK_VAL(tWTR, 1, 8) << 0))
+
+#define SDRAM_TIM2_VAL	((CK_VAL(max(tCKE, tXP), 1, 8) << 28) |	\
+			 (CK_VAL(tODT, 0, 8) << 25) |		\
+			 (CK_VAL(tXSNR, 1, 128) << 16) |	\
+			 (CK_VAL(tXSRD, 1, 1024) << 6) |	\
+			 (CK_VAL(tRTP, 1, 8) << 3) |		\
+			 (CK_VAL(tCKE, 1, 8) << 0))
+
+#define SDRAM_TIM3_VAL	((CK_VAL(DIV_ROUND_UP(tPDLL_UL, 128), 0, 16) << 28) | \
+			 (CK_VAL(tZQCS, 1, 64) << 15) |			\
+			 (CK_VAL(tRFC, 1, 1024) << 4) |			\
+			 (CK_VAL(tRAS_MAX, 0, 16) << 0))
+
+#define ZQ_CONFIG_VAL		(					\
+		(1 << 31) /* ZQ calib for CS1 */ |			\
+		(0 << 30) /* ZQ calib for CS0 */ |			\
+		(0 << 29) /* dual calib */ |				\
+		(1 << 28) /* ZQ calib on SR/PWDN exit */ |		\
+		(2 << 18) /* ZQCL intervals for ZQINIT */ |		\
+		(4 << 16) /* ZQCS intervals for ZQCL */ |		\
+		(80 << 0) /* refr periods between ZQCS commands */ |	\
+		0)
+
+static struct ddr_data tx48_ddr3_data = {
+	/* reset defaults */
+	.datardsratio0 = 0x04010040,
+	.datawdsratio0 = 0x0,
+	.datafwsratio0 = 0x0,
+	.datawrsratio0 = 0x04010040,
+	.datadldiff0 = 0x4,
 };
 
-static const struct cmd_control tx48_ddr3_cmd_ctrl_data = {
-	.cmd0csratio = MT41J128MJT125_RATIO,
-	.cmd0dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
-	.cmd0iclkout = MT41J128MJT125_INVERT_CLKOUT,
-
-	.cmd1csratio = MT41J128MJT125_RATIO,
-	.cmd1dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
-	.cmd1iclkout = MT41J128MJT125_INVERT_CLKOUT,
-
-	.cmd2csratio = MT41J128MJT125_RATIO,
-	.cmd2dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
-	.cmd2iclkout = MT41J128MJT125_INVERT_CLKOUT,
+static struct cmd_control tx48_ddr3_cmd_ctrl_data = {
+	/* reset defaults */
+	.cmd0csratio = 0x80,
+	.cmd0dldiff = 0x04,
+	.cmd1csratio = 0x80,
+	.cmd1dldiff = 0x04,
+	.cmd2csratio = 0x80,
+	.cmd2dldiff = 0x04,
 };
 
-static struct emif_regs tx48_ddr3_emif_reg_data = {
-	.sdram_config = MT41J128MJT125_EMIF_SDCFG,
-	.ref_ctrl = MT41J128MJT125_EMIF_SDREF,
-	.sdram_tim1 = MT41J128MJT125_EMIF_TIM1,
-	.sdram_tim2 = MT41J128MJT125_EMIF_TIM2,
-	.sdram_tim3 = MT41J128MJT125_EMIF_TIM3,
-	.zq_config = MT41J128MJT125_ZQ_CFG,
-	.emif_ddr_phy_ctlr_1 = MT41J128MJT125_EMIF_READ_LATENCY,
-};
+static void ddr3_calib_start(void)
+{
+	static struct emif_reg_struct *emif_reg = (void *)EMIF4_0_CFG_BASE;
+	int loops = 0;
+	u32 regval;
+	u32 emif_status;
+
+	debug("Starting DDR3 calibration\n");
+
+	/* wait for DDR PHY ready */
+	while (!((emif_status = readl(&emif_reg->emif_status)) & (1 << 2))) {
+		if (loops++ > 100000)
+			break;
+		udelay(1);
+	}
+	debug("EMIF status: %08x after %u loops\n", emif_status, loops);
+
+	/* enable DDR3 write levelling */
+	loops = 0;
+	writel(EMIF_REG_RDWRLVLFULL_START_MASK, &emif_reg->emif_rd_wr_lvl_ctl);
+	do {
+		regval = readl(&emif_reg->emif_rd_wr_lvl_ctl);
+		if (!(regval & EMIF_REG_RDWRLVLFULL_START_MASK))
+			break;
+		udelay(1);
+	} while (loops++ < 100000);
+	if (regval & EMIF_REG_RDWRLVLFULL_START_MASK) {
+		printf("Full WRLVL timed out\n");
+	} else {
+		debug("Full Write Levelling done after %u us\n", loops);
+	}
+	writel(0, &emif_reg->emif_rd_wr_lvl_rmp_ctl);
+	writel(0, &emif_reg->emif_rd_wr_lvl_rmp_win);
+	writel(0x0f808080, &emif_reg->emif_rd_wr_lvl_ctl);
+	debug("DDR3 calibration done\n");
+}
+
+static void tx48_ddr_init(void)
+{
+	struct emif_regs r = {0};
+
+	debug("Initialising SDRAM timing for %u MHz DDR clock\n", SDRAM_CLK);
+
+	r.sdram_config = SDRAM_CONFIG_VAL;
+	r.ref_ctrl = SDREF_VAL;
+	r.sdram_tim1 = SDRAM_TIM1_VAL;
+	r.sdram_tim2 = SDRAM_TIM2_VAL;
+	r.sdram_tim3 = SDRAM_TIM3_VAL;
+	r.zq_config = ZQ_CONFIG_VAL;
+	r.emif_ddr_phy_ctlr_1 = 0x0000030b;
+
+	config_ddr(SDRAM_CLK, 0x04, &tx48_ddr3_data,
+		&tx48_ddr3_cmd_ctrl_data, &r);
+
+	ddr3_calib_start();
+
+	debug("%s: config_ddr done\n", __func__);
+}
 
 #ifdef CONFIG_HW_WATCHDOG
 static inline void tx48_wdog_disable(void)
@@ -497,8 +709,9 @@ void s_init(void)
 
 	timer_init();
 
-	config_ddr(303, MT41J128MJT125_IOCTRL_VALUE, &tx48_ddr3_data,
-		&tx48_ddr3_cmd_ctrl_data, &tx48_ddr3_emif_reg_data);
+	tx48_ddr_init();
+
+	gpmc_init();
 
 	/* Enable MMC0 */
 	enable_mmc0_pin_mux();
