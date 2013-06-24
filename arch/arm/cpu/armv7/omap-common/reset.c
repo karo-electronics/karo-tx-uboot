@@ -25,6 +25,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
+#include <common.h>
 #include <config.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -32,6 +33,8 @@
 
 void __weak reset_cpu(unsigned long ignored)
 {
+	/* clear the reset status flags */
+	writel(readl(PRM_RSTST), PRM_RSTST);
 	writel(PRM_RSTCTRL_RESET, PRM_RSTCTRL);
 }
 
