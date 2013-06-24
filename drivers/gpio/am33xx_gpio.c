@@ -39,7 +39,7 @@ static const struct gpio_regs *gpio_base[] = {
 	(struct gpio_regs *)AM33XX_GPIO3_BASE,
 };
 
-static unsigned long gpio_map[ARRAY_SIZE(gpio_base)];
+static unsigned long gpio_map[ARRAY_SIZE(gpio_base)] __attribute__((section("data")));
 
 #define MAX_GPIO	(ARRAY_SIZE(gpio_base) * 32)
 
