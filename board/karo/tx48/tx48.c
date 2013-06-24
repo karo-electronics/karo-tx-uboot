@@ -468,7 +468,7 @@ void lcd_panel_disable(void)
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	char *vm;
+	char *vm, *v;
 	unsigned long val;
 	struct da8xx_panel *p = &tx48_lcd_panel;
 	int refresh = 60;
@@ -489,9 +489,12 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
+	if ((v = strstr(vm, ":")))
+		vm = v + 1;
+
 	strncpy((char *)p->name, vm, sizeof(p->name));
 
-	val = simple_strtoul(vm, &vm, 0);
+	val = simple_strtoul(vm, &vm, 10);
 	if (val != 0) {
 		if (val > panel_info.vl_col)
 			val = panel_info.vl_col;
@@ -499,7 +502,7 @@ void lcd_ctrl_init(void *lcdbase)
 		panel_info.vl_col = val;
 	}
 	if (*vm == 'x') {
-		val = simple_strtoul(vm + 1, &vm, 0);
+		val = simple_strtoul(vm + 1, &vm, 10);
 		if (val > panel_info.vl_row)
 			val = panel_info.vl_row;
 		p->height = val;
