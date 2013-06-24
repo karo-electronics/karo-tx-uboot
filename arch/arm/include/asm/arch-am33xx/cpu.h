@@ -108,9 +108,6 @@ struct gpmc {
 	struct bch_res_0_3 bch_result_0_3[2];	/* 0x240 */
 };
 
-/* Used for board specific gpmc initialization */
-extern struct gpmc *gpmc_cfg;
-
 /* Encapsulating core pll registers */
 struct cm_wkuppll {
 	unsigned int wkclkstctrl;	/* offset 0x00 */

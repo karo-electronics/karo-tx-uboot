@@ -57,6 +57,8 @@ static struct nand_ecclayout hw_bch16_nand_oob = GPMC_NAND_HW_BCH16_ECC_LAYOUT;
 #endif
 static struct nand_ecclayout hw_bch8_nand_oob = GPMC_NAND_HW_BCH8_ECC_LAYOUT;
 
+static struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
+
 static struct nand_bch_priv bch_priv = {
 	.type = ECC_BCH8,
 	.nibbles = ECC_BCH8_NIBBLES,
