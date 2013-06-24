@@ -101,11 +101,11 @@ _main:
 
 #if defined(CONFIG_NAND_SPL)
 	/* deprecated, use instead CONFIG_SPL_BUILD */
-	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
+	ldr	sp, =CONFIG_SYS_INIT_SP_ADDR
 #elif defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_STACK)
-	ldr	sp, =(CONFIG_SPL_STACK)
+	ldr	sp, =CONFIG_SPL_STACK
 #else
-	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
+	ldr	sp, =CONFIG_SYS_INIT_SP_ADDR
 #endif
 	bic	sp, sp, #7	/* 8-byte alignment for ABI compliance */
 	sub	sp, #GD_SIZE	/* allocate one GD above SP */
