@@ -1131,9 +1131,9 @@ struct emif_regs {
 
 /* assert macros */
 #if defined(DEBUG)
-#define emif_assert(c)	({ if (!(c)) for (;;); })
+#define emif_assert(c)	({ if (!(c)) hang(); })
 #else
-#define emif_assert(c)	({ if (0) hang(); })
+#define emif_assert(c)	(c)
 #endif
 
 #ifdef CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS
