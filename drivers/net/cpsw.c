@@ -565,7 +565,6 @@ static void cpsw_set_slave_mac(struct cpsw_slave *slave,
 }
 
 #define NUM_TRIES 50
-#if 1
 static void cpsw_slave_update_link(struct cpsw_slave *slave,
 				   struct cpsw_priv *priv, int *link)
 {
@@ -606,43 +605,6 @@ static void cpsw_slave_update_link(struct cpsw_slave *slave,
 	__raw_writel(mac_control, &slave->sliver->mac_control);
 	slave->mac_control = mac_control;
 }
-#else
-static void cpsw_slave_update_link(struct cpsw_slave *slave,
-				   struct cpsw_priv *priv, int *link)
-{
-	struct phy_device *phy = priv->phydev;
-	u32 mac_control = 0;
-
-	phy_startup(phy);
-	*link = phy->link;
-
-	if (*link) { /* link up */
-		mac_control = priv->data.mac_control;
-		if (phy->speed == 1000)
-			mac_control |= GIGABITEN;
-		if (phy->duplex == DUPLEX_FULL)
-			mac_control |= FULLDUPLEXEN;
-		if (phy->speed == 100)
-			mac_control |= MIIEN;
-	}
-	debug("%s: mac_control: %08x -> %08x after %u loops\n", __func__,
-		slave->mac_control, mac_control, NUM_TRIES - retries);
-
-	if (mac_control == slave->mac_control)
-		return;
-
-	if (mac_control) {
-		printf("link up on port %d, speed %d, %s duplex\n",
-				slave->slave_num, phy->speed,
-				(phy->duplex == DUPLEX_FULL) ? "full" : "half");
-	} else {
-		printf("link down on port %d\n", slave->slave_num);
-	}
-
-	__raw_writel(mac_control, &slave->sliver->mac_control);
-	slave->mac_control = mac_control;
-}
-#endif
 
 static int cpsw_update_link(struct cpsw_priv *priv)
 {
