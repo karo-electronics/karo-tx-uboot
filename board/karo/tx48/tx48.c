@@ -785,6 +785,18 @@ int board_eth_init(bd_t *bis)
 }
 #endif /* CONFIG_DRIVER_TI_CPSW */
 
+void tx48_disable_watchdog(void)
+{
+	struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
+
+	while (readl(&wdtimer->wdtwwps) & (1 << 4))
+		;
+	writel(0xaaaa, &wdtimer->wdtwspr);
+	while (readl(&wdtimer->wdtwwps) & (1 << 4))
+		;
+	writel(0x5555, &wdtimer->wdtwspr);
+}
+
 #if defined(CONFIG_NAND_AM33XX) && defined(CONFIG_CMD_SWITCH_ECC)
 /******************************************************************************
  * Command to switch between NAND HW and SW ecc
@@ -883,5 +895,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	karo_fdt_fixup_touchpanel(blob);
 	tx48_fixup_flexcan(blob);
+
+	tx48_disable_watchdog();
 }
 #endif /* CONFIG_OF_BOARD_SETUP */
