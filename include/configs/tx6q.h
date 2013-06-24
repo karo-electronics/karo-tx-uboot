@@ -128,6 +128,15 @@
  * Extra Environments
  */
 #ifndef CONFIG_MFG
+#ifdef CONFIG_ENV_IS_NOWHERE
+#define CONFIG_EXTRA_ENV_SETTINGS					\
+	"autostart=no\0"						\
+	"autoload=no\0"							\
+	"bootdelay=-1\0"						\
+	"fdtaddr=11000000\0"						\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"
+#else
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
@@ -154,7 +163,8 @@
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA-1:640x480MR-24@60\0"
-#endif
+#endif /*  CONFIG_ENV_IS_NOWHERE */
+#endif /*  CONFIG_MFG */
 
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
@@ -223,12 +233,14 @@
 #define CONFIG_MX6_INTER_LDO_BYPASS	0
 #endif
 
+#ifndef CONFIG_ENV_IS_NOWHERE
 /* define one of the following options:
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_IS_IN_MMC
-#define CONFIG_ENV_IS_NOWHERE
 */
 #define CONFIG_ENV_IS_IN_NAND
+#endif
+#define CONFIG_ENV_OVERWRITE
 
 /*
  * NAND flash driver
@@ -261,8 +273,6 @@
 #undef CONFIG_ENV_IS_IN_NAND
 #endif /* CONFIG_CMD_NAND */
 
-#ifdef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_OVERWRITE
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
 #define CONFIG_ENV_SIZE			SZ_128K
 #define CONFIG_ENV_RANGE		0x60000
@@ -277,10 +287,6 @@
 	"(env),"
 #define CONFIG_SYS_USERFS_PART_STR	"91904k(userfs)"
 #endif /* CONFIG_ENV_OFFSET_REDUND */
-#else
-#define CONFIG_SYS_ENV_PART_STR		/* no env partition in NAND */
-#define CONFIG_SYS_USERFS_PART_STR	"92288k(userfs)"
-#endif /* CONFIG_ENV_IS_IN_NAND */
 
 /*
  * MMC Driver
@@ -302,7 +308,8 @@
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_ENV_OVERWRITE
+#undef CONFIG_ENV_OFFSET
+#undef CONFIG_ENV_SIZE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
 #define CONFIG_ENV_SIZE			(SZ_128K - CONFIG_ENV_OFFSET)
@@ -313,6 +320,7 @@
 #endif /* CONFIG_CMD_MMC */
 
 #ifdef CONFIG_ENV_IS_NOWHERE
+#undef CONFIG_ENV_SIZE
 #define CONFIG_ENV_SIZE			SZ_4K
 #endif
 
