@@ -162,8 +162,9 @@ static void enable_per_clocks(void)
 	/* usb0 */
 	enable_clk(cmper->usb0clkctrl, PRCM_MOD_EN);
 }
+#endif /* CONFIG_SPL_BUILD */
 
-static void mpu_pll_config(void)
+void mpu_pll_config(int m)
 {
 	u32 clkmode, clksel, div_m2;
 
@@ -177,7 +178,7 @@ static void mpu_pll_config(void)
 		;
 
 	clksel &= ~CLK_SEL_MASK;
-	clksel |= (MPUPLL_M << CLK_SEL_SHIFT) | MPUPLL_N;
+	clksel |= (m << CLK_SEL_SHIFT) | MPUPLL_N;
 	writel(clksel, &cmwkup->clkseldpllmpu);
 
 	div_m2 &= ~CLK_DIV_MASK;
@@ -192,7 +193,7 @@ static void mpu_pll_config(void)
 		;
 }
 
-static void core_pll_config(void)
+static void core_pll_config(int m)
 {
 	u32 clkmode, clksel, div_m4, div_m5, div_m6;
 
@@ -209,7 +210,7 @@ static void core_pll_config(void)
 		;
 
 	clksel &= ~CLK_SEL_MASK;
-	clksel |= ((COREPLL_M << CLK_SEL_SHIFT) | COREPLL_N);
+	clksel |= ((m << CLK_SEL_SHIFT) | COREPLL_N);
 	writel(clksel, &cmwkup->clkseldpllcore);
 
 	div_m4 &= ~CLK_DIV_MASK;
@@ -232,7 +233,7 @@ static void core_pll_config(void)
 		;
 }
 
-static void per_pll_config(void)
+static void per_pll_config(int m)
 {
 	u32 clkmode, clksel, div_m2;
 
@@ -247,7 +248,7 @@ static void per_pll_config(void)
 		;
 
 	clksel &= ~CLK_SEL_MASK;
-	clksel |= (PERPLL_M << CLK_SEL_SHIFT) | PERPLL_N;
+	clksel |= (m << CLK_SEL_SHIFT) | PERPLL_N;
 	writel(clksel, &cmwkup->clkseldpllper);
 
 	div_m2 &= ~CLK_DIV2_MASK;
@@ -264,7 +265,7 @@ static void per_pll_config(void)
 	writel(DPLL_CLKDCOLDO_GATE_CTRL, &cmwkup->clkdcoldodpllper);
 }
 
-static void disp_pll_config(void)
+static void disp_pll_config(int m)
 {
 	u32 clkmode, clksel, div_m2;
 
@@ -279,7 +280,7 @@ static void disp_pll_config(void)
 		;
 
 	clksel &= ~CLK_SEL_MASK;
-	clksel |= (DISPPLL_M << CLK_SEL_SHIFT) | DISPPLL_N;
+	clksel |= (m << CLK_SEL_SHIFT) | DISPPLL_N;
 	writel(clksel, &cmwkup->clkseldplldisp);
 
 	div_m2 &= ~CLK_DIV2_MASK;
@@ -328,6 +329,7 @@ void ddr_pll_config(unsigned int ddrpll_m)
 		;
 }
 
+#ifdef CONFIG_SPL_BUILD
 void enable_emif_clocks(void)
 {
 	/* Enable the  EMIF_FW Functional clock */
@@ -344,10 +346,10 @@ void enable_emif_clocks(void)
  */
 void pll_init()
 {
-	mpu_pll_config();
-	core_pll_config();
-	per_pll_config();
-	disp_pll_config();
+	mpu_pll_config(MPUPLL_M);
+	core_pll_config(COREPLL_M);
+	per_pll_config(PERPLL_M);
+	disp_pll_config(DISPPLL_M);
 
 	/* Enable the required interconnect clocks */
 	enable_interface_clocks();
@@ -378,3 +380,120 @@ unsigned long lcdc_clk_rate(void)
 {
 	return clk_get_rate(cmwkup, disp);
 }
+
+unsigned long mpu_clk_rate(void)
+{
+	return clk_get_rate(cmwkup, mpu);
+}
+
+enum {
+	CLK_MPU_PLL,
+	CLK_CORE_PLL,
+	CLK_PER_PLL,
+	CLK_DISP_PLL,
+	CLK_GPMC,
+};
+
+static struct clk_lookup {
+	const char *name;
+	unsigned int index;
+} am33xx_clk_lookup[] = {
+	{ "mpu", CLK_MPU_PLL, },
+	{ "core", CLK_CORE_PLL, },
+	{ "per", CLK_PER_PLL, },
+	{ "lcdc", CLK_DISP_PLL, },
+	{ "gpmc", CLK_GPMC, },
+};
+
+#define print_pll(dom, pll) {				\
+	u32 __pll = clk_get_rate(dom, pll);		\
+	printf("%-12s %4d.%03d MHz\n", #pll,		\
+		__pll / 1000000, __pll / 1000 % 1000);	\
+	}
+
+#define print_pll2(dom, n, pll) {			\
+	u32 __m_n = readl(&(dom)->clkseldpll##pll);	\
+	u32 __div = readl(&(dom)->divm##n##dpll##pll);	\
+	u32 __pll = __clk_get_rate(__m_n, __div);	\
+	printf("%-12s %4d.%03d MHz\n", #pll "_m" #n,	\
+		__pll / 1000000, __pll / 1000 % 1000);	\
+	}
+
+static void do_showclocks(void)
+{
+	print_pll(cmwkup, mpu);
+	print_pll2(cmwkup, 4, core);
+	print_pll2(cmwkup, 5, core);
+	print_pll2(cmwkup, 6, core);
+	print_pll(cmwkup, ddr);
+	print_pll(cmwkup, per);
+	print_pll(cmwkup, disp);
+}
+
+int do_clocks(cmd_tbl_t *cmdtp, int flag, int argc,
+	char *const argv[])
+{
+	int i;
+	unsigned long freq;
+	unsigned long __attribute__((unused)) ref = ~0UL;
+
+	if (argc < 2) {
+		do_showclocks();
+		return CMD_RET_SUCCESS;
+	} else if (argc == 2 || argc > 4) {
+		return CMD_RET_USAGE;
+	}
+
+	freq = simple_strtoul(argv[2], NULL, 0);
+	if (freq < 1000) {
+		printf("Invalid clock frequency %lu\n", freq);
+		return CMD_RET_FAILURE;
+	}
+	if (argc > 3) {
+		ref = simple_strtoul(argv[3], NULL, 0);
+	}
+	for (i = 0; i < ARRAY_SIZE(am33xx_clk_lookup); i++) {
+		if (strcasecmp(argv[1], am33xx_clk_lookup[i].name) == 0) {
+			switch (am33xx_clk_lookup[i].index) {
+			case CLK_MPU_PLL:
+				mpu_pll_config(freq / 1000000);
+				break;
+			case CLK_CORE_PLL:
+				core_pll_config(freq / 1000000);
+				break;
+			case CLK_PER_PLL:
+				per_pll_config(freq / 1000000);
+				break;
+			case CLK_DISP_PLL:
+				disp_pll_config(freq / 1000000);
+				break;
+			default:
+				printf("Cannot change %s clock\n",
+					am33xx_clk_lookup[i].name);
+				return CMD_RET_FAILURE;
+			}
+
+			printf("%s clock set to %lu.%03lu MHz\n",
+				am33xx_clk_lookup[i].name,
+				freq / 1000000, freq / 1000 % 1000);
+			return CMD_RET_SUCCESS;
+		}
+	}
+	if (i == ARRAY_SIZE(am33xx_clk_lookup)) {
+		printf("clock %s not found; supported clocks are:\n", argv[1]);
+		for (i = 0; i < ARRAY_SIZE(am33xx_clk_lookup); i++) {
+			printf("\t%s\n", am33xx_clk_lookup[i].name);
+		}
+	} else {
+		printf("Failed to set clock %s to %s MHz\n",
+			argv[1], argv[2]);
+	}
+	return CMD_RET_FAILURE;
+}
+
+U_BOOT_CMD(
+	clocks, 4, 0, do_clocks,
+	"display/set clocks",
+	"                    - display clock settings\n"
+	"clocks <clkname> <freq>    - set clock <clkname> to <freq> Hz"
+);

@@ -352,6 +352,8 @@ void init_timer(void);
 unsigned long __clk_get_rate(u32 m_n, u32 div_m2);
 
 unsigned long lcdc_clk_rate(void);
+unsigned long mpu_clk_rate(void);
+void mpu_pll_config(int m);
 
 #endif /* __ASSEMBLY__ */
 #endif /* __KERNEL_STRICT_NAMES */

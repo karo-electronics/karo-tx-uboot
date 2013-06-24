@@ -650,11 +650,29 @@ int checkboard(void)
 	return 0;
 }
 
+static void tx48_set_cpu_clock(void)
+{
+	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
+
+	if (tstc() || (prm_rstst & PRM_RSTST_WDT1_RST))
+		return;
+
+	if (cpu_clk == 0 || cpu_clk == mpu_clk_rate() / 1000000)
+		return;
+
+	mpu_pll_config(cpu_clk);
+
+	printf("CPU clock set to %lu.%03lu MHz\n",
+		mpu_clk_rate() / 1000000,
+		mpu_clk_rate() / 1000 % 1000);
+}
+
 /* called with environment from NAND or MMC */
 int board_late_init(void)
 {
 	const char *baseboard;
 
+	tx48_set_cpu_clock();
 #ifdef CONFIG_OF_BOARD_SETUP
 	karo_fdt_move_fdt();
 #endif
