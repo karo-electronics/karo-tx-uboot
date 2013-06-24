@@ -766,9 +766,7 @@ int board_eth_init(bd_t *bis)
 	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
 
 	if (is_valid_ether_addr(mac_addr)) {
-		debug("MAC addr set to: %02x:%02x:%02x:%02x:%02x:%02x\n",
-			mac_addr[0], mac_addr[1], mac_addr[2],
-			mac_addr[3], mac_addr[4], mac_addr[5]);
+		debug("MAC addr set to: %pM\n", mac_addr);
 		eth_setenv_enetaddr("ethaddr", mac_addr);
 	} else {
 		printf("ERROR: Did not find a valid mac address in e-fuse\n");
