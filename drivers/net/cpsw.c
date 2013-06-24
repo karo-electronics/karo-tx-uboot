@@ -459,7 +459,7 @@ static inline u32 wait_for_user_access(void)
 		udelay(1000);
 		if (--timeout <= 0) {
 			printf("TIMEOUT waiting for USERACCESS_GO\n");
-			return -1;
+			break;
 		}
 	}
 
@@ -489,11 +489,16 @@ static int cpsw_mdio_read(struct mii_dev *bus, int phy_id,
 	if (phy_reg & ~PHY_REG_MASK || phy_id & ~PHY_ID_MASK)
 		return -EINVAL;
 
-	wait_for_user_access();
+	if (wait_for_user_access() & USERACCESS_GO)
+		/* promote error from previous access */
+		return -ETIME;
+
 	reg = (USERACCESS_GO | USERACCESS_READ | (phy_reg << 21) |
 	       (phy_id << 16));
 	__raw_writel(reg, &mdio_regs->user[0].access);
 	reg = wait_for_user_access();
+	if (reg & USERACCESS_GO)
+		return -ETIME;
 
 	data = (reg & USERACCESS_ACK) ? (reg & USERACCESS_DATA) : -1;
 	return data;
@@ -507,11 +512,15 @@ static int cpsw_mdio_write(struct mii_dev *bus, int phy_id, int dev_addr,
 	if (phy_reg & ~PHY_REG_MASK || phy_id & ~PHY_ID_MASK)
 		return -EINVAL;
 
-	wait_for_user_access();
+	if (wait_for_user_access() & USERACCESS_GO)
+		/* promote error from previous access */
+		return -ETIME;
+
 	reg = (USERACCESS_GO | USERACCESS_WRITE | (phy_reg << 21) |
 		   (phy_id << 16) | (data & USERACCESS_DATA));
 	__raw_writel(reg, &mdio_regs->user[0].access);
-	wait_for_user_access();
+	if (wait_for_user_access() & USERACCESS_GO)
+		return -ETIME;
 
 	return 0;
 }
