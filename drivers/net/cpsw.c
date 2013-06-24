@@ -1001,6 +1001,7 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 
 int cpsw_register(struct cpsw_platform_data *data)
 {
+	int ret = 1;
 	struct cpsw_priv	*priv;
 	struct cpsw_slave	*slave;
 	void			*regs = (void *)data->cpsw_base;
@@ -1070,8 +1071,10 @@ int cpsw_register(struct cpsw_platform_data *data)
 
 	cpsw_mdio_init(dev->name, data->mdio_base, data->mdio_div);
 	priv->bus = miiphy_get_dev_by_name(dev->name);
-	for_each_slave(slave, priv)
-		cpsw_phy_init(dev, slave);
-
-	return 1;
+	for_each_slave(slave, priv) {
+		ret = cpsw_phy_init(dev, slave);
+		if (ret < 0)
+			break;
+	}
+	return ret;
 }
