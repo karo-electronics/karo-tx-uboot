@@ -48,7 +48,7 @@ static struct mxc_gpt *cur_gpt = (struct mxc_gpt *)GPT1_BASE_ADDR;
 #define GPTCR_CLKSOURCE_IPG	(1 << 6)	/* Clock source */
 #define GPTCR_CLKSOURCE_CKIH	(2 << 6)
 #define GPTCR_CLKSOURCE_32kHz	(4 << 6)
-#ifdef CONFIG_MX6Q
+#ifdef CONFIG_MX6
 #define GPTCR_CLKSOURCE_OSC_DIV_8	(5 << 6)
 #define GPTCR_CLKSOURCE_OSC	(7 << 6)
 #else
