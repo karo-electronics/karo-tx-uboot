@@ -26,20 +26,29 @@
 #include <asm/arch/cpu.h>
 
 #define BITMASK(bits)		(BIT(bits) - 1)
+
 #define PHY_REG_MASK		0x1f
 #define PHY_ID_MASK		0x1f
 #define NUM_DESCS		(PKTBUFSRX * 2)
 #define PKT_MIN			60
 #define PKT_MAX			(1500 + 14 + 4 + 4)
 #define CLEAR_BIT		1
+
+/* MAC_CONTROL register bits */
 #define GIGABITEN		BIT(7)
 #define FULLDUPLEXEN		BIT(0)
+#define MAC_CTRL_CMD_IDLE	BIT(11)
 #define MIIEN			BIT(15)
+
+/* MAC_STATUS register bits */
+#define MAC_STAT_IDLE		BIT(31)
 
 /* DMA Registers */
 #define CPDMA_TXCONTROL		0x004
 #define CPDMA_RXCONTROL		0x014
 #define CPDMA_SOFTRESET		0x01c
+#define CPDMA_DMACONTROL	0x020
+#define CPDMA_DMASTATUS		0x024
 #define CPDMA_RXFREE		0x0e0
 #define CPDMA_TXHDP_VER1	0x100
 #define CPDMA_TXHDP_VER2	0x200
@@ -49,6 +58,10 @@
 #define CPDMA_TXCP_VER2		0x240
 #define CPDMA_RXCP_VER1		0x160
 #define CPDMA_RXCP_VER2		0x260
+
+#define DMACONTROL_CMD_IDLE	BIT(3)
+
+#define DMASTATUS_IDLE		BIT(31)
 
 #define CPDMA_RAM_ADDR		0x4a102000
 
@@ -890,6 +903,31 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 static void cpsw_halt(struct eth_device *dev)
 {
 	struct cpsw_priv	*priv = dev->priv;
+	struct cpsw_slave	*slave;
+	int idle = 0;
+	int timeout = 1000000;
+
+	__raw_writel(DMACONTROL_CMD_IDLE, priv->dma_regs + CPDMA_DMACONTROL);
+	while (!(__raw_readl(priv->dma_regs + CPDMA_DMASTATUS) &
+			DMASTATUS_IDLE) && (--timeout >= 0))
+		udelay(1);
+
+	timeout = 1000000;
+	while (!idle) {
+		idle = 1;
+		for_each_slave(slave, priv) {
+			if (!(__raw_readl(&slave->sliver->mac_status) &
+					MAC_STAT_IDLE)) {
+				idle = 0;
+				break;
+			}
+		}
+		if (idle || --timeout < 0)
+			break;
+		udelay(1);
+	}
+	if (!idle)
+		printf("CPSW: Aborting DMA transfers; packets may be lost\n");
 
 	writel(0, priv->dma_regs + CPDMA_TXCONTROL);
 	writel(0, priv->dma_regs + CPDMA_RXCONTROL);
