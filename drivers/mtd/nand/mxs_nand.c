@@ -253,7 +253,7 @@ static uint32_t mxs_nand_ecc_chunk_cnt(struct mtd_info *mtd)
 	return mtd->writesize / nand->ecc.size;
 }
 
-static uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
+static inline uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
 {
 	return ecc_strength * 13;
 }
@@ -350,14 +350,14 @@ static inline uint32_t mxs_nand_get_mark_offset(uint32_t page_data_size,
 	return block_mark_bit_offset;
 }
 
-static uint32_t mxs_nand_mark_byte_offset(struct mtd_info *mtd)
+static inline uint32_t mxs_nand_mark_byte_offset(struct mtd_info *mtd)
 {
 	uint32_t ecc_strength;
 	ecc_strength = mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize);
 	return mxs_nand_get_mark_offset(mtd->writesize, ecc_strength) >> 3;
 }
 
-static uint32_t mxs_nand_mark_bit_offset(struct mtd_info *mtd)
+static inline uint32_t mxs_nand_mark_bit_offset(struct mtd_info *mtd)
 {
 	uint32_t ecc_strength;
 	ecc_strength = mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize);
@@ -510,6 +510,7 @@ static void mxs_nand_select_chip(struct mtd_info *mtd, int chip)
  * swapping the block mark, or swapping it *back* -- but it doesn't matter
  * because the the operation is the same.
  */
+#ifndef CONFIG_NAND_MXS_NO_BBM_SWAP
 static void mxs_nand_swap_block_mark(struct mtd_info *mtd,
 					uint8_t *data_buf, uint8_t *oob_buf)
 {
@@ -518,7 +519,7 @@ static void mxs_nand_swap_block_mark(struct mtd_info *mtd,
 
 	uint32_t src;
 	uint32_t dst;
-return;
+
 	bit_offset = mxs_nand_mark_bit_offset(mtd);
 	buf_offset = mxs_nand_mark_byte_offset(mtd);
 
@@ -544,6 +545,12 @@ return;
 	data_buf[buf_offset] |= dst << bit_offset;
 	data_buf[buf_offset + 1] |= dst >> (8 - bit_offset);
 }
+#else
+static inline void mxs_nand_swap_block_mark(struct mtd_info *mtd,
+					uint8_t *data_buf, uint8_t *oob_buf)
+{
+}
+#endif
 
 /*
  * Read data from NAND.
