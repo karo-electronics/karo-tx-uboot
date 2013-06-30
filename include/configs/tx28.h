@@ -247,7 +247,7 @@
  * Environments on MMC
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV	0
+#define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_OVERWRITE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
@@ -262,12 +262,12 @@
 	xstr(CONFIG_ENV_RANGE)						\
 	"(env),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+	"(env2),4m(linux),16m(rootfs),107904k(userfs),256k(dtb),512k@0x7f80000(bbt)ro,"
 #else
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"			\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+	"(env),4m(linux),16m(rootfs),108288k(userfs),256k(dtb),512k@0x7f80000(bbt)ro"
 #endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
