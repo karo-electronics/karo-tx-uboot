@@ -117,6 +117,15 @@
 /*
  * Extra Environments
  */
+#ifdef CONFIG_ENV_IS_NOWHERE
+#define CONFIG_EXTRA_ENV_SETTINGS					\
+	"autostart=no\0"						\
+	"autoload=no\0"							\
+	"bootdelay=-1\0"						\
+	"fdtaddr=11000000\0"						\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"
+#else
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
@@ -142,6 +151,7 @@
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
+#endif /*  CONFIG_ENV_IS_NOWHERE */
 
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
@@ -198,12 +208,20 @@
 #define CONFIG_BOOTP_DNS
 #endif
 
+#ifndef CONFIG_ENV_IS_NOWHERE
+/* define one of the following options:
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_IS_IN_MMC
+*/
+#define CONFIG_ENV_IS_IN_NAND
+#endif
+#define CONFIG_ENV_OVERWRITE
+
 /*
  * NAND flash driver
  */
 #ifdef CONFIG_CMD_NAND
 #define CONFIG_MTD_DEVICE
-#define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_NAND_MXS
 #define CONFIG_APBH_DMA
 #define CONFIG_APBH_DMA_BURST
@@ -217,23 +235,31 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
-#ifdef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_OVERWRITE
+#define CONFIG_SYS_NAND_BASE		0x00000000
+#define CONFIG_CMD_ROMUPDATE
+#else
+#undef CONFIG_ENV_IS_IN_NAND
+#endif /* CONFIG_CMD_NAND */
+
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
 #define CONFIG_ENV_SIZE			SZ_128K
 #define CONFIG_ENV_RANGE		0x60000
-#endif /* CONFIG_ENV_IS_IN_NAND */
-#define CONFIG_SYS_NAND_BASE		0x00000000
-#define CONFIG_CMD_ROMUPDATE
-#endif /* CONFIG_CMD_NAND */
+#ifdef CONFIG_ENV_OFFSET_REDUND
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
+	"(env),"							\
+	xstr(CONFIG_ENV_RANGE)						\
+	"(env2),"
+#define CONFIG_SYS_USERFS_PART_STR	"107904k(userfs)"
+#else
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
+	"(env),"
+#define CONFIG_SYS_USERFS_PART_STR	"108288k(userfs)"
+#endif /* CONFIG_ENV_OFFSET_REDUND */
 
 /*
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#ifndef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_IS_IN_MMC
-#endif
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_MXS_MMC
@@ -248,27 +274,27 @@
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		0
-#define CONFIG_ENV_OVERWRITE
+#undef CONFIG_ENV_OFFSET
+#undef CONFIG_ENV_SIZE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
 #define CONFIG_ENV_SIZE			(SZ_128K - CONFIG_ENV_OFFSET)
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
+#else
+#undef CONFIG_ENV_IS_IN_MMC
 #endif /* CONFIG_CMD_MMC */
 
-#ifdef CONFIG_ENV_OFFSET_REDUND
-#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"			\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env),"							\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),107904k(userfs),256k(dtb),512k@0x7f80000(bbt)ro,"
-#else
-#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"			\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),108288k(userfs),256k(dtb),512k@0x7f80000(bbt)ro"
+#ifdef CONFIG_ENV_IS_NOWHERE
+#undef CONFIG_ENV_SIZE
+#define CONFIG_ENV_SIZE			SZ_4K
 #endif
+
+#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
+	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
+	CONFIG_SYS_ENV_PART_STR						\
+	"4m(linux),16m(rootfs),"					\
+	CONFIG_SYS_USERFS_PART_STR ",256k(dtb),512k@0x7f80000(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
