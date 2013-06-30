@@ -19,16 +19,16 @@
 /*
  * Ka-Ro TX28 board - SoC configuration
  */
-#define CONFIG_MX28				/* i.MX28 SoC */
-#define CONFIG_MXS_GPIO				/* GPIO control */
-#define CONFIG_SYS_HZ		1000		/* Ticks per second */
+#define CONFIG_MX28					/* i.MX28 SoC */
+#define CONFIG_MXS_GPIO					/* GPIO control */
+#define CONFIG_SYS_HZ			1000		/* Ticks per second */
 #ifdef CONFIG_TX28_S
-#define PHYS_SDRAM_1_SIZE	SZ_64M
-#define TX28_MOD_SUFFIX		"1"
+#define PHYS_SDRAM_1_SIZE		SZ_64M
+#define TX28_MOD_SUFFIX			"1"
 #else
-#define PHYS_SDRAM_1_SIZE	SZ_128M
+#define PHYS_SDRAM_1_SIZE		SZ_128M
 #define CONFIG_SYS_SPL_FIXED_BATT_SUPPLY
-#define TX28_MOD_SUFFIX		"0"
+#define TX28_MOD_SUFFIX			"0"
 #endif
 
 #ifndef CONFIG_SPL_BUILD
@@ -66,17 +66,17 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT	"TX28 U-Boot > "
-#define CONFIG_SYS_CBSIZE	2048		/* Console I/O buffer size */
+#define CONFIG_SYS_PROMPT		"TX28 U-Boot > "
+#define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-						/* Print buffer size */
-#define CONFIG_SYS_MAXARGS	64		/* Max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-						/* Boot argument buffer size */
-#define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
-#define CONFIG_AUTO_COMPLETE			/* Command auto complete */
-#define CONFIG_CMDLINE_EDITING			/* Command history etc */
+							/* Print buffer size */
+#define CONFIG_SYS_MAXARGS		64		/* Max number of command args */
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+					/* Boot argument buffer size */
+#define CONFIG_VERSION_VARIABLE		/* U-BOOT version */
+#define CONFIG_AUTO_COMPLETE		/* Command auto complete */
+#define CONFIG_CMDLINE_EDITING		/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
 #define CONFIG_SYS_NO_FLASH
