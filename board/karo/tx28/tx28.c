@@ -100,8 +100,31 @@ static const iomux_cfg_t tx28_pads[] = {
 /*
  * Functions
  */
+
+/* provide at least _some_ sort of randomness */
+#define MAX_LOOPS       100
+
+static u32 random;
+
+static inline void random_init(void)
+{
+	struct mxs_digctl_regs *digctl_regs = (void *)MXS_DIGCTL_BASE;
+	u32 seed = 0;
+	int i;
+
+	for (i = 0; i < MAX_LOOPS; i++) {
+		unsigned int usec = readl(&digctl_regs->hw_digctl_microseconds);
+
+		seed = get_timer(usec + random + seed);
+		srand(seed);
+		random = rand();
+	}
+}
+
 int board_early_init_f(void)
 {
+	random_init();
+
 	/* IO0 clock at 480MHz */
 	mx28_set_ioclk(MXC_IOCLK0, 480000);
 	/* IO1 clock at 480MHz */
