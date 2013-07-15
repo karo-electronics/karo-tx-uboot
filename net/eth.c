@@ -84,7 +84,7 @@ void eth_random_enetaddr(uchar *enetaddr)
 {
 	uint32_t rval;
 
-	srand(get_timer(0));
+	srand(rand() ^ get_timer(0));
 
 	rval = rand();
 	enetaddr[0] = rval & 0xff;

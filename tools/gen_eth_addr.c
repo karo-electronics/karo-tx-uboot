@@ -31,7 +31,7 @@ main(int argc, char *argv[])
 {
     unsigned long ethaddr_low, ethaddr_high;
 
-    srand(time(0) | getpid());
+    srand(rand() ^ time(0) ^ getpid());
 
     /*
      * setting the 2nd LSB in the most significant byte of
