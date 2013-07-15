@@ -76,6 +76,7 @@ COBJS-$(CONFIG_BOOTP_PXE) += uuid.o
 COBJS-y += vsprintf.o
 COBJS-$(CONFIG_RANDOM_MACADDR) += rand.o
 COBJS-$(CONFIG_BOOTP_RANDOM_DELAY) += rand.o
+COBJS-$(CONFIG_BOOTP_RANDOM_ID) += rand.o
 COBJS-$(CONFIG_CMD_LINK_LOCAL) += rand.o
 
 COBJS	:= $(sort $(COBJS-y))
