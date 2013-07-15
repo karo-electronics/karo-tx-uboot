@@ -137,10 +137,10 @@ static void mxs_power_clear_auto_restart(void)
 
 	setbits_le32(&rtc_regs->hw_rtc_persistent0,
 			RTC_PERSISTENT0_AUTO_RESTART);
-	writel(RTC_CTRL_FORCE_UPDATE, &rtc_regs->hw_rtc_ctrl_set);
-	writel(RTC_CTRL_FORCE_UPDATE, &rtc_regs->hw_rtc_ctrl_clr);
 	while (readl(&rtc_regs->hw_rtc_stat) & RTC_STAT_NEW_REGS_MASK)
 		;
+
+	writel(RTC_CTRL_FORCE_UPDATE, &rtc_regs->hw_rtc_ctrl_set);
 	while (readl(&rtc_regs->hw_rtc_stat) & RTC_STAT_STALE_REGS_MASK)
 		;
 }
