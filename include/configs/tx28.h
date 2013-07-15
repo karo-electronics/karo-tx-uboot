@@ -22,11 +22,10 @@
 #define CONFIG_MX28					/* i.MX28 SoC */
 #define CONFIG_MXS_GPIO					/* GPIO control */
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
+#define PHYS_SDRAM_1_SIZE		CONFIG_SDRAM_SIZE
 #ifdef CONFIG_TX28_S
-#define PHYS_SDRAM_1_SIZE		SZ_64M
 #define TX28_MOD_SUFFIX			"1"
 #else
-#define PHYS_SDRAM_1_SIZE		SZ_128M
 #define CONFIG_SYS_SPL_FIXED_BATT_SUPPLY
 #define TX28_MOD_SUFFIX			"0"
 #endif
