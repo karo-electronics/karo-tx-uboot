@@ -27,20 +27,20 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_rtc_regs {
-	mxs_reg_32(hw_rtc_ctrl)
-	mxs_reg_32(hw_rtc_stat)
-	mxs_reg_32(hw_rtc_milliseconds)
-	mxs_reg_32(hw_rtc_seconds)
-	mxs_reg_32(hw_rtc_rtc_alarm)
-	mxs_reg_32(hw_rtc_watchdog)
-	mxs_reg_32(hw_rtc_persistent0)
-	mxs_reg_32(hw_rtc_persistent1)
-	mxs_reg_32(hw_rtc_persistent2)
-	mxs_reg_32(hw_rtc_persistent3)
-	mxs_reg_32(hw_rtc_persistent4)
-	mxs_reg_32(hw_rtc_persistent5)
-	mxs_reg_32(hw_rtc_debug)
-	mxs_reg_32(hw_rtc_version)
+	mxs_reg_32(hw_rtc_ctrl);
+	mxs_reg_32(hw_rtc_stat);
+	mxs_reg_32(hw_rtc_milliseconds);
+	mxs_reg_32(hw_rtc_seconds);
+	mxs_reg_32(hw_rtc_rtc_alarm);
+	mxs_reg_32(hw_rtc_watchdog);
+	mxs_reg_32(hw_rtc_persistent0);
+	mxs_reg_32(hw_rtc_persistent1);
+	mxs_reg_32(hw_rtc_persistent2);
+	mxs_reg_32(hw_rtc_persistent3);
+	mxs_reg_32(hw_rtc_persistent4);
+	mxs_reg_32(hw_rtc_persistent5);
+	mxs_reg_32(hw_rtc_debug);
+	mxs_reg_32(hw_rtc_version);
 };
 #endif
 

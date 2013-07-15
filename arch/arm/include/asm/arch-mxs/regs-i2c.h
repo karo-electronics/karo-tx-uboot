@@ -27,20 +27,20 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_i2c_regs {
-	mxs_reg_32(hw_i2c_ctrl0)
-	mxs_reg_32(hw_i2c_timing0)
-	mxs_reg_32(hw_i2c_timing1)
-	mxs_reg_32(hw_i2c_timing2)
-	mxs_reg_32(hw_i2c_ctrl1)
-	mxs_reg_32(hw_i2c_stat)
-	mxs_reg_32(hw_i2c_queuectrl)
-	mxs_reg_32(hw_i2c_queuestat)
-	mxs_reg_32(hw_i2c_queuecmd)
-	mxs_reg_32(hw_i2c_queuedata)
-	mxs_reg_32(hw_i2c_data)
-	mxs_reg_32(hw_i2c_debug0)
-	mxs_reg_32(hw_i2c_debug1)
-	mxs_reg_32(hw_i2c_version)
+	mxs_reg_32(hw_i2c_ctrl0);
+	mxs_reg_32(hw_i2c_timing0);
+	mxs_reg_32(hw_i2c_timing1);
+	mxs_reg_32(hw_i2c_timing2);
+	mxs_reg_32(hw_i2c_ctrl1);
+	mxs_reg_32(hw_i2c_stat);
+	mxs_reg_32(hw_i2c_queuectrl);
+	mxs_reg_32(hw_i2c_queuestat);
+	mxs_reg_32(hw_i2c_queuecmd);
+	mxs_reg_32(hw_i2c_queuedata);
+	mxs_reg_32(hw_i2c_data);
+	mxs_reg_32(hw_i2c_debug0);
+	mxs_reg_32(hw_i2c_debug1);
+	mxs_reg_32(hw_i2c_version);
 };
 #endif
 

@@ -29,26 +29,26 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_ssp_regs {
-	mxs_reg_32(hw_ssp_ctrl0)
-	mxs_reg_32(hw_ssp_cmd0)
-	mxs_reg_32(hw_ssp_cmd1)
-	mxs_reg_32(hw_ssp_xfer_size)
-	mxs_reg_32(hw_ssp_block_size)
-	mxs_reg_32(hw_ssp_compref)
-	mxs_reg_32(hw_ssp_compmask)
-	mxs_reg_32(hw_ssp_timing)
-	mxs_reg_32(hw_ssp_ctrl1)
-	mxs_reg_32(hw_ssp_data)
-	mxs_reg_32(hw_ssp_sdresp0)
-	mxs_reg_32(hw_ssp_sdresp1)
-	mxs_reg_32(hw_ssp_sdresp2)
-	mxs_reg_32(hw_ssp_sdresp3)
-	mxs_reg_32(hw_ssp_ddr_ctrl)
-	mxs_reg_32(hw_ssp_dll_ctrl)
-	mxs_reg_32(hw_ssp_status)
-	mxs_reg_32(hw_ssp_dll_sts)
-	mxs_reg_32(hw_ssp_debug)
-	mxs_reg_32(hw_ssp_version)
+	mxs_reg_32(hw_ssp_ctrl0);
+	mxs_reg_32(hw_ssp_cmd0);
+	mxs_reg_32(hw_ssp_cmd1);
+	mxs_reg_32(hw_ssp_xfer_size);
+	mxs_reg_32(hw_ssp_block_size);
+	mxs_reg_32(hw_ssp_compref);
+	mxs_reg_32(hw_ssp_compmask);
+	mxs_reg_32(hw_ssp_timing);
+	mxs_reg_32(hw_ssp_ctrl1);
+	mxs_reg_32(hw_ssp_data);
+	mxs_reg_32(hw_ssp_sdresp0);
+	mxs_reg_32(hw_ssp_sdresp1);
+	mxs_reg_32(hw_ssp_sdresp2);
+	mxs_reg_32(hw_ssp_sdresp3);
+	mxs_reg_32(hw_ssp_ddr_ctrl);
+	mxs_reg_32(hw_ssp_dll_ctrl);
+	mxs_reg_32(hw_ssp_status);
+	mxs_reg_32(hw_ssp_dll_sts);
+	mxs_reg_32(hw_ssp_debug);
+	mxs_reg_32(hw_ssp_version);
 };
 #endif
 

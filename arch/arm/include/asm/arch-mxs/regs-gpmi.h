@@ -30,22 +30,22 @@
 
 #ifndef	__ASSEMBLY__
 struct gpmi_regs {
-	mxs_reg_32(hw_gpmi_ctrl0)
-	mxs_reg_32(hw_gpmi_compare)
-	mxs_reg_32(hw_gpmi_eccctrl)
-	mxs_reg_32(hw_gpmi_ecccount)
-	mxs_reg_32(hw_gpmi_payload)
-	mxs_reg_32(hw_gpmi_auxiliary)
-	mxs_reg_32(hw_gpmi_ctrl1)
-	mxs_reg_32(hw_gpmi_timing0)
-	mxs_reg_32(hw_gpmi_timing1)
+	mxs_reg_32(hw_gpmi_ctrl0);
+	mxs_reg_32(hw_gpmi_compare);
+	mxs_reg_32(hw_gpmi_eccctrl);
+	mxs_reg_32(hw_gpmi_ecccount);
+	mxs_reg_32(hw_gpmi_payload);
+	mxs_reg_32(hw_gpmi_auxiliary);
+	mxs_reg_32(hw_gpmi_ctrl1);
+	mxs_reg_32(hw_gpmi_timing0);
+	mxs_reg_32(hw_gpmi_timing1);
 
 	uint32_t	reserved[4];
 
-	mxs_reg_32(hw_gpmi_data)
-	mxs_reg_32(hw_gpmi_stat)
-	mxs_reg_32(hw_gpmi_debug)
-	mxs_reg_32(hw_gpmi_version)
+	mxs_reg_32(hw_gpmi_data);
+	mxs_reg_32(hw_gpmi_stat);
+	mxs_reg_32(hw_gpmi_debug);
+	mxs_reg_32(hw_gpmi_version);
 };
 #endif
 
