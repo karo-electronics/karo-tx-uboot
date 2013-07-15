@@ -30,28 +30,19 @@ struct mxs_power_regs {
 	mxs_reg_32(hw_power_5vctrl);
 	mxs_reg_32(hw_power_minpwr);
 	mxs_reg_32(hw_power_charge);
-	uint32_t	hw_power_vdddctrl;
-	uint32_t	reserved_vddd[3];
-	uint32_t	hw_power_vddactrl;
-	uint32_t	reserved_vdda[3];
-	uint32_t	hw_power_vddioctrl;
-	uint32_t	reserved_vddio[3];
-	uint32_t	hw_power_vddmemctrl;
-	uint32_t	reserved_vddmem[3];
-	uint32_t	hw_power_dcdc4p2;
-	uint32_t	reserved_dcdc4p2[3];
-	uint32_t	hw_power_misc;
-	uint32_t	reserved_misc[3];
-	uint32_t	hw_power_dclimits;
-	uint32_t	reserved_dclimits[3];
+	reg_32(hw_power_vdddctrl, 4);
+	reg_32(hw_power_vddactrl, 4);
+	reg_32(hw_power_vddioctrl, 4);
+	reg_32(hw_power_vddmemctrl, 4);
+	reg_32(hw_power_dcdc4p2, 4);
+	reg_32(hw_power_misc, 4);
+	reg_32(hw_power_dclimits, 4);
 	mxs_reg_32(hw_power_loopctrl);
-	uint32_t	hw_power_sts;
-	uint32_t	reserved_sts[3];
+	reg_32(hw_power_sts, 4);
 	mxs_reg_32(hw_power_speed);
-	uint32_t	hw_power_battmonitor;
-	uint32_t	reserved_battmonitor[3];
+	reg_32(hw_power_battmonitor, 4);
 
-	uint32_t	reserved[4];
+	reg_32(reserved, 4);
 
 	mxs_reg_32(hw_power_reset);
 	mxs_reg_32(hw_power_debug);

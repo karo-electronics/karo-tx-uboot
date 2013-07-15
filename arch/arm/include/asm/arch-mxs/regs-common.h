@@ -59,6 +59,10 @@
 	uint32_t name##_clr;		\
 	uint32_t name##_tog
 
+#define __reg_32(name, pitch)			\
+	uint32_t name;				\
+	uint32_t reserved_##name[(pitch) - 1]
+
 struct mxs_register_8 {
 	__mxs_reg_8(reg);
 };
@@ -78,5 +82,8 @@ struct mxs_register_32 {
 		struct { __mxs_reg_32(name); };		\
 		struct mxs_register_32 name##_reg;	\
 	}
+
+#define	reg_32(name, pitch)				\
+	struct { __reg_32(name, pitch); }
 
 #endif	/* __MXS_REGS_COMMON_H__ */
