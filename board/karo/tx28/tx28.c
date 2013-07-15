@@ -143,6 +143,9 @@ int board_early_init_f(void)
 int board_init(void)
 {
 	/* Address of boot parameters */
+#ifdef CONFIG_OF_LIBFDT
+	gd->bd->bi_arch_number = -1;
+#endif
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
 	return 0;
 }
@@ -548,7 +551,8 @@ void lcd_ctrl_init(void *lcdbase)
 	char *vm;
 	unsigned long val;
 	int refresh = 60;
-	struct fb_videomode *p = &tx28_fb_modes[0];
+	struct fb_videomode *p = tx28_fb_modes;
+	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 
 	if (!lcd_enabled) {
@@ -562,21 +566,31 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
+	karo_fdt_move_fdt();
+
 	vm = getenv("video_mode");
 	if (vm == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+		p = &fb_mode;
+		debug("Using video mode from FDT\n");
+		vm += strlen(vm);
+	}
+	if (p->name != NULL)
+		debug("Trying compiled-in video modes\n");
 	while (p->name != NULL) {
 		if (strcmp(p->name, vm) == 0) {
-			printf("Using video mode: '%s'\n", p->name);
+			debug("Using video mode: '%s'\n", p->name);
 			vm += strlen(vm);
 			break;
 		}
 		p++;
 	}
-
+	if (*vm != '\0')
+		debug("Trying to decode video_mode: '%s'\n", vm);
 	while (*vm != '\0') {
 		if (*vm >= '0' && *vm <= '9') {
 			char *end;
@@ -707,6 +721,13 @@ int board_late_init(void)
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
 		} else if (strcmp(baseboard, "stk5-v5") == 0) {
+			const char *otg_mode = getenv("otg_mode");
+
+			if (otg_mode && strcmp(otg_mode, "host") == 0) {
+				printf("otg_mode='%s' is incompatible with baseboard %s; setting to 'none'\n",
+					otg_mode, baseboard);
+				setenv("otg_mode", "none");
+			}
 			stk5v5_board_init();
 		} else {
 			printf("WARNING: Unsupported STK5 board rev.: %s\n",
@@ -740,13 +761,13 @@ struct node_info tx28_nand_nodes[] = {
 
 static void tx28_fixup_flexcan(void *blob)
 {
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x80032000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x80034000, "transceiver-switch");
+	karo_fdt_del_prop(blob, "fsl,imx28-flexcan", 0x80032000, "transceiver-switch");
+	karo_fdt_del_prop(blob, "fsl,imx28-flexcan", 0x80034000, "transceiver-switch");
 }
 
 static void tx28_fixup_fec(void *blob)
 {
-	karo_fdt_remove_node(blob, "ethernet1");
+	karo_fdt_enable_node(blob, "ethernet1", 0);
 }
 
 void ft_board_setup(void *blob, bd_t *bd)
@@ -758,16 +779,9 @@ void ft_board_setup(void *blob, bd_t *bd)
 	 * and no I2C GPIO extender
 	 */
 	karo_fdt_remove_node(blob, "ds1339");
-	karo_fdt_remove_node(blob, "pca9554");
+	karo_fdt_remove_node(blob, "gpio5");
 #endif
 	if (baseboard != NULL && strcmp(baseboard, "stk5-v5") == 0) {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && strcmp(otg_mode, "host") == 0) {
-			printf("otg_mode=%s incompatible with baseboard %s\n",
-				otg_mode, baseboard);
-			setenv(otg_mode, "none");
-		}
 		karo_fdt_remove_node(blob, "stk5led");
 	} else {
 		tx28_fixup_flexcan(blob);
@@ -777,14 +791,16 @@ void ft_board_setup(void *blob, bd_t *bd)
 	if (baseboard != NULL && strcmp(baseboard, "stk5-v3") == 0) {
 		const char *otg_mode = getenv("otg_mode");
 
-		if (otg_mode && strcmp(otg_mode, "device") == 0)
-			karo_fdt_remove_node(blob, "can1");
+		if (otg_mode && (strcmp(otg_mode, "device") == 0 ||
+					strcmp(otg_mode, "gadget") == 0))
+			karo_fdt_enable_node(blob, "can1", 0);
 	}
 
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
-	karo_fdt_fixup_usb_otg(blob, "fsl,imx28-usbphy", 0x8007c000);
+	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
+	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
 #endif
