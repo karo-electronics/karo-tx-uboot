@@ -112,37 +112,45 @@ static void mxs_power_clock2pll(void)
 			CLKCTRL_CLKSEQ_BYPASS_CPU);
 }
 
-static void mxs_power_clear_auto_restart(void)
+static int mxs_power_wait_rtc_stat(u32 mask)
 {
-	struct mxs_rtc_regs *rtc_regs =
-		(struct mxs_rtc_regs *)MXS_RTC_BASE;
+	int timeout = 5000; /* 3 ms according to i.MX28 Ref. Manual */
+	u32 val;
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
 
-	writel(RTC_CTRL_SFTRST, &rtc_regs->hw_rtc_ctrl_clr);
-	while (readl(&rtc_regs->hw_rtc_ctrl) & RTC_CTRL_SFTRST)
-		;
+	while ((val = readl(&rtc_regs->hw_rtc_stat)) & mask) {
+		early_delay(1);
+		if (timeout-- < 0)
+			break;
+	}
+	return !!(readl(&rtc_regs->hw_rtc_stat) & mask);
+}
 
-	writel(RTC_CTRL_CLKGATE, &rtc_regs->hw_rtc_ctrl_clr);
-	while (readl(&rtc_regs->hw_rtc_ctrl) & RTC_CTRL_CLKGATE)
-		;
+static int mxs_power_set_auto_restart(int on)
+{
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
 
 	/*
 	 * Due to the hardware design bug of mx28 EVK-A
 	 * we need to set the AUTO_RESTART bit.
 	 */
-	if (readl(&rtc_regs->hw_rtc_persistent0) & RTC_PERSISTENT0_AUTO_RESTART)
-		return;
+	if (mxs_power_wait_rtc_stat(RTC_STAT_STALE_REGS_PERSISTENT0))
+		return 1;
 
-	while (readl(&rtc_regs->hw_rtc_stat) & RTC_STAT_NEW_REGS_MASK)
-		;
+	if ((!(readl(&rtc_regs->hw_rtc_persistent0) &
+				RTC_PERSISTENT0_AUTO_RESTART) ^ !on) == 0)
+		return 0;
 
-	setbits_le32(&rtc_regs->hw_rtc_persistent0,
-			RTC_PERSISTENT0_AUTO_RESTART);
-	while (readl(&rtc_regs->hw_rtc_stat) & RTC_STAT_NEW_REGS_MASK)
-		;
+	if (mxs_power_wait_rtc_stat(RTC_STAT_NEW_REGS_PERSISTENT0))
+		return 1;
 
-	writel(RTC_CTRL_FORCE_UPDATE, &rtc_regs->hw_rtc_ctrl_set);
-	while (readl(&rtc_regs->hw_rtc_stat) & RTC_STAT_STALE_REGS_MASK)
-		;
+	clrsetbits_le32(&rtc_regs->hw_rtc_persistent0,
+			!on * RTC_PERSISTENT0_AUTO_RESTART,
+			!!on * RTC_PERSISTENT0_AUTO_RESTART);
+	if (mxs_power_wait_rtc_stat(RTC_STAT_NEW_REGS_PERSISTENT0))
+		return 1;
+
+	return 0;
 }
 
 static void mxs_power_set_linreg(void)
@@ -989,10 +997,18 @@ static void mxs_setup_batt_detect(void)
 	early_delay(10);
 }
 
+#ifdef CONFIG_CONFIG_MACH_MX28EVK
+#define auto_restart 1
+#else
+#define auto_restart 0
+#endif
+
 void mxs_power_init(void)
 {
 	mxs_power_clock2xtal();
-	mxs_power_clear_auto_restart();
+	if (mxs_power_set_auto_restart(auto_restart)) {
+		serial_puts("Inconsistent value in RTC_PERSISTENT0 register; power-on-reset required\n");
+	}
 	mxs_power_set_linreg();
 
 	if (!fixed_batt_supply) {
