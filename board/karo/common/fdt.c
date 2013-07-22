@@ -368,8 +368,8 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 	if (off < 0)
 		return off;
 	do {
-		const char *n;
-		int d = 1;
+		const char *n, *endp;
+		int len, d = 1;
 
 		off = fdt_next_node(blob, off, &d);
 		if (d > 2) {
@@ -380,17 +380,18 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 		if (off < 0 || d < 1)
 			break;
 
-		n = fdt_getprop(blob, off, "panel-name", NULL);
+		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
 			printf("Missing 'panel-name' property in node '%s'\n",
 				fdt_get_name(blob, off, NULL));
 			continue;
 		}
-		debug("Checking panel-name '%s'\n", n);
-		if (strcasecmp(n, name) == 0) {
-			fdt_init_fb_mode(blob, off, fb_mode);
-			return fdt_update_native_fb_mode(blob, off);
-
+		for (endp = n + len; n < endp; n += strlen(n) + 1) {
+			debug("Checking panel-name '%s'\n", n);
+			if (strcasecmp(n, name) == 0) {
+				fdt_init_fb_mode(blob, off, fb_mode);
+				return fdt_update_native_fb_mode(blob, off);
+			}
 		}
 	} while (off > 0);
 	return -EINVAL;
