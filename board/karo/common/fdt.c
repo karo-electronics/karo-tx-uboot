@@ -124,7 +124,9 @@ void karo_fdt_enable_node(void *blob, const char *node, int enable)
 static const char *karo_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
+#ifdef CONFIG_MX28
 	"fsl,imx28-lradc",
+#endif
 };
 
 static void fdt_del_tp_node(void *blob, const char *name)
