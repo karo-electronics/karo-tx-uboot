@@ -108,7 +108,6 @@ static inline unsigned long us_to_tick(unsigned long usec)
 int timer_init(void)
 {
 	int i;
-	ulong val;
 
 	/* setup GP Timer 1 */
 	__raw_writel(GPTCR_SWR, &cur_gpt->control);
@@ -124,8 +123,7 @@ int timer_init(void)
 	i &= ~GPTCR_CLKSOURCE_MASK;
 	__raw_writel(i | GPT_CLKSOURCE | GPTCR_TEN, &cur_gpt->control);
 
-	val = __raw_readl(&cur_gpt->counter);
-	gd->arch.lastinc = val;
+	gd->arch.lastinc = __raw_readl(&cur_gpt->counter);
 	gd->arch.tbu = 0;
 	gd->arch.tbl = TIMER_START;
 	gd->arch.timer_rate_hz = GPT_CLK;
