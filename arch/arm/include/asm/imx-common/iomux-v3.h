@@ -46,13 +46,13 @@
  *
  * IOMUX/PAD Bit field definitions
  *
- * MUX_CTRL_OFS:	    0..11 (12)
- * PAD_CTRL_OFS:	   12..23 (12)
- * SEL_INPUT_OFS:	   24..35 (12)
- * MUX_MODE + SION:	   36..40  (5)
+ * MUX_CTRL_OFS:		 0..11 (12)
+ * PAD_CTRL_OFS:		12..23 (12)
+ * SEL_INPUT_OFS:		24..35 (12)
+ * MUX_MODE + SION:		36..40  (5)
  * PAD_CTRL + PAD_CTRL_VALID:	41..58 (18)
- * SEL_INP:		   59..62  (4)
- * reserved:		     63    (1)
+ * SEL_INP:			59..61  (3)
+ * reserved:			62..63  (2)
 */
 
 typedef u64 iomux_v3_cfg_t;
@@ -69,12 +69,13 @@ typedef u64 iomux_v3_cfg_t;
 #define MUX_MODE_SHIFT		36
 #define MUX_MODE_MASK		((iomux_v3_cfg_t)0x1f << MUX_MODE_SHIFT)
 #define MUX_PAD_CTRL_SHIFT	41
-#define MUX_PAD_CTRL_MASK	((iomux_v3_cfg_t)0x3ffff << MUX_PAD_CTRL_SHIFT)
+#define MUX_PAD_CTRL_MASK	((iomux_v3_cfg_t)0x1ffff << MUX_PAD_CTRL_SHIFT)
 #define MUX_SEL_INPUT_SHIFT	59
-#define MUX_SEL_INPUT_MASK	((iomux_v3_cfg_t)0xf << MUX_SEL_INPUT_SHIFT)
+#define MUX_SEL_INPUT_MASK	((iomux_v3_cfg_t)0x7 << MUX_SEL_INPUT_SHIFT)
 
-#define MUX_PAD_CTRL(x)		(((iomux_v3_cfg_t)(x) << MUX_PAD_CTRL_SHIFT) | \
-				PAD_CTRL_VALID)
+#define __MUX_PAD_CTRL(x)	((x) | __PAD_CTRL_VALID)
+#define MUX_PAD_CTRL(x)		(((iomux_v3_cfg_t)__MUX_PAD_CTRL(x) << \
+						MUX_PAD_CTRL_SHIFT))
 
 #define IOMUX_PAD(pad_ctrl_ofs, mux_ctrl_ofs, mux_mode, sel_input_ofs,	\
 		sel_input, pad_ctrl)					\
@@ -85,9 +86,13 @@ typedef u64 iomux_v3_cfg_t;
 	((iomux_v3_cfg_t)(sel_input_ofs) << MUX_SEL_INPUT_OFS_SHIFT)|	\
 	((iomux_v3_cfg_t)(sel_input)     << MUX_SEL_INPUT_SHIFT))
 
-#define NO_PAD_CTRL		(1 << 17)
+#define NO_MUX_I		0
+#define NO_PAD_I		0
+
+#define NO_PAD_CTRL		0
+#define __PAD_CTRL_VALID	(1 << 17)
+#define PAD_CTRL_VALID		((iomux_v3_cfg_t)__PAD_CTRL_VALID << MUX_PAD_CTRL_SHIFT)
 #define GPIO_PIN_MASK		0x1f
-#define PAD_CTRL_VALID		((iomux_v3_cfg_t)1 << (MUX_PAD_CTRL_SHIFT + 17))
 #define GPIO_PORT_SHIFT		5
 #define GPIO_PORT_MASK		(0x7 << GPIO_PORT_SHIFT)
 #define GPIO_PORTA		(0 << GPIO_PORT_SHIFT)
@@ -100,8 +105,8 @@ typedef u64 iomux_v3_cfg_t;
 #define MUX_CONFIG_SION		(0x1 << 4)
 
 
-int imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad);
-int imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
+int imx_iomux_v3_setup_pad(const iomux_v3_cfg_t pad);
+int imx_iomux_v3_setup_multiple_pads(const iomux_v3_cfg_t *pad_list,
 				     unsigned count);
 
 #endif	/* __ASM_ARCH_IOMUX_V3_H__*/
