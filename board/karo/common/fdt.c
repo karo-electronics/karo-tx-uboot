@@ -174,7 +174,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 
 	off = fdt_path_offset(blob, node);
 	if (off < 0) {
-		printf("Failed to find node %s\n", node);
+		debug("Failed to find node %s\n", node);
 		return;
 	}
 
