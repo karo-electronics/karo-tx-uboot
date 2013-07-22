@@ -132,7 +132,7 @@
  */
 #ifdef CONFIG_OF_LIBFDT
 #define TX48_BOOTM_CMD							\
-	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"
+	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"
 #define TX48_MTDPARTS_CMD ""
 #else
 #define TX48_BOOTM_CMD							\
@@ -166,7 +166,7 @@
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
-	"video_mode=640x480MR-24@60\0"
+	"video_mode=da8xx-fb:640x480MR-24@60\0"
 
 #define MTD_NAME			"omap2-nand.0"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME

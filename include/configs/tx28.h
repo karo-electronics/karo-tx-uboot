@@ -141,7 +141,7 @@
 	"nboot linux;run bootm_cmd\0"					\
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
 	"run bootm_cmd\0"						\
-	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"	\
+	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" mxsfb.mode=${video_mode} ${append_bootargs}\0"		\
 	"fdtaddr=41000000\0"						\
