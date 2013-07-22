@@ -1,6 +1,11 @@
 #include <config.h>
-#include <configs/tx6dl.h>
+#include <configs/tx6.h>
 #include <asm/arch/imx-regs.h>
+#include <generated/asm-offsets.h>
+
+#ifndef CCM_CCR
+#error asm-offsets not included
+#endif
 
 #define DEBUG_LED_BIT		20
 #define LED_GPIO_BASE		GPIO2_BASE_ADDR
@@ -319,16 +324,6 @@ ivt_end:
 #define DDR_ADDR_MASK	0
 #define DDR_CTRL_MASK	(DDR_MODE_MASK | DSE_MASK)
 
-#define CCM_CCR					0x020c4000
-#define CCM_CS2CDR				0x020c402c
-#define CCM_CCGR0				0x020c4068
-#define CCM_CCGR1				0x020c406c
-#define CCM_CCGR2				0x020c4070
-#define CCM_CCGR3				0x020c4074
-#define CCM_CCGR4				0x020c4078
-#define CCM_CCGR5				0x020c407c
-#define CCM_CCGR6				0x020c4080
-#define CCM_ANALOG_PLL_ENET			0x020c80e0
 #define MMDC1_MDCTL				0x021b0000
 #define MMDC1_MDPDC				0x021b0004
 #define MMDC1_MDOTC				0x021b0008
@@ -552,7 +547,6 @@ ivt_end:
 #define IOMUXC_UART1_UART_RX_DATA_SELECT_INPUT	0x020e0920
 #endif
 
-
 dcd_hdr:
 	.word	CPU_2_BE_32((0xd2 << 24) | ((dcd_end - .) << 8) | DCD_VERSION)
 dcd_start:
@@ -560,18 +554,18 @@ dcd_start:
 	/* RESET_OUT GPIO_7_12 */
 	MXC_DCD_ITEM(IOMUXC_SW_MUX_CTL_PAD_GPIO17, 0x00000005)
 
-	MXC_DCD_ITEM(CCM_CS2CDR, 0x006336c1) /* CS2CDR default: 0x007236c1 */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CS2CDR, 0x006336c1) /* CS2CDR default: 0x007236c1 */
 
-	MXC_DCD_ITEM(CCM_ANALOG_PLL_ENET, 0x00002001) /* ENET PLL */
+	MXC_DCD_ITEM(ANATOP_BASE_ADDR + ANATOP_PLL_ENET, 0x00002001) /* ENET PLL */
 
 	/* enable all relevant clocks... */
-	MXC_DCD_ITEM(CCM_CCGR0, 0xf0c03f3f) /* default: 0xf0c03f0f APBH-DMA */
-	MXC_DCD_ITEM(CCM_CCGR1, 0xf0fc0c00) /* default: 0xf0fc0000 */
-	MXC_DCD_ITEM(CCM_CCGR2, 0xfc3ff0cc) /* default: 0xfc3ff00c I2C1 */
-	MXC_DCD_ITEM(CCM_CCGR3, 0x3ff00000) /* default: 0x3ff00000 */
-	MXC_DCD_ITEM(CCM_CCGR4, 0xff00ff00) /* default: 0x0000ff00 GPMI BCH */
-	MXC_DCD_ITEM(CCM_CCGR5, 0xff033f0f) /* default: 0xf0033f0f UART1 */
-	MXC_DCD_ITEM(CCM_CCGR6, 0xffff03ff) /* default: 0xffff0003 USDHC4 (for APBH-DMA!) USDHC3 (for BCH!) */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR0, 0xf0c03f3f) /* default: 0xf0c03f0f APBH-DMA */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR1, 0xf0fc0c00) /* default: 0xf0fc0000 */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR2, 0xfc3ff0cc) /* default: 0xfc3ff00c I2C1 */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR3, 0x3ff00000) /* default: 0x3ff00000 */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR4, 0xff00ff00) /* default: 0x0000ff00 GPMI BCH */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR5, 0xff033f0f) /* default: 0xf0033f0f UART1 */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR6, 0xffff03ff) /* default: 0xffff0003 USDHC4 (for APBH-DMA!) USDHC3 (for BCH!) */
 
 	/* IOMUX: */
 	MXC_DCD_ITEM(IOMUXC_GPR1, 0x48640005) /* default: 0x48400005 ENET_CLK output */
@@ -726,7 +720,7 @@ ddr_calib:
 	MXC_DCD_ITEM(MMDC1_MDOR,   MDOR_VAL)
 	MXC_DCD_ITEM(MMDC1_MDOTC,  MDOTC_VAL)
 	MXC_DCD_ITEM(MMDC1_MDPDC,  MDPDC_VAL_0)
-	MXC_DCD_ITEM(MMDC1_MDASP,  0x00000017) /* MDASP */
+	MXC_DCD_ITEM(MMDC1_MDASP,  (PHYS_SDRAM_1_SIZE + SZ_256M) / SZ_32M - 1) /* MDASP */
 
 	/* CS0 MRS: */
 	MXC_DCD_ITEM(MMDC1_MDSCR, MDSCR_MRS_VAL(0, 0, mr0_val))

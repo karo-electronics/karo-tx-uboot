@@ -29,7 +29,7 @@ SECTIONS
         . = ALIGN(4);
         .text :
         {
-		board/karo/tx6dl/lowlevel_init.o (.text*)
+		board/karo/tx6/lowlevel_init.o (.text*)
                 __image_copy_start = .;
                 CPUDIR/start.o (.text*)
                 *(.text*)
@@ -68,7 +68,6 @@ SECTIONS
         }
 
         _end = .;
-	__u_boot_img_size = _end - _start;
 
         .bss __rel_dyn_start (OVERLAY) : {
                 __bss_start = .;

@@ -10,16 +10,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  */
-#ifndef __TX6Q_H
-#define __TX6Q_H
+#ifndef __TX6_H
+#define __TX6_H
 
 #include <asm/sizes.h>
 
 /*
- * Ka-Ro TX6Q board - SoC configuration
+ * Ka-Ro TX6 board - SoC configuration
  */
 #define CONFIG_MX6
-#define CONFIG_MX6Q
 #define CONFIG_SYS_MX6_HCLK		24000000
 #define CONFIG_SYS_MX6_CLK32		32768
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
@@ -50,18 +49,29 @@
  */
 #define CONFIG_NR_DRAM_BANKS		1		/* # of SDRAM banks */
 #define PHYS_SDRAM_1			0x10000000	/* Base address of bank 1 */
+#ifdef CONFIG_MX6Q
 #define PHYS_SDRAM_1_SIZE		SZ_1G
+#define PHYS_SDRAM_1_WIDTH		64
+#define CONFIG_SYS_SDRAM_CLK		528
+#else
+#define PHYS_SDRAM_1_SIZE		SZ_512M
+#define PHYS_SDRAM_1_WIDTH		32
+#define CONFIG_SYS_SDRAM_CLK		400
+#endif
 #define CONFIG_STACKSIZE		SZ_128K
 #define CONFIG_SYS_MALLOC_LEN		SZ_8M
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_4M)
-#define CONFIG_SYS_SDRAM_CLK		528
 
 /*
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
+#ifdef CONFIG_MX6Q
 #define CONFIG_SYS_PROMPT		"TX6Q U-Boot > "
+#else
+#define CONFIG_SYS_PROMPT		"TX6DL U-Boot > "
+#endif
 #define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 				sizeof(CONFIG_SYS_PROMPT) + 16) /* Print buffer size */
@@ -84,8 +94,13 @@
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_EMBED
 #define CONFIG_OF_BOARD_SETUP
+#ifdef CONFIG_MX6Q
 #define CONFIG_DEFAULT_DEVICE_TREE	tx6q
 #define CONFIG_ARCH_DEVICE_TREE		mx6q
+#else
+#define CONFIG_DEFAULT_DEVICE_TREE	tx6dl
+#define CONFIG_ARCH_DEVICE_TREE		mx6dl
+#endif
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif /* CONFIG_OF_LIBFDT */
 #endif /* CONFIG_MFG */
@@ -93,8 +108,8 @@
 /*
  * Boot Linux
  */
-#define xstr(s)	str(s)
-#define str(s)	#s
+#define xstr(s)				str(s)
+#define str(s)				#s
 #define __pfx(x, s)			(x##s)
 #define _pfx(x, s)			__pfx(x, s)
 
@@ -154,6 +169,7 @@
 	"run bootm_cmd\0"						\
 	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"	\
 	"cpu_clk=800\0"							\
+	"bootdelay=-1\0"						\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" video=${video_mode} ${append_bootargs}\0"			\
 	"fdtaddr=11000000\0"						\
@@ -251,15 +267,17 @@
 #define CONFIG_MTD_DEBUG
 #define CONFIG_MTD_DEBUG_VERBOSE	4
 #endif
+#ifndef CONFIG_SYS_NAND_ERASE_SIZE
+#define CONFIG_SYS_NAND_ERASE_SIZE	SZ_128K
+#endif
 #define CONFIG_NAND_MXS
 #define CONFIG_NAND_MXS_NO_BBM_SWAP
 #define CONFIG_APBH_DMA
 #define CONFIG_APBH_DMA_BURST
 #define CONFIG_APBH_DMA_BURST8
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x20000
+#define CONFIG_SYS_NAND_U_BOOT_OFFS	CONFIG_SYS_NAND_ERASE_SIZE
 #define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_MXS_DMA_CHANNEL	4
-#define CONFIG_SYS_MAX_FLASH_SECT	1024
 #define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
@@ -273,17 +291,17 @@
 
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
 #define CONFIG_ENV_SIZE			SZ_128K
-#define CONFIG_ENV_RANGE		0x60000
+#define CONFIG_ENV_RANGE		(3 * CONFIG_SYS_NAND_ERASE_SIZE)
 #ifdef CONFIG_ENV_OFFSET_REDUND
-#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_SYS_ENV_PART_SIZE)	\
 	"(env),"							\
-	xstr(CONFIG_ENV_RANGE)						\
+	xstr(CONFIG_SYS_ENV_PART_SIZE)					\
 	"(env2),"
-#define CONFIG_SYS_USERFS_PART_STR	"91520k(userfs)"
+#define CONFIG_SYS_USERFS_PART_STR	xstr(CONFIG_SYS_USERFS_PART_SIZE) "(userfs)"
 #else
-#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_ENV_RANGE)		\
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_SYS_ENV_PART_SIZE)	\
 	"(env),"
-#define CONFIG_SYS_USERFS_PART_STR	"91904k(userfs)"
+#define CONFIG_SYS_USERFS_PART_STR	xstr(CONFIG_SYS_USERFS_PART_SIZE2) "(userfs)"
 #endif /* CONFIG_ENV_OFFSET_REDUND */
 
 /*
@@ -323,10 +341,15 @@
 #endif
 
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
+	xstr(CONFIG_SYS_U_BOOT_PART_SIZE)				\
+	"@" xstr(CONFIG_SYS_U_BOOT_OFFSET)				\
+	"(u-boot),"							\
 	CONFIG_SYS_ENV_PART_STR						\
-	"4m(linux),32m(rootfs),256k(dtb),"				\
-	CONFIG_SYS_USERFS_PART_STR ",512k@0x7f80000(bbt)ro"
+	"4m(linux),32m(rootfs)," CONFIG_SYS_USERFS_PART_STR ","		\
+	xstr(CONFIG_SYS_DTB_PART_SIZE)					\
+	"(dtb),"							\
+	xstr(CONFIG_SYS_NAND_BBT_SIZE)					\
+	"@" xstr(CONFIG_SYS_NAND_BBT_OFFSET) "(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
