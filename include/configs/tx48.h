@@ -149,7 +149,7 @@
 	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
+	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
 	" fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
 	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
