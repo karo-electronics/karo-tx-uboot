@@ -1161,5 +1161,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	tx6qdl_fixup_flexcan(blob);
+	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
 #endif
