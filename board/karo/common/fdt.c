@@ -424,9 +424,10 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 		printf("Could not find node '%s' in FDT: %d\n", subnode, off);
 	}
 	do {
-		const char *n;
-		int d = 1;
+		const char *n, *endp;
+		int len, d = 1;
 		int node = fdt_next_node(blob, off, &d);
+		int do_del;
 
 		if (d > 2) {
 			printf("Skipping node @ %04x %s depth %d\n", node, fdt_get_name(blob, node, NULL), d);
@@ -436,22 +437,28 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 		if (node < 0 || d < 1)
 			break;
 
-		n = fdt_getprop(blob, node, "panel-name", NULL);
+		n = fdt_getprop(blob, node, "panel-name", &len);
 		if (!n) {
 			printf("Missing 'panel-name' property in node '%s'\n",
 				fdt_get_name(blob, node, NULL));
 			continue;
 		}
-		debug("Checking panel-name '%s'\n", n);
-		if (strcasecmp(n, name) == 0) {
-			debug("Keeping node %s @ %04x\n",
-				fdt_get_name(blob, node, NULL), node);
-			off = node;
-			continue;
+		do_del = 1;
+		for (endp = n + len; n < endp; n += strlen(n) + 1) {
+			debug("Checking panel-name '%s'\n", n);
+			if (strcasecmp(n, name) == 0) {
+				debug("Keeping node %s @ %04x\n",
+					fdt_get_name(blob, node, NULL), node);
+				off = node;
+				do_del = 0;
+				break;
+			}
 		}
-		debug("Deleting node %s @ %04x\n",
-			fdt_get_name(blob, node, NULL), node);
-		fdt_del_node(blob, node);
+		if (do_del) {
+			debug("Deleting node %s @ %04x\n",
+				fdt_get_name(blob, node, NULL), node);
+			fdt_del_node(blob, node);
+		}
 
 	} while (off > 0);
 
