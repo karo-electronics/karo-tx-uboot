@@ -121,8 +121,16 @@ static inline void random_init(void)
 	}
 }
 
+#define RTC_PERSISTENT0_CLK32_MASK	(RTC_PERSISTENT0_CLOCKSOURCE |	\
+					RTC_PERSISTENT0_XTAL32KHZ_PWRUP)
+static u32 boot_cause __attribute__((section("data")));
+
 int board_early_init_f(void)
 {
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
+	u32 rtc_stat;
+	int timeout = 5000;
+
 	random_init();
 
 	/* IO0 clock at 480MHz */
@@ -137,6 +145,25 @@ int board_early_init_f(void)
 
 	gpio_request_array(tx28_gpios, ARRAY_SIZE(tx28_gpios));
 	mxs_iomux_setup_multiple_pads(tx28_pads, ARRAY_SIZE(tx28_pads));
+
+	while ((rtc_stat = readl(&rtc_regs->hw_rtc_stat)) &
+		RTC_STAT_STALE_REGS_PERSISTENT0) {
+		if (timeout-- < 0)
+			return 0;
+		udelay(1);
+	}
+	boot_cause = readl(&rtc_regs->hw_rtc_persistent0);
+	if ((boot_cause & RTC_PERSISTENT0_CLK32_MASK) !=
+		RTC_PERSISTENT0_CLK32_MASK) {
+		if (boot_cause & RTC_PERSISTENT0_CLOCKSOURCE)
+			goto rtc_err;
+		writel(RTC_PERSISTENT0_CLK32_MASK,
+			&rtc_regs->hw_rtc_persistent0_set);
+	}
+	return 0;
+
+rtc_err:
+	serial_puts("Inconsistent value in RTC_PERSISTENT0 register; power-on-reset required\n");
 	return 0;
 }
 
@@ -742,9 +769,56 @@ int board_late_init(void)
 	return 0;
 }
 
+#define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
+				RTC_PERSISTENT0_ALARM_WAKE |		\
+				RTC_PERSISTENT0_THERMAL_RESET)
+
 int checkboard(void)
 {
-	printf("Board: Ka-Ro TX28-4%sxx\n", TX28_MOD_SUFFIX);
+	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
+	u32 pwr_sts = readl(&power_regs->hw_power_sts);
+	u32 pwrup_src = (pwr_sts >> 24) & 0x3f;
+	const char *dlm = "";
+
+	printf("Board: Ka-Ro TX28-4%sx%d\n", TX28_MOD_SUFFIX,
+		CONFIG_SDRAM_SIZE / SZ_128M);
+
+	printf("POWERUP Source: ");
+	if (pwrup_src & (3 << 0)) {
+		printf("%sPSWITCH %s voltage", dlm,
+			pwrup_src & (1 << 1) ? "HIGH" : "MID");
+		dlm = " | ";
+	}
+	if (pwrup_src & (1 << 4)) {
+		printf("%sRTC", dlm);
+		dlm = " | ";
+	}
+	if (pwrup_src & (1 << 5)) {
+		printf("%s5V", dlm);
+		dlm = " | ";
+	}
+	printf("\n");
+
+	if (boot_cause & BOOT_CAUSE_MASK) {
+		dlm="";
+		printf("Last boot cause: ");
+		if (boot_cause & RTC_PERSISTENT0_EXTERNAL_RESET) {
+			printf("%sEXTERNAL", dlm);
+			dlm = " | ";
+		}
+		if (boot_cause & RTC_PERSISTENT0_THERMAL_RESET) {
+			printf("%sTHERMAL", dlm);
+			dlm = " | ";
+		}
+		if (*dlm != '\0')
+			printf(" RESET");
+		if (boot_cause & RTC_PERSISTENT0_ALARM_WAKE) {
+			printf("%sALARM WAKE", dlm);
+			dlm = " | ";
+		}
+		printf("\n");
+	}
+
 	return 0;
 }
 
