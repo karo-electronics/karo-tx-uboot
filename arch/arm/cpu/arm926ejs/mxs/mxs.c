@@ -296,12 +296,21 @@ int print_cpuinfo(void)
 }
 #endif
 
+#define pr_clk(n, c) {						\
+	unsigned long clk = c;	\
+	printf("%-5s  %3lu.%03lu MHz\n", #n ":", clk / 1000000,	\
+		clk / 1000 % 1000);				\
+}
+
 int do_mx28_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	printf("CPU:   %3d MHz\n", mxc_get_clock(MXC_ARM_CLK) / 1000000);
-	printf("BUS:   %3d MHz\n", mxc_get_clock(MXC_AHB_CLK) / 1000000);
-	printf("EMI:   %3d MHz\n", mxc_get_clock(MXC_EMI_CLK));
-	printf("GPMI:  %3d MHz\n", mxc_get_clock(MXC_GPMI_CLK) / 1000000);
+	pr_clk(CPU, mxc_get_clock(MXC_ARM_CLK));
+	pr_clk(APBH, mxc_get_clock(MXC_AHB_CLK));
+	pr_clk(APBX, mxc_get_clock(MXC_XBUS_CLK));
+	pr_clk(IO0, mxc_get_clock(MXC_IO0_CLK) * 1000);
+	pr_clk(IO1, mxc_get_clock(MXC_IO1_CLK) * 1000);
+	pr_clk(EMI, mxc_get_clock(MXC_EMI_CLK) * 1000000);
+	pr_clk(GPMI, mxc_get_clock(MXC_GPMI_CLK));
 	return 0;
 }
 
