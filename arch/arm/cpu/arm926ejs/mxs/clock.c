@@ -169,9 +169,11 @@ static uint32_t mx28_get_ioclk(enum mxs_ioclock io)
 	uint8_t ret;
 	int io_reg;
 
-	if ((io < MXC_IOCLK0) || (io > MXC_IOCLK1))
+	if ((io < MXC_IOCLK0) || (io > MXC_IOCLK1)) {
+		printf("%s: IO clock selector %u out of range %u..%u\n",
+			__func__, io, MXC_IOCLK0, MXC_IOCLK1);
 		return 0;
-
+	}
 	io_reg = CLKCTRL_FRAC0_IO0 - io;	/* Register order is reversed */
 
 	ret = readb(&clkctrl_regs->hw_clkctrl_frac0[io_reg]) &
@@ -315,6 +317,8 @@ uint32_t mxc_get_clock(enum mxc_clock clk)
 		return mx28_get_sspclk(MXC_SSPCLK3);
 	case MXC_XTAL_CLK:
 		return XTAL_FREQ_KHZ * 1000;
+	default:
+		printf("Invalid clock selector %u\n", clk);
 	}
 
 	return 0;
