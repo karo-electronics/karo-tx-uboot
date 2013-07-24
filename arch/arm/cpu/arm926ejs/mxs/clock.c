@@ -227,7 +227,7 @@ void mx28_set_sspclk(enum mxs_sspclock ssp, uint32_t freq, int xtal)
  */
 static uint32_t mx28_get_sspclk(enum mxs_sspclock ssp)
 {
-	uint32_t clkreg;
+	uint32_t *clkreg;
 	uint32_t clk, tmp;
 
 	if (ssp > MXC_SSPCLK3)
@@ -237,16 +237,14 @@ static uint32_t mx28_get_sspclk(enum mxs_sspclock ssp)
 	if (tmp & (CLKCTRL_CLKSEQ_BYPASS_SSP0 << ssp))
 		return XTAL_FREQ_KHZ;
 
-	clkreg = (uint32_t)(&clkctrl_regs->hw_clkctrl_ssp0) +
-			(ssp * sizeof(struct mxs_register_32));
+	clkreg = &clkctrl_regs->hw_clkctrl_ssp0 +
+			ssp * sizeof(struct mxs_register_32);
 
 	tmp = readl(clkreg) & CLKCTRL_SSP_DIV_MASK;
-
 	if (tmp == 0)
 		return 0;
 
 	clk = mx28_get_ioclk(ssp >> 1);
-
 	return clk / tmp;
 }
 
