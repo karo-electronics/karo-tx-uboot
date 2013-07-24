@@ -41,11 +41,10 @@
 #define	PLL_FREQ_MHZ	(PLL_FREQ_KHZ / 1000)
 #define	XTAL_FREQ_MHZ	(XTAL_FREQ_KHZ / 1000)
 
+static struct mxs_clkctrl_regs *clkctrl_regs = (void *)MXS_CLKCTRL_BASE;
+
 static uint32_t mx28_get_pclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t clkctrl, clkseq, div;
 	uint8_t clkfrac, frac;
 
@@ -75,9 +74,6 @@ static uint32_t mx28_get_pclk(void)
 
 static uint32_t mx28_get_hclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t div;
 	uint32_t clkctrl;
 
@@ -93,9 +89,6 @@ static uint32_t mx28_get_hclk(void)
 
 static uint32_t mx28_get_emiclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t clkctrl, clkseq, div;
 	uint8_t clkfrac, frac;
 
@@ -118,9 +111,6 @@ static uint32_t mx28_get_emiclk(void)
 
 static uint32_t mx28_get_gpmiclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t clkctrl, clkseq, div;
 	uint8_t clkfrac, frac;
 
@@ -145,8 +135,6 @@ static uint32_t mx28_get_gpmiclk(void)
  */
 void mx28_set_ioclk(enum mxs_ioclock io, uint32_t freq)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint32_t div;
 	int io_reg;
 
@@ -178,8 +166,6 @@ void mx28_set_ioclk(enum mxs_ioclock io, uint32_t freq)
  */
 static uint32_t mx28_get_ioclk(enum mxs_ioclock io)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint8_t ret;
 	int io_reg;
 
@@ -199,8 +185,6 @@ static uint32_t mx28_get_ioclk(enum mxs_ioclock io)
  */
 void mx28_set_sspclk(enum mxs_sspclock ssp, uint32_t freq, int xtal)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint32_t clk, clkreg;
 
 	if (ssp > MXC_SSPCLK3)
@@ -243,8 +227,6 @@ void mx28_set_sspclk(enum mxs_sspclock ssp, uint32_t freq, int xtal)
  */
 static uint32_t mx28_get_sspclk(enum mxs_sspclock ssp)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint32_t clkreg;
 	uint32_t clk, tmp;
 
