@@ -134,14 +134,14 @@
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
+	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
 	"fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
 	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
 	"nboot linux;run bootm_cmd\0"					\
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
 	"run bootm_cmd\0"						\
-	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"	\
+	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" mxsfb.mode=${video_mode} ${append_bootargs}\0"		\
 	"fdtaddr=41000000\0"						\

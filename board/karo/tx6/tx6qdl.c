@@ -19,7 +19,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-//#define DEBUG
+#define DEBUG
 //#define TIMER_TEST
 
 #include <common.h>
@@ -45,16 +45,16 @@
 
 #include "../common/karo.h"
 
-#define TX6Q_FEC_RST_GPIO		IMX_GPIO_NR(7, 6)
-#define TX6Q_FEC_PWR_GPIO		IMX_GPIO_NR(3, 20)
-#define TX6Q_FEC_INT_GPIO		IMX_GPIO_NR(2, 4)
-#define TX6Q_LED_GPIO			IMX_GPIO_NR(2, 20)
+#define TX6_FEC_RST_GPIO		IMX_GPIO_NR(7, 6)
+#define TX6_FEC_PWR_GPIO		IMX_GPIO_NR(3, 20)
+#define TX6_FEC_INT_GPIO		IMX_GPIO_NR(2, 4)
+#define TX6_LED_GPIO			IMX_GPIO_NR(2, 20)
 
-#define TX6Q_LCD_PWR_GPIO		IMX_GPIO_NR(2, 31)
-#define TX6Q_LCD_RST_GPIO		IMX_GPIO_NR(3, 29)
-#define TX6Q_LCD_BACKLIGHT_GPIO		IMX_GPIO_NR(1, 1)
+#define TX6_LCD_PWR_GPIO		IMX_GPIO_NR(2, 31)
+#define TX6_LCD_RST_GPIO		IMX_GPIO_NR(3, 29)
+#define TX6_LCD_BACKLIGHT_GPIO		IMX_GPIO_NR(1, 1)
 
-#define TX6Q_RESET_OUT_GPIO		IMX_GPIO_NR(7, 12)
+#define TX6_RESET_OUT_GPIO		IMX_GPIO_NR(7, 12)
 
 #define TEMPERATURE_MIN			-40
 #define TEMPERATURE_HOT			80
@@ -62,77 +62,77 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
+#define MUX_CFG_SION			IOMUX_PAD(0, 0, MUX_CONFIG_SION, 0, 0, 0)
 
-static const iomux_v3_cfg_t tx6q_pads[] = {
+static const iomux_v3_cfg_t tx6qdl_pads[] = {
 	/* NAND flash pads */
-	MX6Q_PAD_NANDF_CLE__RAWNAND_CLE,
-	MX6Q_PAD_NANDF_ALE__RAWNAND_ALE,
-	MX6Q_PAD_NANDF_WP_B__RAWNAND_RESETN,
-	MX6Q_PAD_NANDF_RB0__RAWNAND_READY0,
-	MX6Q_PAD_NANDF_CS0__RAWNAND_CE0N,
-	MX6Q_PAD_SD4_CMD__RAWNAND_RDN,
-	MX6Q_PAD_SD4_CLK__RAWNAND_WRN,
-	MX6Q_PAD_NANDF_D0__RAWNAND_D0,
-	MX6Q_PAD_NANDF_D1__RAWNAND_D1,
-	MX6Q_PAD_NANDF_D2__RAWNAND_D2,
-	MX6Q_PAD_NANDF_D3__RAWNAND_D3,
-	MX6Q_PAD_NANDF_D4__RAWNAND_D4,
-	MX6Q_PAD_NANDF_D5__RAWNAND_D5,
-	MX6Q_PAD_NANDF_D6__RAWNAND_D6,
-	MX6Q_PAD_NANDF_D7__RAWNAND_D7,
+	MX6_PAD_NANDF_CLE__RAWNAND_CLE,
+	MX6_PAD_NANDF_ALE__RAWNAND_ALE,
+	MX6_PAD_NANDF_WP_B__RAWNAND_RESETN,
+	MX6_PAD_NANDF_RB0__RAWNAND_READY0,
+	MX6_PAD_NANDF_CS0__RAWNAND_CE0N,
+	MX6_PAD_SD4_CMD__RAWNAND_RDN,
+	MX6_PAD_SD4_CLK__RAWNAND_WRN,
+	MX6_PAD_NANDF_D0__RAWNAND_D0,
+	MX6_PAD_NANDF_D1__RAWNAND_D1,
+	MX6_PAD_NANDF_D2__RAWNAND_D2,
+	MX6_PAD_NANDF_D3__RAWNAND_D3,
+	MX6_PAD_NANDF_D4__RAWNAND_D4,
+	MX6_PAD_NANDF_D5__RAWNAND_D5,
+	MX6_PAD_NANDF_D6__RAWNAND_D6,
+	MX6_PAD_NANDF_D7__RAWNAND_D7,
 
 	/* RESET_OUT */
-	MX6Q_PAD_GPIO_17__GPIO_7_12,
+	MX6_PAD_GPIO_17__GPIO_7_12,
 
 	/* UART pads */
 #if CONFIG_MXC_UART_BASE == UART1_BASE
-	MX6Q_PAD_SD3_DAT7__UART1_TXD,
-	MX6Q_PAD_SD3_DAT6__UART1_RXD,
-	MX6Q_PAD_SD3_DAT1__UART1_RTS,
-	MX6Q_PAD_SD3_DAT0__UART1_CTS,
+	MX6_PAD_SD3_DAT7__UART1_TXD,
+	MX6_PAD_SD3_DAT6__UART1_RXD,
+	MX6_PAD_SD3_DAT1__UART1_RTS,
+	MX6_PAD_SD3_DAT0__UART1_CTS,
 #endif
 #if CONFIG_MXC_UART_BASE == UART2_BASE
-	MX6Q_PAD_SD4_DAT4__UART2_RXD,
-	MX6Q_PAD_SD4_DAT7__UART2_TXD,
-	MX6Q_PAD_SD4_DAT5__UART2_RTS,
-	MX6Q_PAD_SD4_DAT6__UART2_CTS,
+	MX6_PAD_SD4_DAT4__UART2_RXD,
+	MX6_PAD_SD4_DAT7__UART2_TXD,
+	MX6_PAD_SD4_DAT5__UART2_RTS,
+	MX6_PAD_SD4_DAT6__UART2_CTS,
 #endif
 #if CONFIG_MXC_UART_BASE == UART3_BASE
-	MX6Q_PAD_EIM_D24__UART3_TXD,
-	MX6Q_PAD_EIM_D25__UART3_RXD,
-	MX6Q_PAD_SD3_RST__UART3_RTS,
-	MX6Q_PAD_SD3_DAT3__UART3_CTS,
+	MX6_PAD_EIM_D24__UART3_TXD,
+	MX6_PAD_EIM_D25__UART3_RXD,
+	MX6_PAD_SD3_RST__UART3_RTS,
+	MX6_PAD_SD3_DAT3__UART3_CTS,
 #endif
 	/* internal I2C */
-	MX6Q_PAD_EIM_D28__I2C1_SDA,
-	MX6Q_PAD_EIM_D21__I2C1_SCL,
+	MX6_PAD_EIM_D28__I2C1_SDA,
+	MX6_PAD_EIM_D21__I2C1_SCL,
 
 	/* FEC PHY GPIO functions */
-	MX6Q_PAD_EIM_D20__GPIO_3_20 | MUX_CFG_SION, /* PHY POWER */
-	MX6Q_PAD_SD3_DAT2__GPIO_7_6 | MUX_CFG_SION, /* PHY RESET */
-	MX6Q_PAD_SD3_DAT4__GPIO_7_1, /* PHY INT */
+	MX6_PAD_EIM_D20__GPIO_3_20 | MUX_CFG_SION, /* PHY POWER */
+	MX6_PAD_SD3_DAT2__GPIO_7_6 | MUX_CFG_SION, /* PHY RESET */
+	MX6_PAD_SD3_DAT4__GPIO_7_1, /* PHY INT */
 };
 
-static const iomux_v3_cfg_t tx6q_fec_pads[] = {
+static const iomux_v3_cfg_t tx6qdl_fec_pads[] = {
 	/* FEC functions */
-	MX6Q_PAD_ENET_MDC__ENET_MDC,
-	MX6Q_PAD_ENET_MDIO__ENET_MDIO,
-	MX6Q_PAD_GPIO_16__ENET_ANATOP_ETHERNET_REF_OUT,
-	MX6Q_PAD_ENET_RX_ER__ENET_RX_ER,
-	MX6Q_PAD_ENET_CRS_DV__ENET_RX_EN,
-	MX6Q_PAD_ENET_RXD1__ENET_RDATA_1,
-	MX6Q_PAD_ENET_RXD0__ENET_RDATA_0,
-	MX6Q_PAD_ENET_TX_EN__ENET_TX_EN,
-	MX6Q_PAD_ENET_TXD1__ENET_TDATA_1,
-	MX6Q_PAD_ENET_TXD0__ENET_TDATA_0,
+	MX6_PAD_ENET_MDC__ENET_MDC,
+	MX6_PAD_ENET_MDIO__ENET_MDIO,
+	MX6_PAD_GPIO_16__ENET_ANATOP_ETHERNET_REF_OUT,
+	MX6_PAD_ENET_RX_ER__ENET_RX_ER,
+	MX6_PAD_ENET_CRS_DV__ENET_RX_EN,
+	MX6_PAD_ENET_RXD1__ENET_RDATA_1,
+	MX6_PAD_ENET_RXD0__ENET_RDATA_0,
+	MX6_PAD_ENET_TX_EN__ENET_TX_EN,
+	MX6_PAD_ENET_TXD1__ENET_TDATA_1,
+	MX6_PAD_ENET_TXD0__ENET_TDATA_0,
 };
 
-static const struct gpio tx6q_gpios[] = {
-	{ TX6Q_RESET_OUT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "#RESET_OUT", },
-	{ TX6Q_FEC_PWR_GPIO, GPIOF_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
-	{ TX6Q_FEC_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "FEC PHY RESET", },
-	{ TX6Q_FEC_INT_GPIO, GPIOF_INPUT, "FEC PHY INT", },
+static const struct gpio tx6qdl_gpios[] = {
+	{ TX6_RESET_OUT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "#RESET_OUT", },
+	{ TX6_FEC_PWR_GPIO, GPIOF_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
+	{ TX6_FEC_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "FEC PHY RESET", },
+	{ TX6_FEC_INT_GPIO, GPIOF_INPUT, "FEC PHY INT", },
 };
 
 /*
@@ -302,8 +302,8 @@ static int setup_pmic_voltages(void)
 
 int board_early_init_f(void)
 {
-	gpio_request_array(tx6q_gpios, ARRAY_SIZE(tx6q_gpios));
-	imx_iomux_v3_setup_multiple_pads(tx6q_pads, ARRAY_SIZE(tx6q_pads));
+	gpio_request_array(tx6qdl_gpios, ARRAY_SIZE(tx6qdl_gpios));
+	imx_iomux_v3_setup_multiple_pads(tx6qdl_pads, ARRAY_SIZE(tx6qdl_pads));
 
 	return 0;
 }
@@ -314,7 +314,9 @@ int board_init(void)
 
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
-#if 1
+#ifdef CONFIG_OF_LIBFDT
+	gd->bd->bi_arch_number = -1;
+#else
 	gd->bd->bi_arch_number = 4429;
 #endif
 	ret = setup_pmic_voltages();
@@ -347,25 +349,25 @@ void dram_init_banksize(void)
 
 #ifdef	CONFIG_CMD_MMC
 static const iomux_v3_cfg_t mmc0_pads[] = {
-	MX6Q_PAD_SD1_CMD__USDHC1_CMD,
-	MX6Q_PAD_SD1_CLK__USDHC1_CLK,
-	MX6Q_PAD_SD1_DAT0__USDHC1_DAT0,
-	MX6Q_PAD_SD1_DAT1__USDHC1_DAT1,
-	MX6Q_PAD_SD1_DAT2__USDHC1_DAT2,
-	MX6Q_PAD_SD1_DAT3__USDHC1_DAT3,
+	MX6_PAD_SD1_CMD__USDHC1_CMD,
+	MX6_PAD_SD1_CLK__USDHC1_CLK,
+	MX6_PAD_SD1_DAT0__USDHC1_DAT0,
+	MX6_PAD_SD1_DAT1__USDHC1_DAT1,
+	MX6_PAD_SD1_DAT2__USDHC1_DAT2,
+	MX6_PAD_SD1_DAT3__USDHC1_DAT3,
 	/* SD1 CD */
-	MX6Q_PAD_SD3_CMD__GPIO_7_2,
+	MX6_PAD_SD3_CMD__GPIO_7_2,
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
-	MX6Q_PAD_SD2_CMD__USDHC2_CMD,
-	MX6Q_PAD_SD2_CLK__USDHC2_CLK,
-	MX6Q_PAD_SD2_DAT0__USDHC2_DAT0,
-	MX6Q_PAD_SD2_DAT1__USDHC2_DAT1,
-	MX6Q_PAD_SD2_DAT2__USDHC2_DAT2,
-	MX6Q_PAD_SD2_DAT3__USDHC2_DAT3,
+	MX6_PAD_SD2_CMD__USDHC2_CMD,
+	MX6_PAD_SD2_CLK__USDHC2_CLK,
+	MX6_PAD_SD2_DAT0__USDHC2_DAT0,
+	MX6_PAD_SD2_DAT1__USDHC2_DAT1,
+	MX6_PAD_SD2_DAT2__USDHC2_DAT2,
+	MX6_PAD_SD2_DAT3__USDHC2_DAT3,
 	/* SD2 CD */
-	MX6Q_PAD_SD3_CLK__GPIO_7_3,
+	MX6_PAD_SD3_CLK__GPIO_7_3,
 };
 
 static struct tx6q_esdhc_cfg {
@@ -373,7 +375,7 @@ static struct tx6q_esdhc_cfg {
 	int num_pads;
 	enum mxc_clock clkid;
 	struct fsl_esdhc_cfg cfg;
-} tx6q_esdhc_cfg[] = {
+} tx6qdl_esdhc_cfg[] = {
 	{
 		.pads = mmc0_pads,
 		.num_pads = ARRAY_SIZE(mmc0_pads),
@@ -411,7 +413,8 @@ int board_mmc_getcd(struct mmc *mmc)
 		return cfg->cd_gpio;
 
 	debug("SD card %d is %spresent\n",
-		to_tx6q_esdhc_cfg(cfg) - tx6q_esdhc_cfg, gpio_get_value(cfg->cd_gpio) ? "NOT " : "");
+		to_tx6q_esdhc_cfg(cfg) - tx6qdl_esdhc_cfg,
+		gpio_get_value(cfg->cd_gpio) ? "NOT " : "");
 	return !gpio_get_value(cfg->cd_gpio);
 }
 
@@ -419,16 +422,16 @@ int board_mmc_init(bd_t *bis)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(tx6q_esdhc_cfg); i++) {
+	for (i = 0; i < ARRAY_SIZE(tx6qdl_esdhc_cfg); i++) {
 		struct mmc *mmc;
-		struct fsl_esdhc_cfg *cfg = &tx6q_esdhc_cfg[i].cfg;
+		struct fsl_esdhc_cfg *cfg = &tx6qdl_esdhc_cfg[i].cfg;
 
 		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
 			break;
 
-		cfg->sdhc_clk = mxc_get_clock(tx6q_esdhc_cfg[i].clkid);
-		imx_iomux_v3_setup_multiple_pads(tx6q_esdhc_cfg[i].pads,
-						tx6q_esdhc_cfg[i].num_pads);
+		cfg->sdhc_clk = mxc_get_clock(tx6qdl_esdhc_cfg[i].clkid);
+		imx_iomux_v3_setup_multiple_pads(tx6qdl_esdhc_cfg[i].pads,
+						tx6qdl_esdhc_cfg[i].num_pads);
 
 		debug("%s: Initializing MMC slot %d\n", __func__, i);
 		fsl_esdhc_initialize(bis, cfg);
@@ -461,10 +464,10 @@ int board_eth_init(bd_t *bis)
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
 
-	imx_iomux_v3_setup_multiple_pads(tx6q_fec_pads, ARRAY_SIZE(tx6q_fec_pads));
+	imx_iomux_v3_setup_multiple_pads(tx6qdl_fec_pads, ARRAY_SIZE(tx6qdl_fec_pads));
 
 	/* Deassert RESET to the external phy */
-	gpio_set_value(TX6Q_FEC_RST_GPIO, 1);
+	gpio_set_value(TX6_FEC_RST_GPIO, 1);
 
 	ret = cpu_eth_init(bis);
 	if (ret)
@@ -495,7 +498,7 @@ void show_activity(int arg)
 
 	if (led_state == LED_STATE_INIT) {
 		last = get_timer(0);
-		gpio_set_value(TX6Q_LED_GPIO, 1);
+		gpio_set_value(TX6_LED_GPIO, 1);
 		led_state = LED_STATE_ON;
 		blink_rate = calc_blink_rate(check_cpu_temperature(0));
 	} else {
@@ -503,9 +506,9 @@ void show_activity(int arg)
 			blink_rate = calc_blink_rate(check_cpu_temperature(0));
 			last = get_timer_masked();
 			if (led_state == LED_STATE_ON) {
-				gpio_set_value(TX6Q_LED_GPIO, 0);
+				gpio_set_value(TX6_LED_GPIO, 0);
 			} else {
-				gpio_set_value(TX6Q_LED_GPIO, 1);
+				gpio_set_value(TX6_LED_GPIO, 1);
 			}
 			led_state = 1 - led_state;
 		}
@@ -514,65 +517,61 @@ void show_activity(int arg)
 
 static const iomux_v3_cfg_t stk5_pads[] = {
 	/* SW controlled LED on STK5 baseboard */
-	MX6Q_PAD_EIM_A18__GPIO_2_20,
+	MX6_PAD_EIM_A18__GPIO_2_20,
 
 	/* LCD data pins */
-	MX6Q_PAD_DISP0_DAT0__IPU1_DISP0_DAT_0,
-	MX6Q_PAD_DISP0_DAT1__IPU1_DISP0_DAT_1,
-	MX6Q_PAD_DISP0_DAT2__IPU1_DISP0_DAT_2,
-	MX6Q_PAD_DISP0_DAT3__IPU1_DISP0_DAT_3,
-	MX6Q_PAD_DISP0_DAT4__IPU1_DISP0_DAT_4,
-	MX6Q_PAD_DISP0_DAT5__IPU1_DISP0_DAT_5,
-	MX6Q_PAD_DISP0_DAT6__IPU1_DISP0_DAT_6,
-	MX6Q_PAD_DISP0_DAT7__IPU1_DISP0_DAT_7,
-	MX6Q_PAD_DISP0_DAT8__IPU1_DISP0_DAT_8,
-	MX6Q_PAD_DISP0_DAT9__IPU1_DISP0_DAT_9,
-	MX6Q_PAD_DISP0_DAT10__IPU1_DISP0_DAT_10,
-	MX6Q_PAD_DISP0_DAT11__IPU1_DISP0_DAT_11,
-	MX6Q_PAD_DISP0_DAT12__IPU1_DISP0_DAT_12,
-	MX6Q_PAD_DISP0_DAT13__IPU1_DISP0_DAT_13,
-	MX6Q_PAD_DISP0_DAT14__IPU1_DISP0_DAT_14,
-	MX6Q_PAD_DISP0_DAT15__IPU1_DISP0_DAT_15,
-	MX6Q_PAD_DISP0_DAT16__IPU1_DISP0_DAT_16,
-	MX6Q_PAD_DISP0_DAT17__IPU1_DISP0_DAT_17,
-	MX6Q_PAD_DISP0_DAT18__IPU1_DISP0_DAT_18,
-	MX6Q_PAD_DISP0_DAT19__IPU1_DISP0_DAT_19,
-	MX6Q_PAD_DISP0_DAT20__IPU1_DISP0_DAT_20,
-	MX6Q_PAD_DISP0_DAT21__IPU1_DISP0_DAT_21,
-	MX6Q_PAD_DISP0_DAT22__IPU1_DISP0_DAT_22,
-	MX6Q_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
-	MX6Q_PAD_DI0_PIN2__IPU1_DI0_PIN2, /* HSYNC */
-	MX6Q_PAD_DI0_PIN3__IPU1_DI0_PIN3, /* VSYNC */
-	MX6Q_PAD_DI0_PIN15__IPU1_DI0_PIN15, /* OE_ACD */
-	MX6Q_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK, /* LSCLK */
+	MX6_PAD_DISP0_DAT0__IPU1_DISP0_DAT_0,
+	MX6_PAD_DISP0_DAT1__IPU1_DISP0_DAT_1,
+	MX6_PAD_DISP0_DAT2__IPU1_DISP0_DAT_2,
+	MX6_PAD_DISP0_DAT3__IPU1_DISP0_DAT_3,
+	MX6_PAD_DISP0_DAT4__IPU1_DISP0_DAT_4,
+	MX6_PAD_DISP0_DAT5__IPU1_DISP0_DAT_5,
+	MX6_PAD_DISP0_DAT6__IPU1_DISP0_DAT_6,
+	MX6_PAD_DISP0_DAT7__IPU1_DISP0_DAT_7,
+	MX6_PAD_DISP0_DAT8__IPU1_DISP0_DAT_8,
+	MX6_PAD_DISP0_DAT9__IPU1_DISP0_DAT_9,
+	MX6_PAD_DISP0_DAT10__IPU1_DISP0_DAT_10,
+	MX6_PAD_DISP0_DAT11__IPU1_DISP0_DAT_11,
+	MX6_PAD_DISP0_DAT12__IPU1_DISP0_DAT_12,
+	MX6_PAD_DISP0_DAT13__IPU1_DISP0_DAT_13,
+	MX6_PAD_DISP0_DAT14__IPU1_DISP0_DAT_14,
+	MX6_PAD_DISP0_DAT15__IPU1_DISP0_DAT_15,
+	MX6_PAD_DISP0_DAT16__IPU1_DISP0_DAT_16,
+	MX6_PAD_DISP0_DAT17__IPU1_DISP0_DAT_17,
+	MX6_PAD_DISP0_DAT18__IPU1_DISP0_DAT_18,
+	MX6_PAD_DISP0_DAT19__IPU1_DISP0_DAT_19,
+	MX6_PAD_DISP0_DAT20__IPU1_DISP0_DAT_20,
+	MX6_PAD_DISP0_DAT21__IPU1_DISP0_DAT_21,
+	MX6_PAD_DISP0_DAT22__IPU1_DISP0_DAT_22,
+	MX6_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
+	MX6_PAD_DI0_PIN2__IPU1_DI0_PIN2, /* HSYNC */
+	MX6_PAD_DI0_PIN3__IPU1_DI0_PIN3, /* VSYNC */
+	MX6_PAD_DI0_PIN15__IPU1_DI0_PIN15, /* OE_ACD */
+	MX6_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK, /* LSCLK */
 
 	/* I2C bus on DIMM pins 40/41 */
-	MX6Q_PAD_GPIO_6__I2C3_SDA,
-	MX6Q_PAD_GPIO_3__I2C3_SCL,
+	MX6_PAD_GPIO_6__I2C3_SDA,
+	MX6_PAD_GPIO_3__I2C3_SCL,
 
 	/* TSC200x PEN IRQ */
-	MX6Q_PAD_EIM_D26__GPIO_3_26,
+	MX6_PAD_EIM_D26__GPIO_3_26,
 
 	/* EDT-FT5x06 Polytouch panel */
-	MX6Q_PAD_NANDF_CS2__GPIO_6_15, /* IRQ */
-	MX6Q_PAD_EIM_A16__GPIO_2_22, /* RESET */
-	MX6Q_PAD_EIM_A17__GPIO_2_21, /* WAKE */
+	MX6_PAD_NANDF_CS2__GPIO_6_15, /* IRQ */
+	MX6_PAD_EIM_A16__GPIO_2_22, /* RESET */
+	MX6_PAD_EIM_A17__GPIO_2_21, /* WAKE */
 
 	/* USBH1 */
-	MX6Q_PAD_EIM_D31__GPIO_3_31, /* VBUSEN */
-	MX6Q_PAD_EIM_D30__GPIO_3_30, /* OC */
+	MX6_PAD_EIM_D31__GPIO_3_31, /* VBUSEN */
+	MX6_PAD_EIM_D30__GPIO_3_30, /* OC */
 	/* USBOTG */
-	MX6Q_PAD_EIM_D23__GPIO_3_23, /* USBOTG ID */
-	MX6Q_PAD_GPIO_7__GPIO_1_7, /* VBUSEN */
-	MX6Q_PAD_GPIO_8__GPIO_1_8, /* OC */
-
-	/* DEBUG */
-	MX6Q_PAD_GPIO_0__CCM_CLKO,
-	MX6Q_PAD_NANDF_CS2__CCM_CLKO2,
+	MX6_PAD_EIM_D23__GPIO_3_23, /* USBOTG ID */
+	MX6_PAD_GPIO_7__GPIO_1_7, /* VBUSEN */
+	MX6_PAD_GPIO_8__GPIO_1_8, /* OC */
 };
 
 static const struct gpio stk5_gpios[] = {
-	{ TX6Q_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+	{ TX6_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
 
 	{ IMX_GPIO_NR(3, 23), GPIOF_INPUT, "USBOTG ID", },
 	{ IMX_GPIO_NR(1, 8), GPIOF_INPUT, "USBOTG OC", },
@@ -590,21 +589,136 @@ vidinfo_t panel_info = {
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 };
 
-static struct fb_videomode tx6q_fb_mode = {
-	/* Standard VGA timing */
-	.name		= "VGA",
-	.refresh	= 60,
-	.xres		= 640,
-	.yres		= 480,
-	.pixclock	= KHZ2PICOS(25175),
-	.left_margin	= 48,
-	.hsync_len	= 96,
-	.right_margin	= 16,
-	.upper_margin	= 31,
-	.vsync_len	= 2,
-	.lower_margin	= 12,
-	.sync		= FB_SYNC_CLK_LAT_FALL,
-	.vmode		= FB_VMODE_NONINTERLACED,
+static struct fb_videomode tx6_fb_modes[] = {
+	{
+		/* Standard VGA timing */
+		.name		= "VGA",
+		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(25175),
+		.left_margin	= 48,
+		.hsync_len	= 96,
+		.right_margin	= 16,
+		.upper_margin	= 31,
+		.vsync_len	= 2,
+		.lower_margin	= 12,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ETV570 640 x 480 display. Syncs low active,
+		 * DE high active, 115.2 mm x 86.4 mm display area
+		 * VGA compatible timing
+		 */
+		.name		= "ETV570",
+		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(25175),
+		.left_margin	= 114,
+		.hsync_len	= 30,
+		.right_margin	= 16,
+		.upper_margin	= 32,
+		.vsync_len	= 3,
+		.lower_margin	= 10,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0350G0DH6 320 x 240 display.
+		 * 70.08 mm x 52.56 mm display area.
+		 */
+		.name		= "ET0350",
+		.refresh	= 60,
+		.xres		= 320,
+		.yres		= 240,
+		.pixclock	= KHZ2PICOS(6500),
+		.left_margin	= 68 - 34,
+		.hsync_len	= 34,
+		.right_margin	= 20,
+		.upper_margin	= 18 - 3,
+		.vsync_len	= 3,
+		.lower_margin	= 4,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0430G0DH6 480 x 272 display.
+		 * 95.04 mm x 53.856 mm display area.
+		 */
+		.name		= "ET0430",
+		.refresh	= 60,
+		.xres		= 480,
+		.yres		= 272,
+		.pixclock	= KHZ2PICOS(9000),
+		.left_margin	= 2,
+		.hsync_len	= 41,
+		.right_margin	= 2,
+		.upper_margin	= 2,
+		.vsync_len	= 10,
+		.lower_margin	= 2,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0500G0DH6 800 x 480 display.
+		 * 109.6 mm x 66.4 mm display area.
+		 */
+		.name		= "ET0500",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ETQ570G0DH6 320 x 240 display.
+		 * 115.2 mm x 86.4 mm display area.
+		 */
+		.name		= "ETQ570",
+		.refresh	= 60,
+		.xres		= 320,
+		.yres		= 240,
+		.pixclock	= KHZ2PICOS(6400),
+		.left_margin	= 38,
+		.hsync_len	= 30,
+		.right_margin	= 30,
+		.upper_margin	= 16, /* 15 according to datasheet */
+		.vsync_len	= 3, /* TVP -> 1>x>5 */
+		.lower_margin	= 4, /* 4.5 according to datasheet */
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0700G0DH6 800 x 480 display.
+		 * 152.4 mm x 91.44 mm display area.
+		 */
+		.name		= "ET0700",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* unnamed entry for assigning parameters parsed from 'video_mode' string */
+		.refresh	= 60,
+		.left_margin	= 48,
+		.hsync_len	= 96,
+		.right_margin	= 16,
+		.upper_margin	= 31,
+		.vsync_len	= 2,
+		.lower_margin	= 12,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
 };
 
 static int lcd_enabled = 1;
@@ -621,69 +735,57 @@ void lcd_enable(void)
 	karo_load_splashimage(1);
 	if (lcd_enabled) {
 		debug("Switching LCD on\n");
-		gpio_set_value(TX6Q_LCD_PWR_GPIO, 1);
+		gpio_set_value(TX6_LCD_PWR_GPIO, 1);
 		udelay(100);
-		gpio_set_value(TX6Q_LCD_RST_GPIO, 1);
+		gpio_set_value(TX6_LCD_RST_GPIO, 1);
 		udelay(300000);
-		gpio_set_value(TX6Q_LCD_BACKLIGHT_GPIO, 0);
+		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, 0);
 	}
 }
 
 static const iomux_v3_cfg_t stk5_lcd_pads[] = {
 	/* LCD RESET */
-	MX6Q_PAD_EIM_D29__GPIO_3_29,
+	MX6_PAD_EIM_D29__GPIO_3_29,
 	/* LCD POWER_ENABLE */
-	MX6Q_PAD_EIM_EB3__GPIO_2_31,
+	MX6_PAD_EIM_EB3__GPIO_2_31,
 	/* LCD Backlight (PWM) */
-	MX6Q_PAD_GPIO_1__GPIO_1_1,
+	MX6_PAD_GPIO_1__GPIO_1_1,
 
 	/* Display */
-	MX6Q_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK,
-	MX6Q_PAD_DI0_PIN15__IPU1_DI0_PIN15,
-	MX6Q_PAD_DI0_PIN2__IPU1_DI0_PIN2,
-	MX6Q_PAD_DI0_PIN3__IPU1_DI0_PIN3,
-	MX6Q_PAD_DISP0_DAT0__IPU1_DISP0_DAT_0,
-	MX6Q_PAD_DISP0_DAT1__IPU1_DISP0_DAT_1,
-	MX6Q_PAD_DISP0_DAT2__IPU1_DISP0_DAT_2,
-	MX6Q_PAD_DISP0_DAT3__IPU1_DISP0_DAT_3,
-	MX6Q_PAD_DISP0_DAT4__IPU1_DISP0_DAT_4,
-	MX6Q_PAD_DISP0_DAT5__IPU1_DISP0_DAT_5,
-	MX6Q_PAD_DISP0_DAT6__IPU1_DISP0_DAT_6,
-	MX6Q_PAD_DISP0_DAT7__IPU1_DISP0_DAT_7,
-	MX6Q_PAD_DISP0_DAT8__IPU1_DISP0_DAT_8,
-	MX6Q_PAD_DISP0_DAT9__IPU1_DISP0_DAT_9,
-	MX6Q_PAD_DISP0_DAT10__IPU1_DISP0_DAT_10,
-	MX6Q_PAD_DISP0_DAT11__IPU1_DISP0_DAT_11,
-	MX6Q_PAD_DISP0_DAT12__IPU1_DISP0_DAT_12,
-	MX6Q_PAD_DISP0_DAT13__IPU1_DISP0_DAT_13,
-	MX6Q_PAD_DISP0_DAT14__IPU1_DISP0_DAT_14,
-	MX6Q_PAD_DISP0_DAT15__IPU1_DISP0_DAT_15,
-	MX6Q_PAD_DISP0_DAT16__IPU1_DISP0_DAT_16,
-	MX6Q_PAD_DISP0_DAT17__IPU1_DISP0_DAT_17,
-	MX6Q_PAD_DISP0_DAT18__IPU1_DISP0_DAT_18,
-	MX6Q_PAD_DISP0_DAT19__IPU1_DISP0_DAT_19,
-	MX6Q_PAD_DISP0_DAT20__IPU1_DISP0_DAT_20,
-	MX6Q_PAD_DISP0_DAT21__IPU1_DISP0_DAT_21,
-	MX6Q_PAD_DISP0_DAT22__IPU1_DISP0_DAT_22,
-	MX6Q_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
-
-	/* LVDS option */
-	MX6Q_PAD_LVDS1_TX3_P__LDB_LVDS1_TX3,
-	MX6Q_PAD_LVDS1_TX2_P__LDB_LVDS1_TX2,
-	MX6Q_PAD_LVDS1_CLK_P__LDB_LVDS1_CLK,
-	MX6Q_PAD_LVDS1_TX1_P__LDB_LVDS1_TX1,
-	MX6Q_PAD_LVDS1_TX0_P__LDB_LVDS1_TX0,
-	MX6Q_PAD_LVDS0_TX3_P__LDB_LVDS0_TX3,
-	MX6Q_PAD_LVDS0_CLK_P__LDB_LVDS0_CLK,
-	MX6Q_PAD_LVDS0_TX2_P__LDB_LVDS0_TX2,
-	MX6Q_PAD_LVDS0_TX1_P__LDB_LVDS0_TX1,
-	MX6Q_PAD_LVDS0_TX0_P__LDB_LVDS0_TX0,
+	MX6_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK,
+	MX6_PAD_DI0_PIN15__IPU1_DI0_PIN15,
+	MX6_PAD_DI0_PIN2__IPU1_DI0_PIN2,
+	MX6_PAD_DI0_PIN3__IPU1_DI0_PIN3,
+	MX6_PAD_DISP0_DAT0__IPU1_DISP0_DAT_0,
+	MX6_PAD_DISP0_DAT1__IPU1_DISP0_DAT_1,
+	MX6_PAD_DISP0_DAT2__IPU1_DISP0_DAT_2,
+	MX6_PAD_DISP0_DAT3__IPU1_DISP0_DAT_3,
+	MX6_PAD_DISP0_DAT4__IPU1_DISP0_DAT_4,
+	MX6_PAD_DISP0_DAT5__IPU1_DISP0_DAT_5,
+	MX6_PAD_DISP0_DAT6__IPU1_DISP0_DAT_6,
+	MX6_PAD_DISP0_DAT7__IPU1_DISP0_DAT_7,
+	MX6_PAD_DISP0_DAT8__IPU1_DISP0_DAT_8,
+	MX6_PAD_DISP0_DAT9__IPU1_DISP0_DAT_9,
+	MX6_PAD_DISP0_DAT10__IPU1_DISP0_DAT_10,
+	MX6_PAD_DISP0_DAT11__IPU1_DISP0_DAT_11,
+	MX6_PAD_DISP0_DAT12__IPU1_DISP0_DAT_12,
+	MX6_PAD_DISP0_DAT13__IPU1_DISP0_DAT_13,
+	MX6_PAD_DISP0_DAT14__IPU1_DISP0_DAT_14,
+	MX6_PAD_DISP0_DAT15__IPU1_DISP0_DAT_15,
+	MX6_PAD_DISP0_DAT16__IPU1_DISP0_DAT_16,
+	MX6_PAD_DISP0_DAT17__IPU1_DISP0_DAT_17,
+	MX6_PAD_DISP0_DAT18__IPU1_DISP0_DAT_18,
+	MX6_PAD_DISP0_DAT19__IPU1_DISP0_DAT_19,
+	MX6_PAD_DISP0_DAT20__IPU1_DISP0_DAT_20,
+	MX6_PAD_DISP0_DAT21__IPU1_DISP0_DAT_21,
+	MX6_PAD_DISP0_DAT22__IPU1_DISP0_DAT_22,
+	MX6_PAD_DISP0_DAT23__IPU1_DISP0_DAT_23,
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
-	{ TX6Q_LCD_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
-	{ TX6Q_LCD_PWR_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
-	{ TX6Q_LCD_BACKLIGHT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+	{ TX6_LCD_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
+	{ TX6_LCD_PWR_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
+	{ TX6_LCD_BACKLIGHT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
 void lcd_ctrl_init(void *lcdbase)
@@ -692,7 +794,8 @@ void lcd_ctrl_init(void *lcdbase)
 	char *vm;
 	unsigned long val;
 	int refresh = 60;
-	struct fb_videomode *p = &tx6q_fb_mode;
+	struct fb_videomode *p = &tx6_fb_modes[0];
+	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 	int pix_fmt = 0;
 	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
@@ -709,12 +812,35 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
+	karo_fdt_move_fdt();
+
 	vm = getenv("video_mode");
 	if (vm == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+		p = &fb_mode;
+		debug("Using video mode from FDT\n");
+		vm += strlen(vm);
+		if (fb_mode.xres < panel_info.vl_col)
+			panel_info.vl_col = fb_mode.xres;
+		if (fb_mode.yres < panel_info.vl_row)
+			panel_info.vl_row = fb_mode.yres;
+	}
+	if (p->name != NULL)
+		debug("Trying compiled-in video modes\n");
+	while (p->name != NULL) {
+		if (strcmp(p->name, vm) == 0) {
+			debug("Using video mode: '%s'\n", p->name);
+			vm += strlen(vm);
+			break;
+		}
+		p++;
+	}
+	if (*vm != '\0')
+		debug("Trying to decode video_mode: '%s'\n", vm);
 	while (*vm != '\0') {
 		if (*vm >= '0' && *vm <= '9') {
 			char *end;
@@ -795,18 +921,15 @@ void lcd_ctrl_init(void *lcdbase)
 				vm++;
 		}
 	}
-	switch (color_depth) {
-	case 8:
-		panel_info.vl_bpix = 3;
-		break;
-
-	case 16:
-		panel_info.vl_bpix = 4;
-		break;
-
-	case 18:
-	case 24:
-		panel_info.vl_bpix = 5;
+	if (p->xres == 0 || p->yres == 0) {
+		printf("Invalid video mode: %s\n", getenv("video_mode"));
+		lcd_enabled = 0;
+		printf("Supported video modes are:");
+		for (p = &tx6_fb_modes[0]; p->name != NULL; p++) {
+			printf(" %s", p->name);
+		}
+		printf("\n");
+		return;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -864,10 +987,10 @@ static void stk5v5_board_init(void)
 
 	gpio_request_one(IMX_GPIO_NR(4, 21), GPIOF_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
-	imx_iomux_v3_setup_pad(MX6Q_PAD_DISP0_DAT0__GPIO_4_21);
+	imx_iomux_v3_setup_pad(MX6_PAD_DISP0_DAT0__GPIO_4_21);
 }
 
-static void tx6q_set_cpu_clock(void)
+static void tx6qdl_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 
@@ -909,7 +1032,7 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
-	tx6q_set_cpu_clock();
+	tx6qdl_set_cpu_clock();
 	karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
@@ -937,37 +1060,20 @@ int board_late_init(void)
 exit:
 	tx6_init_mac();
 
-	gpio_set_value(TX6Q_RESET_OUT_GPIO, 1);
+	gpio_set_value(TX6_RESET_OUT_GPIO, 1);
 	return ret;
 }
-
-#define iomux_field(v,f)	(((iomux_v3_cfg_t)(v) << f##_SHIFT) & f##_MASK)
-
-#define chk_iomux_field(f1,f2)	({					\
-	iomux_v3_cfg_t __c = iomux_field(~0, f1);			\
-	if (__c & f2##_MASK) {						\
-		printf("%18s[%016llx] overlaps with:\n%18s[%016llx]\n",	\
-			#f1, f1##_MASK,					\
-			#f2, f2##_MASK);				\
-	}								\
-	(__c & f2##_MASK) != 0;						\
-})
-
-#define chk_iomux_bit(f1,f2)	({					\
-	iomux_v3_cfg_t __c = iomux_field(~0, f1);			\
-	if (__c & f2) {							\
-		printf("%18s[%016llx] overlaps with:\n%18s[%016llx]\n",	\
-			#f1, f1##_MASK,					\
-			#f2, (iomux_v3_cfg_t)f2);			\
-	}								\
-	(__c & f2) != 0;						\
-})
 
 int checkboard(void)
 {
 	print_cpuinfo();
-
+#if defined(CONFIG_MX6Q)
 	printf("Board: Ka-Ro TX6Q\n");
+#elif defined(CONFIG_MX6DL)
+	printf("Board: Ka-Ro TX6DL\n");
+#else
+#error Unsupported i.MX6 variant selected
+#endif
 
 #ifdef TIMER_TEST
 	{
@@ -1036,7 +1142,7 @@ struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx6q_fixup_flexcan(void *blob)
+static void tx6qdl_fixup_flexcan(void *blob)
 {
 	const char *baseboard = getenv("baseboard");
 
@@ -1053,7 +1159,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
-	karo_fdt_fixup_usb_otg(blob, "", 0);
-	tx6q_fixup_flexcan(blob);
+	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
+	tx6qdl_fixup_flexcan(blob);
 }
 #endif

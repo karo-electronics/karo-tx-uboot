@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  *
 */
+struct fb_videomode;
 
 #ifdef CONFIG_OF_LIBFDT
 void karo_fdt_remove_node(void *blob, const char *node);
@@ -56,7 +57,7 @@ static inline void *karo_fdt_load_dtb(void)
 static inline int karo_fdt_get_fb_mode(void *blob, const char *name,
 				struct fb_videomode *fb_mode)
 {
-	return NULL;
+	return 0;
 }
 static inline int karo_fdt_update_fb_mode(void *blob, const char *name)
 {

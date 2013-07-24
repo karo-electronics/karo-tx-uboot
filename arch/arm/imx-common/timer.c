@@ -48,9 +48,12 @@ static struct mxc_gpt *cur_gpt = (struct mxc_gpt *)GPT1_BASE_ADDR;
 #define GPTCR_CLKSOURCE_IPG	(1 << 6)	/* Clock source */
 #define GPTCR_CLKSOURCE_CKIH	(2 << 6)
 #define GPTCR_CLKSOURCE_32kHz	(4 << 6)
-#ifdef CONFIG_MX6
-#define GPTCR_CLKSOURCE_OSC_DIV_8	(5 << 6)
+#if defined(CONFIG_MX6Q)
+#define GPTCR_CLKSOURCE_OSCDIV8	(5 << 6)
 #define GPTCR_CLKSOURCE_OSC	(7 << 6)
+#elif defined(CONFIG_MX6DL)
+#define GPTCR_M24EN		(1 << 10)
+#define GPTCR_CLKSOURCE_OSC	((5 << 6) | GPTCR_M24EN)
 #else
 #define GPTCR_CLKSOURCE_OSC	(5 << 6)
 #endif
@@ -108,7 +111,6 @@ static inline unsigned long us_to_tick(unsigned long usec)
 int timer_init(void)
 {
 	int i;
-	ulong val;
 
 	/* setup GP Timer 1 */
 	__raw_writel(GPTCR_SWR, &cur_gpt->control);
@@ -124,8 +126,7 @@ int timer_init(void)
 	i &= ~GPTCR_CLKSOURCE_MASK;
 	__raw_writel(i | GPT_CLKSOURCE | GPTCR_TEN, &cur_gpt->control);
 
-	val = __raw_readl(&cur_gpt->counter);
-	gd->arch.lastinc = val;
+	gd->arch.lastinc = __raw_readl(&cur_gpt->counter);
 	gd->arch.tbu = 0;
 	gd->arch.tbl = TIMER_START;
 	gd->arch.timer_rate_hz = GPT_CLK;

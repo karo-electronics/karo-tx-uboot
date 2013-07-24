@@ -29,7 +29,7 @@ SECTIONS
         . = ALIGN(4);
         .text :
         {
-		board/karo/tx6q/lowlevel_init.o (.text*)
+		board/karo/tx6/lowlevel_init.o (.text*)
                 __image_copy_start = .;
                 CPUDIR/start.o (.text*)
                 *(.text*)

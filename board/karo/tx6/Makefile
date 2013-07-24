@@ -25,14 +25,10 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
-COBJS	:= tx6q.o
+COBJS	:= tx6qdl.o
 SOBJS	:= lowlevel_init.o
-ifeq ($(CONFIG_SPL_BUILD),y)
-	COBJS += spl_boot.o
-else
 ifeq ($(CONFIG_CMD_ROMUPDATE),y)
 	COBJS += flash.o
-endif
 endif
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
