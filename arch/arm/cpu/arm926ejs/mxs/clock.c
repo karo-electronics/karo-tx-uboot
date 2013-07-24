@@ -43,6 +43,28 @@
 
 static struct mxs_clkctrl_regs *clkctrl_regs = (void *)MXS_CLKCTRL_BASE;
 
+static uint32_t get_frac_clk(uint32_t refclk, uint32_t div, uint32_t _mask)
+{
+	uint32_t mask = (_mask + 1) >> 1;
+	uint32_t acc = div;
+	int period = 0;
+	int mult = 0;
+
+	if (div & mask)
+		return 0;
+
+	do {
+		acc += div;
+		if (acc & mask) {
+			acc &= ~mask;
+			mult++;
+		}
+		period++;
+	} while (acc != div);
+
+	return refclk * mult / period;
+}
+
 static uint32_t mx28_get_pclk(void)
 {
 	uint32_t clkctrl, clkseq, div;
@@ -50,13 +72,27 @@ static uint32_t mx28_get_pclk(void)
 
 	clkctrl = readl(&clkctrl_regs->hw_clkctrl_cpu);
 
-	/* No support of fractional divider calculation */
+	div = clkctrl & CLKCTRL_CPU_DIV_CPU_MASK;
+	clkfrac = readb(&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_CPU]);
+	frac = clkfrac & CLKCTRL_FRAC_FRAC_MASK;
+	clkseq = readl(&clkctrl_regs->hw_clkctrl_clkseq);
+
 	if (clkctrl &
 		(CLKCTRL_CPU_DIV_XTAL_FRAC_EN | CLKCTRL_CPU_DIV_CPU_FRAC_EN)) {
-		return 0;
-	}
+		uint32_t refclk, mask;
 
-	clkseq = readl(&clkctrl_regs->hw_clkctrl_clkseq);
+		if (clkseq & CLKCTRL_CLKSEQ_BYPASS_CPU) {
+			refclk = XTAL_FREQ_MHZ;
+			mask = CLKCTRL_CPU_DIV_XTAL_MASK >>
+				CLKCTRL_CPU_DIV_XTAL_OFFSET;
+			div = (clkctrl & CLKCTRL_CPU_DIV_XTAL_MASK) >>
+				CLKCTRL_CPU_DIV_XTAL_OFFSET;
+		} else {
+			refclk = PLL_FREQ_MHZ * PLL_FREQ_COEF / frac;
+			mask = CLKCTRL_CPU_DIV_CPU_MASK;
+		}
+		return get_frac_clk(refclk, div, mask);
+	}
 
 	/* XTAL Path */
 	if (clkseq & CLKCTRL_CLKSEQ_BYPASS_CPU) {
@@ -66,9 +102,6 @@ static uint32_t mx28_get_pclk(void)
 	}
 
 	/* REF Path */
-	clkfrac = readb(&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_CPU]);
-	frac = clkfrac & CLKCTRL_FRAC_FRAC_MASK;
-	div = clkctrl & CLKCTRL_CPU_DIV_CPU_MASK;
 	return (PLL_FREQ_MHZ * PLL_FREQ_COEF / frac) / div;
 }
 
@@ -76,15 +109,15 @@ static uint32_t mx28_get_hclk(void)
 {
 	uint32_t div;
 	uint32_t clkctrl;
+	uint32_t refclk = mx28_get_pclk();
 
 	clkctrl = readl(&clkctrl_regs->hw_clkctrl_hbus);
-
-	/* No support of fractional divider calculation */
-	if (clkctrl & CLKCTRL_HBUS_DIV_FRAC_EN)
-		return 0;
-
 	div = clkctrl & CLKCTRL_HBUS_DIV_MASK;
-	return mx28_get_pclk() / div;
+
+	if (clkctrl & CLKCTRL_HBUS_DIV_FRAC_EN)
+		return get_frac_clk(refclk, div, CLKCTRL_HBUS_DIV_MASK);
+
+	return refclk / div;
 }
 
 static uint32_t mx28_get_emiclk(void)
@@ -303,7 +336,7 @@ static uint32_t mx28_get_xbus_clk(void)
 	div = clkctrl & CLKCTRL_XBUS_DIV_MASK;
 
 	if (clkctrl & CLKCTRL_XBUS_DIV_FRAC_EN)
-		return 0;
+		return get_frac_clk(refclk, div, CLKCTRL_XBUS_DIV_MASK);
 
 	return refclk / div;
 }
