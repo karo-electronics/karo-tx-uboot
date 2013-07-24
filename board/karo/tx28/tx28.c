@@ -773,6 +773,20 @@ int board_late_init(void)
 				RTC_PERSISTENT0_ALARM_WAKE |		\
 				RTC_PERSISTENT0_THERMAL_RESET)
 
+static void thermal_init(void)
+{
+	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
+	struct mxs_clkctrl_regs *clkctrl_regs = (void *)MXS_CLKCTRL_BASE;
+
+	writel(POWER_THERMAL_LOW_POWER | POWER_THERMAL_OFFSET_ADJ_ENABLE |
+		POWER_THERMAL_OFFSET_ADJ_OFFSET(3),
+		&power_regs->hw_power_thermal);
+
+	writel(CLKCTRL_RESET_EXTERNAL_RESET_ENABLE |
+		CLKCTRL_RESET_THERMAL_RESET_ENABLE,
+		&clkctrl_regs->hw_clkctrl_reset);
+}
+
 int checkboard(void)
 {
 	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
@@ -818,6 +832,21 @@ int checkboard(void)
 		}
 		printf("\n");
 	}
+
+	while (pwr_sts & POWER_STS_THERMAL_WARNING) {
+		static int first = 1;
+
+		if (first) {
+			printf("CPU too hot to boot\n");
+			first = 0;
+		}
+		if (tstc())
+			break;
+		pwr_sts = readl(&power_regs->hw_power_sts);
+	}
+
+	if (!(boot_cause & RTC_PERSISTENT0_THERMAL_RESET))
+		thermal_init();
 
 	return 0;
 }
