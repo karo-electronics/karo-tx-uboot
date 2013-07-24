@@ -291,6 +291,23 @@ void mx28_set_ssp_busclock(unsigned int bus, uint32_t freq)
 		bus, tgtclk, freq);
 }
 
+static uint32_t mx28_get_xbus_clk(void)
+{
+	struct mxs_clkctrl_regs *clkctrl_regs =
+		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
+	uint32_t div;
+	uint32_t clkctrl;
+	uint32_t refclk = mx28_get_pclk();
+
+	clkctrl = readl(&clkctrl_regs->hw_clkctrl_xbus);
+	div = clkctrl & CLKCTRL_XBUS_DIV_MASK;
+
+	if (clkctrl & CLKCTRL_XBUS_DIV_FRAC_EN)
+		return 0;
+
+	return refclk / div;
+}
+
 uint32_t mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {
@@ -317,6 +334,8 @@ uint32_t mxc_get_clock(enum mxc_clock clk)
 		return mx28_get_sspclk(MXC_SSPCLK3);
 	case MXC_XTAL_CLK:
 		return XTAL_FREQ_KHZ * 1000;
+	case MXC_XBUS_CLK:
+		return mx28_get_xbus_clk() * 1000000;
 	default:
 		printf("Invalid clock selector %u\n", clk);
 	}
