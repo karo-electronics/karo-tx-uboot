@@ -19,8 +19,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-#define DEBUG
-//#define TIMER_TEST
 
 #include <common.h>
 #include <errno.h>
@@ -1076,47 +1074,6 @@ int checkboard(void)
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
 		1 - PHYS_SDRAM_1_WIDTH / 64);
 
-#ifdef TIMER_TEST
-	{
-		struct mxc_gpt {
-			unsigned int control;
-			unsigned int prescaler;
-			unsigned int status;
-			unsigned int nouse[6];
-			unsigned int counter;
-		};
-		const int us_delay = 10;
-		unsigned long start = get_timer(0);
-		unsigned long last = gd->arch.tbl;
-		unsigned long loop = 0;
-		unsigned long cnt = 0;
-		static struct mxc_gpt *timer_base = (struct mxc_gpt *)GPT1_BASE_ADDR;
-
-		printf("GPT prescaler=%u\n", readl(&timer_base->prescaler) + 1);
-		printf("clock tick rate: %lu.%03lukHz\n",
-			gd->arch.timer_rate_hz / 1000, gd->arch.timer_rate_hz % 1000);
-		printf("ticks/us=%lu\n", gd->arch.timer_rate_hz / CONFIG_SYS_HZ / 1000);
-
-		while (!tstc()) {
-			unsigned long elapsed = get_timer(start);
-			unsigned long diff = gd->arch.tbl - last;
-
-			loop++;
-			last = gd->arch.tbl;
-
-			printf("loop %4lu: t=%08lx diff=%08lx steps=%6lu elapsed time: %4lu",
-				loop, gd->arch.tbl, diff, cnt, elapsed / CONFIG_SYS_HZ);
-			cnt = 0;
-			while (get_timer(elapsed + start) < CONFIG_SYS_HZ) {
-				cnt++;
-				udelay(us_delay);
-			}
-			printf(" counter=%08x udelay(%u)=%lu.%03luus\n",
-				readl(&timer_base->counter), us_delay,
-				1000000000 / cnt / 1000, 1000000000 / cnt % 1000);
-		}
-	}
-#endif
 	return 0;
 }
 
