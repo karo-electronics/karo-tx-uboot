@@ -49,13 +49,16 @@
  */
 #define CONFIG_NR_DRAM_BANKS		1		/* # of SDRAM banks */
 #define PHYS_SDRAM_1			0x10000000	/* Base address of bank 1 */
-#ifdef CONFIG_MX6Q
-#define PHYS_SDRAM_1_SIZE		SZ_1G
+#ifdef CONFIG_SYS_SDRAM_BUS_WIDTH
+#define PHYS_SDRAM_1_WIDTH		CONFIG_SYS_SDRAM_BUS_WIDTH
+#else
 #define PHYS_SDRAM_1_WIDTH		64
+#endif
+#define PHYS_SDRAM_1_SIZE		(SZ_512M * (PHYS_SDRAM_1_WIDTH / 32))
+
+#ifdef CONFIG_MX6Q
 #define CONFIG_SYS_SDRAM_CLK		528
 #else
-#define PHYS_SDRAM_1_SIZE		SZ_512M
-#define PHYS_SDRAM_1_WIDTH		32
 #define CONFIG_SYS_SDRAM_CLK		400
 #endif
 #define CONFIG_STACKSIZE		SZ_128K
