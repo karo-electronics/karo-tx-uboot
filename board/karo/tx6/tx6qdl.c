@@ -1066,14 +1066,15 @@ exit:
 
 int checkboard(void)
 {
+	u32 cpurev = get_cpu_rev();
+	int cpu_variant = (cpurev >> 12) & 0xff;
+
 	print_cpuinfo();
-#if defined(CONFIG_MX6Q)
-	printf("Board: Ka-Ro TX6Q\n");
-#elif defined(CONFIG_MX6DL)
-	printf("Board: Ka-Ro TX6DL\n");
-#else
-#error Unsupported i.MX6 variant selected
-#endif
+
+	printf("Board: Ka-Ro TX6%c-%dxx%d\n",
+		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
+		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
+		1 - PHYS_SDRAM_1_WIDTH / 64);
 
 #ifdef TIMER_TEST
 	{
