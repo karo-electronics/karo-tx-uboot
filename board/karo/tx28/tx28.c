@@ -856,16 +856,85 @@ int checkboard(void)
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
 struct node_info tx28_nand_nodes[] = {
-	{ "gpmi-nand", MTD_DEV_TYPE_NAND, },
+	{ "fsl,imx28-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx28_fixup_flexcan(void *blob)
+static int flexcan_enabled(void *blob)
 {
-	karo_fdt_del_prop(blob, "fsl,imx28-flexcan", 0x80032000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,imx28-flexcan", 0x80034000, "transceiver-switch");
+	const char *status;
+	int off = fdt_path_offset(blob, "can0");
+
+	if (off < 0) {
+		printf("node 'can0' not found\n");
+	} else {
+		status = fdt_getprop(blob, off, "status", NULL);
+		if (status && strcmp(status, "okay") == 0) {
+			printf("can0 is enabled\n");
+			return 1;
+		}
+	}
+	off = fdt_path_offset(blob, "can1");
+	if (off < 0) {
+		printf("node 'can1' not found\n");
+		return 0;
+	}
+	status = fdt_getprop(blob, off, "status", NULL);
+	if (status && strcmp(status, "okay") == 0) {
+		printf("can1 is enabled\n");
+		return 1;
+	}
+	printf("can driver disabled\n");
+	return 0;
+}
+
+static void tx28_set_lcd_pins(void *blob, const char *name)
+{
+	int off = fdt_path_offset(blob, name);
+	u32 ph;
+	const struct fdt_property *pc;
+	int len;
+
+	if (off < 0)
+		return;
+
+	ph = fdt32_to_cpu(fdt_create_phandle(blob, off));
+	if (!ph)
+		return;
+
+	off = fdt_path_offset(blob, "lcdif");
+	if (off < 0)
+		return;
+
+	pc = fdt_get_property(blob, off, "pinctrl-0", &len);
+	if (!pc || len < sizeof(ph))
+		return;
+
+	memcpy((void *)pc->data, &ph, sizeof(ph));
+	fdt_setprop(blob, off, "pinctrl-0", pc->data, len);
+}
+
+static void tx28_fixup_flexcan(void *blob, int stk5_v5)
+{
+	const char *can_xcvr = "disabled";
+
+	if (stk5_v5) {
+		if (flexcan_enabled(blob)) {
+			tx28_set_lcd_pins(blob, "lcdif_23bit_pins_a");
+			can_xcvr = "okay";
+		} else {
+			tx28_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+		}
+	} else {
+		const char *otg_mode = getenv("otg_mode");
+
+		if (otg_mode && (strcmp(otg_mode, "host") == 0))
+			karo_fdt_enable_node(blob, "can1", 0);
+	}
+	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+			can_xcvr, strlen(can_xcvr) + 1, 1);
 }
 
 static void tx28_fixup_fec(void *blob)
@@ -876,6 +945,7 @@ static void tx28_fixup_fec(void *blob)
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
+	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
 
 #ifdef CONFIG_TX28_S
 	/* TX28-41xx (aka TX28S) has no external RTC
@@ -884,20 +954,12 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_remove_node(blob, "ds1339");
 	karo_fdt_remove_node(blob, "gpio5");
 #endif
-	if (baseboard != NULL && strcmp(baseboard, "stk5-v5") == 0) {
+	if (stk5_v5) {
 		karo_fdt_remove_node(blob, "stk5led");
 	} else {
-		tx28_fixup_flexcan(blob);
 		tx28_fixup_fec(blob);
 	}
-
-	if (baseboard != NULL && strcmp(baseboard, "stk5-v3") == 0) {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && (strcmp(otg_mode, "device") == 0 ||
-					strcmp(otg_mode, "gadget") == 0))
-			karo_fdt_enable_node(blob, "can1", 0);
-	}
+	tx28_fixup_flexcan(blob, stk5_v5);
 
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
 	fdt_fixup_ethernet(blob);
