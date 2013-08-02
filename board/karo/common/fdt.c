@@ -171,6 +171,8 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	int off;
 	int ret;
 	const uint32_t *ph;
+	int disable_otg = 0;
+	int disable_phy_pins = 1;
 
 	debug("OTG mode is '%s'\n", otg_mode ? otg_mode : "<UNSET>");
 
@@ -182,22 +184,31 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 
 	if (otg_mode && (strcmp(otg_mode, "device") == 0 ||
 				strcmp(otg_mode, "gadget") == 0)) {
+		debug("Setting dr_mode to 'peripheral'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "peripheral");
-		phy = NULL;
 	} else if (otg_mode && strcmp(otg_mode, "host") == 0) {
+		debug("Setting dr_mode to 'host'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "host");
-		phy = NULL;
+		disable_phy_pins = 0;
+	} else if (otg_mode && strcmp(otg_mode, "otg") == 0) {
+		debug("Setting dr_mode to 'host'\n");
+		ret = fdt_setprop_string(blob, off, "dr_mode", "otg");
 	} else {
 		if (otg_mode && strcmp(otg_mode, "none") != 0)
 			printf("Invalid 'otg_mode' setting '%s'; disabling usbotg port\n",
 				otg_mode);
-		ret = fdt_setprop_string(blob, off, "status", "disabled");
+		disable_otg = 1;
+		ret = 0;
 	}
-	if (ret)
+
+	if ((!disable_phy_pins && !disable_otg) || ret)
 		goto out;
 
-	if (phy == NULL)
-		goto out;
+	if (disable_otg) {
+		ret = fdt_setprop_string(blob, off, "status", "disabled");
+		if (ret)
+			goto out;
+	}
 
 	ph = fdt_getprop(blob, off, phy, NULL);
 	if (ph == NULL) {
@@ -212,12 +223,19 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 			phy, fdt32_to_cpu(*ph));
 		goto out;
 	}
-	ret = fdt_setprop_string(blob, off, "status", "disabled");
 
+	if (disable_otg) {
+		debug("Disabling usbphy\n");
+		ret = fdt_setprop_string(blob, off, "status", "disabled");
+	} else {
+		debug("Removing host pins from usbphy\n");
+		ret = fdt_delprop(blob, off, "pinctrl-0");
+	}
 out:
 	if (ret)
 		printf("Failed to update usbotg: %d\n", ret);
-	printf("node '%s' updated\n", node);
+	else
+		debug("node '%s' updated\n", node);
 	karo_set_fdtsize(blob);
 }
 
