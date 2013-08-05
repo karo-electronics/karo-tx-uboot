@@ -121,8 +121,16 @@ static inline void random_init(void)
 	}
 }
 
+#define RTC_PERSISTENT0_CLK32_MASK	(RTC_PERSISTENT0_CLOCKSOURCE |	\
+					RTC_PERSISTENT0_XTAL32KHZ_PWRUP)
+static u32 boot_cause __attribute__((section("data")));
+
 int board_early_init_f(void)
 {
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
+	u32 rtc_stat;
+	int timeout = 5000;
+
 	random_init();
 
 	/* IO0 clock at 480MHz */
@@ -137,6 +145,25 @@ int board_early_init_f(void)
 
 	gpio_request_array(tx28_gpios, ARRAY_SIZE(tx28_gpios));
 	mxs_iomux_setup_multiple_pads(tx28_pads, ARRAY_SIZE(tx28_pads));
+
+	while ((rtc_stat = readl(&rtc_regs->hw_rtc_stat)) &
+		RTC_STAT_STALE_REGS_PERSISTENT0) {
+		if (timeout-- < 0)
+			return 0;
+		udelay(1);
+	}
+	boot_cause = readl(&rtc_regs->hw_rtc_persistent0);
+	if ((boot_cause & RTC_PERSISTENT0_CLK32_MASK) !=
+		RTC_PERSISTENT0_CLK32_MASK) {
+		if (boot_cause & RTC_PERSISTENT0_CLOCKSOURCE)
+			goto rtc_err;
+		writel(RTC_PERSISTENT0_CLK32_MASK,
+			&rtc_regs->hw_rtc_persistent0_set);
+	}
+	return 0;
+
+rtc_err:
+	serial_puts("Inconsistent value in RTC_PERSISTENT0 register; power-on-reset required\n");
 	return 0;
 }
 
@@ -742,9 +769,85 @@ int board_late_init(void)
 	return 0;
 }
 
+#define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
+				RTC_PERSISTENT0_ALARM_WAKE |		\
+				RTC_PERSISTENT0_THERMAL_RESET)
+
+static void thermal_init(void)
+{
+	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
+	struct mxs_clkctrl_regs *clkctrl_regs = (void *)MXS_CLKCTRL_BASE;
+
+	writel(POWER_THERMAL_LOW_POWER | POWER_THERMAL_OFFSET_ADJ_ENABLE |
+		POWER_THERMAL_OFFSET_ADJ_OFFSET(3),
+		&power_regs->hw_power_thermal);
+
+	writel(CLKCTRL_RESET_EXTERNAL_RESET_ENABLE |
+		CLKCTRL_RESET_THERMAL_RESET_ENABLE,
+		&clkctrl_regs->hw_clkctrl_reset);
+}
+
 int checkboard(void)
 {
-	printf("Board: Ka-Ro TX28-4%sxx\n", TX28_MOD_SUFFIX);
+	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
+	u32 pwr_sts = readl(&power_regs->hw_power_sts);
+	u32 pwrup_src = (pwr_sts >> 24) & 0x3f;
+	const char *dlm = "";
+
+	printf("Board: Ka-Ro TX28-4%sx%d\n", TX28_MOD_SUFFIX,
+		CONFIG_SDRAM_SIZE / SZ_128M);
+
+	printf("POWERUP Source: ");
+	if (pwrup_src & (3 << 0)) {
+		printf("%sPSWITCH %s voltage", dlm,
+			pwrup_src & (1 << 1) ? "HIGH" : "MID");
+		dlm = " | ";
+	}
+	if (pwrup_src & (1 << 4)) {
+		printf("%sRTC", dlm);
+		dlm = " | ";
+	}
+	if (pwrup_src & (1 << 5)) {
+		printf("%s5V", dlm);
+		dlm = " | ";
+	}
+	printf("\n");
+
+	if (boot_cause & BOOT_CAUSE_MASK) {
+		dlm="";
+		printf("Last boot cause: ");
+		if (boot_cause & RTC_PERSISTENT0_EXTERNAL_RESET) {
+			printf("%sEXTERNAL", dlm);
+			dlm = " | ";
+		}
+		if (boot_cause & RTC_PERSISTENT0_THERMAL_RESET) {
+			printf("%sTHERMAL", dlm);
+			dlm = " | ";
+		}
+		if (*dlm != '\0')
+			printf(" RESET");
+		if (boot_cause & RTC_PERSISTENT0_ALARM_WAKE) {
+			printf("%sALARM WAKE", dlm);
+			dlm = " | ";
+		}
+		printf("\n");
+	}
+
+	while (pwr_sts & POWER_STS_THERMAL_WARNING) {
+		static int first = 1;
+
+		if (first) {
+			printf("CPU too hot to boot\n");
+			first = 0;
+		}
+		if (tstc())
+			break;
+		pwr_sts = readl(&power_regs->hw_power_sts);
+	}
+
+	if (!(boot_cause & RTC_PERSISTENT0_THERMAL_RESET))
+		thermal_init();
+
 	return 0;
 }
 
@@ -753,16 +856,85 @@ int checkboard(void)
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
 struct node_info tx28_nand_nodes[] = {
-	{ "gpmi-nand", MTD_DEV_TYPE_NAND, },
+	{ "fsl,imx28-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx28_fixup_flexcan(void *blob)
+static int flexcan_enabled(void *blob)
 {
-	karo_fdt_del_prop(blob, "fsl,imx28-flexcan", 0x80032000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,imx28-flexcan", 0x80034000, "transceiver-switch");
+	const char *status;
+	int off = fdt_path_offset(blob, "can0");
+
+	if (off < 0) {
+		printf("node 'can0' not found\n");
+	} else {
+		status = fdt_getprop(blob, off, "status", NULL);
+		if (status && strcmp(status, "okay") == 0) {
+			printf("can0 is enabled\n");
+			return 1;
+		}
+	}
+	off = fdt_path_offset(blob, "can1");
+	if (off < 0) {
+		printf("node 'can1' not found\n");
+		return 0;
+	}
+	status = fdt_getprop(blob, off, "status", NULL);
+	if (status && strcmp(status, "okay") == 0) {
+		printf("can1 is enabled\n");
+		return 1;
+	}
+	printf("can driver disabled\n");
+	return 0;
+}
+
+static void tx28_set_lcd_pins(void *blob, const char *name)
+{
+	int off = fdt_path_offset(blob, name);
+	u32 ph;
+	const struct fdt_property *pc;
+	int len;
+
+	if (off < 0)
+		return;
+
+	ph = fdt32_to_cpu(fdt_create_phandle(blob, off));
+	if (!ph)
+		return;
+
+	off = fdt_path_offset(blob, "lcdif");
+	if (off < 0)
+		return;
+
+	pc = fdt_get_property(blob, off, "pinctrl-0", &len);
+	if (!pc || len < sizeof(ph))
+		return;
+
+	memcpy((void *)pc->data, &ph, sizeof(ph));
+	fdt_setprop(blob, off, "pinctrl-0", pc->data, len);
+}
+
+static void tx28_fixup_flexcan(void *blob, int stk5_v5)
+{
+	const char *can_xcvr = "disabled";
+
+	if (stk5_v5) {
+		if (flexcan_enabled(blob)) {
+			tx28_set_lcd_pins(blob, "lcdif_23bit_pins_a");
+			can_xcvr = "okay";
+		} else {
+			tx28_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+		}
+	} else {
+		const char *otg_mode = getenv("otg_mode");
+
+		if (otg_mode && (strcmp(otg_mode, "host") == 0))
+			karo_fdt_enable_node(blob, "can1", 0);
+	}
+	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+			can_xcvr, strlen(can_xcvr) + 1, 1);
 }
 
 static void tx28_fixup_fec(void *blob)
@@ -773,6 +945,7 @@ static void tx28_fixup_fec(void *blob)
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
+	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
 
 #ifdef CONFIG_TX28_S
 	/* TX28-41xx (aka TX28S) has no external RTC
@@ -781,20 +954,12 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_remove_node(blob, "ds1339");
 	karo_fdt_remove_node(blob, "gpio5");
 #endif
-	if (baseboard != NULL && strcmp(baseboard, "stk5-v5") == 0) {
+	if (stk5_v5) {
 		karo_fdt_remove_node(blob, "stk5led");
 	} else {
-		tx28_fixup_flexcan(blob);
 		tx28_fixup_fec(blob);
 	}
-
-	if (baseboard != NULL && strcmp(baseboard, "stk5-v3") == 0) {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && (strcmp(otg_mode, "device") == 0 ||
-					strcmp(otg_mode, "gadget") == 0))
-			karo_fdt_enable_node(blob, "can1", 0);
-	}
+	tx28_fixup_flexcan(blob, stk5_v5);
 
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
 	fdt_fixup_ethernet(blob);

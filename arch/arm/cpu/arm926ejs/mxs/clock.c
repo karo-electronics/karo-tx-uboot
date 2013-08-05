@@ -41,23 +41,58 @@
 #define	PLL_FREQ_MHZ	(PLL_FREQ_KHZ / 1000)
 #define	XTAL_FREQ_MHZ	(XTAL_FREQ_KHZ / 1000)
 
+static struct mxs_clkctrl_regs *clkctrl_regs = (void *)MXS_CLKCTRL_BASE;
+
+static uint32_t get_frac_clk(uint32_t refclk, uint32_t div, uint32_t _mask)
+{
+	uint32_t mask = (_mask + 1) >> 1;
+	uint32_t acc = div;
+	int period = 0;
+	int mult = 0;
+
+	if (div & mask)
+		return 0;
+
+	do {
+		acc += div;
+		if (acc & mask) {
+			acc &= ~mask;
+			mult++;
+		}
+		period++;
+	} while (acc != div);
+
+	return refclk * mult / period;
+}
+
 static uint32_t mx28_get_pclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t clkctrl, clkseq, div;
 	uint8_t clkfrac, frac;
 
 	clkctrl = readl(&clkctrl_regs->hw_clkctrl_cpu);
 
-	/* No support of fractional divider calculation */
+	div = clkctrl & CLKCTRL_CPU_DIV_CPU_MASK;
+	clkfrac = readb(&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_CPU]);
+	frac = clkfrac & CLKCTRL_FRAC_FRAC_MASK;
+	clkseq = readl(&clkctrl_regs->hw_clkctrl_clkseq);
+
 	if (clkctrl &
 		(CLKCTRL_CPU_DIV_XTAL_FRAC_EN | CLKCTRL_CPU_DIV_CPU_FRAC_EN)) {
-		return 0;
-	}
+		uint32_t refclk, mask;
 
-	clkseq = readl(&clkctrl_regs->hw_clkctrl_clkseq);
+		if (clkseq & CLKCTRL_CLKSEQ_BYPASS_CPU) {
+			refclk = XTAL_FREQ_MHZ;
+			mask = CLKCTRL_CPU_DIV_XTAL_MASK >>
+				CLKCTRL_CPU_DIV_XTAL_OFFSET;
+			div = (clkctrl & CLKCTRL_CPU_DIV_XTAL_MASK) >>
+				CLKCTRL_CPU_DIV_XTAL_OFFSET;
+		} else {
+			refclk = PLL_FREQ_MHZ * PLL_FREQ_COEF / frac;
+			mask = CLKCTRL_CPU_DIV_CPU_MASK;
+		}
+		return get_frac_clk(refclk, div, mask);
+	}
 
 	/* XTAL Path */
 	if (clkseq & CLKCTRL_CLKSEQ_BYPASS_CPU) {
@@ -67,35 +102,26 @@ static uint32_t mx28_get_pclk(void)
 	}
 
 	/* REF Path */
-	clkfrac = readb(&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_CPU]);
-	frac = clkfrac & CLKCTRL_FRAC_FRAC_MASK;
-	div = clkctrl & CLKCTRL_CPU_DIV_CPU_MASK;
 	return (PLL_FREQ_MHZ * PLL_FREQ_COEF / frac) / div;
 }
 
 static uint32_t mx28_get_hclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t div;
 	uint32_t clkctrl;
+	uint32_t refclk = mx28_get_pclk();
 
 	clkctrl = readl(&clkctrl_regs->hw_clkctrl_hbus);
-
-	/* No support of fractional divider calculation */
-	if (clkctrl & CLKCTRL_HBUS_DIV_FRAC_EN)
-		return 0;
-
 	div = clkctrl & CLKCTRL_HBUS_DIV_MASK;
-	return mx28_get_pclk() / div;
+
+	if (clkctrl & CLKCTRL_HBUS_DIV_FRAC_EN)
+		return get_frac_clk(refclk, div, CLKCTRL_HBUS_DIV_MASK);
+
+	return refclk / div;
 }
 
 static uint32_t mx28_get_emiclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t clkctrl, clkseq, div;
 	uint8_t clkfrac, frac;
 
@@ -118,9 +144,6 @@ static uint32_t mx28_get_emiclk(void)
 
 static uint32_t mx28_get_gpmiclk(void)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-
 	uint32_t clkctrl, clkseq, div;
 	uint8_t clkfrac, frac;
 
@@ -145,8 +168,6 @@ static uint32_t mx28_get_gpmiclk(void)
  */
 void mx28_set_ioclk(enum mxs_ioclock io, uint32_t freq)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint32_t div;
 	int io_reg;
 
@@ -178,14 +199,14 @@ void mx28_set_ioclk(enum mxs_ioclock io, uint32_t freq)
  */
 static uint32_t mx28_get_ioclk(enum mxs_ioclock io)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint8_t ret;
 	int io_reg;
 
-	if ((io < MXC_IOCLK0) || (io > MXC_IOCLK1))
+	if ((io < MXC_IOCLK0) || (io > MXC_IOCLK1)) {
+		printf("%s: IO clock selector %u out of range %u..%u\n",
+			__func__, io, MXC_IOCLK0, MXC_IOCLK1);
 		return 0;
-
+	}
 	io_reg = CLKCTRL_FRAC0_IO0 - io;	/* Register order is reversed */
 
 	ret = readb(&clkctrl_regs->hw_clkctrl_frac0[io_reg]) &
@@ -199,8 +220,6 @@ static uint32_t mx28_get_ioclk(enum mxs_ioclock io)
  */
 void mx28_set_sspclk(enum mxs_sspclock ssp, uint32_t freq, int xtal)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
 	uint32_t clk, clkreg;
 
 	if (ssp > MXC_SSPCLK3)
@@ -243,9 +262,7 @@ void mx28_set_sspclk(enum mxs_sspclock ssp, uint32_t freq, int xtal)
  */
 static uint32_t mx28_get_sspclk(enum mxs_sspclock ssp)
 {
-	struct mxs_clkctrl_regs *clkctrl_regs =
-		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-	uint32_t clkreg;
+	uint32_t *clkreg;
 	uint32_t clk, tmp;
 
 	if (ssp > MXC_SSPCLK3)
@@ -255,16 +272,14 @@ static uint32_t mx28_get_sspclk(enum mxs_sspclock ssp)
 	if (tmp & (CLKCTRL_CLKSEQ_BYPASS_SSP0 << ssp))
 		return XTAL_FREQ_KHZ;
 
-	clkreg = (uint32_t)(&clkctrl_regs->hw_clkctrl_ssp0) +
-			(ssp * sizeof(struct mxs_register_32));
+	clkreg = &clkctrl_regs->hw_clkctrl_ssp0 +
+			ssp * sizeof(struct mxs_register_32);
 
 	tmp = readl(clkreg) & CLKCTRL_SSP_DIV_MASK;
-
 	if (tmp == 0)
 		return 0;
 
 	clk = mx28_get_ioclk(ssp >> 1);
-
 	return clk / tmp;
 }
 
@@ -309,6 +324,23 @@ void mx28_set_ssp_busclock(unsigned int bus, uint32_t freq)
 		bus, tgtclk, freq);
 }
 
+static uint32_t mx28_get_xbus_clk(void)
+{
+	struct mxs_clkctrl_regs *clkctrl_regs =
+		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
+	uint32_t div;
+	uint32_t clkctrl;
+	uint32_t refclk = mx28_get_pclk();
+
+	clkctrl = readl(&clkctrl_regs->hw_clkctrl_xbus);
+	div = clkctrl & CLKCTRL_XBUS_DIV_MASK;
+
+	if (clkctrl & CLKCTRL_XBUS_DIV_FRAC_EN)
+		return get_frac_clk(refclk, div, CLKCTRL_XBUS_DIV_MASK);
+
+	return refclk / div;
+}
+
 uint32_t mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {
@@ -335,6 +367,10 @@ uint32_t mxc_get_clock(enum mxc_clock clk)
 		return mx28_get_sspclk(MXC_SSPCLK3);
 	case MXC_XTAL_CLK:
 		return XTAL_FREQ_KHZ * 1000;
+	case MXC_XBUS_CLK:
+		return mx28_get_xbus_clk() * 1000000;
+	default:
+		printf("Invalid clock selector %u\n", clk);
 	}
 
 	return 0;
