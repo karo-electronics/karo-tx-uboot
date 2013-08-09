@@ -164,8 +164,8 @@ static void clk_ipu_disable(struct clk *clk)
 
 static struct clk ipu_clk = {
 	.name = "ipu_clk",
-#if defined(CONFIG_IPU_CLKRATE)
-	.rate = CONFIG_IPU_CLKRATE,
+#if defined(CONFIG_IPUV3_CLK)
+	.rate = CONFIG_IPUV3_CLK,
 #endif
 	.enable = clk_ipu_enable,
 	.disable = clk_ipu_disable,
