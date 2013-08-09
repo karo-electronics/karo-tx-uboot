@@ -63,15 +63,6 @@ static int dmfc_type_setup;
 static int dmfc_size_28, dmfc_size_29, dmfc_size_24, dmfc_size_27, dmfc_size_23;
 static int g_di1_tvout;
 
-#if 0
-extern struct clk *g_ipu_clk;
-extern struct clk *g_di_clk[2];
-extern struct clk *g_pixel_clk[2];
-
-extern unsigned char g_ipu_clk_enabled;
-extern unsigned char g_dc_di_assignment[];
-#endif
-
 void ipu_dmfc_init(int dmfc_type, int first)
 {
 	u32 dmfc_wr_chan, dmfc_dp_chan;

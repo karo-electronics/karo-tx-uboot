@@ -28,7 +28,6 @@
  */
 
 /* #define DEBUG */
-// #define DEBUG
 #include <common.h>
 #include <asm/errno.h>
 #include <linux/string.h>
@@ -602,24 +601,6 @@ int overwrite_console(void)
 	/* Keep stdout / stderr on serial, our LCD is for splashscreen only */
 	return 1;
 }
-
-#if 0
-void lcd_ctrl_init(void *lcdbase)
-{
-	u32 mem_len = panel_info.vl_col *
-		panel_info.vl_row *
-		NBITS(panel_info.vl_bpix) / 8;
-
-	/*
-	 * We rely on lcdbase being a physical address, i.e., either MMU off,
-	 * or 1-to-1 mapping. Might want to add some virt2phys here.
-	 */
-	if (!lcdbase)
-		return;
-
-	memset(lcdbase, 0, mem_len);
-}
-#endif
 
 int ipuv3_fb_init(struct fb_videomode *mode, int di, unsigned int interface_pix_fmt,
 		ipu_di_clk_parent_t di_clk_parent, unsigned long di_clk_val, int bpp)
