@@ -15,13 +15,6 @@
 #define SDRAM_SIZE		PHYS_SDRAM_1_SIZE
 #endif
 
-#define REG_ESDCTL0		0x00
-#define REG_ESDCFG0		0x04
-#define REG_ESDCTL1		0x08
-#define REG_ESDCFG1		0x0c
-#define REG_ESDMISC		0x10
-#define REG_ESDSCR		0x14
-#define REG_ESDGPR		0x34
 
 #define REG_CCGR0		0x68
 #define REG_CCGR1		0x6c
