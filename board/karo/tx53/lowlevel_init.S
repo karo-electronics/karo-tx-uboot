@@ -75,6 +75,8 @@
 	.else
 	.ifle		\clks - \offs - \max
 	.set		\name, \clks - \offs
+	.else
+	.error		"Value \clks out of range for parameter \name"
 	.endif
 	.endif
 	.endm
@@ -474,5 +476,5 @@ rd_dl_calib: /* 70c */
 	MXC_DCD_ITEM(0x53fa85b0, 0x00000004)	@ NANDF_CS0
 dcd_end:
 	.ifgt	dcd_end - dcd_start - 1768
-	DCD too large!
+	.error	"DCD too large!"
 	.endif
