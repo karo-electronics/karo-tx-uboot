@@ -434,6 +434,11 @@ restart:
 			link_local_start();
 			break;
 #endif
+#if defined(CONFIG_CMD_BOOTCE)
+		case BOOTME:
+			BootmeStart();
+			break;
+#endif
 		default:
 			break;
 		}
@@ -495,7 +500,7 @@ restart:
 		 *	Check for a timeout, and run the timeout handler
 		 *	if we have one.
 		 */
-		if (timeHandler && ((get_timer(0) - timeStart) > timeDelta)) {
+		if (timeHandler && ((get_timer(timeStart)) > timeDelta)) {
 			thand_f *x;
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
@@ -535,10 +540,11 @@ restart:
 				setenv_hex("filesize", NetBootFileXferSize);
 				setenv_hex("fileaddr", load_addr);
 			}
-			if (protocol != NETCONS)
+			if (protocol != NETCONS) {
 				eth_halt();
-			else
+			} else {
 				eth_halt_state_only();
+			}
 
 			eth_set_last_protocol(protocol);
 
@@ -1196,7 +1202,6 @@ NetReceive(uchar *inpkt, int len)
 static int net_check_prereq(enum proto_t protocol)
 {
 	switch (protocol) {
-		/* Fall through */
 #if defined(CONFIG_CMD_PING)
 	case PING:
 		if (NetPingIP == 0) {
@@ -1236,6 +1241,7 @@ common:
 #endif
 		/* Fall through */
 
+	case BOOTME:
 	case NETCONS:
 	case TFTPSRV:
 		if (NetOurIP == 0) {

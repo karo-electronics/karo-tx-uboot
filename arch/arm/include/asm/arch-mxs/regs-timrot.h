@@ -16,36 +16,36 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_timrot_regs {
-	mxs_reg_32(hw_timrot_rotctrl)
-	mxs_reg_32(hw_timrot_rotcount)
+	mxs_reg_32(hw_timrot_rotctrl);
+	mxs_reg_32(hw_timrot_rotcount);
 #if defined(CONFIG_MX23)
-	mxs_reg_32(hw_timrot_timctrl0)
-	mxs_reg_32(hw_timrot_timcount0)
-	mxs_reg_32(hw_timrot_timctrl1)
-	mxs_reg_32(hw_timrot_timcount1)
-	mxs_reg_32(hw_timrot_timctrl2)
-	mxs_reg_32(hw_timrot_timcount2)
-	mxs_reg_32(hw_timrot_timctrl3)
-	mxs_reg_32(hw_timrot_timcount3)
+	mxs_reg_32(hw_timrot_timctrl0);
+	mxs_reg_32(hw_timrot_timcount0);
+	mxs_reg_32(hw_timrot_timctrl1);
+	mxs_reg_32(hw_timrot_timcount1);
+	mxs_reg_32(hw_timrot_timctrl2);
+	mxs_reg_32(hw_timrot_timcount2);
+	mxs_reg_32(hw_timrot_timctrl3);
+	mxs_reg_32(hw_timrot_timcount3);
 #elif defined(CONFIG_MX28)
-	mxs_reg_32(hw_timrot_timctrl0)
-	mxs_reg_32(hw_timrot_running_count0)
-	mxs_reg_32(hw_timrot_fixed_count0)
-	mxs_reg_32(hw_timrot_match_count0)
-	mxs_reg_32(hw_timrot_timctrl1)
-	mxs_reg_32(hw_timrot_running_count1)
-	mxs_reg_32(hw_timrot_fixed_count1)
-	mxs_reg_32(hw_timrot_match_count1)
-	mxs_reg_32(hw_timrot_timctrl2)
-	mxs_reg_32(hw_timrot_running_count2)
-	mxs_reg_32(hw_timrot_fixed_count2)
-	mxs_reg_32(hw_timrot_match_count2)
-	mxs_reg_32(hw_timrot_timctrl3)
-	mxs_reg_32(hw_timrot_running_count3)
-	mxs_reg_32(hw_timrot_fixed_count3)
-	mxs_reg_32(hw_timrot_match_count3)
+	mxs_reg_32(hw_timrot_timctrl0);
+	mxs_reg_32(hw_timrot_running_count0);
+	mxs_reg_32(hw_timrot_fixed_count0);
+	mxs_reg_32(hw_timrot_match_count0);
+	mxs_reg_32(hw_timrot_timctrl1);
+	mxs_reg_32(hw_timrot_running_count1);
+	mxs_reg_32(hw_timrot_fixed_count1);
+	mxs_reg_32(hw_timrot_match_count1);
+	mxs_reg_32(hw_timrot_timctrl2);
+	mxs_reg_32(hw_timrot_running_count2);
+	mxs_reg_32(hw_timrot_fixed_count2);
+	mxs_reg_32(hw_timrot_match_count2);
+	mxs_reg_32(hw_timrot_timctrl3);
+	mxs_reg_32(hw_timrot_running_count3);
+	mxs_reg_32(hw_timrot_fixed_count3);
+	mxs_reg_32(hw_timrot_match_count3);
 #endif
-	mxs_reg_32(hw_timrot_version)
+	mxs_reg_32(hw_timrot_version);
 };
 #endif
 

@@ -37,7 +37,7 @@
 #define BSP 0x08
 #define NAK 0x15
 #define CAN 0x18
-#define EOF 0x1A		/* ^Z for DOS officionados */
+#define EOF 0x1A		/* ^Z for DOS aficionados */
 
 #define USE_YMODEM_LENGTH
 
@@ -203,7 +203,7 @@ parse_num (char *s, unsigned long *val, char **es, char *delim)
 static int
 zm_dprintf (char *fmt, ...)
 {
-  int cur_console;
+  int cur_console __attribute__((unused));
   va_list args;
 
   va_start (args, fmt);
@@ -217,9 +217,10 @@ zm_dprintf (char *fmt, ...)
 #ifdef REDBOOT
   CYGACC_CALL_IF_SET_CONSOLE_COMM (cur_console);
 #endif
+  return 0;
 }
 
-static void
+static inline void
 zm_flush (void)
 {
 }
@@ -250,7 +251,7 @@ zm_dprintf (char *fmt, ...)
   return len;
 }
 
-static void
+static inline void
 zm_flush (void)
 {
 #ifdef REDBOOT
@@ -275,19 +276,19 @@ zm_dump_buf (void *buf, int len)
 static unsigned char zm_buf[2048];
 static unsigned char *zm_bp;
 
-static void
+static inline void
 zm_new (void)
 {
   zm_bp = zm_buf;
 }
 
-static void
+static inline void
 zm_save (unsigned char c)
 {
   *zm_bp++ = c;
 }
 
-static void
+static inline void
 zm_dump (int line)
 {
   zm_dprintf ("Packet at line: %d\n", line);

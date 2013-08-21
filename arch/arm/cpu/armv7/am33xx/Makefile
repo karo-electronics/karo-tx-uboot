@@ -17,6 +17,7 @@ COBJS	+= emif4.o
 COBJS	+= board.o
 COBJS	+= mux.o
 COBJS-$(CONFIG_NAND_OMAP_GPMC)	+= elm.o
+COBJS-$(CONFIG_NAND_AM33XX) += elm.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS) $(COBJS-y) $(SOBJS))

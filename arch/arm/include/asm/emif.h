@@ -585,111 +585,111 @@
 
 /* Reg mapping structure */
 struct emif_reg_struct {
-	u32 emif_mod_id_rev;
-	u32 emif_status;
-	u32 emif_sdram_config;
-	u32 emif_lpddr2_nvm_config;
-	u32 emif_sdram_ref_ctrl;
-	u32 emif_sdram_ref_ctrl_shdw;
-	u32 emif_sdram_tim_1;
-	u32 emif_sdram_tim_1_shdw;
-	u32 emif_sdram_tim_2;
-	u32 emif_sdram_tim_2_shdw;
-	u32 emif_sdram_tim_3;
-	u32 emif_sdram_tim_3_shdw;
-	u32 emif_lpddr2_nvm_tim;
-	u32 emif_lpddr2_nvm_tim_shdw;
-	u32 emif_pwr_mgmt_ctrl;
-	u32 emif_pwr_mgmt_ctrl_shdw;
-	u32 emif_lpddr2_mode_reg_data;
-	u32 padding1[1];
-	u32 emif_lpddr2_mode_reg_data_es2;
-	u32 padding11[1];
-	u32 emif_lpddr2_mode_reg_cfg;
-	u32 emif_l3_config;
-	u32 emif_l3_cfg_val_1;
-	u32 emif_l3_cfg_val_2;
-	u32 emif_iodft_tlgc;
-	u32 padding2[7];
-	u32 emif_perf_cnt_1;
-	u32 emif_perf_cnt_2;
-	u32 emif_perf_cnt_cfg;
-	u32 emif_perf_cnt_sel;
-	u32 emif_perf_cnt_tim;
-	u32 padding3;
-	u32 emif_read_idlectrl;
-	u32 emif_read_idlectrl_shdw;
-	u32 padding4;
-	u32 emif_irqstatus_raw_sys;
-	u32 emif_irqstatus_raw_ll;
-	u32 emif_irqstatus_sys;
-	u32 emif_irqstatus_ll;
-	u32 emif_irqenable_set_sys;
-	u32 emif_irqenable_set_ll;
-	u32 emif_irqenable_clr_sys;
-	u32 emif_irqenable_clr_ll;
-	u32 padding5;
-	u32 emif_zq_config;
-	u32 emif_temp_alert_config;
-	u32 emif_l3_err_log;
-	u32 emif_rd_wr_lvl_rmp_win;
-	u32 emif_rd_wr_lvl_rmp_ctl;
-	u32 emif_rd_wr_lvl_ctl;
-	u32 padding6[1];
-	u32 emif_ddr_phy_ctrl_1;
-	u32 emif_ddr_phy_ctrl_1_shdw;
-	u32 emif_ddr_phy_ctrl_2;
-	u32 padding7[12];
-	u32 emif_rd_wr_exec_thresh;
-	u32 padding8[55];
-	u32 emif_ddr_ext_phy_ctrl_1;
-	u32 emif_ddr_ext_phy_ctrl_1_shdw;
-	u32 emif_ddr_ext_phy_ctrl_2;
-	u32 emif_ddr_ext_phy_ctrl_2_shdw;
-	u32 emif_ddr_ext_phy_ctrl_3;
-	u32 emif_ddr_ext_phy_ctrl_3_shdw;
-	u32 emif_ddr_ext_phy_ctrl_4;
-	u32 emif_ddr_ext_phy_ctrl_4_shdw;
-	u32 emif_ddr_ext_phy_ctrl_5;
-	u32 emif_ddr_ext_phy_ctrl_5_shdw;
-	u32 emif_ddr_ext_phy_ctrl_6;
-	u32 emif_ddr_ext_phy_ctrl_6_shdw;
-	u32 emif_ddr_ext_phy_ctrl_7;
-	u32 emif_ddr_ext_phy_ctrl_7_shdw;
-	u32 emif_ddr_ext_phy_ctrl_8;
-	u32 emif_ddr_ext_phy_ctrl_8_shdw;
-	u32 emif_ddr_ext_phy_ctrl_9;
-	u32 emif_ddr_ext_phy_ctrl_9_shdw;
-	u32 emif_ddr_ext_phy_ctrl_10;
-	u32 emif_ddr_ext_phy_ctrl_10_shdw;
-	u32 emif_ddr_ext_phy_ctrl_11;
-	u32 emif_ddr_ext_phy_ctrl_11_shdw;
-	u32 emif_ddr_ext_phy_ctrl_12;
-	u32 emif_ddr_ext_phy_ctrl_12_shdw;
-	u32 emif_ddr_ext_phy_ctrl_13;
-	u32 emif_ddr_ext_phy_ctrl_13_shdw;
-	u32 emif_ddr_ext_phy_ctrl_14;
-	u32 emif_ddr_ext_phy_ctrl_14_shdw;
-	u32 emif_ddr_ext_phy_ctrl_15;
-	u32 emif_ddr_ext_phy_ctrl_15_shdw;
-	u32 emif_ddr_ext_phy_ctrl_16;
-	u32 emif_ddr_ext_phy_ctrl_16_shdw;
-	u32 emif_ddr_ext_phy_ctrl_17;
-	u32 emif_ddr_ext_phy_ctrl_17_shdw;
-	u32 emif_ddr_ext_phy_ctrl_18;
-	u32 emif_ddr_ext_phy_ctrl_18_shdw;
-	u32 emif_ddr_ext_phy_ctrl_19;
-	u32 emif_ddr_ext_phy_ctrl_19_shdw;
-	u32 emif_ddr_ext_phy_ctrl_20;
-	u32 emif_ddr_ext_phy_ctrl_20_shdw;
-	u32 emif_ddr_ext_phy_ctrl_21;
-	u32 emif_ddr_ext_phy_ctrl_21_shdw;
-	u32 emif_ddr_ext_phy_ctrl_22;
-	u32 emif_ddr_ext_phy_ctrl_22_shdw;
-	u32 emif_ddr_ext_phy_ctrl_23;
-	u32 emif_ddr_ext_phy_ctrl_23_shdw;
-	u32 emif_ddr_ext_phy_ctrl_24;
-	u32 emif_ddr_ext_phy_ctrl_24_shdw;
+	u32 emif_mod_id_rev;			/* 0x000 */
+	u32 emif_status;			/* 0x004 */
+	u32 emif_sdram_config;			/* 0x008 */
+	u32 emif_lpddr2_nvm_config;		/* 0x00c */
+	u32 emif_sdram_ref_ctrl;		/* 0x010 */
+	u32 emif_sdram_ref_ctrl_shdw;		/* 0x014 */
+	u32 emif_sdram_tim_1;			/* 0x018 */
+	u32 emif_sdram_tim_1_shdw;		/* 0x01c */
+	u32 emif_sdram_tim_2;			/* 0x020 */
+	u32 emif_sdram_tim_2_shdw;		/* 0x024 */
+	u32 emif_sdram_tim_3;			/* 0x028 */
+	u32 emif_sdram_tim_3_shdw;		/* 0x02c */
+	u32 emif_lpddr2_nvm_tim;		/* 0x030 */
+	u32 emif_lpddr2_nvm_tim_shdw;		/* 0x034 */
+	u32 emif_pwr_mgmt_ctrl;			/* 0x038 */
+	u32 emif_pwr_mgmt_ctrl_shdw;		/* 0x03c */
+	u32 emif_lpddr2_mode_reg_data;		/* 0x040 */
+	u32 padding1[1];			/* 0x044 */
+	u32 emif_lpddr2_mode_reg_data_es2;	/* 0x048 */
+	u32 padding11[1];			/* 0x04c */
+	u32 emif_lpddr2_mode_reg_cfg;		/* 0x050 */
+	u32 emif_l3_config;			/* 0x054 */
+	u32 emif_l3_cfg_val_1;			/* 0x058 */
+	u32 emif_l3_cfg_val_2;			/* 0x05c */
+	u32 emif_iodft_tlgc;			/* 0x060 */
+	u32 padding2[7];			/* 0x064 */
+	u32 emif_perf_cnt_1;			/* 0x080 */
+	u32 emif_perf_cnt_2;			/* 0x084 */
+	u32 emif_perf_cnt_cfg;			/* 0x088 */
+	u32 emif_perf_cnt_sel;			/* 0x08c */
+	u32 emif_perf_cnt_tim;			/* 0x090 */
+	u32 padding3;				/* 0x094 */
+	u32 emif_read_idlectrl;			/* 0x098 */
+	u32 emif_read_idlectrl_shdw;		/* 0x09c */
+	u32 padding4;				/* 0x0a0 */
+	u32 emif_irqstatus_raw_sys;		/* 0x0a4 */
+	u32 emif_irqstatus_raw_ll;		/* 0x0a8 */
+	u32 emif_irqstatus_sys;			/* 0x0ac */
+	u32 emif_irqstatus_ll;			/* 0x0b0 */
+	u32 emif_irqenable_set_sys;		/* 0x0b4 */
+	u32 emif_irqenable_set_ll;		/* 0x0b8 */
+	u32 emif_irqenable_clr_sys;		/* 0x0bc */
+	u32 emif_irqenable_clr_ll;		/* 0x0c0 */
+	u32 padding5;				/* 0x0c4 */
+	u32 emif_zq_config;			/* 0x0c8 */
+	u32 emif_temp_alert_config;		/* 0x0cc */
+	u32 emif_l3_err_log;			/* 0x0d0 */
+	u32 emif_rd_wr_lvl_rmp_win;		/* 0x0d4 */
+	u32 emif_rd_wr_lvl_rmp_ctl;		/* 0x0d8 */
+	u32 emif_rd_wr_lvl_ctl;			/* 0x0dc */
+	u32 padding6[1];			/* 0x0e0 */
+	u32 emif_ddr_phy_ctrl_1;		/* 0x0e4 */
+	u32 emif_ddr_phy_ctrl_1_shdw;		/* 0x0e8 */
+	u32 emif_ddr_phy_ctrl_2;		/* 0x0ec */
+	u32 padding7[12];			/* 0x0f0 */
+	u32 emif_rd_wr_exec_thresh;		/* 0x120 */
+	u32 padding8[55];			/* 0x124 */
+	u32 emif_ddr_ext_phy_ctrl_1;		/* 0x200 */
+	u32 emif_ddr_ext_phy_ctrl_1_shdw;	/* 0x204 */
+	u32 emif_ddr_ext_phy_ctrl_2;		/* 0x248 */
+	u32 emif_ddr_ext_phy_ctrl_2_shdw;	/* 0x24c */
+	u32 emif_ddr_ext_phy_ctrl_3;		/* 0x200 */
+	u32 emif_ddr_ext_phy_ctrl_3_shdw;	/* 0x204 */
+	u32 emif_ddr_ext_phy_ctrl_4;		/* 0x208 */
+	u32 emif_ddr_ext_phy_ctrl_4_shdw;	/* 0x20c */
+	u32 emif_ddr_ext_phy_ctrl_5;		/* 0x210 */
+	u32 emif_ddr_ext_phy_ctrl_5_shdw;	/* 0x214 */
+	u32 emif_ddr_ext_phy_ctrl_6;		/* 0x218 */
+	u32 emif_ddr_ext_phy_ctrl_6_shdw;	/* 0x21c */
+	u32 emif_ddr_ext_phy_ctrl_7;		/* 0x220 */
+	u32 emif_ddr_ext_phy_ctrl_7_shdw;	/* 0x224 */
+	u32 emif_ddr_ext_phy_ctrl_8;		/* 0x228 */
+	u32 emif_ddr_ext_phy_ctrl_8_shdw;	/* 0x22c */
+	u32 emif_ddr_ext_phy_ctrl_9;		/* 0x230 */
+	u32 emif_ddr_ext_phy_ctrl_9_shdw;	/* 0x234 */
+	u32 emif_ddr_ext_phy_ctrl_10;		/* 0x238 */
+	u32 emif_ddr_ext_phy_ctrl_10_shdw;	/* 0x23c */
+	u32 emif_ddr_ext_phy_ctrl_11;		/* 0x240 */
+	u32 emif_ddr_ext_phy_ctrl_11_shdw;	/* 0x244 */
+	u32 emif_ddr_ext_phy_ctrl_12;		/* 0x248 */
+	u32 emif_ddr_ext_phy_ctrl_12_shdw;	/* 0x24c */
+	u32 emif_ddr_ext_phy_ctrl_13;		/* 0x250 */
+	u32 emif_ddr_ext_phy_ctrl_13_shdw;	/* 0x254 */
+	u32 emif_ddr_ext_phy_ctrl_14;		/* 0x258 */
+	u32 emif_ddr_ext_phy_ctrl_14_shdw;	/* 0x25c */
+	u32 emif_ddr_ext_phy_ctrl_15;		/* 0x260 */
+	u32 emif_ddr_ext_phy_ctrl_15_shdw;	/* 0x264 */
+	u32 emif_ddr_ext_phy_ctrl_16;		/* 0x268 */
+	u32 emif_ddr_ext_phy_ctrl_16_shdw;	/* 0x26c */
+	u32 emif_ddr_ext_phy_ctrl_17;		/* 0x270 */
+	u32 emif_ddr_ext_phy_ctrl_17_shdw;	/* 0x274 */
+	u32 emif_ddr_ext_phy_ctrl_18;		/* 0x278 */
+	u32 emif_ddr_ext_phy_ctrl_18_shdw;	/* 0x27c */
+	u32 emif_ddr_ext_phy_ctrl_19;		/* 0x280 */
+	u32 emif_ddr_ext_phy_ctrl_19_shdw;	/* 0x284 */
+	u32 emif_ddr_ext_phy_ctrl_20;		/* 0x288 */
+	u32 emif_ddr_ext_phy_ctrl_20_shdw;	/* 0x28c */
+	u32 emif_ddr_ext_phy_ctrl_21;		/* 0x290 */
+	u32 emif_ddr_ext_phy_ctrl_21_shdw;	/* 0x294 */
+	u32 emif_ddr_ext_phy_ctrl_22;		/* 0x298 */
+	u32 emif_ddr_ext_phy_ctrl_22_shdw;	/* 0x29c */
+	u32 emif_ddr_ext_phy_ctrl_23;		/* 0x2a0 */
+	u32 emif_ddr_ext_phy_ctrl_23_shdw;	/* 0x2a4 */
+	u32 emif_ddr_ext_phy_ctrl_24;		/* 0x2a8 */
+	u32 emif_ddr_ext_phy_ctrl_24_shdw;	/* 0x2ac */
 };
 
 struct dmm_lisa_map_regs {
@@ -1141,9 +1141,9 @@ struct lpddr2_mr_regs {
 
 /* assert macros */
 #if defined(DEBUG)
-#define emif_assert(c)	({ if (!(c)) for (;;); })
+#define emif_assert(c)	({ if (!(c)) hang(); })
 #else
-#define emif_assert(c)	({ if (0) hang(); })
+#define emif_assert(c)	(c)
 #endif
 
 #ifdef CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS

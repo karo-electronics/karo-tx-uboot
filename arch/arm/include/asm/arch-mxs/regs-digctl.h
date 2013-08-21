@@ -13,16 +13,16 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_digctl_regs {
-	mxs_reg_32(hw_digctl_ctrl)				/* 0x000 */
-	mxs_reg_32(hw_digctl_status)				/* 0x010 */
-	mxs_reg_32(hw_digctl_hclkcount)			/* 0x020 */
-	mxs_reg_32(hw_digctl_ramctrl)				/* 0x030 */
-	mxs_reg_32(hw_digctl_emi_status)			/* 0x040 */
-	mxs_reg_32(hw_digctl_read_margin)			/* 0x050 */
+	mxs_reg_32(hw_digctl_ctrl);				/* 0x000 */
+	mxs_reg_32(hw_digctl_status);				/* 0x010 */
+	mxs_reg_32(hw_digctl_hclkcount);			/* 0x020 */
+	mxs_reg_32(hw_digctl_ramctrl);				/* 0x030 */
+	mxs_reg_32(hw_digctl_emi_status);			/* 0x040 */
+	mxs_reg_32(hw_digctl_read_margin);			/* 0x050 */
 	uint32_t	hw_digctl_writeonce;			/* 0x060 */
 	uint32_t	reserved_writeonce[3];
-	mxs_reg_32(hw_digctl_bist_ctl)				/* 0x070 */
-	mxs_reg_32(hw_digctl_bist_status)			/* 0x080 */
+	mxs_reg_32(hw_digctl_bist_ctl);				/* 0x070 */
+	mxs_reg_32(hw_digctl_bist_status);			/* 0x080 */
 	uint32_t	hw_digctl_entropy;			/* 0x090 */
 	uint32_t	reserved_entropy[3];
 	uint32_t	hw_digctl_entropy_latched;		/* 0x0a0 */
@@ -30,7 +30,7 @@ struct mxs_digctl_regs {
 
 	uint32_t	reserved1[4];
 
-	mxs_reg_32(hw_digctl_microseconds)			/* 0x0c0 */
+	mxs_reg_32(hw_digctl_microseconds);			/* 0x0c0 */
 	uint32_t	hw_digctl_dbgrd;			/* 0x0d0 */
 	uint32_t	reserved_hw_digctl_dbgrd[3];
 	uint32_t	hw_digctl_dbg;				/* 0x0e0 */
@@ -38,21 +38,21 @@ struct mxs_digctl_regs {
 
 	uint32_t	reserved2[4];
 
-	mxs_reg_32(hw_digctl_usb_loopback)			/* 0x100 */
-	mxs_reg_32(hw_digctl_ocram_status0)			/* 0x110 */
-	mxs_reg_32(hw_digctl_ocram_status1)			/* 0x120 */
-	mxs_reg_32(hw_digctl_ocram_status2)			/* 0x130 */
-	mxs_reg_32(hw_digctl_ocram_status3)			/* 0x140 */
-	mxs_reg_32(hw_digctl_ocram_status4)			/* 0x150 */
-	mxs_reg_32(hw_digctl_ocram_status5)			/* 0x160 */
-	mxs_reg_32(hw_digctl_ocram_status6)			/* 0x170 */
-	mxs_reg_32(hw_digctl_ocram_status7)			/* 0x180 */
-	mxs_reg_32(hw_digctl_ocram_status8)			/* 0x190 */
-	mxs_reg_32(hw_digctl_ocram_status9)			/* 0x1a0 */
-	mxs_reg_32(hw_digctl_ocram_status10)			/* 0x1b0 */
-	mxs_reg_32(hw_digctl_ocram_status11)			/* 0x1c0 */
-	mxs_reg_32(hw_digctl_ocram_status12)			/* 0x1d0 */
-	mxs_reg_32(hw_digctl_ocram_status13)			/* 0x1e0 */
+	mxs_reg_32(hw_digctl_usb_loopback);			/* 0x100 */
+	mxs_reg_32(hw_digctl_ocram_status0);			/* 0x110 */
+	mxs_reg_32(hw_digctl_ocram_status1);			/* 0x120 */
+	mxs_reg_32(hw_digctl_ocram_status2);			/* 0x130 */
+	mxs_reg_32(hw_digctl_ocram_status3);			/* 0x140 */
+	mxs_reg_32(hw_digctl_ocram_status4);			/* 0x150 */
+	mxs_reg_32(hw_digctl_ocram_status5);			/* 0x160 */
+	mxs_reg_32(hw_digctl_ocram_status6);			/* 0x170 */
+	mxs_reg_32(hw_digctl_ocram_status7);			/* 0x180 */
+	mxs_reg_32(hw_digctl_ocram_status8);			/* 0x190 */
+	mxs_reg_32(hw_digctl_ocram_status9);			/* 0x1a0 */
+	mxs_reg_32(hw_digctl_ocram_status10);			/* 0x1b0 */
+	mxs_reg_32(hw_digctl_ocram_status11);			/* 0x1c0 */
+	mxs_reg_32(hw_digctl_ocram_status12);			/* 0x1d0 */
+	mxs_reg_32(hw_digctl_ocram_status13);			/* 0x1e0 */
 
 	uint32_t	reserved3[36];
 
@@ -62,7 +62,7 @@ struct mxs_digctl_regs {
 	uint32_t	reserved_hw_digctl_scratch1[3];
 	uint32_t	hw_digctl_armcache;			/* 0x2a0 */
 	uint32_t	reserved_hw_digctl_armcache[3];
-	mxs_reg_32(hw_digctl_debug_trap)			/* 0x2b0 */
+	mxs_reg_32(hw_digctl_debug_trap);			/* 0x2b0 */
 	uint32_t	hw_digctl_debug_trap_l0_addr_low;	/* 0x2c0 */
 	uint32_t	reserved_hw_digctl_debug_trap_l0_addr_low[3];
 	uint32_t	hw_digctl_debug_trap_l0_addr_high;	/* 0x2d0 */

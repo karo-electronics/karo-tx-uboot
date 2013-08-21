@@ -43,6 +43,60 @@ static const struct gpio_bank gpio_bank_am33xx[4] = {
 
 const struct gpio_bank *const omap_gpio_bank = gpio_bank_am33xx;
 
+#ifdef CONFIG_HW_WATCHDOG
+void hw_watchdog_reset(void)
+{
+	struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
+	static int trg __attribute__((section(".data")));
+
+	switch (trg) {
+	case 0:
+	case 1:
+		if (readl(&wdtimer->wdtwwps) & (1 << 4))
+			return;
+		writel(trg ? 0x5555 : 0xaaaa, &wdtimer->wdtwspr);
+		break;
+	case 2:
+		if (readl(&wdtimer->wdtwwps) & (1 << 2))
+			return;
+		/* 10 sec timeout */
+		writel(-32768 * 10, &wdtimer->wdtwldr);
+
+		if (readl(&wdtimer->wdtwwps) & (1 << 0))
+			return;
+		/* prescaler = 1 */
+		writel(0, &wdtimer->wdtwclr);
+		break;
+
+	case 3:
+	case 4:
+		/* enable watchdog */
+		if (readl(&wdtimer->wdtwwps) & (1 << 4))
+			return;
+		writel((trg & 1) ? 0xBBBB : 0x4444, &wdtimer->wdtwspr);
+		break;
+
+	default:
+		/* retrigger watchdog */
+		if (readl(&wdtimer->wdtwwps) & (1 << 3))
+			return;
+
+		writel(trg, &wdtimer->wdtwtgr);
+		trg ^= 0x2;
+		return;
+	}
+	trg++;
+}
+#endif
+
+#ifndef CONFIG_SYS_DCACHE_OFF
+void enable_caches(void)
+{
+	/* Enable D-cache. I-cache is already enabled in start.S */
+	dcache_enable();
+}
+#endif
+
 #if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
 int cpu_mmc_init(bd_t *bis)
 {

@@ -40,7 +40,7 @@ int spl_start_uboot(void);
 void spl_display_print(void);
 
 /* NAND SPL functions */
-void spl_nand_load_image(void);
+int spl_nand_load_image(void);
 
 /* OneNAND SPL functions */
 void spl_onenand_load_image(void);

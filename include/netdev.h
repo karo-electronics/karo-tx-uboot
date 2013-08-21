@@ -213,4 +213,40 @@ int fec_probe(bd_t *bd, int dev_id, uint32_t base_addr,
 int fecmxc_register_mii_postcall(struct eth_device *dev, int (*cb)(int));
 #endif
 
+#ifdef CONFIG_DRIVER_TI_CPSW
+enum {
+	CPSW_CTRL_VERSION_1 = 0, /* version1 devices */
+	CPSW_CTRL_VERSION_2      /* version2 devices */
+};
+
+struct cpsw_slave_data {
+	u32		slave_reg_ofs;
+	u32		sliver_reg_ofs;
+	int		phy_id;
+	int		phy_if;
+};
+
+struct cpsw_platform_data {
+	u32	mdio_base;
+	u32	cpsw_base;
+	int	mdio_div;
+	int	channels;       /* number of cpdma channels (symmetric)	*/
+	u32     cpdma_reg_ofs;  /* cpdma register offset		*/
+	int     slaves;         /* number of slave cpgmac ports		*/
+	u32     ale_reg_ofs;    /* address lookup engine reg offset	*/
+	int     ale_entries;	/* ale table size			*/
+	u32	host_port_reg_ofs;	/* cpdma host port registers	*/
+	u32	hw_stats_reg_ofs;	/* cpsw hw stats counters	*/
+	u32	mac_control;
+	struct cpsw_slave_data  *slave_data;
+	void	(*control)(int enabled);
+	void	(*phy_init)(char *name, int addr);
+	u32	gigabit_en;	/* gigabit capable AND enabled		*/
+	u32	host_port_num;
+	u8	version;
+};
+
+int cpsw_register(struct cpsw_platform_data *data);
+#endif /* CONFIG_DRIVER_TI_CPSW */
+
 #endif /* _NETDEV_H_ */

@@ -10,7 +10,7 @@
 
 #ifndef __ASSEMBLY__
 struct exynos4_sysreg {
-	unsigned char	res1[0x210];
+	unsigned int	res1[0x210 / 4];
 	unsigned int	display_ctrl;
 	unsigned int	display_ctrl2;
 	unsigned int	camera_control;
@@ -19,7 +19,7 @@ struct exynos4_sysreg {
 };
 
 struct exynos5_sysreg {
-	unsigned char	res1[0x214];
+	unsigned int	res1[0x214 / 4];
 	unsigned int	disp1blk_cfg;
 	unsigned int	disp2blk_cfg;
 	unsigned int	hdcp_e_fuse;
@@ -28,7 +28,7 @@ struct exynos5_sysreg {
 	unsigned int	reserved;
 	unsigned int	ispblk_cfg;
 	unsigned int	usb20phy_cfg;
-	unsigned char	res2[0x29c];
+	unsigned int	res2[0x29c / 4];
 	unsigned int	mipi_dphy;
 	unsigned int	dptx_dphy;
 	unsigned int	phyclk_sel;

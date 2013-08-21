@@ -158,18 +158,17 @@ static void mxs_mem_init_clock(void)
 	writeb(CLKCTRL_FRAC_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_frac0_clr[CLKCTRL_FRAC0_EMI]);
 
-	early_delay(11000);
 
 	/* Set EMI clock divider for EMI clock to 411 / 2 = 205MHz */
 	writel((2 << CLKCTRL_EMI_DIV_EMI_OFFSET) |
 		(1 << CLKCTRL_EMI_DIV_XTAL_OFFSET),
 		&clkctrl_regs->hw_clkctrl_emi);
+	while (readl(&clkctrl_regs->hw_clkctrl_emi) & CLKCTRL_EMI_BUSY_REF_EMI)
+		;
 
 	/* Unbypass EMI */
 	writel(CLKCTRL_CLKSEQ_BYPASS_EMI,
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
-
-	early_delay(10000);
 }
 
 static void mxs_mem_setup_cpu_and_hbus(void)
@@ -187,51 +186,56 @@ static void mxs_mem_setup_cpu_and_hbus(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_set);
 
 	/* HBUS = 151MHz */
-	writel(CLKCTRL_HBUS_DIV_MASK, &clkctrl_regs->hw_clkctrl_hbus_set);
-	writel(((~3) << CLKCTRL_HBUS_DIV_OFFSET) & CLKCTRL_HBUS_DIV_MASK,
-		&clkctrl_regs->hw_clkctrl_hbus_clr);
-
-	early_delay(10000);
+	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_hbus,
+			CLKCTRL_HBUS_DIV_MASK,
+			3 << CLKCTRL_HBUS_DIV_OFFSET);
+	while (readl(&clkctrl_regs->hw_clkctrl_hbus) & CLKCTRL_HBUS_ASM_BUSY)
+		;
 
 	/* CPU clock divider = 1 */
 	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_cpu,
-			CLKCTRL_CPU_DIV_CPU_MASK, 1);
+			CLKCTRL_CPU_DIV_CPU_MASK,
+			1 << CLKCTRL_CPU_DIV_CPU_OFFSET);
+	while (readl(&clkctrl_regs->hw_clkctrl_cpu) & CLKCTRL_CPU_BUSY_REF_CPU)
+		;
 
 	/* Disable CPU bypass */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
-
-	early_delay(15000);
 }
 
-static void mxs_mem_setup_vdda(void)
+#define MEM_ABORT_FUNC
+
+#ifdef MEM_ABORT_FUNC
+static void data_abort_memdetect_handler(void)
 {
-	struct mxs_power_regs *power_regs =
-		(struct mxs_power_regs *)MXS_POWER_BASE;
-
-	writel((0xc << POWER_VDDACTRL_TRG_OFFSET) |
-		(0x7 << POWER_VDDACTRL_BO_OFFSET_OFFSET) |
-		POWER_VDDACTRL_LINREG_OFFSET_1STEPS_BELOW,
-		&power_regs->hw_power_vddactrl);
+	asm volatile("subs pc, lr, #4");
 }
+#endif
 
 uint32_t mxs_mem_get_size(void)
 {
 	uint32_t sz, da;
 	uint32_t *vt = (uint32_t *)0x20;
-	/* The following is "subs pc, r14, #4", used as return from DABT. */
-	const uint32_t data_abort_memdetect_handler = 0xe25ef004;
 
 	/* Replace the DABT handler. */
 	da = vt[4];
-	vt[4] = data_abort_memdetect_handler;
-
-	sz = get_ram_size((long *)PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE);
+#ifdef MEM_ABORT_FUNC
+	vt[4] = (uint32_t)data_abort_memdetect_handler;
+#else
+	vt[4] = (uint32_t)&&data_abort_memdetect_handler;
+#endif
+	sz = get_ram_size((long *)PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE * 2);
 
 	/* Restore the old DABT handler. */
 	vt[4] = da;
 
 	return sz;
+
+#ifndef MEM_ABORT_FUNC
+data_abort_memdetect_handler:
+	asm volatile("subs pc, lr, #4");
+#endif
 }
 
 #ifdef CONFIG_MX23
@@ -317,15 +321,11 @@ void mxs_mem_init(void)
 
 	mxs_mem_init_clock();
 
-	mxs_mem_setup_vdda();
-
 #if defined(CONFIG_MX23)
 	mx23_mem_init();
 #elif defined(CONFIG_MX28)
 	mx28_mem_init();
 #endif
-
-	early_delay(10000);
 
 	mxs_mem_setup_cpu_and_hbus();
 }

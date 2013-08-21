@@ -1,0 +1,377 @@
+/*
+ * Copyright 2012 <LW@KARO-electronics.de>
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/dts-v1/;
+#include "mx28.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TX28 module";
+	compatible = "karo,tx28", "fsl,imx28";
+
+	aliases {
+		usbphy0 = &usbphy0;
+		usbphy1 = &usbphy1;
+		usbotg = &usb0;
+		usbh1 = &usb1;
+		can1 = &can1;
+		ethernet0 = &mac0;
+		ethernet1 = &mac1;
+		ds1339 = &ds1339;
+		pca9554 = &pca9554;
+		stk5led = &stk5_led;
+	};
+
+	memory {
+		reg = <0 0>;
+	};
+
+	apb@80000000 {
+		apbh@80000000 {
+			ssp0: ssp@80010000 {
+				compatible = "fsl,imx28-mmc";
+				pinctrl-names = "default";
+				pinctrl-0 = <&mmc0_4bit_pins_a
+					     &mmc0_cd_cfg
+					     &mmc0_sck_cfg>;
+				bus-width = <4>;
+				status = "okay";
+			};
+
+			pinctrl@80018000 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&hog_pins_a>;
+
+				hog_pins_a: hog-gpios@1 {
+					reg = <0>;
+					fsl,pinmux-ids = <
+						0x31b3 /* MX28_PAD_SPDIF__GPIO_3_27 */
+					>;
+					fsl,drive-strength = <0>;
+					fsl,voltage = <1>;
+					fsl,pull-up = <0>;
+				};
+
+				hog_pins_stk_v3_led: hog-gpios@0 {
+					reg = <0>;
+					fsl,pinmux-ids = <
+						0x40a3 /* MX28_PAD_ENET0_RXD3__GPIO_4_10 */
+					>;
+					fsl,drive-strength = <0>;
+					fsl,voltage = <1>;
+					fsl,pull-up = <0>;
+				};
+
+				mac0_pins_gpio: mac0-gpio-mode@0 {
+					reg = <0>;
+					fsl,pinmux-ids = <
+						0x4003 /* MX28_PAD_ENET0_MDC__GPIO_4_0 */
+						0x4013 /* MX28_PAD_ENET0_MDIO__GPIO_4_1 */
+						0x4023 /* MX28_PAD_ENET0_RX_EN__GPIO_4_2 */
+						0x4033 /* MX28_PAD_ENET0_RXD0__GPIO_4_3 */
+						0x4043 /* MX28_PAD_ENET0_RXD1__GPIO_4_4 */
+						0x4063 /* MX28_PAD_ENET0_TX_EN__GPIO_4_6 */
+						0x4073 /* MX28_PAD_ENET0_TXD0__GPIO_4_7 */
+						0x4083 /* MX28_PAD_ENET0_TXD1__GPIO_4_8 */
+						0x4103 /* MX28_PAD_ENET_CLK__GPIO_4_16 */
+					>;
+					fsl,drive-strength = <0>;
+					fsl,voltage = <1>;
+					fsl,pull-up = <0>;
+				};
+
+				lcdif_pins_tx28: lcdif-tx28@0 {
+					fsl,pinmux-ids = <
+						0x1181 /* MX28_PAD_LCD_RD_E__LCD_VSYNC */
+						0x1191 /* MX28_PAD_LCD_WR_RWN__LCD_HSYNC */
+						0x11a1 /* MX28_PAD_LCD_RS__LCD_DOTCLK */
+						0x11b1 /* MX28_PAD_LCD_CS__LCD_ENABLE */
+					>;
+					fsl,drive-strength = <0>;
+					fsl,voltage = <1>;
+					fsl,pull-up = <0>;
+				};
+			};
+
+			lcdif@80030000 {
+				status = "okay";
+
+                                pinctrl-names = "default";
+                                pinctrl-0 = <&lcdif_24bit_pins_a
+                                             &lcdif_pins_tx28>;
+			};
+
+			can0: can@80032000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&can0_pins_a>;
+				transceiver-switch = <&flexcan_transceiver>;
+			};
+
+			can1: can@80034000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&can1_pins_a>;
+				transceiver-switch = <&flexcan_transceiver>;
+			};
+		};
+
+		apbx@80040000 {
+			saif0: saif@80042000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&saif0_pins_a>;
+			};
+
+			saif1: saif@80046000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&saif1_pins_a>;
+				fsl,saif-master = <&saif0>;
+			};
+
+			lradc@80050000 {
+				status = "okay";
+			};
+
+			i2c0: i2c@80058000 {
+				status = "okay";
+
+				clock-frequency = <400000>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&i2c0_pins_a>;
+
+				ds1339: rtc@68 {
+					compatible = "maxim,ds1339";
+					reg = <0x68>;
+				};
+
+				pca9554: pca953x@20 {
+					compatible = "nxp,pca953x";
+					reg = <0x20>;
+					interrupt-parent = <&gpio3>;
+					interrupts = <20>;
+				};
+
+				codec: sgtl5000@0a {
+					compatible = "fsl,sgtl5000";
+					reg = <0x0a>;
+					VDDA-supply = <&reg_2p5v>;
+					VDDIO-supply = <&reg_3p3v>;
+				};
+
+				touchscreen: tsc2007@48 {
+					compatible = "ti,tsc2007";
+					reg = <0x48>;
+					interrupt-parent = <&gpio3>;
+					interrupts = <20 0>;
+					pendown-gpio = <&gpio3 20 1>;
+					model = "2007";
+					x-plate-ohms = <660>;
+				};
+
+				polytouch: edt-ft5x06@ {
+					compatible = "edt,edt-ft5x06";
+					reg = <0x38>;
+					interrupt-parent = <&gpio2>;
+					interrupts = <5>;
+					reset-switch = <&edt_ft5x06_reset>;
+					wake-switch = <&edt_ft5x06_wake>;
+				};
+			};
+
+			pwm: pwm@80064000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pwm0_pins_a>;
+			};
+
+			auart1: serial@8006c000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&auart1_pins_a>;
+			};
+
+			auart3: serial@80070000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&auart3_pins_a>;
+			};
+
+			duart: serial@80074000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&duart_4pins_a>;
+			};
+
+			usbphy0: usbphy@8007c000 {
+				status = "okay";
+			};
+
+			usbphy1: usbphy@8007e000 {
+				status = "okay";
+			};
+		};
+	};
+
+	ahb@80080000 {
+		usb0: usb@80080000 {
+			status = "okay";
+
+                        vbus-supply = <&reg_usb0_vbus>;
+                        pinctrl-names = "default";
+		};
+
+		usb1: usb@80090000 {
+			status = "okay";
+
+                        vbus-supply = <&reg_usb1_vbus>;
+                        pinctrl-names = "default";
+		};
+
+		gpmi-nand@8000c000 {
+			status = "okay";
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&gpmi_pins_a>;
+		};
+
+		mac0: ethernet@800f0000 {
+			phy-mode = "rmii";
+			pinctrl-names = "default";
+			pinctrl-0 = <&mac0_pins_a>;
+			status = "okay";
+			mac-address = [000000000000]; /* will be set bootloader */
+		};
+
+		mac1: ethernet@800f4000 {
+			phy-mode = "rmii";
+			pinctrl-names = "default";
+			pinctrl-0 = <&mac1_pins_a>;
+			status = "okay";
+			mac-address = [000000000000]; /* will be set by bootloader */
+		};
+	};
+
+	stk5_led: leds {
+		compatible = "gpio-leds";
+
+		user {
+			label = "Heartbeat";
+			pinctrl-names = "default";
+			pinctrl-0 = <&hog_pins_stk_v3_led>;
+			gpios = <&gpio4 10 0>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 0 5000000>;
+		brightness-levels = <100 95 90 85 80 75 70 65 60 55
+				      50 45 40 35 30 25 20 15 10 5 0>;
+		default-brightness-level = <20>;
+	};
+
+	gpio-switch {
+		compatible = "gpio-switches", "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		flexcan_transceiver: gpio-switch@0 {
+			label = "flexcan transceiver switch";
+			gpios = <&gpio1 0 1>;
+			gpio-shared;
+		};
+
+		lcd_power: gpio-switch@1 {
+			compatible = "linux,gpio-switch";
+			gpios = <&gpio1 31 0>;
+			label = "LCD Power Enable";
+			init-state = <0>;
+		};
+
+		lcd_reset: gpio-switch@2 {
+			compatible = "linux,gpio-switch";
+			gpios = <&gpio3 30 1>;
+			label = "LCD Reset";
+			init-state = <1>;
+		};
+
+		edt_ft5x06_reset: gpio-switch@3 {
+			compatible = "linux,gpio-switch";
+			gpios = <&gpio2 6 1>;
+			label = "EDT-FT5x06 RESET";
+		};
+
+		edt_ft5x06_wake: gpio-switch@4 {
+			compatible = "linux,gpio-switch";
+			gpios = <&gpio4 9 0>;
+			label = "EDT-FT5x06 WAKE";
+			init-state = <1>;
+		};
+
+		usbotg_vbus: gpio-switch@5 {
+			compatible = "linux,gpio-switch";
+			gpios = <&gpio0 18 0>;
+			label = "USBOTG VBUS";
+		};
+
+		usbh1_vbus: gpio-switch@6 {
+			compatible = "linux,gpio-switch";
+			gpios = <&gpio3 27 0>;
+			label = "USBH1 VBUS";
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_2p5v: 2p5v {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3p3v: 3p3v {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+
+                reg_usb0_vbus: usb0_vbus {
+                        compatible = "regulator-fixed";
+                        regulator-name = "usb0_vbus";
+                        regulator-min-microvolt = <5000000>;
+                        regulator-max-microvolt = <5000000>;
+                        gpio = <&gpio0 18 1>;
+                };
+
+                reg_usb1_vbus: usb1_vbus {
+                        compatible = "regulator-fixed";
+                        regulator-name = "usb1_vbus";
+                        regulator-min-microvolt = <5000000>;
+                        regulator-max-microvolt = <5000000>;
+                        gpio = <&gpio3 27 1>;
+                };
+	};
+};

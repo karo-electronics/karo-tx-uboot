@@ -68,6 +68,7 @@ int timer_init(void)
 	gd->arch.tbl = __raw_readl(&cur_gpt->counter);
 	gd->arch.tbu = 0;
 
+	gd->arch.timer_rate_hz = MXC_CLK32;
 	return 0;
 }
 
@@ -117,5 +118,5 @@ void __udelay(unsigned long usec)
  */
 ulong get_tbclk(void)
 {
-	return MXC_CLK32;
+	return gd->arch.timer_rate_hz;
 }

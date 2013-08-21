@@ -105,11 +105,11 @@ struct i2c_pads_info i2c_pad_info2 = {
 };
 
 iomux_v3_cfg_t const i2c3_pads[] = {
-	MX6_PAD_EIM_A24__GPIO_5_4		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_A24__GPIO_5_4,
 };
 
 iomux_v3_cfg_t const port_exp[] = {
-	MX6_PAD_SD2_DAT0__GPIO_1_15		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_SD2_DAT0__GPIO_1_15,
 };
 
 static void setup_iomux_enet(void)
@@ -129,7 +129,7 @@ iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_DAT6__USDHC3_DAT6	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT7__USDHC3_DAT7	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_GPIO_18__USDHC3_VSELECT | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_CS2__GPIO_6_15   | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_NANDF_CS2__GPIO_6_15,
 };
 
 static void setup_iomux_uart(void)

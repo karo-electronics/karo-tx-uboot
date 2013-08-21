@@ -437,7 +437,7 @@ extern int		NetRestartWrap;		/* Tried all network devices */
 
 enum proto_t {
 	BOOTP, RARP, ARP, TFTPGET, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP,
-	TFTPSRV, TFTPPUT, LINKLOCAL
+	TFTPSRV, TFTPPUT, LINKLOCAL, BOOTME
 };
 
 /* from net/net.c */
@@ -573,6 +573,9 @@ static inline void eth_set_last_protocol(int protocol)
 	net_loop_last_protocol = protocol;
 #endif
 }
+#ifdef CONFIG_CMD_BOOTCE
+void BootmeStart(void);
+#endif
 
 /*
  * Check if autoload is enabled. If so, use either NFS or TFTP to download

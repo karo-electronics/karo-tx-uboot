@@ -46,9 +46,6 @@ struct mxc_pll_reg *mxc_plls[PLL_CLOCKS] = {
 #define EMI_DIV_MAX     8
 #define NFC_DIV_MAX     8
 
-#define MX5_CBCMR	0x00015154
-#define MX5_CBCDR	0x02888945
-
 struct fixed_pll_mfd {
 	u32 ref_clk_hz;
 	u32 mfd;
@@ -73,6 +70,93 @@ struct pll_param {
 
 struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)MXC_CCM_BASE;
 
+int clk_enable(struct clk *clk)
+{
+	int ret = 0;
+
+	if (!clk)
+		return 0;
+	if (clk->usecount++ == 0) {
+		ret = clk->enable(clk);
+		if (ret)
+			clk->usecount--;
+	}
+	return ret;
+}
+
+void clk_disable(struct clk *clk)
+{
+	if (!clk)
+		return;
+
+	if (!(--clk->usecount)) {
+		if (clk->disable)
+			clk->disable(clk);
+	}
+	if (clk->usecount < 0) {
+		printf("%s: clk %p underflow\n", __func__, clk);
+		hang();
+	}
+}
+
+int clk_get_usecount(struct clk *clk)
+{
+	if (clk == NULL)
+		return 0;
+
+	return clk->usecount;
+}
+
+u32 clk_get_rate(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->rate;
+}
+
+struct clk *clk_get_parent(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->parent;
+}
+
+int clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk && clk->set_rate)
+		clk->set_rate(clk, rate);
+	return clk->rate;
+}
+
+long clk_round_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk == NULL || !clk->round_rate)
+		return 0;
+
+	return clk->round_rate(clk, rate);
+}
+
+int clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	debug("Setting parent of clk %p to %p (%p)\n", clk, parent,
+		clk ? clk->parent : NULL);
+
+	if (!clk || clk == parent)
+		return 0;
+
+	if (clk->set_parent) {
+		int ret;
+
+		ret = clk->set_parent(clk, parent);
+		if (ret)
+			return ret;
+	}
+	clk->parent = parent;
+	return 0;
+}
+
 void set_usboh3_clk(void)
 {
 	clrsetbits_le32(&mxc_ccm->cscmr1,
@@ -92,6 +176,34 @@ void enable_usboh3_clk(unsigned char enable)
 	clrsetbits_le32(&mxc_ccm->CCGR2,
 			MXC_CCM_CCGR2_USBOH3_60M(MXC_CCM_CCGR_CG_MASK),
 			MXC_CCM_CCGR2_USBOH3_60M(cg));
+}
+
+void ipu_clk_enable(void)
+{
+	/* IPU root clock derived from AXI B */
+	clrsetbits_le32(&mxc_ccm->cbcmr, MXC_CCM_CBCMR_IPU_HSP_CLK_SEL_MASK,
+			MXC_CCM_CBCMR_IPU_HSP_CLK_SEL(1));
+
+	setbits_le32(&mxc_ccm->CCGR5,
+		MXC_CCM_CCGR5_IPU(MXC_CCM_CCGR_CG_MASK));
+
+	/* Handshake with IPU when certain clock rates are changed. */
+	clrbits_le32(&mxc_ccm->ccdr, MXC_CCM_CCDR_IPU_HS_MASK);
+
+	/* Handshake with IPU when LPM is entered as its enabled. */
+	clrbits_le32(&mxc_ccm->clpcr, MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS);
+}
+
+void ipu_clk_disable(void)
+{
+	clrbits_le32(&mxc_ccm->CCGR5,
+		MXC_CCM_CCGR5_IPU(MXC_CCM_CCGR_CG_MASK));
+
+	/* Handshake with IPU when certain clock rates are changed. */
+	setbits_le32(&mxc_ccm->ccdr, MXC_CCM_CCDR_IPU_HS_MASK);
+
+	/* Handshake with IPU when LPM is entered as its enabled. */
+	setbits_le32(&mxc_ccm->clpcr, MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS);
 }
 
 #ifdef CONFIG_I2C_MXC
@@ -561,8 +673,7 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	 */
 	if (n_target < PLL_FREQ_MIN(ref) ||
 		n_target > PLL_FREQ_MAX(ref)) {
-		printf("Targeted peripheral clock should be"
-			"within [%d - %d]\n",
+		printf("Targeted peripheral clock should be within [%d - %d]\n",
 			PLL_FREQ_MIN(ref) / SZ_DEC_1M,
 			PLL_FREQ_MAX(ref) / SZ_DEC_1M);
 		return -EINVAL;
@@ -628,71 +739,63 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 
 #define CHANGE_PLL_SETTINGS(pll, pd, fi, fn, fd) \
 	{	\
-		writel(0x1232, &pll->ctrl);		\
-		writel(0x2, &pll->config);		\
-		writel((((pd) - 1) << 0) | ((fi) << 4),	\
-			&pll->op);			\
-		writel(fn, &(pll->mfn));		\
-		writel((fd) - 1, &pll->mfd);		\
-		writel((((pd) - 1) << 0) | ((fi) << 4),	\
-			&pll->hfs_op);			\
-		writel(fn, &pll->hfs_mfn);		\
-		writel((fd) - 1, &pll->hfs_mfd);	\
-		writel(0x1232, &pll->ctrl);		\
-		while (!readl(&pll->ctrl) & 0x1)	\
+		__raw_writel(0x1232, &pll->ctrl);		\
+		__raw_writel(0x2, &pll->config);		\
+		__raw_writel((((pd) - 1) << 0) | ((fi) << 4),	\
+			&pll->op);				\
+		__raw_writel(fn, &(pll->mfn));			\
+		__raw_writel((fd) - 1, &pll->mfd);		\
+		__raw_writel((((pd) - 1) << 0) | ((fi) << 4),	\
+			&pll->hfs_op);				\
+		__raw_writel(fn, &pll->hfs_mfn);		\
+		__raw_writel((fd) - 1, &pll->hfs_mfd);		\
+		__raw_writel(0x1232, &pll->ctrl);		\
+		while (!__raw_readl(&pll->ctrl) & 0x1)		\
 			;\
 	}
 
 static int config_pll_clk(enum pll_clocks index, struct pll_param *pll_param)
 {
-	u32 ccsr = readl(&mxc_ccm->ccsr);
+	u32 ccsr = __raw_readl(&mxc_ccm->ccsr);
 	struct mxc_pll_reg *pll = mxc_plls[index];
 
 	switch (index) {
 	case PLL1_CLOCK:
 		/* Switch ARM to PLL2 clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL1_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x4, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL1_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x4, &mxc_ccm->ccsr);
 		break;
 	case PLL2_CLOCK:
 		/* Switch to pll2 bypass clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL2_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x2, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL2_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x2, &mxc_ccm->ccsr);
 		break;
 	case PLL3_CLOCK:
 		/* Switch to pll3 bypass clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL3_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x1, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL3_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x1, &mxc_ccm->ccsr);
 		break;
 #ifdef CONFIG_MX53
 	case PLL4_CLOCK:
 		/* Switch to pll4 bypass clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL4_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x20, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL4_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x20, &mxc_ccm->ccsr);
 		break;
 #endif
 	default:
@@ -713,7 +816,9 @@ static int config_core_clk(u32 ref, u32 freq)
 	/* The case that periph uses PLL1 is not considered here */
 	ret = calc_pll_params(ref, freq, &pll_param);
 	if (ret != 0) {
-		printf("Error:Can't find pll parameters: %d\n", ret);
+		printf("Error: Can't find pll parameters for %u.%03uMHz ref %u.%03uMHz\n",
+			freq / 1000000, freq / 1000 % 1000,
+			ref / 1000000, ref / 1000 % 1000);
 		return ret;
 	}
 
@@ -902,28 +1007,38 @@ void mxc_set_sata_internal_clock(void)
 /*
  * Dump some core clockes.
  */
+#define pr_clk_val(c, v) {					\
+	printf("%-11s %3lu.%03lu MHz\n", #c,			\
+		(v) / 1000000, (v) / 1000 % 1000);		\
+}
+
+#define pr_clk(c) {						\
+	unsigned long __clk = mxc_get_clock(MXC_##c##_CLK);	\
+	pr_clk_val(c, __clk);					\
+}
+
 int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	u32 freq;
+	unsigned long freq;
 
 	freq = decode_pll(mxc_plls[PLL1_CLOCK], MXC_HCLK);
-	printf("PLL1       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL1, freq);
 	freq = decode_pll(mxc_plls[PLL2_CLOCK], MXC_HCLK);
-	printf("PLL2       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL2, freq);
 	freq = decode_pll(mxc_plls[PLL3_CLOCK], MXC_HCLK);
-	printf("PLL3       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL3, freq);
 #ifdef	CONFIG_MX53
 	freq = decode_pll(mxc_plls[PLL4_CLOCK], MXC_HCLK);
-	printf("PLL4       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL4, freq);
 #endif
 
 	printf("\n");
-	printf("AHB        %8d kHz\n", mxc_get_clock(MXC_AHB_CLK) / 1000);
-	printf("IPG        %8d kHz\n", mxc_get_clock(MXC_IPG_CLK) / 1000);
-	printf("IPG PERCLK %8d kHz\n", mxc_get_clock(MXC_IPG_PERCLK) / 1000);
-	printf("DDR        %8d kHz\n", mxc_get_clock(MXC_DDR_CLK) / 1000);
+	pr_clk(AHB);
+	pr_clk(IPG);
+	pr_clk(IPG);
+	pr_clk(DDR);
 #ifdef CONFIG_MXC_SPI
-	printf("CSPI       %8d kHz\n", mxc_get_clock(MXC_CSPI_CLK) / 1000);
+	pr_clk(CSPI);
 #endif
 	return 0;
 }

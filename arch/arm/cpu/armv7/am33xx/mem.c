@@ -20,8 +20,6 @@
 #include <asm/arch/sys_proto.h>
 #include <command.h>
 
-struct gpmc *gpmc_cfg;
-
 #if defined(CONFIG_CMD_NAND)
 static const u32 gpmc_m_nand[GPMC_MAX_REG] = {
 	M_NAND_GPMC_CONFIG1,
@@ -60,8 +58,7 @@ void enable_gpmc_cs_config(const u32 *gpmc_config, struct gpmc_cs *cs, u32 base,
 void gpmc_init(void)
 {
 	/* putting a blanket check on GPMC based on ZeBu for now */
-	gpmc_cfg = (struct gpmc *)GPMC_BASE;
-
+	struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
 #ifdef CONFIG_CMD_NAND
 	const u32 *gpmc_config = NULL;
 	u32 base = 0;

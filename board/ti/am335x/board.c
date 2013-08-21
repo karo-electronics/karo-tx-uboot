@@ -24,7 +24,7 @@
 #include <asm/gpio.h>
 #include <i2c.h>
 #include <miiphy.h>
-#include <cpsw.h>
+//#include <cpsw.h>
 #include "board.h"
 
 DECLARE_GLOBAL_DATA_PTR;

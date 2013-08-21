@@ -55,12 +55,7 @@ void reset_cpu(ulong addr)
 {
 	struct watchdog_regs *wdog = (struct watchdog_regs *)WDOG1_BASE_ADDR;
 
-	writew(WCR_WDE, &wdog->wcr);
-	writew(0x5555, &wdog->wsr);
-	writew(0xaaaa, &wdog->wsr);	/* load minimum 1/2 second timeout */
 	while (1) {
-		/*
-		 * spin for .5 seconds before reset
-		 */
+		writew(0, &wdog->wcr); /* clear SRS initiating SOFT reset */
 	}
 }

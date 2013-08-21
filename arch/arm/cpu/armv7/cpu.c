@@ -17,6 +17,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <lcd.h>
 #include <asm/system.h>
 #include <asm/cache.h>
 #include <asm/armv7.h>
@@ -34,7 +35,15 @@ int cleanup_before_linux(void)
 	 */
 #ifndef CONFIG_SPL_BUILD
 	disable_interrupts();
-#endif
+#ifdef CONFIG_LCD
+	{
+		/* switch off LCD panel */
+		lcd_panel_disable();
+		/* disable LCD controller */
+		lcd_disable();
+	}
+#endif /* CONFIG_LCD */
+#endif /* CONFIG_SPL_BUILD */
 
 	/*
 	 * Turn off I-cache and invalidate it

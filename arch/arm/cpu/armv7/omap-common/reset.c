@@ -9,6 +9,7 @@
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
+#include <common.h>
 #include <config.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -16,6 +17,8 @@
 
 void __weak reset_cpu(unsigned long ignored)
 {
+	/* clear the reset status flags */
+	writel(readl(PRM_RSTST), PRM_RSTST);
 	writel(PRM_RSTCTRL_RESET, PRM_RSTCTRL);
 }
 

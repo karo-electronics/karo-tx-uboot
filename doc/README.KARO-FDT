@@ -1,0 +1,35 @@
+                                 Managing the device tree data in U-Boot
+				 =======================================
+
+The 'fdt' command can be used to manipulate the device tree (DT) data
+that is passed from U-Boot to Linux.
+
+- 'fdt boardsetup' will trim out some device nodes according to
+  environment settings:
+
+Environment setting		removed nodes
+---------------------------------------------
+otg_mode=host			usbh1
+otg_mode=device			usbotg
+otg_mode=<UNSET>		<both of the above> + usbphy
+
+touchpanel=edt-ft5x06		ti,tsc2007
+touchpanel=tsc2007		edt,edt-ft5x06
+touchpanel=<UNSET>		<both of the above>
+
+Note: This command is automatically executed when booting Linux via
+      'run bootm_cmd'.
+
+- 'fdt rm' and 'fdt add' can be used to remove/create additional nodes.
+
+The whole DT data can be saved to and reloaded from the flash partition
+'dtb' (or any other partition):
+  nand erase.part dtb
+  nand write.jffs2 ${fdtaddr} dtb ${fdtsize}
+
+If a DT is loaded from flash which should not be further manipulated
+upon booting Linux, the string 'fdt boardsetup;' should be removed
+from the 'bootm_cmd' environment variable.
+
+Loading the DT data:
+  nand read ${fdtaddr} dtb

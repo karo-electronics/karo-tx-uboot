@@ -31,7 +31,5 @@ int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	disable_interrupts();
 	reset_cpu(0);
-
-	/*NOTREACHED*/
-	return 0;
+	hang();
 }

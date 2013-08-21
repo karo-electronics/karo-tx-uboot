@@ -41,6 +41,7 @@ ifdef NORMAL_DRIVERS
 
 COBJS-$(CONFIG_NAND_ECC_BCH) += nand_bch.o
 
+COBJS-$(CONFIG_NAND_AM33XX) += am33xx_nand.o
 COBJS-$(CONFIG_NAND_ATMEL) += atmel_nand.o
 COBJS-$(CONFIG_DRIVER_NAND_BFIN) += bfin_nand.o
 COBJS-$(CONFIG_NAND_DAVINCI) += davinci_nand.o
@@ -57,6 +58,8 @@ COBJS-$(CONFIG_NAND_MXC) += mxc_nand.o
 COBJS-$(CONFIG_NAND_MXS) += mxs_nand.o
 COBJS-$(CONFIG_NAND_NDFC) += ndfc.o
 COBJS-$(CONFIG_NAND_NOMADIK) += nomadik.o
+COBJS-$(CONFIG_NAND_OMAP_GPMC) += omap_bch_decoder.o omap_gpmc.o omap_bch_soft.o
+COBJS-$(CONFIG_NAND_PLAT) += nand_plat.o
 COBJS-$(CONFIG_NAND_S3C2410) += s3c2410_nand.o
 COBJS-$(CONFIG_NAND_SPEAR) += spr_nand.o
 COBJS-$(CONFIG_TEGRA_NAND) += tegra_nand.o

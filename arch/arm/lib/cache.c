@@ -17,10 +17,12 @@ void  __flush_cache(unsigned long start, unsigned long size)
 	arm1136_cache_flush();
 #endif
 #ifdef CONFIG_ARM926EJS
-	/* test and clean, page 2-23 of arm926ejs manual */
-	asm("0: mrc p15, 0, r15, c7, c10, 3\n\t" "bne 0b\n" : : : "memory");
-	/* disable write buffer as well (page 2-22) */
-	asm("mcr p15, 0, %0, c7, c10, 4" : : "r" (0));
+	asm(
+		/* test and clean, page 2-23 of arm926ejs manual */
+		"0: mrc p15, 0, r15, c7, c10, 3\n\t" "bne 0b\n"
+		/* flush write buffer as well (page 2-22) */
+		"mcr p15, 0, %0, c7, c10, 4" : : "r"(0) : "memory"
+		);
 #endif
 	return;
 }

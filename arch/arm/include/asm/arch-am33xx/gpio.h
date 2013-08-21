@@ -13,4 +13,6 @@
 #define AM33XX_GPIO2_BASE       0x481AC000
 #define AM33XX_GPIO3_BASE       0x481AE000
 
+#define AM33XX_GPIO_NR(bank, pin)	(((bank) << 5) | (pin))
+
 #endif /* _GPIO_AM33xx_H */

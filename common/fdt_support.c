@@ -1084,7 +1084,7 @@ static u64 __of_translate_address(void *blob, int node_offset, const fdt32_t *in
 		goto bail;
 	bus = &of_busses[0];
 
-	/* Cound address cells & copy address locally */
+	/* Count address cells & copy address locally */
 	bus->count_cells(blob, parent, &na, &ns);
 	if (!OF_CHECK_COUNTS(na, ns)) {
 		printf("%s: Bad cell count for %s\n", __FUNCTION__,

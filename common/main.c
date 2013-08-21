@@ -517,9 +517,9 @@ void main_loop(void)
 		else
 			rc = run_command(lastcommand, flag);
 
-		if (rc <= 0) {
+		if (rc || len < 0) {
 			/* invalid command or not repeatable, forget it */
-			lastcommand[0] = 0;
+			lastcommand[0] = '\0';
 		}
 	}
 #endif /*CONFIG_SYS_HUSH_PARSER*/
@@ -1020,6 +1020,13 @@ int readline_into_buffer(const char *const prompt, char *buffer, int timeout)
 		if (prompt)
 			puts (prompt);
 
+#ifdef CONFIG_SHOW_ACTIVITY
+		while (!tstc()) {
+			extern void show_activity(int arg);
+			show_activity(0);
+			WATCHDOG_RESET();
+		}
+#endif
 		rc = cread_line(prompt, p, &len, timeout);
 		return rc < 0 ? rc : len;
 
@@ -1406,7 +1413,7 @@ static int builtin_run_command(const char *cmd, int flag)
 			continue;
 		}
 
-		if (cmd_process(flag, argc, argv, &repeatable, NULL))
+		if (cmd_process(flag, argc, argv, &repeatable, NULL) != CMD_RET_SUCCESS)
 			rc = -1;
 
 		/* Did the user stop this? */
@@ -1432,7 +1439,7 @@ int run_command(const char *cmd, int flag)
 	 * builtin_run_command can return 0 or 1 for success, so clean up
 	 * its result.
 	 */
-	if (builtin_run_command(cmd, flag) == -1)
+	if (builtin_run_command(cmd, flag) != 1)
 		return 1;
 
 	return 0;

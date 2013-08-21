@@ -4,67 +4,24 @@
  * (C) Copyright 2010
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
- * Linux IPU driver for MX51:
+ * Linux IPU driver:
  *
- * (C) Copyright 2005-2010 Freescale Semiconductor, Inc.
+ * (C) Copyright 2005-2011 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __ASM_ARCH_IPU_H__
-#define __ASM_ARCH_IPU_H__
+#ifndef __IPU_H__
+#define __IPU_H__
 
 #include <linux/types.h>
-#include <ipu_pixfmt.h>
+#include <linux/list.h>
+#include <linux/fb.h>
+
+struct clk;
 
 #define IDMA_CHAN_INVALID	0xFF
 #define HIGH_RESOLUTION_WIDTH	1024
-
-struct clk {
-	const char *name;
-	int id;
-	/* Source clock this clk depends on */
-	struct clk *parent;
-	/* Secondary clock to enable/disable with this clock */
-	struct clk *secondary;
-	/* Current clock rate */
-	unsigned long rate;
-	/* Reference count of clock enable/disable */
-	__s8 usecount;
-	/* Register bit position for clock's enable/disable control. */
-	u8 enable_shift;
-	/* Register address for clock's enable/disable control. */
-	void *enable_reg;
-	u32 flags;
-	/*
-	 * Function ptr to recalculate the clock's rate based on parent
-	 * clock's rate
-	 */
-	void (*recalc) (struct clk *);
-	/*
-	 * Function ptr to set the clock to a new rate. The rate must match a
-	 * supported rate returned from round_rate. Leave blank if clock is not
-	* programmable
-	 */
-	int (*set_rate) (struct clk *, unsigned long);
-	/*
-	 * Function ptr to round the requested clock rate to the nearest
-	 * supported rate that is less than or equal to the requested rate.
-	 */
-	unsigned long (*round_rate) (struct clk *, unsigned long);
-	/*
-	 * Function ptr to enable the clock. Leave blank if clock can not
-	 * be gated.
-	 */
-	int (*enable) (struct clk *);
-	/*
-	 * Function ptr to disable the clock. Leave blank if clock can not
-	 * be gated.
-	 */
-	void (*disable) (struct clk *);
-	/* Function ptr to set the parent clock of the clock. */
-	int (*set_parent) (struct clk *, struct clk *);
-};
 
 /*
  * Enumeration of Synchronous (Memory-less) panel types
@@ -73,6 +30,51 @@ typedef enum {
 	IPU_PANEL_SHARP_TFT,
 	IPU_PANEL_TFT,
 } ipu_panel_t;
+
+/*  IPU Pixel format definitions */
+#define fourcc(a, b, c, d)\
+	(((__u32)(a)<<0)|((__u32)(b)<<8)|((__u32)(c)<<16)|((__u32)(d)<<24))
+
+/*
+ * Pixel formats are defined with ASCII FOURCC code. The pixel format codes are
+ * the same used by V4L2 API.
+ */
+
+#define IPU_PIX_FMT_GENERIC fourcc('I', 'P', 'U', '0')
+#define IPU_PIX_FMT_GENERIC_32 fourcc('I', 'P', 'U', '1')
+#define IPU_PIX_FMT_LVDS666 fourcc('L', 'V', 'D', '6')
+#define IPU_PIX_FMT_LVDS888 fourcc('L', 'V', 'D', '8')
+
+#define IPU_PIX_FMT_RGB332  fourcc('R', 'G', 'B', '1')	/*<  8  RGB-3-3-2    */
+#define IPU_PIX_FMT_RGB555  fourcc('R', 'G', 'B', 'O')	/*< 16  RGB-5-5-5    */
+#define IPU_PIX_FMT_RGB565  fourcc('R', 'G', 'B', 'P')	/*< 1 6  RGB-5-6-5   */
+#define IPU_PIX_FMT_RGB666  fourcc('R', 'G', 'B', '6')	/*< 18  RGB-6-6-6    */
+#define IPU_PIX_FMT_BGR666  fourcc('B', 'G', 'R', '6')	/*< 18  BGR-6-6-6    */
+#define IPU_PIX_FMT_BGR24   fourcc('B', 'G', 'R', '3')	/*< 24  BGR-8-8-8    */
+#define IPU_PIX_FMT_RGB24   fourcc('R', 'G', 'B', '3')	/*< 24  RGB-8-8-8    */
+#define IPU_PIX_FMT_BGR32   fourcc('B', 'G', 'R', '4')	/*< 32  BGR-8-8-8-8  */
+#define IPU_PIX_FMT_BGRA32  fourcc('B', 'G', 'R', 'A')	/*< 32  BGR-8-8-8-8  */
+#define IPU_PIX_FMT_RGB32   fourcc('R', 'G', 'B', '4')	/*< 32  RGB-8-8-8-8  */
+#define IPU_PIX_FMT_RGBA32  fourcc('R', 'G', 'B', 'A')	/*< 32  RGB-8-8-8-8  */
+#define IPU_PIX_FMT_ABGR32  fourcc('A', 'B', 'G', 'R')	/*< 32  ABGR-8-8-8-8 */
+
+/* YUV Interleaved Formats */
+#define IPU_PIX_FMT_YUYV    fourcc('Y', 'U', 'Y', 'V')	/*< 16 YUV 4:2:2 */
+#define IPU_PIX_FMT_UYVY    fourcc('U', 'Y', 'V', 'Y')	/*< 16 YUV 4:2:2 */
+#define IPU_PIX_FMT_Y41P    fourcc('Y', '4', '1', 'P')	/*< 12 YUV 4:1:1 */
+#define IPU_PIX_FMT_YUV444  fourcc('Y', '4', '4', '4')	/*< 24 YUV 4:4:4 */
+
+/* two planes -- one Y, one Cb + Cr interleaved  */
+#define IPU_PIX_FMT_NV12    fourcc('N', 'V', '1', '2') /* 12  Y/CbCr 4:2:0  */
+
+#define IPU_PIX_FMT_GREY    fourcc('G', 'R', 'E', 'Y')	/*< 8  Greyscale */
+#define IPU_PIX_FMT_YVU410P fourcc('Y', 'V', 'U', '9')	/*< 9  YVU 4:1:0 */
+#define IPU_PIX_FMT_YUV410P fourcc('Y', 'U', 'V', '9')	/*< 9  YUV 4:1:0 */
+#define IPU_PIX_FMT_YVU420P fourcc('Y', 'V', '1', '2')	/*< 12 YVU 4:2:0 */
+#define IPU_PIX_FMT_YUV420P fourcc('I', '4', '2', '0')	/*< 12 YUV 4:2:0 */
+#define IPU_PIX_FMT_YUV420P2 fourcc('Y', 'U', '1', '2')	/*< 12 YUV 4:2:0 */
+#define IPU_PIX_FMT_YVU422P fourcc('Y', 'V', '1', '6')	/*< 16 YVU 4:2:2 */
+#define IPU_PIX_FMT_YUV422P fourcc('4', '2', '2', 'P')	/*< 16 YUV 4:2:2 */
 
 /*
  * IPU Driver channels definitions.
@@ -119,13 +121,24 @@ typedef enum {
  * Enumeration of types of buffers for a logical channel.
  */
 typedef enum {
-	IPU_OUTPUT_BUFFER = 0,	/*< Buffer for output from IPU */
-	IPU_ALPHA_IN_BUFFER = 1,	/*< Buffer for input to IPU */
-	IPU_GRAPH_IN_BUFFER = 2,	/*< Buffer for input to IPU */
-	IPU_VIDEO_IN_BUFFER = 3,	/*< Buffer for input to IPU */
+	IPU_OUTPUT_BUFFER = 0,		/* Buffer for output from IPU */
+	IPU_ALPHA_IN_BUFFER = 1,	/* Buffer for input to IPU */
+	IPU_GRAPH_IN_BUFFER = 2,	/* Buffer for input to IPU */
+	IPU_VIDEO_IN_BUFFER = 3,	/* Buffer for input to IPU */
 	IPU_INPUT_BUFFER = IPU_VIDEO_IN_BUFFER,
 	IPU_SEC_INPUT_BUFFER = IPU_GRAPH_IN_BUFFER,
 } ipu_buffer_t;
+
+
+/*
+ * Enumeration of version of IPU V3 .
+ */
+typedef enum {
+	IPUV3_HW_REV_IPUV3DEX = 2,	/* IPUv3D, IPUv3E  IPUv3EX  */
+	IPUV3_HW_REV_IPUV3M = 3,	/* IPUv3M */
+	IPUV3_HW_REV_IPUV3H = 4,	/* IPUv3H */
+} ipu3_hw_rev_t;
+
 
 #define IPU_PANEL_SERIAL		1
 #define IPU_PANEL_PARALLEL		2
@@ -198,7 +211,18 @@ typedef enum {
 	YUV
 } ipu_color_space_t;
 
+typedef enum {
+	DI_PCLK_PLL3,
+	DI_PCLK_LDB,
+	DI_PCLK_TVE
+} ipu_di_clk_parent_t;
+
 /* Common IPU API */
+int ipuv3_fb_init(struct fb_videomode *mode, int di,
+		unsigned int interface_pix_fmt,
+		ipu_di_clk_parent_t di_clk_parent,
+		unsigned long di_clk_val, int bpp);
+
 int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t *params);
 void ipu_uninit_channel(ipu_channel_t channel);
 
@@ -234,7 +258,7 @@ int32_t ipu_disp_set_color_key(ipu_channel_t channel, unsigned char enable,
 
 uint32_t bytes_per_pixel(uint32_t fmt);
 
-void clk_enable(struct clk *clk);
+int clk_enable(struct clk *clk);
 void clk_disable(struct clk *clk);
 u32 clk_get_rate(struct clk *clk);
 int clk_set_rate(struct clk *clk, unsigned long rate);
@@ -244,7 +268,7 @@ int clk_get_usecount(struct clk *clk);
 struct clk *clk_get_parent(struct clk *clk);
 
 void ipu_dump_registers(void);
-int ipu_probe(void);
+int ipu_probe(int di, ipu_di_clk_parent_t di_clk_parent, int di_clk_val);
 
 void ipu_dmfc_init(int dmfc_type, int first);
 void ipu_init_dc_mappings(void);
@@ -258,4 +282,4 @@ void ipu_dp_uninit(ipu_channel_t channel);
 void ipu_dp_dc_disable(ipu_channel_t channel, unsigned char swap);
 ipu_color_space_t format_to_colorspace(uint32_t fmt);
 
-#endif
+#endif /* __IPU_H */

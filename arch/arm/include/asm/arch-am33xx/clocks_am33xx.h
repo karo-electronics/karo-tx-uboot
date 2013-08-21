@@ -16,6 +16,10 @@
 #define CONFIG_SYS_MPUCLK	550
 #endif
 
+#define DISPPLL_M	200
+#define DISPPLL_N	(OSC - 1)
+#define DISPPLL_M2	1
+
 extern void pll_init(void);
 extern void enable_emif_clocks(void);
 extern void enable_dmm_clocks(void);

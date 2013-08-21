@@ -250,12 +250,16 @@ CFLAGS += -DBUILD_TAG='"$(BUILD_TAG)"'
 endif
 
 CFLAGS_SSP := $(call cc-option,-fno-stack-protector)
-CFLAGS += $(CFLAGS_SSP)
+
 # Some toolchains enable security related warning flags by default,
 # but they don't make much sense in the u-boot world, so disable them.
 CFLAGS_WARN := $(call cc-option,-Wno-format-nonliteral) \
 	       $(call cc-option,-Wno-format-security)
-CFLAGS += $(CFLAGS_WARN)
+
+CFLAGS := $(CFLAGS_SSP) $(CFLAGS_WARN) $(CPPFLAGS) -Wall -Wstrict-prototypes
+ifdef BUILD_TAG
+	CFLAGS += -DBUILD_TAG='"$(BUILD_TAG)"'
+endif
 
 # Report stack usage if supported
 CFLAGS_STACK := $(call cc-option,-fstack-usage)

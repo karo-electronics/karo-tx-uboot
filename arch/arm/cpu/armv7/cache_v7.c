@@ -220,16 +220,18 @@ static void v7_dcache_maint_range(u32 start, u32 stop, u32 range_op)
 /* Invalidate TLB */
 static void v7_inval_tlb(void)
 {
-	/* Invalidate entire unified TLB */
-	asm volatile ("mcr p15, 0, %0, c8, c7, 0" : : "r" (0));
-	/* Invalidate entire data TLB */
-	asm volatile ("mcr p15, 0, %0, c8, c6, 0" : : "r" (0));
-	/* Invalidate entire instruction TLB */
-	asm volatile ("mcr p15, 0, %0, c8, c5, 0" : : "r" (0));
-	/* Full system DSB - make sure that the invalidation is complete */
-	CP15DSB;
-	/* Full system ISB - make sure the instruction stream sees it */
-	CP15ISB;
+	asm volatile (
+		/* Invalidate entire unified TLB */
+		"mcr p15, 0, %0, c8, c7, 0\n"
+		/* Invalidate entire data TLB */
+		"mcr p15, 0, %0, c8, c6, 0\n"
+		/* Invalidate entire instruction TLB */
+		"mcr p15, 0, %0, c8, c5, 0\n"
+		/* Full system DSB - make sure that the invalidation is complete */
+		"mcr     p15, 0, %0, c7, c10, 4\n"
+		/* Full system ISB - make sure the instruction stream sees it */
+		"mcr     p15, 0, %0, c7, c5, 4\n"
+		: : "r" (0));
 }
 
 void invalidate_dcache_all(void)
@@ -337,16 +339,15 @@ void invalidate_icache_all(void)
 	 * Invalidate all instruction caches to PoU.
 	 * Also flushes branch target cache.
 	 */
-	asm volatile ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
-
-	/* Invalidate entire branch predictor array */
-	asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
-
-	/* Full system DSB - make sure that the invalidation is complete */
-	CP15DSB;
-
-	/* ISB - make sure the instruction stream sees it */
-	CP15ISB;
+	asm volatile (
+		"mcr p15, 0, %0, c7, c5, 0\n"
+		/* Invalidate entire branch predictor array */
+		"mcr p15, 0, %0, c7, c5, 6\n"
+		/* Full system DSB - make sure that the invalidation is complete */
+		"mcr     p15, 0, %0, c7, c10, 4\n"
+		/* ISB - make sure the instruction stream sees it */
+		"mcr     p15, 0, %0, c7, c5, 4\n"
+		: : "r" (0));
 }
 #else
 void invalidate_icache_all(void)

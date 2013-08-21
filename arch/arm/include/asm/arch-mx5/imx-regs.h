@@ -13,24 +13,24 @@
 #define IRAM_BASE_ADDR		0x1FFE0000	/* internal ram */
 #define IPU_SOC_BASE_ADDR	0x40000000
 #define IPU_SOC_OFFSET		0x1E000000
-#define SPBA0_BASE_ADDR         0x70000000
-#define AIPS1_BASE_ADDR         0x73F00000
-#define AIPS2_BASE_ADDR         0x83F00000
-#define CSD0_BASE_ADDR          0x90000000
-#define CSD1_BASE_ADDR          0xA0000000
-#define NFC_BASE_ADDR_AXI       0xCFFF0000
-#define CS1_BASE_ADDR           0xB8000000
+#define SPBA0_BASE_ADDR		0x70000000
+#define AIPS1_BASE_ADDR		0x73F00000
+#define AIPS2_BASE_ADDR		0x83F00000
+#define CSD0_BASE_ADDR		0x90000000
+#define CSD1_BASE_ADDR		0xA0000000
+#define NFC_BASE_ADDR_AXI	0xCFFF0000
+#define CS1_BASE_ADDR		0xB8000000
 #elif defined(CONFIG_MX53)
 #define IPU_SOC_BASE_ADDR	0x18000000
 #define IPU_SOC_OFFSET		0x06000000
-#define SPBA0_BASE_ADDR         0x50000000
-#define AIPS1_BASE_ADDR         0x53F00000
-#define AIPS2_BASE_ADDR         0x63F00000
-#define CSD0_BASE_ADDR          0x70000000
-#define CSD1_BASE_ADDR          0xB0000000
-#define NFC_BASE_ADDR_AXI       0xF7FF0000
-#define IRAM_BASE_ADDR          0xF8000000
-#define CS1_BASE_ADDR           0xF4000000
+#define SPBA0_BASE_ADDR		0x50000000
+#define AIPS1_BASE_ADDR		0x53F00000
+#define AIPS2_BASE_ADDR		0x63F00000
+#define CSD0_BASE_ADDR		0x70000000
+#define CSD1_BASE_ADDR		0xB0000000
+#define NFC_BASE_ADDR_AXI	0xF7FF0000
+#define IRAM_BASE_ADDR		0xF8000000
+#define CS1_BASE_ADDR		0xF4000000
 #define SATA_BASE_ADDR		0x10000000
 #else
 #error "CPU_TYPE not defined"
@@ -44,7 +44,7 @@
 #define MMC_SDHC1_BASE_ADDR	(SPBA0_BASE_ADDR + 0x00004000)
 #define MMC_SDHC2_BASE_ADDR	(SPBA0_BASE_ADDR + 0x00008000)
 #define UART3_BASE		(SPBA0_BASE_ADDR + 0x0000C000)
-#define CSPI1_BASE_ADDR 	(SPBA0_BASE_ADDR + 0x00010000)
+#define CSPI1_BASE_ADDR		(SPBA0_BASE_ADDR + 0x00010000)
 #define SSI2_BASE_ADDR		(SPBA0_BASE_ADDR + 0x00014000)
 #define MMC_SDHC3_BASE_ADDR	(SPBA0_BASE_ADDR + 0x00020000)
 #define MMC_SDHC4_BASE_ADDR	(SPBA0_BASE_ADDR + 0x00024000)
@@ -79,11 +79,11 @@
 #define GPC_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000D8000)
 
 #if defined(CONFIG_MX53)
-#define GPIO5_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000DC000)
-#define GPIO6_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000E0000)
-#define GPIO7_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000E4000)
+#define GPIO5_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000DC000)
+#define GPIO6_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000E0000)
+#define GPIO7_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000E4000)
 #define I2C3_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000EC000)
-#define UART4_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000F0000)
+#define UART4_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000F0000)
 #endif
 /*
  * AIPS 2
@@ -98,7 +98,7 @@
 #define IIM_BASE_ADDR		(AIPS2_BASE_ADDR + 0x00098000)
 #define CSU_BASE_ADDR		(AIPS2_BASE_ADDR + 0x0009C000)
 #define ARM_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000A0000)
-#define OWIRE_BASE_ADDR 	(AIPS2_BASE_ADDR + 0x000A4000)
+#define OWIRE_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000A4000)
 #define FIRI_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000A8000)
 #define CSPI2_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000AC000)
 #define SDMA_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000B0000)
@@ -125,7 +125,7 @@
 #define SAHARA_BASE_ADDR	(AIPS2_BASE_ADDR + 0x000F8000)
 
 #if defined(CONFIG_MX53)
-#define UART5_BASE_ADDR         (AIPS2_BASE_ADDR + 0x00090000)
+#define UART5_BASE_ADDR		(AIPS2_BASE_ADDR + 0x00090000)
 #endif
 
 /*
@@ -202,6 +202,16 @@
  */
 #define WBED		1
 
+/*
+ * WEIM WCR
+ */
+#define BCM		1
+#define GBCD(x)		(((x) & 0x3) << 1)
+#define INTEN		(1 << 4)
+#define INTPOL		(1 << 5)
+#define WDOG_EN		(1 << 8)
+#define WDOG_LIMIT(x)	(((x) & 0x3) << 9)
+
 #define CS0_128					0
 #define CS0_64M_CS1_64M				1
 #define CS0_64M_CS1_32M_CS2_32M			2
@@ -241,7 +251,7 @@
 /*
  * Number of GPIO pins per port
  */
-#define GPIO_NUM_PIN            32
+#define GPIO_NUM_PIN	32
 
 #define IIM_SREV	0x24
 #define ROM_SI_REV	0x48
@@ -277,34 +287,46 @@
 #define DP_MFD_665	(96 - 1)
 #define DP_MFN_665	89
 
+#define DP_OP_600       ((6 << 4) + ((1 - 1)  << 0))
+#define DP_MFD_600      (4 - 1)
+#define DP_MFN_600      1
+
 #define DP_OP_532	((5 << 4) + ((1 - 1)  << 0))
 #define DP_MFD_532	(24 - 1)
 #define DP_MFN_532	13
 
-#define DP_OP_400	((8 << 4) + ((2 - 1)  << 0))
-#define DP_MFD_400	(3 - 1)
-#define DP_MFN_400	1
+#define DP_OP_533	((5 << 4) + ((1 - 1)  << 0))
+#define DP_MFD_533	(9 - 1)
+#define DP_MFN_533	5
 
 #define DP_OP_455	((9 << 4) + ((2 - 1)  << 0))
 #define DP_MFD_455	(48 - 1)
 #define DP_MFN_455	23
 
+#define DP_OP_400	((8 << 4) + ((2 - 1)  << 0))
+#define DP_MFD_400	(3 - 1)
+#define DP_MFN_400	1
+
+#define DP_OP_333	((6 << 4) + ((2 - 1)  << 0))
+#define DP_MFD_333	(16 - 1)
+#define DP_MFN_333	15
+
 #define DP_OP_216	((6 << 4) + ((3 - 1)  << 0))
 #define DP_MFD_216	(4 - 1)
 #define DP_MFN_216	3
 
-#define CHIP_REV_1_0            0x10
-#define CHIP_REV_1_1            0x11
-#define CHIP_REV_2_0            0x20
-#define CHIP_REV_2_5		0x25
-#define CHIP_REV_3_0            0x30
+#define CHIP_REV_1_0	0x10
+#define CHIP_REV_1_1	0x11
+#define CHIP_REV_2_0	0x20
+#define CHIP_REV_2_5	0x25
+#define CHIP_REV_3_0	0x30
 
-#define BOARD_REV_1_0           0x0
-#define BOARD_REV_2_0           0x1
+#define BOARD_REV_1_0	0x0
+#define BOARD_REV_2_0	0x1
 
 #define BOARD_VER_OFFSET	0x8
 
-#define IMX_IIM_BASE            (IIM_BASE_ADDR)
+#define IMX_IIM_BASE	IIM_BASE_ADDR
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
@@ -477,7 +499,7 @@ struct cspi_regs {
 struct iim_regs {
 	u32	stat;
 	u32	statm;
-	u32     err;
+	u32	err;
 	u32	emask;
 	u32	fctl;
 	u32	ua;
@@ -485,7 +507,7 @@ struct iim_regs {
 	u32	sdat;
 	u32	prev;
 	u32	srev;
-	u32	prg_p;
+	u32	preg_p;
 	u32	scs0;
 	u32	scs1;
 	u32	scs2;

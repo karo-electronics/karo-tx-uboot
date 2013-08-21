@@ -25,6 +25,18 @@
  * an error value of -1.
  */
 
+enum gpio_flags {
+	GPIOF_INPUT,
+	GPIOF_OUTPUT_INIT_LOW,
+	GPIOF_OUTPUT_INIT_HIGH,
+};
+
+struct gpio {
+	unsigned int gpio;
+	enum gpio_flags flags;
+	const char *label;
+};
+
 /**
  * Request a gpio. This should be called before any of the other functions
  * are used on this gpio.
@@ -78,4 +90,26 @@ int gpio_get_value(unsigned gpio);
  * @return 0 if ok, -1 on error
  */
 int gpio_set_value(unsigned gpio, int value);
+
+/**
+ * Request a GPIO and configure it
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+int gpio_request_one(unsigned gpio, enum gpio_flags flags, const char *label);
+
+/**
+ * Request a set of GPIOs and configure them
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+int gpio_request_array(const struct gpio *gpios, int count);
+
+/**
+ * Release a set of GPIOs
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+int gpio_free_array(const struct gpio *gpios, int count);
+
 #endif	/* _ASM_GENERIC_GPIO_H_ */

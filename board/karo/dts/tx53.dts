@@ -1,0 +1,432 @@
+/*
+ * Copyright 2012 <LW@KARO-electronics.de>
+ * based on imx53-qsb.dts
+ *   Copyright 2011 Freescale Semiconductor, Inc.
+ *   Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/dts-v1/;
+#include "mx53.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TX53 module";
+	compatible = "karo,tx53", "fsl,imx53";
+
+	chosen {
+		bootargs = "init=/linuxrc console=ttymxc0,115200 root=/dev/mtdblock3 rootfstype=jffs2 ro debug panic=1";
+	};
+
+	aliases {
+		ipu = &ipu;
+	};
+
+	clocks {
+		ckih1 {
+			clock-frequency = <0>;
+		};
+	};
+
+	soc {
+		extmc: extmc@00000000 {
+			sata: sata@10000000 {
+				status = "okay";
+			};
+
+			ipu: ipu@1e000000 {
+				status = "okay";
+			};
+		};
+
+		aips1: aips@50000000 { /* AIPS1 */
+			spba@50000000 {
+				mmc0: esdhc@50004000 { /* ESDHC1 */
+					status = "okay";
+					cd-gpios = <&gpio3 24 0>;
+					fsl,wp-controller;
+				};
+
+				mmc1: esdhc@50008000 { /* ESDHC2 */
+					status = "okay";
+					cd-gpios = <&gpio3 25 0>;
+					fsl,wp-controller;
+				};
+
+				uart3: uart@5000c000 {
+					status = "okay";
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_uart3_1>;
+					fsl,uart-has-rtscts;
+				};
+
+				spi0: ecspi@50010000 { /* ECSPI1 */
+					status = "okay";
+
+					pinctrl-names = "default";
+					pinctrl-0 = <
+						&pinctrl_ecspi1_1
+						&pinctrl_cspi1_cs
+					>;
+
+					fsl,spi-num-chipselects = <2>;
+					cs-gpios = <&gpio2 30 0 &gpio3 19 0>;
+
+					spidev0: spi@0 {
+						compatible = "spidev";
+						reg = <0>;
+						spi-max-frequency = <54000000>;
+					};
+				};
+			};
+
+			usbotg: imxotg@53f80000 {
+				status = "okay";
+
+				ignore-overcurrent;
+				enable-wakeup;
+				vbus-gpio = <&usbotg_vbus>;
+			};
+
+			usbh1: imxotg@53f80200 {
+				status = "okay";
+
+				ignore-overcurrent;
+				enable-wakeup;
+				vbus-gpio = <&usbh1_vbus>;
+			};
+
+			usbphy: imx-usb-phy@53f80800 {
+				status = "okay";
+
+				device-ports = <&usbotg>;
+				host-ports = <&usbotg &usbh1>;
+			};
+
+			keypad@53f94000 {
+				status = "okay";
+				/* sample keymap */
+				/* row/col 0,1 are mapped to KPP row/col 6,7 */
+				linux,keymap = < 0x06060074 /* row 6, col 6, KEY_POWER */
+					       	 0x06070052 /* row 6, col 7, KEY_KP0 */
+					       	 0x0602004f /* row 6, col 2, KEY_KP1 */
+					       	 0x06030050 /* row 6, col 3, KEY_KP2 */
+					       	 0x07060051 /* row 7, col 6, KEY_KP3 */
+					       	 0x0707004b /* row 7, col 7, KEY_KP4 */
+					       	 0x0702004c /* row 7, col 2, KEY_KP5 */
+					       	 0x0703004d /* row 7, col 3, KEY_KP6 */
+					       	 0x02060047 /* row 2, col 6, KEY_KP7 */
+					       	 0x02070048 /* row 2, col 7, KEY_KP8 */
+					       	 0x02020049 /* row 2, col 2, KEY_KP9 */
+						 >;
+			};
+
+			wdog@53f98000 { /* WDOG1 */
+				status = "okay";
+			};
+
+			iomuxc@53fa8000 {
+				compatible = "fsl,imx53-iomuxc-tx53";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_tsc2007_pd>;
+
+				pincontroller {
+					pinctrl_stk5_led: stk5-led-gpios {
+						fsl,pins = <
+							589 0xc0 /* MX53_PAD_EIM_A18__GPIO2_20 */
+						>;
+					};
+
+					pinctrl_ds1339_int: ds1339-gpios {
+						fsl,pins = <
+							104 0xe0 /* MX53_PAD_DI0_PIN4__GPIO4_20 */
+						>;
+					};
+
+					pinctrl_cspi1_cs: cspi1-cs-gpios {
+						fsl,pins = <
+							424 0xe0 /* MX53_PAD_EIM_EB2__GPIO2_30 */
+							449 0xe0 /* MX53_PAD_EIM_D19__GPIO3_19 */
+						>;
+					};
+
+					pinctrl_esdhc1_cd: esdhc1-cd-gpios {
+						fsl,pins = <
+							493 0x1f0 /* MX53_PAD_EIM_D24__GPIO3_24 */
+						>;
+					};
+
+					pinctrl_esdhc2_cd: esdhc2-cd-gpios {
+						fsl,pins = <
+							501 0x1f0 /* MX53_PAD_EIM_D25__GPIO3_25 */
+						>;
+					};
+
+					pinctrl_tsc2007_pd: pendown-gpios {
+						fsl,pins = <
+							517 0x1f0 /* MX53_PAD_EIM_D27__GPIO3_27 */
+						>;
+					};
+				};
+			};
+
+			pwm2: pwm@53fb8000 {
+				status = "okay";
+			};
+
+			uart1: uart@53fbc000 {
+				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_uart1_2>;
+				fsl,uart-has-rtscts;
+			};
+
+			uart2: uart@53fc0000 {
+				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_uart2_1>;
+				fsl,uart-has-rtscts;
+			};
+
+			can1: flexcan@53fc8000 {
+				status = "okay";
+				transceiver-switch = <&flexcan_transceiver>;
+			};
+
+			can2: flexcan@53fcc000 {
+				status = "okay";
+				transceiver-switch = <&flexcan_transceiver>;
+			};
+
+			i2c@53fec000 { /* I2C3 */
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_i2c3_1>;
+
+				sgtl5000: sgtl5000@0a {
+					compatible = "fsl,sgtl5000";
+					reg = <0x0a>;
+					VDDA-supply = <&reg_2p5v>;
+					VDDIO-supply = <&reg_3p3v>;
+					clock-frequency = <26000000>;
+				};
+
+				touchscreen: tsc2007@48 {
+					compatible = "ti,tsc2007";
+					reg = <0x48>;
+					interrupt-parent = <&gpio3>;
+					interrupts = <26 0>;
+					pendown-gpio = <&gpio3 26 1>;
+					model = "2007";
+					x-plate-ohms = <660>;
+				};
+
+				polytouch: edt-ft5x06@ {
+					compatible = "edt,edt-ft5x06";
+					reg = <0x38>;
+					interrupt-parent = <&gpio6>;
+					interrupts = <15 0>;
+					reset-switch = <&edt_ft5x06_reset>;
+					wake-switch = <&edt_ft5x06_wake>;
+				};
+			};
+		};
+
+		aips2: aips@60000000 {	/* AIPS2 */
+
+			sdma@63fb0000 {
+				fsl,sdma-ram-script-name = "sdma-imx53.bin";
+			};
+
+			i2c@63fc8000 { /* I2C1 */
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <
+					&pinctrl_i2c1_2
+					&pinctrl_ds1339_int
+				>;
+
+				rtc1: ds1339@68 {
+					compatible = "dallas,ds1339";
+					reg = <0x68>;
+					trickle-charge = <0xa5>;
+					interrupt-parent = <&gpio4>;
+					interrupts = <20 0>;
+				};
+
+				pmic: lt3589@48 {
+					compatible = "lt,lt3589";
+					reg = <0x48>;
+				};
+			};
+
+			ssi@63fcc000 {
+				status = "okay";
+				rx-dma = <28>;
+				tx-dma = <29>;
+				i2s-sync-mode;
+			};
+
+			ssi@50014000 {
+				status = "okay";
+			};
+
+			audmux@63fd0000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_audmux_1>;
+			};
+
+			nand@63fdb000 {
+				status = "okay";
+
+				nand-bus-width = <8>;
+				nand-ecc-mode = "hw";
+				nand-on-flash-bbt;
+			};
+
+			ethernet@63fec000 {
+				status = "okay";
+
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_fec_1>;
+
+				phy-mode = "rmii";
+				phy-reset-gpios = <&gpio7 6 0>;
+				phy-handle = <&phy0>;
+				mac-address = [000000000000];
+
+				phy0: ethernet-phy@0 {
+					interrupt-parent = <&gpio2>;
+					interrupts = <4>;
+					device_type = "ethernet-phy";
+				};
+			};
+		};
+	};
+
+	sound {
+		compatible = "fsl,imx-sgtl5000";
+		status = "okay";
+		/* '1' based port numbers according to datasheet names */
+		ssi-port = <1>;
+		audmux-port = <5>;
+		sysclk = <26000000>;
+	};
+
+	gpio-switch {
+		compatible = "gpio-switches", "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		flexcan_transceiver: gpio-switch@0 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio4 21 1>;
+			label = "Flexcan Transceiver Enable";
+			gpio-shared;
+			init-state = <0>;
+		};
+
+		lcd_power: gpio-switch@1 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio2 31 0>;
+			label = "LCD Power Enable";
+			init-state = <0>;
+		};
+
+		lcd_reset: gpio-switch@2 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio3 29 1>;
+			label = "LCD Reset";
+			init-state = <1>;
+		};
+
+		edt_ft5x06_reset: gpio-switch@3 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio2 22 1>;
+			label = "EDT-FT5x06 RESET";
+		};
+
+		edt_ft5x06_wake: gpio-switch@4 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio2 21 0>;
+			label = "EDT-FT5x06 WAKE";
+			init-state = <1>;
+		};
+
+		usbotg_vbus: gpio-switch@5 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio1 7 0>;
+			label = "USBOTG VBUS";
+		};
+
+		usbh1_vbus: gpio-switch@6 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio3 31 0>;
+			label = "USBH1 VBUS";
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_stk5_led>;
+
+		user {
+			label = "Heartbeat";
+			gpios = <&gpio2 20 0>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	lcd {
+		compatible = "of-gpio-lcd";
+		parent = <&ipu>;
+
+		power-switch = <&lcd_power>;
+/*
+		reset-switch = <&lcd_reset>;
+		reset-delay-us = <300>;
+*/
+	};
+
+	backlight: pwm-backlight {
+		compatible = "pwm-backlight";
+
+		pwm = <&pwm2>;
+		inverted;
+		max-brightness = <100>;
+		dft-brightness = <50>;
+		pwm-period-ns = <1000000>;
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_2p5v: 2p5v {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3p3v: 3p3v {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+	};
+};

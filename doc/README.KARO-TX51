@@ -1,0 +1,79 @@
+                                        U-Boot for TX51
+                                        ===============
+
+Building U-Boot
+---------------
+
+Note: There are currently six variants of the TX51 module, that
+      require slightly different U-Boot configurations. They are
+      distinguished through the first and last digit of the module
+      name suffix. Replace the '?' in the following description with
+      the corresponding numbers from your TX51 module.
+      E.g. TX51-8021 => 'make tx51-8xx1_config'
+
+Unpacking the source
+--------------------
+mkdir u-boot
+cd u-boot
+tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Alternatively you can access the current source via the git repository:
+git://git.kernelconcepts.de/karo-tx-uboot.git master
+
+
+Compiling U-Boot
+----------------
+export ARCH=arm
+export CROSS_COMPILE=arm-cortexa8-linux-gnueabi-
+make tx51-?xx?_config            (see above Note!)
+make
+
+
+Flashing U-Boot Image
+---------------------
+If you want to replace a working U-Boot with a new version, you can
+load the new U-Boot image via TFTP and program it like any other flash
+partition with:
+nand erase.part u-boot;nand write ${fileaddr} u-boot ${filesize}
+
+If you want to revive a bricked module, you can use one of the
+flashtools provided with the BSP to reprogram the flash.
+
+
+U-Boot Features
+---------------
+
+Environment variables:
+
+cpu_clk       <CPU freq [MHz]>
+touchpanel    {tsc2007|edt-ft5x06}
+otg_mode      [host|device|none]
+video_mode    <video mode as understood by Linux fb_find_mode() function>
+              e.g.: VGA-1:640x480MR-24@60
+baseboard     {stk5-v3|stk5-v5} selects type of baseboard
+	      'stk5-v5' setting disables USB Host mode on USBOTG port.
+	      strings not starting in 'stk5' prevent the STK5 specific
+	      pad initialization to be done.
+splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
+	      to be displayed instead of the built-in logo. Since NAND
+	      flash is not accessible in a memory mapped fashion,
+	      U-Boot will try to load the contents of the flash
+	      partition 'logo.bmp' to the address given with
+	      'splashimage'.
+
+	      or: the name of an MTD partition, that contains a raw
+	      dump of the frame buffer contents which will be loaded
+	      to the framebuffer.
+
+splashpos     (when 'splashimage' contains a memory address) the
+	      position ('x,y') on the screen at which the BMP image
+	      will be displayed.
+	      Setting splashpos to 'm,m' will center the image on the
+	      screen.
+
+Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
+      board unbootable if incorrectly set. Therefore these variables
+      will not be evaluated in case the board has been reset through a
+      watchdog reset or a character is available on the serial console
+      during startup to give the user a chance to recover from this
+      situation.

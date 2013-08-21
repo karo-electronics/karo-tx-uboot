@@ -10,6 +10,8 @@
 #ifndef __SYS_PROTO_H__
 #define __SYS_PROTO_H__
 
+struct mxs_register_32;
+
 int mxs_reset_block(struct mxs_register_32 *reg);
 int mxs_wait_mask_set(struct mxs_register_32 *reg,
 		       uint32_t mask,
@@ -19,6 +21,8 @@ int mxs_wait_mask_clr(struct mxs_register_32 *reg,
 		       unsigned int timeout);
 
 int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
+
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 
 #ifdef CONFIG_SPL_BUILD
 

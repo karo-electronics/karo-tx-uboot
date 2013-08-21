@@ -4,9 +4,9 @@
  * (C) Copyright 2010
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
- * Linux IPU driver for MX51:
+ * Linux IPU driver:
  *
- * (C) Copyright 2005-2009 Freescale Semiconductor, Inc.
+ * (C) Copyright 2005-2011 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -14,9 +14,18 @@
 #ifndef __IPU_REGS_INCLUDED__
 #define __IPU_REGS_INCLUDED__
 
+#include <asm/arch/imx-regs.h>
+
 #define IPU_DISP0_BASE		0x00000000
 #define IPU_MCU_T_DEFAULT	8
-#define IPU_DISP1_BASE		(IPU_MCU_T_DEFAULT << 25)
+#define IPU_DISP1_BASE		(gd->arch.ipu_hw_rev < IPUV3_HW_REV_IPUV3H ?	\
+				(IPU_MCU_T_DEFAULT << 25) :		\
+				0x00000000)
+
+#define IPUV3DEX_REG_BASE	0x1E000000
+#define IPUV3M_REG_BASE		0x1E000000
+#define IPUV3H_REG_BASE		0x00200000
+
 #define IPU_CM_REG_BASE		0x00000000
 #define IPU_STAT_REG_BASE	0x00000200
 #define IPU_IDMAC_REG_BASE	0x00008000
@@ -31,26 +40,38 @@
 #define IPU_SMFC_REG_BASE	0x00050000
 #define IPU_DC_REG_BASE		0x00058000
 #define IPU_DMFC_REG_BASE	0x00060000
-#define IPU_VDI_REG_BASE	0x00680000
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53)
-#define IPU_CPMEM_REG_BASE	0x01000000
-#define IPU_LUT_REG_BASE	0x01020000
-#define IPU_SRM_REG_BASE	0x01040000
-#define IPU_TPM_REG_BASE	0x01060000
-#define IPU_DC_TMPL_REG_BASE	0x01080000
-#define IPU_ISP_TBPR_REG_BASE	0x010C0000
-#elif defined(CONFIG_MX6)
-#define IPU_CPMEM_REG_BASE	0x00100000
-#define IPU_LUT_REG_BASE	0x00120000
-#define IPU_SRM_REG_BASE	0x00140000
-#define IPU_TPM_REG_BASE	0x00160000
-#define IPU_DC_TMPL_REG_BASE	0x00180000
-#define IPU_ISP_TBPR_REG_BASE	0x001C0000
-#endif
+#define IPU_VDI_REG_BASE	0x00068000
+#define IPU_CPMEM_REG_BASE	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				0x00100000 :				\
+				0x01000000)
+#define IPU_LUT_REG_BASE	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				0x00120000 :				\
+				0x01020000)
+#define IPU_SRM_REG_BASE	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				0x00140000 :				\
+				0x01040000)
+#define IPU_TPM_REG_BASE	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				0x00160000 :				\
+				0x01060000)
+#define IPU_DC_TMPL_REG_BASE	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				0x00180000 :				\
+				0x01080000)
+#define IPU_ISP_TBPR_REG_BASE	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				0x001C0000 :				\
+				0x010C0000)
 
-#define IPU_CTRL_BASE_ADDR	(IPU_SOC_BASE_ADDR + IPU_SOC_OFFSET)
+#define IPU_DISP_REG_BASE_ADDR	(gd->arch.ipu_hw_rev >= IPUV3_HW_REV_IPUV3H ?	\
+				IPU_SOC_BASE_ADDR + IPUV3H_REG_BASE :	\
+				IPU_SOC_BASE_ADDR + IPUV3M_REG_BASE)
 
 extern u32 *ipu_dc_tmpl_reg;
+extern struct clk *g_ipu_clk;
+extern struct clk *g_ldb_clk;
+extern struct clk *g_di_clk[2];
+extern struct clk *g_pixel_clk[2];
+
+extern int g_ipu_clk_enabled;
+extern unsigned char g_dc_di_assignment[];
 
 #define DC_EVT_NF		0
 #define DC_EVT_NL		1
@@ -91,7 +112,7 @@ enum {
 	DI_DW_GEN_ACCESS_SIZE_OFFSET = 24,
 	DI_DW_GEN_COMPONENT_SIZE_OFFSET = 16,
 
-	DI_GEN_DI_CLK_EXT = 0x100000,
+	DI_GEN_DI_CLK_EXT = 0x00100000,
 	DI_GEN_POLARITY_1 = 0x00000001,
 	DI_GEN_POLARITY_2 = 0x00000002,
 	DI_GEN_POLARITY_3 = 0x00000004,
@@ -100,7 +121,7 @@ enum {
 	DI_GEN_POLARITY_6 = 0x00000020,
 	DI_GEN_POLARITY_7 = 0x00000040,
 	DI_GEN_POLARITY_8 = 0x00000080,
-	DI_GEN_POL_CLK = 0x20000,
+	DI_GEN_POL_CLK	  = 0x00020000,
 
 	DI_POL_DRDY_DATA_POLARITY = 0x00000080,
 	DI_POL_DRDY_POLARITY_15 = 0x00000010,
@@ -297,7 +318,7 @@ struct ipu_dmfc {
 	u32 stat;
 };
 
-#define IPU_CM_REG		((struct ipu_cm *)(IPU_CTRL_BASE_ADDR + \
+#define IPU_CM_REG		((struct ipu_cm *)(IPU_DISP_REG_BASE_ADDR + \
 				IPU_CM_REG_BASE))
 #define IPU_CONF		(&IPU_CM_REG->conf)
 #define IPU_SRM_PRI1		(&IPU_CM_REG->srm_pri1)
@@ -308,40 +329,43 @@ struct ipu_dmfc {
 #define IPU_FS_DISP_FLOW1	(&IPU_CM_REG->fs_disp_flow[0])
 #define IPU_DISP_GEN		(&IPU_CM_REG->disp_gen)
 #define IPU_MEM_RST		(&IPU_CM_REG->mem_rst)
+#define IPU_PM			(&IPU_CM_REG->pm)
 #define IPU_GPR			(&IPU_CM_REG->gpr)
-#define IPU_CHA_DB_MODE_SEL(ch)	(&IPU_CM_REG->ch_db_mode_sel[ch / 32])
+#define IPU_CHA_DB_MODE_SEL(ch)	(&IPU_CM_REG->ch_db_mode_sel[(ch) / 32])
 
-#define IPU_STAT		((struct ipu_stat *)(IPU_CTRL_BASE_ADDR + \
+#define IPU_STAT		((struct ipu_stat *)(IPU_DISP_REG_BASE_ADDR + \
 				IPU_STAT_REG_BASE))
-#define IPU_CHA_CUR_BUF(ch)	(&IPU_STAT->cur_buf[ch / 32])
-#define IPU_CHA_BUF0_RDY(ch)	(&IPU_STAT->ch_buf0_rdy[ch / 32])
-#define IPU_CHA_BUF1_RDY(ch)	(&IPU_STAT->ch_buf1_rdy[ch / 32])
+#define IPU_CHA_CUR_BUF(ch)	(&IPU_STAT->cur_buf[(ch) / 32])
+#define IPU_CHA_BUF0_RDY(ch)	(&IPU_STAT->ch_buf0_rdy[(ch) / 32])
+#define IPU_CHA_BUF1_RDY(ch)	(&IPU_STAT->ch_buf1_rdy[(ch) / 32])
 
 #define IPU_INT_CTRL(n)		(&IPU_CM_REG->int_ctrl[(n) - 1])
 
-#define IDMAC_REG		((struct ipu_idmac *)(IPU_CTRL_BASE_ADDR + \
+#define IDMAC_REG		((struct ipu_idmac *)(IPU_DISP_REG_BASE_ADDR + \
 				IPU_IDMAC_REG_BASE))
 #define IDMAC_CONF		(&IDMAC_REG->conf)
-#define IDMAC_CHA_EN(ch)	(&IDMAC_REG->ch_en[ch / 32])
-#define IDMAC_CHA_PRI(ch)	(&IDMAC_REG->ch_pri[ch / 32])
+#define IDMAC_CHA_EN(ch)	(&IDMAC_REG->ch_en[(ch) / 32])
+#define IDMAC_CHA_PRI(ch)	(&IDMAC_REG->ch_pri[(ch) / 32])
+#define IDMAC_WM_EN(ch)		(&IDMAC_REG->wm_en[(ch) / 32])
 
-#define DI_REG(di)		((struct ipu_di *)(IPU_CTRL_BASE_ADDR + \
-				((di == 1) ? IPU_DI1_REG_BASE : \
-				IPU_DI0_REG_BASE)))
+#define DI_REG(di)		((struct ipu_di *)(IPU_DISP_REG_BASE_ADDR + \
+					(((di) == 1) ? IPU_DI1_REG_BASE : \
+					IPU_DI0_REG_BASE)))
+
 #define DI_GENERAL(di)		(&DI_REG(di)->general)
 #define DI_BS_CLKGEN0(di)	(&DI_REG(di)->bs_clkgen0)
 #define DI_BS_CLKGEN1(di)	(&DI_REG(di)->bs_clkgen1)
 
-#define DI_SW_GEN0(di, gen)	(&DI_REG(di)->sw_gen0[gen - 1])
-#define DI_SW_GEN1(di, gen)	(&DI_REG(di)->sw_gen1[gen - 1])
-#define DI_STP_REP(di, gen)	(&DI_REG(di)->stp_rep[(gen - 1) / 2])
+#define DI_SW_GEN0(di, gen)	(&DI_REG(di)->sw_gen0[(gen) - 1])
+#define DI_SW_GEN1(di, gen)	(&DI_REG(di)->sw_gen1[(gen) - 1])
+#define DI_STP_REP(di, gen)	(&DI_REG(di)->stp_rep[((gen) - 1) / 2])
 #define DI_SYNC_AS_GEN(di)	(&DI_REG(di)->sync_as)
 #define DI_DW_GEN(di, gen)	(&DI_REG(di)->dw_gen[gen])
-#define DI_DW_SET(di, gen, set)	(&DI_REG(di)->dw_set[gen + 12 * set])
+#define DI_DW_SET(di, gen, set)	(&DI_REG(di)->dw_set[(gen) + 12 * set])
 #define DI_POL(di)		(&DI_REG(di)->pol)
 #define DI_SCR_CONF(di)		(&DI_REG(di)->scr_conf)
 
-#define DMFC_REG		((struct ipu_dmfc *)(IPU_CTRL_BASE_ADDR + \
+#define DMFC_REG		((struct ipu_dmfc *)(IPU_DISP_REG_BASE_ADDR + \
 				IPU_DMFC_REG_BASE))
 #define DMFC_WR_CHAN		(&DMFC_REG->wr_chan)
 #define DMFC_WR_CHAN_DEF	(&DMFC_REG->wr_chan_def)
@@ -350,12 +374,12 @@ struct ipu_dmfc {
 #define DMFC_GENERAL1		(&DMFC_REG->general[0])
 #define DMFC_IC_CTRL		(&DMFC_REG->ic_ctrl)
 
-
-#define DC_REG			((struct ipu_dc *)(IPU_CTRL_BASE_ADDR + \
+#define DC_REG			((struct ipu_dc *)(IPU_DISP_REG_BASE_ADDR + \
 				IPU_DC_REG_BASE))
-#define DC_MAP_CONF_PTR(n)	(&DC_REG->dc_map_ptr[n / 2])
-#define DC_MAP_CONF_VAL(n)	(&DC_REG->dc_map_val[n / 2])
+#define DC_MAP_CONF_PTR(n)	(&DC_REG->dc_map_ptr[(n) / 2])
+#define DC_MAP_CONF_VAL(n)	(&DC_REG->dc_map_val[(n) / 2])
 
+DECLARE_GLOBAL_DATA_PTR;
 
 static inline struct ipu_dc_ch *dc_ch_offset(int ch)
 {
@@ -375,10 +399,9 @@ static inline struct ipu_dc_ch *dc_ch_offset(int ch)
 		printf("%s: invalid channel %d\n", __func__, ch);
 		return NULL;
 	}
-
 }
 
-#define DC_RL_CH(ch, evt)	(&dc_ch_offset(ch)->rl[evt / 2])
+#define DC_RL_CH(ch, evt)	(&dc_ch_offset(ch)->rl[(evt) / 2])
 
 #define DC_WR_CH_CONF(ch)	(&dc_ch_offset(ch)->wr_ch_conf)
 #define DC_WR_CH_ADDR(ch)	(&dc_ch_offset(ch)->wr_ch_addr)
@@ -394,7 +417,7 @@ static inline struct ipu_dc_ch *dc_ch_offset(int ch)
 #define DP_ASYNC0 0x60
 #define DP_ASYNC1 0xBC
 
-#define DP_REG			((struct ipu_dp *)(IPU_CTRL_BASE_ADDR + \
+#define DP_REG			((struct ipu_dp *)(IPU_DISP_REG_BASE_ADDR + \
 				IPU_DP_REG_BASE))
 #define DP_COM_CONF()		(&DP_REG->com_conf_sync)
 #define DP_GRAPH_WIND_CTRL()	(&DP_REG->graph_wind_ctrl_sync)
@@ -407,6 +430,6 @@ static inline struct ipu_dc_ch *dc_ch_offset(int ch)
 #define DP_CSC_1()		(&DP_REG->csc_sync[1])
 
 /* DC template opcodes */
-#define WROD(lf)		(0x18 | (lf << 1))
+#define WROD(lf)		(0x18 | ((lf) << 1))
 
 #endif

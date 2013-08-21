@@ -1,4 +1,7 @@
 /*
+ * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
+ * Terry Lv <r65388@freescale.com>
+ *
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
  * Author: Jason Jin<Jason.jin@freescale.com>
  *         Zhang Wei<wei.zhang@freescale.com>
@@ -12,12 +15,13 @@
 
 #define AHCI_PCI_BAR		0x24
 #define AHCI_MAX_SG		56 /* hardware max is 64K */
+#define AHCI_MAX_CMD_SLOT	32
 #define AHCI_CMD_SLOT_SZ	32
 #define AHCI_MAX_CMD_SLOT	32
 #define AHCI_RX_FIS_SZ		256
 #define AHCI_CMD_TBL_HDR	0x80
 #define AHCI_CMD_TBL_CDB	0x40
-#define AHCI_CMD_TBL_SZ		AHCI_CMD_TBL_HDR + (AHCI_MAX_SG * 16)
+#define AHCI_CMD_TBL_SZ		(AHCI_CMD_TBL_HDR + (AHCI_MAX_SG * 16))
 #define AHCI_PORT_PRIV_DMA_SZ	(AHCI_CMD_SLOT_SZ * AHCI_MAX_CMD_SLOT + \
 				AHCI_CMD_TBL_SZ	+ AHCI_RX_FIS_SZ)
 #define AHCI_CMD_ATAPI		(1 << 5)
@@ -166,7 +170,7 @@ struct ahci_probe_ent {
 	u32	host_flags;
 	u32	host_set_flags;
 	u32	mmio_base;
-	u32     pio_mask;
+	u32	pio_mask;
 	u32	udma_mask;
 	u32	flags;
 	u32	cap;	/* cache of HOST_CAP register */

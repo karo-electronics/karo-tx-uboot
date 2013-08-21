@@ -34,36 +34,48 @@
  *
  */
 
+#ifndef __ASSEMBLY__
+
+#include <linux/types.h>
+
 #define	__mxs_reg_8(name)		\
 	uint8_t	name[4];		\
 	uint8_t	name##_set[4];		\
 	uint8_t	name##_clr[4];		\
-	uint8_t	name##_tog[4];		\
+	uint8_t	name##_tog[4]
 
 #define	__mxs_reg_32(name)		\
 	uint32_t name;			\
 	uint32_t name##_set;		\
 	uint32_t name##_clr;		\
-	uint32_t name##_tog;
+	uint32_t name##_tog
+
+#define __reg_32(name)			\
+	uint32_t name;			\
+	uint32_t reserved_##name[3]
 
 struct mxs_register_8 {
-	__mxs_reg_8(reg)
+	__mxs_reg_8(reg);
 };
 
 struct mxs_register_32 {
-	__mxs_reg_32(reg)
+	__mxs_reg_32(reg);
 };
 
-#define	mxs_reg_8(name)				\
+#define	mxs_reg_8(name)					\
 	union {						\
-		struct { __mxs_reg_8(name) };		\
+		struct { __mxs_reg_8(name); };		\
 		struct mxs_register_8 name##_reg;	\
-	};
+	}
 
-#define	mxs_reg_32(name)				\
+#define	mxs_reg_32(name);				\
 	union {						\
-		struct { __mxs_reg_32(name) };		\
+		struct { __mxs_reg_32(name); };		\
 		struct mxs_register_32 name##_reg;	\
-	};
+	}
+
+#define	reg_32(name)					\
+	struct { __reg_32(name); }
+#endif
 
 #endif	/* __MXS_REGS_COMMON_H__ */

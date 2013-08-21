@@ -16,33 +16,35 @@
 #include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
-struct mxs_bch_regs {
-	mxs_reg_32(hw_bch_ctrl)
-	mxs_reg_32(hw_bch_status0)
-	mxs_reg_32(hw_bch_mode)
-	mxs_reg_32(hw_bch_encodeptr)
-	mxs_reg_32(hw_bch_dataptr)
-	mxs_reg_32(hw_bch_metaptr)
+struct bch_regs {
+	mxs_reg_32(hw_bch_ctrl);
+	mxs_reg_32(hw_bch_status0);
+	mxs_reg_32(hw_bch_mode);
+	mxs_reg_32(hw_bch_encodeptr);
+	mxs_reg_32(hw_bch_dataptr);
+	mxs_reg_32(hw_bch_metaptr);
 
 	uint32_t	reserved[4];
 
-	mxs_reg_32(hw_bch_layoutselect)
-	mxs_reg_32(hw_bch_flash0layout0)
-	mxs_reg_32(hw_bch_flash0layout1)
-	mxs_reg_32(hw_bch_flash1layout0)
-	mxs_reg_32(hw_bch_flash1layout1)
-	mxs_reg_32(hw_bch_flash2layout0)
-	mxs_reg_32(hw_bch_flash2layout1)
-	mxs_reg_32(hw_bch_flash3layout0)
-	mxs_reg_32(hw_bch_flash3layout1)
-	mxs_reg_32(hw_bch_dbgkesread)
-	mxs_reg_32(hw_bch_dbgcsferead)
-	mxs_reg_32(hw_bch_dbgsyndegread)
-	mxs_reg_32(hw_bch_dbgahbmread)
-	mxs_reg_32(hw_bch_blockname)
-	mxs_reg_32(hw_bch_version)
+	mxs_reg_32(hw_bch_layoutselect);
+	mxs_reg_32(hw_bch_flash0layout0);
+	mxs_reg_32(hw_bch_flash0layout1);
+	mxs_reg_32(hw_bch_flash1layout0);
+	mxs_reg_32(hw_bch_flash1layout1);
+	mxs_reg_32(hw_bch_flash2layout0);
+	mxs_reg_32(hw_bch_flash2layout1);
+	mxs_reg_32(hw_bch_flash3layout0);
+	mxs_reg_32(hw_bch_flash3layout1);
+	mxs_reg_32(hw_bch_dbgkesread);
+	mxs_reg_32(hw_bch_dbgcsferead);
+	mxs_reg_32(hw_bch_dbgsyndegread);
+	mxs_reg_32(hw_bch_dbgahbmread);
+	mxs_reg_32(hw_bch_blockname);
+	mxs_reg_32(hw_bch_version);
 };
 #endif
+
+#define BCH_BASE_ADDRESS				MXS_BCH_BASE
 
 #define	BCH_CTRL_SFTRST					(1 << 31)
 #define	BCH_CTRL_CLKGATE				(1 << 30)

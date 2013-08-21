@@ -20,9 +20,13 @@
 #include <asm/omap_gpmc.h>
 #include <asm/arch/elm.h>
 
-#define ELM_DEFAULT_POLY (0)
+#define ELM_DEFAULT_POLY 0
 
-struct elm *elm_cfg;
+/* make sure this variable does not end up in bss
+ * because that would corrupt the relocation section
+ * that is overlayed with the bss section
+ */
+static struct elm *elm_cfg __attribute__((section(".data")));
 
 /**
  * elm_load_syndromes - Load BCH syndromes based on nibble selection
@@ -34,58 +38,53 @@ struct elm *elm_cfg;
  */
 static void elm_load_syndromes(u8 *syndrome, u32 nibbles, u8 poly)
 {
-	u32 *ptr;
 	u32 val;
+	struct  syndrome *sf = &elm_cfg->syndrome_fragments[poly];
 
 	/* reg 0 */
-	ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[0];
 	val = syndrome[0] | (syndrome[1] << 8) | (syndrome[2] << 16) |
 				(syndrome[3] << 24);
-	writel(val, ptr);
+	writel(val, &sf->syndrome_fragment_x[0]);
+
 	/* reg 1 */
-	ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[1];
 	val = syndrome[4] | (syndrome[5] << 8) | (syndrome[6] << 16) |
 				(syndrome[7] << 24);
-	writel(val, ptr);
+	writel(val, &sf->syndrome_fragment_x[1]);
 
 	/* BCH 8-bit with 26 nibbles (4*8=32) */
 	if (nibbles > 13) {
 		/* reg 2 */
-		ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[2];
 		val = syndrome[8] | (syndrome[9] << 8) | (syndrome[10] << 16) |
 				(syndrome[11] << 24);
-		writel(val, ptr);
+		writel(val, &sf->syndrome_fragment_x[2]);
+
 		/* reg 3 */
-		ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[3];
-		val = syndrome[12] | (syndrome[13] << 8) |
-			(syndrome[14] << 16) | (syndrome[15] << 24);
-		writel(val, ptr);
+		val = syndrome[12] | (syndrome[13] << 8) | (syndrome[14] << 16) |
+				(syndrome[15] << 24);
+		writel(val, &sf->syndrome_fragment_x[3]);
 	}
 
 	/* BCH 16-bit with 52 nibbles (7*8=56) */
 	if (nibbles > 26) {
 		/* reg 4 */
-		ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[4];
-		val = syndrome[16] | (syndrome[17] << 8) |
-			(syndrome[18] << 16) | (syndrome[19] << 24);
-		writel(val, ptr);
+		val = syndrome[16] | (syndrome[17] << 8) | (syndrome[18] << 16) |
+				(syndrome[19] << 24);
+		writel(val, &sf->syndrome_fragment_x[4]);
 
 		/* reg 5 */
-		ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[5];
-		val = syndrome[20] | (syndrome[21] << 8) |
-			(syndrome[22] << 16) | (syndrome[23] << 24);
-		writel(val, ptr);
+		val = syndrome[20] | (syndrome[21] << 8) | (syndrome[22] << 16) |
+				(syndrome[23] << 24);
+		writel(val, &sf->syndrome_fragment_x[5]);
 
 		/* reg 6 */
-		ptr = &elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[6];
-		val = syndrome[24] | (syndrome[25] << 8) |
-			(syndrome[26] << 16) | (syndrome[27] << 24);
-		writel(val, ptr);
+		val = syndrome[24] | (syndrome[25] << 8) | (syndrome[26] << 16) |
+				(syndrome[27] << 24);
+		writel(val, &sf->syndrome_fragment_x[6]);
 	}
 }
 
 /**
- * elm_check_errors - Check for BCH errors and return error locations
+ * elm_check_error - Check for BCH errors and return error locations
  * @syndrome: BCH syndrome
  * @nibbles:
  * @error_count: Returns number of errrors in the syndrome
@@ -107,14 +106,13 @@ int elm_check_error(u8 *syndrome, u32 nibbles, u32 *error_count,
 	/* start processing */
 	writel((readl(&elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[6])
 				| ELM_SYNDROME_FRAGMENT_6_SYNDROME_VALID),
-		&elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[6]);
+			&elm_cfg->syndrome_fragments[poly].syndrome_fragment_x[6]);
 
 	/* wait for processing to complete */
-	while ((readl(&elm_cfg->irqstatus) & (0x1 << poly)) != 0x1)
-		;
+	while (!(readl(&elm_cfg->irqstatus) & (0x1 << poly)));
 	/* clear status */
-	writel((readl(&elm_cfg->irqstatus) | (0x1 << poly)),
-			&elm_cfg->irqstatus);
+	writel((readl(&elm_cfg->irqstatus) & ~(0x1 << poly)),
+		&elm_cfg->irqstatus);
 
 	/* check if correctable */
 	location_status = readl(&elm_cfg->error_location[poly].location_status);
@@ -123,12 +121,11 @@ int elm_check_error(u8 *syndrome, u32 nibbles, u32 *error_count,
 
 	/* get error count */
 	*error_count = readl(&elm_cfg->error_location[poly].location_status) &
-					ELM_LOCATION_STATUS_ECC_NB_ERRORS_MASK;
+						ELM_LOCATION_STATUS_ECC_NB_ERRORS_MASK;
 
-	for (i = 0; i < *error_count; i++) {
+	for (i = 0; i < *error_count; i++)
 		error_locations[i] =
 			readl(&elm_cfg->error_location[poly].error_location_x[i]);
-	}
 
 	return 0;
 }

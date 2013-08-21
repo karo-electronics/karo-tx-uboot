@@ -17,14 +17,14 @@
 
 #include <asm/arch/hardware.h>
 
-#define BIT(x)				(1 << x)
-#define CL_BIT(x)			(0 << x)
+#define BIT(x)				(1 << (x))
+#define CL_BIT(x)			(0 << (x))
 
 /* Timer register bits */
 #define TCLR_ST				BIT(0)	/* Start=1 Stop=0 */
 #define TCLR_AR				BIT(1)	/* Auto reload */
 #define TCLR_PRE			BIT(5)	/* Pre-scaler enable */
-#define TCLR_PTV_SHIFT			(2)	/* Pre-scaler shift value */
+#define TCLR_PTV_SHIFT			2	/* Pre-scaler shift value */
 #define TCLR_PRE_DISABLE		CL_BIT(5) /* Pre-scalar disable */
 
 /* device type */
@@ -40,8 +40,8 @@
 #define DEVICE_ID			(CTRL_BASE + 0x0600)
 
 /* This gives the status of the boot mode pins on the evm */
-#define SYSBOOT_MASK			(BIT(0) | BIT(1) | BIT(2)\
-					| BIT(3) | BIT(4))
+#define SYSBOOT_MASK			(BIT(0) | BIT(1) | BIT(2) | \
+						BIT(3) | BIT(4))
 
 /* Reset control */
 #ifdef CONFIG_AM33XX
@@ -105,9 +105,6 @@ struct gpmc {
 	struct bch_res_0_3 bch_result_0_3[2];	/* 0x240 */
 };
 
-/* Used for board specific gpmc initialization */
-extern struct gpmc *gpmc_cfg;
-
 /* Encapsulating core pll registers */
 struct cm_wkuppll {
 	unsigned int wkclkstctrl;	/* offset 0x00 */
@@ -122,7 +119,9 @@ struct cm_wkuppll {
 	unsigned int idlestdpllddr;	/* offset 0x34 */
 	unsigned int resv5[2];
 	unsigned int clkseldpllddr;	/* offset 0x40 */
-	unsigned int resv6[4];
+	unsigned int autoidledplldisp;	/* offset 0x44 */
+	unsigned int idlestdplldisp;	/* offset 0x48 */
+	unsigned int resv6[2];
 	unsigned int clkseldplldisp;	/* offset 0x54 */
 	unsigned int resv7[1];
 	unsigned int idlestdpllcore;	/* offset 0x5c */
@@ -147,7 +146,8 @@ struct cm_wkuppll {
 	unsigned int resv11[1];
 	unsigned int wkup_uart0ctrl;	/* offset 0xB4 */
 	unsigned int wkup_i2c0ctrl;	/* offset 0xB8 */
-	unsigned int resv12[7];
+	unsigned int resv12[6];
+	unsigned int wdtimer1ctrl;
 	unsigned int divm6dpllcore;	/* offset 0xD8 */
 };
 
@@ -163,7 +163,7 @@ struct cm_perpll {
 	unsigned int resv1;
 	unsigned int cpgmac0clkctrl;	/* offset 0x14 */
 	unsigned int lcdclkctrl;	/* offset 0x18 */
-	unsigned int usb0clkctrl;	/* offset 0x1C */
+	unsigned int usb0clkctrl;	/* offset 0x1c */
 	unsigned int resv2;
 	unsigned int tptc0clkctrl;	/* offset 0x24 */
 	unsigned int emifclkctrl;	/* offset 0x28 */
@@ -269,7 +269,7 @@ struct gptimer {
 	unsigned int twpc;		/* offset 0x48 */
 	unsigned int tmar;		/* offset 0x4c */
 	unsigned int tcar1;		/* offset 0x50 */
-	unsigned int tscir;		/* offset 0x54 */
+	unsigned int tsicr;		/* offset 0x54 */
 	unsigned int tcar2;		/* offset 0x58 */
 };
 
@@ -299,7 +299,7 @@ struct ctrl_stat {
 	unsigned int resv1[16];
 	unsigned int statusreg;		/* ofset 0x40 */
 	unsigned int resv2[51];
-	unsigned int secure_emif_sdram_config;	/* offset 0x0110 */
+	unsigned int emif_sdram_config;	/* offset 0x0110 */
 };
 
 /* AM33XX GPIO registers */
@@ -336,7 +336,26 @@ struct ctrl_dev {
 	unsigned int resv4[4];
 	unsigned int miisel;		/* offset 0x50 */
 };
+
+void init_timer(void);
+
+#define clk_get_rate(c,p)					\
+	__clk_get_rate(readl(&(c)->clkseldpll##p),		\
+		readl(&(c)->divm2dpll##p))
+
+unsigned long __clk_get_rate(u32 m_n, u32 div_m2);
+
+unsigned long lcdc_clk_rate(void);
+unsigned long mpu_clk_rate(void);
+
 #endif /* __ASSEMBLY__ */
 #endif /* __KERNEL_STRICT_NAMES */
+
+/* Ethernet MAC ID from EFuse */
+#define MAC_ID0_LO	(CTRL_BASE + 0x630)
+#define MAC_ID0_HI	(CTRL_BASE + 0x634)
+#define MAC_ID1_LO	(CTRL_BASE + 0x638)
+#define MAC_ID1_HI	(CTRL_BASE + 0x63c)
+#define MAC_MII_SEL	(CTRL_BASE + 0x650)
 
 #endif /* _AM33XX_CPU_H */

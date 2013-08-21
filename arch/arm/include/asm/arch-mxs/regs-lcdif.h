@@ -17,51 +17,51 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_lcdif_regs {
-	mxs_reg_32(hw_lcdif_ctrl)		/* 0x00 */
-	mxs_reg_32(hw_lcdif_ctrl1)		/* 0x10 */
+	mxs_reg_32(hw_lcdif_ctrl);		/* 0x00 */
+	mxs_reg_32(hw_lcdif_ctrl1);		/* 0x10 */
 #if defined(CONFIG_MX28)
 	mxs_reg_32(hw_lcdif_ctrl2)		/* 0x20 */
-#endif
-	mxs_reg_32(hw_lcdif_transfer_count)	/* 0x20/0x30 */
-	mxs_reg_32(hw_lcdif_cur_buf)		/* 0x30/0x40 */
-	mxs_reg_32(hw_lcdif_next_buf)		/* 0x40/0x50 */
+#endif						/* MX23/MX28 */
+	mxs_reg_32(hw_lcdif_transfer_count);	/* 0x20/0x30 */
+	mxs_reg_32(hw_lcdif_cur_buf);		/* 0x30/0x40 */
+	mxs_reg_32(hw_lcdif_next_buf);		/* 0x40/0x50 */
 
 #if defined(CONFIG_MX23)
-	uint32_t	reserved1[4];
+	reg_32(reserved1);			/* 0x50 */
 #endif
 
-	mxs_reg_32(hw_lcdif_timing)		/* 0x60 */
-	mxs_reg_32(hw_lcdif_vdctrl0)		/* 0x70 */
-	mxs_reg_32(hw_lcdif_vdctrl1)		/* 0x80 */
-	mxs_reg_32(hw_lcdif_vdctrl2)		/* 0x90 */
-	mxs_reg_32(hw_lcdif_vdctrl3)		/* 0xa0 */
-	mxs_reg_32(hw_lcdif_vdctrl4)		/* 0xb0 */
-	mxs_reg_32(hw_lcdif_dvictrl0)		/* 0xc0 */
-	mxs_reg_32(hw_lcdif_dvictrl1)		/* 0xd0 */
-	mxs_reg_32(hw_lcdif_dvictrl2)		/* 0xe0 */
-	mxs_reg_32(hw_lcdif_dvictrl3)		/* 0xf0 */
-	mxs_reg_32(hw_lcdif_dvictrl4)		/* 0x100 */
-	mxs_reg_32(hw_lcdif_csc_coeffctrl0)	/* 0x110 */
-	mxs_reg_32(hw_lcdif_csc_coeffctrl1)	/* 0x120 */
-	mxs_reg_32(hw_lcdif_csc_coeffctrl2)	/* 0x130 */
-	mxs_reg_32(hw_lcdif_csc_coeffctrl3)	/* 0x140 */
-	mxs_reg_32(hw_lcdif_csc_coeffctrl4)	/* 0x150 */
-	mxs_reg_32(hw_lcdif_csc_offset)	/* 0x160 */
-	mxs_reg_32(hw_lcdif_csc_limit)		/* 0x170 */
+	mxs_reg_32(hw_lcdif_timing);		/* 0x60 */
+	mxs_reg_32(hw_lcdif_vdctrl0);		/* 0x70 */
+	mxs_reg_32(hw_lcdif_vdctrl1);		/* 0x80 */
+	mxs_reg_32(hw_lcdif_vdctrl2);		/* 0x90 */
+	mxs_reg_32(hw_lcdif_vdctrl3);		/* 0xa0 */
+	mxs_reg_32(hw_lcdif_vdctrl4);		/* 0xb0 */
+	mxs_reg_32(hw_lcdif_dvictrl0);		/* 0xc0 */
+	mxs_reg_32(hw_lcdif_dvictrl1);		/* 0xd0 */
+	mxs_reg_32(hw_lcdif_dvictrl2);		/* 0xe0 */
+	mxs_reg_32(hw_lcdif_dvictrl3);		/* 0xf0 */
+	mxs_reg_32(hw_lcdif_dvictrl4);		/* 0x100 */
+	mxs_reg_32(hw_lcdif_csc_coeffctrl0);	/* 0x110 */
+	mxs_reg_32(hw_lcdif_csc_coeffctrl1);	/* 0x120 */
+	mxs_reg_32(hw_lcdif_csc_coeffctrl2);	/* 0x130 */
+	mxs_reg_32(hw_lcdif_csc_coeffctrl3);	/* 0x140 */
+	mxs_reg_32(hw_lcdif_csc_coeffctrl4);	/* 0x150 */
+	mxs_reg_32(hw_lcdif_csc_offset);	/* 0x160 */
+	mxs_reg_32(hw_lcdif_csc_limit);		/* 0x170 */
 
 #if defined(CONFIG_MX23)
-	uint32_t	reserved2[12];
-#endif
+	reg_32(reserved2[3]);			/* 0x180-0x1a0 */
+#endif						/*  MX23/MX28 */
 	mxs_reg_32(hw_lcdif_data)		/* 0x1b0/0x180 */
 	mxs_reg_32(hw_lcdif_bm_error_stat)	/* 0x1c0/0x190 */
 #if defined(CONFIG_MX28)
-	mxs_reg_32(hw_lcdif_crc_stat)		/* 0x1a0 */
+	mxs_reg_32(hw_lcdif_crc_stat)		/*       0x1a0 */
 #endif
-	mxs_reg_32(hw_lcdif_lcdif_stat)		/* 0x1d0/0x1b0 */
-	mxs_reg_32(hw_lcdif_version)		/* 0x1e0/0x1c0 */
-	mxs_reg_32(hw_lcdif_debug0)		/* 0x1f0/0x1d0 */
-	mxs_reg_32(hw_lcdif_debug1)		/* 0x200/0x1e0 */
-	mxs_reg_32(hw_lcdif_debug2)		/* 0x1f0 */
+	mxs_reg_32(hw_lcdif_lcdif_stat);	/* 0x1d0/0x1b0 */
+	mxs_reg_32(hw_lcdif_version);		/* 0x1e0/0x1c0 */
+	mxs_reg_32(hw_lcdif_debug0);		/* 0x1f0/0x1d0 */
+	mxs_reg_32(hw_lcdif_debug1);		/* 0x200/0x1e0 */
+	mxs_reg_32(hw_lcdif_debug2);		/*       0x1f0 */
 };
 #endif
 
@@ -111,6 +111,8 @@ struct mxs_lcdif_regs {
 #define	LCDIF_CTRL1_IRQ_ON_ALTERNATE_FIELDS			(1 << 20)
 #define	LCDIF_CTRL1_BYTE_PACKING_FORMAT_MASK			(0xf << 16)
 #define	LCDIF_CTRL1_BYTE_PACKING_FORMAT_OFFSET			16
+#define	LCDIF_CTRL1_BYTE_PACKING_FORMAT(n)			(((n) << LCDIF_CTRL1_BYTE_PACKING_FORMAT_OFFSET) & \
+						LCDIF_CTRL1_BYTE_PACKING_FORMAT_MASK)
 #define	LCDIF_CTRL1_OVERFLOW_IRQ_EN				(1 << 15)
 #define	LCDIF_CTRL1_UNDERFLOW_IRQ_EN				(1 << 14)
 #define	LCDIF_CTRL1_CUR_FRAME_DONE_IRQ_EN			(1 << 13)
@@ -157,8 +159,12 @@ struct mxs_lcdif_regs {
 
 #define	LCDIF_TRANSFER_COUNT_V_COUNT_MASK			(0xffff << 16)
 #define	LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET			16
+#define	LCDIF_TRANSFER_COUNT_V_COUNT(n)				(((n) << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) & \
+						LCDIF_TRANSFER_COUNT_V_COUNT_MASK)
 #define	LCDIF_TRANSFER_COUNT_H_COUNT_MASK			(0xffff << 0)
 #define	LCDIF_TRANSFER_COUNT_H_COUNT_OFFSET			0
+#define	LCDIF_TRANSFER_COUNT_H_COUNT(n)				(((n) << LCDIF_TRANSFER_COUNT_H_COUNT_OFFSET) & \
+						LCDIF_TRANSFER_COUNT_H_COUNT_MASK)
 
 #define	LCDIF_CUR_BUF_ADDR_MASK					0xffffffff
 #define	LCDIF_CUR_BUF_ADDR_OFFSET				0
@@ -187,9 +193,13 @@ struct mxs_lcdif_regs {
 #define	LCDIF_VDCTRL0_HALF_LINE_MODE				(1 << 18)
 #define	LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_MASK			0x3ffff
 #define	LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_OFFSET			0
+#define	LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH(n)			(((n) << LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_OFFSET) & \
+						LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_MASK)
 
 #define	LCDIF_VDCTRL1_VSYNC_PERIOD_MASK				0xffffffff
 #define	LCDIF_VDCTRL1_VSYNC_PERIOD_OFFSET			0
+#define	LCDIF_VDCTRL1_VSYNC_PERIOD(n)				(((n) << LCDIF_VDCTRL1_VSYNC_PERIOD_OFFSET) & \
+						LCDIF_VDCTRL1_VSYNC_PERIOD_MASK)
 
 #if defined(CONFIG_MX23)
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_MASK			(0xff << 24)
@@ -198,20 +208,32 @@ struct mxs_lcdif_regs {
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_MASK			(0x3fff << 18)
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET			18
 #endif
+#define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH(n)			(((n) << LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET) & \
+						LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_MASK)
 #define	LCDIF_VDCTRL2_HSYNC_PERIOD_MASK				0x3ffff
 #define	LCDIF_VDCTRL2_HSYNC_PERIOD_OFFSET			0
+#define	LCDIF_VDCTRL2_HSYNC_PERIOD(n)				(((n) << LCDIF_VDCTRL2_HSYNC_PERIOD_OFFSET) & \
+						LCDIF_VDCTRL2_HSYNC_PERIOD_MASK)
 
 #define	LCDIF_VDCTRL3_MUX_SYNC_SIGNALS				(1 << 29)
 #define	LCDIF_VDCTRL3_VSYNC_ONLY				(1 << 28)
 #define	LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT_MASK			(0xfff << 16)
 #define	LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT_OFFSET		16
+#define	LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT(n)			(((n) << LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT_OFFSET) & \
+						LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT_MASK)
 #define	LCDIF_VDCTRL3_VERTICAL_WAIT_CNT_MASK			(0xffff << 0)
 #define	LCDIF_VDCTRL3_VERTICAL_WAIT_CNT_OFFSET			0
+#define	LCDIF_VDCTRL3_VERTICAL_WAIT_CNT(n)			(((n) << LCDIF_VDCTRL3_VERTICAL_WAIT_CNT_OFFSET) & \
+						LCDIF_VDCTRL3_VERTICAL_WAIT_CNT_MASK)
 
 #define	LCDIF_VDCTRL4_DOTCLK_DLY_SEL_MASK			(0x7 << 29)
 #define	LCDIF_VDCTRL4_DOTCLK_DLY_SEL_OFFSET			29
+#define	LCDIF_VDCTRL4_DOTCLK_DLY_SEL(n)				(((n) << LCDIF_VDCTRL4_DOTCLK_DLY_SEL_OFFSET) & \
+						LCDIF_VDCTRL4_DOTCLK_DLY_SEL_MASK)
 #define	LCDIF_VDCTRL4_SYNC_SIGNALS_ON				(1 << 18)
 #define	LCDIF_VDCTRL4_DOTCLK_H_VALID_DATA_CNT_MASK		0x3ffff
 #define	LCDIF_VDCTRL4_DOTCLK_H_VALID_DATA_CNT_OFFSET		0
+#define	LCDIF_VDCTRL4_DOTCLK_H_VALID_DATA_CNT(n)		(((n) << LCDIF_VDCTRL4_DOTCLK_H_VALID_DATA_CNT_OFFSET) & \
+							LCDIF_VDCTRL4_DOTCLK_H_VALID_DATA_CNT_MASK)
 
 #endif /* __MX28_REGS_LCDIF_H__ */

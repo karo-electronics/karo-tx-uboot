@@ -810,6 +810,7 @@ char *	strmhz(char *buf, unsigned long hz);
 /* lib/rand.c */
 #if defined(CONFIG_RANDOM_MACADDR) || \
 	defined(CONFIG_BOOTP_RANDOM_DELAY) || \
+	defined(CONFIG_BOOTP_RANDOM_ID) || \
 	defined(CONFIG_CMD_LINK_LOCAL)
 #define RAND_MAX -1U
 void srand(unsigned int seed);

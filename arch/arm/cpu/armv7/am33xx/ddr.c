@@ -17,24 +17,27 @@
  */
 static struct emif_reg_struct *emif_reg[2] = {
 				(struct emif_reg_struct *)EMIF4_0_CFG_BASE,
-				(struct emif_reg_struct *)EMIF4_1_CFG_BASE};
+				(struct emif_reg_struct *)EMIF4_1_CFG_BASE,
+};
 
 /**
  * Base addresses for DDR PHY cmd/data regs
  */
 static struct ddr_cmd_regs *ddr_cmd_reg[2] = {
 				(struct ddr_cmd_regs *)DDR_PHY_CMD_ADDR,
-				(struct ddr_cmd_regs *)DDR_PHY_CMD_ADDR2};
+				(struct ddr_cmd_regs *)DDR_PHY_CMD_ADDR2,
+};
 
 static struct ddr_data_regs *ddr_data_reg[2] = {
 				(struct ddr_data_regs *)DDR_PHY_DATA_ADDR,
-				(struct ddr_data_regs *)DDR_PHY_DATA_ADDR2};
+				(struct ddr_data_regs *)DDR_PHY_DATA_ADDR2,
+};
 
 /**
  * Base address for ddr io control instances
  */
-static struct ddr_cmdtctrl *ioctrl_reg = {
-			(struct ddr_cmdtctrl *)DDR_CONTROL_BASE_ADDR};
+static struct ddr_cmdtctrl *ioctrl_reg =
+				(struct ddr_cmdtctrl *)DDR_CONTROL_BASE_ADDR;
 
 /**
  * Configure SDRAM
@@ -49,7 +52,7 @@ void config_sdram(const struct emif_regs *regs, int nr)
 		 */
 		writel(0x2800, &emif_reg[nr]->emif_sdram_ref_ctrl);
 		writel(regs->zq_config, &emif_reg[nr]->emif_zq_config);
-		writel(regs->sdram_config, &cstat->secure_emif_sdram_config);
+		writel(regs->sdram_config, &cstat->emif_sdram_config);
 		writel(regs->sdram_config, &emif_reg[nr]->emif_sdram_config);
 		writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl);
 		writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl_shdw);

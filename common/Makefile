@@ -58,6 +58,7 @@ COBJS-$(CONFIG_CMD_SOURCE) += cmd_source.o
 COBJS-$(CONFIG_CMD_BDI) += cmd_bdinfo.o
 COBJS-$(CONFIG_CMD_BEDBUG) += bedbug.o cmd_bedbug.o
 COBJS-$(CONFIG_CMD_BMP) += cmd_bmp.o
+COBJS-$(CONFIG_CMD_BOOTCE) += cmd_bootce.o
 COBJS-$(CONFIG_CMD_BOOTMENU) += cmd_bootmenu.o
 COBJS-$(CONFIG_CMD_BOOTLDR) += cmd_bootldr.o
 COBJS-$(CONFIG_CMD_BOOTSTAGE) += cmd_bootstage.o
@@ -97,6 +98,7 @@ COBJS-$(CONFIG_CMD_FS_GENERIC) += cmd_fs.o
 COBJS-$(CONFIG_CMD_FUSE) += cmd_fuse.o
 COBJS-$(CONFIG_CMD_GETTIME) += cmd_gettime.o
 COBJS-$(CONFIG_CMD_GPIO) += cmd_gpio.o
+COBJS-$(CONFIG_CMD_IIM) += cmd_iim.o
 COBJS-$(CONFIG_CMD_I2C) += cmd_i2c.o
 COBJS-$(CONFIG_CMD_HASH) += cmd_hash.o
 COBJS-$(CONFIG_CMD_IDE) += cmd_ide.o
@@ -133,6 +135,7 @@ COBJS-$(CONFIG_CMD_NET) += cmd_net.o
 COBJS-$(CONFIG_CMD_ONENAND) += cmd_onenand.o
 COBJS-$(CONFIG_CMD_OTP) += cmd_otp.o
 COBJS-$(CONFIG_CMD_PART) += cmd_part.o
+COBJS-$(CONFIG_CMD_PATA) += cmd_pata.o
 ifdef CONFIG_PCI
 COBJS-$(CONFIG_CMD_PCI) += cmd_pci.o
 endif

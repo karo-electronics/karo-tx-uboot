@@ -99,57 +99,69 @@ static void
 esdhc_pio_read_write(struct mmc *mmc, struct mmc_data *data)
 {
 	struct fsl_esdhc_cfg *cfg = mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	uint blocks;
 	char *buffer;
 	uint databuf;
 	uint size;
-	uint irqstat;
 	uint timeout;
+	int wml = esdhc_read32(&regs->wml);
 
 	if (data->flags & MMC_DATA_READ) {
+		wml &= WML_RD_WML_MASK;
 		blocks = data->blocks;
 		buffer = data->dest;
 		while (blocks) {
 			timeout = PIO_TIMEOUT;
 			size = data->blocksize;
-			irqstat = esdhc_read32(&regs->irqstat);
-			while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_BREN)
-				&& --timeout);
-			if (timeout <= 0) {
-				printf("\nData Read Failed in PIO Mode.");
-				return;
-			}
-			while (size && (!(irqstat & IRQSTAT_TC))) {
-				udelay(100); /* Wait before last byte transfer complete */
-				irqstat = esdhc_read32(&regs->irqstat);
-				databuf = in_le32(&regs->datport);
-				*((uint *)buffer) = databuf;
-				buffer += 4;
-				size -= 4;
+			while (size &&
+				!(esdhc_read32(&regs->irqstat) & IRQSTAT_TC)) {
+				int i;
+				u32 prsstat;
+
+				while (!((prsstat = esdhc_read32(&regs->prsstat)) &
+						PRSSTAT_BREN) && --timeout)
+					/* NOP */;
+				if (!(prsstat & PRSSTAT_BREN)) {
+					printf("%s: Data Read Failed in PIO Mode\n",
+						__func__);
+					return;
+				}
+				for (i = 0; i < wml && size; i++) {
+					databuf = in_le32(&regs->datport);
+					memcpy(buffer, &databuf, sizeof(databuf));
+					buffer += 4;
+					size -= 4;
+				}
 			}
 			blocks--;
 		}
 	} else {
+		wml = (wml & WML_WR_WML_MASK) >> 16;
 		blocks = data->blocks;
-		buffer = (char *)data->src;
+		buffer = (char *)data->src; /* cast away 'const' */
 		while (blocks) {
 			timeout = PIO_TIMEOUT;
 			size = data->blocksize;
-			irqstat = esdhc_read32(&regs->irqstat);
-			while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_BWEN)
-				&& --timeout);
-			if (timeout <= 0) {
-				printf("\nData Write Failed in PIO Mode.");
-				return;
-			}
-			while (size && (!(irqstat & IRQSTAT_TC))) {
-				udelay(100); /* Wait before last byte transfer complete */
-				databuf = *((uint *)buffer);
-				buffer += 4;
-				size -= 4;
-				irqstat = esdhc_read32(&regs->irqstat);
-				out_le32(&regs->datport, databuf);
+			while (size &&
+				!(esdhc_read32(&regs->irqstat) & IRQSTAT_TC)) {
+				int i;
+				u32 prsstat;
+
+				while (!((prsstat = esdhc_read32(&regs->prsstat)) &
+						PRSSTAT_BWEN) && --timeout)
+					/* NOP */;
+				if (!(prsstat & PRSSTAT_BWEN)) {
+					printf("%s: Data Write Failed in PIO Mode\n",
+						__func__);
+					return;
+				}
+				for (i = 0; i < wml && size; i++) {
+					memcpy(&databuf, buffer, sizeof(databuf));
+					out_le32(&regs->datport, databuf);
+					buffer += 4;
+					size -= 4;
+				}
 			}
 			blocks--;
 		}
@@ -160,12 +172,12 @@ esdhc_pio_read_write(struct mmc *mmc, struct mmc_data *data)
 static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 {
 	int timeout;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 #ifndef CONFIG_SYS_FSL_ESDHC_USE_PIO
 	uint wml_value;
 
-	wml_value = data->blocksize/4;
+	wml_value = data->blocksize / 4;
 
 	if (data->flags & MMC_DATA_READ) {
 		if (wml_value > WML_RD_WML_MAX)
@@ -174,17 +186,15 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 		esdhc_clrsetbits32(&regs->wml, WML_RD_WML_MASK, wml_value);
 		esdhc_write32(&regs->dsaddr, (u32)data->dest);
 	} else {
-		flush_dcache_range((ulong)data->src,
-				   (ulong)data->src+data->blocks
-					 *data->blocksize);
-
 		if (wml_value > WML_WR_WML_MAX)
 			wml_value = WML_WR_WML_MAX_VAL;
 		if ((esdhc_read32(&regs->prsstat) & PRSSTAT_WPSPL) == 0) {
-			printf("\nThe SD card is locked. Can not write to a locked card.\n\n");
-			return TIMEOUT;
+			printf("The SD card is locked. Can not write to a locked card.\n");
+			return UNUSABLE_ERR;
 		}
 
+		flush_dcache_range((unsigned long)data->src,
+				(unsigned long)data->src + data->blocks * data->blocksize);
 		esdhc_clrsetbits32(&regs->wml, WML_WR_WML_MASK,
 					wml_value << 16);
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
@@ -192,16 +202,16 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 #else	/* CONFIG_SYS_FSL_ESDHC_USE_PIO */
 	if (!(data->flags & MMC_DATA_READ)) {
 		if ((esdhc_read32(&regs->prsstat) & PRSSTAT_WPSPL) == 0) {
-			printf("\nThe SD card is locked. "
-				"Can not write to a locked card.\n\n");
-			return TIMEOUT;
+			printf("The SD card is locked. Can not write to a locked card.\n");
+			return UNUSABLE_ERR;
 		}
 		esdhc_write32(&regs->dsaddr, (u32)data->src);
-	} else
+	} else {
 		esdhc_write32(&regs->dsaddr, (u32)data->dest);
+	}
 #endif	/* CONFIG_SYS_FSL_ESDHC_USE_PIO */
 
-	esdhc_write32(&regs->blkattr, data->blocks << 16 | data->blocksize);
+	esdhc_write32(&regs->blkattr, (data->blocks << 16) | data->blocksize);
 
 	/* Calculate the timeout period for data transactions */
 	/*
@@ -218,34 +228,35 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 	 * => timeout + 13 = log2(mmc->tran_speed/4) + 1
 	 * => timeout + 13 = fls(mmc->tran_speed/4)
 	 */
-	timeout = fls(mmc->tran_speed/4);
+	timeout = fls(mmc->tran_speed / 4);
 	timeout -= 13;
 
 	if (timeout > 14)
 		timeout = 14;
-
-	if (timeout < 0)
+	else if (timeout < 0)
 		timeout = 0;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_ESDHC_A001
 	if ((timeout == 4) || (timeout == 8) || (timeout == 12))
 		timeout++;
 #endif
-
 	esdhc_clrsetbits32(&regs->sysctl, SYSCTL_TIMEOUT_MASK, timeout << 16);
 
 	return 0;
 }
 
-static void check_and_invalidate_dcache_range
-	(struct mmc_cmd *cmd,
-	 struct mmc_data *data) {
-	unsigned start = (unsigned)data->dest ;
-	unsigned size = roundup(ARCH_DMA_MINALIGN,
-				data->blocks*data->blocksize);
-	unsigned end = start+size ;
+static inline void check_and_invalidate_dcache_range(struct mmc_cmd *cmd,
+					struct mmc_data *data)
+{
+	unsigned long start = (unsigned long)data->dest;
+	size_t start_ofs = start & (ARCH_DMA_MINALIGN - 1);
+	unsigned long size = data->blocks * data->blocksize;
+	unsigned long end = ALIGN(start + size, ARCH_DMA_MINALIGN);
+
+	start -= start_ofs;
 	invalidate_dcache_range(start, end);
 }
+
 /*
  * Sends a command out on the bus.  Takes the mmc pointer,
  * a command pointer, and an optional data pointer.
@@ -255,8 +266,9 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 {
 	uint	xfertyp;
 	uint	irqstat;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	volatile struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	volatile struct fsl_esdhc *regs = cfg->esdhc_base;
+	unsigned long start;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_ESDHC111
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
@@ -267,13 +279,21 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 
 	sync();
 
+	start = get_timer_masked();
 	/* Wait for the bus to be idle */
 	while ((esdhc_read32(&regs->prsstat) & PRSSTAT_CICHB) ||
-			(esdhc_read32(&regs->prsstat) & PRSSTAT_CIDHB))
-		;
+		(esdhc_read32(&regs->prsstat) & PRSSTAT_CIDHB)) {
+		if (get_timer(start) > CONFIG_SYS_HZ) {
+			printf("%s: Timeout waiting for bus idle\n", __func__);
+			return TIMEOUT;
+		}
+	}
 
-	while (esdhc_read32(&regs->prsstat) & PRSSTAT_DLA)
-		;
+	start = get_timer_masked();
+	while (esdhc_read32(&regs->prsstat) & PRSSTAT_DLA) {
+		if (get_timer(start) > CONFIG_SYS_HZ)
+			return TIMEOUT;
+	}
 
 	/* Wait at least 8 SD clock cycles before the next command */
 	/*
@@ -287,7 +307,7 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		int err;
 
 		err = esdhc_setup_data(mmc, data);
-		if(err)
+		if (err)
 			return err;
 	}
 
@@ -301,15 +321,26 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	esdhc_write32(&regs->cmdarg, cmd->cmdarg);
 #if defined(CONFIG_FSL_USDHC)
 	esdhc_write32(&regs->mixctrl,
-	(esdhc_read32(&regs->mixctrl) & 0xFFFFFF80) | (xfertyp & 0x7F));
+	(esdhc_read32(&regs->mixctrl) & ~0x7f) | (xfertyp & 0x7F));
 	esdhc_write32(&regs->xfertyp, xfertyp & 0xFFFF0000);
 #else
 	esdhc_write32(&regs->xfertyp, xfertyp);
 #endif
 
+	/* Mask all irqs */
+	esdhc_write32(&regs->irqsigen, 0);
+
+	start = get_timer_masked();
 	/* Wait for the command to complete */
-	while (!(esdhc_read32(&regs->irqstat) & (IRQSTAT_CC | IRQSTAT_CTOE)))
-		;
+	while (!(esdhc_read32(&regs->irqstat) & (IRQSTAT_CC | IRQSTAT_CTOE))) {
+		if (get_timer(start) > CONFIG_SYS_HZ) {
+			printf("%s: Timeout waiting for cmd completion\n", __func__);
+			return TIMEOUT;
+		}
+	}
+
+	if (data && (data->flags & MMC_DATA_READ))
+		check_and_invalidate_dcache_range(cmd, data);
 
 	irqstat = esdhc_read32(&regs->irqstat);
 
@@ -317,15 +348,21 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	if (irqstat & (CMD_ERR | IRQSTAT_CTOE)) {
 		esdhc_write32(&regs->sysctl, esdhc_read32(&regs->sysctl) |
 			      SYSCTL_RSTC);
-		while (esdhc_read32(&regs->sysctl) & SYSCTL_RSTC)
-			;
+		start = get_timer_masked();
+		while (esdhc_read32(&regs->sysctl) & SYSCTL_RSTC) {
+			if (get_timer(start) > CONFIG_SYS_HZ)
+				return TIMEOUT;
+		}
 
 		if (data) {
 			esdhc_write32(&regs->sysctl,
 				      esdhc_read32(&regs->sysctl) |
 				      SYSCTL_RSTD);
-			while ((esdhc_read32(&regs->sysctl) & SYSCTL_RSTD))
-				;
+			start = get_timer_masked();
+			while ((esdhc_read32(&regs->sysctl) & SYSCTL_RSTD)) {
+				if (get_timer(start) > CONFIG_SYS_HZ)
+					return TIMEOUT;
+			}
 		}
 	}
 
@@ -372,21 +409,40 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 #ifdef CONFIG_SYS_FSL_ESDHC_USE_PIO
 		esdhc_pio_read_write(mmc, data);
 #else
+		unsigned long start = get_timer_masked();
+		unsigned long data_timeout = data->blocks *
+			(data->blocksize + 100) * 8 / mmc->bus_width /
+			(mmc->tran_speed / CONFIG_SYS_HZ) + CONFIG_SYS_HZ;
+
 		do {
 			irqstat = esdhc_read32(&regs->irqstat);
 
-			if (irqstat & IRQSTAT_DTOE)
+			if (irqstat & IRQSTAT_DTOE) {
+				printf("MMC/SD data %s timeout\n",
+					data->flags & MMC_DATA_READ ?
+					"read" : "write");
 				return TIMEOUT;
+			}
 
-			if (irqstat & DATA_ERR)
+			if (irqstat & DATA_ERR) {
+				printf("MMC/SD data error\n");
 				return COMM_ERR;
-		} while ((irqstat & DATA_COMPLETE) != DATA_COMPLETE);
+			}
+
+			if (get_timer(start) > data_timeout) {
+				printf("MMC/SD timeout waiting for %s xfer completion\n",
+						data->flags & MMC_DATA_READ ?
+						"read" : "write");
+				return TIMEOUT;
+			}
+		} while (!(irqstat & IRQSTAT_TC) &&
+			(esdhc_read32(&regs->prsstat) & PRSSTAT_DLA));
+
+		check_and_invalidate_dcache_range(cmd, data);
 #endif
-		if (data->flags & MMC_DATA_READ)
-			check_and_invalidate_dcache_range(cmd, data);
 	}
 
-	esdhc_write32(&regs->irqstat, -1);
+	esdhc_write32(&regs->irqstat, irqstat);
 
 	return 0;
 }
@@ -394,8 +450,8 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 static void set_sysctl(struct mmc *mmc, uint clock)
 {
 	int div, pre_div;
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	volatile struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	volatile struct fsl_esdhc *regs = cfg->esdhc_base;
 	int sdhc_clk = cfg->sdhc_clk;
 	uint clk;
 
@@ -431,8 +487,8 @@ static void set_sysctl(struct mmc *mmc, uint clock)
 
 static void esdhc_set_ios(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 
 	/* Set the clock speed */
 	set_sysctl(mmc, mmc->clock);
@@ -449,8 +505,8 @@ static void esdhc_set_ios(struct mmc *mmc)
 
 static int esdhc_init(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	int timeout = 1000;
 
 	/* Reset the entire host controller */
@@ -484,8 +540,8 @@ static int esdhc_init(struct mmc *mmc)
 
 static int esdhc_getcd(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	struct fsl_esdhc *regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct fsl_esdhc *regs = cfg->esdhc_base;
 	int timeout = 1000;
 
 	while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_CINS) && --timeout)
@@ -515,12 +571,14 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	u32 caps, voltage_caps;
 
 	if (!cfg)
-		return -1;
+		return -EINVAL;
 
-	mmc = malloc(sizeof(struct mmc));
+	mmc = kzalloc(sizeof(struct mmc), GFP_KERNEL);
+	if (!mmc)
+		return -ENOMEM;
 
 	sprintf(mmc->name, "FSL_SDHC");
-	regs = (struct fsl_esdhc *)cfg->esdhc_base;
+	regs = cfg->esdhc_base;
 
 	/* First reset the eSDHC controller */
 	esdhc_reset(regs);
@@ -556,7 +614,7 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 #endif
 	if ((mmc->voltages & voltage_caps) == 0) {
 		printf("voltage not supported by controller\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT | MMC_MODE_HC;
@@ -572,7 +630,7 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 		mmc->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
 
 	mmc->f_min = 400000;
-	mmc->f_max = MIN(gd->arch.sdhc_clk, 52000000);
+	mmc->f_max = MIN(cfg->sdhc_clk, 52000000);
 
 	mmc->b_max = 0;
 	mmc_register(mmc);
@@ -584,8 +642,10 @@ int fsl_esdhc_mmc_init(bd_t *bis)
 {
 	struct fsl_esdhc_cfg *cfg;
 
-	cfg = calloc(sizeof(struct fsl_esdhc_cfg), 1);
-	cfg->esdhc_base = CONFIG_SYS_FSL_ESDHC_ADDR;
+	cfg = kzalloc(sizeof(struct fsl_esdhc_cfg), GFP_KERNEL);
+	if (!cfg)
+		return -ENOMEM;
+	cfg->esdhc_base = (void __iomem *)CONFIG_SYS_FSL_ESDHC_ADDR;
 	cfg->sdhc_clk = gd->arch.sdhc_clk;
 	return fsl_esdhc_initialize(bis, cfg);
 }

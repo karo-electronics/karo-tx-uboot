@@ -54,15 +54,15 @@ $(obj)dt.o: $(DT_BIN)
 		oformat=`$(call process_lds,cat $(LDSCRIPT),FORMAT)` && \
 		oarch=`$(call process_lds,cat $(LDSCRIPT),ARCH)` ;\
 	\
-	[ -z $${oformat} ] && \
+	[ -z "$${oformat}" ] && \
 		oformat=`$(call process_lds,$(GET_LDS),FORMAT)` ;\
-	[ -z $${oarch} ] && \
+	[ -z "$${oarch}" ] && \
 		oarch=`$(call process_lds,$(GET_LDS),ARCH)` ;\
 	\
-	[ -z $${oformat} ] && \
+	[ -z "$${oformat}" ] && \
 		echo "Cannot read OUTPUT_FORMAT from lds file $(LDSCRIPT)" && \
 		exit 1 || true ;\
-	[ -z $${oarch} ] && \
+	[ -z "$${oarch}" ] && \
 		echo "Cannot read OUTPUT_ARCH from lds file $(LDSCRIPT)" && \
 		exit 1 || true ;\
 	\

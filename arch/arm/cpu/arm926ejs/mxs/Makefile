@@ -31,8 +31,8 @@ ELFTOSB_TARGET-$(CONFIG_MX28) = imx28
 $(OBJTREE)/u-boot.bd: $(SRCTREE)/$(CPUDIR)/$(SOC)/u-boot-$(ELFTOSB_TARGET-y).bd
 	sed "s@OBJTREE@$(OBJTREE)@g" $^ > $@
 
-$(OBJTREE)/u-boot.sb: $(OBJTREE)/u-boot.bin $(OBJTREE)/spl/u-boot-spl.bin $(OBJTREE)/u-boot.bd
-		elftosb -zf $(ELFTOSB_TARGET-y) -c $(OBJTREE)/u-boot.bd -o $(OBJTREE)/u-boot.sb
+$(OBJTREE)/u-boot.sb: $(OBJTREE)/u-boot $(OBJTREE)/spl/u-boot-spl $(OBJTREE)/u-boot.bd
+		$(TOPDIR)/tools/elftosb/bld/linux/elftosb -V -zf $(ELFTOSB_TARGET-y) -c $(OBJTREE)/u-boot.bd -o $(OBJTREE)/u-boot.sb
 
 #########################################################################
 

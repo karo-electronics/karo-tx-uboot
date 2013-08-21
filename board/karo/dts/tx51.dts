@@ -1,0 +1,323 @@
+/*
+ * Copyright 2012 <LW@KARO-electronics.de>
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/dts-v1/;
+#include "mx51.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TX51 module";
+	compatible = "karo,tx51", "fsl,imx51";
+
+	chosen {
+		bootargs = "init=/linuxrc console=ttymxc0,115200 root=/dev/mtdblock1 ro debug panic=1";
+	};
+
+	aliases {
+		usbh1 = &usbh1;
+		usbotg = &usbotg;
+		usbphy = &usbphy;
+	};
+
+	clocks {
+		ckih1 {
+			clock-frequency = <0>;
+		};
+	};
+
+	soc {
+		ahb: ahb@40000000 {
+			ipu: ipu@5e000000 {
+				status = "okay";
+			};
+		};
+
+		aips1: aips@70000000 { /* AIPS1 */
+			spba@70000000 {
+				mmc0: esdhc@70004000 { /* ESDHC1 */
+					cd-gpios = <&gpio3 8 0>;
+					fsl,wp-controller;
+					status = "okay";
+				};
+
+				mmc1: esdhc@70008000 { /* ESDHC2 */
+					cd-gpios = <&gpio3 6 0>;
+					status = "okay";
+				};
+
+				uart@7000c000 {
+					status = "okay";
+					fsl,uart-has-rtscts;
+				};
+
+				spi0: ecspi@70010000 { /* ECSPI1 */
+					fsl,spi-num-chipselects = <2>;
+					cs-gpios = <&gpio4 24 0 &gpio4 25 0>;
+					status = "okay";
+
+					spidev0: spi@0 {
+						compatible = "spidev";
+						reg = <0>;
+						spi-max-frequency = <250000000>;
+					};
+				};
+			};
+
+			usbotg: imxotg@73f80000 {
+				status = "okay";
+
+				ignore-overcurrent;
+				enable-wakeup;
+				phy-mode = "utmi-wide";
+			};
+
+			usbh1: imxotg@73f80200 {
+				status = "okay";
+
+				phy-mode = "ulpi";
+				ignore-overcurrent;
+				enable-wakeup;
+				itc-no-threshold;
+			};
+
+			usbphy: imx-usb-phy@73f80800 {
+				status = "okay";
+
+				device-ports = <&usbotg>;
+				host-ports = <&usbotg &usbh1>;
+			};
+
+			keypad@73f94000 {
+				status = "okay";
+				/* sample keymap */
+				linux,keymap = < 0x00000074 /* row 0, col 0, KEY_POWER */
+						 0x00010052 /* row 0, col 1, KEY_KP0 */
+						 0x0002004f /* row 0, col 2, KEY_KP1 */
+						 0x00030050 /* row 0, col 3, KEY_KP2 */
+						 0x00040051 /* row 0, col 4, KEY_KP3 */
+						 0x0100004b /* row 1, col 0, KEY_KP4 */
+						 0x0101004c /* row 1, col 1, KEY_KP5 */
+						 0x0102004d /* row 1, col 2, KEY_KP6 */
+						 0x01030047 /* row 1, col 3, KEY_KP7 */
+						 0x01040048 /* row 1, col 4, KEY_KP8 */
+						 0x02000049 /* row 2, col 0, KEY_KP9 */
+						 >;
+			};
+
+			wdog@73f98000 { /* WDOG1 */
+				status = "okay";
+			};
+
+			iomuxc@73fa8000 {
+				compatible = "fsl,imx51-iomuxc-tx51";
+				reg = <0x73fa8000 0x4000>;
+			};
+
+			pwm1: pwm@73fb4000 {
+				status = "okay";
+			};
+
+			uart@73fbc000 {
+				status = "okay";
+				fsl,uart-has-rtscts;
+			};
+
+			uart@73fc0000 {
+				status = "okay";
+				fsl,uart-has-rtscts;
+			};
+		};
+
+		aips2: aips@80000000 {	/* AIPS2 */
+
+			sdma@83fb0000 {
+				fsl,sdma-ram-script-name = "sdma-imx51.bin";
+			};
+
+			i2c@83fc4000 { /* I2C2 */
+				status = "okay";
+
+				codec: sgtl5000@0a {
+					compatible = "fsl,sgtl5000";
+					reg = <0x0a>;
+					VDDA-supply = <&reg_2p5v>;
+					VDDIO-supply = <&reg_3p3v>;
+				};
+
+				touchscreen: tsc2007@48 {
+					compatible = "ti,tsc2007";
+					reg = <0x48>;
+					interrupt-parent = <&gpio3>;
+					interrupts = <3 0>;
+					pendown-gpio = <&gpio3 3 1>;
+					model = "2007";
+					x-plate-ohms = <660>;
+				};
+
+				polytouch: edt-ft5x06@38 {
+					compatible = "edt,edt-ft5x06";
+					reg = <0x38>;
+					interrupt-parent = <&gpio1>;
+					interrupts = <5>;
+					reset-switch = <&edt_ft5x06_reset>;
+					wake-switch = <&edt_ft5x06_wake>;
+				};
+			};
+
+			ssi@83fcc000 {
+				status = "okay";
+				rx-dma = <28>;
+				tx-dma = <29>;
+				i2s-sync-mode;
+			};
+
+			ssi@70014000 {
+				status = "okay";
+			};
+
+			audmux@83fd0000 {
+				status = "okay";
+			};
+
+			sound-card@0 {
+				compatible = "fsl,imx-sgtl5000";
+				status = "okay";
+				/* '1' based port numbers according to datasheet names */
+				ssi-port = <1>;
+				audmux-port = <3>;
+				sysclk = <26000000>;
+			};
+
+			nand@83fdb000 {
+				status = "okay";
+
+				nand-bus-width = <8>;
+				nand-ecc-mode = "hw";
+				nand-on-flash-bbt;
+			};
+
+			ethernet@83fec000 {
+				phy-mode = "mii";
+/*
+				phy-reset-gpios = <&gpio2 14 0>;
+*/
+				status = "okay";
+				phy-handle = <&phy0>;
+				mac-address = [000000000000];
+
+				phy0: ethernet-phy@0 {
+					interrupt-parent = <&gpio3>;
+					interrupts = <18>;
+					device_type = "ethernet-phy";
+				};
+			};
+		};
+	};
+
+	i2c-gpio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "i2c-gpio";
+		gpios = <&gpio4 17 0
+			 &gpio4 16 0>;
+		clock-frequency = <400000>;
+
+		rtc1: ds1339@68 {
+			compatible = "dallas,ds1339";
+			reg = <0x68>;
+		};
+	};
+
+	gpio-switch {
+		compatible = "gpio-switches", "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		lcd_power: gpio-switch@1 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio4 14 0>;
+			label = "LCD Power Enable";
+			init-state = <0>;
+		};
+
+		lcd_reset: gpio-switch@2 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio4 13 1>;
+			label = "LCD Reset";
+			init-state = <1>;
+		};
+
+		edt_ft5x06_reset: gpio-switch@3 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio4 15 1>;
+			label = "EDT-FT5x06 RESET";
+		};
+
+		edt_ft5x06_wake: gpio-switch@4 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio4 9 0>;
+			label = "EDT-FT5x06 WAKE";
+			init-state = <1>;
+		};
+
+		usbotg_vbus: gpio-switch@5 {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio1 8 0>;
+			label = "USBOTG VBUS";
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		user {
+			label = "Heartbeat";
+			gpios = <&gpio4 10 0>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	lcd {
+		compatible = "of-gpio-lcd";
+		parent = <&ipu>;
+
+		power-switch = <&gpio4 14 0>;
+		reset-switch = <&gpio4 13 1>;
+	};
+
+	backlight: pwm-backlight {
+		compatible = "pwm-backlight";
+
+		pwm = <&pwm1>;
+		inverted;
+		max-brightness = <100>;
+		dft-brightness = <50>;
+		pwm-period-ns = <1000000>;
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_2p5v: 2p5v {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3p3v: 3p3v {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+	};
+};

@@ -22,7 +22,10 @@ u32 get_cpu_rev(void);
 const char *get_imx_type(u32 imxtype);
 unsigned imx_ddr_size(void);
 
-void set_vddsoc(u32 mv);
+
+struct mxs_register_32;
+
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 
 /*
  * Initializes on-chip ethernet controllers.

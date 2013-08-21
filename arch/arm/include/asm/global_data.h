@@ -17,6 +17,9 @@ struct arch_global_data {
 #if defined(CONFIG_FSL_ESDHC)
 	u32 sdhc_clk;
 #endif
+#ifdef CONFIG_VIDEO_IPUV3
+	unsigned int    ipu_hw_rev;
+#endif
 #ifdef CONFIG_AT91FAMILY
 	/* "static data" needed by at91's clock.c */
 	unsigned long	cpu_clk_rate_hz;

@@ -208,9 +208,16 @@ static int nand_read_page(int block, int page, void *dst)
 
 int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
 {
-	unsigned int block, lastblock;
+	unsigned int block, lastblock, bad = 0;
 	unsigned int page;
+	const int ppb = CONFIG_SYS_NAND_BLOCK_SIZE / CONFIG_SYS_NAND_PAGE_SIZE;
+	int maxbad;
 
+#ifdef CONFIG_SYS_NAND_MAXBAD
+	maxbad = CONFIG_SYS_NAND_MAXBAD;
+#else
+	maxbad = mtd.size;
+#endif
 	/*
 	 * offs has to be aligned to a page address!
 	 */
@@ -224,14 +231,35 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
 			 * Skip bad blocks
 			 */
 			while (page < CONFIG_SYS_NAND_PAGE_COUNT) {
-				nand_read_page(block, page, dst);
+				if (nand_chip.ecc.read_page) {
+					int ret;
+
+					ret = nand_chip.ecc.read_page(&mtd, &nand_chip,
+						dst, block * ppb + page);
+					if (ret) {
+						if (page > 0)
+							dst -= (page - 1) * CONFIG_SYS_NAND_PAGE_SIZE;
+						bad++;
+						lastblock++;
+						break;
+					}
+				} else {
+					nand_read_page(block, page, dst);
+				}
 				dst += CONFIG_SYS_NAND_PAGE_SIZE;
 				page++;
 			}
 
 			page = 0;
 		} else {
+			printf("Skipping bad block %d\n", block);
+			bad++;
 			lastblock++;
+		}
+
+		if (maxbad > 0 && bad > maxbad) {
+			printf("Too many bad blocks encountered\n");
+			return -1;
 		}
 
 		block++;
@@ -243,12 +271,21 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
 /* nand_init() - initialize data to make nand usable by SPL */
 void nand_init(void)
 {
+	static struct nand_buffers ecc_buf;
+
 	/*
 	 * Init board specific nand support
 	 */
 	mtd.priv = &nand_chip;
+	mtd.erasesize = CONFIG_SYS_NAND_BLOCK_SIZE;
+	mtd.writesize = CONFIG_SYS_NAND_PAGE_SIZE;
+	mtd.oobsize = CONFIG_SYS_NAND_OOBSIZE;
+
 	nand_chip.IO_ADDR_R = nand_chip.IO_ADDR_W =
 		(void  __iomem *)CONFIG_SYS_NAND_BASE;
+	nand_chip.oob_poi = ecc_buf.databuf;
+	nand_chip.buffers = &ecc_buf;
+
 	board_nand_init(&nand_chip);
 
 #ifdef CONFIG_SPL_NAND_SOFTECC
