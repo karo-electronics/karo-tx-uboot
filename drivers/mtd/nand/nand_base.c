@@ -3112,7 +3112,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 		chip->buffers = memalign(ARCH_DMA_MINALIGN,
 					 sizeof(*chip->buffers));
 	if (!chip->buffers)
-		return -ENOMEM;
+		return chip->options & NAND_OWN_BUFFERS ? -EINVAL : -ENOMEM;
 
 	/* Set the internal oob buffer location, just after the page data */
 	chip->oob_poi = chip->buffers->databuf + mtd->writesize;
