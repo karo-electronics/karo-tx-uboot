@@ -3310,6 +3310,8 @@ int nand_scan_tail(struct mtd_info *mtd)
 	chip->ecc.steps = mtd->writesize / chip->ecc.size;
 	if (chip->ecc.steps * chip->ecc.size != mtd->writesize) {
 		pr_warn("Invalid ECC parameters\n");
+		pr_warn("steps=%d size=%d writesize=%d\n",
+			chip->ecc.steps, chip->ecc.size, mtd->writesize);
 		BUG();
 	}
 	chip->ecc.total = chip->ecc.steps * chip->ecc.bytes;
