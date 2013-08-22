@@ -45,8 +45,10 @@ static int mxc_gpio_direction(unsigned int gpio,
 	struct gpio_regs *regs;
 	u32 l;
 
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 
 	gpio &= 0x1f;
 
@@ -72,8 +74,10 @@ int gpio_set_value(unsigned gpio, int value)
 	struct gpio_regs *regs;
 	u32 l;
 
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 
 	gpio &= 0x1f;
 
@@ -95,28 +99,42 @@ int gpio_get_value(unsigned gpio)
 	struct gpio_regs *regs;
 	u32 val;
 
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 
 	gpio &= 0x1f;
 
 	regs = (struct gpio_regs *)gpio_ports[port];
 
-	val = (readl(&regs->gpio_psr) >> gpio) & 0x01;
-
+	if (readl(&regs->gpio_dir) & (1 << gpio)) {
+		printf("WARNING: Reading status of output GPIO_%d_%d\n",
+			port - GPIO_TO_PORT(0), gpio);
+		val = (readl(&regs->gpio_dr) >> gpio) & 0x01;
+	} else {
+		val = (readl(&regs->gpio_psr) >> gpio) & 0x01;
+	}
 	return val;
 }
 
 int gpio_request(unsigned gpio, const char *label)
 {
 	unsigned int port = GPIO_TO_PORT(gpio);
-	if (port >= ARRAY_SIZE(gpio_ports))
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
 		return -1;
+	}
 	return 0;
 }
 
 int gpio_free(unsigned gpio)
 {
+	unsigned int port = GPIO_TO_PORT(gpio);
+	if (port >= ARRAY_SIZE(gpio_ports)) {
+		printf("%s: Invalid GPIO %d\n", __func__, gpio);
+		return -1;
+	}
 	return 0;
 }
 
