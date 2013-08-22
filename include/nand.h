@@ -8,7 +8,7 @@
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation. 
+ * version 2 as published by the Free Software Foundation.
  */
 
 #ifndef _NAND_H_
@@ -22,7 +22,7 @@
  * converted, this will go away.
  */
 #if defined(CONFIG_NAND_FSL_ELBC) || defined(CONFIG_NAND_ATMEL)\
-	|| defined(CONFIG_NAND_FSL_IFC)
+	|| defined(CONFIG_NAND_FSL_IFC) || defined(CONFIG_NAND_MXC)
 #define CONFIG_SYS_NAND_SELF_INIT
 #endif
 
