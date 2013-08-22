@@ -3264,7 +3264,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 					       &chip->ecc.layout);
 		if (!chip->ecc.priv)
 			pr_warn("BCH ECC initialization failed!\n");
- 		chip->ecc.strength =
+		chip->ecc.strength =
 			chip->ecc.bytes * 8 / fls(8 * chip->ecc.size);
 		break;
 
