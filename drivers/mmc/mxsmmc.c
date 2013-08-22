@@ -139,23 +139,20 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	uint32_t reg;
 	int timeout;
 	uint32_t ctrl0;
+	const uint32_t busy_stat = SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
+		SSP_STATUS_CMD_BUSY;
 	int ret;
 
 	debug("MMC%d: CMD%d\n", mmc->block_dev.dev, cmd->cmdidx);
 
 	/* Check bus busy */
 	timeout = MXSMMC_MAX_TIMEOUT;
-	while (--timeout) {
-		udelay(1000);
-		reg = readl(&ssp_regs->hw_ssp_status);
-		if (!(reg &
-			(SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
-			SSP_STATUS_CMD_BUSY))) {
+	while ((reg = readl(&ssp_regs->hw_ssp_status)) & busy_stat) {
+		if (timeout-- <= 0)
 			break;
-		}
+		udelay(1000);
 	}
-
-	if (!timeout) {
+	if (reg & busy_stat && readl(&ssp_regs->hw_ssp_status) & busy_stat) {
 		printf("MMC%d: Bus busy timeout!\n", mmc->block_dev.dev);
 		return TIMEOUT;
 	}
@@ -239,8 +236,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		if (!(reg & SSP_STATUS_CMD_BUSY))
 			break;
 	}
-
-	if (!timeout) {
+	if ((reg & SSP_STATUS_CMD_BUSY) &&
+		(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_CMD_BUSY)) {
 		printf("MMC%d: Command %d busy\n",
 			mmc->block_dev.dev, cmd->cmdidx);
 		return TIMEOUT;
@@ -276,8 +273,7 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	if (data->blocksize * data->blocks < MXSMMC_SMALL_TRANSFER) {
 		ret = mxsmmc_send_cmd_pio(priv, data);
 		if (ret) {
-			printf("MMC%d: Data timeout with command %d "
-				"(status 0x%08x)!\n",
+			printf("MMC%d: Data timeout with command %d (status 0x%08x)!\n",
 				mmc->block_dev.dev, cmd->cmdidx, reg);
 			return ret;
 		}
