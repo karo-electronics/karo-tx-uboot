@@ -86,7 +86,7 @@ struct fsl_iim {
 	u32 sdat;
 	u32 prev;
 	u32 srev;
-	u32 prg_p;
+	u32 preg_p;
 	u32 scs[0x1f5];
 	struct {
 		u32 word[0x100];
@@ -162,7 +162,7 @@ static void direct_access(struct fsl_iim *regs, u32 bank, u32 word, u32 bit,
 	iim_write32(&regs->ua, bank << 3 | word >> 5);
 	iim_write32(&regs->la, (word << 3 | bit) & 0xff);
 	if (fctl == FCTL_PRG)
-		iim_write32(&regs->prg_p, 0xaa);
+		iim_write32(&regs->preg_p, 0xaa);
 	iim_setbits32(&regs->fctl, fctl);
 	while (iim_read32(&regs->stat) & STAT_BUSY)
 		udelay(20);
@@ -201,7 +201,7 @@ static int prog_bit(struct fsl_iim *regs, u32 bank, u32 word, u32 bit)
 
 	clear_status(regs);
 	direct_access(regs, bank, word, bit, FCTL_PRG, &stat, &err);
-	iim_write32(&regs->prg_p, 0x00);
+	iim_write32(&regs->preg_p, 0x00);
 
 	if (err & ERR_PRGE) {
 		puts("fsl_iim fuse_prog(): Program error\n");
