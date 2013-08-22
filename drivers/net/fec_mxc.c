@@ -704,7 +704,8 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 	flush_dcache_range(addr, end);
 
 	writew(length, &fec->tbd_base[fec->tbd_index].data_length);
-	writel(addr, &fec->tbd_base[fec->tbd_index].data_pointer);
+	writel((unsigned long)packet,
+		&fec->tbd_base[fec->tbd_index].data_pointer);
 
 	/*
 	 * update BD's status now
