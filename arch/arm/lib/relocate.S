@@ -21,7 +21,7 @@
  */
 
 ENTRY(relocate_code)
-	ldr	r1, =__image_copy_start	/* r1 <- SRC &__image_copy_start */
+	ldr	r1, =_start	/* r1 <- SRC &__image_copy_start */
 	subs	r9, r0, r1		/* r9 <- relocation offset */
 	beq	relocate_done		/* skip relocation */
 	ldr	r2, =__image_copy_end	/* r2 <- SRC &__image_copy_end */
