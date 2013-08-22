@@ -91,7 +91,7 @@
 .endm /* init_m4if */
 
 .macro setup_pll pll, freq
-	ldr r0, =\pll
+	ldr r3, =\pll
 	adr r2, W_DP_\freq
 	bl setup_pll_func
 .endm
@@ -102,25 +102,25 @@
 
 setup_pll_func:
 	ldr r1, =0x00001232
-	str r1, [r0, #PLL_DP_CTL] /* Set DPLL ON (set UPEN bit): BRMO=1 */
+	str r1, [r3, #PLL_DP_CTL] /* Set DPLL ON (set UPEN bit): BRMO=1 */
 	mov r1, #0x2
-	str r1, [r0, #PLL_DP_CONFIG] /* Enable auto-restart AREN bit */
+	str r1, [r3, #PLL_DP_CONFIG] /* Enable auto-restart AREN bit */
 
 	ldr r1, [r2, #W_DP_OP]
-	str r1, [r0, #PLL_DP_OP]
-	str r1, [r0, #PLL_DP_HFS_OP]
+	str r1, [r3, #PLL_DP_OP]
+	str r1, [r3, #PLL_DP_HFS_OP]
 
 	ldr r1, [r2, #W_DP_MFD]
-	str r1, [r0, #PLL_DP_MFD]
-	str r1, [r0, #PLL_DP_HFS_MFD]
+	str r1, [r3, #PLL_DP_MFD]
+	str r1, [r3, #PLL_DP_HFS_MFD]
 
 	ldr r1, [r2, #W_DP_MFN]
-	str r1, [r0, #PLL_DP_MFN]
-	str r1, [r0, #PLL_DP_HFS_MFN]
+	str r1, [r3, #PLL_DP_MFN]
+	str r1, [r3, #PLL_DP_HFS_MFN]
 
 	ldr r1, =0x00001232
-	str r1, [r0, #PLL_DP_CTL]
-1:	ldr r1, [r0, #PLL_DP_CTL]
+	str r1, [r3, #PLL_DP_CTL]
+1:	ldr r1, [r3, #PLL_DP_CTL]
 	ands r1, r1, #0x1
 	beq 1b
 
@@ -199,7 +199,6 @@ setup_pll_func:
 	setup_pll PLL3_BASE_ADDR, 665
 
 	/* Switch peripheral to PLL 3 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x000010C0 | CONFIG_SYS_DDR_CLKSEL
 	str r1, [r0, #CLKCTL_CBCMR]
 	ldr r1, =0x13239145
@@ -207,7 +206,6 @@ setup_pll_func:
 	setup_pll PLL2_BASE_ADDR, 665
 
 	/* Switch peripheral to PLL2 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x19239145
 	str r1, [r0, #CLKCTL_CBCDR]
 	ldr r1, =0x000020C0 | CONFIG_SYS_DDR_CLKSEL
@@ -268,8 +266,6 @@ setup_pll_func:
 	add r1, r1, #0x00000F0
 	str r1, [r0, #CLKCTL_CCOSR]
 #else	/* CONFIG_MX53 */
-	ldr r0, =CCM_BASE_ADDR
-
 	/* Gate of clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -293,7 +289,6 @@ setup_pll_func:
         setup_pll PLL3_BASE_ADDR, 400
 
         /* Switch peripheral to PLL3 */
-        ldr r0, =CCM_BASE_ADDR
         ldr r1, =0x00015154
         str r1, [r0, #CLKCTL_CBCMR]
         ldr r1, =0x02898945
@@ -306,7 +301,6 @@ setup_pll_func:
         setup_pll PLL2_BASE_ADDR, 400
 
 	/* Switch peripheral to PLL2 */
-	ldr r0, =CCM_BASE_ADDR
 	ldr r1, =0x00888945
 	str r1, [r0, #CLKCTL_CBCDR]
 
