@@ -544,7 +544,7 @@ int mmc_send_op_cond(struct mmc *mmc)
 	/* Some cards seem to need this */
 	mmc_go_idle(mmc);
 
- 	/* Asking to the card its capabilities */
+	/* Asking to the card its capabilities */
 	mmc->op_cond_pending = 1;
 	for (i = 0; i < 2; i++) {
 		err = mmc_send_op_cond_iter(mmc, &cmd, i != 0);
