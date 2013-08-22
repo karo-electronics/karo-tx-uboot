@@ -204,38 +204,35 @@ static void mxs_mem_setup_cpu_and_hbus(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
 }
 
-#define MEM_ABORT_FUNC
-
-#ifdef MEM_ABORT_FUNC
-static void data_abort_memdetect_handler(void)
+void data_abort_memdetect_handler(void)
 {
 	asm volatile("subs pc, lr, #4");
 }
-#endif
 
 uint32_t mxs_mem_get_size(void)
 {
 	uint32_t sz, da;
 	uint32_t *vt = (uint32_t *)0x20;
+	unsigned long cr;
+
+	/* move vector table to low memory */
+	asm volatile(
+		"mrc p15, 0, %0, c1, c0, 0\n"
+		"bic r7, %0, #(1 << 13)\n"
+		"mcr p15, 0, r7, c1, c0, 0\n"
+		: "=r"(cr) : : "r7");
 
 	/* Replace the DABT handler. */
 	da = vt[4];
-#ifdef MEM_ABORT_FUNC
 	vt[4] = (uint32_t)data_abort_memdetect_handler;
-#else
-	vt[4] = (uint32_t)&&data_abort_memdetect_handler;
-#endif
-	sz = get_ram_size((long *)PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE * 2);
+
+	sz = get_ram_size((long *)PHYS_SDRAM_1, PHYS_SDRAM_1_SIZE);
 
 	/* Restore the old DABT handler. */
 	vt[4] = da;
+	asm volatile("mcr p15, 0, %0, c1, c0, 0\n" : : "r"(cr));
 
 	return sz;
-
-#ifndef MEM_ABORT_FUNC
-data_abort_memdetect_handler:
-	asm volatile("subs pc, lr, #4");
-#endif
 }
 
 #ifdef CONFIG_MX23
