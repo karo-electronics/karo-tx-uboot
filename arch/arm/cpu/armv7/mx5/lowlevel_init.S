@@ -159,7 +159,7 @@ setup_pll_func:
 #if defined (CONFIG_MX51)
 	ldr r0, =CCM_BASE_ADDR
 
-	/* Gate of clocks to the peripherals first */
+	/* Gate off clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
 	str r4, [r0, #CLKCTL_CCGR1]
@@ -266,7 +266,7 @@ setup_pll_func:
 	add r1, r1, #0x00000F0
 	str r1, [r0, #CLKCTL_CCOSR]
 #else	/* CONFIG_MX53 */
-	/* Gate of clocks to the peripherals first */
+	/* Gate off clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
 	str r4, [r0, #CLKCTL_CCGR1]
@@ -307,7 +307,7 @@ setup_pll_func:
 	ldr r1, =0x00016154
 	str r1, [r0, #CLKCTL_CBCMR]
 
-	/*change uart clk parent to pll2*/
+	/* change uart clk parent to pll2 */
 	ldr r1, [r0, #CLKCTL_CSCMR1]
 	and r1, r1, #0xfcffffff
 	orr r1, r1, #0x01000000
