@@ -89,6 +89,7 @@ int timer_init(void)
 #endif
 	gd->arch.lastinc = -30 * TIMER_CLOCK;
 	gd->arch.tbl = TIMER_START;
+	gd->arch.tbu = 0;
 	gd->arch.timer_rate_hz = TIMER_CLOCK;
 
 	return 0;
@@ -133,9 +134,11 @@ unsigned long long get_ticks(void)
 	ulong now = readl(&timer_base->tcrr);
 	ulong inc = now - gd->arch.lastinc;
 
+	if (gd->arch.tbl + inc < gd->arch.tbl)
+		gd->arch.tbu++;
 	gd->arch.tbl += inc;
 	gd->arch.lastinc = now;
-	return gd->arch.tbl;
+	return ((unsigned long long)gd->arch.tbu << 32) | gd->arch.tbl;
 }
 
 /*
