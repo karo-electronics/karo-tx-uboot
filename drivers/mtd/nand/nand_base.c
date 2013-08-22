@@ -1930,8 +1930,6 @@ static uint8_t *nand_fill_oob(struct mtd_info *mtd, uint8_t *oob, size_t len,
 	return NULL;
 }
 
-#define NOTALIGNED(x)	((x & (chip->subpagesize - 1)) != 0)
-
 /**
  * nand_do_write_ops - [INTERN] NAND write with ECC
  * @mtd: MTD device structure
