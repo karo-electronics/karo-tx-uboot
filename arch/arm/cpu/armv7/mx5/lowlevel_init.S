@@ -309,8 +309,8 @@ setup_pll_func:
 
 	/* change uart clk parent to pll2 */
 	ldr r1, [r0, #CLKCTL_CSCMR1]
-	and r1, r1, #0xfcffffff
-	orr r1, r1, #0x01000000
+	bic r1, #(0x3 << 24)
+	orr r1, r1, #(0x1 << 24)
 	str r1, [r0, #CLKCTL_CSCMR1]
 
 	/* make sure change is effective */
@@ -337,7 +337,7 @@ setup_pll_func:
 
 	/* make uart div=6 */
 	ldr r1, [r0, #CLKCTL_CSCDR1]
-	and r1, r1, #0xffffffc0
+	bic r1, #(0x3f << 0)
 	orr r1, r1, #0x0a
 	str r1, [r0, #CLKCTL_CSCDR1]
 
