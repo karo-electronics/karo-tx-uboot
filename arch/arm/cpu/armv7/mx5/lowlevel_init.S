@@ -156,9 +156,8 @@ setup_pll_func:
 .endm
 
 .macro init_clock
-#if defined (CONFIG_MX51)
 	ldr r0, =CCM_BASE_ADDR
-
+#if defined (CONFIG_MX51)
 	/* Gate off clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -182,7 +181,7 @@ setup_pll_func:
 	str r1, [r0, #CLKCTL_CBCDR]
 	/* make sure divider effective */
 1:	ldr r1, [r0, #CLKCTL_CDHIPR]
-	cmp r1, #0x0
+	tst r1, #0x7f
 	bne 1b
 
 	/* Switch ARM to step clock */
@@ -193,7 +192,13 @@ setup_pll_func:
 	setup_pll PLL1_BASE_ADDR, 864
 	setup_pll_errata PLL1_BASE_ADDR, W_DP_MFN_800_DIT
 #else
+#if !defined(CONFIG_SYS_CPU_CLK) || CONFIG_SYS_CPU_CLK == 800
 	setup_pll PLL1_BASE_ADDR, 800
+#elif CONFIG_SYS_CPU_CLK == 600
+	setup_pll PLL1_BASE_ADDR, 600
+#else
+#error Unsupported CONFIG_SYS_CPU_CLK value
+#endif
 #endif
 
 	setup_pll PLL3_BASE_ADDR, 665
@@ -256,7 +261,7 @@ setup_pll_func:
 	str r1, [r0, #CLKCTL_CSCDR1]
 	/* make sure divider effective */
 1:	ldr r1, [r0, #CLKCTL_CDHIPR]
-	cmp r1, #0x0
+	tst r1, #0x7f
 	bne 1b
 
 	str r4, [r0, #CLKCTL_CCDR]
@@ -284,10 +289,16 @@ setup_pll_func:
 	mov r1, #0x4
 	str r1, [r0, #CLKCTL_CCSR]
 
+#if !defined(CONFIG_SYS_CPU_CLK) || CONFIG_SYS_CPU_CLK == 800
 	setup_pll PLL1_BASE_ADDR, 800
+#elif CONFIG_SYS_CPU_CLK == 600
+	setup_pll PLL1_BASE_ADDR, 600
+#else
+#error Unsupported CONFIG_SYS_CPU_CLK value
+#endif
 
         setup_pll PLL3_BASE_ADDR, 400
-
+#ifndef CONFIG_TX53
         /* Switch peripheral to PLL3 */
         ldr r1, =0x00015154
         str r1, [r0, #CLKCTL_CBCMR]
@@ -295,7 +306,7 @@ setup_pll_func:
         str r1, [r0, #CLKCTL_CBCDR]
         /* make sure change is effective */
 1:      ldr r1, [r0, #CLKCTL_CDHIPR]
-        cmp r1, #0x0
+	tst r1, #0x7f
         bne 1b
 
         setup_pll PLL2_BASE_ADDR, 400
@@ -315,12 +326,48 @@ setup_pll_func:
 
 	/* make sure change is effective */
 1:      ldr r1, [r0, #CLKCTL_CDHIPR]
-	cmp r1, #0x0
+	tst r1, #0x7f
 	bne 1b
 
-        setup_pll PLL3_BASE_ADDR, 216
-
 	setup_pll PLL4_BASE_ADDR, 455
+
+#else /* CONFIG_TX53 */
+	/* Switch peripheral to PLL 3 */
+	ldr r1, [r0, #CLKCTL_CBCMR]
+	bic r1, #(0x3 << 12)
+	orr r1, r1, #(1 << 12)
+	str r1, [r0, #CLKCTL_CBCMR]
+
+	ldr r1, [r0, #CLKCTL_CBCDR]
+	orr r1, r1, #(1 << 25)
+	str r1, [r0, #CLKCTL_CBCDR]
+1:
+	/* make sure change is effective */
+	ldr r1, [r0, #CLKCTL_CDHIPR]
+	tst r1, #0x7f
+	bne 1b
+
+#if CONFIG_SYS_SDRAM_CLK == 533
+	setup_pll PLL2_BASE_ADDR, 533
+#elif CONFIG_SYS_SDRAM_CLK == 400
+	setup_pll PLL2_BASE_ADDR, 400
+#elif CONFIG_SYS_SDRAM_CLK == 333
+	setup_pll PLL2_BASE_ADDR, 333
+#else
+#error Unsupported CONFIG_SYS_SDRAM_CLK
+#endif
+
+	/* Switch peripheral to PLL2 */
+	ldr r1, [r0, #CLKCTL_CBCDR]
+	bic r1, #(1 << 25)
+	str r1, [r0, #CLKCTL_CBCDR]
+
+	ldr r1, [r0, #CLKCTL_CBCMR]
+	bic r1, #(3 << 12)
+	orr r1, #(2 << 12)
+	str r1, [r0, #CLKCTL_CBCMR]
+#endif
+        setup_pll PLL3_BASE_ADDR, 216
 
 	/* Set the platform clock dividers */
 	ldr r0, =ARM_BASE_ADDR
@@ -340,6 +387,10 @@ setup_pll_func:
 	bic r1, #(0x3f << 0)
 	orr r1, r1, #0x0a
 	str r1, [r0, #CLKCTL_CSCDR1]
+	/* make sure divider effective */
+1:	ldr r1, [r0, #CLKCTL_CDHIPR]
+	tst r1, #0x7f
+	bne 1b
 
 	/* Restore the default values in the Gate registers */
 	ldr r1, =0xFFFFFFFF
@@ -411,6 +462,9 @@ W_DP_800:		.word DP_OP_800
 W_DP_665:		.word DP_OP_665
 			.word DP_MFD_665
 			.word DP_MFN_665
+W_DP_600:		.word DP_OP_600
+			.word DP_MFD_600
+			.word DP_MFN_600
 #endif
 W_DP_216:		.word DP_OP_216
 			.word DP_MFD_216
@@ -421,3 +475,6 @@ W_DP_400:               .word DP_OP_400
 W_DP_455:               .word DP_OP_455
 			.word DP_MFD_455
 			.word DP_MFN_455
+W_DP_533:		.word DP_OP_533
+			.word DP_MFD_533
+			.word DP_MFN_533
