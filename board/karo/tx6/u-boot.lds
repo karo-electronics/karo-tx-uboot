@@ -24,51 +24,51 @@ OUTPUT_ARCH(arm)
 ENTRY(_start)
 SECTIONS
 {
-        . = 0x00000000;
-        .text :
-        {
-                *(.__image_copy_start)
-                CPUDIR/start.o (.text*)
+	. = 0x00000000;
+	.text :
+	{
+		*(.__image_copy_start)
+		CPUDIR/start.o (.text*)
 		. = 0x400;
 		KEEP(board/karo/tx6/lowlevel_init.o (.text*))
-                *(.text*)
-        }
+		*(.text*)
+	}
 
-        . = ALIGN(4);
-        .rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
+	. = ALIGN(4);
+	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
 
-        . = ALIGN(4);
-        .data : {
-                *(.data*)
-        }
+	. = ALIGN(4);
+	.data : {
+		*(.data*)
+	}
 
-        . = ALIGN(4);
+	. = ALIGN(4);
 	.u_boot_list : {
 		KEEP(*(SORT(.u_boot_list*)));
 	}
 
-        . = ALIGN(4);
-        .image_copy_end :
+	. = ALIGN(4);
+	.image_copy_end :
 	{
 		*(.__image_copy_end)
 	}
 
-        .rel_dyn_start :
+	.rel_dyn_start :
 	{
-                *(.__rel_dyn_start)
+		*(.__rel_dyn_start)
 	}
 
-        .rel.dyn :
+	.rel.dyn :
 	{
-                *(.rel*)
-        }
-
-        .rel_dyn_end :
-	{
-                *(.__rel_dyn_end)
+		*(.rel*)
 	}
 
-        _end = .;
+	.rel_dyn_end :
+	{
+		*(.__rel_dyn_end)
+	}
+
+	_end = .;
 
 /*
  * Compiler-generated __bss_start and __bss_end, see arch/arm/lib/bss.c
