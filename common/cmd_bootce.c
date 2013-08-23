@@ -50,9 +50,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CE_MIN(a, b)		(((a) < (b)) ? (a) : (b))
 #define CE_MAX(a, b)		(((a) > (b)) ? (a) : (b))
 
-#define _STRMAC(s)		#s
-#define STRMAC(s)		_STRMAC(s)
-
 static ce_bin __attribute__ ((aligned (32))) g_bin;
 static ce_net __attribute__ ((aligned (32))) g_net;
 static IPaddr_t server_ip;
@@ -185,10 +182,8 @@ static void ce_prepare_run_bin(ce_bin *bin)
 		/* Local ethernet MAC address */
 		memcpy(drv_glb->macAddr, std_drv_glb->kitl.mac,
 			sizeof(drv_glb->macAddr));
-		debug("got MAC address %02x:%02x:%02x:%02x:%02x:%02x from environment\n",
-			drv_glb->macAddr[0], drv_glb->macAddr[1],
-			drv_glb->macAddr[2], drv_glb->macAddr[3],
-			drv_glb->macAddr[4], drv_glb->macAddr[5]);
+		debug("got MAC address %pM from environment\n",
+			drv_glb->macAddr);
 
 		/* Local IP address */
 		drv_glb->ipAddr = getenv_IPaddr("ipaddr");
@@ -199,9 +194,12 @@ static void ce_prepare_run_bin(ce_bin *bin)
 		/* Gateway config */
 		drv_glb->ipGate = getenv_IPaddr("gatewayip");
 #ifdef DEBUG
-		debug("got IP address %pI4 from environment\n", &drv_glb->ipAddr);
-		debug("got IP mask %pI4 from environment\n", &drv_glb->ipMask);
-		debug("got gateway address %pI4 from environment\n", &drv_glb->ipGate);
+		debug("got IP address %pI4 from environment\n",
+			&drv_glb->ipAddr);
+		debug("got IP mask %pI4 from environment\n",
+			&drv_glb->ipMask);
+		debug("got gateway address %pI4 from environment\n",
+			&drv_glb->ipGate);
 #endif
 		/* EDBG services config */
 		memcpy(&drv_glb->edbgConfig, &bin->edbgConfig,
@@ -759,29 +757,20 @@ debug("%s@%d\n", __func__, __LINE__);
 		if (net->verbose) {
 			printf("Received CONFIG command\n");
 			if (bin->edbgConfig.flags & EDBG_FL_DBGMSG) {
-				printf("--> Enabling DBGMSG service, IP: %d.%d.%d.%d, port: %d\n",
-					(bin->edbgConfig.dbgMsgIPAddr >> 0) & 0xFF,
-					(bin->edbgConfig.dbgMsgIPAddr >> 8) & 0xFF,
-					(bin->edbgConfig.dbgMsgIPAddr >> 16) & 0xFF,
-					(bin->edbgConfig.dbgMsgIPAddr >> 24) & 0xFF,
+				printf("--> Enabling DBGMSG service, IP: %pI4, port: %d\n",
+					&bin->edbgConfig.dbgMsgIPAddr,
 					ntohs(bin->edbgConfig.dbgMsgPort));
 			}
 
 			if (bin->edbgConfig.flags & EDBG_FL_PPSH) {
-				printf("--> Enabling PPSH service, IP: %d.%d.%d.%d, port: %d\n",
-					(bin->edbgConfig.ppshIPAddr >> 0) & 0xFF,
-					(bin->edbgConfig.ppshIPAddr >> 8) & 0xFF,
-					(bin->edbgConfig.ppshIPAddr >> 16) & 0xFF,
-					(bin->edbgConfig.ppshIPAddr >> 24) & 0xFF,
+				printf("--> Enabling PPSH service, IP: %pI4, port: %d\n",
+					&bin->edbgConfig.ppshIPAddr,
 					ntohs(bin->edbgConfig.ppshPort));
 			}
 
 			if (bin->edbgConfig.flags & EDBG_FL_KDBG) {
-				printf("--> Enabling KDBG service, IP: %d.%d.%d.%d, port: %d\n",
-					(bin->edbgConfig.kdbgIPAddr >> 0) & 0xFF,
-					(bin->edbgConfig.kdbgIPAddr >> 8) & 0xFF,
-					(bin->edbgConfig.kdbgIPAddr >> 16) & 0xFF,
-					(bin->edbgConfig.kdbgIPAddr >> 24) & 0xFF,
+				printf("--> Enabling KDBG service, IP: %pI4, port: %d\n",
+					&bin->edbgConfig.kdbgIPAddr,
 					ntohs(bin->edbgConfig.kdbgPort));
 			}
 
@@ -884,33 +873,23 @@ static int ce_send_bootme(ce_net *net)
 		data->platformId, data->macAddr[5]);
 
 #ifdef DEBUG
-	printf("header->id: %08X\r\n", header->id);
-	printf("header->service: %08X\r\n", header->service);
-	printf("header->flags: %08X\r\n", header->flags);
-	printf("header->seqNum: %08X\r\n", header->seqNum);
-	printf("header->cmd: %08X\r\n\r\n", header->cmd);
+	printf("header->id: %08X\n", header->id);
+	printf("header->service: %08X\n", header->service);
+	printf("header->flags: %08X\n", header->flags);
+	printf("header->seqNum: %08X\n", header->seqNum);
+	printf("header->cmd: %08X\n\n", header->cmd);
 
-	printf("data->versionMajor: %08X\r\n", data->versionMajor);
-	printf("data->versionMinor: %08X\r\n", data->versionMinor);
-	printf("data->cpuId: %08X\r\n", data->cpuId);
-	printf("data->bootmeVer: %08X\r\n", data->bootmeVer);
-	printf("data->bootFlags: %08X\r\n", data->bootFlags);
-	printf("data->svcPort: %08X\r\n\r\n", ntohs(data->svcPort));
+	printf("data->versionMajor: %08X\n", data->versionMajor);
+	printf("data->versionMinor: %08X\n", data->versionMinor);
+	printf("data->cpuId: %08X\n", data->cpuId);
+	printf("data->bootmeVer: %08X\n", data->bootmeVer);
+	printf("data->bootFlags: %08X\n", data->bootFlags);
+	printf("data->svcPort: %08X\n\n", ntohs(data->svcPort));
 
-	printf("data->macAddr: %02X-%02X-%02X-%02X-%02X-%02X\r\n",
-		data->macAddr[0], data->macAddr[1],
-		data->macAddr[2], data->macAddr[3],
-		data->macAddr[4], data->macAddr[5]);
-
-	printf("data->ipAddr: %d.%d.%d.%d\r\n",
-		(data->ipAddr >> 0) & 0xFF,
-		(data->ipAddr >> 8) & 0xFF,
-		(data->ipAddr >> 16) & 0xFF,
-		(data->ipAddr >> 24) & 0xFF);
-
-	printf("data->platformId: %s\r\n", data->platformId);
-
-	printf("data->deviceName: %s\r\n", data->deviceName);
+	printf("data->macAddr: %pM\n", data->macAddr);
+	printf("data->ipAddr: %pI4\n", &data->ipAddr);
+	printf("data->platformId: %s\n", data->platformId);
+	printf("data->deviceName: %s\n", data->deviceName);
 #endif
 	// Some diag output ...
 	if (net->verbose) {

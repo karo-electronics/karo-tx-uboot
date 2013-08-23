@@ -6,23 +6,7 @@
  * (C) Copyright 2003
  * Kyle Harris, Nexus Technologies, Inc. kharris@nexus-tech.net
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -100,7 +84,7 @@ static uint esdhc_xfertyp(struct mmc_cmd *cmd, struct mmc_data *data)
 	else if (cmd->resp_type & MMC_RSP_PRESENT)
 		xfertyp |= XFERTYP_RSPTYP_48;
 
-#ifdef CONFIG_MX53
+#if defined(CONFIG_MX53) || defined(CONFIG_T4240QDS)
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
 		xfertyp |= XFERTYP_CMDTYP_ABORT;
 #endif
@@ -261,14 +245,15 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 	return 0;
 }
 
-static void check_and_invalidate_dcache_range(struct mmc_cmd *cmd,
+static inline void check_and_invalidate_dcache_range(struct mmc_cmd *cmd,
 					struct mmc_data *data)
 {
-	unsigned start = (unsigned)data->dest;
-	unsigned size = roundup(ARCH_DMA_MINALIGN,
-				data->blocks * data->blocksize);
-	unsigned end = start + size;
+	unsigned long start = (unsigned long)data->dest;
+	size_t start_ofs = start & (ARCH_DMA_MINALIGN - 1);
+	unsigned long size = data->blocks * data->blocksize;
+	unsigned long end = ALIGN(start + size, ARCH_DMA_MINALIGN);
 
+	start -= start_ofs;
 	invalidate_dcache_range(start, end);
 }
 
@@ -328,6 +313,9 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	/* Figure out the transfer arguments */
 	xfertyp = esdhc_xfertyp(cmd, data);
 
+	/* Mask all irqs */
+	esdhc_write32(&regs->irqsigen, 0);
+
 	/* Send the command */
 	esdhc_write32(&regs->cmdarg, cmd->cmdarg);
 #if defined(CONFIG_FSL_USDHC)
@@ -354,7 +342,6 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		check_and_invalidate_dcache_range(cmd, data);
 
 	irqstat = esdhc_read32(&regs->irqstat);
-	esdhc_write32(&regs->irqstat, irqstat);
 
 	/* Reset CMD and DATA portions on error */
 	if (irqstat & (CMD_ERR | IRQSTAT_CTOE)) {
@@ -423,7 +410,7 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 #else
 		unsigned long start = get_timer_masked();
 		unsigned long data_timeout = data->blocks *
-			data->blocksize * 100 / mmc->bus_width /
+			(data->blocksize + 100) * 8 / mmc->bus_width /
 			(mmc->tran_speed / CONFIG_SYS_HZ) + CONFIG_SYS_HZ;
 
 		do {
@@ -522,7 +509,7 @@ static int esdhc_init(struct mmc *mmc)
 	int timeout = 1000;
 
 	/* Reset the entire host controller */
-	esdhc_write32(&regs->sysctl, SYSCTL_RSTA);
+	esdhc_setbits32(&regs->sysctl, SYSCTL_RSTA);
 
 	/* Wait until the controller is available */
 	while ((esdhc_read32(&regs->sysctl) & SYSCTL_RSTA) && --timeout)
@@ -533,7 +520,7 @@ static int esdhc_init(struct mmc *mmc)
 	esdhc_write32(&regs->scr, 0x00000040);
 #endif
 
-	esdhc_write32(&regs->sysctl, SYSCTL_HCKEN | SYSCTL_IPGEN);
+	esdhc_setbits32(&regs->sysctl, SYSCTL_HCKEN | SYSCTL_IPGEN);
 
 	/* Set the initial clock speed */
 	mmc_set_clock(mmc, 400000);
@@ -567,7 +554,7 @@ static void esdhc_reset(struct fsl_esdhc *regs)
 	unsigned long timeout = 100; /* wait max 100 ms */
 
 	/* reset the controller */
-	esdhc_write32(&regs->sysctl, SYSCTL_RSTA);
+	esdhc_setbits32(&regs->sysctl, SYSCTL_RSTA);
 
 	/* hardware clears the bit when it is done */
 	while ((esdhc_read32(&regs->sysctl) & SYSCTL_RSTA) && --timeout)
@@ -603,6 +590,7 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	mmc->set_ios = esdhc_set_ios;
 	mmc->init = esdhc_init;
 	mmc->getcd = esdhc_getcd;
+	mmc->getwp = NULL;
 
 	voltage_caps = 0;
 	caps = regs->hostcapblt;
@@ -629,6 +617,13 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	}
 
 	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT | MMC_MODE_HC;
+
+	if (cfg->max_bus_width > 0) {
+		if (cfg->max_bus_width < 8)
+			mmc->host_caps &= ~MMC_MODE_8BIT;
+		if (cfg->max_bus_width < 4)
+			mmc->host_caps &= ~MMC_MODE_4BIT;
+	}
 
 	if (caps & ESDHC_HOSTCAPBLT_HSS)
 		mmc->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;

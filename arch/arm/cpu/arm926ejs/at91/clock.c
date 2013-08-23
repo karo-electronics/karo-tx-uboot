@@ -5,10 +5,7 @@
  * Copyright (C) 2005 Ivan Kokshaysky
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -156,7 +153,7 @@ int at91_clock_init(unsigned long main_clock)
 	 */
 	mckr = readl(&pmc->mckr);
 #if defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45) \
-		|| defined(CONFIG_AT91SAM9X5)
+		|| defined(CONFIG_AT91SAM9N12) || defined(CONFIG_AT91SAM9X5)
 	/* plla divisor by 2 */
 	gd->arch.plla_rate_hz /= (1 << ((mckr & 1 << 12) >> 12));
 #endif
@@ -171,7 +168,7 @@ int at91_clock_init(unsigned long main_clock)
 	if (mckr & AT91_PMC_MCKR_MDIV_MASK)
 		freq /= 2;			/* processor clock division */
 #elif defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45) \
-		|| defined(CONFIG_AT91SAM9X5)
+		|| defined(CONFIG_AT91SAM9N12) || defined(CONFIG_AT91SAM9X5)
 	/* mdiv <==> divisor
 	 *  0   <==>   1
 	 *  1   <==>   2

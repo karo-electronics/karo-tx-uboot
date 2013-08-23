@@ -5,15 +5,7 @@
  *
  * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR /PURPOSE.  See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -38,9 +30,6 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 static struct wd_timer *wdtimer = (struct wd_timer *)WDT_BASE;
-#ifdef CONFIG_SPL_BUILD
-static struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
-#endif
 
 /* MII mode defines */
 #define MII_MODE_ENABLE		0x0
@@ -71,6 +60,17 @@ static inline int board_is_evm_sk(void)
 static inline int board_is_idk(void)
 {
 	return !strncmp(header.config, "SKU#02", 6);
+}
+
+static int __maybe_unused board_is_gp_evm(void)
+{
+	return !strncmp("A33515BB", header.name, 8);
+}
+
+int board_is_evm_15_or_later(void)
+{
+	return (!strncmp("A33515BB", header.name, 8) &&
+		strncmp("1.5", header.version, 3) <= 0);
 }
 
 /*
@@ -115,28 +115,7 @@ static int read_eeprom(void)
 	return 0;
 }
 
-/* UART Defines */
 #ifdef CONFIG_SPL_BUILD
-#define UART_RESET		(0x1 << 1)
-#define UART_CLK_RUNNING_MASK	0x1
-#define UART_SMART_IDLE_EN	(0x1 << 0x3)
-
-static void rtc32k_enable(void)
-{
-	struct rtc_regs *rtc = (struct rtc_regs *)AM335X_RTC_BASE;
-
-	/*
-	 * Unlock the RTC's registers.  For more details please see the
-	 * RTC_SS section of the TRM.  In order to unlock we need to
-	 * write these specific values (keys) in this order.
-	 */
-	writel(0x83e70b13, &rtc->kick0r);
-	writel(0x95a4f1e0, &rtc->kick1r);
-
-	/* Enable the RTC 32K OSC by setting bits 3 and 6. */
-	writel((1 << 3) | (1 << 6), &rtc->osc);
-}
-
 static const struct ddr_data ddr2_data = {
 	.datardsratio0 = ((MT47H128M16RT25E_RD_DQS<<30) |
 			  (MT47H128M16RT25E_RD_DQS<<20) |
@@ -197,6 +176,22 @@ static const struct ddr_data ddr3_data = {
 	.datadldiff0 = PHY_DLL_LOCK_DIFF,
 };
 
+static const struct ddr_data ddr3_beagleblack_data = {
+	.datardsratio0 = MT41K256M16HA125E_RD_DQS,
+	.datawdsratio0 = MT41K256M16HA125E_WR_DQS,
+	.datafwsratio0 = MT41K256M16HA125E_PHY_FIFO_WE,
+	.datawrsratio0 = MT41K256M16HA125E_PHY_WR_DATA,
+	.datadldiff0 = PHY_DLL_LOCK_DIFF,
+};
+
+static const struct ddr_data ddr3_evm_data = {
+	.datardsratio0 = MT41J512M8RH125_RD_DQS,
+	.datawdsratio0 = MT41J512M8RH125_WR_DQS,
+	.datafwsratio0 = MT41J512M8RH125_PHY_FIFO_WE,
+	.datawrsratio0 = MT41J512M8RH125_PHY_WR_DATA,
+	.datadldiff0 = PHY_DLL_LOCK_DIFF,
+};
+
 static const struct cmd_control ddr3_cmd_ctrl_data = {
 	.cmd0csratio = MT41J128MJT125_RATIO,
 	.cmd0dldiff = MT41J128MJT125_DLL_LOCK_DIFF,
@@ -211,6 +206,34 @@ static const struct cmd_control ddr3_cmd_ctrl_data = {
 	.cmd2iclkout = MT41J128MJT125_INVERT_CLKOUT,
 };
 
+static const struct cmd_control ddr3_beagleblack_cmd_ctrl_data = {
+	.cmd0csratio = MT41K256M16HA125E_RATIO,
+	.cmd0dldiff = MT41K256M16HA125E_DLL_LOCK_DIFF,
+	.cmd0iclkout = MT41K256M16HA125E_INVERT_CLKOUT,
+
+	.cmd1csratio = MT41K256M16HA125E_RATIO,
+	.cmd1dldiff = MT41K256M16HA125E_DLL_LOCK_DIFF,
+	.cmd1iclkout = MT41K256M16HA125E_INVERT_CLKOUT,
+
+	.cmd2csratio = MT41K256M16HA125E_RATIO,
+	.cmd2dldiff = MT41K256M16HA125E_DLL_LOCK_DIFF,
+	.cmd2iclkout = MT41K256M16HA125E_INVERT_CLKOUT,
+};
+
+static const struct cmd_control ddr3_evm_cmd_ctrl_data = {
+	.cmd0csratio = MT41J512M8RH125_RATIO,
+	.cmd0dldiff = MT41J512M8RH125_DLL_LOCK_DIFF,
+	.cmd0iclkout = MT41J512M8RH125_INVERT_CLKOUT,
+
+	.cmd1csratio = MT41J512M8RH125_RATIO,
+	.cmd1dldiff = MT41J512M8RH125_DLL_LOCK_DIFF,
+	.cmd1iclkout = MT41J512M8RH125_INVERT_CLKOUT,
+
+	.cmd2csratio = MT41J512M8RH125_RATIO,
+	.cmd2dldiff = MT41J512M8RH125_DLL_LOCK_DIFF,
+	.cmd2iclkout = MT41J512M8RH125_INVERT_CLKOUT,
+};
+
 static struct emif_regs ddr3_emif_reg_data = {
 	.sdram_config = MT41J128MJT125_EMIF_SDCFG,
 	.ref_ctrl = MT41J128MJT125_EMIF_SDREF,
@@ -218,8 +241,39 @@ static struct emif_regs ddr3_emif_reg_data = {
 	.sdram_tim2 = MT41J128MJT125_EMIF_TIM2,
 	.sdram_tim3 = MT41J128MJT125_EMIF_TIM3,
 	.zq_config = MT41J128MJT125_ZQ_CFG,
-	.emif_ddr_phy_ctlr_1 = MT41J128MJT125_EMIF_READ_LATENCY,
+	.emif_ddr_phy_ctlr_1 = MT41J128MJT125_EMIF_READ_LATENCY |
+				PHY_EN_DYN_PWRDN,
 };
+
+static struct emif_regs ddr3_beagleblack_emif_reg_data = {
+	.sdram_config = MT41K256M16HA125E_EMIF_SDCFG,
+	.ref_ctrl = MT41K256M16HA125E_EMIF_SDREF,
+	.sdram_tim1 = MT41K256M16HA125E_EMIF_TIM1,
+	.sdram_tim2 = MT41K256M16HA125E_EMIF_TIM2,
+	.sdram_tim3 = MT41K256M16HA125E_EMIF_TIM3,
+	.zq_config = MT41K256M16HA125E_ZQ_CFG,
+	.emif_ddr_phy_ctlr_1 = MT41K256M16HA125E_EMIF_READ_LATENCY,
+};
+
+static struct emif_regs ddr3_evm_emif_reg_data = {
+	.sdram_config = MT41J512M8RH125_EMIF_SDCFG,
+	.ref_ctrl = MT41J512M8RH125_EMIF_SDREF,
+	.sdram_tim1 = MT41J512M8RH125_EMIF_TIM1,
+	.sdram_tim2 = MT41J512M8RH125_EMIF_TIM2,
+	.sdram_tim3 = MT41J512M8RH125_EMIF_TIM3,
+	.zq_config = MT41J512M8RH125_ZQ_CFG,
+	.emif_ddr_phy_ctlr_1 = MT41J512M8RH125_EMIF_READ_LATENCY |
+				PHY_EN_DYN_PWRDN,
+};
+
+#ifdef CONFIG_SPL_OS_BOOT
+int spl_start_uboot(void)
+{
+	/* break into full u-boot on 'c' */
+	return (serial_tstc() && serial_getc() == 'c');
+}
+#endif
+
 #endif
 
 /*
@@ -227,6 +281,15 @@ static struct emif_regs ddr3_emif_reg_data = {
  */
 void s_init(void)
 {
+	/*
+	 * Save the boot parameters passed from romcode.
+	 * We cannot delay the saving further than this,
+	 * to prevent overwrites.
+	 */
+#ifdef CONFIG_SPL_BUILD
+	save_omap_boot_params();
+#endif
+
 	/* WDT1 is already running when the bootloader gets control
 	 * Disable it to avoid "random" resets
 	 */
@@ -243,9 +306,6 @@ void s_init(void)
 
 	/* Enable RTC32K clock */
 	rtc32k_enable();
-
-	/* UART softreset */
-	u32 regVal;
 
 #ifdef CONFIG_SERIAL1
 	enable_uart0_pin_mux();
@@ -266,17 +326,7 @@ void s_init(void)
 	enable_uart5_pin_mux();
 #endif /* CONFIG_SERIAL6 */
 
-	regVal = readl(&uart_base->uartsyscfg);
-	regVal |= UART_RESET;
-	writel(regVal, &uart_base->uartsyscfg);
-	while ((readl(&uart_base->uartsyssts) &
-		UART_CLK_RUNNING_MASK) != UART_CLK_RUNNING_MASK)
-		;
-
-	/* Disable smart idle */
-	regVal = readl(&uart_base->uartsyscfg);
-	regVal |= UART_SMART_IDLE_EN;
-	writel(regVal, &uart_base->uartsyscfg);
+	uart_soft_reset();
 
 	gd = &gdata;
 
@@ -298,12 +348,20 @@ void s_init(void)
 		gpio_direction_output(GPIO_DDR_VTT_EN, 1);
 	}
 
-	if (board_is_evm_sk() || board_is_bone_lt())
+	if (board_is_evm_sk())
 		config_ddr(303, MT41J128MJT125_IOCTRL_VALUE, &ddr3_data,
-			   &ddr3_cmd_ctrl_data, &ddr3_emif_reg_data);
+			   &ddr3_cmd_ctrl_data, &ddr3_emif_reg_data, 0);
+	else if (board_is_bone_lt())
+		config_ddr(400, MT41K256M16HA125E_IOCTRL_VALUE,
+			   &ddr3_beagleblack_data,
+			   &ddr3_beagleblack_cmd_ctrl_data,
+			   &ddr3_beagleblack_emif_reg_data, 0);
+	else if (board_is_evm_15_or_later())
+		config_ddr(303, MT41J512M8RH125_IOCTRL_VALUE, &ddr3_evm_data,
+			   &ddr3_evm_cmd_ctrl_data, &ddr3_evm_emif_reg_data, 0);
 	else
 		config_ddr(266, MT47H128M16RT25E_IOCTRL_VALUE, &ddr2_data,
-			   &ddr2_cmd_ctrl_data, &ddr2_emif_reg_data);
+			   &ddr2_cmd_ctrl_data, &ddr2_emif_reg_data, 0);
 #endif
 }
 
@@ -343,7 +401,8 @@ int board_late_init(void)
 }
 #endif
 
-#ifdef CONFIG_DRIVER_TI_CPSW
+#if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) || \
+	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD))
 static void cpsw_control(int enabled)
 {
 	/* VTP can be added here */
@@ -365,8 +424,8 @@ static struct cpsw_slave_data cpsw_slaves[] = {
 };
 
 static struct cpsw_platform_data cpsw_data = {
-	.mdio_base		= AM335X_CPSW_MDIO_BASE,
-	.cpsw_base		= AM335X_CPSW_BASE,
+	.mdio_base		= CPSW_MDIO_BASE,
+	.cpsw_base		= CPSW_BASE,
 	.mdio_div		= 0xff,
 	.channels		= 8,
 	.cpdma_reg_ofs		= 0x800,
@@ -388,28 +447,29 @@ static struct cpsw_platform_data cpsw_data = {
 int board_eth_init(bd_t *bis)
 {
 	int rv, n = 0;
-#ifdef CONFIG_DRIVER_TI_CPSW
 	uint8_t mac_addr[6];
 	uint32_t mac_hi, mac_lo;
 
-	if (!eth_getenv_enetaddr("ethaddr", mac_addr)) {
-		debug("<ethaddr> not set. Reading from E-fuse\n");
-		/* try reading mac address from efuse */
-		mac_lo = readl(&cdev->macid0l);
-		mac_hi = readl(&cdev->macid0h);
-		mac_addr[0] = mac_hi & 0xFF;
-		mac_addr[1] = (mac_hi & 0xFF00) >> 8;
-		mac_addr[2] = (mac_hi & 0xFF0000) >> 16;
-		mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
-		mac_addr[4] = mac_lo & 0xFF;
-		mac_addr[5] = (mac_lo & 0xFF00) >> 8;
+	/* try reading mac address from efuse */
+	mac_lo = readl(&cdev->macid0l);
+	mac_hi = readl(&cdev->macid0h);
+	mac_addr[0] = mac_hi & 0xFF;
+	mac_addr[1] = (mac_hi & 0xFF00) >> 8;
+	mac_addr[2] = (mac_hi & 0xFF0000) >> 16;
+	mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
+	mac_addr[4] = mac_lo & 0xFF;
+	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
+
+#if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) || \
+	(defined(CONFIG_SPL_ETH_SUPPORT) && defined(CONFIG_SPL_BUILD))
+	if (!getenv("ethaddr")) {
+		printf("<ethaddr> not set. Validating first E-fuse MAC\n");
 
 		if (is_valid_ether_addr(mac_addr))
 			eth_setenv_enetaddr("ethaddr", mac_addr);
-		else
-			goto try_usbether;
 	}
 
+#ifdef CONFIG_DRIVER_TI_CPSW
 	if (board_is_bone() || board_is_bone_lt() || board_is_idk()) {
 		writel(MII_MODE_ENABLE, &cdev->miisel);
 		cpsw_slaves[0].phy_if = cpsw_slaves[1].phy_if =
@@ -426,8 +486,34 @@ int board_eth_init(bd_t *bis)
 	else
 		n += rv;
 #endif
-try_usbether:
-#if defined(CONFIG_USB_ETHER) && !defined(CONFIG_SPL_BUILD)
+
+	/*
+	 *
+	 * CPSW RGMII Internal Delay Mode is not supported in all PVT
+	 * operating points.  So we must set the TX clock delay feature
+	 * in the AR8051 PHY.  Since we only support a single ethernet
+	 * device in U-Boot, we only do this for the first instance.
+	 */
+#define AR8051_PHY_DEBUG_ADDR_REG	0x1d
+#define AR8051_PHY_DEBUG_DATA_REG	0x1e
+#define AR8051_DEBUG_RGMII_CLK_DLY_REG	0x5
+#define AR8051_RGMII_TX_CLK_DLY		0x100
+
+	if (board_is_evm_sk() || board_is_gp_evm()) {
+		const char *devname;
+		devname = miiphy_get_current_dev();
+
+		miiphy_write(devname, 0x0, AR8051_PHY_DEBUG_ADDR_REG,
+				AR8051_DEBUG_RGMII_CLK_DLY_REG);
+		miiphy_write(devname, 0x0, AR8051_PHY_DEBUG_DATA_REG,
+				AR8051_RGMII_TX_CLK_DLY);
+	}
+#endif
+#if defined(CONFIG_USB_ETHER) && \
+	(!defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_USBETH_SUPPORT))
+	if (is_valid_ether_addr(mac_addr))
+		eth_setenv_enetaddr("usbnet_devaddr", mac_addr);
+
 	rv = usb_eth_initialize(bis);
 	if (rv < 0)
 		printf("Error %d registering USB_ETHER\n", rv);

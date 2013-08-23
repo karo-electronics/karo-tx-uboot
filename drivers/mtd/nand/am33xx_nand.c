@@ -341,9 +341,6 @@ static void am33xx_fix_errors_bch(struct mtd_info *mtd, uint8_t *data,
  *
  * @return 0 if data is OK or corrected, else returns -1
  */
-static inline int am33xx_read_page_bch(struct mtd_info *mtd, struct nand_chip *chip,
-				uint8_t *buf, int page);
-
 static int am33xx_correct_data_bch(struct mtd_info *mtd, uint8_t *dat,
 				uint8_t *read_ecc, uint8_t *calc_ecc)
 {
@@ -579,7 +576,7 @@ static void am33xx_spl_nand_command(struct mtd_info *mtd, unsigned int cmd,
  *
  */
 static inline int am33xx_read_page_bch(struct mtd_info *mtd, struct nand_chip *chip,
-				uint8_t *buf, int page)
+				uint8_t *buf, int oob_required, int page)
 {
 	int ret = 0;
 	int i, eccsize = chip->ecc.size;
@@ -887,15 +884,15 @@ int board_nand_init(struct nand_chip *nand)
 	nand->IO_ADDR_W = (void __iomem *)&gpmc_cfg->cs[cs].nand_cmd;
 
 	nand->cmd_ctrl = am33xx_nand_hwcontrol;
-	nand->options = NAND_NO_PADDING | NAND_CACHEPRG | NAND_NO_AUTOINCR;
+	nand->options = NAND_NO_PADDING | NAND_CACHEPRG;
 #ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
 #ifdef CONFIG_SYS_NAND_NO_OOB
-	nand->options |= NAND_USE_FLASH_BBT | NAND_USE_FLASH_BBT_NO_OOB;
+	nand->bbt_options |= NAND_BBT_USE_FLASH | NAND_USE_FLASH_BBT_NO_OOB;
 #else
-	nand->options |= NAND_USE_FLASH_BBT;
+	nand->bbt_options |= NAND_BBT_USE_FLASH;
+#endif /* CONFIG_SYS_NAND_NO_OOB */
 	nand->bbt_td = &bbt_main_descr;
 	nand->bbt_md = &bbt_mirror_descr;
-#endif /* CONFIG_SYS_NAND_NO_OOB */
 #endif /* CONFIG_SYS_NAND_USE_FLASH_BBT */
 
 	/* If we are 16 bit dev, our gpmc config tells us that */

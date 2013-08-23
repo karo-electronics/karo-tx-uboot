@@ -6,23 +6,7 @@
  *
  * TI OMAP4 common configuration settings
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_OMAP4_COMMON_H
@@ -45,14 +29,10 @@
 #define CONFIG_DISPLAY_CPUINFO		1
 #define CONFIG_DISPLAY_BOARDINFO	1
 
-/* Clock Defines */
-#define V_OSCK			38400000	/* Clock output from T2 */
-#define V_SCLK                   V_OSCK
-
 #define CONFIG_MISC_INIT_R
 
 #define CONFIG_OF_LIBFDT		1
-
+#define CONFIG_CMD_BOOTZ
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
 #define CONFIG_INITRD_TAG		1
@@ -87,6 +67,10 @@
 #define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
 					115200}
+
+/* CPU */
+#define CONFIG_ARCH_CPU_INIT
+
 /* I2C  */
 #define CONFIG_HARD_I2C			1
 #define CONFIG_SYS_I2C_SPEED		100000
@@ -138,6 +122,10 @@
  */
 
 #define CONFIG_BOOTDELAY	3
+#define CONFIG_ENV_VARS_UBOOT_CONFIG
+#define CONFIG_CMD_FS_GENERIC
+#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_EXT4
 
 #define CONFIG_ENV_OVERWRITE
 
@@ -145,6 +133,11 @@
 	"loadaddr=0x82000000\0" \
 	"console=ttyO2,115200n8\0" \
 	"fdt_high=0xffffffff\0" \
+	"fdtaddr=0x80f80000\0" \
+	"fdtfile=undefined\0" \
+	"bootpart=0:2\0" \
+	"bootdir=/boot\0" \
+	"bootfile=zImage\0" \
 	"usbtty=cdc_acm\0" \
 	"vram=16M\0" \
 	"mmcdev=0\0" \
@@ -157,19 +150,44 @@
 	"loadbootscript=fatload mmc ${mmcdev} ${loadaddr} boot.scr\0" \
 	"bootscript=echo Running bootscript from mmc${mmcdev} ...; " \
 		"source ${loadaddr}\0" \
-	"loaduimage=fatload mmc ${mmcdev} ${loadaddr} uImage\0" \
+	"loadbootenv=fatload mmc ${mmcdev} ${loadaddr} uEnv.txt\0" \
+	"importbootenv=echo Importing environment from mmc${mmcdev} ...; " \
+		"env import -t ${loadaddr} ${filesize}\0" \
+	"loadimage=load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootfile}\0" \
 	"mmcboot=echo Booting from mmc${mmcdev} ...; " \
 		"run mmcargs; " \
-		"bootm ${loadaddr}\0" \
+		"bootz ${loadaddr} - ${fdtaddr}\0" \
+	"findfdt="\
+		"if test $board_name = sdp4430; then " \
+			"setenv fdtfile omap4-sdp.dtb; fi; " \
+		"if test $board_name = panda; then " \
+			"setenv fdtfile omap4-panda.dtb; fi;" \
+		"if test $board_name = panda-a4; then " \
+			"setenv fdtfile omap4-panda-a4.dtb; fi;" \
+		"if test $board_name = panda-es; then " \
+			"setenv fdtfile omap4-panda-es.dtb; fi;" \
+		"if test $fdtfile = undefined; then " \
+			"echo WARNING: Could not determine device tree to use; fi; \0" \
+	"loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}/${fdtfile}\0" \
 
 #define CONFIG_BOOTCOMMAND \
+	"run findfdt; " \
 	"mmc dev ${mmcdev}; if mmc rescan; then " \
+		"echo SD/MMC found on device ${mmcdev};" \
 		"if run loadbootscript; then " \
 			"run bootscript; " \
 		"else " \
-			"if run loaduimage; then " \
-				"run mmcboot; " \
-			"fi; " \
+			"if run loadbootenv; then " \
+				"run importbootenv; " \
+			"fi;" \
+			"if test -n ${uenvcmd}; then " \
+				"echo Running uenvcmd ...;" \
+				"run uenvcmd;" \
+			"fi;" \
+		"fi;" \
+		"if run loadimage; then " \
+			"run loadfdt;" \
+			"run mmcboot; " \
 		"fi; " \
 	"fi"
 

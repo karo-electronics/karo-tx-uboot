@@ -1,17 +1,13 @@
 /*
  * Copyright (C) 2012 <LW@KARO-electronics.de>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2.
+ * SPDX-License-Identifier:      GPL-2.0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
  */
 #ifndef __CONFIGS_TX28_H
 #define __CONFIGS_TX28_H
+
+#define CONFIG_MX28					/* i.MX28 SoC */
 
 #include <asm/sizes.h>
 #include <asm/arch/regs-base.h>
@@ -19,7 +15,6 @@
 /*
  * Ka-Ro TX28 board - SoC configuration
  */
-#define CONFIG_MX28					/* i.MX28 SoC */
 #define CONFIG_MXS_GPIO					/* GPIO control */
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
 #define PHYS_SDRAM_1_SIZE		CONFIG_SDRAM_SIZE
@@ -166,6 +161,7 @@
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
+#define CONFIG_CMD_MEMTEST
 
 /*
  * Serial Driver
@@ -187,6 +183,7 @@
 #ifdef CONFIG_FEC_MXC
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
+#define CONFIG_SYS_CACHELINE_SIZE	32
 
 #ifndef CONFIG_TX28_S
 #define CONFIG_FEC_MXC_MULTI

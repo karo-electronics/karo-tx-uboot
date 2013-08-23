@@ -9,15 +9,7 @@
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef __CONFIG_H
 #define __CONFIG_H
@@ -182,7 +174,8 @@
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_MXS
-#define CONFIG_EHCI_MXS_PORT		1
+#define CONFIG_EHCI_MXS_PORT1
+#define CONFIG_USB_MAX_CONTROLLER_COUNT	1
 #define CONFIG_EHCI_IS_TDI
 #define CONFIG_USB_STORAGE
 #endif
@@ -222,7 +215,7 @@
 		"root=ubi0:rootfs rootfstype=ubifs ${mtdparts} rw\0" \
 	"bootcmd_nand=" \
 		"run bootargs_nand && ubi part root 2048 && " \
-		"ubifsmount rootfs && ubifsload 41000000 boot/uImage && " \
+		"ubifsmount ubi:rootfs && ubifsload 41000000 boot/uImage && " \
 		"bootm 41000000\0" \
 	"bootargs_mmc=" \
 		"setenv bootargs ${kernelargs} " \

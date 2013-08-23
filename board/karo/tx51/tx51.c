@@ -27,7 +27,7 @@
 #include <fsl_esdhc.h>
 #include <video_fb.h>
 #include <ipu.h>
-#include <mx2fb.h>
+#include <mxcfb.h>
 #include <linux/fb.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
@@ -38,8 +38,6 @@
 #include <asm/arch/sys_proto.h>
 
 #include "../common/karo.h"
-
-//#define IMX_GPIO_NR(b, o)	((((b) - 1) << 5) | (o))
 
 #define TX51_FEC_RST_GPIO	IMX_GPIO_NR(2, 14)
 #define TX51_FEC_PWR_GPIO	IMX_GPIO_NR(1, 3)
@@ -54,7 +52,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define IOMUX_SION		IOMUX_PAD(0, 0, MUX_CONFIG_SION, 0, 0, 0)
+#define IOMUX_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 #define FEC_PAD_CTRL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
 			PAD_CTL_SRE_FAST)
@@ -151,14 +149,14 @@ static const struct gpio tx51_gpios[] = {
 /*
  * Functions
  */
-#define WRSR_POR	(1 << 4)
-#define WRSR_TOUT	(1 << 1)
-#define WRSR_SFTW	(1 << 0)
-
 /* placed in section '.data' to prevent overwriting relocation info
  * overlayed with bss
  */
 static u32 wrsr __attribute__((section(".data")));
+
+#define WRSR_POR	(1 << 4)
+#define WRSR_TOUT	(1 << 1)
+#define WRSR_SFTW	(1 << 0)
 
 static void print_reset_cause(void)
 {
@@ -212,7 +210,7 @@ static void print_reset_cause(void)
 	printf("\n");
 }
 
-static void print_cpuinfo(void)
+static void tx51_print_cpuinfo(void)
 {
 	u32 cpurev;
 
@@ -301,29 +299,6 @@ void dram_init_banksize(void)
 }
 
 #ifdef	CONFIG_CMD_MMC
-int board_mmc_getcd(struct mmc *mmc)
-{
-	struct fsl_esdhc_cfg *cfg = mmc->priv;
-
-	if (cfg->cd_gpio < 0)
-		return cfg->cd_gpio;
-
-	return !gpio_get_value(cfg->cd_gpio);
-}
-
-static struct fsl_esdhc_cfg esdhc_cfg[] = {
-	{
-		.esdhc_base = (void __iomem *)MMC_SDHC1_BASE_ADDR,
-		.cd_gpio = IMX_GPIO_NR(3, 8),
-		.wp_gpio = -EINVAL,
-	},
-	{
-		.esdhc_base = (void __iomem *)MMC_SDHC2_BASE_ADDR,
-		.cd_gpio = IMX_GPIO_NR(3, 6),
-		.wp_gpio = -EINVAL,
-	},
-};
-
 static const iomux_v3_cfg_t mmc0_pads[] = {
 	MX51_PAD_SD1_CMD__SD1_CMD,
 	MX51_PAD_SD1_CLK__SD1_CLK,
@@ -346,31 +321,73 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 	MX51_PAD_DISPB2_SER_DIO__GPIO3_6 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
 };
 
-static struct {
+static struct tx51_esdhc_cfg {
 	const iomux_v3_cfg_t *pads;
-	int count;
-} mmc_pad_config[] = {
-	{ mmc0_pads, ARRAY_SIZE(mmc0_pads), },
-	{ mmc1_pads, ARRAY_SIZE(mmc1_pads), },
+	int num_pads;
+	struct fsl_esdhc_cfg cfg;
+	int cd_gpio;
+} tx51_esdhc_cfg[] = {
+	{
+		.pads = mmc0_pads,
+		.num_pads = ARRAY_SIZE(mmc0_pads),
+		.cfg = {
+			.esdhc_base = (void __iomem *)MMC_SDHC1_BASE_ADDR,
+		},
+		.cd_gpio = IMX_GPIO_NR(3, 8),
+	},
+	{
+		.pads = mmc1_pads,
+		.num_pads = ARRAY_SIZE(mmc1_pads),
+		.cfg = {
+			.esdhc_base = (void __iomem *)MMC_SDHC2_BASE_ADDR,
+		},
+		.cd_gpio = IMX_GPIO_NR(3, 6),
+	},
 };
+
+static struct tx51_esdhc_cfg *to_tx51_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+{
+	return container_of(cfg, struct tx51_esdhc_cfg, cfg);
+}
+
+int board_mmc_getcd(struct mmc *mmc)
+{
+	struct tx51_esdhc_cfg *cfg = to_tx51_esdhc_cfg(mmc->priv);
+
+	if (cfg->cd_gpio < 0)
+		return cfg->cd_gpio;
+
+	debug("SD card %d is %spresent\n",
+		cfg - tx51_esdhc_cfg,
+		gpio_get_value(cfg->cd_gpio) ? "NOT " : "");
+	return !gpio_get_value(cfg->cd_gpio);
+}
 
 int board_mmc_init(bd_t *bis)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(esdhc_cfg); i++) {
+	for (i = 0; i < ARRAY_SIZE(tx51_esdhc_cfg); i++) {
 		struct mmc *mmc;
-		struct fsl_esdhc_cfg *cfg;
+		struct tx51_esdhc_cfg *cfg = &tx51_esdhc_cfg[i];
+		int ret;
 
 		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
 			break;
 
-		imx_iomux_v3_setup_multiple_pads(mmc_pad_config[i].pads,
-						mmc_pad_config[i].count);
+		imx_iomux_v3_setup_multiple_pads(cfg->pads,
+						cfg->num_pads);
+		cfg->cfg.sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 
-		cfg = &esdhc_cfg[i];
-		cfg->sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
-		fsl_esdhc_initialize(bis, cfg);
+		fsl_esdhc_initialize(bis, &cfg->cfg);
+
+		ret = gpio_request_one(cfg->cd_gpio,
+				GPIOF_INPUT, "MMC CD");
+		if (ret) {
+			printf("Error %d requesting GPIO%d_%d\n",
+				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
+			continue;
+		}
 
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
@@ -435,7 +452,6 @@ int board_eth_init(bd_t *bis)
 {
 	int ret;
 	unsigned char mac[ETH_ALEN];
-	char mac_str[ETH_ALEN * 3] = "";
 
 	/* Power up the external phy and assert strap options */
 	gpio_request_array(tx51_fec_gpios, ARRAY_SIZE(tx51_fec_gpios));
@@ -460,9 +476,8 @@ int board_eth_init(bd_t *bis)
 	}
 
 	imx_get_mac_from_fuse(0, mac);
-	snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	setenv("ethaddr", mac_str);
+	eth_setenv_enetaddr("ethaddr", mac);
+	printf("MAC addr from fuse: %pM\n", mac);
 
 	return ret;
 }
@@ -533,21 +548,136 @@ vidinfo_t panel_info = {
 	.cmap = tx51_cmap,
 };
 
-static struct fb_videomode tx51_fb_mode = {
-	/* Standard VGA timing */
-	.name		= "VGA",
-	.refresh	= 60,
-	.xres		= 640,
-	.yres		= 480,
-	.pixclock	= KHZ2PICOS(25175),
-	.left_margin	= 48,
-	.hsync_len	= 96,
-	.right_margin	= 16,
-	.upper_margin	= 31,
-	.vsync_len	= 2,
-	.lower_margin	= 12,
-	.sync		= FB_SYNC_CLK_LAT_FALL,
-	.vmode		= FB_VMODE_NONINTERLACED,
+static struct fb_videomode tx51_fb_modes[] = {
+	{
+		/* Standard VGA timing */
+		.name		= "VGA",
+		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(25175),
+		.left_margin	= 48,
+		.hsync_len	= 96,
+		.right_margin	= 16,
+		.upper_margin	= 31,
+		.vsync_len	= 2,
+		.lower_margin	= 12,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ETV570 640 x 480 display. Syncs low active,
+		 * DE high active, 115.2 mm x 86.4 mm display area
+		 * VGA compatible timing
+		 */
+		.name		= "ETV570",
+		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(25175),
+		.left_margin	= 114,
+		.hsync_len	= 30,
+		.right_margin	= 16,
+		.upper_margin	= 32,
+		.vsync_len	= 3,
+		.lower_margin	= 10,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0350G0DH6 320 x 240 display.
+		 * 70.08 mm x 52.56 mm display area.
+		 */
+		.name		= "ET0350",
+		.refresh	= 60,
+		.xres		= 320,
+		.yres		= 240,
+		.pixclock	= KHZ2PICOS(6500),
+		.left_margin	= 68 - 34,
+		.hsync_len	= 34,
+		.right_margin	= 20,
+		.upper_margin	= 18 - 3,
+		.vsync_len	= 3,
+		.lower_margin	= 4,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0430G0DH6 480 x 272 display.
+		 * 95.04 mm x 53.856 mm display area.
+		 */
+		.name		= "ET0430",
+		.refresh	= 60,
+		.xres		= 480,
+		.yres		= 272,
+		.pixclock	= KHZ2PICOS(9000),
+		.left_margin	= 2,
+		.hsync_len	= 41,
+		.right_margin	= 2,
+		.upper_margin	= 2,
+		.vsync_len	= 10,
+		.lower_margin	= 2,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0500G0DH6 800 x 480 display.
+		 * 109.6 mm x 66.4 mm display area.
+		 */
+		.name		= "ET0500",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ETQ570G0DH6 320 x 240 display.
+		 * 115.2 mm x 86.4 mm display area.
+		 */
+		.name		= "ETQ570",
+		.refresh	= 60,
+		.xres		= 320,
+		.yres		= 240,
+		.pixclock	= KHZ2PICOS(6400),
+		.left_margin	= 38,
+		.hsync_len	= 30,
+		.right_margin	= 30,
+		.upper_margin	= 16, /* 15 according to datasheet */
+		.vsync_len	= 3, /* TVP -> 1>x>5 */
+		.lower_margin	= 4, /* 4.5 according to datasheet */
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0700G0DH6 800 x 480 display.
+		 * 152.4 mm x 91.44 mm display area.
+		 */
+		.name		= "ET0700",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* unnamed entry for assigning parameters parsed from 'video_mode' string */
+		.refresh	= 60,
+		.left_margin	= 48,
+		.hsync_len	= 96,
+		.right_margin	= 16,
+		.upper_margin	= 31,
+		.vsync_len	= 2,
+		.lower_margin	= 12,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
 };
 
 static int lcd_enabled = 1;
@@ -569,6 +699,21 @@ void lcd_enable(void)
 		gpio_set_value(TX51_LCD_RST_GPIO, 1);
 		udelay(300000);
 		gpio_set_value(TX51_LCD_BACKLIGHT_GPIO, 0);
+	}
+}
+
+void lcd_disable(void)
+{
+	printf("Disabling LCD\n");
+}
+
+void lcd_panel_disable(void)
+{
+	if (lcd_enabled) {
+		debug("Switching LCD off\n");
+		gpio_set_value(TX51_LCD_BACKLIGHT_GPIO, 1);
+		gpio_set_value(TX51_LCD_RST_GPIO, 0);
+		gpio_set_value(TX51_LCD_PWR_GPIO, 0);
 	}
 }
 
@@ -621,7 +766,8 @@ void lcd_ctrl_init(void *lcdbase)
 	char *vm;
 	unsigned long val;
 	int refresh = 60;
-	struct fb_videomode *p = &tx51_fb_mode;
+	struct fb_videomode *p = &tx51_fb_modes[0];
+	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 	int pix_fmt = 0;
 	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
@@ -638,12 +784,35 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
+	karo_fdt_move_fdt();
+
 	vm = getenv("video_mode");
 	if (vm == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+		p = &fb_mode;
+		debug("Using video mode from FDT\n");
+		vm += strlen(vm);
+		if (fb_mode.xres < panel_info.vl_col)
+			panel_info.vl_col = fb_mode.xres;
+		if (fb_mode.yres < panel_info.vl_row)
+			panel_info.vl_row = fb_mode.yres;
+	}
+	if (p->name != NULL)
+		debug("Trying compiled-in video modes\n");
+	while (p->name != NULL) {
+		if (strcmp(p->name, vm) == 0) {
+			debug("Using video mode: '%s'\n", p->name);
+			vm += strlen(vm);
+			break;
+		}
+		p++;
+	}
+	if (*vm != '\0')
+		debug("Trying to decode video_mode: '%s'\n", vm);
 	while (*vm != '\0') {
 		if (*vm >= '0' && *vm <= '9') {
 			char *end;
@@ -710,17 +879,15 @@ void lcd_ctrl_init(void *lcdbase)
 				vm++;
 		}
 	}
-	switch (color_depth) {
-	case 8:
-		panel_info.vl_bpix = 3;
-		break;
-
-	case 16:
-		panel_info.vl_bpix = 4;
-		break;
-
-	case 24:
-		panel_info.vl_bpix = 5;
+	if (p->xres == 0 || p->yres == 0) {
+		printf("Invalid video mode: %s\n", getenv("video_mode"));
+		lcd_enabled = 0;
+		printf("Supported video modes are:");
+		for (p = &tx51_fb_modes[0]; p->name != NULL; p++) {
+			printf(" %s", p->name);
+		}
+		printf("\n");
+		return;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -828,7 +995,7 @@ exit:
 
 int checkboard(void)
 {
-	print_cpuinfo();
+	tx51_print_cpuinfo();
 
 	printf("Board: Ka-Ro TX51-%sxx%s\n",
 		TX51_MOD_PREFIX, TX51_MOD_SUFFIX);
@@ -854,6 +1021,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
-	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", 0x73f80000);
+	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
 }
 #endif

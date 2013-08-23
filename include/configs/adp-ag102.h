@@ -2,22 +2,7 @@
  * Copyright (C) 2011 Andes Technology Corporation
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -143,6 +128,7 @@
  */
 #define CONFIG_PCI
 #define CONFIG_FTPCI100
+#define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_FTPCI100_MEM_BASE        0xa0000000
 #define CONFIG_FTPCI100_IO_SIZE         FTPCI100_BASE_IO_SIZE(256) /* 256M */
 #define CONFIG_FTPCI100_MEM_SIZE        FTPCI100_MEM_SIZE(128)  /* 128M */

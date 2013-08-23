@@ -1,23 +1,7 @@
 #
 # Copyright 2010-2011 Freescale Semiconductor, Inc.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 NAND_SPL := y
 PAD_TO := 0xfff01000
@@ -27,7 +11,6 @@ include $(TOPDIR)/config.mk
 nandobj	:= $(OBJTREE)/nand_spl/
 
 LDSCRIPT= $(TOPDIR)/$(CPUDIR)/u-boot-nand_spl.lds
-LSTSCRIPT= $(nandobj)/board/$(BOARDDIR)/u-boot.lst
 LDFLAGS := -T $(nandobj)u-boot-nand_spl.lds -Ttext $(CONFIG_SYS_TEXT_BASE_SPL) \
 		$(LDFLAGS) $(LDFLAGS_FINAL)
 AFLAGS	+= -DCONFIG_NAND_SPL
@@ -57,11 +40,7 @@ $(nandobj)u-boot-spl:	$(OBJS) $(nandobj)u-boot-nand_spl.lds
 		-Map $(nandobj)u-boot-spl.map \
 		-o $(nandobj)u-boot-spl
 
-# The following line expands into whole rule which generates $(LSTSCRIPT),
-# the file containing u-boots LG-array linker section. This is included into
-# $(LDSCRIPT). The function make_u_boot_list is defined in helper.mk file.
-$(eval $(call make_u_boot_list, $(LSTSCRIPT), $(OBJS)))
-$(nandobj)u-boot-nand_spl.lds: $(LDSCRIPT) $(LSTSCRIPT)
+$(nandobj)u-boot-nand_spl.lds: $(LDSCRIPT)
 	$(CPP) $(CPPFLAGS) $(LDPPFLAGS) -I$(nandobj)/board/$(BOARDDIR) \
 		-ansi -D__ASSEMBLY__ -P - <$< >$@
 

@@ -2,23 +2,7 @@
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 include $(TOPDIR)/config.mk
@@ -35,11 +19,13 @@ COBJS-$(CONFIG_EXYNOS_MIPI_DSIM) += exynos_mipi_dsi.o exynos_mipi_dsi_common.o \
 				exynos_mipi_dsi_lowlevel.o
 COBJS-$(CONFIG_EXYNOS_PWM_BL) += exynos_pwm_bl.o
 COBJS-$(CONFIG_FSL_DIU_FB) += fsl_diu_fb.o videomodes.o
+COBJS-$(CONFIG_MPC8XX_LCD) += mpc8xx_lcd.o
+COBJS-$(CONFIG_PXA_LCD) += pxa_lcd.o
 COBJS-$(CONFIG_S6E8AX0) += s6e8ax0.o
 COBJS-$(CONFIG_S6E63D6) += s6e63d6.o
 COBJS-$(CONFIG_LD9040) += ld9040.o
 COBJS-$(CONFIG_SED156X) += sed156x.o
-COBJS-$(CONFIG_VIDEO_AMBA) += amba.o
+COBJS-$(CONFIG_VIDEO_BCM2835) += bcm2835.o
 COBJS-$(CONFIG_VIDEO_COREBOOT) += coreboot_fb.o
 COBJS-$(CONFIG_VIDEO_CT69000) += ct69000.o videomodes.o
 COBJS-$(CONFIG_VIDEO_DA8XX) += da8xx-fb.o videomodes.o
@@ -47,7 +33,7 @@ COBJS-$(CONFIG_VIDEO_IPUV3) += mxc_ipuv3_fb.o ipu_common.o ipu_disp.o
 COBJS-$(CONFIG_VIDEO_MB862xx) += mb862xx.o videomodes.o
 COBJS-$(CONFIG_VIDEO_MB86R0xGDC) += mb86r0xgdc.o videomodes.o
 COBJS-$(CONFIG_VIDEO_MX3) += mx3fb.o videomodes.o
-COBJS-$(CONFIG_VIDEO_MXS) += mxsfb.o
+COBJS-$(CONFIG_VIDEO_MXS) += mxsfb.o videomodes.o
 COBJS-$(CONFIG_VIDEO_OMAP3) += omap3_dss.o
 COBJS-$(CONFIG_VIDEO_SED13806) += sed13806.o
 COBJS-$(CONFIG_VIDEO_SM501) += sm501.o

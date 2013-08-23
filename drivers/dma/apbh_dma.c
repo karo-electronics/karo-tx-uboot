@@ -7,19 +7,7 @@
  * Based on code from LTIB:
  * Copyright (C) 2010 Freescale Semiconductor, Inc. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/list.h>
@@ -30,90 +18,12 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/regs-apbh.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/arch/dma.h>
-
-#ifdef DEBUG_
-static inline u32 mxs_readl(void *addr,
-			const char *fn, int ln)
-{
-	u32 val = readl(addr);
-	static void *last_addr;
-	static u32 last_val;
-
-	if (addr != last_addr || last_val != val) {
-		printf("%s@%d: Read %08x from %p\n", fn, ln, val, addr);
-		last_addr = addr;
-		last_val = val;
-	}
-	return val;
-}
-
-static inline void mxs_writel(u32 val, void *addr,
-			const char *name, const char *fn, int ln)
-{
-#if 0
-	printf("%s@%d: Writing %08x to %s[%p]...", fn, ln, val, name, addr);
-#else
-	printf("%s@%d: Writing %08x to %p...", fn, ln, val, addr);
-#endif
-	writel(val, addr);
-	printf(" result: %08x\n", readl(addr));
-}
-
-#undef readl
-#define readl(a) mxs_readl(a, __func__, __LINE__)
-
-#undef writel
-#define writel(v, a) mxs_writel(v, a, #a, __func__, __LINE__)
-#endif
-
-#define pr_dma_flag(c,f)	do { if ((c) & MXS_DMA_DESC_##f) printf("%s ", #f); } while (0)
-static inline void dump_dma_desc(struct mxs_dma_desc *desc)
-{
-	struct mxs_dma_cmd *cmd = &desc->cmd;
-
-	printf("DMA desc %p:\n", desc);
-	printf("NXT: %08lx\n", cmd->next);
-	printf("CMD: %08lx - ", cmd->data);
-	printf("CNT: %04lx ", (cmd->data & MXS_DMA_DESC_BYTES_MASK) >> MXS_DMA_DESC_BYTES_OFFSET);
-	printf("PIO: %ld ", (cmd->data & MXS_DMA_DESC_PIO_WORDS_MASK) >> MXS_DMA_DESC_PIO_WORDS_OFFSET);
-	pr_dma_flag(cmd->data, HALT_ON_TERMINATE);
-	pr_dma_flag(cmd->data, WAIT4END);
-	pr_dma_flag(cmd->data, DEC_SEM);
-	pr_dma_flag(cmd->data, NAND_WAIT_4_READY);
-	pr_dma_flag(cmd->data, NAND_LOCK);
-	pr_dma_flag(cmd->data, IRQ);
-	pr_dma_flag(cmd->data, CHAIN);
-	printf("\nMOD: ");
-	switch (cmd->data & MXS_DMA_DESC_COMMAND_MASK) {
-	case MXS_DMA_DESC_COMMAND_NO_DMAXFER:
-		printf("NO_DMA\n");
-		break;
-	case MXS_DMA_DESC_COMMAND_DMA_WRITE:
-		printf("WRITE\n");
-		break;
-	case MXS_DMA_DESC_COMMAND_DMA_READ:
-		printf("READ\n");
-		break;
-	case MXS_DMA_DESC_COMMAND_DMA_SENSE:
-		printf("SENSE\n");
-	}
-	if (cmd->data & MXS_DMA_DESC_PIO_WORDS_MASK) {
-		int pio_words = (cmd->data & MXS_DMA_DESC_PIO_WORDS_MASK) >> MXS_DMA_DESC_PIO_WORDS_OFFSET;
-		int i;
-
-		printf("PIO: ");
-		for (i = 0; i < pio_words; i++) {
-			printf("%08lx ", cmd->pio_words[i]);
-		}
-		printf("\n");
-	}
-}
+#include <asm/imx-common/dma.h>
+#include <asm/imx-common/regs-apbh.h>
 
 static struct mxs_dma_chan mxs_dma_channels[MXS_MAX_DMA_CHANNELS];
-static struct apbh_regs *apbh_regs = (struct apbh_regs *)MXS_APBH_BASE;
+static struct mxs_apbh_regs *apbh_regs = (struct mxs_apbh_regs *)MXS_APBH_BASE;
 
 /*
  * Test is the DMA channel is valid channel
@@ -242,10 +152,8 @@ static int mxs_dma_enable(int channel)
 	} else {
 		pchan->active_num += pchan->pending_num;
 		pchan->pending_num = 0;
-#if 1
 		writel(1 << (channel + APBH_CTRL0_CLKGATE_CHANNEL_OFFSET),
 			&apbh_regs->hw_apbh_ctrl0_clr);
-#endif
 		writel(mxs_dma_cmd_address(pdesc),
 			&apbh_regs->ch[channel].hw_apbh_ch_nxtcmdar);
 		writel(pchan->active_num,
@@ -285,10 +193,8 @@ static int mxs_dma_disable(int channel)
 		printf("%s: DMA channel %d busy\n", __func__, channel);
 		return -EINVAL;
 	}
-#if 0
 	writel(1 << (channel + APBH_CTRL0_CLKGATE_CHANNEL_OFFSET),
 		&apbh_regs->hw_apbh_ctrl0_set);
-#endif
 	pchan->active_num = 0;
 	pchan->pending_num = 0;
 	list_splice_init(&pchan->active, &pchan->done);
@@ -302,13 +208,19 @@ static int mxs_dma_disable(int channel)
 static int mxs_dma_reset(int channel)
 {
 	int ret;
+#if defined(CONFIG_MX23)
+	uint32_t *setreg = &apbh_regs->hw_apbh_ctrl0_set;
+	uint32_t offset = APBH_CTRL0_RESET_CHANNEL_OFFSET;
+#elif (defined(CONFIG_MX28) || defined(CONFIG_MX6))
+	uint32_t *setreg = &apbh_regs->hw_apbh_channel_ctrl_set;
+	uint32_t offset = APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET;
+#endif
 
 	ret = mxs_dma_validate_chan(channel);
 	if (ret)
 		return ret;
 
-	writel(1 << (channel + APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET),
-		&apbh_regs->hw_apbh_channel_ctrl_set);
+	writel(1 << (channel + offset), setreg);
 
 	return 0;
 }

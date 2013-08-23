@@ -1,29 +1,25 @@
 /*
  * Copyright (C) 2012 <LW@KARO-electronics.de>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2.
+ * SPDX-License-Identifier:      GPL-2.0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
  */
-#ifndef __CONFIGS_TX53_H
-#define __CONFIGS_TX53_H
+
+#ifndef __CONFIG_H
+#define __CONFIG_H
+
+#define CONFIG_MX53			/* must be set before including imx-regs.h */
 
 #include <asm/sizes.h>
+#include <asm/arch/imx-regs.h>
 
 /*
  * Ka-Ro TX53 board - SoC configuration
  */
-#define CONFIG_TX53				/* TX53 SoM */
-#define CONFIG_MX53				/* i.MX53 SoC */
+#define CONFIG_TX53			/* TX53 SoM */
 #define CONFIG_SYS_MX5_IOMUX_V3
-#define CONFIG_MXC_GPIO				/* GPIO control */
+#define CONFIG_MXC_GPIO			/* GPIO control */
 #define CONFIG_SYS_MX5_HCLK		24000000
-#define CONFIG_SYS_MX5_CLK32		32768
 #define CONFIG_SYS_DDR_CLKSEL		0
 #define CONFIG_SYS_HZ			1000	/* Ticks per second */
 #define CONFIG_SHOW_ACTIVITY
@@ -151,12 +147,12 @@
  */
 #include <config_cmd_default.h>
 #define CONFIG_CMD_CACHE
-#define CONFIG_CMD_IIM
 #define CONFIG_CMD_MMC
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
+#define CONFIG_CMD_MEMTEST
 
 /*
  * Serial Driver
@@ -196,8 +192,8 @@
 #define CONFIG_MTD_DEVICE
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_NAND_MXC
-#define CONFIG_MXC_NAND_REGS_BASE	0xf7ff0000
-#define CONFIG_MXC_NAND_IP_BASE		0x63fdb000
+#define CONFIG_MXC_NAND_REGS_BASE	NFC_BASE_ADDR_AXI
+#define CONFIG_MXC_NAND_IP_REGS_BASE	NFC_BASE_ADDR
 #define CONFIG_MXC_NAND_HWECC
 #define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_MAX_FLASH_SECT	1024
@@ -232,7 +228,6 @@
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_FSL_ESDHC
-#define CONFIG_SYS_FSL_ESDHC_USE_PIO
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	2
 
@@ -272,7 +267,7 @@
 					GENERATED_GBL_DATA_SIZE)
 
 #ifdef CONFIG_CMD_IIM
-#define CONFIG_IMX_IIM
+#define CONFIG_FSL_IIM
 #endif
 
-#endif /* __CONFIGS_TX53_H */
+#endif /* __CONFIG_H */

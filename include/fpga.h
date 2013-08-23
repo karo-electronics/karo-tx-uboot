@@ -2,24 +2,7 @@
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/types.h>	       /* for ulong typedef */
@@ -30,24 +13,6 @@
 #ifndef CONFIG_MAX_FPGA_DEVICES
 #define CONFIG_MAX_FPGA_DEVICES		5
 #endif
-
-/* these probably belong somewhere else */
-#ifndef FALSE
-#define FALSE			(0)
-#endif
-#ifndef TRUE
-#define TRUE			(!FALSE)
-#endif
-
-/* CONFIG_FPGA bit assignments */
-#define CONFIG_SYS_FPGA_MAN(x)		(x)
-#define CONFIG_SYS_FPGA_DEV(x)		((x) << 8 )
-#define CONFIG_SYS_FPGA_IF(x)		((x) << 16 )
-
-/* FPGA Manufacturer bits in CONFIG_FPGA */
-#define CONFIG_SYS_FPGA_XILINX		CONFIG_SYS_FPGA_MAN( 0x1 )
-#define CONFIG_SYS_FPGA_ALTERA		CONFIG_SYS_FPGA_MAN( 0x2 )
-
 
 /* fpga_xxxx function return value definitions */
 #define FPGA_SUCCESS		0
@@ -76,7 +41,10 @@ extern void fpga_init(void);
 extern int fpga_add(fpga_type devtype, void *desc);
 extern int fpga_count(void);
 extern int fpga_load(int devnum, const void *buf, size_t bsize);
+extern int fpga_loadbitstream(int devnum, char *fpgadata, size_t size);
 extern int fpga_dump(int devnum, const void *buf, size_t bsize);
 extern int fpga_info(int devnum);
+extern const fpga_desc *const fpga_validate(int devnum, const void *buf,
+					    size_t bsize, char *fn);
 
 #endif	/* _FPGA_H_ */

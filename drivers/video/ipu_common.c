@@ -8,23 +8,7 @@
  *
  * (C) Copyright 2005-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define DEBUG */
@@ -39,6 +23,8 @@
 #include <asm/arch/clock.h>
 
 #include "ipu_regs.h"
+
+static struct mxc_ccm_reg __maybe_unused *mxc_ccm = (void *)CCM_BASE_ADDR;
 
 struct ipu_ch_param_word {
 	uint32_t data[5];
@@ -93,63 +79,7 @@ struct ipu_ch_param {
 	temp1;							\
 })
 
-int clk_get_usecount(struct clk *clk)
-{
-	if (clk == NULL)
-		return 0;
-
-	return clk->usecount;
-}
-
-u32 clk_get_rate(struct clk *clk)
-{
-	if (!clk)
-		return 0;
-
-	return clk->rate;
-}
-
-struct clk *clk_get_parent(struct clk *clk)
-{
-	if (!clk)
-		return 0;
-
-	return clk->parent;
-}
-
-int clk_set_rate(struct clk *clk, unsigned long rate)
-{
-	if (clk && clk->set_rate)
-		clk->set_rate(clk, rate);
-	return clk->rate;
-}
-
-long clk_round_rate(struct clk *clk, unsigned long rate)
-{
-	if (clk == NULL || !clk->round_rate)
-		return 0;
-
-	return clk->round_rate(clk, rate);
-}
-
-int clk_set_parent(struct clk *clk, struct clk *parent)
-{
-	debug("Setting parent of clk %p to %p (%p)\n", clk, parent,
-		clk ? clk->parent : NULL);
-
-	if (!clk || clk == parent)
-		return 0;
-
-	if (clk->set_parent) {
-		int ret;
-
-		ret = clk->set_parent(clk, parent);
-		if (ret)
-			return ret;
-	}
-	clk->parent = parent;
-	return 0;
-}
+#define IPU_SW_RST_TOUT_USEC	(10000)
 
 static int clk_ipu_enable(struct clk *clk)
 {
@@ -164,15 +94,28 @@ static void clk_ipu_disable(struct clk *clk)
 
 static struct clk ipu_clk = {
 	.name = "ipu_clk",
-#if defined(CONFIG_IPUV3_CLK)
 	.rate = CONFIG_IPUV3_CLK,
+#if defined(CONFIG_MX51) || defined(CONFIG_MX53)
+	.enable_reg = (u32 *)(CCM_BASE_ADDR +
+		offsetof(struct mxc_ccm_reg, CCGR5)),
+	.enable_shift = MXC_CCM_CCGR5_IPU_OFFSET,
+#else
+	.enable_reg = (u32 *)(CCM_BASE_ADDR +
+		offsetof(struct mxc_ccm_reg, CCGR3)),
+	.enable_shift = MXC_CCM_CCGR3_IPU1_IPU_DI0_OFFSET,
 #endif
 	.enable = clk_ipu_enable,
 	.disable = clk_ipu_disable,
 };
 
+static struct clk ldb_clk = {
+	.name = "ldb_clk",
+	.rate = 65000000,
+};
+
 /* Globals */
 struct clk *g_ipu_clk;
+struct clk *g_ldb_clk;
 struct clk *g_di_clk[2];
 struct clk *g_pixel_clk[2];
 unsigned char g_dc_di_assignment[10];
@@ -314,7 +257,7 @@ static int ipu_pixel_clk_set_parent(struct clk *clk, struct clk *parent)
 
 	if (parent == g_ipu_clk)
 		di_gen &= ~DI_GEN_DI_CLK_EXT;
-	else if (!IS_ERR(g_di_clk[clk->id]) && parent == g_di_clk[clk->id])
+	else if (!IS_ERR(g_di_clk[clk->id]) && parent == g_ldb_clk)
 		di_gen |= DI_GEN_DI_CLK_EXT;
 	else
 		goto err;
@@ -372,11 +315,20 @@ void ipu_reset(void)
 {
 	u32 *reg;
 	u32 value;
+	int timeout = IPU_SW_RST_TOUT_USEC;
 
 	reg = (u32 *)SRC_BASE_ADDR;
 	value = __raw_readl(reg);
 	value = value | SW_IPU_RST;
 	__raw_writel(value, reg);
+
+	while (__raw_readl(reg) & SW_IPU_RST) {
+		udelay(1);
+		if (!(timeout--)) {
+			printf("ipu software reset timeout\n");
+			break;
+		}
+	};
 }
 
 /*
@@ -393,8 +345,7 @@ int ipu_probe(int di, ipu_di_clk_parent_t di_clk_parent, int di_clk_val)
 	int ret;
 	void *ipu_base;
 	unsigned long start;
-
-#if defined(CONFIG_MXC_HSC)
+#if defined CONFIG_MX51
 	u32 temp;
 	u32 *reg_hsc_mcd = (u32 *)MIPI_HSC_BASE_ADDR;
 	u32 *reg_hsc_mxt_conf = (u32 *)(MIPI_HSC_BASE_ADDR + 0x800);
@@ -408,7 +359,7 @@ int ipu_probe(int di, ipu_di_clk_parent_t di_clk_parent, int di_clk_val)
 	temp = __raw_readl(reg_hsc_mxt_conf);
 	__raw_writel(temp | 0x10000, reg_hsc_mxt_conf);
 #endif
-	ipu_base = (void *)IPU_CTRL_BASE_ADDR;
+	ipu_base = (void *)IPU_SOC_BASE_ADDR;
 	/* base fixup */
 	if (gd->arch.ipu_hw_rev == IPUV3_HW_REV_IPUV3H)	/* IPUv3H */
 		ipu_base += IPUV3H_REG_BASE;
@@ -431,13 +382,16 @@ int ipu_probe(int di, ipu_di_clk_parent_t di_clk_parent, int di_clk_val)
 	g_ipu_clk = &ipu_clk;
 	debug("ipu_clk = %u\n", clk_get_rate(g_ipu_clk));
 
+	g_ldb_clk = &ldb_clk;
+	debug("ldb_clk = %u\n", clk_get_rate(g_ldb_clk));
+
 	ret = clk_enable(g_ipu_clk);
 	if (ret)
 		return ret;
 	ipu_reset();
 
 	if (di_clk_parent == DI_PCLK_LDB) {
-		clk_set_parent(g_pixel_clk[di], g_di_clk[di]);
+		clk_set_parent(g_pixel_clk[di], g_ldb_clk);
 	} else {
 		clk_set_parent(g_pixel_clk[0], g_ipu_clk);
 		clk_set_parent(g_pixel_clk[1], g_ipu_clk);
@@ -681,52 +635,54 @@ void ipu_uninit_channel(ipu_channel_t channel)
 
 	__raw_writel(ipu_conf, IPU_CONF);
 
+	/* clear interrupt status */
+	__raw_writel(__raw_readl(IPU_STAT), IPU_STAT);
+
 	if (ipu_conf == 0) {
 		clk_disable(g_ipu_clk);
 		g_ipu_clk_enabled = 0;
 	}
-
 }
 
 static inline void ipu_ch_param_dump(int ch)
 {
 #ifdef DEBUG
 	struct ipu_ch_param *p = ipu_ch_param_addr(ch);
-	printf("ch %d word 0 - %08X %08X %08X %08X %08X\n", ch,
+	debug("ch %d word 0 - %08X %08X %08X %08X %08X\n", ch,
 		 p->word[0].data[0], p->word[0].data[1], p->word[0].data[2],
 		 p->word[0].data[3], p->word[0].data[4]);
-	printf("ch %d word 1 - %08X %08X %08X %08X %08X\n", ch,
+	debug("ch %d word 1 - %08X %08X %08X %08X %08X\n", ch,
 		 p->word[1].data[0], p->word[1].data[1], p->word[1].data[2],
 		 p->word[1].data[3], p->word[1].data[4]);
-	printf("PFS 0x%x, ",
+	debug("PFS 0x%x, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 85, 4));
-	printf("BPP 0x%x, ",
+	debug("BPP 0x%x, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 0, 107, 3));
-	printf("NPB 0x%x\n",
+	debug("NPB 0x%x\n",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 78, 7));
 
-	printf("FW %d, ",
+	debug("FW %d, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 0, 125, 13));
-	printf("FH %d, ",
+	debug("FH %d, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 0, 138, 12));
-	printf("Stride %d\n",
+	debug("Stride %d\n",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 102, 14));
 
-	printf("Width0 %d+1, ",
+	debug("Width0 %d+1, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 116, 3));
-	printf("Width1 %d+1, ",
+	debug("Width1 %d+1, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 119, 3));
-	printf("Width2 %d+1, ",
+	debug("Width2 %d+1, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 122, 3));
-	printf("Width3 %d+1, ",
+	debug("Width3 %d+1, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 125, 3));
-	printf("Offset0 %d, ",
+	debug("Offset0 %d, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 128, 5));
-	printf("Offset1 %d, ",
+	debug("Offset1 %d, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 133, 5));
-	printf("Offset2 %d, ",
+	debug("Offset2 %d, ",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 138, 5));
-	printf("Offset3 %d\n",
+	debug("Offset3 %d\n",
 		 ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 143, 5));
 #endif
 }
@@ -1137,7 +1093,7 @@ int32_t ipu_disable_channel(ipu_channel_t channel)
 uint32_t bytes_per_pixel(uint32_t fmt)
 {
 	switch (fmt) {
-	case IPU_PIX_FMT_GENERIC:	/*generic data */
+	case IPU_PIX_FMT_GENERIC:	/* generic data */
 	case IPU_PIX_FMT_RGB332:
 	case IPU_PIX_FMT_YUV420P:
 	case IPU_PIX_FMT_YUV422P:
@@ -1149,7 +1105,7 @@ uint32_t bytes_per_pixel(uint32_t fmt)
 	case IPU_PIX_FMT_BGR24:
 	case IPU_PIX_FMT_RGB24:
 		return 3;
-	case IPU_PIX_FMT_GENERIC_32:	/*generic data */
+	case IPU_PIX_FMT_GENERIC_32:	/* generic data */
 	case IPU_PIX_FMT_BGR32:
 	case IPU_PIX_FMT_BGRA32:
 	case IPU_PIX_FMT_RGB32:

@@ -11,7 +11,7 @@
  */
 
 /dts-v1/;
-/include/ ARCH_CPU_DTS
+#include "mx6dl.dtsi"
 
 / {
 	model = "Ka-Ro TX6Q module";

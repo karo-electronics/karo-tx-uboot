@@ -4,23 +4,7 @@
  *
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -61,9 +45,6 @@ struct mxc_pll_reg *mxc_plls[PLL_CLOCKS] = {
 #define AHB_DIV_MAX     8
 #define EMI_DIV_MAX     8
 #define NFC_DIV_MAX     8
-
-#define MX5_CBCMR	0x00015154
-#define MX5_CBCDR	0x02888945
 
 struct fixed_pll_mfd {
 	u32 ref_clk_hz;
@@ -116,6 +97,64 @@ void clk_disable(struct clk *clk)
 		printf("%s: clk %p underflow\n", __func__, clk);
 		hang();
 	}
+}
+
+int clk_get_usecount(struct clk *clk)
+{
+	if (clk == NULL)
+		return 0;
+
+	return clk->usecount;
+}
+
+u32 clk_get_rate(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->rate;
+}
+
+struct clk *clk_get_parent(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->parent;
+}
+
+int clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk && clk->set_rate)
+		clk->set_rate(clk, rate);
+	return clk->rate;
+}
+
+long clk_round_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk == NULL || !clk->round_rate)
+		return 0;
+
+	return clk->round_rate(clk, rate);
+}
+
+int clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	debug("Setting parent of clk %p to %p (%p)\n", clk, parent,
+		clk ? clk->parent : NULL);
+
+	if (!clk || clk == parent)
+		return 0;
+
+	if (clk->set_parent) {
+		int ret;
+
+		ret = clk->set_parent(clk, parent);
+		if (ret)
+			return ret;
+	}
+	clk->parent = parent;
+	return 0;
 }
 
 void set_usboh3_clk(void)
@@ -634,8 +673,7 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	 */
 	if (n_target < PLL_FREQ_MIN(ref) ||
 		n_target > PLL_FREQ_MAX(ref)) {
-		printf("Targeted peripheral clock should be"
-			"within [%d - %d]\n",
+		printf("Targeted peripheral clock should be within [%d - %d]\n",
 			PLL_FREQ_MIN(ref) / SZ_DEC_1M,
 			PLL_FREQ_MAX(ref) / SZ_DEC_1M);
 		return -EINVAL;
@@ -790,10 +828,11 @@ static int config_core_clk(u32 ref, u32 freq)
 static int config_nfc_clk(u32 nfc_clk)
 {
 	u32 parent_rate = get_emi_slow_clk();
-	u32 div = parent_rate / nfc_clk;
+	u32 div;
 
-	if (nfc_clk <= 0)
+	if (nfc_clk == 0)
 		return -EINVAL;
+	div = parent_rate / nfc_clk;
 	if (div == 0)
 		div++;
 	if (parent_rate / div > NFC_CLK_MAX)
@@ -804,6 +843,15 @@ static int config_nfc_clk(u32 nfc_clk)
 	while (readl(&mxc_ccm->cdhipr) != 0)
 		;
 	return 0;
+}
+
+void enable_nfc_clk(unsigned char enable)
+{
+	unsigned int cg = enable ? MXC_CCM_CCGR_CG_ON : MXC_CCM_CCGR_CG_OFF;
+
+	clrsetbits_le32(&mxc_ccm->CCGR5,
+		MXC_CCM_CCGR5_EMI_ENFC(MXC_CCM_CCGR_CG_MASK),
+		MXC_CCM_CCGR5_EMI_ENFC(cg));
 }
 
 /* Config main_bus_clock for periphs */
@@ -959,28 +1007,38 @@ void mxc_set_sata_internal_clock(void)
 /*
  * Dump some core clockes.
  */
+#define pr_clk_val(c, v) {					\
+	printf("%-11s %3lu.%03lu MHz\n", #c,			\
+		(v) / 1000000, (v) / 1000 % 1000);		\
+}
+
+#define pr_clk(c) {						\
+	unsigned long __clk = mxc_get_clock(MXC_##c##_CLK);	\
+	pr_clk_val(c, __clk);					\
+}
+
 int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	u32 freq;
+	unsigned long freq;
 
 	freq = decode_pll(mxc_plls[PLL1_CLOCK], MXC_HCLK);
-	printf("PLL1       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL1, freq);
 	freq = decode_pll(mxc_plls[PLL2_CLOCK], MXC_HCLK);
-	printf("PLL2       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL2, freq);
 	freq = decode_pll(mxc_plls[PLL3_CLOCK], MXC_HCLK);
-	printf("PLL3       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL3, freq);
 #ifdef	CONFIG_MX53
 	freq = decode_pll(mxc_plls[PLL4_CLOCK], MXC_HCLK);
-	printf("PLL4       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL4, freq);
 #endif
 
 	printf("\n");
-	printf("AHB        %8d kHz\n", mxc_get_clock(MXC_AHB_CLK) / 1000);
-	printf("IPG        %8d kHz\n", mxc_get_clock(MXC_IPG_CLK) / 1000);
-	printf("IPG PERCLK %8d kHz\n", mxc_get_clock(MXC_IPG_PERCLK) / 1000);
-	printf("DDR        %8d kHz\n", mxc_get_clock(MXC_DDR_CLK) / 1000);
+	pr_clk(AHB);
+	pr_clk(IPG);
+	pr_clk(IPG);
+	pr_clk(DDR);
 #ifdef CONFIG_MXC_SPI
-	printf("CSPI       %8d kHz\n", mxc_get_clock(MXC_CSPI_CLK) / 1000);
+	pr_clk(CSPI);
 #endif
 	return 0;
 }

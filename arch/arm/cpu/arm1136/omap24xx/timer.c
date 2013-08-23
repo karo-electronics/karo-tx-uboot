@@ -11,33 +11,20 @@
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <asm/io.h>
 #include <asm/arch/bits.h>
 #include <asm/arch/omap2420.h>
 
+#define TIMER_CLOCK	(CONFIG_SYS_CLK_FREQ / (2 << CONFIG_SYS_PTV))
 #define TIMER_LOAD_VAL 0
 
 /* macro to read the 32 bit timer */
-#define READ_TIMER (*((volatile ulong *)(CONFIG_SYS_TIMERBASE+TCRR)))
+#define READ_TIMER	readl(CONFIG_SYS_TIMERBASE+TCRR) \
+			/ (TIMER_CLOCK / CONFIG_SYS_HZ)
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -99,7 +86,8 @@ ulong get_timer_masked (void)
 		gd->arch.tbl += (now - gd->arch.lastinc);
 	} else {
 		/* we have rollover of incrementer */
-		gd->arch.tbl += (0xFFFFFFFF - gd->arch.lastinc) + now;
+		gd->arch.tbl += ((0xFFFFFFFF / (TIMER_CLOCK / CONFIG_SYS_HZ))
+				 - gd->arch.lastinc) + now;
 	}
 	gd->arch.lastinc = now;
 	return gd->arch.tbl;

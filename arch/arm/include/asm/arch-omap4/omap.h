@@ -9,23 +9,7 @@
  *	Richard Woodruff <r-woodruff2@ti.com>
  *	Syed Mohammed Khasim <x0khasim@ti.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _OMAP4_H_
@@ -46,14 +30,6 @@
 #define OMAP44XX_DRAM_ADDR_SPACE_END	0xD0000000
 #define DRAM_ADDR_SPACE_START	OMAP44XX_DRAM_ADDR_SPACE_START
 #define DRAM_ADDR_SPACE_END	OMAP44XX_DRAM_ADDR_SPACE_END
-
-/* CONTROL */
-#define CTRL_BASE		(OMAP44XX_L4_CORE_BASE + 0x2000)
-#define CONTROL_PADCONF_CORE	(OMAP44XX_L4_CORE_BASE + 0x100000)
-#define CONTROL_PADCONF_WKUP	(OMAP44XX_L4_CORE_BASE + 0x31E000)
-
-/* LPDDR2 IO regs */
-#define LPDDR2_IO_REGS_BASE	0x4A100638
 
 /* CONTROL_ID_CODE */
 #define CONTROL_ID_CODE		0x4A002204
@@ -79,14 +55,8 @@
 /* Watchdog Timer2 - MPU watchdog */
 #define WDT2_BASE		(OMAP44XX_L4_WKUP_BASE + 0x14000)
 
-/* 32KTIMER */
-#define SYNC_32KTIMER_BASE	(OMAP44XX_L4_WKUP_BASE + 0x4000)
-
 /* GPMC */
 #define OMAP44XX_GPMC_BASE	0x50000000
-
-/* SYSTEM CONTROL MODULE */
-#define SYSCTRL_GENERAL_CORE_BASE	0x4A002000
 
 /*
  * Hardware Register Details
@@ -132,34 +102,6 @@ struct s32ktimer {
 #define DEVICE_TYPE_MASK (0x7 << DEVICE_TYPE_SHIFT)
 #define DEVICE_GP 0x3
 
-struct omap_sys_ctrl_regs {
-	unsigned int pad1[129];
-	unsigned int control_id_code;			/* 0x4A002204 */
-	unsigned int pad11[22];
-	unsigned int control_std_fuse_opp_bgap;		/* 0x4a002260 */
-	unsigned int pad2[24];				/* 0x4a002264 */
-	unsigned int control_status;			/* 0x4a0022c4 */
-	unsigned int pad3[22];				/* 0x4a0022c8 */
-	unsigned int control_ldosram_iva_voltage_ctrl;	/* 0x4A002320 */
-	unsigned int control_ldosram_mpu_voltage_ctrl;	/* 0x4A002324 */
-	unsigned int control_ldosram_core_voltage_ctrl;	/* 0x4A002328 */
-	unsigned int pad4[260277];
-	unsigned int control_pbiaslite;                 /* 0x4A100600 */
-	unsigned int pad5[63];
-	unsigned int control_efuse_1;			/* 0x4A100700 */
-	unsigned int control_efuse_2;			/* 0x4A100704 */
-};
-
-struct control_lpddr2io_regs {
-	unsigned int control_lpddr2io1_0;
-	unsigned int control_lpddr2io1_1;
-	unsigned int control_lpddr2io1_2;
-	unsigned int control_lpddr2io1_3;
-	unsigned int control_lpddr2io2_0;
-	unsigned int control_lpddr2io2_1;
-	unsigned int control_lpddr2io2_2;
-	unsigned int control_lpddr2io2_3;
-};
 #endif /* __ASSEMBLY__ */
 
 /*
@@ -169,39 +111,15 @@ struct control_lpddr2io_regs {
  */
 #define NON_SECURE_SRAM_START	0x40304000
 #define NON_SECURE_SRAM_END	0x4030E000	/* Not inclusive */
+#define SRAM_SCRATCH_SPACE_ADDR	NON_SECURE_SRAM_START
 /* base address for indirect vectors (internal boot mode) */
 #define SRAM_ROM_VECT_BASE	0x4030D000
-/* Temporary SRAM stack used while low level init is done */
-#define SRAM_SCRATCH_SPACE_ADDR		NON_SECURE_SRAM_START
-/* SRAM scratch space entries */
-#define OMAP4_SRAM_SCRATCH_OMAP4_REV	SRAM_SCRATCH_SPACE_ADDR
-#define OMAP4_SRAM_SCRATCH_EMIF_SIZE	(SRAM_SCRATCH_SPACE_ADDR + 0x4)
-#define OMAP4_SRAM_SCRATCH_EMIF_T_NUM	(SRAM_SCRATCH_SPACE_ADDR + 0xC)
-#define OMAP4_SRAM_SCRATCH_EMIF_T_DEN	(SRAM_SCRATCH_SPACE_ADDR + 0x10)
-#define OMAP4_SRAM_SCRATCH_SPACE_END	(SRAM_SCRATCH_SPACE_ADDR + 0x14)
 
-/* ROM code defines */
-/* Boot device */
-#define BOOT_DEVICE_MASK	0xFF
-#define BOOT_DEVICE_OFFSET	0x8
-#define DEV_DESC_PTR_OFFSET	0x4
-#define DEV_DATA_PTR_OFFSET	0x18
-#define BOOT_MODE_OFFSET	0x8
-#define RESET_REASON_OFFSET	0x9
-#define CH_FLAGS_OFFSET		0xA
+/* ABB settings */
+#define OMAP_ABB_SETTLING_TIME		50
+#define OMAP_ABB_CLOCK_CYCLES		16
 
-#define CH_FLAGS_CHSETTINGS	(0x1 << 0)
-#define CH_FLAGS_CHRAM		(0x1 << 1)
-#define CH_FLAGS_CHFLASH	(0x1 << 2)
-#define CH_FLAGS_CHMMCSD	(0x1 << 3)
+/* ABB tranxdone mask */
+#define OMAP_ABB_MPU_TXDONE_MASK	(0x1 << 7)
 
-#ifndef __ASSEMBLY__
-struct omap_boot_parameters {
-	char *boot_message;
-	unsigned int mem_boot_descriptor;
-	unsigned char omap_bootdevice;
-	unsigned char reset_reason;
-	unsigned char ch_flags;
-};
-#endif
 #endif

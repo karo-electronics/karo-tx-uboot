@@ -11,23 +11,7 @@
  *	Syed Mohammed Khasim <khasim@ti.com>
  *
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #ifdef CONFIG_STATUS_LED
@@ -72,6 +56,7 @@
 #define BBTOYS_LCD			0x03000B00
 #define BCT_BRETTL3			0x01000F00
 #define BCT_BRETTL4			0x02000F00
+#define LSR_COM6L_ADPT			0x01001300
 #define BEAGLE_NO_EEPROM		0xffffffff
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -107,13 +92,14 @@ int board_init(void)
 /*
  * Routine: get_board_revision
  * Description: Detect if we are running on a Beagle revision Ax/Bx,
- *		C1/2/3, C4 or xM. This can be done by reading
+ *		C1/2/3, C4, xM Ax/Bx or xM Cx. This can be done by reading
  *		the level of GPIO173, GPIO172 and GPIO171. This should
  *		result in
  *		GPIO173, GPIO172, GPIO171: 1 1 1 => Ax/Bx
  *		GPIO173, GPIO172, GPIO171: 1 1 0 => C1/2/3
  *		GPIO173, GPIO172, GPIO171: 1 0 1 => C4
- *		GPIO173, GPIO172, GPIO171: 0 0 0 => xM
+ *		GPIO173, GPIO172, GPIO171: 0 1 0 => xM Cx
+ *		GPIO173, GPIO172, GPIO171: 0 0 0 => xM Ax/Bx
  */
 static int get_board_revision(void)
 {
@@ -226,6 +212,14 @@ static unsigned int get_expansion_id(void)
 	/* read configuration data */
 	i2c_read(EXPANSION_EEPROM_I2C_ADDRESS, 0, 1, (u8 *)&expansion_config,
 		 sizeof(expansion_config));
+
+	/* retry reading configuration data with 16bit addressing */
+	if ((expansion_config.device_vendor == 0xFFFFFF00) ||
+	    (expansion_config.device_vendor == 0xFFFFFFFF)) {
+		printf("EEPROM is blank or 8bit addressing failed: retrying with 16bit:\n");
+		i2c_read(EXPANSION_EEPROM_I2C_ADDRESS, 0, 2, (u8 *)&expansion_config,
+			 sizeof(expansion_config));
+	}
 
 	i2c_set_bus_num(TWL4030_I2C_BUS);
 
@@ -454,6 +448,11 @@ int misc_init_r(void)
 	case BCT_BRETTL4:
 		printf("Recognized bct electronic GmbH brettl4 board\n");
 		break;
+	case LSR_COM6L_ADPT:
+		printf("Recognized LSR COM6L Adapter Board\n");
+		MUX_BBTOYS_WIFI()
+		setenv("buddy", "lsr-com6l-adpt");
+		break;
 	case BEAGLE_NO_EEPROM:
 		printf("No EEPROM on expansion board\n");
 		setenv("buddy", "none");
@@ -518,8 +517,7 @@ void set_muxconf_regs(void)
 #if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
-	omap_mmc_init(0, 0, 0);
-	return 0;
+	return omap_mmc_init(0, 0, 0, -1, -1);
 }
 #endif
 

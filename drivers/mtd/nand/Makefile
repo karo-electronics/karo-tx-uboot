@@ -2,23 +2,7 @@
 # (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 include $(TOPDIR)/config.mk
@@ -34,6 +18,7 @@ NORMAL_DRIVERS=y
 endif
 
 COBJS-$(CONFIG_SPL_NAND_AM33XX_BCH) += am335x_spl_bch.o
+COBJS-$(CONFIG_SPL_NAND_DOCG4) += docg4_spl.o
 COBJS-$(CONFIG_SPL_NAND_SIMPLE) += nand_spl_simple.o
 COBJS-$(CONFIG_SPL_NAND_LOAD) += nand_spl_load.o
 COBJS-$(CONFIG_SPL_NAND_ECC) += nand_ecc.o
@@ -76,15 +61,17 @@ COBJS-$(CONFIG_NAND_NOMADIK) += nomadik.o
 COBJS-$(CONFIG_NAND_OMAP_GPMC) += omap_bch_decoder.o omap_gpmc.o omap_bch_soft.o
 COBJS-$(CONFIG_NAND_PLAT) += nand_plat.o
 COBJS-$(CONFIG_NAND_S3C2410) += s3c2410_nand.o
-COBJS-$(CONFIG_NAND_S3C64XX) += s3c64xx.o
 COBJS-$(CONFIG_NAND_SPEAR) += spr_nand.o
 COBJS-$(CONFIG_TEGRA_NAND) += tegra_nand.o
 COBJS-$(CONFIG_NAND_OMAP_GPMC) += omap_gpmc.o
 COBJS-$(CONFIG_NAND_PLAT) += nand_plat.o
+COBJS-$(CONFIG_NAND_DOCG4) += docg4.o
 
 else  # minimal SPL drivers
 
 COBJS-$(CONFIG_NAND_FSL_ELBC) += fsl_elbc_spl.o
+COBJS-$(CONFIG_NAND_FSL_IFC) += fsl_ifc_spl.o
+COBJS-$(CONFIG_NAND_MXC) += mxc_nand_spl.o
 
 endif # drivers
 endif # nand

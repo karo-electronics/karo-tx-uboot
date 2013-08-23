@@ -11,22 +11,7 @@
  *
  * Configuration settings for the CompuLab CM-T35 and CM-T3730 boards
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -135,12 +120,12 @@
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_EXT2		/* EXT2 Support			*/
 #define CONFIG_CMD_FAT		/* FAT support			*/
-#define CONFIG_CMD_JFFS2	/* JFFS2 Support		*/
 #define CONFIG_CMD_MTDPARTS	/* Enable MTD parts commands */
 #define CONFIG_MTD_DEVICE	/* needed for mtdparts commands */
+#define CONFIG_MTD_PARTITIONS
 #define MTDIDS_DEFAULT		"nand0=nand"
 #define MTDPARTS_DEFAULT	"mtdparts=nand:512k(x-loader),"\
-				"1920k(u-boot),128k(u-boot-env),"\
+				"1920k(u-boot),256k(u-boot-env),"\
 				"4m(kernel),-(fs)"
 
 #define CONFIG_CMD_I2C		/* I2C serial bus support	*/
@@ -182,14 +167,6 @@
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1		/* Max number of NAND */
 							/* devices */
-#define CONFIG_JFFS2_NAND
-/* nand device jffs2 lives on */
-#define CONFIG_JFFS2_DEV		"nand0"
-/* start of jffs2 partition */
-#define CONFIG_JFFS2_PART_OFFSET	0x680000
-#define CONFIG_JFFS2_PART_SIZE		0xf980000	/* size of jffs2 */
-							/* partition */
-
 /* Environment information */
 #define CONFIG_BOOTDELAY		10
 #define CONFIG_ZERO_BOOTDELAY_CHECK
@@ -204,9 +181,9 @@
 	"defaultdisplay=dvi\0" \
 	"mmcdev=0\0" \
 	"mmcroot=/dev/mmcblk0p2 rw\0" \
-	"mmcrootfstype=ext3 rootwait\0" \
+	"mmcrootfstype=ext4 rootwait\0" \
 	"nandroot=/dev/mtdblock4 rw\0" \
-	"nandrootfstype=jffs2\0" \
+	"nandrootfstype=ubifs\0" \
 	"mmcargs=setenv bootargs console=${console} " \
 		"mpurate=${mpurate} " \
 		"vram=${vram} " \
@@ -232,7 +209,7 @@
 		"bootm ${loadaddr}\0" \
 	"nandboot=echo Booting from nand ...; " \
 		"run nandargs; " \
-		"nand read ${loadaddr} 280000 400000; " \
+		"nand read ${loadaddr} 2a0000 400000; " \
 		"bootm ${loadaddr}\0" \
 
 #define CONFIG_BOOTCOMMAND \
@@ -331,9 +308,21 @@
 #define STATUS_LED_BOOT			STATUS_LED_BIT
 #define GREEN_LED_GPIO			186 /* CM-T35 Green LED is GPIO186 */
 
+#define CONFIG_SPLASHIMAGE_GUARD
+
 /* GPIO banks */
 #ifdef CONFIG_STATUS_LED
 #define CONFIG_OMAP3_GPIO_6	/* GPIO186 is in GPIO bank 6  */
 #endif
+
+/* Display Configuration */
+#define CONFIG_OMAP3_GPIO_2
+#define CONFIG_VIDEO_OMAP3
+#define LCD_BPP		LCD_COLOR16
+
+#define CONFIG_LCD
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_CMD_BMP
+#define CONFIG_BMP_16BPP
 
 #endif /* __CONFIG_H */

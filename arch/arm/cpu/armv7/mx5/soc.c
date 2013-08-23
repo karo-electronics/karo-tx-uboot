@@ -4,23 +4,7 @@
  *
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -89,6 +73,13 @@ u32 get_cpu_rev(void)
 	return system_rev;
 }
 
+#ifdef CONFIG_REVISION_TAG
+u32 __weak get_board_rev(void)
+{
+	return get_cpu_rev();
+}
+#endif
+
 #ifndef CONFIG_SYS_DCACHE_OFF
 void enable_caches(void)
 {
@@ -145,6 +136,19 @@ void set_chipselect_size(int const cs_size)
 
 	writel(reg, &iomuxc_regs->gpr1);
 }
+
+#if 1
+void cpu_cache_initialization(void)
+{
+	printf("Enabling L2 cache\n");
+	asm volatile(
+		"mrc 15, 0, r0, c1, c0, 1\n"
+		"orr r0, r0, #0x2\n"
+		"mcr 15, 0, r0, c1, c0, 1\n"
+		: : : "r0", "memory"
+		);
+}
+#endif
 
 #ifdef CONFIG_MX53
 void boot_mode_apply(unsigned cfg_val)

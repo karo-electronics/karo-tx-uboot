@@ -4,23 +4,7 @@
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <fcntl.h>
@@ -551,7 +535,7 @@ static int mx28_create_sd_image(int infd, int outfd)
 
 	fsize = lseek(infd, 0, SEEK_END);
 	lseek(infd, 0, SEEK_SET);
-	size = fsize + 512;
+	size = fsize + 4 * 512;
 
 	buf = malloc(size);
 	if (!buf) {
@@ -559,7 +543,7 @@ static int mx28_create_sd_image(int infd, int outfd)
 		goto err0;
 	}
 
-	ret = read(infd, (uint8_t *)buf + 512, fsize);
+	ret = read(infd, (uint8_t *)buf + 4 * 512, fsize);
 	if (ret != fsize) {
 		ret = -1;
 		goto err1;
@@ -574,8 +558,8 @@ static int mx28_create_sd_image(int infd, int outfd)
 	cb->drv_info[0].chip_num = 0x0;
 	cb->drv_info[0].drive_type = 0x0;
 	cb->drv_info[0].tag = 0x1;
-	cb->drv_info[0].first_sector_number = sd_sector + 1;
-	cb->drv_info[0].sector_count = (size - 1) / 512;
+	cb->drv_info[0].first_sector_number = sd_sector + 4;
+	cb->drv_info[0].sector_count = (size - 4) / 512;
 
 	wr_size = write(outfd, buf, size);
 	if (wr_size != size) {

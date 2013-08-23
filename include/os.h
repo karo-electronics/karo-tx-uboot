@@ -5,23 +5,7 @@
  * They are kept in a separate file so we can include system headers.
  *
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __OS_H__
@@ -38,6 +22,16 @@ struct sandbox_state;
  * \return number of bytes read, or -1 on error
  */
 ssize_t os_read(int fd, void *buf, size_t count);
+
+/**
+ * Access to the OS read() system call with non-blocking access
+ *
+ * \param fd	File descriptor as returned by os_open()
+ * \param buf	Buffer to place data
+ * \param count	Number of bytes to read
+ * \return number of bytes read, or -1 on error
+ */
+ssize_t os_read_no_block(int fd, void *buf, size_t count);
 
 /**
  * Access to the OS write() system call
@@ -135,5 +129,53 @@ u64 os_get_nsec(void);
  *	-1 on error: program should terminate.
  */
 int os_parse_args(struct sandbox_state *state, int argc, char *argv[]);
+
+/*
+ * Types of directory entry that we support. See also os_dirent_typename in
+ * the C file.
+ */
+enum os_dirent_t {
+	OS_FILET_REG,		/* Regular file */
+	OS_FILET_LNK,		/* Symbolic link */
+	OS_FILET_DIR,		/* Directory */
+	OS_FILET_UNKNOWN,	/* Something else */
+
+	OS_FILET_COUNT,
+};
+
+/** A directory entry node, containing information about a single dirent */
+struct os_dirent_node {
+	struct os_dirent_node *next;	/* Pointer to next node, or NULL */
+	ulong size;			/* Size of file in bytes */
+	enum os_dirent_t type;		/* Type of entry */
+	char name[0];			/* Name of entry */
+};
+
+/**
+ * Get a directionry listing
+ *
+ * This allocates and returns a linked list containing the directory listing.
+ *
+ * @param dirname	Directory to examine
+ * @param headp		Returns pointer to head of linked list, or NULL if none
+ * @return 0 if ok, -ve on error
+ */
+int os_dirent_ls(const char *dirname, struct os_dirent_node **headp);
+
+/**
+ * Get the name of a directory entry type
+ *
+ * @param type		Type to cehck
+ * @return string containing the name of that type, or "???" if none/invalid
+ */
+const char *os_dirent_get_typename(enum os_dirent_t type);
+
+/**
+ * Get the size of a file
+ *
+ * @param fname		Filename to check
+ * @return size of file, or -1 if an error ocurred
+ */
+ssize_t os_get_filesize(const char *fname);
 
 #endif

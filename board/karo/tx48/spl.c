@@ -646,7 +646,7 @@ static void tx48_ddr_init(void)
 	r.emif_ddr_phy_ctlr_1 = 0x0000030b;
 
 	config_ddr(SDRAM_CLK, 0x04, &tx48_ddr3_data,
-		&tx48_ddr3_cmd_ctrl_data, &r);
+		&tx48_ddr3_cmd_ctrl_data, &r, 0);
 
 	ddr3_calib_start();
 

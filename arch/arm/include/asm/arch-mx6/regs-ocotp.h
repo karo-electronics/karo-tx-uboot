@@ -29,7 +29,7 @@
 #define __MX6_REGS_OCOTP_H__
 
 #ifndef	__ASSEMBLY__
-#define mx6_ocotp_reg_32(r)	mx6_reg_32(hw_ocotp_##r)
+#define mx6_ocotp_reg_32(r)	mxs_reg_32(hw_ocotp_##r)
 #define ocotp_reg_32(r)		reg_32(hw_ocotp_##r)
 
 struct mx6_ocotp_regs {

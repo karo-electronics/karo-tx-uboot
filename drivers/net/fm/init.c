@@ -1,20 +1,7 @@
 /*
  * Copyright 2011 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <asm/io.h>
@@ -74,8 +61,14 @@ struct fm_eth_info fm_info[] = {
 #if (CONFIG_SYS_NUM_FM1_10GEC >= 1)
 	FM_TGEC_INFO_INITIALIZER(1, 1),
 #endif
+#if (CONFIG_SYS_NUM_FM1_10GEC >= 2)
+	FM_TGEC_INFO_INITIALIZER(1, 2),
+#endif
 #if (CONFIG_SYS_NUM_FM2_10GEC >= 1)
 	FM_TGEC_INFO_INITIALIZER(2, 1),
+#endif
+#if (CONFIG_SYS_NUM_FM2_10GEC >= 2)
+	FM_TGEC_INFO_INITIALIZER(2, 2),
 #endif
 };
 
@@ -232,6 +225,26 @@ static void ft_fixup_port(void *blob, struct fm_eth_info *info, char *prop)
 		return ;
 	}
 
+#ifdef CONFIG_SYS_FMAN_V3
+	/*
+	 * Physically FM1_DTSEC9 and FM1_10GEC1 use the same dual-role MAC, when
+	 * FM1_10GEC1 is enabled and  FM1_DTSEC9 is disabled, ensure that the
+	 * dual-role MAC is not disabled, ditto for other dual-role MACs.
+	 */
+	if (((info->port == FM1_DTSEC9) && (PORT_IS_ENABLED(FM1_10GEC1)))	||
+	    ((info->port == FM1_DTSEC10) && (PORT_IS_ENABLED(FM1_10GEC2)))	||
+	    ((info->port == FM1_10GEC1) && (PORT_IS_ENABLED(FM1_DTSEC9)))	||
+	    ((info->port == FM1_10GEC2) && (PORT_IS_ENABLED(FM1_DTSEC10)))
+#if (CONFIG_SYS_NUM_FMAN == 2)
+										||
+	    ((info->port == FM2_DTSEC9) && (PORT_IS_ENABLED(FM2_10GEC1)))	||
+	    ((info->port == FM2_DTSEC10) && (PORT_IS_ENABLED(FM2_10GEC2)))	||
+	    ((info->port == FM2_10GEC1) && (PORT_IS_ENABLED(FM2_DTSEC9)))	||
+	    ((info->port == FM2_10GEC2) && (PORT_IS_ENABLED(FM2_DTSEC10)))
+#endif
+	)
+		return;
+#endif
 	/* board code might have caused offset to change */
 	off = fdt_node_offset_by_compat_reg(blob, prop, paddr);
 
@@ -249,10 +262,15 @@ void fdt_fixup_fman_ethernet(void *blob)
 {
 	int i;
 
+#ifdef CONFIG_SYS_FMAN_V3
+	for (i = 0; i < ARRAY_SIZE(fm_info); i++)
+		ft_fixup_port(blob, &fm_info[i], "fsl,fman-memac");
+#else
 	for (i = 0; i < ARRAY_SIZE(fm_info); i++) {
 		if (fm_info[i].type == FM_ETH_1G_E)
 			ft_fixup_port(blob, &fm_info[i], "fsl,fman-1g-mac");
 		else
 			ft_fixup_port(blob, &fm_info[i], "fsl,fman-10g-mac");
 	}
+#endif
 }

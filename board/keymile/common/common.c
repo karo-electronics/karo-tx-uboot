@@ -5,23 +5,7 @@
  * (C) Copyright 2011
  * Holger Brunck, Keymile GmbH Hannover, holger.brunck@keymile.com
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -38,9 +22,7 @@
 #include "post.h"
 #endif
 #include "common.h"
-#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
 #include <i2c.h>
-#endif
 
 #if !defined(CONFIG_MPC83xx)
 static void i2c_write_start_seq(void);
@@ -182,17 +164,6 @@ void i2c_init_board(void)
 {
 	/* Now run the AbortSequence() */
 	i2c_make_abort();
-}
-#endif
-
-
-#if !defined(MACH_TYPE_KM_KIRKWOOD)
-int ethernet_present(void)
-{
-	struct km_bec_fpga *base =
-		(struct km_bec_fpga *)CONFIG_SYS_KMBEC_FPGA_BASE;
-
-	return in_8(&base->bprth) & PIGGY_PRESENT;
 }
 #endif
 

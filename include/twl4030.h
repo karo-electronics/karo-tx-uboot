@@ -2,20 +2,7 @@
  * Copyright (c) 2009 Wind River Systems, Inc.
  * Tom Rix <Tom.Rix at windriver.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Derived from code on omapzoom, git://git.omapzoom.com/repo/u-boot.git
  *
@@ -638,12 +625,12 @@
  *   examples are TWL4030_PM_RECEIVER_VMMC1_DEV_GRP and
  *   TWL4030_LED_LEDEN.
  */
-static inline int twl4030_i2c_write_u8(u8 chip_no, u8 val, u8 reg)
+static inline int twl4030_i2c_write_u8(u8 chip_no, u8 reg, u8 val)
 {
 	return i2c_write(chip_no, reg, 1, &val, 1);
 }
 
-static inline int twl4030_i2c_read_u8(u8 chip_no, u8 *val, u8 reg)
+static inline int twl4030_i2c_read_u8(u8 chip_no, u8 reg, u8 *val)
 {
 	return i2c_read(chip_no, reg, 1, val, 1);
 }

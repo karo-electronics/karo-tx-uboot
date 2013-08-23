@@ -2,27 +2,13 @@
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/system.h>
+#include <asm/cache.h>
+#include <linux/compiler.h>
 
 #if !(defined(CONFIG_SYS_ICACHE_OFF) && defined(CONFIG_SYS_DCACHE_OFF))
 
@@ -33,6 +19,10 @@ void __arm_init_before_mmu(void)
 }
 void arm_init_before_mmu(void)
 	__attribute__((weak, alias("__arm_init_before_mmu")));
+
+__weak void arm_init_domains(void)
+{
+}
 
 void set_section_dcache(int section, enum dcache_option option)
 {
@@ -67,7 +57,7 @@ void mmu_set_region_dcache_behaviour(u32 start, int size,
 	mmu_page_table_flush((u32)&page_table[start], (u32)&page_table[end]);
 }
 
-static inline void dram_bank_mmu_setup(int bank)
+__weak void dram_bank_mmu_setup(int bank)
 {
 	bd_t *bd = gd->bd;
 	int	i;
@@ -87,7 +77,6 @@ static inline void dram_bank_mmu_setup(int bank)
 /* to activate the MMU we need to set up virtual memory: use 1M areas */
 static inline void mmu_setup(void)
 {
-	u32 *page_table = (u32 *)gd->arch.tlb_addr;
 	int i;
 	u32 reg;
 
@@ -106,8 +95,12 @@ static inline void mmu_setup(void)
 		/* Set the access control to all-supervisor */
 		"mcr p15, 0, %1, c3, c0, 0\n"
 		:
-		: "r"(page_table), "r"(~0)
+		: "r"(gd->arch.tlb_addr), "r"(~0)
+		: "memory"
 		);
+
+	arm_init_domains();
+
 	/* and enable the mmu */
 	reg = get_cr();	/* get control reg. */
 	set_cr(reg | CR_M);

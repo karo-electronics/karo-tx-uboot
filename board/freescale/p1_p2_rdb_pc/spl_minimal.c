@@ -1,22 +1,7 @@
 /*
  * Copyright 2011 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -81,6 +66,8 @@ void board_init_f(ulong bootflag)
 	ccsr_gur_t *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
 #ifndef CONFIG_QE
 	ccsr_gpio_t *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+#elif defined(CONFIG_P1021RDB)
+	par_io_t *par_io = (par_io_t *)&(gur->qe_par_io);
 #endif
 
 	/* initialize selected port with appropriate baud rate */
@@ -102,6 +89,19 @@ void board_init_f(ulong bootflag)
 	__raw_writel(0x00200000, &pgpio->gpdat);
 	udelay(1000);
 	__raw_writel(0x00000000, &pgpio->gpdir);
+#elif defined(CONFIG_P1021RDB)
+	/* init DDR3 reset signal CE_PB8 */
+	out_be32(&par_io[1].cpdir1, 0x00004000);
+	out_be32(&par_io[1].cpodr, 0x00800000);
+	out_be32(&par_io[1].cppar1, 0x00000000);
+	/* reset DDR3 */
+	out_be32(&par_io[1].cpdat, 0x00800000);
+	udelay(1000);
+	out_be32(&par_io[1].cpdat, 0x00000000);
+	udelay(1000);
+	out_be32(&par_io[1].cpdat, 0x00800000);
+	/* disable the CE_PB8 */
+	out_be32(&par_io[1].cpdir1, 0x00000000);
 #endif
 
 #ifndef CONFIG_SYS_INIT_L2_ADDR

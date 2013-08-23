@@ -1,23 +1,7 @@
 /*
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_MX5_IMX_REGS_H__
@@ -27,24 +11,26 @@
 
 #if defined(CONFIG_MX51)
 #define IRAM_BASE_ADDR		0x1FFE0000	/* internal ram */
-#define IPU_CTRL_BASE_ADDR	0x40000000
-#define SPBA0_BASE_ADDR         0x70000000
-#define AIPS1_BASE_ADDR         0x73F00000
-#define AIPS2_BASE_ADDR         0x83F00000
-#define CSD0_BASE_ADDR          0x90000000
-#define CSD1_BASE_ADDR          0xA0000000
-#define NFC_BASE_ADDR_AXI       0xCFFF0000
-#define CS1_BASE_ADDR           0xB8000000
+#define IPU_SOC_BASE_ADDR	0x40000000
+#define IPU_SOC_OFFSET		0x1E000000
+#define SPBA0_BASE_ADDR		0x70000000
+#define AIPS1_BASE_ADDR		0x73F00000
+#define AIPS2_BASE_ADDR		0x83F00000
+#define CSD0_BASE_ADDR		0x90000000
+#define CSD1_BASE_ADDR		0xA0000000
+#define NFC_BASE_ADDR_AXI	0xCFFF0000
+#define CS1_BASE_ADDR		0xB8000000
 #elif defined(CONFIG_MX53)
-#define IPU_CTRL_BASE_ADDR	0x00000000
-#define SPBA0_BASE_ADDR         0x50000000
-#define AIPS1_BASE_ADDR         0x53F00000
-#define AIPS2_BASE_ADDR         0x63F00000
-#define CSD0_BASE_ADDR          0x70000000
-#define CSD1_BASE_ADDR          0xB0000000
-#define NFC_BASE_ADDR_AXI       0xF7FF0000
-#define IRAM_BASE_ADDR          0xF8000000
-#define CS1_BASE_ADDR           0xF4000000
+#define IPU_SOC_BASE_ADDR	0x18000000
+#define IPU_SOC_OFFSET		0x06000000
+#define SPBA0_BASE_ADDR		0x50000000
+#define AIPS1_BASE_ADDR		0x53F00000
+#define AIPS2_BASE_ADDR		0x63F00000
+#define CSD0_BASE_ADDR		0x70000000
+#define CSD1_BASE_ADDR		0xB0000000
+#define NFC_BASE_ADDR_AXI	0xF7FF0000
+#define IRAM_BASE_ADDR		0xF8000000
+#define CS1_BASE_ADDR		0xF4000000
 #define SATA_BASE_ADDR		0x10000000
 #else
 #error "CPU_TYPE not defined"
@@ -96,8 +82,8 @@
 #define GPIO5_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000DC000)
 #define GPIO6_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000E0000)
 #define GPIO7_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000E4000)
-#define UART4_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000F0000)
 #define I2C3_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000EC000)
+#define UART4_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000F0000)
 #endif
 /*
  * AIPS 2
@@ -238,6 +224,7 @@
 #define MXC_CSPICTRL_EN		(1 << 0)
 #define MXC_CSPICTRL_MODE	(1 << 1)
 #define MXC_CSPICTRL_XCH	(1 << 2)
+#define MXC_CSPICTRL_MODE_MASK	(0xf << 4)
 #define MXC_CSPICTRL_CHIPSELECT(x)	(((x) & 0x3) << 12)
 #define MXC_CSPICTRL_BITCOUNT(x)	(((x) & 0xfff) << 20)
 #define MXC_CSPICTRL_PREDIV(x)	(((x) & 0xF) << 12)
@@ -274,6 +261,8 @@
 /* M4IF */
 #define M4IF_FBPM0	0x40
 #define M4IF_FIDBP	0x48
+#define M4IF_GENP_WEIM_MM_MASK		0x00000001
+#define WEIM_GCR2_MUX16_BYP_GRANT_MASK	0x00001000
 
 /* Assuming 24MHz input clock with doubler ON */
 /*                            MFI         PDF */
@@ -305,6 +294,10 @@
 #define DP_OP_532	((5 << 4) + ((1 - 1)  << 0))
 #define DP_MFD_532	(24 - 1)
 #define DP_MFN_532	13
+
+#define DP_OP_533	((5 << 4) + ((1 - 1)  << 0))
+#define DP_MFD_533	(9 - 1)
+#define DP_MFN_533	5
 
 #define DP_OP_455	((9 << 4) + ((2 - 1)  << 0))
 #define DP_MFD_455	(48 - 1)
@@ -523,12 +516,22 @@ struct iim_regs {
 	struct fuse_bank {
 		u32	fuse_regs[0x20];
 		u32	fuse_rsvd[0xe0];
+#if defined(CONFIG_MX51)
 	} bank[4];
+#elif defined(CONFIG_MX53)
+	} bank[5];
+#endif
 };
 
 struct fuse_bank0_regs {
-	u32	fuse0_23[24];
+	u32	fuse0_7[8];
+	u32	uid[8];
+	u32	fuse16_23[8];
+#if defined(CONFIG_MX51)
+	u32	imei[8];
+#elif defined(CONFIG_MX53)
 	u32	gp[8];
+#endif
 };
 
 struct fuse_bank1_regs {
@@ -536,6 +539,14 @@ struct fuse_bank1_regs {
 	u32	mac_addr[6];
 	u32	fuse15_31[0x11];
 };
+
+#if defined(CONFIG_MX53)
+struct fuse_bank4_regs {
+	u32	fuse0_4[5];
+	u32	gp[3];
+	u32	fuse8_31[0x18];
+};
+#endif
 
 #endif /* __ASSEMBLER__*/
 

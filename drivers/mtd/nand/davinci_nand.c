@@ -16,19 +16,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  * ----------------------------------------------------------------------------
  *
  *  Overview:
@@ -38,7 +27,6 @@
  Modifications:
  ver. 1.0: Feb 2005, Vinod/Sudhakar
  -
- *
  */
 
 #include <common.h>
@@ -607,12 +595,13 @@ void davinci_nand_init(struct nand_chip *nand)
 {
 	nand->chip_delay  = 0;
 #ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
-	nand->options	  |= NAND_USE_FLASH_BBT;
+	nand->bbt_options	  |= NAND_BBT_USE_FLASH;
 #endif
 #ifdef CONFIG_SYS_NAND_HW_ECC
 	nand->ecc.mode = NAND_ECC_HW;
 	nand->ecc.size = 512;
 	nand->ecc.bytes = 3;
+	nand->ecc.strength = 1;
 	nand->ecc.calculate = nand_davinci_calculate_ecc;
 	nand->ecc.correct  = nand_davinci_correct_data;
 	nand->ecc.hwctl  = nand_davinci_enable_hwecc;
@@ -623,6 +612,7 @@ void davinci_nand_init(struct nand_chip *nand)
 	nand->ecc.mode = NAND_ECC_HW_OOB_FIRST;
 	nand->ecc.size = 512;
 	nand->ecc.bytes = 10;
+	nand->ecc.strength = 4;
 	nand->ecc.calculate = nand_davinci_4bit_calculate_ecc;
 	nand->ecc.correct = nand_davinci_4bit_correct_data;
 	nand->ecc.hwctl = nand_davinci_4bit_enable_hwecc;

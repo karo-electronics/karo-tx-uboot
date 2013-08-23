@@ -8,8 +8,8 @@
 #include <asm/io.h>
 #include <asm/sizes.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/regs-gpmi.h>
-#include <asm/arch/regs-bch.h>
+#include <asm/imx-common/regs-gpmi.h>
+#include <asm/imx-common/regs-bch.h>
 
 #if CONFIG_SYS_NAND_U_BOOT_OFFS < 0x20000
 #error CONFIG_SYS_NAND_U_BOOT_OFFS must be >= 128kIB
@@ -175,8 +175,8 @@ static int calc_bb_offset(nand_info_t *mtd, struct mx6_fcb *fcb)
 static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 				int fw2_start_block, size_t fw_size)
 {
-	struct gpmi_regs *gpmi_base = (struct gpmi_regs *)GPMI_BASE_ADDRESS;
-	struct bch_regs *bch_base = (struct bch_regs *)BCH_BASE_ADDRESS;
+	struct gpmi_regs *gpmi_base = (void *)GPMI_BASE_ADDRESS;
+	struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
 	u32 fl0, fl1;
 	u32 t0;
 	int metadata_size;
@@ -256,7 +256,7 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 	return fcb;
 }
 
-static inline int find_fcb(void *ref, int page)
+static int find_fcb(void *ref, int page)
 {
 	int ret = 0;
 	struct nand_chip *chip = mtd->priv;
@@ -267,7 +267,7 @@ static inline int find_fcb(void *ref, int page)
 	}
 	chip->select_chip(mtd, 0);
 	chip->cmdfunc(mtd, NAND_CMD_READ0, 0x00, page);
-	ret = chip->ecc.read_page_raw(mtd, chip, buf, page);
+	ret = chip->ecc.read_page_raw(mtd, chip, buf, 1, page);
 	if (ret) {
 		printf("Failed to read FCB from page %u: %d\n", page, ret);
 		return ret;
@@ -303,12 +303,11 @@ static int write_fcb(void *buf, int block)
 	printf("Writing FCB to block %d @ %08x\n", block,
 		block * mtd->erasesize);
 	chip->select_chip(mtd, 0);
-	ret = chip->write_page(mtd, chip, buf, page, 0, 1);
+	ret = chip->write_page(mtd, chip, buf, 1, page, 0, 1);
 	if (ret) {
 		printf("Failed to write FCB to block %u: %d\n", block, ret);
 	}
 	chip->select_chip(mtd, -1);
-
 	return ret;
 }
 
@@ -424,6 +423,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	unsigned long extra_blocks = 2;
 	nand_erase_options_t erase_opts = { 0, };
 	size_t max_len1, max_len2;
+	size_t actual;
 
 	for (optind = 1; optind < argc; optind++) {
 		if (strcmp(argv[optind], "-f") == 0) {
@@ -575,9 +575,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		return ret;
 	}
 
-	if (ret) {
-	}
-
 	ret = patch_ivt(addr, size ?: fw_num_blocks * mtd->erasesize);
 	if (ret) {
 		return ret;
@@ -612,10 +609,11 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		fcb->fw1_start_page * page_size,
 		fcb->fw1_start_page * page_size + max_len1 - 1, addr);
 	ret = nand_write_skip_bad(mtd, fcb->fw1_start_page * page_size,
-				&max_len1, addr, WITH_DROP_FFS);
-	if (ret) {
+				&max_len1, &actual, erase_opts.length, addr,
+				WITH_DROP_FFS);
+	if (ret || actual < size) {
 		printf("Failed to program flash: %d\n", ret);
-		return ret;
+		return ret ?: -EIO;
 	}
 	if (fw2_start_block == 0) {
 		return ret;
@@ -642,10 +640,11 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		fcb->fw2_start_page * page_size,
 		fcb->fw2_start_page * page_size + max_len2 - 1, addr);
 	ret = nand_write_skip_bad(mtd, fcb->fw2_start_page * page_size,
-				&max_len2, addr, WITH_DROP_FFS);
-	if (ret) {
+				&max_len2, &actual, erase_opts.length, addr,
+				WITH_DROP_FFS);
+	if (ret || actual < size) {
 		printf("Failed to program flash: %d\n", ret);
-		return ret;
+		return ret ?: -EIO;
 	}
 	return ret;
 }

@@ -3,23 +3,7 @@
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_GENERIC_GBL_DATA_H
@@ -40,7 +24,7 @@
 typedef struct global_data {
 	bd_t *bd;
 	unsigned long flags;
-	unsigned long baudrate;
+	unsigned int baudrate;
 	unsigned long cpu_clk;	/* CPU clock in Hz!		*/
 	unsigned long bus_clk;
 	/* We cannot bracket this with CONFIG_PCI due to mpc5xxx */
@@ -68,9 +52,6 @@ typedef struct global_data {
 	unsigned long env_addr;	/* Address  of Environment struct */
 	unsigned long env_valid;	/* Checksum of Environment valid? */
 
-	/* TODO: is this the same as relocaddr, or something else? */
-	unsigned long dest_addr;	/* Post-relocation address of U-Boot */
-	unsigned long dest_addr_sp;
 	unsigned long ram_top;	/* Top address of RAM used by U-Boot */
 
 	unsigned long relocaddr;	/* Start address of U-Boot in RAM */
@@ -81,8 +62,16 @@ typedef struct global_data {
 	unsigned long reloc_off;
 	struct global_data *new_gd;	/* relocated global data */
 	const void *fdt_blob;	/* Our device tree, NULL if none */
+	void *new_fdt;		/* Relocated FDT */
+	unsigned long fdt_size;	/* Space reserved for relocated FDT */
 	void **jt;		/* jump table */
 	char env_buf[32];	/* buffer for getenv() before reloc. */
+#ifdef CONFIG_TRACE
+	void		*trace_buff;	/* The trace buffer */
+#endif
+#if defined(CONFIG_SYS_I2C)
+	int		cur_i2c_bus;	/* current used i2c bus */
+#endif
 	struct arch_global_data arch;	/* architecture-specific data */
 } gd_t;
 #endif

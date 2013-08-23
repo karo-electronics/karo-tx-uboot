@@ -6,23 +6,7 @@
  * Original Driver:
  * Copyright (C) 2004-2006 Atmel Corporation
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -49,6 +33,12 @@
 #endif
 
 static int initialized = 0;
+
+/* Read Atmel MCI IP version */
+static unsigned int atmel_mci_get_version(struct atmel_mci *mci)
+{
+	return readl(&mci->version) & 0x00000fff;
+}
 
 /*
  * Print command and status:
@@ -205,7 +195,10 @@ mci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	/* Wait for the command to complete */
 	while (!((status = readl(&mci->sr)) & MMCI_BIT(CMDRDY)));
 
-	if (status & error_flags) {
+	if ((status & error_flags) & MMCI_BIT(RTOE)) {
+		dump_cmd(cmdr, cmd->cmdarg, status, "Command Time Out");
+		return TIMEOUT;
+	} else if (status & error_flags) {
 		dump_cmd(cmdr, cmd->cmdarg, status, "Command Failed");
 		return COMM_ERR;
 	}
@@ -297,7 +290,9 @@ mci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 static void mci_set_ios(struct mmc *mmc)
 {
 	atmel_mci_t *mci = (atmel_mci_t *)mmc->priv;
-	int busw = (mmc->bus_width == 4) ? 1 : 0;
+	int bus_width = mmc->bus_width;
+	unsigned int version = atmel_mci_get_version(mci);
+	int busw;
 
 	/* Set the clock speed */
 	mci_set_mode(mmc, mmc->clock, MMC_DEFAULT_BLKLEN);
@@ -305,9 +300,26 @@ static void mci_set_ios(struct mmc *mmc)
 	/*
 	 * set the bus width and select slot for this interface
 	 * there is no capability for multiple slots on the same interface yet
-	 * Bitfield SCDBUS needs to be expanded to 2 bits for 8-bit buses
 	 */
-	writel(MMCI_BF(SCDBUS, busw) | MMCI_BF(SCDSEL, MCI_BUS), &mci->sdcr);
+	if ((version & 0xf00) >= 0x300) {
+		switch (bus_width) {
+		case 8:
+			busw = 3;
+			break;
+		case 4:
+			busw = 2;
+			break;
+		default:
+			busw = 0;
+			break;
+		}
+
+		writel(busw << 6 | MMCI_BF(SCDSEL, MCI_BUS), &mci->sdcr);
+	} else {
+		busw = (bus_width == 4) ? 1 : 0;
+
+		writel(busw << 7 | MMCI_BF(SCDSEL, MCI_BUS), &mci->sdcr);
+	}
 }
 
 /* Entered into mmc structure during driver init */
@@ -340,19 +352,29 @@ static int mci_init(struct mmc *mmc)
 int atmel_mci_init(void *regs)
 {
 	struct mmc *mmc = malloc(sizeof(struct mmc));
+	struct atmel_mci *mci;
+	unsigned int version;
 
 	if (!mmc)
 		return -1;
+
 	strcpy(mmc->name, "mci");
 	mmc->priv = regs;
 	mmc->send_cmd = mci_send_cmd;
 	mmc->set_ios = mci_set_ios;
 	mmc->init = mci_init;
 	mmc->getcd = NULL;
+	mmc->getwp = NULL;
 
 	/* need to be able to pass these in on a board by board basis */
 	mmc->voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
-	mmc->host_caps = MMC_MODE_4BIT;
+	mci = (struct atmel_mci *)mmc->priv;
+	version = atmel_mci_get_version(mci);
+	if ((version & 0xf00) >= 0x300)
+		mmc->host_caps = MMC_MODE_8BIT;
+
+	mmc->host_caps |= MMC_MODE_4BIT;
+
 	/*
 	 * min and max frequencies determined by
 	 * max and min of clock divider

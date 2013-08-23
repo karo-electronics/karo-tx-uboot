@@ -1,23 +1,7 @@
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -258,7 +242,7 @@ int misc_init_r(void)
 	u8 val;
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	u32 porbmsr = in_be32(&gur->porbmsr);
-	u32 romloc = (porbmsr >> MPC85XX_PORBMSR_ROMLOC_SHIFT) & 0xf;
+	u32 romloc = (porbmsr >> MPC85xx_PORBMSR_ROMLOC_SHIFT) & 0xf;
 
 	/*Configure 1588 clock-in source from RF Card*/
 	val = QIXIS_READ_I2C(brdcfg[5]);
@@ -360,7 +344,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	u32 porbmsr = in_be32(&gur->porbmsr);
-	u32 romloc = (porbmsr >> MPC85XX_PORBMSR_ROMLOC_SHIFT) & 0xf;
+	u32 romloc = (porbmsr >> MPC85xx_PORBMSR_ROMLOC_SHIFT) & 0xf;
 
 	if (!(hwconfig("uart2") && hwconfig("usb1"))) {
 		/* If uart2 is there in hwconfig remove usb node from

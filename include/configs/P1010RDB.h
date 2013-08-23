@@ -1,23 +1,7 @@
 /*
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -31,10 +15,10 @@
 #define CONFIG_PHYS_64BIT
 #endif
 
-#ifdef CONFIG_P1010RDB
 #define CONFIG_P1010
+#define CONFIG_E500			/* BOOKE e500 family */
+#include <asm/config_mpc85xx.h>
 #define CONFIG_NAND_FSL_IFC
-#endif
 
 #ifdef CONFIG_SDCARD
 #define CONFIG_RAMBOOT_SDCARD
@@ -48,15 +32,25 @@
 #define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
 #endif
 
-#ifdef CONFIG_NAND	/* NAND Boot */
-#define CONFIG_RAMBOOT_NAND
-#define CONFIG_NAND_U_BOOT
-#define CONFIG_SYS_TEXT_BASE_SPL	0xff800000
-#ifdef CONFIG_NAND_SPL
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE_SPL
-#else
-#define CONFIG_SYS_TEXT_BASE		0x11001000
-#endif /* CONFIG_NAND_SPL */
+#ifdef CONFIG_NAND
+#define CONFIG_SPL
+#define CONFIG_SPL_INIT_MINIMAL
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_NAND_SUPPORT
+#define CONFIG_SPL_NAND_MINIMAL
+#define CONFIG_SPL_FLUSH_IMAGE
+#define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
+
+#define CONFIG_SYS_TEXT_BASE		0x00201000
+#define CONFIG_SPL_TEXT_BASE		0xFFFFE000
+#define CONFIG_SPL_MAX_SIZE		8192
+#define CONFIG_SPL_RELOC_TEXT_BASE	0x00100000
+#define CONFIG_SPL_RELOC_STACK		0x00100000
+#define CONFIG_SYS_NAND_U_BOOT_SIZE	((512 << 10) - 0x2000)
+#define CONFIG_SYS_NAND_U_BOOT_DST	(0x00200000 - CONFIG_SPL_MAX_SIZE)
+#define CONFIG_SYS_NAND_U_BOOT_START	0x00200000
+#define CONFIG_SYS_NAND_U_BOOT_OFFS	0
+#define CONFIG_SYS_LDSCRIPT	"arch/powerpc/cpu/mpc85xx/u-boot-nand.lds"
 #endif
 
 
@@ -74,8 +68,10 @@
 #define CONFIG_RESET_VECTOR_ADDRESS	0xeffffffc
 #endif
 
-#ifndef CONFIG_SYS_MONITOR_BASE
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SYS_TEXT_BASE    /* start of monitor */
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SPL_TEXT_BASE
+#else
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #endif
 
 /* High Level Configuration Options */
@@ -90,6 +86,7 @@
 #define CONFIG_PCIE1			/* PCIE controler 1 (slot 1) */
 #define CONFIG_PCIE2			/* PCIE controler 2 (slot 2) */
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_FSL_PCIE_RESET		/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
@@ -241,7 +238,7 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW		CONFIG_SYS_CCSRBAR
 
 /* Don't relocate CCSRBAR while in NAND_SPL */
-#ifdef CONFIG_NAND_SPL
+#ifdef CONFIG_SPL_BUILD
 #define CONFIG_SYS_CCSR_DO_NOT_RELOCATE
 #endif
 
@@ -267,6 +264,10 @@ extern unsigned long get_sdram_size(void);
  * IFC Definitions
  */
 /* NOR Flash on IFC */
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_SYS_NO_FLASH
+#endif
+
 #define CONFIG_SYS_FLASH_BASE		0xee000000
 #define CONFIG_SYS_MAX_FLASH_SECT	256	/* 32M */
 
@@ -352,7 +353,7 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_NAND_DDR_LAW		11
 
 /* Set up IFC registers for boot location NOR/NAND */
-#if defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SECBOOT)
+#if defined(CONFIG_NAND) || defined(CONFIG_NAND_SECBOOT)
 #define CONFIG_SYS_CSPR0		CONFIG_SYS_NAND_CSPR
 #define CONFIG_SYS_AMASK0		CONFIG_SYS_NAND_AMASK
 #define CONFIG_SYS_CSOR0		CONFIG_SYS_NAND_CSOR
@@ -384,15 +385,6 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_CS1_FTIM3		CONFIG_SYS_NAND_FTIM3
 #endif
 
-/* NAND boot: 8K NAND loader config */
-#define CONFIG_SYS_NAND_SPL_SIZE	0x2000
-#define CONFIG_SYS_NAND_U_BOOT_SIZE	(512 << 10)
-#define CONFIG_SYS_NAND_U_BOOT_DST	(0x11000000 - CONFIG_SYS_NAND_SPL_SIZE)
-#define CONFIG_SYS_NAND_U_BOOT_START	0x11000000
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	(0)
-#define CONFIG_SYS_NAND_U_BOOT_RELOC	0x10000
-#define CONFIG_SYS_NAND_U_BOOT_RELOC_SP	(CONFIG_SYS_NAND_U_BOOT_RELOC + 0x10000)
-
 /* CPLD on IFC */
 #define CONFIG_SYS_CPLD_BASE		0xffb00000
 
@@ -420,12 +412,18 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_CS3_FTIM3		0x0
 #endif	/* CONFIG_SDCARD */
 
-#if defined(CONFIG_RAMBOOT_SDCARD) || defined(CONFIG_RAMBOOT_SPIFLASH) || \
-    defined(CONFIG_RAMBOOT_NAND)
+#if defined(CONFIG_RAMBOOT_SDCARD) || defined(CONFIG_RAMBOOT_SPIFLASH)
 #define CONFIG_SYS_RAMBOOT
 #define CONFIG_SYS_EXTRA_ENV_RELOC
 #else
 #undef CONFIG_SYS_RAMBOOT
+#endif
+
+#ifdef CONFIG_SYS_FSL_ERRATUM_IFC_A003399
+#if !defined(CONFIG_SPL) && !defined(CONFIG_SYS_RAMBOOT)\
+	&& !defined(CONFIG_SECURE_BOOT)
+#define CONFIG_A003399_NOR_WORKAROUND
+#endif
 #endif
 
 #define CONFIG_BOARD_EARLY_INIT_F	/* Call board_pre_init */
@@ -449,7 +447,7 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
-#ifdef CONFIG_NAND_SPL
+#ifdef CONFIG_SPL_BUILD
 #define CONFIG_NS16550_MIN_FUNCTIONS
 #endif
 
@@ -475,15 +473,15 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_FIT
 #define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
-#define CONFIG_FSL_I2C			/* Use FSL common I2C driver */
-#define CONFIG_HARD_I2C			/* I2C with hardware support */
-#undef CONFIG_SOFT_I2C			/* I2C bit-banged */
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_CMD_TREE
-#define CONFIG_SYS_I2C_SPEED		400000 /* I2C speed and slave address*/
-#define CONFIG_SYS_I2C_SLAVE		0x7F
-#define CONFIG_SYS_I2C_OFFSET		0x3000
-#define CONFIG_SYS_I2C2_OFFSET		0x3100
+/* I2C */
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_FSL
+#define CONFIG_SYS_FSL_I2C_SPEED	400000
+#define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
+#define CONFIG_SYS_FSL_I2C2_SPEED	400000
+#define CONFIG_SYS_FSL_I2C2_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C2_OFFSET	0x3100
 
 /* I2C EEPROM */
 #undef CONFIG_ID_EEPROM
@@ -504,7 +502,7 @@ extern unsigned long get_sdram_size(void);
  * SPI interface will not be available in case of NAND boot SPI CS0 will be
  * used for SLIC
  */
-#if !defined(CONFIG_NAND_U_BOOT) || !defined(CONFIG_NAND_SECBOOT)
+#if !defined(CONFIG_NAND) || !defined(CONFIG_NAND_SECBOOT)
 /* eSPI - Enhanced SPI */
 #define CONFIG_FSL_ESPI
 #define CONFIG_SPI_FLASH
@@ -599,7 +597,6 @@ extern unsigned long get_sdram_size(void);
 /*
  * Environment
  */
-#if defined(CONFIG_SYS_RAMBOOT)
 #if defined(CONFIG_RAMBOOT_SDCARD)
 #define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_FSL_FIXED_MMC_LOCATION
@@ -614,16 +611,15 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_ENV_OFFSET	0x100000	/* 1MB */
 #define CONFIG_ENV_SECT_SIZE	0x10000
 #define CONFIG_ENV_SIZE		0x2000
-#elif defined(CONFIG_NAND_U_BOOT)
+#elif defined(CONFIG_NAND)
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_SIZE		CONFIG_SYS_NAND_BLOCK_SIZE
-#define CONFIG_ENV_OFFSET	CONFIG_SYS_NAND_U_BOOT_SIZE
+#define CONFIG_ENV_OFFSET	((512 * 1024) + CONFIG_SYS_NAND_BLOCK_SIZE)
 #define CONFIG_ENV_RANGE	(3 * CONFIG_ENV_SIZE)
-#else
+#elif defined(CONFIG_SYS_RAMBOOT)
 #define CONFIG_ENV_IS_NOWHERE		/* Store ENV in memory only */
 #define CONFIG_ENV_ADDR			(CONFIG_SYS_MONITOR_BASE - 0x1000)
 #define CONFIG_ENV_SIZE			0x2000
-#endif
 #else
 #define CONFIG_ENV_IS_IN_FLASH
 #if CONFIG_SYS_MONITOR_BASE > 0xfff80000

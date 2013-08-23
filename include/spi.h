@@ -2,23 +2,7 @@
  * (C) Copyright 2001
  * Gerald Van Baren, Custom IDEAS, vanbaren@cideas.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SPI_H_
@@ -37,10 +21,15 @@
 #define	SPI_LSB_FIRST	0x08			/* per-word bits-on-wire */
 #define	SPI_3WIRE	0x10			/* SI/SO signals shared */
 #define	SPI_LOOP	0x20			/* loopback mode */
+#define	SPI_SLAVE	0x40			/* slave mode */
+#define	SPI_PREAMBLE	0x80			/* Skip preamble bytes */
 
 /* SPI transfer flags */
 #define SPI_XFER_BEGIN	0x01			/* Assert CS before transfer */
 #define SPI_XFER_END	0x02			/* Deassert CS after transfer */
+
+/* Header byte that marks the start of the message */
+#define SPI_PREAMBLE_END_BYTE	0xec
 
 /*-----------------------------------------------------------------------
  * Representation of a SPI slave, i.e. what we're communicating with.
@@ -49,10 +38,13 @@
  *
  *   bus:	ID of the bus that the slave is attached to.
  *   cs:	ID of the chip select connected to the slave.
+ *   max_write_size:	If non-zero, the maximum number of bytes which can
+ *		be written at once, excluding command bytes.
  */
 struct spi_slave {
 	unsigned int	bus;
 	unsigned int	cs;
+	unsigned int max_write_size;
 };
 
 /*-----------------------------------------------------------------------
@@ -61,6 +53,47 @@ struct spi_slave {
  * TODO: I don't think we really need this.
  */
 void spi_init(void);
+
+/**
+ * spi_do_alloc_slave - Allocate a new SPI slave (internal)
+ *
+ * Allocate and zero all fields in the spi slave, and set the bus/chip
+ * select. Use the helper macro spi_alloc_slave() to call this.
+ *
+ * @offset: Offset of struct spi_slave within slave structure
+ * @size: Size of slave structure
+ * @bus: Bus ID of the slave chip.
+ * @cs: Chip select ID of the slave chip on the specified bus.
+ */
+void *spi_do_alloc_slave(int offset, int size, unsigned int bus,
+			 unsigned int cs);
+
+/**
+ * spi_alloc_slave - Allocate a new SPI slave
+ *
+ * Allocate and zero all fields in the spi slave, and set the bus/chip
+ * select.
+ *
+ * @_struct: Name of structure to allocate (e.g. struct tegra_spi). This
+ *	structure must contain a member 'struct spi_slave *slave'.
+ * @bus: Bus ID of the slave chip.
+ * @cs: Chip select ID of the slave chip on the specified bus.
+ */
+#define spi_alloc_slave(_struct, bus, cs) \
+	spi_do_alloc_slave(offsetof(_struct, slave), \
+			    sizeof(_struct), bus, cs)
+
+/**
+ * spi_alloc_slave_base - Allocate a new SPI slave with no private data
+ *
+ * Allocate and zero all fields in the spi slave, and set the bus/chip
+ * select.
+ *
+ * @bus: Bus ID of the slave chip.
+ * @cs: Chip select ID of the slave chip on the specified bus.
+ */
+#define spi_alloc_slave_base(bus, cs) \
+	spi_do_alloc_slave(0, sizeof(struct spi_slave), bus, cs)
 
 /*-----------------------------------------------------------------------
  * Set up communications parameters for a SPI slave.
@@ -197,5 +230,21 @@ static inline int spi_w8r8(struct spi_slave *slave, unsigned char byte)
 	ret = spi_xfer(slave, 16, dout, din, SPI_XFER_BEGIN | SPI_XFER_END);
 	return ret < 0 ? ret : din[1];
 }
+
+/**
+ * Set up a SPI slave for a particular device tree node
+ *
+ * This calls spi_setup_slave() with the correct bus number. Call
+ * spi_free_slave() to free it later.
+ *
+ * @param blob		Device tree blob
+ * @param node		SPI peripheral node to use
+ * @param cs		Chip select to use
+ * @param max_hz	Maximum SCK rate in Hz (0 for default)
+ * @param mode		Clock polarity, clock phase and other parameters
+ * @return pointer to new spi_slave structure
+ */
+struct spi_slave *spi_setup_slave_fdt(const void *blob, int node,
+		unsigned int cs, unsigned int max_hz, unsigned int mode);
 
 #endif	/* _SPI_H_ */

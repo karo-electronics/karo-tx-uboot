@@ -8,23 +8,7 @@
  *
  * (C) Copyright 2004-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define DEBUG */
@@ -38,22 +22,10 @@
 #include <lcd.h>
 #include <ipu.h>
 #include <video_fb.h>
+#include <mxcfb.h>
 #include "videomodes.h"
-#include "mxcfb.h"
 
 DECLARE_GLOBAL_DATA_PTR;
-
-extern vidinfo_t panel_info;
-
-void *lcd_base;			/* Start of framebuffer memory	*/
-void *lcd_console_address;	/* Start of console buffer	*/
-
-int lcd_line_length;
-int lcd_color_fg;
-int lcd_color_bg;
-
-short console_col;
-short console_row;
 
 static int mxcfb_map_video_memory(struct fb_info *fbi);
 static int mxcfb_unmap_video_memory(struct fb_info *fbi);
@@ -63,14 +35,6 @@ void lcd_initcolregs(void)
 }
 
 void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
-{
-}
-
-void lcd_disable(void)
-{
-}
-
-void lcd_panel_disable(void)
 {
 }
 
@@ -569,6 +533,10 @@ static int mxcfb_probe(u32 interface_pix_fmt, struct fb_videomode *mode, int di)
 	fbi->fix.smem_len = fbi->var.yres_virtual * fbi->fix.line_length;
 
 	mxcfb_check_var(&fbi->var, fbi);
+
+	/* Default Y virtual size is 2x panel size */
+	fbi->var.yres_virtual = fbi->var.yres * 2;
+
 	mxcfb_set_fix(fbi);
 
 	/* allocate fb first */
@@ -596,18 +564,12 @@ ulong calc_fbsize(void)
 		NBITS(panel_info.vl_bpix)) / 8;
 }
 
-int overwrite_console(void)
-{
-	/* Keep stdout / stderr on serial, our LCD is for splashscreen only */
-	return 1;
-}
-
 int ipuv3_fb_init(struct fb_videomode *mode, int di, unsigned int interface_pix_fmt,
 		ipu_di_clk_parent_t di_clk_parent, unsigned long di_clk_val, int bpp)
 {
 	int ret;
 
-//	default_bpp = bpp;
+	default_bpp = bpp;
 
 	ret = ipu_probe(di, di_clk_parent, di_clk_val);
 	if (ret) {
@@ -615,8 +577,5 @@ int ipuv3_fb_init(struct fb_videomode *mode, int di, unsigned int interface_pix_
 		return ret;
 	}
 
-	debug("Framebuffer at %p\n", lcd_base);
-	ret = mxcfb_probe(interface_pix_fmt, mode, di);
-
-	return ret;
+	return mxcfb_probe(interface_pix_fmt, mode, di);
 }

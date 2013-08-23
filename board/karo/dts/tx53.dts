@@ -12,10 +12,8 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#undef linux
-
 /dts-v1/;
-/include/ ARCH_CPU_DTS
+#include "mx53.dtsi"
 
 / {
 	model = "Ka-Ro electronics TX53 module";

@@ -2,23 +2,7 @@
  *  Copyright (C) 2012 Samsung Electronics
  *  Rajeshwari Shinde <rajeshwari.s@samsung.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MAX77686_H_
@@ -155,4 +139,38 @@ enum {
 	EN_LDO = (0x3 << 6),
 };
 
+/* Buck1 1 volt value */
+#define MAX77686_BUCK1OUT_1V	0x5
+/* Buck1 1.05 volt value */
+#define MAX77686_BUCK1OUT_1_05V    0x6
+#define MAX77686_BUCK1CTRL_EN	(3 << 0)
+/* Buck2 1.3 volt value */
+#define MAX77686_BUCK2DVS1_1_3V	0x38
+#define MAX77686_BUCK2CTRL_ON	(1 << 4)
+/* Buck3 1.0125 volt value */
+#define MAX77686_BUCK3DVS1_1_0125V	0x21
+#define MAX77686_BUCK3CTRL_ON	(1 << 4)
+/* Buck4 1.2 volt value */
+#define MAX77686_BUCK4DVS1_1_2V	0x30
+#define MAX77686_BUCK4CTRL_ON	(1 << 4)
+/* LDO2 1.5 volt value */
+#define MAX77686_LD02CTRL1_1_5V	0x1c
+/* LDO3 1.8 volt value */
+#define MAX77686_LD03CTRL1_1_8V	0x14
+/* LDO5 1.8 volt value */
+#define MAX77686_LD05CTRL1_1_8V	0x14
+/* LDO10 1.8 volt value */
+#define MAX77686_LD10CTRL1_1_8V	0x14
+/*
+ * MAX77686_REG_PMIC_32KHZ set to 32KH CP
+ * output is activated
+ */
+#define MAX77686_32KHCP_EN	(1 << 1)
+/*
+ * MAX77686_REG_PMIC_BBAT set to
+ * Back up batery charger on and
+ * limit voltage setting to 3.5v
+ */
+#define MAX77686_BBCHOSTEN	(1 << 0)
+#define MAX77686_BBCVS_3_5V	(3 << 3)
 #endif /* __MAX77686_PMIC_H_ */

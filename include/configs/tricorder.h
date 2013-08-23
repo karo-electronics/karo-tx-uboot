@@ -10,23 +10,7 @@
  *
  * Configuration settings for the Tricorder board.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __CONFIG_H
@@ -125,6 +109,8 @@
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1		/* Max number of NAND */
 							/* devices */
+#define CONFIG_NAND_OMAP_BCH8
+#define CONFIG_BCH
 
 /* commands to include */
 #include <config_cmd_default.h>
@@ -193,7 +179,7 @@
 		"bootm ${loadaddr}\0" \
 	"loaduimage_ubi=mtd default; " \
 		"ubi part fs; " \
-		"ubifsmount root; " \
+		"ubifsmount ubi:root; " \
 		"ubifsload ${loadaddr} /boot/uImage\0" \
 	"nandboot=echo Booting from nand ...; " \
 		"run nandargs; " \
@@ -290,7 +276,7 @@
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR 0x300 /* address 0x60000 */
 
 #define CONFIG_SPL_TEXT_BASE		0x40200000 /*CONFIG_SYS_SRAM_START*/
-#define CONFIG_SPL_MAX_SIZE		(54 * 1024)	/* 8 KB for stack */
+#define CONFIG_SPL_MAX_SIZE		(55 * 1024)	/* 7 KB for stack */
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
 
 #define CONFIG_SPL_BSS_START_ADDR	0x80000000 /*CONFIG_SYS_SDRAM_BASE*/
@@ -303,11 +289,14 @@
 #define CONFIG_SYS_NAND_OOBSIZE		64
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(128*1024)
 #define CONFIG_SYS_NAND_BAD_BLOCK_POS	NAND_LARGE_BADBLOCK_POS
-#define CONFIG_SYS_NAND_ECCPOS		{2, 3, 4, 5, 6, 7, 8, 9,\
-						10, 11, 12, 13}
+#define CONFIG_SYS_NAND_ECCPOS		{12, 13, 14, 15, 16, 17, 18, 19, 20,\
+			21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,\
+			34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,\
+			47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,\
+			60, 61, 62, 63}
 
 #define CONFIG_SYS_NAND_ECCSIZE		512
-#define CONFIG_SYS_NAND_ECCBYTES	3
+#define CONFIG_SYS_NAND_ECCBYTES	13
 
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 

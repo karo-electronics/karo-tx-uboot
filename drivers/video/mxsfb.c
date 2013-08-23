@@ -1,310 +1,181 @@
 /*
- * Copyright (C) 2012 Lothar Waßmann <LW@KARO-electronics.de>
+ * Freescale i.MX23/i.MX28 LCDIF driver
  *
- * LCD driver for i.MXS
+ * Copyright (C) 2011-2013 Marek Vasut <marex@denx.de>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
+#include <common.h>
+#include <malloc.h>
+#include <video_fb.h>
+
+#include <asm/arch/imx-regs.h>
+#include <asm/arch/clock.h>
+#include <asm/arch/sys_proto.h>
+#include <asm/errno.h>
+#include <asm/io.h>
+
+#include "videomodes.h"
+
+#define	PS2KHZ(ps)	(1000000000UL / (ps))
+
+static GraphicDevice panel;
+
+/*
+ * DENX M28EVK:
+ * setenv videomode
+ * video=ctfb:x:800,y:480,depth:18,mode:0,pclk:30066,
+ *       le:0,ri:256,up:0,lo:45,hs:1,vs:1,sync:100663296,vmode:0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
+ * Freescale mx23evk/mx28evk with a Seiko 4.3'' WVGA panel:
+ * setenv videomode
+ * video=ctfb:x:800,y:480,depth:24,mode:0,pclk:29851,
+ * 	 le:89,ri:164,up:23,lo:10,hs:10,vs:10,sync:0,vmode:0
  */
 
-#include <common.h>
-#include <errno.h>
-#include <lcd.h>
-#include <malloc.h>
-#include <asm/io.h>
-#include <asm/arch/imx-regs.h>
-#include <asm/arch/mxsfb.h>
-#include <asm/arch/sys_proto.h>
-
-vidinfo_t panel_info = {
-	/* set to max. size supported by SoC */
-	.vl_col = 800,
-	.vl_row = 480,
-
-	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
-};
-
-static int bits_per_pixel;
-static int color_depth;
-static uint32_t pix_fmt;
-static struct fb_var_screeninfo mxsfb_var;
-
-static struct mxs_lcdif_regs *lcd_regs = (void *)MXS_LCDIF_BASE;
-
-void *lcd_base;			/* Start of framebuffer memory	*/
-void *lcd_console_address;	/* Start of console buffer	*/
-
-int lcd_line_length;
-int lcd_color_fg;
-int lcd_color_bg;
-
-short console_col;
-short console_row;
-
-void lcd_initcolregs(void)
+static void mxs_lcd_init(GraphicDevice *panel,
+			struct ctfb_res_modes *mode, int bpp)
 {
-}
+	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
+	uint32_t word_len = 0, bus_width = 0;
+	uint8_t valid_data = 0;
 
-void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
-{
-}
+	/* Kick in the LCDIF clock */
+	mxs_set_lcdclk(PS2KHZ(mode->pixclock));
 
-#define fourcc_str(fourcc)	((fourcc) >> 0) & 0xff, \
-		((fourcc) >> 8) & 0xff,			\
-		((fourcc) >> 16) & 0xff,		\
-		((fourcc) >> 24) & 0xff
+	/* Restart the LCDIF block */
+	mxs_reset_block(&regs->hw_lcdif_ctrl_reg);
 
-#define LCD_CTRL_DEFAULT	(LCDIF_CTRL_LCDIF_MASTER |	\
-				LCDIF_CTRL_BYPASS_COUNT |	\
-				LCDIF_CTRL_DOTCLK_MODE)
-
-#define LCD_CTRL1_DEFAULT	0
-#define LCD_CTRL2_DEFAULT	LCDIF_CTRL2_OUTSTANDING_REQS_REQ_2
-
-#define LCD_VDCTRL0_DEFAULT	(LCDIF_VDCTRL0_ENABLE_PRESENT |		\
-				LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |	\
-				LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT)
-#define LCD_VDCTRL1_DEFAULT	0
-#define LCD_VDCTRL2_DEFAULT	0
-#define LCD_VDCTRL3_DEFAULT	0
-#define LCD_VDCTRL4_DEFAULT	LCDIF_VDCTRL4_SYNC_SIGNALS_ON
-
-void video_hw_init(void *lcdbase)
-{
-	int ret;
-	unsigned int div = 0, best = 0, pix_clk;
-	u32 frac1;
-	const unsigned long lcd_clk = 480000000;
-	u32 lcd_ctrl = LCD_CTRL_DEFAULT | LCDIF_CTRL_RUN;
-	u32 lcd_ctrl1 = LCD_CTRL1_DEFAULT, lcd_ctrl2 = LCD_CTRL2_DEFAULT;
-	u32 lcd_vdctrl0 = LCD_VDCTRL0_DEFAULT;
-	u32 lcd_vdctrl1 = LCD_VDCTRL1_DEFAULT;
-	u32 lcd_vdctrl2 = LCD_VDCTRL2_DEFAULT;
-	u32 lcd_vdctrl3 = LCD_VDCTRL3_DEFAULT;
-	u32 lcd_vdctrl4 = LCD_VDCTRL4_DEFAULT;
-	struct mxs_clkctrl_regs *clk_regs = (void *)MXS_CLKCTRL_BASE;
-	char buf1[16], buf2[16];
-
-	/* pixel format in memory */
-	switch (color_depth) {
-	case 8:
-		lcd_ctrl |= LCDIF_CTRL_WORD_LENGTH_8BIT;
-		lcd_ctrl1 |= LCDIF_CTRL1_BYTE_PACKING_FORMAT(1);
-		break;
-
-	case 16:
-		lcd_ctrl |= LCDIF_CTRL_WORD_LENGTH_16BIT;
-		lcd_ctrl1 |= LCDIF_CTRL1_BYTE_PACKING_FORMAT(3);
-		break;
-
-	case 18:
-		lcd_ctrl |= LCDIF_CTRL_WORD_LENGTH_18BIT;
-		lcd_ctrl1 |= LCDIF_CTRL1_BYTE_PACKING_FORMAT(7);
-		break;
-
-	case 24:
-		lcd_ctrl |= LCDIF_CTRL_WORD_LENGTH_24BIT;
-		lcd_ctrl1 |= LCDIF_CTRL1_BYTE_PACKING_FORMAT(7);
-		break;
-
-	default:
-		printf("Invalid bpp: %d\n", color_depth);
-		return;
-	}
-
-	/* pixel format on the LCD data pins */
-	switch (pix_fmt) {
-	case PIX_FMT_RGB332:
-		lcd_ctrl |= LCDIF_CTRL_LCD_DATABUS_WIDTH_8BIT;
-		break;
-
-	case PIX_FMT_RGB565:
-		lcd_ctrl |= LCDIF_CTRL_LCD_DATABUS_WIDTH_16BIT;
-		break;
-
-	case PIX_FMT_BGR666:
-		lcd_ctrl |= 1 << LCDIF_CTRL_INPUT_DATA_SWIZZLE_OFFSET;
-		/* fallthru */
-	case PIX_FMT_RGB666:
-		lcd_ctrl |= LCDIF_CTRL_LCD_DATABUS_WIDTH_18BIT;
-		break;
-
-	case PIX_FMT_BGR24:
-		lcd_ctrl |= 1 << LCDIF_CTRL_INPUT_DATA_SWIZZLE_OFFSET;
-		/* fallthru */
-	case PIX_FMT_RGB24:
-		lcd_ctrl |= LCDIF_CTRL_LCD_DATABUS_WIDTH_24BIT;
-		break;
-
-	default:
-		printf("Invalid pixel format: %c%c%c%c\n", fourcc_str(pix_fmt));
-		return;
-	}
-
-	pix_clk = PICOS2KHZ(mxsfb_var.pixclock);
-	debug("designated pix_clk: %sMHz\n", strmhz(buf1, pix_clk * 1000));
-
-	for (frac1 = 18; frac1 < 36; frac1++) {
-		static unsigned int err = ~0;
-		unsigned long clk = lcd_clk / 1000 * 18 / frac1;
-		unsigned int d = (clk + pix_clk - 1) / pix_clk;
-		unsigned int diff = abs(clk / d - pix_clk);
-
-		debug("frac1=%u div=%u lcd_clk=%-8sMHz pix_clk=%-8sMHz diff=%u err=%u\n",
-			frac1, d, strmhz(buf1, clk * 1000), strmhz(buf2, clk * 1000 / d),
-			diff, err);
-
-		if (clk < pix_clk)
-			break;
-		if (d > 255)
-			continue;
-
-		if (diff < err) {
-			best = frac1;
-			div = d;
-			err = diff;
-			if (err == 0)
-				break;
-		}
-	}
-	if (div == 0) {
-		printf("Requested pixel clock %sMHz out of range\n",
-			strmhz(buf1, pix_clk * 1000));
-		return;
-	}
-
-	debug("div=%lu(%u*%u/18) for pixel clock %sMHz with base clock %sMHz\n",
-		lcd_clk / pix_clk / 1000, best, div,
-		strmhz(buf1, lcd_clk / div * 18 / best),
-		strmhz(buf2, lcd_clk));
-
-	frac1 = (readl(&clk_regs->hw_clkctrl_frac1_reg) & ~0xff) | best;
-	writel(frac1, &clk_regs->hw_clkctrl_frac1_reg);
-	writel(1 << 14, &clk_regs->hw_clkctrl_clkseq_clr);
-
-	/* enable LCD clk and fractional divider */
-	writel(div, &clk_regs->hw_clkctrl_lcdif_reg);
-	while (readl(&clk_regs->hw_clkctrl_lcdif_reg) & (1 << 29))
-		;
-
-	ret = mxs_reset_block(&lcd_regs->hw_lcdif_ctrl_reg);
-	if (ret) {
-		printf("Failed to reset LCD controller: LCDIF_CTRL: %08x CLKCTRL_LCDIF: %08x\n",
-			readl(&lcd_regs->hw_lcdif_ctrl_reg),
-			readl(&clk_regs->hw_clkctrl_lcdif_reg));
-		return;
-	}
-
-	if (mxsfb_var.sync & FB_SYNC_HOR_HIGH_ACT)
-		lcd_vdctrl0 |= LCDIF_VDCTRL0_HSYNC_POL;
-
-	if (mxsfb_var.sync & FB_SYNC_VERT_HIGH_ACT)
-		lcd_vdctrl0 |= LCDIF_VDCTRL0_HSYNC_POL;
-
-	if (mxsfb_var.sync & FB_SYNC_DATA_ENABLE_HIGH_ACT)
-		lcd_vdctrl0 |= LCDIF_VDCTRL0_ENABLE_POL;
-
-	if (mxsfb_var.sync & FB_SYNC_DOTCLK_FALLING_ACT)
-		lcd_vdctrl0 |= LCDIF_VDCTRL0_DOTCLK_POL;
-
-	lcd_vdctrl0 |= LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH(mxsfb_var.vsync_len);
-	lcd_vdctrl1 |= LCDIF_VDCTRL1_VSYNC_PERIOD(mxsfb_var.vsync_len +
-						mxsfb_var.upper_margin +
-						mxsfb_var.lower_margin +
-						mxsfb_var.yres);
-	lcd_vdctrl2 |= LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH(mxsfb_var.hsync_len);
-	lcd_vdctrl2 |= LCDIF_VDCTRL2_HSYNC_PERIOD(mxsfb_var.hsync_len +
-						mxsfb_var.left_margin +
-						mxsfb_var.right_margin +
-						mxsfb_var.xres);
-
-	lcd_vdctrl3 |= LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT(mxsfb_var.left_margin +
-							mxsfb_var.hsync_len);
-	lcd_vdctrl3 |= LCDIF_VDCTRL3_VERTICAL_WAIT_CNT(mxsfb_var.upper_margin +
-							mxsfb_var.vsync_len);
-
-	lcd_vdctrl4 |= LCDIF_VDCTRL4_DOTCLK_H_VALID_DATA_CNT(mxsfb_var.xres);
-
-	writel((u32)lcdbase, &lcd_regs->hw_lcdif_next_buf_reg);
-	writel(LCDIF_TRANSFER_COUNT_H_COUNT(mxsfb_var.xres) |
-		LCDIF_TRANSFER_COUNT_V_COUNT(mxsfb_var.yres),
-		&lcd_regs->hw_lcdif_transfer_count_reg);
-
-	writel(lcd_vdctrl0, &lcd_regs->hw_lcdif_vdctrl0_reg);
-	writel(lcd_vdctrl1, &lcd_regs->hw_lcdif_vdctrl1_reg);
-	writel(lcd_vdctrl2, &lcd_regs->hw_lcdif_vdctrl2_reg);
-	writel(lcd_vdctrl3, &lcd_regs->hw_lcdif_vdctrl3_reg);
-	writel(lcd_vdctrl4, &lcd_regs->hw_lcdif_vdctrl4_reg);
-
-	writel(lcd_ctrl1, &lcd_regs->hw_lcdif_ctrl1_reg);
-	writel(lcd_ctrl2, &lcd_regs->hw_lcdif_ctrl2_reg);
-
-	writel(lcd_ctrl, &lcd_regs->hw_lcdif_ctrl_reg);
-
-	debug("mxsfb framebuffer driver initialized\n");
-}
-
-void mxsfb_disable(void)
-{
-	u32 lcd_ctrl = readl(&lcd_regs->hw_lcdif_ctrl_reg);
-
-	writel(lcd_ctrl & ~LCDIF_CTRL_RUN, &lcd_regs->hw_lcdif_ctrl_reg);
-}
-
-int mxsfb_init(struct fb_videomode *mode, uint32_t pixfmt, int bpp)
-{
 	switch (bpp) {
-	case 8:
-		bits_per_pixel = 8;
-		panel_info.vl_bpix = LCD_COLOR8;
-		break;
-
-	case 16:
-		bits_per_pixel = 16;
-		panel_info.vl_bpix = LCD_COLOR16;
-		break;
-
-	case 18:
-		bits_per_pixel = 32;
-		panel_info.vl_bpix = LCD_COLOR24;
-		break;
-
 	case 24:
-		bits_per_pixel = 32;
-		panel_info.vl_bpix = LCD_COLOR24;
+		word_len = LCDIF_CTRL_WORD_LENGTH_24BIT;
+		bus_width = LCDIF_CTRL_LCD_DATABUS_WIDTH_24BIT;
+		valid_data = 0x7;
 		break;
-
-	default:
-		return -EINVAL;
+	case 18:
+		word_len = LCDIF_CTRL_WORD_LENGTH_24BIT;
+		bus_width = LCDIF_CTRL_LCD_DATABUS_WIDTH_18BIT;
+		valid_data = 0x7;
+		break;
+	case 16:
+		word_len = LCDIF_CTRL_WORD_LENGTH_16BIT;
+		bus_width = LCDIF_CTRL_LCD_DATABUS_WIDTH_16BIT;
+		valid_data = 0xf;
+		break;
+	case 8:
+		word_len = LCDIF_CTRL_WORD_LENGTH_8BIT;
+		bus_width = LCDIF_CTRL_LCD_DATABUS_WIDTH_8BIT;
+		valid_data = 0xf;
+		break;
 	}
 
-	pix_fmt = pixfmt;
-	color_depth = bpp;
+	writel(bus_width | word_len | LCDIF_CTRL_DOTCLK_MODE |
+		LCDIF_CTRL_BYPASS_COUNT | LCDIF_CTRL_LCDIF_MASTER,
+		&regs->hw_lcdif_ctrl);
 
-	lcd_line_length = bits_per_pixel / 8 * mode->xres;
+	writel(valid_data << LCDIF_CTRL1_BYTE_PACKING_FORMAT_OFFSET,
+		&regs->hw_lcdif_ctrl1);
+	writel((mode->yres << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) | mode->xres,
+		&regs->hw_lcdif_transfer_count);
 
-	mxsfb_var.xres = mode->xres;
-	mxsfb_var.yres = mode->yres;
-	mxsfb_var.xres_virtual = mode->xres;
-	mxsfb_var.yres_virtual = mode->yres;
-	mxsfb_var.pixclock = mode->pixclock;
-	mxsfb_var.left_margin = mode->left_margin;
-	mxsfb_var.right_margin = mode->right_margin;
-	mxsfb_var.upper_margin = mode->upper_margin;
-	mxsfb_var.lower_margin = mode->lower_margin;
-	mxsfb_var.hsync_len = mode->hsync_len;
-	mxsfb_var.vsync_len = mode->vsync_len;
-	mxsfb_var.sync = mode->sync;
+	writel(LCDIF_VDCTRL0_ENABLE_PRESENT | LCDIF_VDCTRL0_ENABLE_POL |
+		LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
+		LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
+		mode->vsync_len, &regs->hw_lcdif_vdctrl0);
+	writel(mode->upper_margin + mode->lower_margin +
+		mode->vsync_len + mode->yres,
+		&regs->hw_lcdif_vdctrl1);
+	writel((mode->hsync_len << LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET) |
+		(mode->left_margin + mode->right_margin +
+		mode->hsync_len + mode->xres),
+		&regs->hw_lcdif_vdctrl2);
+	writel(((mode->left_margin + mode->hsync_len) <<
+		LCDIF_VDCTRL3_HORIZONTAL_WAIT_CNT_OFFSET) |
+		(mode->upper_margin + mode->vsync_len),
+		&regs->hw_lcdif_vdctrl3);
+	writel((0 << LCDIF_VDCTRL4_DOTCLK_DLY_SEL_OFFSET) | mode->xres,
+		&regs->hw_lcdif_vdctrl4);
 
-	panel_info.vl_col = mode->xres;
-	panel_info.vl_row = mode->yres;
+	writel(panel->frameAdrs, &regs->hw_lcdif_cur_buf);
+	writel(panel->frameAdrs, &regs->hw_lcdif_next_buf);
 
-	return 0;
+	/* Flush FIFO first */
+	writel(LCDIF_CTRL1_FIFO_CLEAR, &regs->hw_lcdif_ctrl1_set);
+
+	/* Sync signals ON */
+	setbits_le32(&regs->hw_lcdif_vdctrl4, LCDIF_VDCTRL4_SYNC_SIGNALS_ON);
+
+	/* FIFO cleared */
+	writel(LCDIF_CTRL1_FIFO_CLEAR, &regs->hw_lcdif_ctrl1_clr);
+
+	/* RUN! */
+	writel(LCDIF_CTRL_RUN, &regs->hw_lcdif_ctrl_set);
+}
+
+void *video_hw_init(void)
+{
+	int bpp = -1;
+	char *penv;
+	void *fb;
+	struct ctfb_res_modes mode;
+
+	puts("Video: ");
+
+	/* Suck display configuration from "videomode" variable */
+	penv = getenv("videomode");
+	if (!penv) {
+		puts("MXSFB: 'videomode' variable not set!\n");
+		return NULL;
+	}
+
+	bpp = video_get_params(&mode, penv);
+
+	/* fill in Graphic device struct */
+	sprintf(panel.modeIdent, "%dx%dx%d",
+			mode.xres, mode.yres, bpp);
+
+	panel.winSizeX = mode.xres;
+	panel.winSizeY = mode.yres;
+	panel.plnSizeX = mode.xres;
+	panel.plnSizeY = mode.yres;
+
+	switch (bpp) {
+	case 24:
+	case 18:
+		panel.gdfBytesPP = 4;
+		panel.gdfIndex = GDF_32BIT_X888RGB;
+		break;
+	case 16:
+		panel.gdfBytesPP = 2;
+		panel.gdfIndex = GDF_16BIT_565RGB;
+		break;
+	case 8:
+		panel.gdfBytesPP = 1;
+		panel.gdfIndex = GDF__8BIT_INDEX;
+		break;
+	default:
+		printf("MXSFB: Invalid BPP specified! (bpp = %i)\n", bpp);
+		return NULL;
+	}
+
+	panel.memSize = mode.xres * mode.yres * panel.gdfBytesPP;
+
+	/* Allocate framebuffer */
+	fb = malloc(panel.memSize);
+	if (!fb) {
+		printf("MXSFB: Error allocating framebuffer!\n");
+		return NULL;
+	}
+
+	/* Wipe framebuffer */
+	memset(fb, 0, panel.memSize);
+
+	panel.frameAdrs = (u32)fb;
+
+	printf("%s\n", panel.modeIdent);
+
+	/* Start framebuffer */
+	mxs_lcd_init(&panel, &mode, bpp);
+
+	return (void *)&panel;
 }

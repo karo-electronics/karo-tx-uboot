@@ -2,20 +2,7 @@
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
  *	Dave Liu <daveliu@freescale.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <malloc.h>
@@ -362,7 +349,6 @@ static void fm_init_qmi(struct fm_qmi_common *qmi)
 int fm_init_common(int index, struct ccsr_fman *reg)
 {
 	int rc;
-	char env_addr[32];
 #if defined(CONFIG_SYS_QE_FMAN_FW_IN_NOR)
 	void *addr = (void *)CONFIG_SYS_QE_FMAN_FW_ADDR;
 #elif defined(CONFIG_SYS_QE_FMAN_FW_IN_NAND)
@@ -416,8 +402,7 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 	rc = fman_upload_firmware(index, &reg->fm_imem, addr);
 	if (rc)
 		return rc;
-	sprintf(env_addr, "0x%lx", (long unsigned int)addr);
-	setenv("fman_ucode", env_addr);
+	setenv_addr("fman_ucode", addr);
 
 	fm_init_muram(index, &reg->muram);
 	fm_init_qmi(&reg->fm_qmi_common);

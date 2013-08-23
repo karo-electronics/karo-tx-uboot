@@ -5,19 +5,7 @@
  * authors: Andrzej Pietrasiewicz <andrzej.p@samsung.com>
  *	    Lukasz Majewski <l.majewski@samsung.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DFU_ENTITY_H_
@@ -52,14 +40,28 @@ struct mmc_internal_data {
 	unsigned int part;
 };
 
+struct nand_internal_data {
+	/* RAW programming */
+	u64 start;
+	u64 size;
+
+	unsigned int dev;
+	unsigned int part;
+};
+
 static inline unsigned int get_mmc_blk_size(int dev)
 {
 	return find_mmc_device(dev)->read_bl_len;
 }
 
-#define DFU_NAME_SIZE 32
-#define DFU_CMD_BUF_SIZE 128
-#define DFU_DATA_BUF_SIZE (1024*1024*4) /* 4 MiB */
+#define DFU_NAME_SIZE			32
+#define DFU_CMD_BUF_SIZE		128
+#ifndef CONFIG_SYS_DFU_DATA_BUF_SIZE
+#define CONFIG_SYS_DFU_DATA_BUF_SIZE		(1024*1024*8)	/* 8 MiB */
+#endif
+#ifndef CONFIG_SYS_DFU_MAX_FILE_SIZE
+#define CONFIG_SYS_DFU_MAX_FILE_SIZE	(4 << 20)	/* 4 MiB */
+#endif
 
 struct dfu_entity {
 	char			name[DFU_NAME_SIZE];
@@ -71,12 +73,32 @@ struct dfu_entity {
 
 	union {
 		struct mmc_internal_data mmc;
+		struct nand_internal_data nand;
 	} data;
 
-	int (*read_medium)(struct dfu_entity *dfu, void *buf, long *len);
-	int (*write_medium)(struct dfu_entity *dfu, void *buf, long *len);
+	int (*read_medium)(struct dfu_entity *dfu,
+			u64 offset, void *buf, long *len);
+
+	int (*write_medium)(struct dfu_entity *dfu,
+			u64 offset, void *buf, long *len);
+
+	int (*flush_medium)(struct dfu_entity *dfu);
 
 	struct list_head list;
+
+	/* on the fly state */
+	u32 crc;
+	u64 offset;
+	int i_blk_seq_num;
+	u8 *i_buf;
+	u8 *i_buf_start;
+	u8 *i_buf_end;
+	long r_left;
+	long b_left;
+
+	u32 bad_skip;	/* for nand use */
+
+	unsigned int inited:1;
 };
 
 int dfu_config_entities(char *s, char *interface, int num);
@@ -87,6 +109,8 @@ const char *dfu_get_dev_type(enum dfu_device_type t);
 const char *dfu_get_layout(enum dfu_layout l);
 struct dfu_entity *dfu_get_entity(int alt);
 char *dfu_extract_token(char** e, int *n);
+void dfu_trigger_reset(void);
+bool dfu_reset(void);
 
 int dfu_read(struct dfu_entity *de, void *buf, int size, int blk_seq_num);
 int dfu_write(struct dfu_entity *de, void *buf, int size, int blk_seq_num);
@@ -100,4 +124,15 @@ static inline int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *s)
 	return -1;
 }
 #endif
+
+#ifdef CONFIG_DFU_NAND
+extern int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s);
+#else
+static inline int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
+{
+	puts("NAND support not available!\n");
+	return -1;
+}
+#endif
+
 #endif /* __DFU_ENTITY_H_ */

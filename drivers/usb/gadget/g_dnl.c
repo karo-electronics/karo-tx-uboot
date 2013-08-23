@@ -4,19 +4,7 @@
  * Copyright (C) 2012 Samsung Electronics
  * Lukasz Majewski  <l.majewski@samsung.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <errno.h>
@@ -31,6 +19,7 @@
 
 #include "gadget_chips.h"
 #include "composite.c"
+#include "f_mass_storage.c"
 
 /*
  * One needs to define the following:
@@ -104,6 +93,8 @@ static int g_dnl_do_config(struct usb_configuration *c)
 	printf("GADGET DRIVER: %s\n", s);
 	if (!strcmp(s, "usb_dnl_dfu"))
 		ret = dfu_add(c);
+	else if (!strcmp(s, "usb_dnl_ums"))
+		ret = fsg_add(c);
 
 	return ret;
 }
@@ -120,6 +111,12 @@ static int g_dnl_config_register(struct usb_composite_dev *cdev)
 	};
 
 	return usb_add_config(cdev, &config);
+}
+
+__weak
+int g_dnl_bind_fixup(struct usb_device_descriptor *dev)
+{
+	return 0;
 }
 
 static int g_dnl_bind(struct usb_composite_dev *cdev)
@@ -144,6 +141,7 @@ static int g_dnl_bind(struct usb_composite_dev *cdev)
 	g_dnl_string_defs[1].id = id;
 	device_desc.iProduct = id;
 
+	g_dnl_bind_fixup(&device_desc);
 	ret = g_dnl_config_register(cdev);
 	if (ret)
 		goto error;
@@ -186,6 +184,9 @@ int g_dnl_register(const char *type)
 	int ret;
 
 	if (!strcmp(type, "dfu")) {
+		strcpy(name, shortname);
+		strcat(name, type);
+	} else if (!strcmp(type, "ums")) {
 		strcpy(name, shortname);
 		strcat(name, type);
 	} else {

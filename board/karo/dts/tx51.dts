@@ -10,7 +10,7 @@
  */
 
 /dts-v1/;
-/include/ ARCH_CPU_DTS
+#include "mx51.dtsi"
 
 / {
 	model = "Ka-Ro electronics TX51 module";

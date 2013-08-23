@@ -3,23 +3,7 @@
  *
  * (c) 2007 Pengutronix, Sascha Hauer <s.hauer@pengutronix.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SMC911X_H_
@@ -30,8 +14,7 @@
 #define DRIVERNAME "smc911x"
 
 #if defined (CONFIG_SMC911X_32_BIT) && \
-	defined (CONFIG_SMC911X_16_BIT) && \
-	defined(CONFIG_SMC911X_CPLD)
+	defined (CONFIG_SMC911X_16_BIT)
 #error "SMC911X: Only one of CONFIG_SMC911X_32_BIT and \
 	CONFIG_SMC911X_16_BIT shall be set"
 #endif
@@ -62,19 +45,6 @@ static inline void smc911x_reg_write(struct eth_device *dev,
 {
 	*(volatile u16 *)(dev->iobase + offset) = (u16)val;
 	*(volatile u16 *)(dev->iobase + offset + 2) = (u16)(val >> 16);
-}
-#elif defined(CONFIG_SMC911X_CPLD)
-#include <asm/arch/imx_spi_cpld.h>
-static inline u32 smc911x_reg_read(struct eth_device *dev, u32 offset)
-{
-	return cpld_reg_xfer(offset, 0x0, 1) | \
-		(cpld_reg_xfer(offset + 0x2, 0x0, 1) << 16);
-}
-static void smc911x_reg_write(struct eth_device *dev,
-			u32 offset, u32 val)
-{
-	cpld_reg_xfer(offset, val, 0);
-	cpld_reg_xfer(offset + 0x2, (val >> 16), 0);
 }
 #else
 #error "SMC911X: undefined bus width"
@@ -498,7 +468,7 @@ static void smc911x_reset(struct eth_device *dev)
 		while (timeout-- &&
 			!(smc911x_reg_read(dev, PMT_CTRL) & PMT_CTRL_READY))
 			udelay(10);
-		if (!timeout) {
+		if (timeout < 0) {
 			printf(DRIVERNAME
 				": timeout waiting for PM restore\n");
 			return;
@@ -514,7 +484,7 @@ static void smc911x_reset(struct eth_device *dev)
 	while (timeout-- && smc911x_reg_read(dev, E2P_CMD) & E2P_CMD_EPC_BUSY)
 		udelay(10);
 
-	if (!timeout) {
+	if (timeout < 0) {
 		printf(DRIVERNAME ": reset timeout\n");
 		return;
 	}

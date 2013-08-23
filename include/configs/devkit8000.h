@@ -9,23 +9,7 @@
  *
  * Configuration settings for the DevKit8000 board.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __CONFIG_H
@@ -354,13 +338,20 @@
 
 /* SPL OS boot options */
 #define CONFIG_SPL_OS_BOOT
-#define CONFIG_SPL_OS_BOOT_KEY	26
 
 #define CONFIG_CMD_SPL
 #define CONFIG_CMD_SPL_WRITE_SIZE       0x400 /* 1024 byte */
 #define CONFIG_CMD_SPL_NAND_OFS (CONFIG_SYS_NAND_SPL_KERNEL_OFFS+\
 					0x400000)
 #define CONFIG_SYS_NAND_SPL_KERNEL_OFFS 0x280000
+
+#define CONFIG_SPL_FAT_LOAD_KERNEL_NAME		"uImage"
+#define CONFIG_SPL_FAT_LOAD_ARGS_NAME		"args"
+
+#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	0x500 /* address 0xa0000 */
+#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR	0x8   /* address 0x1000 */
+#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	8     /* 4KB */
+
 #define CONFIG_SYS_SPL_ARGS_ADDR        (PHYS_SDRAM_1 + 0x100)
 
 #endif /* __CONFIG_H */

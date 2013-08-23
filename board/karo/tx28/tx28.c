@@ -15,10 +15,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -28,14 +24,12 @@
 #include <lcd.h>
 #include <netdev.h>
 #include <mmc.h>
-#include <imx_ssp_mmc.h>
 #include <linux/list.h>
 #include <linux/fb.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/arch/iomux-mx28.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/mxsfb.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 
@@ -134,14 +128,14 @@ int board_early_init_f(void)
 	random_init();
 
 	/* IO0 clock at 480MHz */
-	mx28_set_ioclk(MXC_IOCLK0, 480000);
+	mxs_set_ioclk(MXC_IOCLK0, 480000);
 	/* IO1 clock at 480MHz */
-	mx28_set_ioclk(MXC_IOCLK1, 480000);
+	mxs_set_ioclk(MXC_IOCLK1, 480000);
 
 	/* SSP0 clock at 96MHz */
-	mx28_set_sspclk(MXC_SSPCLK0, 96000, 0);
+	mxs_set_sspclk(MXC_SSPCLK0, 96000, 0);
 	/* SSP2 clock at 96MHz */
-	mx28_set_sspclk(MXC_SSPCLK2, 96000, 0);
+	mxs_set_sspclk(MXC_SSPCLK2, 96000, 0);
 
 	gpio_request_array(tx28_gpios, ARRAY_SIZE(tx28_gpios));
 	mxs_iomux_setup_multiple_pads(tx28_pads, ARRAY_SIZE(tx28_pads));
@@ -190,7 +184,7 @@ static int tx28_mmc_wp(int dev_no)
 
 int board_mmc_init(bd_t *bis)
 {
-	return mxsmmc_initialize(bis, 0, tx28_mmc_wp);
+	return mxsmmc_initialize(bis, 0, tx28_mmc_wp, NULL);
 }
 #endif /* CONFIG_CMD_MMC */
 
@@ -202,16 +196,20 @@ int board_mmc_init(bd_t *bis)
 #else
 #define FEC_MAX_IDX			0
 #endif
+#ifndef ETH_ALEN
+#define ETH_ALEN			6
+#endif
 
 static int fec_get_mac_addr(int index)
 {
-	u32 val1, val2;
 	int timeout = 1000;
 	struct mxs_ocotp_regs *ocotp_regs =
 		(struct mxs_ocotp_regs *)MXS_OCOTP_BASE;
 	u32 *cust = &ocotp_regs->hw_ocotp_cust0;
-	char mac[6 * 3];
+	u8 mac[ETH_ALEN];
 	char env_name[] = "eth.addr";
+	u32 val = 0;
+	int i;
 
 	if (index < 0 || index > FEC_MAX_IDX)
 		return -EINVAL;
@@ -227,20 +225,22 @@ static int fec_get_mac_addr(int index)
 		udelay(100);
 	}
 
-	val1 = readl(&cust[index * 8]);
-	val2 = readl(&cust[index * 8 + 4]);
-	if ((val1 | val2) == 0)
+	for (i = 0; i < sizeof(mac); i++) {
+		int shift = 24 - i % 4 * 8;
+
+		if (i % 4 == 0)
+			val = readl(&cust[index * 8 + i]);
+		mac[i] = val >> shift;
+	}
+	if (!is_valid_ether_addr(mac))
 		return 0;
-	snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x",
-		(val1 >> 24) & 0xFF, (val1 >> 16) & 0xFF,
-		(val1 >> 8) & 0xFF, (val1 >> 0) & 0xFF,
-		(val2 >> 24) & 0xFF, (val2 >> 16) & 0xFF);
+
 	if (index == 0)
 		snprintf(env_name, sizeof(env_name), "ethaddr");
 	else
 		snprintf(env_name, sizeof(env_name), "eth%daddr", index);
 
-	setenv(env_name, mac);
+	eth_setenv_enetaddr(env_name, mac);
 	return 0;
 }
 #endif /* CONFIG_GET_FEC_MAC_ADDR_FROM_IIM */
@@ -352,6 +352,16 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
+static ushort tx28_cmap[256];
+vidinfo_t panel_info = {
+	/* set to max. size supported by SoC */
+	.vl_col = 1600,
+	.vl_row = 1200,
+
+	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.cmap = tx28_cmap,
+};
+
 static struct fb_videomode tx28_fb_modes[] = {
 	{
 		/* Standard VGA timing */
@@ -366,7 +376,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 31,
 		.vsync_len	= 2,
 		.lower_margin	= 12,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -385,7 +394,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 32,
 		.vsync_len	= 3,
 		.lower_margin	= 10,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -403,7 +411,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 18 - 3,
 		.vsync_len	= 3,
 		.lower_margin	= 4,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -421,7 +428,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 2,
 		.vsync_len	= 10,
 		.lower_margin	= 2,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -439,7 +445,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 35 - 2,
 		.vsync_len	= 2,
 		.lower_margin	= 525 - 480 - 35,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -457,7 +462,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 16, /* 15 according to datasheet */
 		.vsync_len	= 3, /* TVP -> 1>x>5 */
 		.lower_margin	= 4, /* 4.5 according to datasheet */
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -475,12 +479,10 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 35 - 2,
 		.vsync_len	= 2,
 		.lower_margin	= 525 - 480 - 35,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
 		/* unnamed entry for assigning parameters parsed from 'video_mode' string */
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 };
@@ -509,7 +511,6 @@ void lcd_enable(void)
 
 void lcd_disable(void)
 {
-	mxsfb_disable();
 }
 
 void lcd_panel_disable(void)
@@ -701,7 +702,6 @@ void lcd_ctrl_init(void *lcdbase)
 
 	if (karo_load_splashimage(0) == 0) {
 		debug("Initializing LCD controller\n");
-		mxsfb_init(p, PIX_FMT_RGB24, color_depth);
 		video_hw_init(lcdbase);
 	} else {
 		debug("Skipping initialization of LCD controller\n");

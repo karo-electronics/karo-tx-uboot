@@ -4,20 +4,7 @@
  * Copyright (C) 2012 Marek Vasut <marex@denx.de>
  * on behalf of DENX Software Engineering GmbH
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 #ifndef __SC_SPS_1_H__
 #define __SC_SPS_1_H__
@@ -158,7 +145,6 @@
 #ifdef CONFIG_CMD_NET
 #define CONFIG_ETHPRIME			"FEC0"
 #define CONFIG_FEC_MXC
-#define CONFIG_FEC_MXC_MULTI
 #define CONFIG_MII
 #define CONFIG_FEC_XCV_TYPE		RMII
 #define CONFIG_PHYLIB
@@ -171,7 +157,8 @@
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_MXS
-#define CONFIG_EHCI_MXS_PORT		0
+#define CONFIG_EHCI_MXS_PORT0
+#define CONFIG_USB_MAX_CONTROLLER_COUNT	1
 #define CONFIG_EHCI_IS_TDI
 #define CONFIG_USB_STORAGE
 #endif

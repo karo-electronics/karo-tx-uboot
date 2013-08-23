@@ -22,28 +22,13 @@
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Alex Zuepke <azu@sysgo.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #include <common.h>
 #include <div64.h>
 #include <asm/io.h>
+#include <asm/arch/hardware.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -54,7 +39,7 @@ struct scu_timer {
 };
 
 static struct scu_timer *timer_base =
-			      (struct scu_timer *) CONFIG_SCUTIMER_BASEADDR;
+			      (struct scu_timer *)ZYNQ_SCUTIMER_BASEADDR;
 
 #define SCUTIMER_CONTROL_PRESCALER_MASK	0x0000FF00 /* Prescaler */
 #define SCUTIMER_CONTROL_PRESCALER_SHIFT	8
@@ -114,15 +99,43 @@ ulong get_timer_masked(void)
 
 void __udelay(unsigned long usec)
 {
-	unsigned long long tmp;
-	ulong tmo;
+	u32 countticks;
+	u32 timeend;
+	u32 timediff;
+	u32 timenow;
 
-	tmo = usec / (1000000 / CONFIG_SYS_HZ);
-	tmp = get_ticks() + tmo; /* Get current timestamp */
+	if (usec == 0)
+		return;
 
-	while (get_ticks() < tmp) { /* Loop till event */
-		 /* NOP */;
-	}
+	countticks = (u32) (((unsigned long long) TIMER_TICK_HZ * usec) /
+								1000000);
+
+	/* decrementing timer */
+	timeend = readl(&timer_base->counter) - countticks;
+
+#if TIMER_LOAD_VAL != 0xFFFFFFFF
+	/* do not manage multiple overflow */
+	if (countticks >= TIMER_LOAD_VAL)
+		countticks = TIMER_LOAD_VAL - 1;
+#endif
+
+	do {
+		timenow = readl(&timer_base->counter);
+
+		if (timenow >= timeend) {
+			/* normal case */
+			timediff = timenow - timeend;
+		} else {
+			if ((TIMER_LOAD_VAL - timeend + timenow) <=
+								countticks) {
+				/* overflow */
+				timediff = TIMER_LOAD_VAL - timeend + timenow;
+			} else {
+				/* missed the exact match */
+				break;
+			}
+		}
+	} while (timediff > 0);
 }
 
 /* Timer without interrupts */

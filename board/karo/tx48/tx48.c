@@ -412,7 +412,6 @@ static struct da8xx_panel tx48_lcd_panel = {
 void *lcd_base;			/* Start of framebuffer memory	*/
 void *lcd_console_address;	/* Start of console buffer	*/
 
-int lcd_line_length;
 int lcd_color_fg;
 int lcd_color_bg;
 
@@ -654,7 +653,7 @@ static void tx48_set_cpu_clock(void)
 	if (cpu_clk == 0 || cpu_clk == mpu_clk_rate() / 1000000)
 		return;
 
-	mpu_pll_config(cpu_clk);
+	mpu_pll_config_val(cpu_clk);
 
 	printf("CPU clock set to %lu.%03lu MHz\n",
 		mpu_clk_rate() / 1000000,
@@ -731,8 +730,8 @@ void s_init(void)
 }
 
 static struct cpsw_platform_data cpsw_data = {
-	.mdio_base		= AM335X_CPSW_MDIO_BASE,
-	.cpsw_base		= AM335X_CPSW_BASE,
+	.mdio_base		= CPSW_MDIO_BASE,
+	.cpsw_base		= CPSW_BASE,
 	.mdio_div		= 0xff,
 	.channels		= 8,
 	.cpdma_reg_ofs		= 0x800,
@@ -767,7 +766,7 @@ int board_eth_init(bd_t *bis)
 	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
 
 	if (is_valid_ether_addr(mac_addr)) {
-		debug("MAC addr set to: %pM\n", mac_addr);
+		printf("MAC addr from fuse: %pM\n", mac_addr);
 		eth_setenv_enetaddr("ethaddr", mac_addr);
 	} else {
 		printf("ERROR: Did not find a valid mac address in e-fuse\n");

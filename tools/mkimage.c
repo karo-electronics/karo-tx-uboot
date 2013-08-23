@@ -5,20 +5,7 @@
  * DENX Software Engineering
  * Wolfgang Denk, wd@denx.de
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "mkimage.h"
@@ -183,6 +170,11 @@ main (int argc, char **argv)
 					genimg_get_arch_id (*++argv)) < 0)
 					usage ();
 				goto NXTARG;
+			case 'c':
+				if (--argc <= 0)
+					usage();
+				params.comment = *++argv;
+				goto NXTARG;
 			case 'C':
 				if ((--argc <= 0) ||
 					(params.comp =
@@ -240,19 +232,34 @@ main (int argc, char **argv)
 			case 'f':
 				if (--argc <= 0)
 					usage ();
+				params.datafile = *++argv;
+				/* no break */
+			case 'F':
 				/*
 				 * The flattened image tree (FIT) format
 				 * requires a flattened device tree image type
 				 */
 				params.type = IH_TYPE_FLATDT;
-				params.datafile = *++argv;
 				params.fflag = 1;
+				goto NXTARG;
+			case 'k':
+				if (--argc <= 0)
+					usage();
+				params.keydir = *++argv;
+				goto NXTARG;
+			case 'K':
+				if (--argc <= 0)
+					usage();
+				params.keydest = *++argv;
 				goto NXTARG;
 			case 'n':
 				if (--argc <= 0)
 					usage ();
 				params.imagename = *++argv;
 				goto NXTARG;
+			case 'r':
+				params.require_keys = 1;
+				break;
 			case 'R':
 				if (--argc <= 0)
 					usage();
@@ -623,8 +630,20 @@ usage ()
 			 "          -d ==> use image data from 'datafile'\n"
 			 "          -x ==> set XIP (execute in place)\n",
 		params.cmdname);
-	fprintf (stderr, "       %s [-D dtc_options] -f fit-image.its fit-image\n",
+	fprintf(stderr, "       %s [-D dtc_options] [-f fit-image.its|-F] fit-image\n",
 		params.cmdname);
+	fprintf(stderr, "          -D => set options for device tree compiler\n"
+			"          -f => input filename for FIT source\n");
+#ifdef CONFIG_FIT_SIGNATURE
+	fprintf(stderr, "Signing / verified boot options: [-k keydir] [-K dtb] [ -c <comment>] [-r]\n"
+			"          -k => set directory containing private keys\n"
+			"          -K => write public keys to this .dtb file\n"
+			"          -c => add comment in signature node\n"
+			"          -F => re-sign existing FIT image\n"
+			"          -r => mark keys used as 'required' in dtb\n");
+#else
+	fprintf(stderr, "Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
+#endif
 	fprintf (stderr, "       %s -V ==> print version information and exit\n",
 		params.cmdname);
 

@@ -29,6 +29,7 @@ static int karo_load_part(const char *part, void *addr, size_t len)
 	struct mtd_device *dev;
 	struct part_info *part_info;
 	u8 part_num;
+	size_t actual;
 
 	debug("Initializing mtd_parts\n");
 	ret = mtdparts_init();
@@ -52,11 +53,16 @@ static int karo_load_part(const char *part, void *addr, size_t len)
 		len = part_info->size;
 	}
 	debug("Reading NAND partition '%s' to %p\n", part, addr);
-	ret = nand_read_skip_bad(&nand_info[0], part_info->offset, &len, addr);
+	ret = nand_read_skip_bad(&nand_info[0], part_info->offset, &len,
+				&actual, len, addr);
 	if (ret) {
 		printf("Failed to load partition '%s' to %p\n", part, addr);
 		return ret;
 	}
+	if (actual < len)
+		printf("Read only %u of %u bytes due to bad blocks\n",
+			actual, len);
+
 	debug("Read %u byte from partition '%s' @ offset %08x\n",
 		len, part, part_info->offset);
 	return 0;
@@ -121,6 +127,7 @@ int do_fbdump(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	struct part_info *part_info;
 	u8 part_num;
 	u_char *addr = (u_char *)gd->fb_base;
+	size_t actual;
 
 	if (argc > 2)
 		return CMD_RET_USAGE;
@@ -164,11 +171,16 @@ int do_fbdump(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	}
 
 	ret = nand_write_skip_bad(&nand_info[0], part_info->offset,
-				&fbsize, addr, WITH_DROP_FFS);
+				&fbsize, &actual, part_info->size,
+				addr, WITH_DROP_FFS);
 	if (ret) {
 		printf("Failed to write partition '%s'\n", part);
 		return ret;
 	}
+	if (actual < fbsize)
+		printf("Wrote only %u of %u bytes due to bad blocks\n",
+			actual, fbsize);
+
 	debug("Wrote %u byte from %p to partition '%s' @ offset %08x\n",
 		fbsize, addr, part, part_info->offset);
 

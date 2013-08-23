@@ -2,23 +2,7 @@
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -98,7 +82,8 @@ void print_size(unsigned long long size, const char *s)
  */
 #define MAX_LINE_LENGTH_BYTES (64)
 #define DEFAULT_LINE_LENGTH_BYTES (16)
-int print_buffer (ulong addr, void* data, uint width, uint count, uint linelen)
+int print_buffer(ulong addr, const void *data, uint width, uint count,
+		 uint linelen)
 {
 	/* linebuf as a union causes proper alignment */
 	union linebuf {
@@ -114,14 +99,15 @@ int print_buffer (ulong addr, void* data, uint width, uint count, uint linelen)
 		linelen = DEFAULT_LINE_LENGTH_BYTES / width;
 
 	while (count) {
+		uint thislinelen = linelen;
 		printf("%08lx:", addr);
 
 		/* check for overflow condition */
-		if (count < linelen)
-			linelen = count;
+		if (count < thislinelen)
+			thislinelen = count;
 
 		/* Copy from memory into linebuf and print hex values */
-		for (i = 0; i < linelen; i++) {
+		for (i = 0; i < thislinelen; i++) {
 			uint32_t x;
 			if (width == 4)
 				x = lb.ui[i] = *(volatile uint32_t *)data;
@@ -133,8 +119,15 @@ int print_buffer (ulong addr, void* data, uint width, uint count, uint linelen)
 			data += width;
 		}
 
+		while (thislinelen < linelen) {
+			/* fill line with whitespace for nice ASCII print */
+			for (i=0; i<width*2+1; i++)
+				puts(" ");
+			linelen--;
+		}
+
 		/* Print data in ASCII characters */
-		for (i = 0; i < linelen * width; i++) {
+		for (i = 0; i < thislinelen * width; i++) {
 			if (!isprint(lb.uc[i]) || lb.uc[i] >= 0x80)
 				lb.uc[i] = '.';
 		}
@@ -142,8 +135,8 @@ int print_buffer (ulong addr, void* data, uint width, uint count, uint linelen)
 		printf("    %s\n", lb.uc);
 
 		/* update references */
-		addr += linelen * width;
-		count -= linelen;
+		addr += thislinelen * width;
+		count -= thislinelen;
 
 		if (ctrlc())
 			return -1;

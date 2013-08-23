@@ -2,23 +2,7 @@
  *  (C) Copyright 2010-2012
  *  NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -46,7 +30,7 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 
 /* SPI */
-#define CONFIG_TEGRA_SPI
+#define CONFIG_TEGRA20_SFLASH
 #define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_WINBOND
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
@@ -54,26 +38,17 @@
 #define CONFIG_CMD_SF
 
 /* I2C */
-#define CONFIG_TEGRA_I2C
+#define CONFIG_SYS_I2C_TEGRA
 #define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_MAX_I2C_BUS		4
 #define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_CMD_I2C
+#define CONFIG_SYS_I2C
 
 /* SD/MMC */
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_TEGRA_MMC
 #define CONFIG_CMD_MMC
-
-#define CONFIG_DOS_PARTITION
-#define CONFIG_EFI_PARTITION
-#define CONFIG_FS_EXT4
-#define CONFIG_FS_FAT
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_FS_GENERIC
 
 /* Environment in SPI */
 #define CONFIG_ENV_IS_IN_SPI_FLASH

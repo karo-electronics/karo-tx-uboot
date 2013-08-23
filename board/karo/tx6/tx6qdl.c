@@ -30,12 +30,12 @@
 #include <fsl_esdhc.h>
 #include <video_fb.h>
 #include <ipu.h>
-#include <mx2fb.h>
-#include <linux/fb.h>
+#include <mxcfb.h>
 #include <i2c.h>
+#include <linux/fb.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
-#include <asm/arch/iomux-mx6.h>
+#include <asm/arch/mx6-pins.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
@@ -60,7 +60,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define MUX_CFG_SION			IOMUX_PAD(0, 0, MUX_CONFIG_SION, 0, 0, 0)
+#define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 static const iomux_v3_cfg_t tx6qdl_pads[] = {
 	/* NAND flash pads */
@@ -200,7 +200,7 @@ static void print_reset_cause(void)
 int read_cpu_temperature(void);
 int check_cpu_temperature(int boot);
 
-static void print_cpuinfo(void)
+static void tx6qdl_print_cpuinfo(void)
 {
 	u32 cpurev = get_cpu_rev();
 	char *cpu_str = "?";
@@ -368,11 +368,12 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 	MX6_PAD_SD3_CLK__GPIO_7_3,
 };
 
-static struct tx6q_esdhc_cfg {
+static struct tx6_esdhc_cfg {
 	const iomux_v3_cfg_t *pads;
 	int num_pads;
 	enum mxc_clock clkid;
 	struct fsl_esdhc_cfg cfg;
+	int cd_gpio;
 } tx6qdl_esdhc_cfg[] = {
 	{
 		.pads = mmc0_pads,
@@ -380,9 +381,9 @@ static struct tx6q_esdhc_cfg {
 		.clkid = MXC_ESDHC_CLK,
 		.cfg = {
 			.esdhc_base = (void __iomem *)USDHC1_BASE_ADDR,
-			.cd_gpio = IMX_GPIO_NR(7, 2),
-			.wp_gpio = -EINVAL,
+			.max_bus_width = 4,
 		},
+		.cd_gpio = IMX_GPIO_NR(7, 2),
 	},
 	{
 		.pads = mmc1_pads,
@@ -390,28 +391,28 @@ static struct tx6q_esdhc_cfg {
 		.clkid = MXC_ESDHC2_CLK,
 		.cfg = {
 			.esdhc_base = (void __iomem *)USDHC2_BASE_ADDR,
-			.cd_gpio = IMX_GPIO_NR(7, 3),
-			.wp_gpio = -EINVAL,
+			.max_bus_width = 4,
 		},
+		.cd_gpio = IMX_GPIO_NR(7, 3),
 	},
 };
 
-static inline struct tx6q_esdhc_cfg *to_tx6q_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+static inline struct tx6_esdhc_cfg *to_tx6_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
 {
 	void *p = cfg;
 
-	return p - offsetof(struct tx6q_esdhc_cfg, cfg);
+	return p - offsetof(struct tx6_esdhc_cfg, cfg);
 }
 
 int board_mmc_getcd(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = mmc->priv;
+	struct tx6_esdhc_cfg *cfg = to_tx6_esdhc_cfg(mmc->priv);
 
 	if (cfg->cd_gpio < 0)
 		return cfg->cd_gpio;
 
 	debug("SD card %d is %spresent\n",
-		to_tx6q_esdhc_cfg(cfg) - tx6qdl_esdhc_cfg,
+		cfg - tx6qdl_esdhc_cfg,
 		gpio_get_value(cfg->cd_gpio) ? "NOT " : "");
 	return !gpio_get_value(cfg->cd_gpio);
 }
@@ -422,17 +423,25 @@ int board_mmc_init(bd_t *bis)
 
 	for (i = 0; i < ARRAY_SIZE(tx6qdl_esdhc_cfg); i++) {
 		struct mmc *mmc;
-		struct fsl_esdhc_cfg *cfg = &tx6qdl_esdhc_cfg[i].cfg;
+		struct tx6_esdhc_cfg *cfg = &tx6qdl_esdhc_cfg[i];
+		int ret;
 
 		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
 			break;
 
-		cfg->sdhc_clk = mxc_get_clock(tx6qdl_esdhc_cfg[i].clkid);
-		imx_iomux_v3_setup_multiple_pads(tx6qdl_esdhc_cfg[i].pads,
-						tx6qdl_esdhc_cfg[i].num_pads);
+		cfg->cfg.sdhc_clk = mxc_get_clock(cfg->clkid);
+		imx_iomux_v3_setup_multiple_pads(cfg->pads, cfg->num_pads);
+
+		ret = gpio_request_one(cfg->cd_gpio,
+				GPIOF_INPUT, "MMC CD");
+		if (ret) {
+			printf("Error %d requesting GPIO%d_%d\n",
+				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
+			continue;
+		}
 
 		debug("%s: Initializing MMC slot %d\n", __func__, i);
-		fsl_esdhc_initialize(bis, cfg);
+		fsl_esdhc_initialize(bis, &cfg->cfg);
 
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
@@ -731,6 +740,7 @@ void lcd_enable(void)
 	lcd_is_enabled = 0;
 
 	karo_load_splashimage(1);
+
 	if (lcd_enabled) {
 		debug("Switching LCD on\n");
 		gpio_set_value(TX6_LCD_PWR_GPIO, 1);
@@ -738,6 +748,21 @@ void lcd_enable(void)
 		gpio_set_value(TX6_LCD_RST_GPIO, 1);
 		udelay(300000);
 		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, 0);
+	}
+}
+
+void lcd_disable(void)
+{
+	printf("Disabling LCD\n");
+}
+
+void lcd_panel_disable(void)
+{
+	if (lcd_enabled) {
+		debug("Switching LCD off\n");
+		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, 1);
+		gpio_set_value(TX6_LCD_RST_GPIO, 0);
+		gpio_set_value(TX6_LCD_PWR_GPIO, 0);
 	}
 }
 
@@ -859,6 +884,7 @@ void lcd_ctrl_init(void *lcdbase)
 					yres_set = 1;
 				} else if (!bpp_set) {
 					switch (val) {
+					case 32:
 					case 24:
 						if (pix_fmt == IPU_PIX_FMT_LVDS666)
 							pix_fmt = IPU_PIX_FMT_LVDS888;
@@ -953,7 +979,8 @@ void lcd_ctrl_init(void *lcdbase)
 	if (pix_fmt != IPU_PIX_FMT_RGB24) {
 		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
 		/* enable LDB & DI0 clock */
-		writel(readl(&ccm_regs->CCGR3) | (3 << 12) | (3 << 2),
+		writel(readl(&ccm_regs->CCGR3) | MXC_CCM_CCGR3_LDB_DI0_MASK |
+			MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK,
 			&ccm_regs->CCGR3);
 	}
 
@@ -1010,7 +1037,6 @@ static void tx6qdl_set_cpu_clock(void)
 static void tx6_init_mac(void)
 {
 	u8 mac[ETH_ALEN];
-	char mac_str[ETH_ALEN * 3] = "";
 
 	imx_get_mac_from_fuse(-1, mac);
 	if (!is_valid_ether_addr(mac)) {
@@ -1018,11 +1044,8 @@ static void tx6_init_mac(void)
 		return;
 	}
 
-	snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	setenv("ethaddr", mac_str);
-	printf("MAC addr from fuse: %02x:%02x:%02x:%02x:%02x:%02x\n",
-		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	eth_setenv_enetaddr("ethaddr", mac);
+	printf("MAC addr from fuse: %pM\n", mac);
 }
 
 int board_late_init(void)
@@ -1067,7 +1090,7 @@ int checkboard(void)
 	u32 cpurev = get_cpu_rev();
 	int cpu_variant = (cpurev >> 12) & 0xff;
 
-	print_cpuinfo();
+	tx6qdl_print_cpuinfo();
 
 	printf("Board: Ka-Ro TX6%c-%dxx%d\n",
 		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
@@ -1080,8 +1103,8 @@ int checkboard(void)
 #ifdef CONFIG_SERIAL_TAG
 void get_board_serial(struct tag_serialnr *serialnr)
 {
-	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
-	struct fuse_bank0_regs *fuse = (void *)iim->bank[0].fuse_regs;
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank0_regs *fuse = (void *)ocotp->bank[0].fuse_regs;
 
 	serialnr->low = readl(&fuse->cfg0);
 	serialnr->high = readl(&fuse->cfg1);

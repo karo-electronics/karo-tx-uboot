@@ -8,23 +8,7 @@
  *
  * (C) Copyright 2005-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define DEBUG */
@@ -35,7 +19,7 @@
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-
+#include <asm/arch/sys_proto.h>
 #include "ipu_regs.h"
 
 enum csc_type_t {
@@ -898,7 +882,7 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	debug("panel size = %d x %d\n", width, height);
 
 	if ((v_sync_width == 0) || (h_sync_width == 0))
-		return -EINVAL;
+		return EINVAL;
 
 	adapt_panel_to_ipu_restricitions(&pixel_clk, width, height,
 					 h_start_width, h_end_width,
@@ -937,7 +921,7 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				}
 			}
 		}
-		clk_set_parent(g_pixel_clk[disp], g_di_clk[disp]);
+		clk_set_parent(g_pixel_clk[disp], g_ldb_clk);
 	} else {
 		if (clk_get_usecount(g_pixel_clk[disp]) != 0)
 			clk_set_parent(g_pixel_clk[disp], g_ipu_clk);

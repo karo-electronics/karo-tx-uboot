@@ -1,19 +1,15 @@
 /*
  * Copyright (C) 2012 <LW@KARO-electronics.de>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2.
+ * SPDX-License-Identifier:      GPL-2.0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
  */
-#ifndef __TX6_H
-#define __TX6_H
+
+#ifndef __CONFIG_H
+#define __CONFIG_H
 
 #include <asm/sizes.h>
+#include <asm/arch/imx-regs.h>
 
 /*
  * Ka-Ro TX6 board - SoC configuration
@@ -31,7 +27,6 @@
 #ifndef CONFIG_MFG
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
-#define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
@@ -199,6 +194,7 @@
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
 #define CONFIG_CMD_I2C
+#define CONFIG_CMD_MEMTEST
 
 /*
  * Serial Driver
@@ -221,6 +217,7 @@
 #ifdef CONFIG_FEC_MXC
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
+#define CONFIG_SYS_CACHELINE_SIZE	64
 
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CONFIG_FEC_MXC_PHYADDR		0
@@ -352,9 +349,5 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
 					GENERATED_GBL_DATA_SIZE)
-
-#ifdef CONFIG_CMD_IIM
-#define CONFIG_IMX_IIM
-#endif
 
 #endif /* __CONFIG_H */

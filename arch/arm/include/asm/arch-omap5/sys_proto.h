@@ -2,20 +2,7 @@
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SYS_PROTO_H_
@@ -23,10 +10,16 @@
 
 #include <asm/arch/omap.h>
 #include <asm/io.h>
-#include <asm/arch/clocks.h>
+#include <asm/arch/clock.h>
 #include <asm/omap_common.h>
-#include <asm/arch/mux_omap5.h>
-#include <asm/arch/clocks.h>
+#include <asm/arch/clock.h>
+
+DECLARE_GLOBAL_DATA_PTR;
+
+struct pad_conf_entry {
+	u32 offset;
+	u32 val;
+};
 
 struct omap_sysinfo {
 	char *board_string;
@@ -44,7 +37,7 @@ u32 wait_on_value(u32, u32, void *, u32);
 void sdelay(unsigned long);
 void setup_clocks_for_console(void);
 void prcm_init(void);
-void bypass_dpll(u32 *const base);
+void bypass_dpll(u32 const base);
 void freq_update_core(void);
 u32 get_sys_clk_freq(void);
 u32 omap5_ddr_clk(void);
@@ -52,20 +45,17 @@ void cancel_out(u32 *num, u32 *den, u32 den_limit);
 void sdram_init(void);
 u32 omap_sdram_size(void);
 u32 cortex_rev(void);
+void save_omap_boot_params(void);
 void init_omap_revision(void);
 void do_io_settings(void);
-void omap_vc_init(u16 speed_khz);
+void sri2c_init(void);
+void gpi2c_init(void);
 int omap_vc_bypass_send_value(u8 sa, u8 reg_addr, u8 reg_data);
 u32 warm_reset(void);
 void force_emif_self_refresh(void);
-
-/*
- * This is used to verify if the configuration header
- * was executed by Romcode prior to control of transfer
- * to the bootloader. SPL is responsible for saving and
- * passing this to the u-boot.
- */
-extern struct omap_boot_parameters boot_params;
+void get_ioregs(const struct ctrl_ioregs **regs);
+void srcomp_enable(void);
+void setup_warmreset_time(void);
 
 static inline u32 running_from_sdram(void)
 {
@@ -85,7 +75,7 @@ static inline u8 uboot_loaded_by_spl(void)
 	 * variable by both SPL and u-boot.Check out for CHSETTINGS, which is a
 	 * mandatory section if CH is present.
 	 */
-	if ((boot_params.ch_flags) & (CH_FLAGS_CHSETTINGS))
+	if ((gd->arch.omap_boot_params.ch_flags) & (CH_FLAGS_CHSETTINGS))
 		return 0;
 	else
 		return running_from_sdram();
@@ -116,4 +106,13 @@ static inline u32 omap_hw_init_context(void)
 #endif
 }
 
+static inline u32 div_round_up(u32 num, u32 den)
+{
+	return (num + den - 1)/den;
+}
+
+static inline u32 usec_to_32k(u32 usec)
+{
+	return div_round_up(32768 * usec, 1000000);
+}
 #endif

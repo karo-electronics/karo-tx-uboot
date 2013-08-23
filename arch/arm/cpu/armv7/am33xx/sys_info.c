@@ -9,15 +9,7 @@
  *      Richard Woodruff <r-woodruff2@ti.com>
  *      Syed Mohammed Khasim <khasim@ti.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR /PURPOSE.  See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -113,8 +105,11 @@ int print_cpuinfo(void)
 	const struct cm_wkuppll *cmwkup = (struct cm_wkuppll *)CM_WKUP;
 
 	switch (get_cpu_type()) {
-	case AM335X_ID:
+	case AM335X:
 		cpu_s = "AM335X";
+		break;
+	case TI81XX:
+		cpu_s = "TI81XX";
 		break;
 	default:
 		cpu_s = "Unknown cpu type";
@@ -137,8 +132,7 @@ int print_cpuinfo(void)
 		sec_s = "?";
 	}
 
-	printf("%s-%s rev %d\n",
-			cpu_s, sec_s, get_cpu_rev());
+	printf("%s-%s rev %d\n", cpu_s, sec_s, get_cpu_rev());
 
 	clk = get_sysboot_freq();
 	printf("OSC clk: %4lu.%03lu MHz\n",

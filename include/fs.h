@@ -21,6 +21,7 @@
 #define FS_TYPE_ANY	0
 #define FS_TYPE_FAT	1
 #define FS_TYPE_EXT	2
+#define FS_TYPE_SANDBOX	3
 
 /*
  * Tell the fs layer which block device an partition to use for future
@@ -61,5 +62,7 @@ int do_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 		int fstype, int cmdline_base);
 int do_ls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
 		int fstype);
+int do_save(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[],
+		int fstype, int cmdline_base);
 
 #endif /* _FS_H */

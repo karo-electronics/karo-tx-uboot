@@ -3,23 +3,7 @@
  * (C) Copyright 2008
  * Graeme Russ, graeme.russ@gmail.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #include <asm/ibmpc.h>
@@ -37,11 +21,29 @@
 #define CONFIG_SYS_COREBOOT
 #define CONFIG_SHOW_BOOT_PROGRESS
 #define CONFIG_LAST_STAGE_INIT
-#define CONFIG_X86_NO_RESET_VECTOR
 #define CONFIG_SYS_VSNPRINTF
-#define CONFIG_INTEL_CORE_ARCH	/* Sandy bridge and ivy bridge chipsets. */
 #define CONFIG_ZBOOT_32
 #define CONFIG_PHYSMEM
+#define CONFIG_SYS_EARLY_PCI_INIT
+
+#define CONFIG_LMB
+#define CONFIG_OF_LIBFDT
+#define CONFIG_OF_CONTROL
+#define CONFIG_OF_SEPARATE
+#define CONFIG_DEFAULT_DEVICE_TREE	link
+
+#define CONFIG_BOOTSTAGE
+#define CONFIG_BOOTSTAGE_REPORT
+#define CONFIG_BOOTSTAGE_FDT
+#define CONFIG_CMD_BOOTSTAGE
+/* Place to stash bootstage data from first-stage U-Boot */
+#define CONFIG_BOOTSTAGE_STASH		0x0110f000
+#define CONFIG_BOOTSTAGE_STASH_SIZE	0x7fc
+#define CONFIG_BOOTSTAGE_USER_COUNT	60
+
+#define CONFIG_LZO
+#undef CONFIG_ZLIB
+#undef CONFIG_GZIP
 
 /*-----------------------------------------------------------------------
  * Watchdog Configuration
@@ -72,7 +74,8 @@
 #endif
 
 /* Generic TPM interfaced through LPC bus */
-#define CONFIG_GENERIC_LPC_TPM
+#define CONFIG_TPM
+#define CONFIG_TPM_TIS_LPC
 #define CONFIG_TPM_TIS_BASE_ADDRESS        0xfed40000
 
 /*-----------------------------------------------------------------------
@@ -149,6 +152,13 @@
  */
 #include <config_cmd_default.h>
 
+#define CONFIG_TRACE
+#define CONFIG_CMD_TRACE
+#define CONFIG_TRACE_BUFFER_SIZE	(16 << 20)
+#define CONFIG_TRACE_EARLY_SIZE		(8 << 20)
+#define CONFIG_TRACE_EARLY
+#define CONFIG_TRACE_EARLY_ADDR		0x01400000
+
 #define CONFIG_CMD_BDI
 #define CONFIG_CMD_BOOTD
 #define CONFIG_CMD_CONSOLE
@@ -174,6 +184,8 @@
 #define CONFIG_CMD_SAVEENV
 #define CONFIG_CMD_SETGETDCR
 #define CONFIG_CMD_SOURCE
+#define CONFIG_CMD_TIME
+#define CONFIG_CMD_GETTIME
 #define CONFIG_CMD_XIMG
 #define CONFIG_CMD_SCSI
 
@@ -210,7 +222,6 @@
 #define CONFIG_SYS_MEMTEST_END			0x01000000
 #define CONFIG_SYS_LOAD_ADDR			0x100000
 #define CONFIG_SYS_HZ				1000
-#define CONFIG_SYS_X86_ISR_TIMER
 
 /*-----------------------------------------------------------------------
  * SDRAM Configuration
@@ -227,8 +238,9 @@
  * CPU Features
  */
 
-#define CONFIG_SYS_GENERIC_TIMER
+#define CONFIG_SYS_X86_TSC_TIMER
 #define CONFIG_SYS_PCAT_INTERRUPTS
+#define CONFIG_SYS_PCAT_TIMER
 #define CONFIG_SYS_NUM_IRQS			16
 
 /*-----------------------------------------------------------------------
@@ -252,10 +264,16 @@
 /*-----------------------------------------------------------------------
  * FLASH configuration
  */
+#define CONFIG_ICH_SPI
+#define CONFIG_SPI_FLASH
+#define CONFIG_SPI_FLASH_MACRONIX
+#define CONFIG_SPI_FLASH_WINBOND
+#define CONFIG_SPI_FLASH_GIGADEVICE
 #define CONFIG_SYS_NO_FLASH
-#undef CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_MAX_FLASH_SECT		1
-#define CONFIG_SYS_MAX_FLASH_BANKS		1
+#define CONFIG_CMD_SF
+#define CONFIG_CMD_SF_TEST
+#define CONFIG_CMD_SPI
+#define CONFIG_SPI
 
 /*-----------------------------------------------------------------------
  * Environment configuration
@@ -267,6 +285,23 @@
  * PCI configuration
  */
 #define CONFIG_PCI
+
+/*-----------------------------------------------------------------------
+ * USB configuration
+ */
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_PCI
+#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS     12
+#define CONFIG_USB_MAX_CONTROLLER_COUNT        2
+#define CONFIG_USB_STORAGE
+#define CONFIG_USB_KEYBOARD
+#define CONFIG_SYS_USB_EVENT_POLL
+
+#define CONFIG_USB_HOST_ETHER
+#define CONFIG_USB_ETHER_ASIX
+#define CONFIG_USB_ETHER_SMSC95XX
+
+#define CONFIG_CMD_USB
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	CONFIG_STD_DEVICES_SETTINGS

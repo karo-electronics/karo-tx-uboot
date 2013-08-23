@@ -5,23 +5,7 @@
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * aloong with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PCI_H
@@ -462,7 +446,7 @@ struct pci_region {
 #define PCI_REGION_SYS_MEMORY	0x00000100	/* System memory */
 #define PCI_REGION_RO		0x00000200	/* Read-only memory */
 
-extern __inline__ void pci_set_region(struct pci_region *reg,
+static inline void pci_set_region(struct pci_region *reg,
 				      pci_addr_t bus_start,
 				      phys_addr_t phys_start,
 				      pci_size_t size,
@@ -548,7 +532,7 @@ struct pci_controller {
 	void *priv_data;
 };
 
-extern __inline__ void pci_set_ops(struct pci_controller *hose,
+static inline void pci_set_ops(struct pci_controller *hose,
 				   int (*read_byte)(struct pci_controller*,
 						    pci_dev_t, int where, u8 *),
 				   int (*read_word)(struct pci_controller*,
@@ -569,7 +553,9 @@ extern __inline__ void pci_set_ops(struct pci_controller *hose,
 	hose->write_dword = write_dword;
 }
 
+#ifdef CONFIG_PCI_INDIRECT_BRIDGE
 extern void pci_setup_indirect(struct pci_controller* hose, u32 cfg_addr, u32 cfg_data);
+#endif
 
 extern phys_addr_t pci_hose_bus_to_phys(struct pci_controller* hose,
 					pci_addr_t addr, unsigned long flags);

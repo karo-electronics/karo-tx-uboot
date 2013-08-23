@@ -1,23 +1,7 @@
 /*
  * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -72,6 +56,78 @@ debug("%s: Disabling %s clock\n", __func__, clk->name);
 		}
 	}
 }
+
+int clk_get_usecount(struct clk *clk)
+{
+	if (clk == NULL)
+		return 0;
+
+	return clk->usecount;
+}
+
+u32 clk_get_rate(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->rate;
+}
+
+struct clk *clk_get_parent(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->parent;
+}
+
+int clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk && clk->set_rate)
+		clk->set_rate(clk, rate);
+	return clk->rate;
+}
+
+long clk_round_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk == NULL || !clk->round_rate)
+		return 0;
+
+	return clk->round_rate(clk, rate);
+}
+
+int clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	debug("Setting parent of clk %p to %p (%p)\n", clk, parent,
+		clk ? clk->parent : NULL);
+
+	if (!clk || clk == parent)
+		return 0;
+
+	if (clk->set_parent) {
+		int ret;
+
+		ret = clk->set_parent(clk, parent);
+		if (ret)
+			return ret;
+	}
+	clk->parent = parent;
+	return 0;
+}
+
+#ifdef CONFIG_MXC_OCOTP
+void enable_ocotp_clk(unsigned char enable)
+{
+	u32 reg;
+
+	reg = __raw_readl(&imx_ccm->CCGR2);
+	if (enable)
+		reg |= MXC_CCM_CCGR2_OCOTP_CTRL_MASK;
+	else
+		reg &= ~MXC_CCM_CCGR2_OCOTP_CTRL_MASK;
+	__raw_writel(reg, &imx_ccm->CCGR2);
+}
+#endif
 
 void enable_usboh3_clk(unsigned char enable)
 {
@@ -252,12 +308,16 @@ static u32 get_ipg_per_clk(void)
 static u32 get_uart_clk(void)
 {
 	u32 reg, uart_podf;
-
+	u32 freq = PLL3_80M;
 	reg = __raw_readl(&imx_ccm->cscdr1);
+#ifdef CONFIG_MX6SL
+	if (reg & MXC_CCM_CSCDR1_UART_CLK_SEL)
+		freq = MXC_HCLK;
+#endif
 	reg &= MXC_CCM_CSCDR1_UART_CLK_PODF_MASK;
 	uart_podf = reg >> MXC_CCM_CSCDR1_UART_CLK_PODF_OFFSET;
 
-	return PLL3_80M / (uart_podf + 1);
+	return freq / (uart_podf + 1);
 }
 
 static u32 get_cspi_clk(void)
@@ -341,8 +401,6 @@ static u32 get_nfc_clk(void)
 		root_freq = PLL2_PFD2_FREQ;
 		break;
 	}
-	debug("root=%d[%u] freq=%u pred=%u podf=%u\n", nfc_clk_sel,
-		root_freq, root_freq / (pred + 1) / (podf + 1), pred + 1, podf + 1);
 
 	return root_freq / (pred + 1) / (podf + 1);
 }
@@ -418,6 +476,35 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 	return 0;
 }
 
+#ifdef CONFIG_MX6SL
+static u32 get_mmdc_ch0_clk(void)
+{
+	u32 cbcmr = __raw_readl(&imx_ccm->cbcmr);
+	u32 cbcdr = __raw_readl(&imx_ccm->cbcdr);
+	u32 freq, podf;
+
+	podf = (cbcdr & MXC_CCM_CBCDR_MMDC_CH1_PODF_MASK) \
+			>> MXC_CCM_CBCDR_MMDC_CH1_PODF_OFFSET;
+
+	switch ((cbcmr & MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_MASK) >>
+		MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_OFFSET) {
+	case 0:
+		freq = decode_pll(PLL_BUS, MXC_HCLK);
+		break;
+	case 1:
+		freq = PLL2_PFD2_FREQ;
+		break;
+	case 2:
+		freq = PLL2_PFD0_FREQ;
+		break;
+	case 3:
+		freq = PLL2_PFD2_DIV_FREQ;
+	}
+
+	return freq / (podf + 1);
+
+}
+#else
 static u32 get_mmdc_ch0_clk(void)
 {
 	u32 cbcdr = __raw_readl(&imx_ccm->cbcdr);
@@ -426,6 +513,7 @@ static u32 get_mmdc_ch0_clk(void)
 
 	return get_periph_clk() / (mmdc_ch0_podf + 1);
 }
+#endif
 
 static u32 get_usdhc_clk(u32 port)
 {
@@ -512,28 +600,28 @@ int enable_sata_clock(void)
 void ipu_clk_enable(void)
 {
 	u32 reg = readl(&imx_ccm->CCGR3);
-	reg |= MXC_CCM_CCGR3_CG0_MASK;
+	reg |= MXC_CCM_CCGR3_IPU1_IPU_MASK;
 	writel(reg, &imx_ccm->CCGR3);
 }
 
 void ipu_clk_disable(void)
 {
 	u32 reg = readl(&imx_ccm->CCGR3);
-	reg &= ~MXC_CCM_CCGR3_CG0_MASK;
+	reg &= ~MXC_CCM_CCGR3_IPU1_IPU_MASK;
 	writel(reg, &imx_ccm->CCGR3);
 }
 
 void ocotp_clk_enable(void)
 {
 	u32 reg = readl(&imx_ccm->CCGR2);
-	reg |= MXC_CCM_CCGR2_CG6_MASK;
+	reg |= MXC_CCM_CCGR2_OCOTP_CTRL_MASK;
 	writel(reg, &imx_ccm->CCGR2);
 }
 
 void ocotp_clk_disable(void)
 {
 	u32 reg = readl(&imx_ccm->CCGR2);
-	reg &= ~MXC_CCM_CCGR2_CG6_MASK;
+	reg &= ~MXC_CCM_CCGR2_OCOTP_CTRL_MASK;
 	writel(reg, &imx_ccm->CCGR2);
 }
 
@@ -663,6 +751,26 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
 	return 0;
 }
 
+/*
+ * This function assumes the expected core clock has to be changed by
+ * modifying the PLL. This is NOT true always but for most of the times,
+ * it is. So it assumes the PLL output freq is the same as the expected
+ * core clock (presc=1) unless the core clock is less than PLL_FREQ_MIN.
+ * In the latter case, it will try to increase the presc value until
+ * (presc*core_clk) is greater than PLL_FREQ_MIN. It then makes call to
+ * calc_pll_params() and obtains the values of PD, MFI,MFN, MFD based
+ * on the targeted PLL and reference input clock to the PLL. Lastly,
+ * it sets the register based on these values along with the dividers.
+ * Note 1) There is no value checking for the passed-in divider values
+ *         so the caller has to make sure those values are sensible.
+ *      2) Also adjust the NFC divider such that the NFC clock doesn't
+ *         exceed NFC_CLK_MAX.
+ *      3) IPU HSP clock is independent of AHB clock. Even it can go up to
+ *         177MHz for higher voltage, this function fixes the max to 133MHz.
+ *      4) This function should not have allowed diag_printf() calls since
+ *         the serial driver has been stoped. But leave then here to allow
+ *         easy debugging by NOT calling the cyg_hal_plf_serial_stop().
+ */
 int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk)
 {
 	int ret;

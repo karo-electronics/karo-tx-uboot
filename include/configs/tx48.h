@@ -6,24 +6,19 @@
  * based on: am335x_evm
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2.
+ * SPDX-License-Identifier:      GPL-2.0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
  */
 
-#ifndef __CONFIGS_TX48_H
-#define __CONFIGS_TX48_H
+#ifndef __CONFIG_H
+#define __CONFIG_H
 
 #include <asm/sizes.h>
 
 /*
  * Ka-Ro TX48 board - SoC configuration
  */
+#define CONFIG_OMAP
 #define CONFIG_AM33XX
 #define CONFIG_AM33XX_GPIO
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
@@ -181,6 +176,7 @@
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
+#define CONFIG_CMD_MEMTEST
 
 /*
  * Serial Driver
@@ -351,4 +347,4 @@
 #define CONFIG_SYS_SPL_MALLOC_START	(PHYS_SDRAM_1 + SZ_2M + SZ_32K)
 #define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_1M
 
-#endif	/* __CONFIGS_TX48_H */
+#endif	/* __CONFIG_H */

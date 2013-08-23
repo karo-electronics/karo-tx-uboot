@@ -1,20 +1,7 @@
 /*
  * Copyright 2009-2012 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __FM_ETH_H__
@@ -88,7 +75,7 @@ enum fm_eth_type {
 
 #define FM_TGEC_INFO_INITIALIZER(idx, n) \
 {									\
-	FM_ETH_INFO_INITIALIZER(idx, CONFIG_SYS_FM1_TGEC_MDIO_ADDR)	\
+	FM_ETH_INFO_INITIALIZER(idx, CONFIG_SYS_FM2_TGEC_MDIO_ADDR)	\
 	.index		= idx,						\
 	.num		= n - 1,					\
 	.type		= FM_ETH_10G_E,					\
@@ -96,7 +83,7 @@ enum fm_eth_type {
 	.rx_port_id	= RX_PORT_10G_BASE + n - 1,			\
 	.tx_port_id	= TX_PORT_10G_BASE + n - 1,			\
 	.compat_offset	= CONFIG_SYS_FSL_FM##idx##_OFFSET +		\
-				offsetof(struct ccsr_fman, memac[n-1]),\
+				offsetof(struct ccsr_fman, memac[n-1+8]),\
 }
 #else
 #define FM_DTSEC_INFO_INITIALIZER(idx, n) \

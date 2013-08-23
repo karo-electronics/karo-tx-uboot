@@ -5,19 +5,7 @@
  * author: Lukasz Majewski <l.majewski@samsung.com>
  * author: Piotr Wilczek <p.wilczek@samsung.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -27,6 +15,7 @@
 #include <part_efi.h>
 #include <exports.h>
 #include <linux/ctype.h>
+#include <div64.h>
 
 #ifndef CONFIG_PARTITION_UUIDS
 #error CONFIG_PARTITION_UUIDS must be enabled for CONFIG_CMD_GPT to be enabled
@@ -131,6 +120,7 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	int p_count;
 	disk_partition_t *parts;
 	int errno = 0;
+	uint64_t size_ll, start_ll;
 
 	debug("%s: MMC lba num: 0x%x %d\n", __func__,
 	      (unsigned int)dev_desc->lba, (unsigned int)dev_desc->lba);
@@ -217,8 +207,8 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 		}
 		if (extract_env(val, &p))
 			p = val;
-		parts[i].size = ustrtoul(p, &p, 0);
-		parts[i].size /= dev_desc->blksz;
+		size_ll = ustrtoull(p, &p, 0);
+		parts[i].size = lldiv(size_ll, dev_desc->blksz);
 		free(val);
 
 		/* start address */
@@ -226,8 +216,8 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 		if (val) { /* start address is optional */
 			if (extract_env(val, &p))
 				p = val;
-			parts[i].start = ustrtoul(p, &p, 0);
-			parts[i].start /= dev_desc->blksz;
+			start_ll = ustrtoull(p, &p, 0);
+			parts[i].start = lldiv(start_ll, dev_desc->blksz);
 			free(val);
 		}
 	}

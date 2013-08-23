@@ -4,23 +4,7 @@
  *
  * Configuation settings for the SAMSUNG TRATS (EXYNOS4210) board.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -66,7 +50,7 @@
 #define CONFIG_MACH_TYPE		MACH_TYPE_TRATS
 
 /* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (1 << 20))
+#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (16 << 20))
 
 /* select serial console configuration */
 #define CONFIG_SERIAL2			/* use SERIAL 2 */
@@ -146,7 +130,8 @@
 
 #define CONFIG_DFU_ALT \
 	"u-boot mmc 80 400;" \
-	"uImage ext4 0 2\0" \
+	"uImage ext4 0 2;" \
+	"exynos4210-trats.dtb ext4 0 2\0"
 
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
@@ -154,7 +139,7 @@
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"bootk=" \
-		"run loaduimage; bootm 0x40007FC0\0" \
+		"run loaddtb; run loaduimage; bootm 0x40007FC0 - ${fdtaddr}\0" \
 	"updatemmc=" \
 		"mmc boot 0 1 1 1; mmc write 0 0x42008000 0 0x200;" \
 		"mmc boot 0 1 1 0\0" \
@@ -177,7 +162,7 @@
 	"mmcboot=" \
 		"setenv bootargs root=/dev/mmcblk${mmcdev}p${mmcrootpart} " \
 		"${lpj} rootwait ${console} ${meminfo} ${opts} ${lcdinfo}; " \
-		"run loaduimage; bootm 0x40007FC0\0" \
+		"run loaddtb; run loaduimage; bootm 0x40007FC0 - ${fdtaddr}\0" \
 	"bootchart=setenv opts init=/sbin/bootchartd; run bootcmd\0" \
 	"boottrace=setenv opts initcall_debug; run bootcmd\0" \
 	"mmcoops=mmc read 0 0x40000000 0x40 8; md 0x40000000 0x400\0" \
@@ -188,6 +173,8 @@
 	"nfsroot=/nfsroot/arm\0" \
 	"bootblock=" CONFIG_BOOTBLOCK "\0" \
 	"loaduimage=ext4load mmc ${mmcdev}:${mmcbootpart} 0x40007FC0 uImage\0" \
+	"loaddtb=ext4load mmc ${mmcdev}:${mmcbootpart} ${fdtaddr} " \
+		"${fdtfile}\0" \
 	"mmcdev=0\0" \
 	"mmcbootpart=2\0" \
 	"mmcrootpart=5\0" \
@@ -199,6 +186,7 @@
 	"splfile=falcon.bin\0" \
 	"spl_export=" \
 		   "setexpr spl_imgsize ${splsize} + 8 ;" \
+		   "setenv spl_imgsize 0x${spl_imgsize};" \
 		   "setexpr spl_imgaddr ${spladdr} - 8 ;" \
 		   "setexpr spl_addr_tmp ${spladdr} - 4 ;" \
 		   "mw.b ${spl_imgaddr} 0x00 ${spl_imgsize};run loaduimage;" \
@@ -211,7 +199,10 @@
 		   " /${splfile} ${spl_imgaddr} ${spl_imgsize};" \
 		   "setenv spl_imgsize;" \
 		   "setenv spl_imgaddr;" \
-		   "setenv spl_addr_tmp;\0"
+		   "setenv spl_addr_tmp;\0" \
+	"fdtaddr=40800000\0" \
+	"fdtfile=exynos4210-trats.dtb\0"
+
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
@@ -268,10 +259,12 @@
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_CACHELINE_SIZE       32
 
-#define CONFIG_SOFT_I2C
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_SOFT		/* I2C bit-banged */
+#define CONFIG_SYS_I2C_SOFT_SPEED	50000
+#define CONFIG_SYS_I2C_SOFT_SLAVE	0xFE
 #define CONFIG_SOFT_I2C_READ_REPEATED_START
 #define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_SYS_I2C_SPEED	50000
 #define CONFIG_I2C_MULTI_BUS
 #define CONFIG_SOFT_I2C_MULTI_BUS
 #define CONFIG_SYS_MAX_I2C_BUS	15
@@ -315,5 +308,13 @@
 #define CONFIG_EXYNOS_MIPI_DSIM
 #define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE ((500 * 120 * 4) + (1 << 12))
+
+#define CONFIG_CMD_USB_MASS_STORAGE
+#if defined(CONFIG_CMD_USB_MASS_STORAGE)
+#define CONFIG_USB_GADGET_MASS_STORAGE
+#endif
+
+/* Pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT    1
 
 #endif	/* __CONFIG_H */

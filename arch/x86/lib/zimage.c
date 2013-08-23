@@ -3,23 +3,7 @@
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, <daniel@omicron.se>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -33,7 +17,6 @@
 #include <asm/io.h>
 #include <asm/ptrace.h>
 #include <asm/zimage.h>
-#include <asm/realmode.h>
 #include <asm/byteorder.h>
 #include <asm/bootparam.h>
 #ifdef CONFIG_SYS_COREBOOT
@@ -175,16 +158,9 @@ struct boot_params *load_zimage(char *image, unsigned long kernel_size,
 	else
 		*load_address = (void *)ZIMAGE_LOAD_ADDR;
 
-#if (defined CONFIG_ZBOOT_32 || defined CONFIG_X86_NO_REAL_MODE)
 	printf("Building boot_params at 0x%8.8lx\n", (ulong)setup_base);
 	memset(setup_base, 0, sizeof(*setup_base));
 	setup_base->hdr = params->hdr;
-#else
-	/* load setup */
-	printf("Moving Real-Mode Code to 0x%8.8lx (%d bytes)\n",
-	       (ulong)setup_base, setup_size);
-	memmove(setup_base, image, setup_size);
-#endif
 
 	if (bootproto >= 0x0204)
 		kernel_size = hdr->syssize * 16;
@@ -241,10 +217,8 @@ int setup_zimage(struct boot_params *setup_base, char *cmd_line, int auto_boot,
 	struct setup_header *hdr = &setup_base->hdr;
 	int bootproto = get_boot_protocol(hdr);
 
-#if (defined CONFIG_ZBOOT_32 || defined CONFIG_X86_NO_REAL_MODE)
 	setup_base->e820_entries = install_e820_map(
 		ARRAY_SIZE(setup_base->e820_map), setup_base->e820_map);
-#endif
 
 	if (bootproto == 0x0100) {
 		setup_base->screen_info.cl_magic = COMMAND_LINE_MAGIC;
@@ -293,6 +267,13 @@ __weak void board_final_cleanup(void)
 
 void boot_zimage(void *setup_base, void *load_address)
 {
+	debug("## Transferring control to Linux (at address %08x) ...\n",
+	      (u32)setup_base);
+
+	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
+#ifdef CONFIG_BOOTSTAGE_REPORT
+	bootstage_report();
+#endif
 	board_final_cleanup();
 
 	printf("\nStarting kernel ...\n\n");
@@ -300,7 +281,6 @@ void boot_zimage(void *setup_base, void *load_address)
 #ifdef CONFIG_SYS_COREBOOT
 	timestamp_add_now(TS_U_BOOT_START_KERNEL);
 #endif
-#if defined CONFIG_ZBOOT_32
 	/*
 	 * Set %ebx, %ebp, and %edi to 0, %esi to point to the boot_params
 	 * structure, and then jump to the kernel. We assume that %cs is
@@ -317,18 +297,6 @@ void boot_zimage(void *setup_base, void *load_address)
 	   "b"(0), "D"(0)
 	:  "%ebp"
 	);
-#else
-	struct pt_regs regs;
-
-	memset(&regs, 0, sizeof(struct pt_regs));
-	regs.xds = (u32)setup_base >> 4;
-	regs.xes = regs.xds;
-	regs.xss = regs.xds;
-	regs.esp = 0x9000;
-	regs.eflags = 0;
-	enter_realmode(((u32)setup_base + SETUP_START_OFFSET) >> 4, 0,
-		       &regs, &regs);
-#endif
 }
 
 void setup_pcat_compatibility(void)
@@ -385,10 +353,6 @@ int do_zboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		printf("Setting up boot parameters failed ...\n");
 		return -1;
 	}
-
-	printf("## Transferring control to Linux "
-	       "(at address %08x) ...\n",
-	       (u32)base_ptr);
 
 	/* we assume that the kernel is in place */
 	boot_zimage(base_ptr, load_address);

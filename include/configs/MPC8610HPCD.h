@@ -51,6 +51,7 @@
 #define CONFIG_PCIE1		1	/* PCIe 1 connected to ULI bridge */
 #define CONFIG_PCIE2		1	/* PCIe 2 connected to slot */
 #define CONFIG_FSL_PCI_INIT	1	/* Use common FSL init code */
+#define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 #define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
@@ -251,13 +252,12 @@
 /*
  * I2C
  */
-#define CONFIG_FSL_I2C		/* Use FSL common I2C driver */
-#define CONFIG_HARD_I2C		/* I2C with hardware support*/
-#undef	CONFIG_SOFT_I2C			/* I2C bit-banged */
-#define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address */
-#define CONFIG_SYS_I2C_SLAVE		0x7F
-#define CONFIG_SYS_I2C_NOPROBES	{0x69}	/* Don't probe these addrs */
-#define CONFIG_SYS_I2C_OFFSET		0x3000
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_FSL
+#define CONFIG_SYS_FSL_I2C_SPEED	400000
+#define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
+#define CONFIG_SYS_I2C_NOPROBES		{ {0, 0x69} }
 
 /*
  * General PCI

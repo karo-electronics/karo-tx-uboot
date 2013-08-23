@@ -1,23 +1,7 @@
 /*
  * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #include <common.h>
@@ -25,7 +9,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux.h>
-#include <asm/arch/mx6x_pins.h>
+#include <asm/arch/mx6q_pins.h>
 #include <asm/errno.h>
 #include <asm/gpio.h>
 #include <asm/imx-common/iomux-v3.h>
@@ -33,6 +17,7 @@
 #include <asm/imx-common/boot_mode.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
+#include <malloc.h>
 #include <micrel.h>
 #include <miiphy.h>
 #include <netdev.h>
@@ -44,36 +29,32 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define UART_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |	       \
-       PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |	       \
-       PAD_CTL_DSE_40ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
+#define UART_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
+	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |			\
+	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
-#define USDHC_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |	       \
-       PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |	       \
-       PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
+#define USDHC_PAD_CTRL (PAD_CTL_PUS_47K_UP |			\
+	PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm |			\
+	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
-#define ENET_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |		\
-	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED	  |		\
-	PAD_CTL_DSE_40ohm   | PAD_CTL_HYS)
+#define ENET_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
+	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
 
-#define SPI_PAD_CTRL (PAD_CTL_HYS |				\
-	PAD_CTL_PUS_100K_DOWN | PAD_CTL_SPEED_MED |		\
+#define SPI_PAD_CTRL (PAD_CTL_HYS | PAD_CTL_SPEED_MED |		\
 	PAD_CTL_DSE_40ohm     | PAD_CTL_SRE_FAST)
 
-#define BUTTON_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |		\
-	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED   |		\
-	PAD_CTL_DSE_40ohm   | PAD_CTL_HYS)
+#define BUTTON_PAD_CTRL (PAD_CTL_PUS_100K_UP |			\
+	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
 
-#define I2C_PAD_CTRL	(PAD_CTL_PKE | PAD_CTL_PUE |		\
-	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |		\
-	PAD_CTL_DSE_40ohm | PAD_CTL_HYS |			\
+#define I2C_PAD_CTRL	(PAD_CTL_PUS_100K_UP |			\
+	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm | PAD_CTL_HYS |	\
 	PAD_CTL_ODE | PAD_CTL_SRE_FAST)
 
 int dram_init(void)
 {
-       gd->ram_size = get_ram_size((void *)PHYS_SDRAM, PHYS_SDRAM_SIZE);
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM, PHYS_SDRAM_SIZE);
 
-       return 0;
+	return 0;
 }
 
 iomux_v3_cfg_t const uart1_pads[] = {
@@ -82,8 +63,8 @@ iomux_v3_cfg_t const uart1_pads[] = {
 };
 
 iomux_v3_cfg_t const uart2_pads[] = {
-       MX6_PAD_EIM_D26__UART2_TXD | MUX_PAD_CTRL(UART_PAD_CTRL),
-       MX6_PAD_EIM_D27__UART2_RXD | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_EIM_D26__UART2_TXD | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_EIM_D27__UART2_RXD | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
@@ -131,23 +112,23 @@ struct i2c_pads_info i2c_pad_info2 = {
 };
 
 iomux_v3_cfg_t const usdhc3_pads[] = {
-       MX6_PAD_SD3_CLK__USDHC3_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD3_CMD__USDHC3_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD3_DAT0__USDHC3_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD3_DAT1__USDHC3_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD3_DAT2__USDHC3_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD3_DAT3__USDHC3_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD3_DAT5__GPIO_7_0, /* CD */
+	MX6_PAD_SD3_CLK__USDHC3_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD3_CMD__USDHC3_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD3_DAT0__USDHC3_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD3_DAT1__USDHC3_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD3_DAT2__USDHC3_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD3_DAT3__USDHC3_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD3_DAT5__GPIO_7_0, /* CD */
 };
 
 iomux_v3_cfg_t const usdhc4_pads[] = {
-       MX6_PAD_SD4_CLK__USDHC4_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD4_CMD__USDHC4_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD4_DAT0__USDHC4_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD4_DAT1__USDHC4_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD4_DAT2__USDHC4_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_SD4_DAT3__USDHC4_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-       MX6_PAD_NANDF_D6__GPIO_2_6, /* CD */
+	MX6_PAD_SD4_CLK__USDHC4_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_CMD__USDHC4_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT0__USDHC4_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT1__USDHC4_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT2__USDHC4_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT3__USDHC4_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_NANDF_D6__GPIO_2_6, /* CD */
 };
 
 iomux_v3_cfg_t const enet_pads1[] = {
@@ -226,7 +207,7 @@ iomux_v3_cfg_t const usb_pads[] = {
 static void setup_iomux_uart(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
-       imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
+	imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
 }
 
 #ifdef CONFIG_USB_EHCI_MX6
@@ -245,62 +226,60 @@ int board_ehci_hcd_init(int port)
 
 #ifdef CONFIG_FSL_ESDHC
 struct fsl_esdhc_cfg usdhc_cfg[2] = {
-       {USDHC3_BASE_ADDR},
-       {USDHC4_BASE_ADDR},
+	{USDHC3_BASE_ADDR},
+	{USDHC4_BASE_ADDR},
 };
 
 int board_mmc_getcd(struct mmc *mmc)
 {
-       struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-       int ret;
+	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
+	int ret;
 
-       if (cfg->esdhc_base == USDHC3_BASE_ADDR) {
+	if (cfg->esdhc_base == USDHC3_BASE_ADDR) {
 		gpio_direction_input(IMX_GPIO_NR(7, 0));
 		ret = !gpio_get_value(IMX_GPIO_NR(7, 0));
-       } else {
+	} else {
 		gpio_direction_input(IMX_GPIO_NR(2, 6));
 		ret = !gpio_get_value(IMX_GPIO_NR(2, 6));
-       }
+	}
 
-       return ret;
+	return ret;
 }
 
 int board_mmc_init(bd_t *bis)
 {
-       s32 status = 0;
-       u32 index = 0;
+	s32 status = 0;
+	u32 index = 0;
 
 	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 	usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 
-       for (index = 0; index < CONFIG_SYS_FSL_USDHC_NUM; ++index) {
-	       switch (index) {
-	       case 0:
-		       imx_iomux_v3_setup_multiple_pads(
-			       usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
-		       break;
-	       case 1:
-		       imx_iomux_v3_setup_multiple_pads(
-			       usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
-		       break;
-	       default:
-		       printf("Warning: you configured more USDHC controllers"
+	usdhc_cfg[0].max_bus_width = 4;
+	usdhc_cfg[1].max_bus_width = 4;
+
+	for (index = 0; index < CONFIG_SYS_FSL_USDHC_NUM; ++index) {
+		switch (index) {
+		case 0:
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+			break;
+		case 1:
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
+			break;
+		default:
+			printf("Warning: you configured more USDHC controllers"
 			       "(%d) then supported by the board (%d)\n",
 			       index + 1, CONFIG_SYS_FSL_USDHC_NUM);
-		       return status;
-	       }
+			return status;
+		}
 
-	       status |= fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
-       }
+		status |= fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
+	}
 
-       return status;
+	return status;
 }
 #endif
-
-u32 get_board_rev(void)
-{
-	return 0x63000 ;
-}
 
 #ifdef CONFIG_MXC_SPI
 iomux_v3_cfg_t const ecspi1_pads[] = {
@@ -313,7 +292,6 @@ iomux_v3_cfg_t const ecspi1_pads[] = {
 
 void setup_spi(void)
 {
-	gpio_direction_output(CONFIG_SF_DEFAULT_CS, 1);
 	imx_iomux_v3_setup_multiple_pads(ecspi1_pads,
 					 ARRAY_SIZE(ecspi1_pads));
 }
@@ -338,14 +316,31 @@ int board_phy_config(struct phy_device *phydev)
 
 int board_eth_init(bd_t *bis)
 {
+	uint32_t base = IMX_FEC_BASE;
+	struct mii_dev *bus = NULL;
+	struct phy_device *phydev = NULL;
 	int ret;
 
 	setup_iomux_enet();
 
-	ret = cpu_eth_init(bis);
-	if (ret)
+#ifdef CONFIG_FEC_MXC
+	bus = fec_get_miibus(base, -1);
+	if (!bus)
+		return 0;
+	/* scan phy 4,5,6,7 */
+	phydev = phy_find_by_mask(bus, (0xf << 4), PHY_INTERFACE_MODE_RGMII);
+	if (!phydev) {
+		free(bus);
+		return 0;
+	}
+	printf("using phy at %d\n", phydev->addr);
+	ret  = fec_probe(bis, -1, base, bus, phydev);
+	if (ret) {
 		printf("FEC MXC: %s:failed\n", __func__);
-
+		free(phydev);
+		free(bus);
+	}
+#endif
 	return 0;
 }
 
@@ -437,32 +432,26 @@ struct display_info_t {
 
 static int detect_hdmi(struct display_info_t const *dev)
 {
-	return __raw_readb(HDMI_ARB_BASE_ADDR+HDMI_PHY_STAT0) & HDMI_PHY_HPD;
+	struct hdmi_regs *hdmi	= (struct hdmi_regs *)HDMI_ARB_BASE_ADDR;
+	return readb(&hdmi->phy_stat0) & HDMI_PHY_HPD;
 }
 
 static void enable_hdmi(struct display_info_t const *dev)
 {
+	struct hdmi_regs *hdmi	= (struct hdmi_regs *)HDMI_ARB_BASE_ADDR;
 	u8 reg;
 	printf("%s: setup HDMI monitor\n", __func__);
-	reg = __raw_readb(
-			HDMI_ARB_BASE_ADDR
-			+HDMI_PHY_CONF0);
+	reg = readb(&hdmi->phy_conf0);
 	reg |= HDMI_PHY_CONF0_PDZ_MASK;
-	__raw_writeb(reg,
-		     HDMI_ARB_BASE_ADDR
-			+HDMI_PHY_CONF0);
+	writeb(reg, &hdmi->phy_conf0);
+
 	udelay(3000);
 	reg |= HDMI_PHY_CONF0_ENTMDS_MASK;
-	__raw_writeb(reg,
-		     HDMI_ARB_BASE_ADDR
-			+HDMI_PHY_CONF0);
+	writeb(reg, &hdmi->phy_conf0);
 	udelay(3000);
 	reg |= HDMI_PHY_CONF0_GEN2_TXPWRON_MASK;
-	__raw_writeb(reg,
-		     HDMI_ARB_BASE_ADDR
-			+HDMI_PHY_CONF0);
-	__raw_writeb(HDMI_MC_PHYRSTZ_ASSERT,
-		     HDMI_ARB_BASE_ADDR+HDMI_MC_PHYRSTZ);
+	writeb(reg, &hdmi->phy_conf0);
+	writeb(HDMI_MC_PHYRSTZ_ASSERT, &hdmi->mc_phyrstz);
 }
 
 static int detect_i2c(struct display_info_t const *dev)
@@ -620,6 +609,7 @@ static void setup_display(void)
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
 	struct anatop_regs *anatop = (struct anatop_regs *)ANATOP_BASE_ADDR;
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
+	struct hdmi_regs *hdmi	= (struct hdmi_regs *)HDMI_ARB_BASE_ADDR;
 
 	int reg;
 
@@ -636,8 +626,7 @@ static void setup_display(void)
 	writel(reg, &mxc_ccm->CCGR2);
 
 	/* clear HDMI PHY reset */
-	__raw_writeb(HDMI_MC_PHYRSTZ_DEASSERT,
-		     HDMI_ARB_BASE_ADDR+HDMI_MC_PHYRSTZ);
+	writeb(HDMI_MC_PHYRSTZ_DEASSERT, &hdmi->mc_phyrstz);
 
 	/* set PFD1_FRAC to 0x13 == 455 MHz (480*18)/0x13 */
 	writel(ANATOP_PFD_480_PFD1_FRAC_MASK, &anatop->pfd_480_clr);
@@ -714,8 +703,8 @@ int overwrite_console(void)
 
 int board_init(void)
 {
-       /* address of boot parameters */
-       gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
+	/* address of boot parameters */
+	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
 #ifdef CONFIG_MXC_SPI
 	setup_spi();
@@ -728,14 +717,14 @@ int board_init(void)
 	setup_sata();
 #endif
 
-       return 0;
+	return 0;
 }
 
 int checkboard(void)
 {
-       puts("Board: MX6Q-Sabre Lite\n");
+	puts("Board: MX6Q-Sabre Lite\n");
 
-       return 0;
+	return 0;
 }
 
 struct button_key {

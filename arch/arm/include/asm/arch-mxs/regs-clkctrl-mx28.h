@@ -7,33 +7,20 @@
  * Based on code from LTIB:
  * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_CLKCTRL_H__
 #define __MX28_REGS_CLKCTRL_H__
 
-#include <asm/arch/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_clkctrl_regs {
 	mxs_reg_32(hw_clkctrl_pll0ctrl0);	/* 0x00 */
-	reg_32(hw_clkctrl_pll0ctrl1, 4);	/* 0x10 */
+	reg_32(hw_clkctrl_pll0ctrl1);		/* 0x10 */
 	mxs_reg_32(hw_clkctrl_pll1ctrl0);	/* 0x20 */
-	reg_32(hw_clkctrl_pll1ctrl1, 4);	/* 0x30 */
+	reg_32(hw_clkctrl_pll1ctrl1);		/* 0x30 */
 	mxs_reg_32(hw_clkctrl_pll2ctrl0);	/* 0x40 */
 	mxs_reg_32(hw_clkctrl_cpu);		/* 0x50 */
 	mxs_reg_32(hw_clkctrl_hbus);		/* 0x60 */
@@ -54,7 +41,7 @@ struct mxs_clkctrl_regs {
 	mxs_reg_32(hw_clkctrl_hsadc);		/* 0x150 */
 	mxs_reg_32(hw_clkctrl_flexcan);		/* 0x160 */
 
-	reg_32(reserved[4], 4);
+	reg_32(reserved[4]);			/* 0x170-0x1a0 */
 
 	mxs_reg_8(hw_clkctrl_frac0);		/* 0x1b0 */
 	mxs_reg_8(hw_clkctrl_frac1);		/* 0x1c0 */

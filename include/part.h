@@ -2,23 +2,7 @@
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 #ifndef _PART_H
 #define _PART_H
@@ -38,22 +22,31 @@ typedef struct block_dev_desc {
 #endif
 	lbaint_t	lba;		/* number of blocks */
 	unsigned long	blksz;		/* block size */
+	int		log2blksz;	/* for convenience: log2(blksz) */
 	char		vendor [40+1];	/* IDE model, SCSI Vendor */
 	char		product[20+1];	/* IDE Serial no, SCSI product */
 	char		revision[8+1];	/* firmware revision */
 	unsigned long	(*block_read)(int dev,
-				      unsigned long start,
+				      lbaint_t start,
 				      lbaint_t blkcnt,
 				      void *buffer);
 	unsigned long	(*block_write)(int dev,
-				       unsigned long start,
+				       lbaint_t start,
 				       lbaint_t blkcnt,
 				       const void *buffer);
 	unsigned long   (*block_erase)(int dev,
-				       unsigned long start,
+				       lbaint_t start,
 				       lbaint_t blkcnt);
 	void		*priv;		/* driver private struct pointer */
 }block_dev_desc_t;
+
+#define BLOCK_CNT(size, block_dev_desc) (PAD_COUNT(size, block_dev_desc->blksz))
+#define PAD_TO_BLOCKSIZE(size, block_dev_desc) \
+	(PAD_SIZE(size, block_dev_desc->blksz))
+#define LOG2(x) (((x & 0xaaaaaaaa) ? 1 : 0) + ((x & 0xcccccccc) ? 2 : 0) + \
+		 ((x & 0xf0f0f0f0) ? 4 : 0) + ((x & 0xff00ff00) ? 8 : 0) + \
+		 ((x & 0xffff0000) ? 16 : 0))
+#define LOG2_INVALID(type) ((type)((sizeof(type)<<3)-1))
 
 /* Interface types: */
 #define IF_TYPE_UNKNOWN		0
@@ -88,8 +81,8 @@ typedef struct block_dev_desc {
 #define DEV_TYPE_OPDISK		0x07	/* optical disk */
 
 typedef struct disk_partition {
-	ulong	start;		/* # of first block in partition	*/
-	ulong	size;		/* number of blocks in partition	*/
+	lbaint_t	start;	/* # of first block in partition	*/
+	lbaint_t	size;	/* number of blocks in partition	*/
 	ulong	blksz;		/* block size in bytes			*/
 	uchar	name[32];	/* partition name			*/
 	uchar	type[32];	/* string type description		*/

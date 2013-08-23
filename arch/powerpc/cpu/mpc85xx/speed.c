@@ -7,23 +7,7 @@
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -112,30 +96,32 @@ void get_sys_info (sys_info_t * sysInfo)
 #ifdef CONFIG_SYS_FSL_QORIQ_CHASSIS2
 	/*
 	 * Each cluster has up to 4 cores, sharing the same PLL selection.
-	 * The cluster assignment is fixed per SoC. There is no way identify the
-	 * assignment so far, presuming the "first configuration" which is to
-	 * fill the lower cluster group first before moving up to next group.
-	 * PLL1, PLL2, PLL3 are cluster group A, feeding core 0~3 on cluster 1
-	 * and core 4~7 on cluster 2
-	 * PLL4, PLL5, PLL6 are cluster group B, feeding core 8~11 on cluster 3
-	 * and core 12~15 on cluster 4 if existing
+	 * The cluster assignment is fixed per SoC. PLL1, PLL2, PLL3 are
+	 * cluster group A, feeding cores on cluster 1 and cluster 2.
+	 * PLL4, PLL5, PLL6 are cluster group B, feeding cores on cluster 3
+	 * and cluster 4 if existing.
 	 */
 	for_each_cpu(i, cpu, cpu_numcores(), cpu_mask()) {
-		u32 c_pll_sel = (in_be32(&clk->clkc0csr + (cpu / 4) * 8) >> 27)
+		int cluster = fsl_qoriq_core_to_cluster(cpu);
+		u32 c_pll_sel = (in_be32(&clk->clkcsr[cluster].clkcncsr) >> 27)
 				& 0xf;
 		u32 cplx_pll = core_cplx_PLL[c_pll_sel];
 		if (cplx_pll > 3)
 			printf("Unsupported architecture configuration"
 				" in function %s\n", __func__);
-		cplx_pll += (cpu / 8) * 3;
-
+		cplx_pll += (cluster / 2) * 3;
 		sysInfo->freqProcessor[cpu] =
 			 freqCC_PLL[cplx_pll] / core_cplx_PLL_div[c_pll_sel];
 	}
+#ifdef CONFIG_PPC_B4860
+#define FM1_CLK_SEL	0xe0000000
+#define FM1_CLK_SHIFT	29
+#else
 #define PME_CLK_SEL	0xe0000000
 #define PME_CLK_SHIFT	29
 #define FM1_CLK_SEL	0x1c000000
 #define FM1_CLK_SHIFT	26
+#endif
 	rcw_tmp = in_be32(&gur->rcwsr[7]);
 
 #ifdef CONFIG_SYS_DPAA_PME
@@ -185,6 +171,9 @@ void get_sys_info (sys_info_t * sysInfo)
 	case 4:
 		sysInfo->freqFMan[0] = freqCC_PLL[3] / 4;
 		break;
+	case 5:
+		sysInfo->freqFMan[0] = sysInfo->freqSystemBus;
+		break;
 	case 6:
 		sysInfo->freqFMan[0] = freqCC_PLL[4] / 2;
 		break;
@@ -232,7 +221,8 @@ void get_sys_info (sys_info_t * sysInfo)
 #else /* CONFIG_SYS_FSL_QORIQ_CHASSIS2 */
 
 	for_each_cpu(i, cpu, cpu_numcores(), cpu_mask()) {
-		u32 c_pll_sel = (in_be32(&clk->clkc0csr + cpu*8) >> 27) & 0xf;
+		u32 c_pll_sel = (in_be32(&clk->clkcsr[cpu].clkcncsr) >> 27)
+				& 0xf;
 		u32 cplx_pll = core_cplx_PLL[c_pll_sel];
 
 		sysInfo->freqProcessor[cpu] =
@@ -283,6 +273,10 @@ void get_sys_info (sys_info_t * sysInfo)
 		sysInfo->freqFMan[1] = sysInfo->freqSystemBus / 2;
 	}
 #endif
+#endif
+
+#ifdef CONFIG_SYS_DPAA_QBMAN
+	sysInfo->freqQMAN = sysInfo->freqSystemBus / 2;
 #endif
 
 #endif /* CONFIG_SYS_FSL_QORIQ_CHASSIS2 */

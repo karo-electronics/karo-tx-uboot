@@ -40,6 +40,7 @@
 #define CONFIG_CMD_FDOS		/* Floppy DOS support		*/
 #define CONFIG_CMD_FLASH	/* flinfo, erase, protect	*/
 #define CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
+#define CONFIG_CMD_FUSE		/* Device fuse support		*/
 #define CONFIG_CMD_GETTIME	/* Get time since boot         */
 #define CONFIG_CMD_HASH		/* calculate hash / digest	*/
 #define CONFIG_CMD_HWFLOW	/* RTS/CTS hw flow control	*/
@@ -57,7 +58,8 @@
 #define CONFIG_CMD_LOADB	/* loadb			*/
 #define CONFIG_CMD_LOADS	/* loads			*/
 #define CONFIG_CMD_MEMINFO	/* meminfo			*/
-#define CONFIG_CMD_MEMORY	/* md mm nm mw cp cmp crc base loop mtest */
+#define CONFIG_CMD_MEMORY	/* md mm nm mw cp cmp crc base loop */
+#define CONFIG_CMD_MEMTEST	/* mtest			*/
 #define CONFIG_CMD_MFSL		/* FSL support for Microblaze	*/
 #define CONFIG_CMD_MII		/* MII support			*/
 #define CONFIG_CMD_MISC		/* Misc functions like sleep etc*/
@@ -76,6 +78,7 @@
 #define CONFIG_CMD_RARP		/* rarpboot support		*/
 #define CONFIG_CMD_READ		/* Read data from partition	*/
 #define CONFIG_CMD_RUN		/* run command in env variable	*/
+#define CONFIG_CMD_SANDBOX	/* sb command to access sandbox features */
 #define CONFIG_CMD_SAVEENV	/* saveenv			*/
 #define CONFIG_CMD_SAVES	/* save S record dump		*/
 #define CONFIG_CMD_SCSI		/* SCSI Support			*/

@@ -106,8 +106,6 @@ NS_VAL	tRC,   60,  1	/* 0: 20 *: clks - 1 (0..15) */
 #define ESDMISC_VAL		(ESDMISC_AP(10) | ESDMISC_RALAT(RALAT) | \
 				(LHD << 5) | ESDMISC_DDR2_EN(0) | ESDMISC_DDR_EN(0))
 
-	b	_start
-	.org	0x400
 app_start_addr:
 	.long	_start
 app_code_barker:

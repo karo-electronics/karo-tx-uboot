@@ -3,55 +3,42 @@
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_POWER_H__
 #define __MX28_REGS_POWER_H__
 
-#include <asm/arch/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_power_regs {
-	mxs_reg_32(hw_power_ctrl);
-	mxs_reg_32(hw_power_5vctrl);
-	mxs_reg_32(hw_power_minpwr);
-	mxs_reg_32(hw_power_charge);
-	reg_32(hw_power_vdddctrl, 4);
-	reg_32(hw_power_vddactrl, 4);
-	reg_32(hw_power_vddioctrl, 4);
-	reg_32(hw_power_vddmemctrl, 4);
-	reg_32(hw_power_dcdc4p2, 4);
-	reg_32(hw_power_misc, 4);
-	reg_32(hw_power_dclimits, 4);
-	mxs_reg_32(hw_power_loopctrl);
-	reg_32(hw_power_sts, 4);
-	mxs_reg_32(hw_power_speed);
-	reg_32(hw_power_battmonitor, 4);
+	mxs_reg_32(hw_power_ctrl);		/* 0x00 */
+	mxs_reg_32(hw_power_5vctrl);		/* 0x10 */
+	mxs_reg_32(hw_power_minpwr);		/* 0x20 */
+	mxs_reg_32(hw_power_charge);		/* 0x30 */
+	reg_32(hw_power_vdddctrl);		/* 0x40 */
+	reg_32(hw_power_vddactrl);		/* 0x50 */
+	reg_32(hw_power_vddioctrl);		/* 0x60 */
+	reg_32(hw_power_vddmemctrl);		/* 0x70 */
+	reg_32(hw_power_dcdc4p2);		/* 0x80 */
+	reg_32(hw_power_misc);			/* 0x90 */
+	reg_32(hw_power_dclimits);		/* 0xa0 */
+	mxs_reg_32(hw_power_loopctrl);		/* 0xb0 */
+	reg_32(hw_power_sts);			/* 0xc0 */
+	mxs_reg_32(hw_power_speed);		/* 0xd0 */
+	reg_32(hw_power_battmonitor);		/* 0xe0 */
 
-	reg_32(reserved, 4);
+	reg_32(reserved);			/* 0xf0 */
 
-	mxs_reg_32(hw_power_reset);
-	mxs_reg_32(hw_power_debug);
-	mxs_reg_32(hw_power_thermal);
-	mxs_reg_32(hw_power_usb1ctrl);
-	mxs_reg_32(hw_power_special);
-	mxs_reg_32(hw_power_version);
-	mxs_reg_32(hw_power_anaclkctrl);
-	mxs_reg_32(hw_power_refctrl);
+	mxs_reg_32(hw_power_reset);		/* 0x100 */
+	mxs_reg_32(hw_power_debug);		/* 0x110 */
+	mxs_reg_32(hw_power_thermal);		/* 0x120 */
+	mxs_reg_32(hw_power_usb1ctrl);		/* 0x130 */
+	mxs_reg_32(hw_power_special);		/* 0x140 */
+	mxs_reg_32(hw_power_version);		/* 0x150 */
+	mxs_reg_32(hw_power_anaclkctrl);	/* 0x160 */
+	mxs_reg_32(hw_power_refctrl);		/* 0x170 */
 };
 #endif
 
