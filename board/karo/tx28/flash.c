@@ -155,7 +155,7 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block,
 	struct gpmi_regs *gpmi_base = (void *)GPMI_BASE_ADDRESS;
 	struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
 	u32 fl0, fl1;
-	u32 t0, t1;
+	u32 t0;
 	int metadata_size;
 	int bb_mark_bit_offs;
 	struct mx28_fcb *fcb;
@@ -168,7 +168,6 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block,
 	fl0 = readl(&bch_base->hw_bch_flash0layout0);
 	fl1 = readl(&bch_base->hw_bch_flash0layout1);
 	t0 = readl(&gpmi_base->hw_gpmi_timing0);
-	t1 = readl(&gpmi_base->hw_gpmi_timing1);
 
 	metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
 
