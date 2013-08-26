@@ -167,7 +167,7 @@ static void mxs_mem_setup_cpu_and_hbus(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_clr);
 }
 
-static void __attribute__((naked)) data_abort_memdetect_handler(void)
+static void data_abort_memdetect_handler(void)
 {
 	asm volatile("subs pc, r14, #4");
 }
