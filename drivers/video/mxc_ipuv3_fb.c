@@ -23,6 +23,8 @@
 #include <ipu.h>
 #include <video_fb.h>
 #include <mxcfb.h>
+
+#include "ipu_regs.h"
 #include "videomodes.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -433,6 +435,30 @@ static int mxcfb_unmap_video_memory(struct fb_info *fbi)
 	fbi->fix.smem_start = 0;
 	fbi->fix.smem_len = 0;
 	return 0;
+}
+
+void ipuv3_fb_shutdown(void)
+{
+	int i;
+	struct ipu_stat *stat = (struct ipu_stat *)IPU_STAT;
+
+	for (i = 0; i < ARRAY_SIZE(mxcfb_info); i++) {
+		struct fb_info *fbi = mxcfb_info[i];
+
+		if (fbi) {
+			struct mxcfb_info *mxc_fbi = fbi->par;
+
+			ipu_disable_channel(mxc_fbi->ipu_ch);
+			ipu_uninit_channel(mxc_fbi->ipu_ch);
+		}
+	}
+
+	clk_enable(g_ipu_clk);
+	for (i = 0; i < ARRAY_SIZE(stat->int_stat); i++) {
+		__raw_writel(__raw_readl(&stat->int_stat[i]),
+			&stat->int_stat[i]);
+	}
+	clk_disable(g_ipu_clk);
 }
 
 /*

@@ -222,6 +222,7 @@ int ipuv3_fb_init(struct fb_videomode *mode, int di,
 		unsigned int interface_pix_fmt,
 		ipu_di_clk_parent_t di_clk_parent,
 		unsigned long di_clk_val, int bpp);
+void ipuv3_fb_shutdown(void);
 
 int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t *params);
 void ipu_uninit_channel(ipu_channel_t channel);
