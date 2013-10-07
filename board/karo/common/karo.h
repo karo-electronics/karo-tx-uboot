@@ -28,6 +28,8 @@ void *karo_fdt_load_dtb(void);
 int karo_fdt_get_fb_mode(void *blob, const char *name,
 		struct fb_videomode *fb_mode);
 int karo_fdt_update_fb_mode(void *blob, const char *name);
+int karo_fdt_create_fb_mode(void *blob, const char *name,
+			struct fb_videomode *mode);
 #else
 static inline void karo_fdt_remove_node(void *blob, const char *node)
 {
@@ -60,6 +62,12 @@ static inline int karo_fdt_get_fb_mode(void *blob, const char *name,
 	return 0;
 }
 static inline int karo_fdt_update_fb_mode(void *blob, const char *name)
+{
+	return 0;
+}
+static inline int karo_fdt_create_fb_mode(void *blob,
+					const char *name,
+					struct fb_videomode *mode)
 {
 	return 0;
 }

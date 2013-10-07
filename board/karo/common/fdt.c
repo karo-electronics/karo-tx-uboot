@@ -412,6 +412,105 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 	return -EINVAL;
 }
 
+#define SET_FB_PROP(n, v) ({						\
+	int ret;							\
+	ret = fdt_setprop_u32(blob, off, n, v);				\
+	if (ret) {							\
+		printf("Failed to set property %s: %d\n", name, ret);	\
+	}								\
+	ret;								\
+})
+
+
+int karo_fdt_create_fb_mode(void *blob, const char *name,
+			struct fb_videomode *fb_mode)
+{
+	int off = fdt_path_offset(blob, "display");
+	int ret;
+	const char *subnode = "display-timings";
+
+	if (off < 0) {
+		printf("'display' node not found in FDT\n");
+		return off;
+	}
+
+	ret = fdt_increase_size(blob, 512);
+	if (ret) {
+		printf("Failed to increase FDT size: %d\n", ret);
+		return ret;
+	}
+
+	printf("node '%s' offset=%d\n", "display", off);
+	ret = fdt_subnode_offset(blob, off, subnode);
+	if (ret < 0) {
+		debug("Could not find node '%s' in FDT: %d\n", subnode, ret);
+		ret = fdt_add_subnode(blob, off, subnode);
+		if (ret < 0) {
+			printf("Failed to add %s subnode: %d\n", subnode, ret);
+			return ret;
+		}
+	}
+
+	printf("node '%s' offset=%d\n", subnode, ret);
+	ret = fdt_add_subnode(blob, ret, name);
+	if (ret < 0) {
+		printf("Failed to add %s subnode: %d\n", name, ret);
+		return ret;
+	}
+	off = ret;
+
+	ret = SET_FB_PROP("clock-frequency",
+			PICOS2KHZ(fb_mode->pixclock) * 1000);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("hactive", fb_mode->xres);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("vactive", fb_mode->yres);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("hback-porch", fb_mode->left_margin);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("hsync-len", fb_mode->hsync_len);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("hfront-porch", fb_mode->right_margin);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("vback-porch", fb_mode->upper_margin);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("vsync-len", fb_mode->vsync_len);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("vfront-porch", fb_mode->lower_margin);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("hsync-active",
+			fb_mode->sync & FB_SYNC_VERT_HIGH_ACT ? 1 : 0);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("vsync-active",
+			fb_mode->sync & FB_SYNC_VERT_HIGH_ACT ? 1 : 0);
+	if (ret)
+		goto out;
+
+	/* TOTO: make these configurable */
+	ret = SET_FB_PROP("de-active", 1);
+	if (ret)
+		goto out;
+	ret = SET_FB_PROP("pixelclk-active", 1);
+	if (ret)
+		goto out;
+
+	return fdt_update_native_fb_mode(blob, off);
+
+out:
+	karo_set_fdtsize(blob);
+	return ret;
+}
+
 int karo_fdt_update_fb_mode(void *blob, const char *name)
 {
 	int off = fdt_path_offset(blob, "display");
