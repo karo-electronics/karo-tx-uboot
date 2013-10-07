@@ -104,8 +104,8 @@
 /*
  * Boot Linux
  */
-#define xstr(s)	str(s)
-#define str(s)	#s
+#define xstr(s)				str(s)
+#define str(s)				#s
 #define __pfx(x, s)			(x##s)
 #define _pfx(x, s)			__pfx(x, s)
 
