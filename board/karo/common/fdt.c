@@ -129,7 +129,7 @@ static const char *karo_touchpanels[] = {
 #endif
 };
 
-static void fdt_del_tp_node(void *blob, const char *name)
+static void fdt_disable_tp_node(void *blob, const char *name)
 {
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
 
@@ -138,8 +138,8 @@ static void fdt_del_tp_node(void *blob, const char *name)
 		return;
 	}
 
-	debug("Removing node '%s' from DT\n", name);
-	fdt_del_node(blob, offs);
+	debug("Disabling node '%s'\n", name);
+	fdt_set_node_status(blob, offs, FDT_STATUS_DISABLED, 0);
 }
 
 void karo_fdt_fixup_touchpanel(void *blob)
@@ -160,7 +160,7 @@ void karo_fdt_fixup_touchpanel(void *blob)
 			if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
 				continue;
 		}
-		fdt_del_tp_node(blob, karo_touchpanels[i]);
+		fdt_disable_tp_node(blob, karo_touchpanels[i]);
 		karo_set_fdtsize(blob);
 	}
 }
@@ -227,9 +227,6 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	if (disable_otg) {
 		debug("Disabling usbphy\n");
 		ret = fdt_setprop_string(blob, off, "status", "disabled");
-	} else {
-		debug("Removing host pins from usbphy\n");
-		ret = fdt_delprop(blob, off, "pinctrl-0");
 	}
 out:
 	if (ret)
