@@ -156,14 +156,14 @@
 	TX48_BOOTM_CMD							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	TX48_MTDPARTS_CMD						\
-	" video=${video_mode} ${append_bootargs}\0"			\
+	" ${append_bootargs}\0"			\
 	"cpu_clk=" xstr(CONFIG_SYS_MPU_CLK) "\0"			\
 	"fdtaddr=81000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
-	"video_mode=da8xx-fb:640x480MR-24@60\0"
+	"video_mode=VGA\0"
 
 #define MTD_NAME			"omap2-nand.0"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
