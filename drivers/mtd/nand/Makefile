@@ -41,7 +41,6 @@ ifdef NORMAL_DRIVERS
 
 COBJS-$(CONFIG_NAND_ECC_BCH) += nand_bch.o
 
-COBJS-$(CONFIG_NAND_AM33XX) += am33xx_nand.o
 COBJS-$(CONFIG_NAND_ATMEL) += atmel_nand.o
 COBJS-$(CONFIG_DRIVER_NAND_BFIN) += bfin_nand.o
 COBJS-$(CONFIG_NAND_DAVINCI) += davinci_nand.o
