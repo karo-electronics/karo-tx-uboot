@@ -153,7 +153,14 @@ void do_prefetch_abort (struct pt_regs *pt_regs)
 
 void do_data_abort (struct pt_regs *pt_regs)
 {
-	printf ("data abort\n\n    MAYBE you should read doc/README.arm-unaligned-accesses\n\n");
+	unsigned long fsr;
+
+	/* Read Fault Status Register */
+	asm volatile ("mrc p15, 0, %0, c5, c0, 0" : "=r"(fsr));
+
+	printf ("data abort\n\n");
+	if (fsr & 1)
+		printf ("MAYBE you should read doc/README.arm-unaligned-accesses\n\n");
 	show_regs (pt_regs);
 	bad_mode ();
 }
