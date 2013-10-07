@@ -13,13 +13,15 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_OMAP
+#define CONFIG_AM33XX
+
 #include <asm/sizes.h>
+#include <asm/arch/omap.h>
 
 /*
  * Ka-Ro TX48 board - SoC configuration
  */
-#define CONFIG_OMAP
-#define CONFIG_AM33XX
 #define CONFIG_AM33XX_GPIO
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
 
