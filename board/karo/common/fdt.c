@@ -382,33 +382,47 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 
 	if (off < 0)
 		return off;
-	do {
+	while (off > 0) {
 		const char *n, *endp;
 		int len, d = 1;
 
 		off = fdt_next_node(blob, off, &d);
+		if (off < 0)
+			return off;
+		if (d < 1)
+			return -EINVAL;
 		if (d > 2) {
 			debug("Skipping node @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
 			continue;
 		}
 		debug("parsing subnode @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
-		if (off < 0 || d < 1)
-			break;
 
 		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
-			printf("Missing 'panel-name' property in node '%s'\n",
-				fdt_get_name(blob, off, NULL));
-			continue;
-		}
-		for (endp = n + len; n < endp; n += strlen(n) + 1) {
-			debug("Checking panel-name '%s'\n", n);
+			n = fdt_get_name(blob, off, NULL);
 			if (strcasecmp(n, name) == 0) {
-				fdt_init_fb_mode(blob, off, fb_mode);
-				return fdt_update_native_fb_mode(blob, off);
+				break;
 			}
+		} else {
+			int found = 0;
+
+			for (endp = n + len; n < endp; n += strlen(n) + 1) {
+				debug("Checking panel-name '%s'\n", n);
+				if (strcasecmp(n, name) == 0) {
+					debug("Using node %s @ %04x\n",
+						fdt_get_name(blob, off, NULL), off);
+					found = 1;
+					break;
+				}
+			}
+			if (found)
+				break;
 		}
-	} while (off > 0);
+	}
+	if (off > 0) {
+		fdt_init_fb_mode(blob, off, fb_mode);
+		return fdt_update_native_fb_mode(blob, off);
+	}
 	return -EINVAL;
 }
 
@@ -536,47 +550,48 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 	off = fdt_subnode_offset(blob, off, subnode);
 	if (off < 0) {
 		debug("Could not find node '%s' in FDT: %d\n", subnode, off);
+		return off;
 	}
-	do {
+	while (off > 0) {
 		const char *n, *endp;
 		int len, d = 1;
-		int node = fdt_next_node(blob, off, &d);
-		int do_del;
 
+		off = fdt_next_node(blob, off, &d);
+		if (off < 0)
+			return off;
+		if (d < 1)
+			return -EINVAL;
 		if (d > 2) {
-			debug("Skipping node @ %04x %s depth %d\n", node, fdt_get_name(blob, node, NULL), d);
+			debug("Skipping node @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
 			continue;
 		}
-		debug("parsing subnode @ %04x %s depth %d\n", node, fdt_get_name(blob, node, NULL), d);
-		if (node < 0 || d < 1)
-			break;
+		debug("parsing subnode @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
 
-		n = fdt_getprop(blob, node, "panel-name", &len);
+		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
-			printf("Missing 'panel-name' property in node '%s'\n",
-				fdt_get_name(blob, node, NULL));
-			continue;
-		}
-		do_del = 1;
-		for (endp = n + len; n < endp; n += strlen(n) + 1) {
-			debug("Checking panel-name '%s'\n", n);
+			n = fdt_get_name(blob, off, NULL);
 			if (strcasecmp(n, name) == 0) {
-				debug("Keeping node %s @ %04x\n",
-					fdt_get_name(blob, node, NULL), node);
-				off = node;
-				do_del = 0;
 				break;
 			}
-		}
-		if (do_del) {
-			debug("Deleting node %s @ %04x\n",
-				fdt_get_name(blob, node, NULL), node);
-			fdt_del_node(blob, node);
-		}
+		} else {
+			int found = 0;
 
-	} while (off > 0);
-
-	return 0;
+			for (endp = n + len; n < endp; n += strlen(n) + 1) {
+				debug("Checking panel-name '%s'\n", n);
+				if (strcasecmp(n, name) == 0) {
+					debug("Using node %s @ %04x\n",
+						fdt_get_name(blob, off, NULL), off);
+					found = 1;
+					break;
+				}
+			}
+			if (found)
+				break;
+		}
+	}
+	if (off > 0)
+		return fdt_update_native_fb_mode(blob, off);
+	return off;
 }
 
 static int karo_load_part(const char *part, void *addr, size_t len)
