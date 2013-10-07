@@ -25,6 +25,8 @@ static __maybe_unused struct nand_ecclayout hw_nand_oob =
 static __maybe_unused struct nand_ecclayout hw_bch8_nand_oob =
 	GPMC_NAND_HW_BCH8_ECC_LAYOUT;
 
+static struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
+
 /*
  * omap_nand_hwcontrol - Set the address pointers corretly for the
  *			following address/data/command operation
