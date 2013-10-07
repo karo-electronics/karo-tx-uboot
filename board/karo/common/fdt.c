@@ -205,7 +205,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 		goto out;
 
 	if (disable_otg) {
-		ret = fdt_setprop_string(blob, off, "status", "disabled");
+		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
 		if (ret)
 			goto out;
 	}
@@ -226,7 +226,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 
 	if (disable_otg) {
 		debug("Disabling usbphy\n");
-		ret = fdt_setprop_string(blob, off, "status", "disabled");
+		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
 	}
 out:
 	if (ret)
@@ -430,7 +430,7 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 			return parent;
 		}
 		debug("parent offset=%06x\n", parent);
-		ret = fdt_setprop_string(blob, parent, "status", "disabled");
+		ret = fdt_set_node_status(blob, parent, FDT_STATUS_DISABLED, 0);
 		return ret;
 	}
 
