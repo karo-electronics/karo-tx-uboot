@@ -206,7 +206,7 @@ void board_init_r(gd_t *dummy1, ulong dummy2)
 		break;
 #endif
 	default:
-		debug("SPL: Un-supported Boot Device\n");
+		printf("SPL: Unsupported Boot Device\n");
 		hang();
 	}
 
