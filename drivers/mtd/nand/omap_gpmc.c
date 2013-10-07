@@ -25,6 +25,33 @@ static __maybe_unused struct nand_ecclayout hw_nand_oob =
 static __maybe_unused struct nand_ecclayout hw_bch8_nand_oob =
 	GPMC_NAND_HW_BCH8_ECC_LAYOUT;
 
+static struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
+
+#ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
+static uint8_t bbt_pattern[] = {'B', 'b', 't', '0' };
+static uint8_t mirror_pattern[] = {'1', 't', 'b', 'B' };
+
+static struct nand_bbt_descr bbt_main_descr = {
+	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE |
+		NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
+	.offs = 0, /* may be overwritten depending on ECC layout */
+	.len = 4,
+	.veroffs = 4, /* may be overwritten depending on ECC layout */
+	.maxblocks = 4,
+	.pattern = bbt_pattern,
+};
+
+static struct nand_bbt_descr bbt_mirror_descr = {
+	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE |
+		NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
+	.offs = 0, /* may be overwritten depending on ECC layout */
+	.len = 4,
+	.veroffs = 4, /* may be overwritten depending on ECC layout */
+	.maxblocks = 4,
+	.pattern = mirror_pattern,
+};
+#endif
+
 /*
  * omap_nand_hwcontrol - Set the address pointers corretly for the
  *			following address/data/command operation
@@ -942,6 +969,21 @@ int board_nand_init(struct nand_chip *nand)
 	nand->ecc.strength = 1;
 	omap_hwecc_init(nand);
 #endif
+#endif
+#ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
+	if (nand->ecc.layout) {
+		bbt_main_descr.offs = nand->ecc.layout->oobfree[0].offset;
+		bbt_main_descr.veroffs = bbt_main_descr.offs +
+			sizeof(bbt_pattern);
+
+		bbt_mirror_descr.offs = nand->ecc.layout->oobfree[0].offset;
+		bbt_mirror_descr.veroffs = bbt_mirror_descr.offs +
+			sizeof(mirror_pattern);
+	}
+
+	nand->bbt_options |= NAND_BBT_USE_FLASH;
+	nand->bbt_td = &bbt_main_descr;
+	nand->bbt_md = &bbt_mirror_descr;
 #endif
 
 #ifdef CONFIG_SPL_BUILD

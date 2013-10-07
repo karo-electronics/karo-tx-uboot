@@ -679,6 +679,15 @@ void s_init(void)
 	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
 	int timeout = 1000;
 
+	gd = &gdata;
+
+	/*
+         * Save the boot parameters passed from romcode.
+         * We cannot delay the saving further than this,
+         * to prevent overwrites.
+         */
+	save_omap_boot_params();
+
 	/* Setup the PLLs and the clocks for the peripherals */
 	pll_init();
 
@@ -699,13 +708,10 @@ void s_init(void)
 	writel((readl(&uart_base->uartsyscfg) & ~UART_IDLE_MODE_MASK) |
 		UART_IDLE_MODE(1), &uart_base->uartsyscfg);
 
-	gd = &gdata;
-
 	preloader_console_init();
 
 	if (timeout <= 0)
 		printf("Timeout waiting for UART RESET\n");
-
 
 	timer_init();
 

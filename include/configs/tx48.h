@@ -13,13 +13,15 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_OMAP
+#define CONFIG_AM33XX
+
 #include <asm/sizes.h>
+#include <asm/arch/omap.h>
 
 /*
  * Ka-Ro TX48 board - SoC configuration
  */
-#define CONFIG_OMAP
-#define CONFIG_AM33XX
 #define CONFIG_AM33XX_GPIO
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
 
@@ -104,8 +106,8 @@
 /*
  * Boot Linux
  */
-#define xstr(s)	str(s)
-#define str(s)	#s
+#define xstr(s)				str(s)
+#define str(s)				#s
 #define __pfx(x, s)			(x##s)
 #define _pfx(x, s)			__pfx(x, s)
 
@@ -154,14 +156,14 @@
 	TX48_BOOTM_CMD							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	TX48_MTDPARTS_CMD						\
-	" video=${video_mode} ${append_bootargs}\0"			\
+	" ${append_bootargs}\0"			\
 	"cpu_clk=" xstr(CONFIG_SYS_MPU_CLK) "\0"			\
 	"fdtaddr=81000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
-	"video_mode=da8xx-fb:640x480MR-24@60\0"
+	"video_mode=VGA\0"
 
 #define MTD_NAME			"omap2-nand.0"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
@@ -224,7 +226,7 @@
 #ifdef CONFIG_CMD_NAND
 #define CONFIG_MTD_DEVICE
 #define CONFIG_ENV_IS_IN_NAND
-#define CONFIG_NAND_AM33XX
+#define CONFIG_NAND_OMAP_GPMC
 #define GPMC_NAND_ECC_LP_x8_LAYOUT
 #define GPMC_NAND_HW_ECC_LAYOUT_KERNEL	GPMC_NAND_HW_ECC_LAYOUT
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x20000
@@ -307,12 +309,14 @@
 #define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
-#define CONFIG_SPL_MAX_SIZE		(46 * SZ_1K)
+#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - CONFIG_SPL_TEXT_BASE)
 #define CONFIG_SPL_GPIO_SUPPORT
-#ifdef CONFIG_NAND_AM33XX
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_AM33XX_BCH
+#ifdef CONFIG_NAND_OMAP_GPMC
 #define CONFIG_SPL_NAND_SUPPORT
+#define CONFIG_SPL_NAND_DRIVERS
+#define CONFIG_SPL_NAND_BASE
+#define CONFIG_SPL_NAND_ECC
+#define CONFIG_SPL_NAND_AM33XX_BCH
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_PAGE_COUNT	(CONFIG_SYS_NAND_BLOCK_SIZE /	\
 					CONFIG_SYS_NAND_PAGE_SIZE)
