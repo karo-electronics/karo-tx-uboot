@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2012 Lothar Waßmann <LW@KARO-electronics.de>
+ * (C) Copyright 2012,2013 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
