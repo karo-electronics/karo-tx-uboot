@@ -335,16 +335,18 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 {
 	int ret;
 	uint32_t ph;
-	int i;
 
-	for (i = 1; i < 16; i++) {
-		fdt_set_totalsize(blob, fdt_totalsize(blob) + 8 * 4);
-		karo_set_fdtsize(blob);
+	debug("Creating phandle at offset %d\n", off);
+	ph = fdt_create_phandle(blob, off);
+	if (!ph) {
+		ret = fdt_increase_size(blob, 512);
+		if (ret) {
+			printf("Failed to increase FDT size: %d\n", ret);
+			return ret;
+		}
 		ph = fdt_create_phandle(blob, off);
-		if (ph)
-			break;
 	}
-	if (ph == 0) {
+	if (!ph) {
 		printf("Failed to create phandle for video timing\n");
 		return -ENOMEM;
 	}
