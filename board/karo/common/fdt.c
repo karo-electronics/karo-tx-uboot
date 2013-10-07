@@ -360,6 +360,7 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 	ret = fdt_setprop_cell(blob, off, "native-mode", ph);
 	if (ret)
 		printf("Failed to set property 'native-mode': %d\n", ret);
+	karo_set_fdtsize(blob);
 	return ret;
 }
 
