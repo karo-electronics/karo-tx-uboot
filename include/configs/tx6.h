@@ -175,7 +175,7 @@
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
-	"video_mode=VGA-1:640x480MR-24@60\0"
+	"video_mode=VGA\0"
 #endif /*  CONFIG_ENV_IS_NOWHERE */
 #endif /*  CONFIG_MFG */
 
