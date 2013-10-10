@@ -41,8 +41,8 @@
  * SEL_INPUT_OFS:		24..35 (12)
  * MUX_MODE + SION:		36..40  (5)
  * PAD_CTRL + PAD_CTRL_VALID:	41..58 (18)
- * SEL_INP:			59..61  (3)
- * reserved:			62..63  (2)
+ * SEL_INP:			59..62  (4)
+ * reserved:			  63    (1)
 */
 
 typedef u64 iomux_v3_cfg_t;
@@ -61,7 +61,7 @@ typedef u64 iomux_v3_cfg_t;
 #define MUX_PAD_CTRL_SHIFT	41
 #define MUX_PAD_CTRL_MASK	((iomux_v3_cfg_t)0x1ffff << MUX_PAD_CTRL_SHIFT)
 #define MUX_SEL_INPUT_SHIFT	59
-#define MUX_SEL_INPUT_MASK	((iomux_v3_cfg_t)0x7 << MUX_SEL_INPUT_SHIFT)
+#define MUX_SEL_INPUT_MASK	((iomux_v3_cfg_t)0xf << MUX_SEL_INPUT_SHIFT)
 
 #define __MUX_PAD_CTRL(x)	((x) | __PAD_CTRL_VALID)
 #define MUX_PAD_CTRL(x)		(((iomux_v3_cfg_t)__MUX_PAD_CTRL(x) << \
