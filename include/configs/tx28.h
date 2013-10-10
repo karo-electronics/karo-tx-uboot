@@ -4,10 +4,11 @@
  * SPDX-License-Identifier:      GPL-2.0
  *
  */
-#ifndef __CONFIGS_TX28_H
-#define __CONFIGS_TX28_H
 
-#define CONFIG_MX28					/* i.MX28 SoC */
+#ifndef __CONFIG_H
+#define __CONFIG_H
+
+#define CONFIG_MX28			/* must be defined before including regs-base.h */
 
 #include <asm/sizes.h>
 #include <asm/arch/regs-base.h>
