@@ -29,35 +29,12 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define WINCE_VRAM_BASE		0x80000000
-#define CE_FIX_ADDRESS(a)	((void *)((a) - WINCE_VRAM_BASE + CONFIG_SYS_SDRAM_BASE))
-
-#ifndef INT_MAX
-#define INT_MAX			((int)(~0 >> 1))
-#endif
-
-/* Bin image parse states */
-#define CE_PS_RTI_ADDR		0
-#define CE_PS_RTI_LEN		1
-#define CE_PS_E_ADDR		2
-#define CE_PS_E_LEN		3
-#define CE_PS_E_CHKSUM		4
-#define CE_PS_E_DATA		5
-
-#define CE_MIN(a, b)		(((a) < (b)) ? (a) : (b))
-#define CE_MAX(a, b)		(((a) > (b)) ? (a) : (b))
-
-#define _STRMAC(s)		#s
-#define STRMAC(s)		_STRMAC(s)
-
 static enum bootme_state bootme_state;
 static int bootme_src_port = 0xdeadface;
 static int bootme_dst_port = 0xdeadbeef;
 static uchar bootme_ether[ETH_ALEN];
 static IPaddr_t bootme_ip;
 static int bootme_timed_out;
-//static size_t input_len, input_size;
-//static void *input_packet;
 static const char *output_packet; /* used by first send udp */
 static int output_packet_len;
 static unsigned long bootme_timeout;
@@ -97,6 +74,7 @@ static inline void ce_dump_block(void *ptr, int length)
 
 static void bootme_timeout_handler(void)
 {
+	printf("%s\n", __func__);
 	net_set_state(NETLOOP_SUCCESS);
 	bootme_timed_out++;
 }
@@ -196,12 +174,12 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, IPaddr_t src_ip,
 	uchar *eth_pkt = pkt;
 	unsigned eth_len = len;
 	static char cursor = '|';
-	enum bootme_state last_state = BOOTME_INIT;
-#if 1
+	enum bootme_state last_state = bootme_state;
+
 	debug("received packet of len %d from %pI4:%d to port %d\n",
 		len, &src_ip, src_port, dest_port);
 	ce_dump_block(pkt, len);
-#endif
+
 	if (!bootme_packet_handler) {
 		printf("No packet handler set for BOOTME protocol; dropping packet\n");
 		return;
@@ -212,27 +190,37 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, IPaddr_t src_ip,
 	printf("%c\x08", cursor);
 	cursor = next_cursor(cursor);
 
-	if (is_broadcast(bootme_ip)) {
-		bootme_ip = src_ip;
-	} else if (src_ip != bootme_ip) {
+	if (!is_broadcast(bootme_ip) && src_ip != bootme_ip) {
 		debug("src_ip %pI4 does not match destination IP %pI4\n",
 			&src_ip, &bootme_ip);
 		return; /* not from our server */
 	}
+	if (bootme_state == BOOTME_INIT || bootme_state == BOOTME_DEBUG_INIT) {
+		struct ethernet_hdr *eth = (struct ethernet_hdr *)(pkt -
+					NetEthHdrSize() - IP_UDP_HDR_SIZE);
+		memcpy(bootme_ether, eth->et_src, sizeof(bootme_ether));
+		printf("Target MAC address set to %pM\n", bootme_ether);
 
-	last_state = bootme_state;
-	bootme_dst_port = src_port;
-	debug("bootme_dst_port set to %d\n", bootme_dst_port);
+		if (is_broadcast(bootme_ip)) {
+			NetCopyIP(&bootme_ip, &src_ip);
+		}
+	}
 	if (bootme_state == BOOTME_INIT) {
 		bootme_src_port = EDBG_SVC_PORT;
 		debug("%s: bootme_src_port set to %d\n", __func__, bootme_src_port);
 	}
+
+	debug("bootme_dst_port %d -> %d\n", bootme_dst_port, src_port);
+	bootme_dst_port = src_port;
+
 	bootme_state = bootme_packet_handler(eth_pkt, eth_len);
 	debug("bootme_packet_handler() returned %d\n", bootme_state);
 	if (bootme_state != last_state)
-		debug("bootme_state: %d -> %d\n", last_state, bootme_state);
+		debug("%s@%d: bootme_state: %d -> %d\n", __func__, __LINE__,
+			last_state, bootme_state);
 	switch (bootme_state) {
 	case BOOTME_INIT:
+	case BOOTME_DEBUG_INIT:
 		break;
 
 	case BOOTME_DOWNLOAD:
@@ -240,9 +228,9 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, IPaddr_t src_ip,
 			NetBootFileXferSize += len - 4;
 		/* fallthru */
 	case BOOTME_DEBUG:
-		if (last_state == BOOTME_INIT) {
+		if (last_state == BOOTME_INIT ||
+			last_state == BOOTME_DEBUG_INIT)
 			bootme_timeout = 3 * 1000;
-		}
 		NetSetTimeout(bootme_timeout, bootme_timeout_handler);
 		break;
 
@@ -276,8 +264,11 @@ void BootmeStart(void)
 		assert(NetTxPacket != NULL);
 		pkt = (uchar *)NetTxPacket + NetEthHdrSize() + IP_UDP_HDR_SIZE;
 		memcpy(pkt, output_packet, output_packet_len);
+		debug("%s@%d: Sending ARP request:\n", __func__, __LINE__);
+		ce_dump_block(pkt, output_packet_len);
 		NetSendUDPPacket(bootme_ether, bootme_ip, bootme_dst_port,
 				bootme_src_port, output_packet_len);
+		output_packet_len = 0;
 	}
 }
 
@@ -285,23 +276,20 @@ int bootme_send_frame(const void *buf, size_t len)
 {
 	int ret;
 	struct eth_device *eth;
-	int inited = 0;
 	uchar *pkt;
 
 	eth = eth_get_dev();
 	if (eth == NULL)
 		return -EINVAL;
 
-	if (bootme_state == BOOTME_INIT)
+	if (bootme_state == BOOTME_INIT || bootme_state == BOOTME_DEBUG_INIT)
 		check_net_config();
 
 	debug("%s: buf: %p len: %u from %pI4:%d to %pI4:%d\n",
-		__func__, buf, len, &NetOurIP, bootme_src_port, &bootme_ip, bootme_dst_port);
+		__func__, buf, len, &NetOurIP, bootme_src_port, &bootme_ip,
+		bootme_dst_port);
 
 	if (memcmp(bootme_ether, NetEtherNullAddr, ETH_ALEN) == 0) {
-		if (eth->state == ETH_STATE_ACTIVE)
-			return 0;	/* inside net loop */
-
 		output_packet = buf;
 		output_packet_len = len;
 		/* wait for arp reply and send packet */
@@ -316,36 +304,22 @@ int bootme_send_frame(const void *buf, size_t len)
 		return 0;
 	}
 
-	if (eth->state != ETH_STATE_ACTIVE) {
-		if (eth_is_on_demand_init()) {
-			ret = eth_init(gd->bd);
-			if (ret < 0)
-				return ret;
-			eth_set_last_protocol(BOOTME);
-		} else {
-			eth_init_state_only(gd->bd);
-		}
-		inited = 1;
-	}
-
 	assert(NetTxPacket != NULL);
 	pkt = (uchar *)NetTxPacket + NetEthHdrSize() + IP_UDP_HDR_SIZE;
 	memcpy(pkt, buf, len);
 
 	ret = NetSendUDPPacket(bootme_ether, bootme_ip, bootme_dst_port,
 			bootme_src_port, len);
-	if (inited) {
-		debug("Stopping network\n");
-		if (eth_is_on_demand_init())
-			eth_halt();
-		else
-			eth_halt_state_only();
-	}
+	if (ret)
+		printf("Failed to send packet: %d\n", ret);
+
 	return ret;
 }
 
 static void bootme_init(IPaddr_t server_ip)
 {
+	debug("%s@%d: bootme_state: %d -> %d\n", __func__, __LINE__,
+		bootme_state, BOOTME_INIT);
 	bootme_state = BOOTME_INIT;
 	bootme_ip = server_ip;
 	/* force reconfiguration in check_net_config() */
@@ -374,7 +348,10 @@ int BootMeDebugStart(bootme_hand_f *handler)
 	bootme_packet_handler = handler;
 
 	bootme_init(bootme_ip);
-	bootme_state = BOOTME_DEBUG;
+	debug("%s@%d: bootme_state: %d -> %d\n", __func__, __LINE__,
+		bootme_state, BOOTME_DEBUG_INIT);
+	bootme_state = BOOTME_DEBUG_INIT;
+
 	bootme_timeout = 3 * 1000;
 	NetSetTimeout(bootme_timeout, bootme_timeout_handler);
 

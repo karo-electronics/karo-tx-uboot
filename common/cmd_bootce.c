@@ -554,10 +554,10 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 				break;
 			}
 		} while (ret == CE_PR_MORE);
+		free(buffer);
 		if (ret != CE_PR_EOF)
 			return CMD_RET_FAILURE;
 
-		free(buffer);
 		if (getenv_yesno("autostart") != 1) {
 			/*
 			 * just use bootce to load the image to SDRAM;
@@ -625,8 +625,9 @@ static enum bootme_state ce_process_download(ce_net *net, ce_bin *bin)
 			} else {
 				int rc = ce_send_write_ack(net);
 
-				printf("Dropping out of sequence packet with ID %d (expected %d)\n",
-					blknum, nxt);
+				if (net->verbose)
+					printf("Dropping out of sequence packet with ID %d (expected %d)\n",
+						blknum, nxt);
 				if (rc != 0)
 					return rc;
 
@@ -739,20 +740,18 @@ static enum bootme_state ce_process_edbg(ce_net *net, ce_bin *bin)
 		net->state = BOOTME_DEBUG;
 	}
 
-debug("%s@%d\n", __func__, __LINE__);
 	switch (header.cmd) {
 	case EDBG_CMD_JUMPIMG:
-debug("%s@%d\n", __func__, __LINE__);
 		net->gotJumpingRequest = 1;
 
 		if (net->verbose) {
 			printf("Received JUMPING command\n");
 		}
 		/* Just pass through and copy CONFIG structure */
+		ret = BOOTME_DONE;
 	case EDBG_CMD_OS_CONFIG:
-debug("%s@%d\n", __func__, __LINE__);
 		/* Copy config structure */
-		memcpy(&bin->edbgConfig, header.data,
+		memcpy(&bin->edbgConfig, &net->data[sizeof(header)],
 			sizeof(edbg_os_config_data));
 		if (net->verbose) {
 			printf("Received CONFIG command\n");
@@ -778,7 +777,6 @@ debug("%s@%d\n", __func__, __LINE__);
 				printf("--> Force clean boot\n");
 			}
 		}
-		ret = BOOTME_DEBUG;
 		break;
 
 	default:
@@ -790,11 +788,18 @@ debug("%s@%d\n", __func__, __LINE__);
 
 	/* Respond with ack */
 	header.flags = EDBG_FL_FROM_DEV | EDBG_FL_ACK;
+	memcpy(net->data, &header, sizeof(header));
 	net->dataLen = EDBG_DATA_OFFSET;
-debug("%s@%d: sending packet %p len %u\n", __func__, __LINE__,
-	net->data, net->dataLen);
-	bootme_send_frame(net->data, net->dataLen);
-	return ret;
+
+	int retries = 10;
+	int rc;
+	do {
+		rc = bootme_send_frame(net->data, net->dataLen);
+		if (rc != 0) {
+			printf("Failed to send ACK: %d\n", rc);
+		}
+	} while (rc && retries-- > 0);
+	return rc ?: ret;
 }
 
 static enum bootme_state ce_edbg_handler(const void *buf, size_t len)
@@ -1002,7 +1007,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 			i++;
 			if (argc > i) {
 				timeout = simple_strtoul(argv[i],
-							NULL, 10);
+							NULL, 0);
 				if (timeout >= UINT_MAX / CONFIG_SYS_HZ) {
 					printf("Timeout value %lu out of range (max.: %lu)\n",
 						timeout, UINT_MAX / CONFIG_SYS_HZ - 1);
@@ -1019,7 +1024,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 				server_ip = string_to_ip(argv[i]);
 				printf("Using server %pI4\n", &server_ip);
 			} else {
-				printf("Option requires an argument - t\n");
+				printf("Option requires an argument - h\n");
 				return CMD_RET_USAGE;
 			}
 		}
