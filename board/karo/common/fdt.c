@@ -421,8 +421,7 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 		}
 	}
 	if (off > 0) {
-		fdt_init_fb_mode(blob, off, fb_mode);
-		return fdt_update_native_fb_mode(blob, off);
+		return fdt_init_fb_mode(blob, off, fb_mode);
 	}
 	return -EINVAL;
 }
@@ -518,8 +517,6 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 	ret = SET_FB_PROP("pixelclk-active", 1);
 	if (ret)
 		goto out;
-
-	return fdt_update_native_fb_mode(blob, off);
 
 out:
 	karo_set_fdtsize(blob);
