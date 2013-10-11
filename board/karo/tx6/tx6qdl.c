@@ -1,23 +1,18 @@
 /*
- * Copyright (C) 2012 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012,2013 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
  * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -753,7 +748,10 @@ void lcd_enable(void)
 
 void lcd_disable(void)
 {
-	printf("Disabling LCD\n");
+	if (lcd_enabled) {
+		printf("Disabling LCD\n");
+		ipuv3_fb_shutdown();
+	}
 }
 
 void lcd_panel_disable(void)
@@ -964,6 +962,18 @@ void lcd_ctrl_init(void *lcdbase)
 		PICOS2KHZ(p->pixclock) / 1000,
 		PICOS2KHZ(p->pixclock) % 1000);
 
+	if (p != &fb_mode) {
+		int ret;
+		char *modename = getenv("video_mode");
+
+		printf("Creating new display-timing node from '%s'\n",
+			modename);
+		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+		if (ret)
+			printf("Failed to create new display-timing node from '%s': %d\n",
+				modename, ret);
+	}
+
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
@@ -1067,6 +1077,13 @@ int board_late_init(void)
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
 		} else if (strcmp(baseboard, "stk5-v5") == 0) {
+			const char *otg_mode = getenv("otg_mode");
+
+			if (otg_mode && strcmp(otg_mode, "host") == 0) {
+				printf("otg_mode='%s' is incompatible with baseboard %s; setting to 'none'\n",
+					otg_mode, baseboard);
+				setenv("otg_mode", "none");
+			}
 			stk5v5_board_init();
 		} else {
 			printf("WARNING: Unsupported STK5 board rev.: %s\n",
@@ -1123,25 +1140,94 @@ struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx6qdl_fixup_flexcan(void *blob)
+static int flexcan_enabled(void *blob)
 {
-	const char *baseboard = getenv("baseboard");
+	const char *can_ifs[] = {
+		"can0",
+		"can1",
+	};
+	size_t i;
 
-	if (baseboard && strcmp(baseboard, "stk5-v5") == 0)
+	for (i = 0; i < ARRAY_SIZE(can_ifs); i++) {
+		const char *status;
+		int off = fdt_path_offset(blob, can_ifs[i]);
+
+		if (off < 0) {
+			debug("node '%s' not found\n", can_ifs[i]);
+			continue;
+		}
+		status = fdt_getprop(blob, off, "status", NULL);
+		if (strcmp(status, "okay") == 0) {
+			debug("%s is enabled\n", can_ifs[i]);
+			return 1;
+		}
+	}
+	debug("can driver is disabled\n");
+	return 0;
+}
+
+static void tx6qdl_set_lcd_pins(void *blob, const char *name)
+{
+	int off = fdt_path_offset(blob, name);
+	u32 ph;
+	const struct fdt_property *pc;
+	int len;
+
+	if (off < 0)
 		return;
 
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x02090000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x02094000, "transceiver-switch");
+	ph = fdt_create_phandle(blob, off);
+	if (!ph)
+		return;
+
+	off = fdt_path_offset(blob, "display");
+	if (off < 0)
+		return;
+
+	pc = fdt_get_property(blob, off, "pinctrl-0", &len);
+	if (!pc || len < sizeof(ph))
+		return;
+
+	memcpy((void *)pc->data, &ph, sizeof(ph));
+	fdt_setprop_cell(blob, off, "pinctrl-0", ph);
+}
+
+static void tx6qdl_fixup_flexcan(void *blob, int stk5_v5)
+{
+	const char *xcvr_status = "disabled";
+
+	if (stk5_v5) {
+		if (flexcan_enabled(blob)) {
+			tx6qdl_set_lcd_pins(blob, "lcdif_23bit_pins_a");
+			xcvr_status = "okay";
+		} else {
+			tx6qdl_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+		}
+	} else {
+		const char *otg_mode = getenv("otg_mode");
+
+		if (otg_mode && (strcmp(otg_mode, "host") == 0))
+			karo_fdt_enable_node(blob, "can1", 0);
+
+		tx6qdl_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+	}
+	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+			xcvr_status, strlen(xcvr_status) + 1, 1);
 }
 
 void ft_board_setup(void *blob, bd_t *bd)
 {
+	const char *baseboard = getenv("baseboard");
+	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
+
+	karo_fdt_enable_node(blob, "stk5led", !stk5_v5);
+
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
-	tx6qdl_fixup_flexcan(blob);
+	tx6qdl_fixup_flexcan(blob, stk5_v5);
 	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
 #endif
