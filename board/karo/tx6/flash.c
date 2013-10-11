@@ -650,7 +650,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 
 U_BOOT_CMD(romupdate, 11, 0, do_update,
-	"Creates an FCB data structure and writes an U-Boot image to flash\n",
+	"Creates an FCB data structure and writes an U-Boot image to flash",
 	"[-f #] [-r [#]] [-e #] [<address>] [<length>]\n"
 	"\t-f #\twrite bootloader image at block #\n"
 	"\t-r\twrite redundant bootloader image at next free block after first image\n"

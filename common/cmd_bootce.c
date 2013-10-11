@@ -452,9 +452,9 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 U_BOOT_CMD(
 	bootce, 2, 0, do_bootce,
-	"Boot a Windows CE image from RAM\n",
+	"Boot a Windows CE image from RAM",
 	"[addr]\n"
-	"\taddr\t\tboot image from address addr (default ${fileaddr})\n"
+	"\taddr\t\tboot image from address addr (default ${fileaddr})"
 );
 
 static int ce_nand_load(ce_bin *bin, loff_t *offset, void *buf, size_t max_len)
@@ -576,10 +576,10 @@ err:
 }
 U_BOOT_CMD(
 	nbootce, 2, 0, do_nbootce,
-	"Boot a Windows CE image from NAND\n",
+	"Boot a Windows CE image from NAND",
 	"off|partitition\n"
 	"\toff\t\t- flash offset (hex)\n"
-	"\tpartition\t- partition name\n"
+	"\tpartition\t- partition name"
 );
 
 static int ce_send_write_ack(ce_net *net)
@@ -1060,7 +1060,7 @@ err:
 }
 U_BOOT_CMD(
 	ceconnect, 6, 1, do_ceconnect,
-	"Set up a connection to the CE host PC over TCP/IP and download the run-time image\n",
+	"Set up a connection to the CE host PC over TCP/IP and download the run-time image",
 	"[-v] [-t <timeout>] [-h host]\n"
 	"  -v            - verbose operation\n"
 	"  -t <timeout>  - max wait time (#sec) for the connection\n"
