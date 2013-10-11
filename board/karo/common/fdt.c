@@ -161,8 +161,8 @@ void karo_fdt_fixup_touchpanel(void *blob)
 				continue;
 		}
 		fdt_disable_tp_node(blob, karo_touchpanels[i]);
-		karo_set_fdtsize(blob);
 	}
+	karo_set_fdtsize(blob);
 }
 
 void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
@@ -336,16 +336,12 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 	int ret;
 	uint32_t ph;
 
+	ret = fdt_increase_size(blob, 32);
+	if (ret) {
+		printf("Warning: Failed to increase FDT size: %d\n", ret);
+	}
 	debug("Creating phandle at offset %d\n", off);
 	ph = fdt_create_phandle(blob, off);
-	if (!ph) {
-		ret = fdt_increase_size(blob, 512);
-		if (ret) {
-			printf("Failed to increase FDT size: %d\n", ret);
-			return ret;
-		}
-		ph = fdt_create_phandle(blob, off);
-	}
 	if (!ph) {
 		printf("Failed to create phandle for video timing\n");
 		return -ENOMEM;
