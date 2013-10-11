@@ -589,7 +589,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 
 U_BOOT_CMD(romupdate, 11, 0, do_update,
-	"Creates an FCB data structure and writes an U-Boot image to flash\n",
+	"Creates an FCB data structure and writes an U-Boot image to flash",
 	"[-b #] [-n #] [-f #] [-r [#]] [<address>] [<length>]\n"
 	"\t-b #\tfirst FCB block number (default 0)\n"
 	"\t-n #\ttotal number of FCB blocks (default 1)\n"
