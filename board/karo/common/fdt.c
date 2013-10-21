@@ -337,7 +337,7 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 	int ret;
 	uint32_t ph;
 
-	ret = fdt_increase_size(blob, 32);
+	ret = fdt_increase_size(blob, 64);
 	if (ret) {
 		printf("Warning: Failed to increase FDT size: %d\n", ret);
 	}
@@ -543,16 +543,11 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 		return off;
 
 	if (name == NULL) {
-		int parent = fdt_parent_offset(blob, off);
 		int ret;
 
-		if (parent < 0) {
-			printf("Failed to find parent of node '%s'\n",
-				fdt_get_name(blob, off, NULL));
-			return parent;
-		}
-		debug("parent offset=%06x\n", parent);
-		ret = fdt_set_node_status(blob, parent, FDT_STATUS_DISABLED, 0);
+		debug("Disabling node '%s' at %03x\n",
+			fdt_get_name(blob, off, NULL), off);
+		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
 		return ret;
 	}
 
