@@ -715,8 +715,16 @@ void lcd_ctrl_init(void *lcdbase)
 		color_depth, refresh);
 
 	if (karo_load_splashimage(0) == 0) {
+		char vmode[32];
+
+		/* setup env variable for mxsfb display driver */
+		snprintf(vmode, sizeof(vmode), "%dx%dMR-%d@%d",
+			p->xres, p->yres, color_depth, refresh);
+		setenv("videomode", vmode);
+
 		debug("Initializing LCD controller\n");
 		video_hw_init(lcdbase);
+		setenv("videomode", NULL);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
