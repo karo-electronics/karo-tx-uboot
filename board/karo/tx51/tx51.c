@@ -226,14 +226,8 @@ static void tx51_print_cpuinfo(void)
 
 int board_early_init_f(void)
 {
-	struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
+	struct mxc_ccm_reg *ccm_regs = (void *)CCM_BASE_ADDR;
 
-#ifdef CONFIG_CMD_BOOTCE
-	/* WinCE fails to enable these clocks */
-	writel(readl(&ccm_regs->CCGR2) | 0x0c000000, &ccm_regs->CCGR2); /* usboh3_ipg_ahb */
-	writel(readl(&ccm_regs->CCGR4) | 0x30000000, &ccm_regs->CCGR4); /* srtc */
-	writel(readl(&ccm_regs->CCGR6) | 0x00000300, &ccm_regs->CCGR6); /* emi_garb */
-#endif
 	gpio_request_array(tx51_gpios, ARRAY_SIZE(tx51_gpios));
 	imx_iomux_v3_setup_multiple_pads(tx51_pads, ARRAY_SIZE(tx51_pads));
 
@@ -255,6 +249,20 @@ int board_early_init_f(void)
 	writel(0x00000000, AIPS2_BASE_ADDR + 0x4c);
 	writel(0x00000000, AIPS2_BASE_ADDR + 0x50);
 
+	writel(0xffcffffc, &ccm_regs->CCGR0);
+	writel(0x003fffff, &ccm_regs->CCGR1);
+	writel(0x030c003c, &ccm_regs->CCGR2);
+	writel(0x000000ff, &ccm_regs->CCGR3);
+	writel(0x00000000, &ccm_regs->CCGR4);
+	writel(0x003fc003, &ccm_regs->CCGR5);
+	writel(0x00000000, &ccm_regs->CCGR6);
+	writel(0x00000000, &ccm_regs->cmeor);
+#ifdef CONFIG_CMD_BOOTCE
+	/* WinCE fails to enable these clocks */
+	writel(readl(&ccm_regs->CCGR2) | 0x0c000000, &ccm_regs->CCGR2); /* usboh3_ipg_ahb */
+	writel(readl(&ccm_regs->CCGR4) | 0x30000000, &ccm_regs->CCGR4); /* srtc */
+	writel(readl(&ccm_regs->CCGR6) | 0x00000300, &ccm_regs->CCGR6); /* emi_garb */
+#endif
 	return 0;
 }
 
