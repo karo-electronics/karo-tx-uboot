@@ -63,7 +63,7 @@ iomux_v3_cfg_t const usdhc1_pads[] = {
 	MX6_PAD_SD1_DAT2__USDHC1_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD1_DAT3__USDHC1_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* Carrier MicroSD Card Detect */
-	MX6_PAD_GPIO_2__GPIO_1_2      | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_GPIO_2__GPIO_1_2,
 };
 
 static iomux_v3_cfg_t const usdhc3_pads[] = {
@@ -74,7 +74,7 @@ static iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_DAT2__USDHC3_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT3__USDHC3_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* SOM MicroSD Card Detect */
-	MX6_PAD_EIM_DA9__GPIO_3_9     | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_DA9__GPIO_3_9,
 };
 
 static iomux_v3_cfg_t const enet_pads[] = {
@@ -94,7 +94,7 @@ static iomux_v3_cfg_t const enet_pads[] = {
 	MX6_PAD_RGMII_RD3__ENET_RGMII_RD3	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_RGMII_RX_CTL__RGMII_RX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	/* AR8031 PHY Reset */
-	MX6_PAD_EIM_D29__GPIO_3_29		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_D29__GPIO_3_29,
 };
 
 static void setup_iomux_uart(void)
