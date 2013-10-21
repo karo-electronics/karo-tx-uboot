@@ -340,6 +340,7 @@ static struct tx51_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(mmc0_pads),
 		.cfg = {
 			.esdhc_base = (void __iomem *)MMC_SDHC1_BASE_ADDR,
+			.max_bus_width = 4,
 		},
 		.cd_gpio = IMX_GPIO_NR(3, 8),
 	},
@@ -348,15 +349,13 @@ static struct tx51_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(mmc1_pads),
 		.cfg = {
 			.esdhc_base = (void __iomem *)MMC_SDHC2_BASE_ADDR,
+			.max_bus_width = 4,
 		},
 		.cd_gpio = IMX_GPIO_NR(3, 6),
 	},
 };
 
-static struct tx51_esdhc_cfg *to_tx51_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
-{
-	return container_of(cfg, struct tx51_esdhc_cfg, cfg);
-}
+#define to_tx51_esdhc_cfg(p) container_of(p, struct tx51_esdhc_cfg, cfg)
 
 int board_mmc_getcd(struct mmc *mmc)
 {
