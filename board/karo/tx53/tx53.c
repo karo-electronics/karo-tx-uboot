@@ -313,16 +313,7 @@ static struct tx53_esdhc_cfg {
 	},
 };
 
-#if 1
 #define to_tx53_esdhc_cfg(p) container_of(p, struct tx53_esdhc_cfg, cfg)
-#else
-static struct tx53_esdhc_cfg *to_tx53_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
-{
-	void *p = cfg;
-
-	return p - offsetof(struct tx53_esdhc_cfg, cfg);
-}
-#endif
 
 int board_mmc_getcd(struct mmc *mmc)
 {
