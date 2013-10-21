@@ -21,6 +21,7 @@ void karo_fdt_remove_node(void *blob, const char *node);
 void karo_fdt_move_fdt(void);
 void karo_fdt_fixup_touchpanel(void *blob);
 void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy);
+void karo_fdt_fixup_flexcan(void *blob, int xcvr_present);
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 		const char *prop);
 void karo_fdt_enable_node(void *blob, const char *node, int enable);
@@ -42,6 +43,9 @@ static inline void karo_fdt_fixup_touchpanel(void *blob)
 }
 static inline void karo_fdt_fixup_usb_otg(void *blob, const char *node,
 					const char *phy)
+{
+}
+static inline void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
 }
 static inline void karo_fdt_del_prop(void *blob, const char *compat,

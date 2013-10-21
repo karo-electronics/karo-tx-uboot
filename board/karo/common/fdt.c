@@ -237,6 +237,81 @@ out:
 	karo_set_fdtsize(blob);
 }
 
+static int karo_fdt_flexcan_enabled(void *blob)
+{
+	const char *can_ifs[] = {
+		"can0",
+		"can1",
+	};
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(can_ifs); i++) {
+		const char *status;
+		int off = fdt_path_offset(blob, can_ifs[i]);
+
+		if (off < 0) {
+			debug("node '%s' not found\n", can_ifs[i]);
+			continue;
+		}
+		status = fdt_getprop(blob, off, "status", NULL);
+		if (strcmp(status, "okay") == 0) {
+			debug("%s is enabled\n", can_ifs[i]);
+			return 1;
+		}
+	}
+	debug("can driver is disabled\n");
+	return 0;
+}
+
+static void karo_fdt_set_lcd_pins(void *blob, const char *name)
+{
+	int off = fdt_path_offset(blob, name);
+	u32 ph;
+	const struct fdt_property *pc;
+	int len;
+
+	if (off < 0)
+		return;
+
+	ph = fdt_create_phandle(blob, off);
+	if (!ph)
+		return;
+
+	off = fdt_path_offset(blob, "display");
+	if (off < 0)
+		return;
+
+	pc = fdt_get_property(blob, off, "pinctrl-0", &len);
+	if (!pc || len < sizeof(ph))
+		return;
+
+	memcpy((void *)pc->data, &ph, sizeof(ph));
+	fdt_setprop_cell(blob, off, "pinctrl-0", ph);
+}
+
+void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
+{
+	const char *xcvr_status = "disabled";
+
+	if (xcvr_present) {
+		if (karo_fdt_flexcan_enabled(blob)) {
+			karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
+			xcvr_status = "okay";
+		} else {
+			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+		}
+	} else {
+		const char *otg_mode = getenv("otg_mode");
+
+		if (otg_mode && (strcmp(otg_mode, "host") == 0))
+			karo_fdt_enable_node(blob, "can1", 0);
+
+		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+	}
+	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+			xcvr_status, strlen(xcvr_status) + 1, 1);
+}
+
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 			const char *prop)
 {
