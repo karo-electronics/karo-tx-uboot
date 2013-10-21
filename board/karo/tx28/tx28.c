@@ -686,6 +686,20 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
+	}
+
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
 		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
