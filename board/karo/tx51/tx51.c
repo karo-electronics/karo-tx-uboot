@@ -57,7 +57,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define FEC_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
 					PAD_CTL_SRE_FAST)
 #define FEC_PAD_CTRL2		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_SRE_FAST)
-#define GPIO_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_DSE_HIGH)
+#define GPIO_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | PAD_CTL_PUS_100K_UP)
 
 static iomux_v3_cfg_t tx51_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
@@ -315,7 +315,7 @@ static const iomux_v3_cfg_t mmc0_pads[] = {
 	MX51_PAD_SD1_DATA2__SD1_DATA2,
 	MX51_PAD_SD1_DATA3__SD1_DATA3,
 	/* SD1 CD */
-	MX51_PAD_DISPB2_SER_RS__GPIO3_8 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
+	MX51_PAD_DISPB2_SER_RS__GPIO3_8 | GPIO_PAD_CTRL,
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
@@ -326,7 +326,7 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 	MX51_PAD_SD2_DATA2__SD2_DATA2,
 	MX51_PAD_SD2_DATA3__SD2_DATA3,
 	/* SD2 CD */
-	MX51_PAD_DISPB2_SER_DIO__GPIO3_6 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
+	MX51_PAD_DISPB2_SER_DIO__GPIO3_6 | GPIO_PAD_CTRL,
 };
 
 static struct tx51_esdhc_cfg {
@@ -521,18 +521,18 @@ void show_activity(int arg)
 
 static const iomux_v3_cfg_t stk5_pads[] = {
 	/* SW controlled LED on STK5 baseboard */
-	MX51_PAD_CSI2_D13__GPIO4_10,
+	MX51_PAD_CSI2_D13__GPIO4_10 | GPIO_PAD_CTRL,
 
 	/* USB PHY reset */
-	MX51_PAD_GPIO1_4__GPIO1_4,
+	MX51_PAD_GPIO1_4__GPIO1_4 | GPIO_PAD_CTRL,
 	/* USBOTG OC */
-	MX51_PAD_GPIO1_6__GPIO1_6,
+	MX51_PAD_GPIO1_6__GPIO1_6 | GPIO_PAD_CTRL,
 	/* USB PHY clock enable */
-	MX51_PAD_GPIO1_7__GPIO1_7,
+	MX51_PAD_GPIO1_7__GPIO1_7 | GPIO_PAD_CTRL,
 	/* USBH1 VBUS enable */
-	MX51_PAD_GPIO1_8__GPIO1_8,
+	MX51_PAD_GPIO1_8__GPIO1_8 | GPIO_PAD_CTRL,
 	/* USBH1 OC */
-	MX51_PAD_GPIO1_9__GPIO1_9,
+	MX51_PAD_GPIO1_9__GPIO1_9 | GPIO_PAD_CTRL,
 };
 
 static const struct gpio stk5_gpios[] = {
