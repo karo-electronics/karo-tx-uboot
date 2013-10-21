@@ -686,6 +686,20 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
+	}
+
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
 		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
@@ -701,8 +715,16 @@ void lcd_ctrl_init(void *lcdbase)
 		color_depth, refresh);
 
 	if (karo_load_splashimage(0) == 0) {
+		char vmode[32];
+
+		/* setup env variable for mxsfb display driver */
+		snprintf(vmode, sizeof(vmode), "%dx%dMR-%d@%d",
+			p->xres, p->yres, color_depth, refresh);
+		setenv("videomode", vmode);
+
 		debug("Initializing LCD controller\n");
 		video_hw_init(lcdbase);
+		setenv("videomode", NULL);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
