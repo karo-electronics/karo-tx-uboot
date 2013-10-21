@@ -1018,17 +1018,6 @@ struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx53_fixup_flexcan(void *blob)
-{
-	const char *baseboard = getenv("baseboard");
-
-	if (baseboard && strcmp(baseboard, "stk5-v5") == 0)
-		return;
-
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fc8000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fcc000, "transceiver-switch");
-}
-
 #ifdef CONFIG_SYS_TX53_HWREV_2
 void tx53_fixup_rtc(void *blob)
 {
@@ -1043,12 +1032,15 @@ static inline void tx53_fixup_rtc(void *blob)
 
 void ft_board_setup(void *blob, bd_t *bd)
 {
+	const char *baseboard = getenv("baseboard");
+	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
+
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
-	tx53_fixup_flexcan(blob);
+	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	tx53_fixup_rtc(blob);
 	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
