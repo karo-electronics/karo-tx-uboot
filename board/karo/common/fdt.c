@@ -254,7 +254,7 @@ static int karo_fdt_flexcan_enabled(void *blob)
 			continue;
 		}
 		status = fdt_getprop(blob, off, "status", NULL);
-		if (strcmp(status, "okay") == 0) {
+		if (status && strcmp(status, "okay") == 0) {
 			debug("%s is enabled\n", can_ifs[i]);
 			return 1;
 		}
