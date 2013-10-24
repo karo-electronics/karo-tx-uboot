@@ -276,6 +276,7 @@ int cpu_eth_init(bd_t *bis)
 	writel(CLKCTRL_PLL2CTRL0_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_pll2ctrl0_clr);
 
+	udelay(6000);
 	return 0;
 }
 #endif
