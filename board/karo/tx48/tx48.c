@@ -660,18 +660,42 @@ static void tx48_set_cpu_clock(void)
 		mpu_clk_rate() / 1000 % 1000);
 }
 
+static void tx48_init_mac(void)
+{
+	uint8_t mac_addr[ETH_ALEN];
+	uint32_t mac_hi, mac_lo;
+
+	/* try reading mac address from efuse */
+	mac_lo = __raw_readl(MAC_ID0_LO);
+	mac_hi = __raw_readl(MAC_ID0_HI);
+
+	mac_addr[0] = mac_hi & 0xFF;
+	mac_addr[1] = (mac_hi & 0xFF00) >> 8;
+	mac_addr[2] = (mac_hi & 0xFF0000) >> 16;
+	mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
+	mac_addr[4] = mac_lo & 0xFF;
+	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
+
+	if (!is_valid_ether_addr(mac_addr)) {
+		printf("No valid MAC address programmed\n");
+		return;
+	}
+	printf("MAC addr from fuse: %pM\n", mac_addr);
+	eth_setenv_enetaddr("ethaddr", mac_addr);
+}
+
 /* called with environment from NAND or MMC */
 int board_late_init(void)
 {
+	int ret = 0;
 	const char *baseboard;
 
 	tx48_set_cpu_clock();
-#ifdef CONFIG_OF_BOARD_SETUP
 	karo_fdt_move_fdt();
-#endif
+
 	baseboard = getenv("baseboard");
 	if (!baseboard)
-		return 0;
+		goto exit;
 
 	if (strncmp(baseboard, "stk5", 4) == 0) {
 		printf("Baseboard: %s\n", baseboard);
@@ -687,10 +711,11 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
-
-	return 0;
+exit:
+	tx48_init_mac();
+	return ret;
 }
 
 #ifdef CONFIG_DRIVER_TI_CPSW
@@ -751,27 +776,6 @@ static struct cpsw_platform_data cpsw_data = {
 
 int board_eth_init(bd_t *bis)
 {
-	uint8_t mac_addr[ETH_ALEN];
-	uint32_t mac_hi, mac_lo;
-
-	/* try reading mac address from efuse */
-	mac_lo = __raw_readl(MAC_ID0_LO);
-	mac_hi = __raw_readl(MAC_ID0_HI);
-
-	mac_addr[0] = mac_hi & 0xFF;
-	mac_addr[1] = (mac_hi & 0xFF00) >> 8;
-	mac_addr[2] = (mac_hi & 0xFF0000) >> 16;
-	mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
-	mac_addr[4] = mac_lo & 0xFF;
-	mac_addr[5] = (mac_lo & 0xFF00) >> 8;
-
-	if (is_valid_ether_addr(mac_addr)) {
-		printf("MAC addr from fuse: %pM\n", mac_addr);
-		eth_setenv_enetaddr("ethaddr", mac_addr);
-	} else {
-		printf("ERROR: Did not find a valid mac address in e-fuse\n");
-	}
-
 	__raw_writel(RMII_MODE_ENABLE, MAC_MII_SEL);
 	__raw_writel(0x5D, GMII_SEL);
 	return cpsw_register(&cpsw_data);
