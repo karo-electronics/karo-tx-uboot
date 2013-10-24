@@ -392,7 +392,6 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 int board_eth_init(bd_t *bis)
 {
 	int ret;
-	unsigned char mac[ETH_ALEN];
 
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
@@ -401,15 +400,8 @@ int board_eth_init(bd_t *bis)
 	gpio_set_value(TX53_FEC_RST_GPIO, 1);
 
 	ret = cpu_eth_init(bis);
-	if (ret) {
+	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
-		return ret;
-	}
-
-	imx_get_mac_from_fuse(0, mac);
-	eth_setenv_enetaddr("ethaddr", mac);
-	printf("MAC addr from fuse: %pM\n", mac);
-
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -985,6 +977,20 @@ static void tx53_set_cpu_clock(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
 }
 
+static void tx53_init_mac(void)
+{
+	u8 mac[ETH_ALEN];
+
+	imx_get_mac_from_fuse(0, mac);
+	if (!is_valid_ether_addr(mac)) {
+		printf("No valid MAC address programmed\n");
+		return;
+	}
+
+	eth_setenv_enetaddr("ethaddr", mac);
+	printf("MAC addr from fuse: %pM\n", mac);
+}
+
 int board_late_init(void)
 {
 	int ret = 0;
@@ -1015,6 +1021,7 @@ int board_late_init(void)
 	}
 
 exit:
+	tx53_init_mac();
 	gpio_set_value(TX53_RESET_OUT_GPIO, 1);
 	return ret;
 }
