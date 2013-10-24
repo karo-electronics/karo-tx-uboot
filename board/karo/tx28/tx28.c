@@ -748,6 +748,22 @@ static void stk5v5_board_init(void)
 	mxs_iomux_setup_pad(MX28_PAD_LCD_D00__GPIO_1_0);
 }
 
+int tx28_fec1_enabled(void)
+{
+	const char *status;
+	int off;
+
+	if (!gd->fdt_blob)
+		return 0;
+
+	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
+	if (off < 0)
+		return 0;
+
+	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
+	return status && (strcmp(status, "okay") == 0);
+}
+
 int board_late_init(void)
 {
 	int ret;
@@ -789,10 +805,12 @@ int board_late_init(void)
 		return ret;
 	}
 #ifdef CONFIG_FEC_MXC_MULTI
-	ret = fec_get_mac_addr(1);
-	if (ret < 0) {
-		printf("Failed to read FEC1 MAC address from OCOTP\n");
-		return ret;
+	if (tx28_fec1_enabled()) {
+		ret = fec_get_mac_addr(1);
+		if (ret < 0) {
+			printf("Failed to read FEC1 MAC address from OCOTP\n");
+			return ret;
+		}
 	}
 #endif
 	return 0;
@@ -966,11 +984,6 @@ static void tx28_fixup_flexcan(void *blob, int stk5_v5)
 			can_xcvr, strlen(can_xcvr) + 1, 1);
 }
 
-static void tx28_fixup_fec(void *blob)
-{
-	karo_fdt_enable_node(blob, "ethernet1", 0);
-}
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -985,8 +998,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 #endif
 	if (stk5_v5) {
 		karo_fdt_remove_node(blob, "stk5led");
-	} else {
-		tx28_fixup_fec(blob);
 	}
 	tx28_fixup_flexcan(blob, stk5_v5);
 
