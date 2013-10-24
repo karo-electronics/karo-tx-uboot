@@ -235,11 +235,12 @@ static int fec_get_mac_addr(int index)
 	if (!is_valid_ether_addr(mac))
 		return 0;
 
-	if (index == 0)
+	if (index == 0) {
+		printf("MAC addr from fuse: %pM\n", mac);
 		snprintf(env_name, sizeof(env_name), "ethaddr");
-	else
+	} else {
 		snprintf(env_name, sizeof(env_name), "eth%daddr", index);
-
+	}
 	eth_setenv_enetaddr(env_name, mac);
 	return 0;
 }
