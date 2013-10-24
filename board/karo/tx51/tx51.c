@@ -922,9 +922,6 @@ void lcd_ctrl_init(void *lcdbase)
 	default:
 		panel_info.vl_bpix = LCD_COLOR24;
 	}
-	printf("xres=%d left_margin=%d right_margin=%d hsync_len=%d yres=%d upper_margin=%d lower_margin=%d vsync_len=%d\n",
-		p->xres, p->left_margin, p->right_margin, p->hsync_len,
-		p->yres, p->upper_margin, p->lower_margin, p->vsync_len);
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
