@@ -296,13 +296,16 @@ int board_eth_init(bd_t *bis)
 			return ret;
 		}
 	}
-	return 0;
 #else
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize(bis);
+		if (ret) {
+			printf("FEC MXS: Unable to init FEC\n");
+			return ret;
+		}
 	}
-	return ret;
 #endif
+	return 0;
 }
 #endif /* CONFIG_FEC_MXC */
 
