@@ -280,11 +280,6 @@ int board_eth_init(bd_t *bis)
 		return ret;
 	}
 
-	ret = fec_get_mac_addr(0);
-	if (ret < 0) {
-		printf("Failed to read FEC0 MAC address from OCOTP\n");
-		return ret;
-	}
 #ifdef CONFIG_FEC_MXC_MULTI
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
@@ -294,11 +289,6 @@ int board_eth_init(bd_t *bis)
 		}
 	}
 
-	ret = fec_get_mac_addr(1);
-	if (ret < 0) {
-		printf("Failed to read FEC1 MAC address from OCOTP\n");
-		return ret;
-	}
 	if (getenv("eth1addr")) {
 		ret = fecmxc_initialize_multi(bis, 1, 1, MXS_ENET1_BASE);
 		if (ret) {
@@ -757,6 +747,7 @@ static void stk5v5_board_init(void)
 
 int board_late_init(void)
 {
+	int ret;
 	const char *baseboard;
 
 	karo_fdt_move_fdt();
@@ -789,6 +780,18 @@ int board_late_init(void)
 		return -EINVAL;
 	}
 
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return ret;
+	}
+#ifdef CONFIG_FEC_MXC_MULTI
+	ret = fec_get_mac_addr(1);
+	if (ret < 0) {
+		printf("Failed to read FEC1 MAC address from OCOTP\n");
+		return ret;
+	}
+#endif
 	return 0;
 }
 
