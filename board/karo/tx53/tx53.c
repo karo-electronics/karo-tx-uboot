@@ -1,14 +1,13 @@
 /*
- * Copyright (C) 2011 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2011-2013 Lothar Waßmann <LW@KARO-electronics.de>
  * based on: board/freescale/mx28_evk.c (C) 2010 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
  * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -314,16 +313,7 @@ static struct tx53_esdhc_cfg {
 	},
 };
 
-#if 1
 #define to_tx53_esdhc_cfg(p) container_of(p, struct tx53_esdhc_cfg, cfg)
-#else
-static struct tx53_esdhc_cfg *to_tx53_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
-{
-	void *p = cfg;
-
-	return p - offsetof(struct tx53_esdhc_cfg, cfg);
-}
-#endif
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -402,7 +392,6 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 int board_eth_init(bd_t *bis)
 {
 	int ret;
-	unsigned char mac[ETH_ALEN];
 
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
@@ -411,15 +400,8 @@ int board_eth_init(bd_t *bis)
 	gpio_set_value(TX53_FEC_RST_GPIO, 1);
 
 	ret = cpu_eth_init(bis);
-	if (ret) {
+	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
-		return ret;
-	}
-
-	imx_get_mac_from_fuse(0, mac);
-	eth_setenv_enetaddr("ethaddr", mac);
-	printf("MAC addr from fuse: %pM\n", mac);
-
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -489,14 +471,12 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
-static ushort tx53_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 1600,
 	.vl_row = 1200,
 
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
-	.cmap = tx53_cmap,
 };
 
 static struct fb_videomode tx53_fb_modes[] = {
@@ -642,8 +622,9 @@ void lcd_enable(void)
 	 */
 	lcd_is_enabled = 0;
 
-	karo_load_splashimage(1);
 	if (lcd_enabled) {
+		karo_load_splashimage(1);
+
 		debug("Switching LCD on\n");
 		gpio_set_value(TX53_LCD_PWR_GPIO, 1);
 		udelay(100);
@@ -655,7 +636,10 @@ void lcd_enable(void)
 
 void lcd_disable(void)
 {
-	printf("Disabling LCD\n");
+	if (lcd_enabled) {
+		printf("Disabling LCD\n");
+		ipuv3_fb_shutdown();
+	}
 }
 
 void lcd_panel_disable(void)
@@ -746,6 +730,7 @@ void lcd_ctrl_init(void *lcdbase)
 	if (tstc() || (wrsr & WRSR_TOUT)) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
+		setenv("splashimage", NULL);
 		return;
 	}
 
@@ -761,10 +746,14 @@ void lcd_ctrl_init(void *lcdbase)
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
-		if (fb_mode.xres < panel_info.vl_col)
-			panel_info.vl_col = fb_mode.xres;
-		if (fb_mode.yres < panel_info.vl_row)
-			panel_info.vl_row = fb_mode.yres;
+		if (fb_mode.xres > panel_info.vl_col ||
+			fb_mode.yres > panel_info.vl_row) {
+			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
+				fb_mode.xres, fb_mode.yres,
+				panel_info.vl_col, panel_info.vl_row);
+			lcd_enabled = 0;
+			return;
+		}
 	}
 	if (p->name != NULL)
 		debug("Trying compiled-in video modes\n");
@@ -869,6 +858,25 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
+		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
+			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		lcd_enabled = 0;
+		return;
+	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
+	}
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
@@ -877,6 +885,18 @@ void lcd_ctrl_init(void *lcdbase)
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 		PICOS2KHZ(p->pixclock) / 1000,
 		PICOS2KHZ(p->pixclock) % 1000);
+
+	if (p != &fb_mode) {
+		int ret;
+		char *modename = getenv("video_mode");
+
+		printf("Creating new display-timing node from '%s'\n",
+			modename);
+		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+		if (ret)
+			printf("Failed to create new display-timing node from '%s': %d\n",
+				modename, ret);
+	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
@@ -898,8 +918,16 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 
 	if (karo_load_splashimage(0) == 0) {
+		int ret;
+
+		gd->arch.ipu_hw_rev = IPUV3_HW_REV_IPUV3M;
+
 		debug("Initializing LCD controller\n");
-		ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
+		ret = ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
+		if (ret) {
+			printf("Failed to initialize FB driver: %d\n", ret);
+			lcd_enabled = 0;
+		}
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -949,6 +977,20 @@ static void tx53_set_cpu_clock(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
 }
 
+static void tx53_init_mac(void)
+{
+	u8 mac[ETH_ALEN];
+
+	imx_get_mac_from_fuse(0, mac);
+	if (!is_valid_ether_addr(mac)) {
+		printf("No valid MAC address programmed\n");
+		return;
+	}
+
+	eth_setenv_enetaddr("ethaddr", mac);
+	printf("MAC addr from fuse: %pM\n", mac);
+}
+
 int board_late_init(void)
 {
 	int ret = 0;
@@ -979,6 +1021,7 @@ int board_late_init(void)
 	}
 
 exit:
+	tx53_init_mac();
 	gpio_set_value(TX53_RESET_OUT_GPIO, 1);
 	return ret;
 }
@@ -1005,17 +1048,6 @@ struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx53_fixup_flexcan(void *blob)
-{
-	const char *baseboard = getenv("baseboard");
-
-	if (baseboard && strcmp(baseboard, "stk5-v5") == 0)
-		return;
-
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fc8000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x53fcc000, "transceiver-switch");
-}
-
 #ifdef CONFIG_SYS_TX53_HWREV_2
 void tx53_fixup_rtc(void *blob)
 {
@@ -1026,17 +1058,20 @@ void tx53_fixup_rtc(void *blob)
 static inline void tx53_fixup_rtc(void *blob)
 {
 }
-#endif
+#endif /* CONFIG_SYS_TX53_HWREV_2 */
 
 void ft_board_setup(void *blob, bd_t *bd)
 {
+	const char *baseboard = getenv("baseboard");
+	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
+
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
-	karo_fdt_enable_node(blob, "ipu", getenv("video_mode") != NULL);
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
-	tx53_fixup_flexcan(blob);
+	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	tx53_fixup_rtc(blob);
+	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
-#endif
+#endif /* CONFIG_OF_BOARD_SETUP */

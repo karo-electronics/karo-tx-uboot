@@ -515,7 +515,8 @@ int fdt_resize(void *blob)
 	ret = fdt_add_mem_rsv(blob, (uintptr_t)blob, actualsize);
 	if (ret < 0)
 		return ret;
-
+	if (getenv("fdtsize"))
+		setenv_hex("fdtsize", actualsize);
 	return actualsize;
 }
 

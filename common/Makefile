@@ -259,8 +259,12 @@ $(obj)../tools/envcrc:
 	$(MAKE) -C ../tools
 
 # SEE README.arm-unaligned-accesses
-$(obj)hush.o: CFLAGS += $(PLATFORM_NO_UNALIGNED)
+$(obj)cmd_bmp.o: CFLAGS += $(PLATFORM_NO_UNALIGNED)
 $(obj)fdt_support.o: CFLAGS += $(PLATFORM_NO_UNALIGNED)
+$(obj)hush.o: CFLAGS += $(PLATFORM_NO_UNALIGNED)
+ifneq ($(CONFIG_CMD_BMP)$(CONFIG_SPLASH_SCREEN),)
+$(obj)lcd.o: CFLAGS += $(PLATFORM_NO_UNALIGNED)
+endif
 
 #########################################################################
 

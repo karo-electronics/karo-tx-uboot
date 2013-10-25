@@ -437,30 +437,6 @@ static int mxcfb_unmap_video_memory(struct fb_info *fbi)
 	return 0;
 }
 
-void ipuv3_fb_shutdown(void)
-{
-	int i;
-	struct ipu_stat *stat = (struct ipu_stat *)IPU_STAT;
-
-	for (i = 0; i < ARRAY_SIZE(mxcfb_info); i++) {
-		struct fb_info *fbi = mxcfb_info[i];
-
-		if (fbi) {
-			struct mxcfb_info *mxc_fbi = fbi->par;
-
-			ipu_disable_channel(mxc_fbi->ipu_ch);
-			ipu_uninit_channel(mxc_fbi->ipu_ch);
-		}
-	}
-
-	clk_enable(g_ipu_clk);
-	for (i = 0; i < ARRAY_SIZE(stat->int_stat); i++) {
-		__raw_writel(__raw_readl(&stat->int_stat[i]),
-			&stat->int_stat[i]);
-	}
-	clk_disable(g_ipu_clk);
-}
-
 /*
  * Initializes the framebuffer information pointer. After allocating
  * sufficient memory for the framebuffer structure, the fields are
@@ -588,6 +564,27 @@ ulong calc_fbsize(void)
 {
 	return (panel_info.vl_col * panel_info.vl_row *
 		NBITS(panel_info.vl_bpix)) / 8;
+}
+
+void ipuv3_fb_shutdown(void)
+{
+	int i;
+	struct ipu_stat *stat = (struct ipu_stat *)IPU_STAT;
+
+	for (i = 0; i < ARRAY_SIZE(mxcfb_info); i++) {
+		struct fb_info *fbi = mxcfb_info[i];
+		if (fbi) {
+			struct mxcfb_info *mxc_fbi = fbi->par;
+			ipu_disable_channel(mxc_fbi->ipu_ch);
+			ipu_uninit_channel(mxc_fbi->ipu_ch);
+		}
+	}
+	clk_enable(g_ipu_clk);
+	for (i = 0; i < ARRAY_SIZE(stat->int_stat); i++) {
+		__raw_writel(__raw_readl(&stat->int_stat[i]),
+			     &stat->int_stat[i]);
+	}
+	clk_disable(g_ipu_clk);
 }
 
 int ipuv3_fb_init(struct fb_videomode *mode, int di, unsigned int interface_pix_fmt,

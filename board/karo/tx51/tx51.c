@@ -1,14 +1,13 @@
 /*
- * Copyright (C) 2011 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2011-2013 Lothar Waßmann <LW@KARO-electronics.de>
  * based on: board/freescale/mx28_evk.c (C) 2010 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
  * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -57,7 +56,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define FEC_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
 					PAD_CTL_SRE_FAST)
 #define FEC_PAD_CTRL2		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_SRE_FAST)
-#define GPIO_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_DSE_HIGH)
+#define GPIO_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | PAD_CTL_PUS_100K_UP)
 
 static iomux_v3_cfg_t tx51_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
@@ -226,14 +225,8 @@ static void tx51_print_cpuinfo(void)
 
 int board_early_init_f(void)
 {
-	struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
+	struct mxc_ccm_reg *ccm_regs = (void *)CCM_BASE_ADDR;
 
-#ifdef CONFIG_CMD_BOOTCE
-	/* WinCE fails to enable these clocks */
-	writel(readl(&ccm_regs->CCGR2) | 0x0c000000, &ccm_regs->CCGR2); /* usboh3_ipg_ahb */
-	writel(readl(&ccm_regs->CCGR4) | 0x30000000, &ccm_regs->CCGR4); /* srtc */
-	writel(readl(&ccm_regs->CCGR6) | 0x00000300, &ccm_regs->CCGR6); /* emi_garb */
-#endif
 	gpio_request_array(tx51_gpios, ARRAY_SIZE(tx51_gpios));
 	imx_iomux_v3_setup_multiple_pads(tx51_pads, ARRAY_SIZE(tx51_pads));
 
@@ -255,6 +248,20 @@ int board_early_init_f(void)
 	writel(0x00000000, AIPS2_BASE_ADDR + 0x4c);
 	writel(0x00000000, AIPS2_BASE_ADDR + 0x50);
 
+	writel(0xffcffffc, &ccm_regs->CCGR0);
+	writel(0x003fffff, &ccm_regs->CCGR1);
+	writel(0x030c003c, &ccm_regs->CCGR2);
+	writel(0x000000ff, &ccm_regs->CCGR3);
+	writel(0x00000000, &ccm_regs->CCGR4);
+	writel(0x003fc003, &ccm_regs->CCGR5);
+	writel(0x00000000, &ccm_regs->CCGR6);
+	writel(0x00000000, &ccm_regs->cmeor);
+#ifdef CONFIG_CMD_BOOTCE
+	/* WinCE fails to enable these clocks */
+	writel(readl(&ccm_regs->CCGR2) | 0x0c000000, &ccm_regs->CCGR2); /* usboh3_ipg_ahb */
+	writel(readl(&ccm_regs->CCGR4) | 0x30000000, &ccm_regs->CCGR4); /* srtc */
+	writel(readl(&ccm_regs->CCGR6) | 0x00000300, &ccm_regs->CCGR6); /* emi_garb */
+#endif
 	return 0;
 }
 
@@ -307,7 +314,7 @@ static const iomux_v3_cfg_t mmc0_pads[] = {
 	MX51_PAD_SD1_DATA2__SD1_DATA2,
 	MX51_PAD_SD1_DATA3__SD1_DATA3,
 	/* SD1 CD */
-	MX51_PAD_DISPB2_SER_RS__GPIO3_8 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
+	MX51_PAD_DISPB2_SER_RS__GPIO3_8 | GPIO_PAD_CTRL,
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
@@ -318,7 +325,7 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 	MX51_PAD_SD2_DATA2__SD2_DATA2,
 	MX51_PAD_SD2_DATA3__SD2_DATA3,
 	/* SD2 CD */
-	MX51_PAD_DISPB2_SER_DIO__GPIO3_6 | MUX_PAD_CTRL(PAD_CTL_PUE | PAD_CTL_PKE),
+	MX51_PAD_DISPB2_SER_DIO__GPIO3_6 | GPIO_PAD_CTRL,
 };
 
 static struct tx51_esdhc_cfg {
@@ -332,6 +339,7 @@ static struct tx51_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(mmc0_pads),
 		.cfg = {
 			.esdhc_base = (void __iomem *)MMC_SDHC1_BASE_ADDR,
+			.max_bus_width = 4,
 		},
 		.cd_gpio = IMX_GPIO_NR(3, 8),
 	},
@@ -340,15 +348,13 @@ static struct tx51_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(mmc1_pads),
 		.cfg = {
 			.esdhc_base = (void __iomem *)MMC_SDHC2_BASE_ADDR,
+			.max_bus_width = 4,
 		},
 		.cd_gpio = IMX_GPIO_NR(3, 6),
 	},
 };
 
-static struct tx51_esdhc_cfg *to_tx51_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
-{
-	return container_of(cfg, struct tx51_esdhc_cfg, cfg);
-}
+#define to_tx51_esdhc_cfg(p) container_of(p, struct tx51_esdhc_cfg, cfg)
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -451,7 +457,6 @@ static struct gpio tx51_fec_gpios[] = {
 int board_eth_init(bd_t *bis)
 {
 	int ret;
-	unsigned char mac[ETH_ALEN];
 
 	/* Power up the external phy and assert strap options */
 	gpio_request_array(tx51_fec_gpios, ARRAY_SIZE(tx51_fec_gpios));
@@ -470,15 +475,8 @@ int board_eth_init(bd_t *bis)
 					ARRAY_SIZE(tx51_fec_pads));
 
 	ret = cpu_eth_init(bis);
-	if (ret) {
+	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
-		return ret;
-	}
-
-	imx_get_mac_from_fuse(0, mac);
-	eth_setenv_enetaddr("ethaddr", mac);
-	printf("MAC addr from fuse: %pM\n", mac);
-
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -513,18 +511,18 @@ void show_activity(int arg)
 
 static const iomux_v3_cfg_t stk5_pads[] = {
 	/* SW controlled LED on STK5 baseboard */
-	MX51_PAD_CSI2_D13__GPIO4_10,
+	MX51_PAD_CSI2_D13__GPIO4_10 | GPIO_PAD_CTRL,
 
 	/* USB PHY reset */
-	MX51_PAD_GPIO1_4__GPIO1_4,
+	MX51_PAD_GPIO1_4__GPIO1_4 | GPIO_PAD_CTRL,
 	/* USBOTG OC */
-	MX51_PAD_GPIO1_6__GPIO1_6,
+	MX51_PAD_GPIO1_6__GPIO1_6 | GPIO_PAD_CTRL,
 	/* USB PHY clock enable */
-	MX51_PAD_GPIO1_7__GPIO1_7,
+	MX51_PAD_GPIO1_7__GPIO1_7 | GPIO_PAD_CTRL,
 	/* USBH1 VBUS enable */
-	MX51_PAD_GPIO1_8__GPIO1_8,
+	MX51_PAD_GPIO1_8__GPIO1_8 | GPIO_PAD_CTRL,
 	/* USBH1 OC */
-	MX51_PAD_GPIO1_9__GPIO1_9,
+	MX51_PAD_GPIO1_9__GPIO1_9 | GPIO_PAD_CTRL,
 };
 
 static const struct gpio stk5_gpios[] = {
@@ -538,14 +536,12 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
-static ushort tx51_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 1600,
 	.vl_row = 1200,
 
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
-	.cmap = tx51_cmap,
 };
 
 static struct fb_videomode tx51_fb_modes[] = {
@@ -691,8 +687,9 @@ void lcd_enable(void)
 	 */
 	lcd_is_enabled = 0;
 
-	karo_load_splashimage(1);
 	if (lcd_enabled) {
+		karo_load_splashimage(1);
+
 		debug("Switching LCD on\n");
 		gpio_set_value(TX51_LCD_PWR_GPIO, 1);
 		udelay(100);
@@ -704,7 +701,10 @@ void lcd_enable(void)
 
 void lcd_disable(void)
 {
-	printf("Disabling LCD\n");
+	if (lcd_enabled) {
+		printf("Disabling LCD\n");
+		ipuv3_fb_shutdown();
+	}
 }
 
 void lcd_panel_disable(void)
@@ -781,6 +781,7 @@ void lcd_ctrl_init(void *lcdbase)
 	if (tstc() || (wrsr & WRSR_TOUT)) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
+		setenv("splashimage", NULL);
 		return;
 	}
 
@@ -796,10 +797,14 @@ void lcd_ctrl_init(void *lcdbase)
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
-		if (fb_mode.xres < panel_info.vl_col)
-			panel_info.vl_col = fb_mode.xres;
-		if (fb_mode.yres < panel_info.vl_row)
-			panel_info.vl_row = fb_mode.yres;
+		if (fb_mode.xres > panel_info.vl_col ||
+			fb_mode.yres > panel_info.vl_row) {
+			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
+				fb_mode.xres, fb_mode.yres,
+				panel_info.vl_col, panel_info.vl_row);
+			lcd_enabled = 0;
+			return;
+		}
 	}
 	if (p->name != NULL)
 		debug("Trying compiled-in video modes\n");
@@ -836,6 +841,7 @@ void lcd_ctrl_init(void *lcdbase)
 					case 8:
 					case 16:
 					case 24:
+					case 32:
 						color_depth = val;
 						break;
 
@@ -889,6 +895,25 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
+		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
+			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		lcd_enabled = 0;
+		return;
+	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
+	}
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
@@ -897,6 +922,18 @@ void lcd_ctrl_init(void *lcdbase)
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 		PICOS2KHZ(p->pixclock) / 1000,
 		PICOS2KHZ(p->pixclock) % 1000);
+
+	if (p != &fb_mode) {
+		int ret;
+		char *modename = getenv("video_mode");
+
+		printf("Creating new display-timing node from '%s'\n",
+			modename);
+		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+		if (ret)
+			printf("Failed to create new display-timing node from '%s': %d\n",
+				modename, ret);
+	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
@@ -907,16 +944,22 @@ void lcd_ctrl_init(void *lcdbase)
 		pix_fmt = IPU_PIX_FMT_RGB24;
 
 	if (karo_load_splashimage(0) == 0) {
+		int ret;
 		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
 		u32 ccgr4 = readl(&ccm_regs->CCGR4);
 
 		/* MIPI HSC clock is required for initialization */
 		writel(ccgr4 | (3 << 12), &ccm_regs->CCGR4);
 
-		debug("Initializing LCD controller\n");
-		ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
+		gd->arch.ipu_hw_rev = IPUV3_HW_REV_IPUV3DEX;
 
+		debug("Initializing LCD controller\n");
+		ret = ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
 		writel(ccgr4 & ~(3 << 12), &ccm_regs->CCGR4);
+		if (ret) {
+			printf("Failed to initialize FB driver: %d\n", ret);
+			lcd_enabled = 0;
+		}
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -957,6 +1000,20 @@ static void tx51_set_cpu_clock(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
 }
 
+static void tx51_init_mac(void)
+{
+	u8 mac[ETH_ALEN];
+
+	imx_get_mac_from_fuse(0, mac);
+	if (!is_valid_ether_addr(mac)) {
+		printf("No valid MAC address programmed\n");
+		return;
+	}
+
+	eth_setenv_enetaddr("ethaddr", mac);
+	printf("MAC addr from fuse: %pM\n", mac);
+}
+
 int board_late_init(void)
 {
 	int ret = 0;
@@ -989,6 +1046,7 @@ int board_late_init(void)
 	}
 
 exit:
+	tx51_init_mac();
 	gpio_set_value(TX51_RESET_OUT_GPIO, 1);
 	return ret;
 }
@@ -1022,5 +1080,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
+	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
 #endif

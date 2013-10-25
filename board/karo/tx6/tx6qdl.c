@@ -845,10 +845,14 @@ void lcd_ctrl_init(void *lcdbase)
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
-		if (fb_mode.xres < panel_info.vl_col)
-			panel_info.vl_col = fb_mode.xres;
-		if (fb_mode.yres < panel_info.vl_row)
-			panel_info.vl_row = fb_mode.yres;
+		if (fb_mode.xres > panel_info.vl_col ||
+			fb_mode.yres > panel_info.vl_row) {
+			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
+				fb_mode.xres, fb_mode.yres,
+				panel_info.vl_col, panel_info.vl_row);
+			lcd_enabled = 0;
+			return;
+		}
 	}
 	if (p->name != NULL)
 		debug("Trying compiled-in video modes\n");
@@ -952,6 +956,25 @@ void lcd_ctrl_init(void *lcdbase)
 		}
 		printf("\n");
 		return;
+	}
+	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
+		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
+			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		lcd_enabled = 0;
+		return;
+	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -1140,81 +1163,6 @@ struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static int flexcan_enabled(void *blob)
-{
-	const char *can_ifs[] = {
-		"can0",
-		"can1",
-	};
-	size_t i;
-
-	for (i = 0; i < ARRAY_SIZE(can_ifs); i++) {
-		const char *status;
-		int off = fdt_path_offset(blob, can_ifs[i]);
-
-		if (off < 0) {
-			debug("node '%s' not found\n", can_ifs[i]);
-			continue;
-		}
-		status = fdt_getprop(blob, off, "status", NULL);
-		if (strcmp(status, "okay") == 0) {
-			debug("%s is enabled\n", can_ifs[i]);
-			return 1;
-		}
-	}
-	debug("can driver is disabled\n");
-	return 0;
-}
-
-static void tx6qdl_set_lcd_pins(void *blob, const char *name)
-{
-	int off = fdt_path_offset(blob, name);
-	u32 ph;
-	const struct fdt_property *pc;
-	int len;
-
-	if (off < 0)
-		return;
-
-	ph = fdt_create_phandle(blob, off);
-	if (!ph)
-		return;
-
-	off = fdt_path_offset(blob, "display");
-	if (off < 0)
-		return;
-
-	pc = fdt_get_property(blob, off, "pinctrl-0", &len);
-	if (!pc || len < sizeof(ph))
-		return;
-
-	memcpy((void *)pc->data, &ph, sizeof(ph));
-	fdt_setprop_cell(blob, off, "pinctrl-0", ph);
-}
-
-static void tx6qdl_fixup_flexcan(void *blob, int stk5_v5)
-{
-	const char *xcvr_status = "disabled";
-
-	if (stk5_v5) {
-		if (flexcan_enabled(blob)) {
-			tx6qdl_set_lcd_pins(blob, "lcdif_23bit_pins_a");
-			xcvr_status = "okay";
-		} else {
-			tx6qdl_set_lcd_pins(blob, "lcdif_24bit_pins_a");
-		}
-	} else {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && (strcmp(otg_mode, "host") == 0))
-			karo_fdt_enable_node(blob, "can1", 0);
-
-		tx6qdl_set_lcd_pins(blob, "lcdif_24bit_pins_a");
-	}
-	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
-			xcvr_status, strlen(xcvr_status) + 1, 1);
-}
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -1227,7 +1175,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	karo_fdt_fixup_touchpanel(blob);
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
-	tx6qdl_fixup_flexcan(blob, stk5_v5);
+	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
 }
-#endif
+#endif /* CONFIG_OF_BOARD_SETUP */

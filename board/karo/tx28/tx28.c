@@ -235,11 +235,12 @@ static int fec_get_mac_addr(int index)
 	if (!is_valid_ether_addr(mac))
 		return 0;
 
-	if (index == 0)
+	if (index == 0) {
+		printf("MAC addr from fuse: %pM\n", mac);
 		snprintf(env_name, sizeof(env_name), "ethaddr");
-	else
+	} else {
 		snprintf(env_name, sizeof(env_name), "eth%daddr", index);
-
+	}
 	eth_setenv_enetaddr(env_name, mac);
 	return 0;
 }
@@ -279,11 +280,6 @@ int board_eth_init(bd_t *bis)
 		return ret;
 	}
 
-	ret = fec_get_mac_addr(0);
-	if (ret < 0) {
-		printf("Failed to read FEC0 MAC address from OCOTP\n");
-		return ret;
-	}
 #ifdef CONFIG_FEC_MXC_MULTI
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
@@ -293,11 +289,6 @@ int board_eth_init(bd_t *bis)
 		}
 	}
 
-	ret = fec_get_mac_addr(1);
-	if (ret < 0) {
-		printf("Failed to read FEC1 MAC address from OCOTP\n");
-		return ret;
-	}
 	if (getenv("eth1addr")) {
 		ret = fecmxc_initialize_multi(bis, 1, 1, MXS_ENET1_BASE);
 		if (ret) {
@@ -305,13 +296,16 @@ int board_eth_init(bd_t *bis)
 			return ret;
 		}
 	}
-	return 0;
 #else
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize(bis);
+		if (ret) {
+			printf("FEC MXS: Unable to init FEC\n");
+			return ret;
+		}
 	}
-	return ret;
 #endif
+	return 0;
 }
 #endif /* CONFIG_FEC_MXC */
 
@@ -686,6 +680,20 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
+	}
+
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
 		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
@@ -701,8 +709,16 @@ void lcd_ctrl_init(void *lcdbase)
 		color_depth, refresh);
 
 	if (karo_load_splashimage(0) == 0) {
+		char vmode[32];
+
+		/* setup env variable for mxsfb display driver */
+		snprintf(vmode, sizeof(vmode), "%dx%dMR-%d@%d",
+			p->xres, p->yres, color_depth, refresh);
+		setenv("videomode", vmode);
+
 		debug("Initializing LCD controller\n");
 		video_hw_init(lcdbase);
+		setenv("videomode", NULL);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -732,8 +748,25 @@ static void stk5v5_board_init(void)
 	mxs_iomux_setup_pad(MX28_PAD_LCD_D00__GPIO_1_0);
 }
 
+int tx28_fec1_enabled(void)
+{
+	const char *status;
+	int off;
+
+	if (!gd->fdt_blob)
+		return 0;
+
+	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
+	if (off < 0)
+		return 0;
+
+	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
+	return status && (strcmp(status, "okay") == 0);
+}
+
 int board_late_init(void)
 {
+	int ret;
 	const char *baseboard;
 
 	karo_fdt_move_fdt();
@@ -766,6 +799,20 @@ int board_late_init(void)
 		return -EINVAL;
 	}
 
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return ret;
+	}
+#ifdef CONFIG_FEC_MXC_MULTI
+	if (tx28_fec1_enabled()) {
+		ret = fec_get_mac_addr(1);
+		if (ret < 0) {
+			printf("Failed to read FEC1 MAC address from OCOTP\n");
+			return ret;
+		}
+	}
+#endif
 	return 0;
 }
 
@@ -937,11 +984,6 @@ static void tx28_fixup_flexcan(void *blob, int stk5_v5)
 			can_xcvr, strlen(can_xcvr) + 1, 1);
 }
 
-static void tx28_fixup_fec(void *blob)
-{
-	karo_fdt_enable_node(blob, "ethernet1", 0);
-}
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -956,8 +998,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 #endif
 	if (stk5_v5) {
 		karo_fdt_remove_node(blob, "stk5led");
-	} else {
-		tx28_fixup_fec(blob);
 	}
 	tx28_fixup_flexcan(blob, stk5_v5);
 

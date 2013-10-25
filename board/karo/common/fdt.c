@@ -237,6 +237,81 @@ out:
 	karo_set_fdtsize(blob);
 }
 
+static int karo_fdt_flexcan_enabled(void *blob)
+{
+	const char *can_ifs[] = {
+		"can0",
+		"can1",
+	};
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(can_ifs); i++) {
+		const char *status;
+		int off = fdt_path_offset(blob, can_ifs[i]);
+
+		if (off < 0) {
+			debug("node '%s' not found\n", can_ifs[i]);
+			continue;
+		}
+		status = fdt_getprop(blob, off, "status", NULL);
+		if (status && strcmp(status, "okay") == 0) {
+			debug("%s is enabled\n", can_ifs[i]);
+			return 1;
+		}
+	}
+	debug("can driver is disabled\n");
+	return 0;
+}
+
+static void karo_fdt_set_lcd_pins(void *blob, const char *name)
+{
+	int off = fdt_path_offset(blob, name);
+	u32 ph;
+	const struct fdt_property *pc;
+	int len;
+
+	if (off < 0)
+		return;
+
+	ph = fdt_create_phandle(blob, off);
+	if (!ph)
+		return;
+
+	off = fdt_path_offset(blob, "display");
+	if (off < 0)
+		return;
+
+	pc = fdt_get_property(blob, off, "pinctrl-0", &len);
+	if (!pc || len < sizeof(ph))
+		return;
+
+	memcpy((void *)pc->data, &ph, sizeof(ph));
+	fdt_setprop_cell(blob, off, "pinctrl-0", ph);
+}
+
+void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
+{
+	const char *xcvr_status = "disabled";
+
+	if (xcvr_present) {
+		if (karo_fdt_flexcan_enabled(blob)) {
+			karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
+			xcvr_status = "okay";
+		} else {
+			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+		}
+	} else {
+		const char *otg_mode = getenv("otg_mode");
+
+		if (otg_mode && (strcmp(otg_mode, "host") == 0))
+			karo_fdt_enable_node(blob, "can1", 0);
+
+		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+	}
+	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+			xcvr_status, strlen(xcvr_status) + 1, 1);
+}
+
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
 			const char *prop)
 {
@@ -320,7 +395,7 @@ static int fdt_init_fb_mode(const void *blob, int off, struct fb_videomode *fb_m
 	prop = fdt_getprop(blob, off, "vsync-active", NULL);
 	if (prop)
 		fb_mode->sync |= *prop ? FB_SYNC_VERT_HIGH_ACT : 0;
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
+
 	prop = fdt_getprop(blob, off, "de-active", NULL);
 	if (prop)
 		fb_mode->sync |= *prop ? 0 : FB_SYNC_OE_LOW_ACT;
@@ -328,7 +403,7 @@ static int fdt_init_fb_mode(const void *blob, int off, struct fb_videomode *fb_m
 	prop = fdt_getprop(blob, off, "pixelclk-active", NULL);
 	if (prop)
 		fb_mode->sync |= *prop ? 0 : FB_SYNC_CLK_LAT_FALL;
-#endif
+
 	return 0;
 }
 
@@ -337,7 +412,7 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 	int ret;
 	uint32_t ph;
 
-	ret = fdt_increase_size(blob, 32);
+	ret = fdt_increase_size(blob, 64);
 	if (ret) {
 		printf("Warning: Failed to increase FDT size: %d\n", ret);
 	}
@@ -510,25 +585,12 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 			fb_mode->sync & FB_SYNC_VERT_HIGH_ACT ? 1 : 0);
 	if (ret)
 		goto out;
-
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	ret = SET_FB_PROP("de-active",
 			!(fb_mode->sync & FB_SYNC_OE_LOW_ACT));
 	if (ret)
 		goto out;
 	ret = SET_FB_PROP("pixelclk-active",
 			!(fb_mode->sync & FB_SYNC_CLK_LAT_FALL));
-	if (ret)
-		goto out;
-#else
-	/* TODO: make these configurable */
-	ret = SET_FB_PROP("de-active", 1);
-	if (ret)
-		goto out;
-	ret = SET_FB_PROP("pixelclk-active", 1);
-	if (ret)
-		goto out;
-#endif
 out:
 	karo_set_fdtsize(blob);
 	return ret;
@@ -543,16 +605,11 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 		return off;
 
 	if (name == NULL) {
-		int parent = fdt_parent_offset(blob, off);
 		int ret;
 
-		if (parent < 0) {
-			printf("Failed to find parent of node '%s'\n",
-				fdt_get_name(blob, off, NULL));
-			return parent;
-		}
-		debug("parent offset=%06x\n", parent);
-		ret = fdt_set_node_status(blob, parent, FDT_STATUS_DISABLED, 0);
+		debug("Disabling node '%s' at %03x\n",
+			fdt_get_name(blob, off, NULL), off);
+		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
 		return ret;
 	}
 
@@ -617,8 +674,7 @@ static int karo_load_part(const char *part, void *addr, size_t len)
 		return ret;
 
 	debug("Trying to find NAND partition '%s'\n", part);
-	ret = find_dev_and_part(part, &dev, &part_num,
-				&part_info);
+	ret = find_dev_and_part(part, &dev, &part_num, &part_info);
 	if (ret) {
 		printf("Failed to find flash partition '%s': %d\n",
 			part, ret);

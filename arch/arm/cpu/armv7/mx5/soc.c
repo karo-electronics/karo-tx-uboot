@@ -137,7 +137,6 @@ void set_chipselect_size(int const cs_size)
 	writel(reg, &iomuxc_regs->gpr1);
 }
 
-#if 1
 void cpu_cache_initialization(void)
 {
 	printf("Enabling L2 cache\n");
@@ -148,7 +147,6 @@ void cpu_cache_initialization(void)
 		: : : "r0", "memory"
 		);
 }
-#endif
 
 #ifdef CONFIG_MX53
 void boot_mode_apply(unsigned cfg_val)
