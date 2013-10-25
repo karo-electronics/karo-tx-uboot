@@ -26,6 +26,7 @@
 #include <nand.h>
 #include <net.h>
 #include <linux/mtd/nand.h>
+#include <linux/fb.h>
 #include <asm/gpio.h>
 #include <asm/cache.h>
 #include <asm/omap_common.h>
@@ -395,18 +396,138 @@ vidinfo_t panel_info = {
 	.cmap = tx48_cmap,
 };
 
-static struct da8xx_panel tx48_lcd_panel = {
-	.name = "640x480MR@60",
-	.width = 640,
-	.height = 480,
-	.hfp = 12,
-	.hbp = 144,
-	.hsw = 30,
-	.vfp = 10,
-	.vbp = 35,
-	.vsw = 3,
-	.pxl_clk = 25000000,
-	.invert_pxl_clk = 1,
+#define FB_SYNC_OE_LOW_ACT	(1 << 31)
+#define FB_SYNC_CLK_LAT_FALL	(1 << 30)
+
+static struct fb_videomode tx48_fb_modes[] = {
+	{
+		/* Standard VGA timing */
+		.name		= "VGA",
+		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(25175),
+		.left_margin	= 48,
+		.hsync_len	= 96,
+		.right_margin	= 16,
+		.upper_margin	= 31,
+		.vsync_len	= 2,
+		.lower_margin	= 12,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ETV570 640 x 480 display. Syncs low active,
+		 * DE high active, 115.2 mm x 86.4 mm display area
+		 * VGA compatible timing
+		 */
+		.name		= "ETV570",
+		.refresh	= 60,
+		.xres		= 640,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(25175),
+		.left_margin	= 114,
+		.hsync_len	= 30,
+		.right_margin	= 16,
+		.upper_margin	= 32,
+		.vsync_len	= 3,
+		.lower_margin	= 10,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0350G0DH6 320 x 240 display.
+		 * 70.08 mm x 52.56 mm display area.
+		 */
+		.name		= "ET0350",
+		.refresh	= 60,
+		.xres		= 320,
+		.yres		= 240,
+		.pixclock	= KHZ2PICOS(6500),
+		.left_margin	= 68 - 34,
+		.hsync_len	= 34,
+		.right_margin	= 20,
+		.upper_margin	= 18 - 3,
+		.vsync_len	= 3,
+		.lower_margin	= 4,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0430G0DH6 480 x 272 display.
+		 * 95.04 mm x 53.856 mm display area.
+		 */
+		.name		= "ET0430",
+		.refresh	= 60,
+		.xres		= 480,
+		.yres		= 272,
+		.pixclock	= KHZ2PICOS(9000),
+		.left_margin	= 2,
+		.hsync_len	= 41,
+		.right_margin	= 2,
+		.upper_margin	= 2,
+		.vsync_len	= 10,
+		.lower_margin	= 2,
+	},
+	{
+		/* Emerging ET0500G0DH6 800 x 480 display.
+		 * 109.6 mm x 66.4 mm display area.
+		 */
+		.name		= "ET0500",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ETQ570G0DH6 320 x 240 display.
+		 * 115.2 mm x 86.4 mm display area.
+		 */
+		.name		= "ETQ570",
+		.refresh	= 60,
+		.xres		= 320,
+		.yres		= 240,
+		.pixclock	= KHZ2PICOS(6400),
+		.left_margin	= 38,
+		.hsync_len	= 30,
+		.right_margin	= 30,
+		.upper_margin	= 16, /* 15 according to datasheet */
+		.vsync_len	= 3, /* TVP -> 1>x>5 */
+		.lower_margin	= 4, /* 4.5 according to datasheet */
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* Emerging ET0700G0DH6 800 x 480 display.
+		 * 152.4 mm x 91.44 mm display area.
+		 */
+		.name		= "ET0700",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+	{
+		/* unnamed entry for assigning parameters parsed from 'video_mode' string */
+		.refresh	= 60,
+		.left_margin	= 48,
+		.hsync_len	= 96,
+		.right_margin	= 16,
+		.upper_margin	= 31,
+		.vsync_len	= 2,
+		.lower_margin	= 12,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
 };
 
 void *lcd_base;			/* Start of framebuffer memory	*/
@@ -440,7 +561,9 @@ void lcd_enable(void)
 	if (lcd_enabled) {
 		karo_load_splashimage(1);
 
+		debug("Switching LCD on\n");
 		gpio_set_value(TX48_LCD_PWR_GPIO, 1);
+		udelay(100);
 		gpio_set_value(TX48_LCD_RST_GPIO, 1);
 		udelay(300000);
 		gpio_set_value(TX48_LCD_BACKLIGHT_GPIO, 0);
@@ -450,14 +573,34 @@ void lcd_enable(void)
 void lcd_disable(void)
 {
 	if (lcd_enabled) {
+		printf("Disabling LCD\n");
 		da8xx_fb_disable();
 		lcd_enabled = 0;
 	}
 }
 
+static void tx48_lcd_panel_setup(struct da8xx_panel *p,
+				struct fb_videomode *fb)
+{
+	p->pxl_clk = PICOS2KHZ(fb->pixclock) * 1000;
+
+	p->width = fb->xres;
+	p->hbp = fb->left_margin;
+	p->hsw = fb->hsync_len;
+	p->hfp = fb->right_margin;
+
+	p->height = fb->yres;
+	p->vbp = fb->upper_margin;
+	p->vsw = fb->vsync_len;
+	p->vfp = fb->lower_margin;
+
+	p->invert_pxl_clk = !!(fb->sync & FB_SYNC_CLK_LAT_FALL);
+}
+
 void lcd_panel_disable(void)
 {
 	if (lcd_enabled) {
+		debug("Switching LCD off\n");
 		gpio_set_value(TX48_LCD_BACKLIGHT_GPIO, 1);
 		gpio_set_value(TX48_LCD_PWR_GPIO, 0);
 		gpio_set_value(TX48_LCD_RST_GPIO, 0);
@@ -469,21 +612,28 @@ void lcd_ctrl_init(void *lcdbase)
 	int color_depth = 24;
 	char *vm, *v;
 	unsigned long val;
-	struct da8xx_panel *p = &tx48_lcd_panel;
 	int refresh = 60;
+	struct fb_videomode *p = &tx48_fb_modes[0];
+	struct fb_videomode fb_mode;
+	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 
 	if (!lcd_enabled) {
-		printf("LCD disabled\n");
+		debug("LCD disabled\n");
 		return;
 	}
 
 	if (tstc() || (prm_rstst & PRM_RSTST_WDT1_RST)) {
+		debug("Disabling LCD\n");
 		lcd_enabled = 0;
+		setenv("splashimage", NULL);
 		return;
 	}
 
+	karo_fdt_move_fdt();
+
 	vm = getenv("video_mode");
 	if (vm == NULL) {
+		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
@@ -491,72 +641,149 @@ void lcd_ctrl_init(void *lcdbase)
 	if ((v = strstr(vm, ":")))
 		vm = v + 1;
 
-	strncpy((char *)p->name, vm, sizeof(p->name));
-
-	val = simple_strtoul(vm, &vm, 10);
-	if (val != 0) {
-		if (val > panel_info.vl_col)
-			val = panel_info.vl_col;
-		p->width = val;
-		panel_info.vl_col = val;
+	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+		p = &fb_mode;
+		debug("Using video mode from FDT\n");
+		vm += strlen(vm);
+		if (fb_mode.xres > panel_info.vl_col ||
+			fb_mode.yres > panel_info.vl_row) {
+			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
+				fb_mode.xres, fb_mode.yres,
+				panel_info.vl_col, panel_info.vl_row);
+			lcd_enabled = 0;
+			return;
+		}
 	}
-	if (*vm == 'x') {
-		val = simple_strtoul(vm + 1, &vm, 10);
-		if (val > panel_info.vl_row)
-			val = panel_info.vl_row;
-		p->height = val;
-		panel_info.vl_row = val;
+	if (p->name != NULL)
+		debug("Trying compiled-in video modes\n");
+	while (p->name != NULL) {
+		if (strcmp(p->name, vm) == 0) {
+			debug("Using video mode: '%s'\n", p->name);
+			vm += strlen(vm);
+			break;
+		}
+		p++;
 	}
+	if (*vm != '\0')
+		debug("Trying to decode video_mode: '%s'\n", vm);
 	while (*vm != '\0') {
+		if (*vm >= '0' && *vm <= '9') {
+			char *end;
+
+			val = simple_strtoul(vm, &end, 0);
+			if (end > vm) {
+				if (!xres_set) {
+					if (val > panel_info.vl_col)
+						val = panel_info.vl_col;
+					p->xres = val;
+					panel_info.vl_col = val;
+					xres_set = 1;
+				} else if (!yres_set) {
+					if (val > panel_info.vl_row)
+						val = panel_info.vl_row;
+					p->yres = val;
+					panel_info.vl_row = val;
+					yres_set = 1;
+				} else if (!bpp_set) {
+					switch (val) {
+					case 24:
+					case 16:
+					case 8:
+						color_depth = val;
+						break;
+
+					default:
+						printf("Invalid color depth: '%.*s' in video_mode; using default: '%u'\n",
+							end - vm, vm, color_depth);
+					}
+					bpp_set = 1;
+				} else if (!refresh_set) {
+					refresh = val;
+					refresh_set = 1;
+				}
+			}
+			vm = end;
+		}
 		switch (*vm) {
+		case '@':
+			bpp_set = 1;
+			/* fallthru */
+		case '-':
+			yres_set = 1;
+			/* fallthru */
+		case 'x':
+			xres_set = 1;
+			/* fallthru */
 		case 'M':
 		case 'R':
 			vm++;
 			break;
 
-		case '-':
-			color_depth = simple_strtoul(vm + 1, &vm, 10);
-			break;
-
-		case '@':
-			refresh = simple_strtoul(vm + 1, &vm, 10);
-			break;
-
 		default:
-			debug("Ignoring '%c'\n", *vm);
-			vm++;
+			if (*vm != '\0')
+				vm++;
 		}
 	}
+	if (p->xres == 0 || p->yres == 0) {
+		printf("Invalid video mode: %s\n", getenv("video_mode"));
+		lcd_enabled = 0;
+		printf("Supported video modes are:");
+		for (p = &tx48_fb_modes[0]; p->name != NULL; p++) {
+			printf(" %s", p->name);
+		}
+		printf("\n");
+		return;
+	}
+	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
+		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
+			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		lcd_enabled = 0;
+		return;
+	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
 	switch (color_depth) {
 	case 8:
-		panel_info.vl_bpix = 3;
+		panel_info.vl_bpix = LCD_COLOR8;
 		break;
-
 	case 16:
-		panel_info.vl_bpix = 4;
+		panel_info.vl_bpix = LCD_COLOR16;
 		break;
-
-	case 24:
-		panel_info.vl_bpix = 5;
-		break;
-
 	default:
-		printf("Invalid color_depth %u from video_mode '%s'; using default: %u\n",
-			color_depth, getenv("video_mode"), 24);
+		panel_info.vl_bpix = LCD_COLOR24;
 	}
-	lcd_line_length = NBITS(panel_info.vl_bpix) / 8 * panel_info.vl_col;
-	p->pxl_clk = refresh *
-		(p->width + p->hfp + p->hbp + p->hsw) *
-		(p->height + p->vfp + p->vbp + p->vsw);
-	debug("Pixel clock set to %u.%03uMHz\n",
-		p->pxl_clk / 1000000, p->pxl_clk / 1000 % 1000);
+
+	p->pixclock = KHZ2PICOS(refresh *
+		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
+		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len)
+		/ 1000);
+	debug("Pixel clock set to %lu.%03lu MHz\n",
+		PICOS2KHZ(p->pixclock) / 1000,
+		PICOS2KHZ(p->pixclock) % 1000);
+
+	if (p != &fb_mode) {
+		int ret;
+		char *modename = getenv("video_mode");
+
+		printf("Creating new display-timing node from '%s'\n",
+			modename);
+		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+		if (ret)
+			printf("Failed to create new display-timing node from '%s': %d\n",
+				modename, ret);
+	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	tx48_set_pin_mux(stk5_lcd_pads, ARRAY_SIZE(stk5_lcd_pads));
-	debug("Initializing FB driver\n");
-	da8xx_video_init(&tx48_lcd_panel, color_depth);
 
 	if (karo_load_splashimage(0) == 0) {
+		struct da8xx_panel da8xx_panel = { };
+
+		debug("Initializing FB driver\n");
+		tx48_lcd_panel_setup(&da8xx_panel, p);
+		da8xx_video_init(&da8xx_panel, color_depth);
+
 		debug("Initializing LCD controller\n");
 		video_hw_init();
 	} else {

@@ -395,7 +395,7 @@ static int fdt_init_fb_mode(const void *blob, int off, struct fb_videomode *fb_m
 	prop = fdt_getprop(blob, off, "vsync-active", NULL);
 	if (prop)
 		fb_mode->sync |= *prop ? FB_SYNC_VERT_HIGH_ACT : 0;
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
+
 	prop = fdt_getprop(blob, off, "de-active", NULL);
 	if (prop)
 		fb_mode->sync |= *prop ? 0 : FB_SYNC_OE_LOW_ACT;
@@ -403,7 +403,7 @@ static int fdt_init_fb_mode(const void *blob, int off, struct fb_videomode *fb_m
 	prop = fdt_getprop(blob, off, "pixelclk-active", NULL);
 	if (prop)
 		fb_mode->sync |= *prop ? 0 : FB_SYNC_CLK_LAT_FALL;
-#endif
+
 	return 0;
 }
 
@@ -585,25 +585,12 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 			fb_mode->sync & FB_SYNC_VERT_HIGH_ACT ? 1 : 0);
 	if (ret)
 		goto out;
-
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
 	ret = SET_FB_PROP("de-active",
 			!(fb_mode->sync & FB_SYNC_OE_LOW_ACT));
 	if (ret)
 		goto out;
 	ret = SET_FB_PROP("pixelclk-active",
 			!(fb_mode->sync & FB_SYNC_CLK_LAT_FALL));
-	if (ret)
-		goto out;
-#else
-	/* TODO: make these configurable */
-	ret = SET_FB_PROP("de-active", 1);
-	if (ret)
-		goto out;
-	ret = SET_FB_PROP("pixelclk-active", 1);
-	if (ret)
-		goto out;
-#endif
 out:
 	karo_set_fdtsize(blob);
 	return ret;
@@ -687,8 +674,7 @@ static int karo_load_part(const char *part, void *addr, size_t len)
 		return ret;
 
 	debug("Trying to find NAND partition '%s'\n", part);
-	ret = find_dev_and_part(part, &dev, &part_num,
-				&part_info);
+	ret = find_dev_and_part(part, &dev, &part_num, &part_info);
 	if (ret) {
 		printf("Failed to find flash partition '%s': %d\n",
 			part, ret);
