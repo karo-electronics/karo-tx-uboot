@@ -904,7 +904,7 @@ void lcd_ctrl_init(void *lcdbase)
 	panel_info.vl_col = p->xres;
 	panel_info.vl_row = p->yres;
 
-	switch(color_depth) {
+	switch (color_depth) {
 	case 8:
 		panel_info.vl_bpix = LCD_COLOR8;
 		break;
