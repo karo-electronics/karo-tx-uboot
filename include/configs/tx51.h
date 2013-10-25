@@ -98,7 +98,6 @@
  * Flattened Device Tree (FDT) support
 */
 #define CONFIG_OF_LIBFDT
-#define CONFIG_OF_EMBED
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_DEFAULT_DEVICE_TREE	tx51
 #define CONFIG_ARCH_DEVICE_TREE		mx51
