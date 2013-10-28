@@ -31,6 +31,8 @@ int karo_fdt_get_fb_mode(void *blob, const char *name,
 int karo_fdt_update_fb_mode(void *blob, const char *name);
 int karo_fdt_create_fb_mode(void *blob, const char *name,
 			struct fb_videomode *mode);
+char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
+			const char *lvds_path);
 #else
 static inline void karo_fdt_remove_node(void *blob, const char *node)
 {
@@ -74,6 +76,11 @@ static inline int karo_fdt_create_fb_mode(void *blob,
 					struct fb_videomode *mode)
 {
 	return 0;
+}
+static inline char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
+					const char *lvds_path)
+{
+	return video_mode;
 }
 #endif
 

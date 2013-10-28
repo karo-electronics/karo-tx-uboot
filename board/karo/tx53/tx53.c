@@ -712,6 +712,7 @@ static const struct gpio stk5_lcd_gpios[] = {
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
+	char *video_mode = getenv("video_mode");
 	char *vm;
 	unsigned long val;
 	int refresh = 60;
@@ -736,12 +737,13 @@ void lcd_ctrl_init(void *lcdbase)
 
 	karo_fdt_move_fdt();
 
-	vm = getenv("video_mode");
+	vm = karo_fdt_set_display(video_mode, "/soc", "/soc/aips/ldb");
 	if (vm == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+	video_mode = vm;
 	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
@@ -888,14 +890,13 @@ void lcd_ctrl_init(void *lcdbase)
 
 	if (p != &fb_mode) {
 		int ret;
-		char *modename = getenv("video_mode");
 
 		printf("Creating new display-timing node from '%s'\n",
-			modename);
-		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+			video_mode);
+		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
 		if (ret)
 			printf("Failed to create new display-timing node from '%s': %d\n",
-				modename, ret);
+				video_mode, ret);
 	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
@@ -1064,6 +1065,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
+	char *video_mode = getenv("video_mode");
 
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
@@ -1072,6 +1074,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	tx53_fixup_rtc(blob);
-	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
+	video_mode = karo_fdt_set_display(video_mode, "/soc", "/soc/aips/ldb");
+	karo_fdt_update_fb_mode(blob, video_mode);
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

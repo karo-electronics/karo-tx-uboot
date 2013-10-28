@@ -70,7 +70,11 @@ void karo_fdt_move_fdt(void)
 	if (fdt == NULL) {
 		fdt = (void *)gd->fdt_blob;
 		if (fdt == NULL) {
+#ifdef CONFIG_OF_EMBED
 			printf("Compiled in FDT not found\n");
+#else
+			printf("No FDT found\n");
+#endif
 			return;
 		}
 		debug("Checking FDT header @ %p\n", fdt);
@@ -594,6 +598,75 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 out:
 	karo_set_fdtsize(blob);
 	return ret;
+}
+
+char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
+			const char *lvds_path)
+{
+	char *vm;
+	int ret;
+	int off;
+	void *blob = (void *)gd->fdt_blob;
+
+	if (video_mode == NULL)
+		return NULL;
+
+	off = fdt_path_offset(blob, "/aliases");
+	ret = fdt_resize(blob);
+	if (ret < 0) {
+		printf("%s: Failed to resize FDT: %s\n",
+			__func__, fdt_strerror(ret));
+	}
+	vm = strsep(&video_mode, ":");
+	if (off < 0) {
+		off = fdt_add_subnode(blob, off, "aliases");
+		if (off < 0) {
+			printf("%s: Failed to create 'aliases' node: %s\n",
+				__func__, fdt_strerror(off));
+			return video_mode ?: vm;
+		}
+	}
+	if (video_mode != NULL) {
+		char display[strlen(lvds_path) + sizeof("/lvds-channel@x")];
+
+		strncpy(display, lvds_path, sizeof(display));
+		if (strcmp(vm, "LVDS") == 0 ||
+			strcmp(vm, "LVDS0") == 0) {
+			strncat(display, "/lvds-channel@0", sizeof(display));
+		} else if (strcmp(vm, "LVDS1") == 0) {
+			strncat(display, "/lvds-channel@1", sizeof(display));
+		} else {
+			printf("%s: Syntax error in video_mode\n",
+				__func__);
+			return video_mode;
+		}
+		ret = fdt_setprop_string(blob, off, "display", display);
+		debug("setprop_string(display='%s') returned %d\n", display, ret);
+	} else {
+		char display[strlen(lcd_path) + sizeof("/display@di0")];
+
+		snprintf(display, sizeof(display), "%s/display@di0", lcd_path);
+
+		ret = fdt_setprop_string(blob, off, "display",
+					display);
+
+		off = fdt_path_offset(blob, "lvds0");
+		if (off >= 0) {
+			ret = fdt_set_node_status(blob, off,
+						FDT_STATUS_DISABLED, 0);
+		}
+		off = fdt_path_offset(blob, "lvds1");
+		if (off >= 0) {
+			ret = fdt_set_node_status(blob, off,
+						FDT_STATUS_DISABLED, 0);
+		}
+		video_mode = vm;
+	}
+	if (ret) {
+		printf("%s: failed to set 'display' alias: %s\n",
+			__func__, fdt_strerror(ret));
+	}
+	return video_mode;
 }
 
 int karo_fdt_update_fb_mode(void *blob, const char *name)
