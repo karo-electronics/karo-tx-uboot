@@ -169,6 +169,7 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=11000000\0"						\
+	"fdtsave=nand erase.part dtb;nand write ${fdtaddr} dtb ${fdtsize}\0" \
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\

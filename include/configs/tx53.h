@@ -131,6 +131,7 @@
 	" ${append_bootargs}\0"						\
 	"cpu_clk=800\0"							\
 	"fdtaddr=71000000\0"						\
+	"fdtsave=nand erase.part dtb;nand write ${fdtaddr} dtb ${fdtsize}\0" \
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"otg_mode=device\0"						\
