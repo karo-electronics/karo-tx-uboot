@@ -815,7 +815,7 @@ ddr_calib:
 
 	/* DDR3 calibration */
 	MXC_DCD_ITEM(MMDC1_MPPDCMPR2, 0x00000003) /* select default compare pattern for DQ calibration */
-	MXC_DCD_ITEM(MMDC1_MAPSR,     0x00011007)
+	MXC_DCD_ITEM(MMDC1_MAPSR,     0x00001007)
 
 	/* ZQ calibration */
 	MXC_DCD_ITEM(MMDC1_MDSCR, 0x04008010) /* precharge all */
@@ -938,7 +938,7 @@ wr_dl_calib2:
 
 	MXC_DCD_ITEM(MMDC1_MDSCR, MDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
 	MXC_DCD_ITEM(MMDC1_MDREF, (3 << 11) | (0 << 14)) /* 4 cycles per 64kHz period (3.9us) */
-	MXC_DCD_ITEM(MMDC1_MAPSR, 0x00011006) /* MAPSR */
+	MXC_DCD_ITEM(MMDC1_MAPSR, 0x00001006)
 	MXC_DCD_ITEM(MMDC1_MDPDC, MDPDC_VAL_1)
 	MXC_DCD_ITEM_64(MMDC2_MDPDC, MDPDC_VAL_1)
 
