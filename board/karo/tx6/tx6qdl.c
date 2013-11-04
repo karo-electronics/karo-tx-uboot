@@ -225,23 +225,54 @@ static void tx6qdl_print_cpuinfo(void)
 	check_cpu_temperature(1);
 }
 
+#define LTC3676_BUCK1		0x01
+#define LTC3676_BUCK2		0x02
+#define LTC3676_BUCK3		0x03
+#define LTC3676_BUCK4		0x04
 #define LTC3676_DVB2A		0x0C
 #define LTC3676_DVB2B		0x0D
 #define LTC3676_DVB4A		0x10
 #define LTC3676_DVB4B		0x11
+#define LTC3676_CLIRQ		0x1f
 
 #define VDD_SOC_mV		(1375 + 50)
 #define VDD_CORE_mV		(1375 + 50)
 
+#define LTC3676_BUCK_DVDT_FAST	(1 << 0)
+#define LTC3676_BUCK_KEEP_ALIVE	(1 << 1)
+#define LTC3676_BUCK_CLK_RATE_LOW	(1 << 2)
+#define LTC3676_BUCK_PHASE_SEL	(1 << 3)
+#define LTC3676_BUCK_ENABLE_300	(1 << 4)
+#define LTC3676_BUCK_PULSE_SKIP	(0 << 5)
+#define LTC3676_BUCK_BURST_MODE	(1 << 5)
+#define LTC3676_BUCK_CONTINUOUS	(2 << 5)
+#define LTC3676_BUCK_ENABLE	(1 << 7)
+
+#define LTC3676_PGOOD_MASK	(1 << 5)
+
 #define mV_to_regval(mV)	(((mV) * 360 / 330 - 825 + 1) / 25)
 #define regval_to_mV(v)		(((v) * 25 + 825) * 330 / 360)
+
+static struct pmic_regs {
+	u8 addr;
+	u8 val;
+} ltc3676_regs[] = {
+	{ LTC3676_DVB2B, mV_to_regval(900) | LTC3676_PGOOD_MASK, },
+	{ LTC3676_DVB4B, mV_to_regval(900) | LTC3676_PGOOD_MASK, },
+	{ LTC3676_DVB2A, mV_to_regval(VDD_SOC_mV), },
+	{ LTC3676_DVB4A, mV_to_regval(VDD_CORE_mV), },
+	{ LTC3676_BUCK1, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
+	{ LTC3676_BUCK2, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
+	{ LTC3676_BUCK3, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
+	{ LTC3676_BUCK4, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
+	{ LTC3676_CLIRQ, 0, }, /* clear interrupt status */
+};
 
 static int setup_pmic_voltages(void)
 {
 	int ret;
 	unsigned char value;
-
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+	int i;
 
 	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
 	if (ret != 0) {
@@ -255,41 +286,17 @@ static int setup_pmic_voltages(void)
 		return ret;
 	}
 
-	/* VDDCORE/VDDSOC default 1.375V is not enough, considering
-	   pfuze tolerance and IR drop and ripple, need increase
-	   to 1.425V for SabreSD */
-
-	value = 0x39; /* VB default value & PGOOD not forced when slewing */
-	ret = i2c_write(CONFIG_SYS_I2C_SLAVE, LTC3676_DVB2B, 1, &value, 1);
-	if (ret) {
-		printf("%s: failed to write PMIC DVB2B register: %d\n",
-			__func__, ret);
-		return ret;
+	for (i = 0; i < ARRAY_SIZE(ltc3676_regs); i++) {
+		ret = i2c_write(CONFIG_SYS_I2C_SLAVE, ltc3676_regs[i].addr, 1,
+				&ltc3676_regs[i].val, 1);
+		if (ret) {
+			printf("%s: failed to write PMIC register %02x: %d\n",
+				__func__, ltc3676_regs[i].addr, ret);
+			return ret;
+		}
 	}
-	ret = i2c_write(CONFIG_SYS_I2C_SLAVE, LTC3676_DVB4B, 1, &value, 1);
-	if (ret) {
-		printf("%s: failed to write PMIC DVB4B register: %d\n",
-			__func__, ret);
-		return ret;
-	}
-
-	value = mV_to_regval(VDD_SOC_mV);
-	ret = i2c_write(CONFIG_SYS_I2C_SLAVE, LTC3676_DVB2A, 1, &value, 1);
-	if (ret) {
-		printf("%s: failed to write PMIC DVB2A register: %d\n",
-			__func__, ret);
-		return ret;
-	}
-	printf("VDDSOC  set to %dmV\n", regval_to_mV(value));
-
-	value = mV_to_regval(VDD_CORE_mV);
-	ret = i2c_write(CONFIG_SYS_I2C_SLAVE, LTC3676_DVB4A, 1, &value, 1);
-	if (ret) {
-		printf("%s: failed to write PMIC DVB4A register: %d\n",
-			__func__, ret);
-		return ret;
-	}
-	printf("VDDCORE set to %dmV\n", regval_to_mV(value));
+	printf("VDDCORE set to %dmV\n", VDD_CORE_mV);
+	printf("VDDSOC  set to %dmV\n", VDD_SOC_mV);
 	return 0;
 }
 
