@@ -167,7 +167,7 @@
 	"cpu_clk=800\0"							\
 	"bootdelay=-1\0"						\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
-	" video=${video_mode} ${append_bootargs}\0"			\
+	" ${append_bootargs}\0"						\
 	"fdtaddr=11000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
