@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <libfdt.h>
 #include <fdt_support.h>
+#include <i2c.h>
 #include <lcd.h>
 #include <netdev.h>
 #include <mmc.h>
@@ -186,6 +187,126 @@ static void tx53_print_cpuinfo(void)
 	print_reset_cause();
 }
 
+enum LTC3589_REGS {
+	LTC3589_SCR1 = 0x07,
+	LTC3589_CLIRQ = 0x21,
+	LTC3589_B1DTV1 = 0x23,
+	LTC3589_B1DTV2 = 0x24,
+	LTC3589_VRRCR = 0x25,
+	LTC3589_B2DTV1 = 0x26,
+	LTC3589_B2DTV2 = 0x27,
+	LTC3589_B3DTV1 = 0x29,
+	LTC3589_B3DTV2 = 0x2a,
+	LTC3589_L2DTV1 = 0x32,
+	LTC3589_L2DTV2 = 0x33,
+};
+
+#define LTC3589_PGOOD_MASK	(1 << 5)
+
+#define LTC3589_CLK_RATE_LOW	(1 << 5)
+
+#define VDD_LDO2_10mV		vout_to_vref(1325 * 10, 2)
+#define VDD_CORE_10mV		vout_to_vref(1240 * 10, 3)
+#define VDD_SOC_10mV		vout_to_vref(1325 * 10, 4)
+#define VDD_BUCK3_10mV		vout_to_vref(2500 * 10, 5)
+
+#ifndef CONFIG_SYS_TX53_HWREV_2
+/* LDO2 vref divider */
+#define R1_2	180
+#define R2_2	191
+/* BUCK1 vref divider */
+#define R1_3	150
+#define R2_3	180
+/* BUCK2 vref divider */
+#define R1_4	180
+#define R2_4	191
+/* BUCK3 vref divider */
+#define R1_5	270
+#define R2_5	100
+#else
+/* no dividers on vref */
+#define R1_2	0
+#define R2_2	1
+#define R1_3	0
+#define R2_3	1
+#define R1_4	0
+#define R2_4	1
+#define R1_5	0
+#define R2_5	1
+#endif
+
+/* calculate voltages in 10mV */
+#define R1(idx)			R1_##idx
+#define R2(idx)			R2_##idx
+
+#define vout_to_vref(vout, idx)	((vout) * R2(idx) / (R1(idx) + R2(idx)))
+#define vref_to_vout(vref, idx)	((vref) * (R1(idx) + R2(idx)) / R2(idx))
+
+#define mV_to_regval(mV)	(((((mV) < 3625) ? 3625 : (mV)) - 3625) / 125)
+#define regval_to_mV(v)		(((v) * 125 + 3625))
+
+static struct pmic_regs {
+	enum LTC3589_REGS addr;
+	u8 val;
+} ltc3589_regs[] = {
+	{ LTC3589_SCR1, 0x55, }, /* burst mode for all regulators */
+
+	{ LTC3589_L2DTV1, mV_to_regval(VDD_LDO2_10mV) | LTC3589_PGOOD_MASK, },
+	{ LTC3589_L2DTV2, mV_to_regval(VDD_LDO2_10mV) | LTC3589_CLK_RATE_LOW, },
+
+	{ LTC3589_B1DTV1, mV_to_regval(VDD_CORE_10mV) | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B1DTV2, mV_to_regval(VDD_CORE_10mV) | LTC3589_CLK_RATE_LOW, },
+
+	{ LTC3589_B2DTV1, mV_to_regval(VDD_SOC_10mV) | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B2DTV2, mV_to_regval(VDD_SOC_10mV) | LTC3589_CLK_RATE_LOW, },
+
+	{ LTC3589_B3DTV1, mV_to_regval(VDD_BUCK3_10mV) | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B3DTV2, mV_to_regval(VDD_BUCK3_10mV) | LTC3589_CLK_RATE_LOW, },
+
+	{ LTC3589_CLIRQ, 0, }, /* clear all interrupt flags */
+};
+
+static int setup_pmic_voltages(void)
+{
+	int ret;
+	unsigned char value;
+	int i;
+
+	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
+	if (ret != 0) {
+		printf("Failed to initialize I2C\n");
+		return ret;
+	}
+
+	ret = i2c_read(CONFIG_SYS_I2C_SLAVE, 0x11, 1, &value, 1);
+	if (ret) {
+		printf("%s: i2c_read error: %d\n", __func__, ret);
+		return ret;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ltc3589_regs); i++) {
+		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, ltc3589_regs[i].addr, 1,
+				&value, 1);
+		debug("Writing %02x to reg %02x (%02x)\n",
+			ltc3589_regs[i].val, ltc3589_regs[i].addr, value);
+		ret = i2c_write(CONFIG_SYS_I2C_SLAVE, ltc3589_regs[i].addr, 1,
+				&ltc3589_regs[i].val, 1);
+		if (ret) {
+			printf("%s: failed to write PMIC register %02x: %d\n",
+				__func__, ltc3589_regs[i].addr, ret);
+			return ret;
+		}
+	}
+	printf("VDDCORE set to %3d.%dmV\n",
+		vref_to_vout(regval_to_mV(mV_to_regval(VDD_CORE_10mV)), 3) / 10,
+		vref_to_vout(regval_to_mV(mV_to_regval(VDD_CORE_10mV)), 3) % 10);
+
+	printf("VDDSOC  set to %3d.%dmV\n",
+		vref_to_vout(regval_to_mV(mV_to_regval(VDD_SOC_10mV)), 4) / 10,
+		vref_to_vout(regval_to_mV(mV_to_regval(VDD_SOC_10mV)), 4) % 10);
+	return 0;
+}
+
 int board_early_init_f(void)
 {
 	struct mxc_ccm_reg *ccm_regs = (void *)CCM_BASE_ADDR;
@@ -226,8 +347,16 @@ int board_early_init_f(void)
 
 int board_init(void)
 {
+	int ret;
+
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
+
+	ret = setup_pmic_voltages();
+	if (ret) {
+		printf("Failed to setup PMIC voltages\n");
+		hang();
+	}
 	return 0;
 }
 
