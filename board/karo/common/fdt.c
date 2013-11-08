@@ -534,7 +534,6 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 		return ret;
 	}
 
-	printf("node '%s' offset=%d\n", "display", off);
 	ret = fdt_subnode_offset(blob, off, subnode);
 	if (ret < 0) {
 		debug("Could not find node '%s' in FDT: %d\n", subnode, ret);
@@ -545,7 +544,6 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 		}
 	}
 
-	printf("node '%s' offset=%d\n", subnode, ret);
 	ret = fdt_add_subnode(blob, ret, name);
 	if (ret < 0) {
 		printf("Failed to add %s subnode: %d\n", name, ret);
@@ -600,16 +598,23 @@ out:
 	return ret;
 }
 
-char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
-			const char *lvds_path)
+const char *karo_fdt_set_display(const char *video_mode, const char *lcd_path,
+				const char *lvds_path)
 {
-	char *vm;
+	static char buffer[128];
+	char *vm, *vmode = buffer;
 	int ret;
 	int off;
 	void *blob = (void *)gd->fdt_blob;
 
-	if (video_mode == NULL)
+	if (video_mode == NULL || strlen(video_mode) == 0)
 		return NULL;
+
+	if (strlen(video_mode) >= sizeof(buffer)) {
+		printf("video_mode string too long\n");
+		return NULL;
+	}
+	strcpy(buffer, video_mode);
 
 	off = fdt_path_offset(blob, "/aliases");
 	ret = fdt_resize(blob);
@@ -617,16 +622,16 @@ char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
 		printf("%s: Failed to resize FDT: %s\n",
 			__func__, fdt_strerror(ret));
 	}
-	vm = strsep(&video_mode, ":");
+	vm = strsep(&vmode, ":");
 	if (off < 0) {
 		off = fdt_add_subnode(blob, off, "aliases");
 		if (off < 0) {
 			printf("%s: Failed to create 'aliases' node: %s\n",
 				__func__, fdt_strerror(off));
-			return video_mode ?: vm;
+			return vmode ?: vm;
 		}
 	}
-	if (video_mode != NULL) {
+	if (vmode != NULL) {
 		char display[strlen(lvds_path) + sizeof("/lvds-channel@x")];
 
 		strncpy(display, lvds_path, sizeof(display));
@@ -636,9 +641,8 @@ char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
 		} else if (strcmp(vm, "LVDS1") == 0) {
 			strncat(display, "/lvds-channel@1", sizeof(display));
 		} else {
-			printf("%s: Syntax error in video_mode\n",
-				__func__);
-			return video_mode;
+			debug("%s: Syntax error in video_mode\n", __func__);
+			return vmode;
 		}
 		ret = fdt_setprop_string(blob, off, "display", display);
 		debug("setprop_string(display='%s') returned %d\n", display, ret);
@@ -660,13 +664,13 @@ char *karo_fdt_set_display(char *video_mode, const char *lcd_path,
 			ret = fdt_set_node_status(blob, off,
 						FDT_STATUS_DISABLED, 0);
 		}
-		video_mode = vm;
+		vmode = vm;
 	}
 	if (ret) {
 		printf("%s: failed to set 'display' alias: %s\n",
 			__func__, fdt_strerror(ret));
 	}
-	return video_mode;
+	return vmode;
 }
 
 int karo_fdt_update_fb_mode(void *blob, const char *name)

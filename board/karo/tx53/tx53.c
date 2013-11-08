@@ -841,8 +841,8 @@ static const struct gpio stk5_lcd_gpios[] = {
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	char *video_mode = getenv("video_mode");
-	char *vm;
+	const char *video_mode = getenv("video_mode");
+	const char *vm;
 	unsigned long val;
 	int refresh = 60;
 	struct fb_videomode *p = &tx53_fb_modes[0];
@@ -1020,7 +1020,7 @@ void lcd_ctrl_init(void *lcdbase)
 	if (p != &fb_mode) {
 		int ret;
 
-		printf("Creating new display-timing node from '%s'\n",
+		debug("Creating new display-timing node from '%s'\n",
 			video_mode);
 		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
 		if (ret)
@@ -1194,7 +1194,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
-	char *video_mode = getenv("video_mode");
+	const char *video_mode = getenv("video_mode");
 
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
