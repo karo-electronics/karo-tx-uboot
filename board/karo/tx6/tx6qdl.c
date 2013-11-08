@@ -1141,7 +1141,7 @@ int checkboard(void)
 
 	tx6qdl_print_cpuinfo();
 
-	printf("Board: Ka-Ro TX6%c-%dxx%d\n",
+	printf("Board: Ka-Ro TX6%c-%dx1%d\n",
 		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
 		1 - PHYS_SDRAM_1_WIDTH / 64);
