@@ -130,6 +130,8 @@ void karo_fdt_move_fdt(void)
 		return;
 	}
 
+	setenv("fdtsize", 0);
+
 	if (!fdt_addr) {
 		fdt_addr = CONFIG_SYS_FDT_ADDR;
 		printf("fdtaddr is not set; using default: %08lx\n",
