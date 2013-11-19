@@ -24,6 +24,7 @@
 #include <linux/list.h>
 #include <linux/fb.h>
 #include <jffs2/load_kernel.h>
+#include <malloc.h>
 
 #include "karo.h"
 
@@ -598,61 +599,76 @@ out:
 	return ret;
 }
 
-const char *karo_fdt_set_display(const char *video_mode, const char *lcd_path,
-				const char *lvds_path)
+static int karo_fdt_set_display_alias(void *blob, const char *path,
+				const char *name)
 {
-	static char buffer[128];
-	char *vm, *vmode = buffer;
 	int ret;
 	int off;
-	void *blob = (void *)gd->fdt_blob;
+	size_t size = strlen(path) + strlen(name) + 2;
+	char *display;
 
-	if (video_mode == NULL || strlen(video_mode) == 0)
-		return NULL;
-
-	if (strlen(video_mode) >= sizeof(buffer)) {
-		printf("video_mode string too long\n");
-		return NULL;
+	display = malloc(size);
+	if (display == NULL) {
+		printf("%s: Failed to allocate buffer\n", __func__);
+		return -ENOMEM;
 	}
-	strcpy(buffer, video_mode);
-
+	sprintf(display, "%s/%s", path, name);
+	if (strlen(display) != size - 1)
+		hang();
 	off = fdt_path_offset(blob, "/aliases");
+	if (off == FDT_ERR_BADMAGIC)
+		return -EINVAL;
 	ret = fdt_resize(blob);
 	if (ret < 0) {
 		printf("%s: Failed to resize FDT: %s\n",
 			__func__, fdt_strerror(ret));
 	}
-	vm = strsep(&vmode, ":");
 	if (off < 0) {
-		off = fdt_add_subnode(blob, off, "aliases");
+		off = fdt_add_subnode(blob, 0, "aliases");
 		if (off < 0) {
 			printf("%s: Failed to create 'aliases' node: %s\n",
 				__func__, fdt_strerror(off));
-			return vmode ?: vm;
+			return off;
 		}
 	}
-	if (vmode != NULL) {
-		char display[strlen(lvds_path) + sizeof("/lvds-channel@x")];
+	ret = fdt_setprop_string(blob, off, "display", display);
+	debug("setprop_string(display='%s') returned %d\n", display, ret);
+	return ret;
+}
 
-		strncpy(display, lvds_path, sizeof(display));
-		if (strcmp(vm, "LVDS") == 0 ||
-			strcmp(vm, "LVDS0") == 0) {
-			strncat(display, "/lvds-channel@0", sizeof(display));
-		} else if (strcmp(vm, "LVDS1") == 0) {
-			strncat(display, "/lvds-channel@1", sizeof(display));
+const char *karo_fdt_set_display(const char *video_mode, const char *lcd_path,
+				const char *lvds_path)
+{
+	const char *vmode = NULL;
+	int ret;
+	void *blob = working_fdt;
+
+	if (video_mode == NULL || strlen(video_mode) == 0)
+		return NULL;
+
+	vmode = strchr(video_mode, ':');
+
+	if (lvds_path == NULL)
+		return vmode ? vmode + 1 : video_mode;
+
+	if (lvds_path != NULL && vmode != NULL) {
+		if (strncmp(video_mode, "LVDS:", 5) == 0 ||
+			strncmp(video_mode, "LVDS0:", 6) == 0) {
+			ret = karo_fdt_set_display_alias(blob, lvds_path,
+							"lvds-channel@0");
+		} else if (strncmp(video_mode, "LVDS1:", 6) == 0) {
+			ret = karo_fdt_set_display_alias(blob, lvds_path,
+							"lvds-channel@1");
 		} else {
 			debug("%s: Syntax error in video_mode\n", __func__);
-			return vmode;
+			return vmode + 1;
 		}
-		ret = fdt_setprop_string(blob, off, "display", display);
-		debug("setprop_string(display='%s') returned %d\n", display, ret);
+		video_mode = vmode + 1;
 	} else {
-		char display[strlen(lcd_path) + sizeof("/display@di0")];
+		int off;
 
-		snprintf(display, sizeof(display), "%s/display@di0", lcd_path);
-
-		ret = fdt_setprop_string(blob, off, "display",
-					display);
+		ret = karo_fdt_set_display_alias(blob, lcd_path,
+						"display@di0");
 
 		off = fdt_path_offset(blob, "lvds0");
 		if (off >= 0) {
@@ -664,13 +680,12 @@ const char *karo_fdt_set_display(const char *video_mode, const char *lcd_path,
 			ret = fdt_set_node_status(blob, off,
 						FDT_STATUS_DISABLED, 0);
 		}
-		vmode = vm;
 	}
 	if (ret) {
 		printf("%s: failed to set 'display' alias: %s\n",
 			__func__, fdt_strerror(ret));
 	}
-	return vmode;
+	return video_mode;
 }
 
 int karo_fdt_update_fb_mode(void *blob, const char *name)
