@@ -38,7 +38,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static void karo_set_fdtsize(void *fdt)
 {
-	char fdt_size[9];
 	size_t fdtsize = getenv_ulong("fdtsize", 16, 0);
 
 	if (fdtsize == fdt_totalsize(fdt)) {
@@ -46,9 +45,7 @@ static void karo_set_fdtsize(void *fdt)
 	}
 	debug("FDT size changed from %u to %u\n",
 		fdtsize, fdt_totalsize(fdt));
-
-	snprintf(fdt_size, sizeof(fdt_size), "%08x", fdt_totalsize(fdt));
-	setenv("fdtsize", fdt_size);
+	setenv_hex("fdtsize", fdt_totalsize(fdt));
 }
 
 static int karo_load_part(const char *part, void *addr, size_t len)
