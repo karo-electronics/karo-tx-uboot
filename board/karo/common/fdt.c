@@ -51,6 +51,78 @@ static void karo_set_fdtsize(void *fdt)
 	setenv("fdtsize", fdt_size);
 }
 
+static int karo_load_part(const char *part, void *addr, size_t len)
+{
+	int ret;
+	struct mtd_device *dev;
+	struct part_info *part_info;
+	u8 part_num;
+	size_t actual;
+
+	debug("Initializing mtd_parts\n");
+	ret = mtdparts_init();
+	if (ret)
+		return ret;
+
+	debug("Trying to find NAND partition '%s'\n", part);
+	ret = find_dev_and_part(part, &dev, &part_num, &part_info);
+	if (ret) {
+		printf("Failed to find flash partition '%s': %d\n",
+			part, ret);
+
+		return ret;
+	}
+	debug("Found partition '%s': offset=%08x size=%08x\n",
+		part, part_info->offset, part_info->size);
+	if (part_info->size < len) {
+		printf("Warning: partition '%s' smaller than requested size: %u; truncating data to %u byte\n",
+			part, len, part_info->size);
+		len = part_info->size;
+	}
+	debug("Reading NAND partition '%s' to %p\n", part, addr);
+	ret = nand_read_skip_bad(&nand_info[0], part_info->offset, &len,
+				&actual, len, addr);
+	if (ret) {
+		printf("Failed to load partition '%s' to %p\n", part, addr);
+		return ret;
+	}
+	if (actual < len)
+		printf("Read only %u of %u bytes due to bad blocks\n",
+			actual, len);
+
+	debug("Read %u byte from partition '%s' @ offset %08x\n",
+		len, part, part_info->offset);
+	return 0;
+}
+
+static void *karo_fdt_load_dtb(void)
+{
+	int ret;
+	void *fdt = (void *)getenv_ulong("fdtaddr", 16, CONFIG_SYS_FDT_ADDR);
+
+	if (tstc()) {
+		debug("aborting DTB load\n");
+		return NULL;
+	}
+
+	/* clear FDT header in memory */
+	memset(fdt, 0, 4);
+
+	ret = karo_load_part("dtb", fdt, MAX_DTB_SIZE);
+	if (ret) {
+		printf("Failed to load dtb from flash: %d\n", ret);
+		return NULL;
+	}
+
+	if (fdt_check_header(fdt)) {
+		debug("No valid DTB in flash\n");
+		return NULL;
+	}
+	debug("Using DTB from flash\n");
+	karo_set_fdtsize(fdt);
+	return fdt;
+}
+
 void karo_fdt_move_fdt(void)
 {
 	void *fdt;
@@ -72,18 +144,21 @@ void karo_fdt_move_fdt(void)
 		fdt = (void *)gd->fdt_blob;
 		if (fdt == NULL) {
 #ifdef CONFIG_OF_EMBED
-			printf("Compiled in FDT not found\n");
+			printf("Compiled in FDT not found");
 #else
-			printf("No FDT found\n");
+			printf("No FDT found");
 #endif
-			return;
+			printf("; creating empty DTB\n");
+			fdt = (void *)fdt_addr;
+			fdt_create_empty_tree(fdt, 256);
+		} else {
+			printf("No DTB in flash; using default DTB\n");
 		}
 		debug("Checking FDT header @ %p\n", fdt);
 		if (fdt_check_header(fdt)) {
 			printf("ERROR: No valid DTB found at %p\n", fdt);
 			return;
 		}
-		printf("No DTB in flash; using default DTB\n");
 		debug("Moving FDT from %p..%p to %08lx..%08lx\n",
 			fdt, fdt + fdt_totalsize(fdt) - 1,
 			fdt_addr, fdt_addr + fdt_totalsize(fdt) - 1);
@@ -750,76 +825,4 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 	if (off > 0)
 		return fdt_update_native_fb_mode(blob, off);
 	return off;
-}
-
-static int karo_load_part(const char *part, void *addr, size_t len)
-{
-	int ret;
-	struct mtd_device *dev;
-	struct part_info *part_info;
-	u8 part_num;
-	size_t actual;
-
-	debug("Initializing mtd_parts\n");
-	ret = mtdparts_init();
-	if (ret)
-		return ret;
-
-	debug("Trying to find NAND partition '%s'\n", part);
-	ret = find_dev_and_part(part, &dev, &part_num, &part_info);
-	if (ret) {
-		printf("Failed to find flash partition '%s': %d\n",
-			part, ret);
-
-		return ret;
-	}
-	debug("Found partition '%s': offset=%08x size=%08x\n",
-		part, part_info->offset, part_info->size);
-	if (part_info->size < len) {
-		printf("Warning: partition '%s' smaller than requested size: %u; truncating data to %u byte\n",
-			part, len, part_info->size);
-		len = part_info->size;
-	}
-	debug("Reading NAND partition '%s' to %p\n", part, addr);
-	ret = nand_read_skip_bad(&nand_info[0], part_info->offset, &len,
-				&actual, len, addr);
-	if (ret) {
-		printf("Failed to load partition '%s' to %p\n", part, addr);
-		return ret;
-	}
-	if (actual < len)
-		printf("Read only %u of %u bytes due to bad blocks\n",
-			actual, len);
-
-	debug("Read %u byte from partition '%s' @ offset %08x\n",
-		len, part, part_info->offset);
-	return 0;
-}
-
-void *karo_fdt_load_dtb(void)
-{
-	int ret;
-	void *fdt = (void *)getenv_ulong("fdtaddr", 16, CONFIG_SYS_FDT_ADDR);
-
-	if (tstc()) {
-		debug("aborting DTB load\n");
-		return NULL;
-	}
-
-	/* clear FDT header in memory */
-	memset(fdt, 0, 4);
-
-	ret = karo_load_part("dtb", fdt, MAX_DTB_SIZE);
-	if (ret) {
-		printf("Failed to load dtb from flash: %d\n", ret);
-		return NULL;
-	}
-
-	if (fdt_check_header(fdt)) {
-		debug("No valid DTB in flash\n");
-		return NULL;
-	}
-	debug("Using DTB from flash\n");
-	karo_set_fdtsize(fdt);
-	return fdt;
 }
