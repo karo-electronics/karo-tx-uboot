@@ -176,12 +176,13 @@ void karo_fdt_remove_node(void *blob, const char *node)
 	debug("Removing node '%s' from DT\n", node);
 
 	if (off < 0) {
-		printf("Could not find node '%s': %d\n", node, off);
+		printf("Could not find node '%s': %s\n", node,
+			fdt_strerror(off));
 	} else {
 		ret = fdt_del_node(blob, off);
 		if (ret)
-			printf("Failed to remove node '%s': %d\n",
-				node, ret);
+			printf("Failed to remove node '%s': %s\n",
+				node, fdt_strerror(ret));
 	}
 	karo_set_fdtsize(blob);
 }
@@ -192,7 +193,8 @@ void karo_fdt_enable_node(void *blob, const char *node, int enable)
 
 	debug("%sabling node '%s'\n", enable ? "En" : "Dis", node);
 	if (off < 0) {
-		printf("Could not find node '%s': %d\n", node, off);
+		printf("Could not find node '%s': %s\n", node,
+			fdt_strerror(off));
 		return;
 	}
 	fdt_set_node_status(blob, off,
@@ -214,7 +216,7 @@ static void fdt_disable_tp_node(void *blob, const char *name)
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
 
 	if (offs < 0) {
-		debug("node '%s' not found: %d\n", name, offs);
+		debug("node '%s' not found: %s\n", name, fdt_strerror(offs));
 		return;
 	}
 
@@ -310,7 +312,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	}
 out:
 	if (ret)
-		printf("Failed to update usbotg: %d\n", ret);
+		printf("Failed to update usbotg: %s\n", fdt_strerror(ret));
 	else
 		debug("node '%s' updated\n", node);
 	karo_set_fdtsize(blob);
@@ -493,7 +495,8 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 
 	ret = fdt_increase_size(blob, 64);
 	if (ret) {
-		printf("Warning: Failed to increase FDT size: %d\n", ret);
+		printf("Warning: Failed to increase FDT size: %s\n",
+			fdt_strerror(ret));
 	}
 	debug("Creating phandle at offset %d\n", off);
 	ph = fdt_create_phandle(blob, off);
@@ -510,7 +513,8 @@ static int fdt_update_native_fb_mode(void *blob, int off)
 	debug("parent offset=%06x\n", off);
 	ret = fdt_setprop_cell(blob, off, "native-mode", ph);
 	if (ret)
-		printf("Failed to set property 'native-mode': %d\n", ret);
+		printf("Failed to set property 'native-mode': %s\n",
+			fdt_strerror(ret));
 	karo_set_fdtsize(blob);
 	return ret;
 }
@@ -521,13 +525,15 @@ static int karo_fdt_find_video_timings(void *blob)
 	const char *subnode = "display-timings";
 
 	if (off < 0) {
-		debug("Could not find node 'display' in FDT: %d\n", off);
+		debug("Could not find node 'display' in FDT: %s\n",
+			fdt_strerror(off));
 		return off;
 	}
 
 	off = fdt_subnode_offset(blob, off, subnode);
 	if (off < 0) {
-		debug("Could not find node '%s' in FDT: %d\n", subnode, off);
+		debug("Could not find node '%s' in FDT: %s\n", subnode,
+			fdt_strerror(off));
 	}
 	return off;
 }
@@ -548,10 +554,12 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 		if (d < 1)
 			return -EINVAL;
 		if (d > 2) {
-			debug("Skipping node @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
+			debug("Skipping node @ %04x %s depth %d\n", off,
+				fdt_get_name(blob, off, NULL), d);
 			continue;
 		}
-		debug("parsing subnode @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
+		debug("parsing subnode @ %04x %s depth %d\n", off,
+			fdt_get_name(blob, off, NULL), d);
 
 		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
@@ -585,7 +593,8 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 	int ret;							\
 	ret = fdt_setprop_u32(blob, off, n, v);				\
 	if (ret) {							\
-		printf("Failed to set property %s: %d\n", name, ret);	\
+		printf("Failed to set property %s: %s\n", name,		\
+			fdt_strerror(ret));				\
 	}								\
 	ret;								\
 })
@@ -605,23 +614,26 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 
 	ret = fdt_increase_size(blob, 512);
 	if (ret) {
-		printf("Failed to increase FDT size: %d\n", ret);
+		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
 		return ret;
 	}
 
 	ret = fdt_subnode_offset(blob, off, subnode);
 	if (ret < 0) {
-		debug("Could not find node '%s' in FDT: %d\n", subnode, ret);
+		debug("Could not find node '%s' in FDT: %s\n", subnode,
+			fdt_strerror(ret));
 		ret = fdt_add_subnode(blob, off, subnode);
 		if (ret < 0) {
-			printf("Failed to add %s subnode: %d\n", subnode, ret);
+			printf("Failed to add %s subnode: %s\n", subnode,
+				fdt_strerror(ret));
 			return ret;
 		}
 	}
 
 	ret = fdt_add_subnode(blob, ret, name);
 	if (ret < 0) {
-		printf("Failed to add %s subnode: %d\n", name, ret);
+		printf("Failed to add %s subnode: %s\n", name,
+			fdt_strerror(ret));
 		return ret;
 	}
 	off = ret;
@@ -706,7 +718,8 @@ static int karo_fdt_set_display_alias(void *blob, const char *path,
 		}
 	}
 	ret = fdt_setprop_string(blob, off, "display", display);
-	debug("setprop_string(display='%s') returned %d\n", display, ret);
+	debug("setprop_string(display='%s') returned %d (%s)\n", display, ret,
+		ret < 0 ? fdt_strerror(ret) : "OK");
 	return ret;
 }
 
@@ -781,7 +794,8 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 
 	off = fdt_subnode_offset(blob, off, subnode);
 	if (off < 0) {
-		debug("Could not find node '%s' in FDT: %d\n", subnode, off);
+		debug("Could not find node '%s' in FDT: %s\n", subnode,
+			fdt_strerror(off));
 		return off;
 	}
 	while (off > 0) {
@@ -794,10 +808,12 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 		if (d < 1)
 			return -EINVAL;
 		if (d > 2) {
-			debug("Skipping node @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
+			debug("Skipping node @ %04x %s depth %d\n", off,
+				fdt_get_name(blob, off, NULL), d);
 			continue;
 		}
-		debug("parsing subnode @ %04x %s depth %d\n", off, fdt_get_name(blob, off, NULL), d);
+		debug("parsing subnode @ %04x %s depth %d\n", off,
+			fdt_get_name(blob, off, NULL), d);
 
 		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
