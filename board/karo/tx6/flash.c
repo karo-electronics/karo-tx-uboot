@@ -21,6 +21,7 @@
 #include <errno.h>
 
 #include <linux/err.h>
+#include <jffs2/load_kernel.h>
 
 #include <asm/io.h>
 #include <asm/sizes.h>
@@ -164,7 +165,7 @@ static u32 calc_chksum(void *buf, size_t size)
   ecc for payload chunk n
  */
 
-static int calc_bb_offset(nand_info_t *mtd, struct mx6_fcb *fcb)
+static inline int calc_bb_offset(nand_info_t *mtd, struct mx6_fcb *fcb)
 {
 	int bb_mark_offset;
 	int chunk_data_size = fcb->ecc_blockn_size * 8;
@@ -187,10 +188,31 @@ static int calc_bb_offset(nand_info_t *mtd, struct mx6_fcb *fcb)
 	return bb_mark_offset;
 }
 
+static int find_contig_space(int block, int num_blocks, int max_blocks)
+{
+	int start = block;
+	int found = 0;
+
+	for (; block < block + max_blocks; block++) {
+		if (nand_block_isbad(mtd, block * mtd->erasesize)) {
+			found = 0;
+			printf("Adjusting start block from %u to %u\n",
+				start, block + 1);
+			start = block + 1;
+		} else {
+			found++;
+			if (found >= num_blocks)
+				return start;
+		}
+	}
+	return -ENOSPC;
+}
+
 #define pr_fcb_val(p, n)	debug("%s=%08x(%d)\n", #n, (p)->n, (p)->n)
 
 static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
-				int fw2_start_block, size_t fw_size)
+				int fw2_start_block, int fw_num_blocks,
+				int max_blocks)
 {
 	struct gpmi_regs *gpmi_base = (void *)GPMI_BASE_ADDRESS;
 	struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
@@ -221,7 +243,7 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 	strncpy((char *)&fcb->fingerprint, "FCB ", 4);
 	fcb->version = cpu_to_be32(1);
 
-	fcb->disbb_search = 1;
+	fcb->disbb_search = 0;
 	fcb->disbbm = 1;
 
 	/* ROM code assumes GPMI clock of 25 MHz */
@@ -248,15 +270,19 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 	fcb->bch_mode = readl(&bch_base->hw_bch_mode);
 	fcb->bch_type = 0; /* BCH20 */
 
-	fcb->fw1_start_page = fw1_start_block * mtd->erasesize / mtd->writesize;
-	fcb->fw1_sectors = DIV_ROUND_UP(fw_size, mtd->writesize);
+	fcb->fw1_start_page = fw1_start_block * fcb->sectors_per_block;
+	fcb->fw1_sectors = fw_num_blocks * fcb->sectors_per_block;
+	pr_fcb_val(fcb, fw1_start_page);
+	pr_fcb_val(fcb, fw1_sectors);
 
 	if (fw2_start_block != 0 && fw2_start_block < mtd->size / mtd->erasesize) {
-		fcb->fw2_start_page = fw2_start_block * mtd->erasesize / mtd->writesize;
-		fcb->fw2_sectors = fcb->fw1_sectors;
+		fcb->fw2_start_page = fw2_start_block * fcb->sectors_per_block;
+		fcb->fw2_sectors = fw_num_blocks * fcb->sectors_per_block;
+		pr_fcb_val(fcb, fw2_start_page);
+		pr_fcb_val(fcb, fw2_sectors);
 	}
 
-	fcb->dbbt_search_area = 1;
+	fcb->dbbt_search_area = 0;
 
 	bb_mark_bit_offs = calc_bb_offset(mtd, fcb);
 	if (bb_mark_bit_offs < 0)
@@ -287,7 +313,7 @@ static int find_fcb(void *ref, int page)
 	ret = chip->ecc.read_page_raw(mtd, chip, buf, 1, page);
 	if (ret) {
 		printf("Failed to read FCB from page %u: %d\n", page, ret);
-		return ret;
+		goto out;
 	}
 	chip->select_chip(mtd, -1);
 	if (memcmp(buf, ref, mtd->writesize) == 0) {
@@ -295,6 +321,7 @@ static int find_fcb(void *ref, int page)
 			page, page * mtd->writesize);
 		ret = 1;
 	}
+out:
 	free(buf);
 	return ret;
 }
@@ -344,18 +371,6 @@ struct mx6_boot_data {
 	u32 length;
 	u32 plugin;
 };
-
-static size_t count_good_blocks(int start, int end)
-{
-	size_t max_len = (end - start + 1);
-	int block;
-
-	for (block = start; block <= end; block++) {
-		if (nand_block_isbad(mtd, block * mtd->erasesize))
-			max_len--;
-	}
-	return max_len;
-}
 
 static int find_ivt(void *buf)
 {
@@ -440,7 +455,21 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	unsigned long extra_blocks = 2;
 	nand_erase_options_t erase_opts = { 0, };
 	size_t max_len1, max_len2;
+	struct mtd_device *dev;
+	struct part_info *part_info;
+	u8 part_num;
 	size_t actual;
+
+	ret = mtdparts_init();
+	if (ret)
+		return ret;
+
+	ret = find_dev_and_part("u-boot", &dev, &part_num,
+				&part_info);
+	if (ret) {
+		printf("Failed to find u-boot partition: %d\n", ret);
+		return ret;
+	}
 
 	for (optind = 1; optind < argc; optind++) {
 		if (strcmp(argv[optind], "-f") == 0) {
@@ -520,24 +549,38 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		size = simple_strtoul(file_size, NULL, 16);
 		printf("Using default file size %08x\n", size);
 	}
-	if (size > 0)
+	if (size > 0) {
 		fw_num_blocks = DIV_ROUND_UP(size, mtd->erasesize);
-	else
-		fw_num_blocks = CONFIG_U_BOOT_IMG_SIZE / mtd->erasesize - extra_blocks;
-
-	if (!fw1_set) {
-		fw1_start_block = CONFIG_SYS_NAND_U_BOOT_OFFS / mtd->erasesize;
-		fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
 	} else {
-		fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
+		fw_num_blocks = part_info->size / mtd->erasesize - extra_blocks;
+		size = fw_num_blocks * mtd->erasesize;
 	}
+	if (!fw1_set)
+		fw1_start_block = part_info->offset / mtd->erasesize;
 
-	if (fw2_set && fw2_start_block == 0) {
+	fw1_start_block = find_contig_space(fw1_start_block,
+					fw_num_blocks,
+					size / mtd->erasesize);
+	if (fw1_start_block < 0) {
+		printf("Could not find %lu contiguous good blocks for fw image\n",
+			fw_num_blocks);
+		return -ENOSPC;
+	}
+	fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
+
+	if (fw2_set && fw2_start_block == 0)
 		fw2_start_block = fw1_end_block + 1;
-		fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
-	} else {
-		fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
+	if (fw2_start_block > 0) {
+		fw2_start_block = find_contig_space(fw2_start_block,
+						fw_num_blocks,
+						size / mtd->erasesize);
+		if (fw2_start_block < 0) {
+			printf("Could not find %lu contiguous good blocks for redundant fw image\n",
+				fw_num_blocks);
+			return -ENOSPC;
+		}
 	}
+	fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
 
 #ifdef CONFIG_ENV_IS_IN_NAND
 	fail_if_overlap(fcb, env, "FCB", "Environment");
@@ -558,41 +601,22 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		return -ENOMEM;
 	}
 
-	/* search for bad blocks in FW1 block range */
-	max_len1 = count_good_blocks(fw1_start_block, fw1_end_block);
-	printf("%u good blocks in %lu..%lu\n",
-		max_len1, fw1_start_block, fw1_end_block);
-	if (fw_num_blocks > max_len1) {
-		printf("Too many bad blocks in FW1 block range: %lu..%lu; max blocks: %u\n",
-			fw1_end_block + 1 - fw_num_blocks - extra_blocks,
-			fw1_end_block, max_len1);
-		return -EINVAL;
-	}
-
-	/* search for bad blocks in FW2 block range */
-	max_len2 = count_good_blocks(fw2_start_block, fw2_end_block);
-	if (fw2_start_block > 0 && fw_num_blocks > max_len2) {
-		printf("Too many bad blocks in FW2 block range: %lu..%lu\n",
-			fw2_end_block + 1 - fw_num_blocks - extra_blocks,
-			fw2_end_block);
-		return -EINVAL;
-	}
-
-	fcb = create_fcb(buf, fw1_start_block, fw2_start_block,
-			ALIGN(fw_num_blocks * mtd->erasesize, mtd->writesize));
+	fcb = create_fcb(buf, fw1_start_block, fw2_start_block, fw_num_blocks,
+			size / mtd->erasesize);
 	if (IS_ERR(fcb)) {
 		printf("Failed to initialize FCB: %ld\n", PTR_ERR(fcb));
+		free(buf);
 		return PTR_ERR(fcb);
 	}
 	encode_hamming_13_8(fcb, (void *)fcb + 512, 512);
 
 	ret = write_fcb(buf, fcb_start_block);
+	free(buf);
 	if (ret) {
 		printf("Failed to write FCB to block %lu\n", fcb_start_block);
 		return ret;
 	}
-
-	ret = patch_ivt(addr, size ?: fw_num_blocks * mtd->erasesize);
+	ret = patch_ivt(addr, size);
 	if (ret) {
 		return ret;
 	}
@@ -617,11 +641,10 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		printf("Failed to erase flash: %d\n", ret);
 		return ret;
 	}
-	if (size == 0)
-		max_len1 *= mtd->erasesize;
-	else
-		max_len1 = size;
 
+	max_len1 = size;
+
+	printf("max_len1=%u\n", max_len1);
 	printf("Programming flash @ %08x..%08x from %p\n",
 		fcb->fw1_start_page * page_size,
 		fcb->fw1_start_page * page_size + max_len1 - 1, addr);
@@ -649,10 +672,10 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		printf("Failed to erase flash: %d\n", ret);
 		return ret;
 	}
-	if (size == 0)
-		max_len2 *= mtd->erasesize;
-	else
-		max_len2 = size;
+
+	max_len2 = size;
+
+	printf("max_len2=%u\n", max_len2);
 	printf("Programming flash @ %08x..%08x from %p\n",
 		fcb->fw2_start_page * page_size,
 		fcb->fw2_start_page * page_size + max_len2 - 1, addr);
