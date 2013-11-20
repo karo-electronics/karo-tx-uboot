@@ -251,7 +251,7 @@ void BootmeStart(void)
 		check_net_config();
 
 	if (output_packet_len == 0 ||
-		memcmp(bootme_ether, NetEtherNullAddr, ETH_ALEN) != 0) {
+		is_valid_ether_addr(bootme_ether)) {
 		/* wait for incoming packet */
 		net_set_udp_handler(bootme_handler);
 		bootme_timed_out = 0;
@@ -289,7 +289,7 @@ int bootme_send_frame(const void *buf, size_t len)
 		__func__, buf, len, &NetOurIP, bootme_src_port, &bootme_ip,
 		bootme_dst_port);
 
-	if (memcmp(bootme_ether, NetEtherNullAddr, ETH_ALEN) == 0) {
+	if (is_zero_ether_addr(bootme_ether)) {
 		output_packet = buf;
 		output_packet_len = len;
 		/* wait for arp reply and send packet */
