@@ -304,6 +304,17 @@ int bootme_send_frame(const void *buf, size_t len)
 		return 0;
 	}
 
+	if (eth->state != ETH_STATE_ACTIVE) {
+		if (eth_is_on_demand_init()) {
+			ret = eth_init(gd->bd);
+			if (ret < 0)
+				return ret;
+			eth_set_last_protocol(BOOTME);
+		} else {
+			eth_init_state_only(gd->bd);
+		}
+	}
+
 	assert(NetTxPacket != NULL);
 	pkt = (uchar *)NetTxPacket + NetEthHdrSize() + IP_UDP_HDR_SIZE;
 	memcpy(pkt, buf, len);
