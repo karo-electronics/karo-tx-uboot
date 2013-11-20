@@ -550,6 +550,9 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			break;
 
 			case CE_PR_EOF:
+				ce_prepare_run_bin(&g_bin);
+				break;
+
 			case CE_PR_ERROR:
 				break;
 			}
