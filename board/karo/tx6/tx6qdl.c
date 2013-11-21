@@ -430,6 +430,10 @@ int board_init(void)
 #else
 	gd->bd->bi_arch_number = 4429;
 #endif
+	if (ctrlc()) {
+		printf("CTRL-C detected; Skipping PMIC setup\n");
+		return 1;
+	}
 	ret = setup_pmic_voltages();
 	if (ret) {
 		printf("Failed to setup PMIC voltages\n");
@@ -946,7 +950,7 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
-	if (tstc() || (wrsr & WRSR_TOUT)) {
+	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		setenv("splashimage", NULL);
@@ -1172,7 +1176,7 @@ static void tx6qdl_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 
-	if (tstc() || (wrsr & WRSR_TOUT))
+	if (had_ctrlc() || (wrsr & WRSR_TOUT))
 		return;
 
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
@@ -1242,6 +1246,7 @@ exit:
 	tx6_init_mac();
 
 	gpio_set_value(TX6_RESET_OUT_GPIO, 1);
+	clear_ctrlc();
 	return ret;
 }
 
