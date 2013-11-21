@@ -229,18 +229,20 @@ static void tx6qdl_print_cpuinfo(void)
 #define LTC3676_BUCK2		0x02
 #define LTC3676_BUCK3		0x03
 #define LTC3676_BUCK4		0x04
+#define LTC3676_DVB1A		0x0A
+#define LTC3676_DVB1B		0x0B
 #define LTC3676_DVB2A		0x0C
 #define LTC3676_DVB2B		0x0D
+#define LTC3676_DVB3A		0x0E
+#define LTC3676_DVB3B		0x0F
 #define LTC3676_DVB4A		0x10
 #define LTC3676_DVB4B		0x11
+#define LTC3676_MSKPG		0x13
 #define LTC3676_CLIRQ		0x1f
-
-#define VDD_SOC_mV		(1375 + 50)
-#define VDD_CORE_mV		(1375 + 50)
 
 #define LTC3676_BUCK_DVDT_FAST	(1 << 0)
 #define LTC3676_BUCK_KEEP_ALIVE	(1 << 1)
-#define LTC3676_BUCK_CLK_RATE_LOW	(1 << 2)
+#define LTC3676_BUCK_CLK_RATE_LOW (1 << 2)
 #define LTC3676_BUCK_PHASE_SEL	(1 << 3)
 #define LTC3676_BUCK_ENABLE_300	(1 << 4)
 #define LTC3676_BUCK_PULSE_SKIP	(0 << 5)
@@ -250,29 +252,130 @@ static void tx6qdl_print_cpuinfo(void)
 
 #define LTC3676_PGOOD_MASK	(1 << 5)
 
-#define mV_to_regval(mV)	(((mV) * 360 / 330 - 825 + 1) / 25)
-#define regval_to_mV(v)		(((v) * 25 + 825) * 330 / 360)
+#define LTC3676_MSKPG_BUCK1	(1 << 0)
+#define LTC3676_MSKPG_BUCK2	(1 << 1)
+#define LTC3676_MSKPG_BUCK3	(1 << 2)
+#define LTC3676_MSKPG_BUCK4	(1 << 3)
+#define LTC3676_MSKPG_LDO2	(1 << 5)
+#define LTC3676_MSKPG_LDO3	(1 << 6)
+#define LTC3676_MSKPG_LDO4	(1 << 7)
 
-static struct pmic_regs {
+#define VDD_IO_VAL		mV_to_regval(vout_to_vref(3300 * 10, 5))
+#define VDD_IO_VAL_LP		mV_to_regval(vout_to_vref(3100 * 10, 5))
+#define VDD_IO_VAL_2		mV_to_regval(vout_to_vref(3300 * 10, 5_2))
+#define VDD_IO_VAL_2_LP		mV_to_regval(vout_to_vref(3100 * 10, 5_2))
+#define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1425 * 10, 6))
+#define VDD_SOC_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 6))
+#define VDD_DDR_VAL		mV_to_regval(vout_to_vref(1500 * 10, 7))
+#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1425 * 10, 8))
+#define VDD_CORE_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 8))
+
+/* LDO1 */
+#define R1_1			470
+#define R2_1			150
+/* LDO4 */
+#define R1_4			470
+#define R2_4			150
+/* Buck1 */
+#define R1_5			390
+#define R2_5			110
+#define R1_5_2			470
+#define R2_5_2			150
+/* Buck2 */
+#define R1_6			150
+#define R2_6			180
+/* Buck3 */
+#define R1_7			150
+#define R2_7			140
+/* Buck4 */
+#define R1_8			150
+#define R2_8			180
+
+/* calculate voltages in 10mV */
+#define R1(idx)			R1_##idx
+#define R2(idx)			R2_##idx
+
+#define vout_to_vref(vout, idx)	((vout) * R2(idx) / (R1(idx) + R2(idx)))
+#define vref_to_vout(vref, idx)	DIV_ROUND_UP((vref) * (R1(idx) + R2(idx)), R2(idx))
+
+#define mV_to_regval(mV)	DIV_ROUND(((((mV) < 4125) ? 4125 : (mV)) - 4125), 125)
+#define regval_to_mV(v)		(((v) * 125 + 4125))
+
+static struct ltc3673_regs {
 	u8 addr;
 	u8 val;
+	u8 mask;
 } ltc3676_regs[] = {
-	{ LTC3676_DVB2B, mV_to_regval(900) | LTC3676_PGOOD_MASK, },
-	{ LTC3676_DVB4B, mV_to_regval(900) | LTC3676_PGOOD_MASK, },
-	{ LTC3676_DVB2A, mV_to_regval(VDD_SOC_mV), },
-	{ LTC3676_DVB4A, mV_to_regval(VDD_CORE_mV), },
+	{ LTC3676_MSKPG, ~LTC3676_MSKPG_BUCK1, },
+	{ LTC3676_DVB2B, VDD_SOC_VAL | LTC3676_PGOOD_MASK, ~0x3f, },
+	{ LTC3676_DVB3B, VDD_DDR_VAL, ~0x3f, },
+	{ LTC3676_DVB4B, VDD_CORE_VAL | LTC3676_PGOOD_MASK, ~0x3f, },
+	{ LTC3676_DVB2A, VDD_SOC_VAL, ~0x3f, },
+	{ LTC3676_DVB3A, VDD_DDR_VAL, ~0x3f, },
+	{ LTC3676_DVB4A, VDD_CORE_VAL, ~0x3f, },
 	{ LTC3676_BUCK1, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
-	{ LTC3676_BUCK2, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
-	{ LTC3676_BUCK3, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
-	{ LTC3676_BUCK4, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
+	{ LTC3676_BUCK2, LTC3676_BUCK_BURST_MODE, },
+	{ LTC3676_BUCK3, LTC3676_BUCK_BURST_MODE, },
+	{ LTC3676_BUCK4, LTC3676_BUCK_BURST_MODE, },
 	{ LTC3676_CLIRQ, 0, }, /* clear interrupt status */
 };
+
+static struct ltc3673_regs ltc3676_regs_1[] = {
+	{ LTC3676_DVB1B, VDD_IO_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
+	{ LTC3676_DVB1A, VDD_IO_VAL, ~0x3f, },
+};
+
+static struct ltc3673_regs ltc3676_regs_2[] = {
+	{ LTC3676_DVB1B, VDD_IO_VAL_2_LP | LTC3676_PGOOD_MASK, ~0x3f, },
+	{ LTC3676_DVB1A, VDD_IO_VAL_2, ~0x3f, },
+};
+
+static int tx6_rev_2(void)
+{
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank5_regs *fuse = (void *)ocotp->bank[5].fuse_regs;
+	u32 pad_settings = readl(&fuse->pad_settings);
+
+	debug("Fuse pad_settings @ %p = %08x\n",
+		&fuse->pad_settings, pad_settings);
+	return pad_settings & 1;
+}
+
+static int tx6_ltc3676_setup_regs(struct ltc3673_regs *r, size_t count)
+{
+	int ret;
+	int i;
+
+	for (i = 0; i < count; i++, r++) {
+#ifdef DEBUG
+		unsigned char value;
+
+		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
+		if ((value & ~r->mask) != r->val) {
+			printf("Changing PMIC reg %02x from %02x to %02x\n",
+				r->addr, value, r->val);
+		}
+		if (ret) {
+			printf("%s: failed to read PMIC register %02x: %d\n",
+				__func__, r->addr, ret);
+			return ret;
+		}
+#endif
+		ret = i2c_write(CONFIG_SYS_I2C_SLAVE,
+				r->addr, 1, &r->val, 1);
+		if (ret) {
+			printf("%s: failed to write PMIC register %02x: %d\n",
+				__func__, r->addr, ret);
+			return ret;
+		}
+	}
+	return 0;
+}
 
 static int setup_pmic_voltages(void)
 {
 	int ret;
 	unsigned char value;
-	int i;
 
 	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
 	if (ret != 0) {
@@ -286,18 +389,26 @@ static int setup_pmic_voltages(void)
 		return ret;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(ltc3676_regs); i++) {
-		ret = i2c_write(CONFIG_SYS_I2C_SLAVE, ltc3676_regs[i].addr, 1,
-				&ltc3676_regs[i].val, 1);
-		if (ret) {
-			printf("%s: failed to write PMIC register %02x: %d\n",
-				__func__, ltc3676_regs[i].addr, ret);
-			return ret;
-		}
+	ret = tx6_ltc3676_setup_regs(ltc3676_regs, ARRAY_SIZE(ltc3676_regs));
+	if (ret)
+		return ret;
+
+	printf("VDDCORE set to %umV\n",
+		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_CORE_VAL), 8), 10));
+	printf("VDDSOC  set to %umV\n",
+		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_SOC_VAL), 6), 10));
+
+	if (tx6_rev_2()) {
+		ret = tx6_ltc3676_setup_regs(ltc3676_regs_2,
+				ARRAY_SIZE(ltc3676_regs_2));
+		printf("VDDIO   set to %umV\n",
+			DIV_ROUND(vref_to_vout(
+					regval_to_mV(VDD_IO_VAL_2), 5_2), 10));
+	} else {
+		ret = tx6_ltc3676_setup_regs(ltc3676_regs_1,
+				ARRAY_SIZE(ltc3676_regs_1));
 	}
-	printf("VDDCORE set to %dmV\n", VDD_CORE_mV);
-	printf("VDDSOC  set to %dmV\n", VDD_SOC_mV);
-	return 0;
+	return ret;
 }
 
 int board_early_init_f(void)
