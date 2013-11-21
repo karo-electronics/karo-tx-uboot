@@ -429,10 +429,10 @@ struct ocotp_regs {
 	reg_32(crc_addr);
 	reg_32(crc_value);
 	reg_32(version);
-	u32	rsvd7[0xd8];
+	reg_32(rsvd[0x36]);
 
 	struct fuse_bank {
-		u32	fuse_regs[0x20];
+		reg_32(fuse_regs[8]);
 	} bank[16];
 };
 
@@ -452,6 +452,15 @@ struct fuse_bank4_regs {
 	reg_32(sjc_resp_high);
 	reg_32(mac_addr_low);
 	reg_32(mac_addr_high);
+	reg_32(rsvd[2]);
+	reg_32(gp1);
+	reg_32(gp2);
+};
+
+struct fuse_bank5_regs {
+	reg_32(rsvd[5]);
+	reg_32(pad_settings);
+	reg_32(field_return);
 };
 
 struct aipstz_regs {
