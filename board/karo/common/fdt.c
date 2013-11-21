@@ -97,8 +97,8 @@ static void *karo_fdt_load_dtb(void)
 	int ret;
 	void *fdt = (void *)getenv_ulong("fdtaddr", 16, CONFIG_SYS_FDT_ADDR);
 
-	if (tstc()) {
-		debug("aborting DTB load\n");
+	if (had_ctrlc()) {
+		printf("aborting DTB load\n");
 		return NULL;
 	}
 
