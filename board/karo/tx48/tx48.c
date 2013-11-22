@@ -1,6 +1,5 @@
 /*
- * tx48.c
- * Copyright (C) 2012 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2013 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * based on evm.c
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
