@@ -71,10 +71,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define NO_OF_MAC_ADDR		1
 #define ETH_ALEN		6
 
-#define MUX_CFG(value, offset)	{					\
-	__raw_writel(value, (CTRL_BASE + (offset)));			\
-	}
-
 /* PAD Control Fields */
 #define SLEWCTRL	(0x1 << 6)
 #define	RXACTIVE	(0x1 << 5)
@@ -314,7 +310,7 @@ static inline void tx48_set_pin_mux(const struct pin_mux *pin_mux,
 	int i;
 
 	for (i = 0; i < num_pins; i++)
-		MUX_CFG(pin_mux[i].val, pin_mux[i].reg_offset);
+		writel(pin_mux[i].val, CTRL_BASE + pin_mux[i].reg_offset);
 }
 
 #define PRM_RSTST_GLOBAL_COLD_RST	(1 << 0)
