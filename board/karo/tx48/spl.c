@@ -33,8 +33,11 @@
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/mem.h>
 #include <video_fb.h>
 #include <asm/arch/da8xx-fb.h>
+
+#include "flash.h"
 
 #define TX48_LED_GPIO		AM33XX_GPIO_NR(1, 26)
 #define TX48_ETH_PHY_RST_GPIO	AM33XX_GPIO_NR(3, 8)
@@ -408,6 +411,15 @@ static void enable_mmc0_pin_mux(void)
 	tx48_set_pin_mux(tx48_mmc_pins, ARRAY_SIZE(tx48_mmc_pins));
 }
 
+static const u32 gpmc_nand_cfg[GPMC_MAX_REG] = {
+	TX48_NAND_GPMC_CONFIG1,
+	TX48_NAND_GPMC_CONFIG2,
+	TX48_NAND_GPMC_CONFIG3,
+	TX48_NAND_GPMC_CONFIG4,
+	TX48_NAND_GPMC_CONFIG5,
+	TX48_NAND_GPMC_CONFIG6,
+};
+
 #define SDRAM_CLK		CONFIG_SYS_DDR_CLK
 
 #define ns_TO_ck(ns)		(((ns) * SDRAM_CLK + 999) / 1000)
@@ -676,6 +688,7 @@ static inline void tx48_wdog_disable(void)
 void s_init(void)
 {
 	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
+	struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
 	int timeout = 1000;
 
 	gd = &gdata;
@@ -717,6 +730,8 @@ void s_init(void)
 	tx48_ddr_init();
 
 	gpmc_init();
+	enable_gpmc_cs_config(gpmc_nand_cfg, &gpmc_cfg->cs[0],
+			CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_SIZE);
 
 	/* Enable MMC0 */
 	enable_mmc0_pin_mux();
