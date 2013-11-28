@@ -335,6 +335,10 @@ static const struct pin_mux stk5_pads[] = {
 	{ OFFSET(mcasp0_aclkx), MODE(7) | PULLUDEN, },
 };
 
+static const struct gpio stk5_gpios[] = {
+	{ AM33XX_GPIO_NR(1, 26), GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+};
+
 static const struct pin_mux stk5_lcd_pads[] = {
 	/* LCD data bus */
 	{ OFFSET(lcd_data0), MODE(0) | PULLUDEN, },
@@ -358,10 +362,6 @@ static const struct pin_mux stk5_lcd_pads[] = {
 	{ OFFSET(lcd_vsync), MODE(0) | PULLUDEN, },
 	{ OFFSET(lcd_pclk), MODE(0) | PULLUDEN, },
 	{ OFFSET(lcd_ac_bias_en), MODE(0) | PULLUDEN, },
-};
-
-static const struct gpio stk5_gpios[] = {
-	{ AM33XX_GPIO_NR(1, 26), GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
@@ -787,6 +787,7 @@ void lcd_ctrl_init(void *lcdbase)
 
 static void stk5_board_init(void)
 {
+	gpio_request_array(stk5_gpios, ARRAY_SIZE(stk5_gpios));
 	tx48_set_pin_mux(stk5_pads, ARRAY_SIZE(stk5_pads));
 }
 
@@ -798,8 +799,9 @@ static void stk5v3_board_init(void)
 static void stk5v5_board_init(void)
 {
 	stk5_board_init();
-	tx48_set_pin_mux(stk5v5_pads, ARRAY_SIZE(stk5v5_pads));
+
 	gpio_request_array(stk5v5_gpios, ARRAY_SIZE(stk5v5_gpios));
+	tx48_set_pin_mux(stk5v5_pads, ARRAY_SIZE(stk5v5_pads));
 }
 
 /* called with default environment! */
