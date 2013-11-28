@@ -25,7 +25,7 @@ static __maybe_unused struct nand_ecclayout hw_nand_oob =
 static __maybe_unused struct nand_ecclayout hw_bch8_nand_oob =
 	GPMC_NAND_HW_BCH8_ECC_LAYOUT;
 
-static struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
+static struct gpmc __iomem *gpmc_cfg = (void __iomem *)GPMC_BASE;
 
 #ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
 static uint8_t bbt_pattern[] = {'B', 'b', 't', '0' };
@@ -85,7 +85,7 @@ static void omap_nand_hwcontrol(struct mtd_info *mtd, int32_t cmd,
 /* Check wait pin as dev ready indicator */
 int omap_spl_dev_ready(struct mtd_info *mtd)
 {
-	return gpmc_cfg->status & (1 << 8);
+	return readl(&gpmc_cfg->status) & (1 << 8);
 }
 #endif
 
@@ -243,12 +243,11 @@ static void __maybe_unused omap_enable_hwecc(struct mtd_info *mtd, int32_t mode)
 		 */
 		writel(ECCSIZE1 | ECCSIZE0 | ECCSIZE0SEL,
 			&gpmc_cfg->ecc_size_config);
-		val = (dev_width << 7) | (cs << 1) | (0x1);
+		val = (dev_width << 7) | (cs << 1) | (1 << 0);
 		writel(val, &gpmc_cfg->ecc_config);
 		break;
 	default:
 		printf("Error: Unrecognized Mode[%d]!\n", mode);
-		break;
 	}
 }
 
@@ -287,7 +286,7 @@ static __maybe_unused struct nand_bch_priv bch_priv = {
 	.mode = NAND_ECC_HW_BCH,
 	.type = ECC_BCH8,
 	.nibbles = ECC_BCH8_NIBBLES,
-	.control = NULL
+	.control = NULL,
 };
 
 /*
@@ -352,7 +351,7 @@ static void omap_hwecc_init_bch(struct nand_chip *chip, int32_t mode)
 	 * This ecc_size_config setting is for BCH sw library.
 	 *
 	 * Note: we only support BCH8 currently with BCH sw library!
-	 * Should be really easy to adobt to BCH4, however some omap3 have
+	 * Should be really easy to adopt to BCH4, however some omap3 have
 	 * flaws with BCH4.
 	 *
 	 * Here we are using wrapping mode 6 both for reading and writing, with:
@@ -368,11 +367,14 @@ static void omap_hwecc_init_bch(struct nand_chip *chip, int32_t mode)
 	 * Configure the ecc engine in gpmc
 	 * We assume 512 Byte sector pages for access to NAND.
 	 */
-	val  = (1 << 16);		/* enable BCH mode */
-	val |= (bch->type << 12);	/* setup BCH type */
-	val |= (wr_mode << 8);		/* setup wrapping mode */
-	val |= (dev_width << 7);	/* setup device width (16 or 8 bit) */
-	val |= (cs << 1);		/* setup chip select to work on */
+	val  = 1 << 16;			/* select BCH mode */
+	val |= bch->type << 12;		/* setup BCH type */
+	val |= wr_mode << 8;		/* setup wrapping mode */
+	val |= dev_width << 7;		/* setup device width (16 or 8 bit) */
+	val |= (chip->ecc.size / 512 - 1) << 4; /* set ECC size */
+	val |= cs << 1;			/* setup chip select to work on */
+	val |= 1 << 0;			/* enable ECC engine */
+
 	debug("set ECC_CONFIG=0x%08x\n", val);
 	writel(val, &gpmc_cfg->ecc_config);
 }
@@ -388,8 +390,6 @@ static void omap_enable_ecc_bch(struct mtd_info *mtd, int32_t mode)
 	struct nand_chip *chip = mtd->priv;
 
 	omap_hwecc_init_bch(chip, mode);
-	/* enable ecc */
-	writel((readl(&gpmc_cfg->ecc_config) | 0x1), &gpmc_cfg->ecc_config);
 }
 
 /*
@@ -449,7 +449,7 @@ static void omap_read_bch8_result(struct mtd_info *mtd, uint8_t big_endian,
  *
  * @mtd:	MTD device structure
  * @calc_ecc:	ECC read from ECC registers
- * @syndrome:	Rotated syndrome will be retuned in this array
+ * @syndrome:	Rotated syndrome will be returned in this array
  *
  */
 static void omap_rotate_ecc_bch(struct mtd_info *mtd, uint8_t *calc_ecc,
@@ -475,7 +475,7 @@ static void omap_rotate_ecc_bch(struct mtd_info *mtd, uint8_t *calc_ecc,
 		break;
 	}
 
-	for (i = 0, j = (n_bytes-1); i < n_bytes; i++, j--)
+	for (i = 0, j = n_bytes - 1; i < n_bytes; i++, j--)
 		syndrome[i] =  calc_ecc[j];
 }
 
@@ -615,14 +615,13 @@ static int omap_read_page_bch(struct mtd_info *mtd, struct nand_chip *chip,
 	uint8_t *ecc_calc = chip->buffers->ecccalc;
 	uint8_t *ecc_code = chip->buffers->ecccode;
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
-	uint8_t *oob = chip->oob_poi;
+	uint8_t *oob = &chip->oob_poi[eccpos[0]];
 	uint32_t data_pos;
 	uint32_t oob_pos;
 
 	data_pos = 0;
 	/* oob area start */
-	oob_pos = (eccsize * eccsteps) + chip->ecc.layout->eccpos[0];
-	oob += chip->ecc.layout->eccpos[0];
+	oob_pos = (eccsize * eccsteps) + eccpos[0];
 
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize,
 				oob += eccbytes) {
@@ -741,22 +740,22 @@ static int omap_correct_data_bch(struct mtd_info *mtd, u_char *data,
 				data[errloc[i]/8] ^= 1 << (errloc[i] & 7);
 			printf("corrected bitflip %u\n", errloc[i]);
 #ifdef DEBUG
-			puts("read_ecc: ");
+			printf("read_ecc: ");
 			/*
 			 * BCH8 have 13 bytes of ECC; BCH4 needs adoption
 			 * here!
 			 */
 			for (i = 0; i < 13; i++)
 				printf("%02x ", read_ecc[i]);
-			puts("\n");
-			puts("calc_ecc: ");
+			printf("\n");
+			printf("calc_ecc: ");
 			for (i = 0; i < 13; i++)
 				printf("%02x ", calc_ecc[i]);
-			puts("\n");
+			printf("\n");
 #endif
 		}
 	} else if (count < 0) {
-		puts("ecc unrecoverable error\n");
+		printf("ecc unrecoverable error\n");
 	}
 	return count;
 }
@@ -933,7 +932,7 @@ int board_nand_init(struct nand_chip *nand)
 	 */
 	bch_priv.control = init_bch(13, 8, 0x201b /* hw polynominal */);
 	if (!bch_priv.control) {
-		puts("Could not init_bch()\n");
+		printf("Failed to initialize BCH engine\n");
 		return -ENODEV;
 	}
 #endif
