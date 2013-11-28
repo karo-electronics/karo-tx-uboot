@@ -52,6 +52,163 @@ static struct nand_bbt_descr bbt_mirror_descr = {
 };
 #endif
 
+#define PREFETCH_FIFOTHRESHOLD_MAX		0x40
+#define PREFETCH_FIFOTHRESHOLD(val)		((val) << 8)
+
+#define PREFETCH_ENABLEOPTIMIZEDACCESS		(0x1 << 27)
+
+#define GPMC_PREFETCH_STATUS_FIFO_CNT(val)	(((val) >> 24) & 0x7F)
+#define GPMC_PREFETCH_STATUS_COUNT(val)		((val) & 0x00003fff)
+
+#define CS_NUM_SHIFT				24
+#define ENABLE_PREFETCH				(0x1 << 7)
+#define DMA_MPU_MODE				2
+
+#define OMAP_NAND_TIMEOUT_MS			5000
+
+#define PRINT_REG(x) debug("+++ %.15s (0x%08x)=0x%08x\n", #x, &gpmc_cfg->x, readl(&gpmc_cfg->x))
+
+#ifdef CONFIG_SYS_GPMC_PREFETCH_ENABLE
+/**
+ * gpmc_prefetch_enable - configures and starts prefetch transfer
+ * @cs: cs (chip select) number
+ * @fifo_th: fifo threshold to be used for read/ write
+ * @count: number of bytes to be transferred
+ * @is_write: prefetch read(0) or write post(1) mode
+ */
+static inline void gpmc_prefetch_enable(int cs, int fifo_th,
+					unsigned int count, int is_write)
+{
+	writel(count, &gpmc_cfg->pref_config2);
+
+	/* Set the prefetch read / post write and enable the engine.
+	 * Set which cs is has requested for.
+	 */
+	uint32_t val = (cs << CS_NUM_SHIFT) |
+		PREFETCH_ENABLEOPTIMIZEDACCESS |
+		PREFETCH_FIFOTHRESHOLD(fifo_th) |
+		ENABLE_PREFETCH |
+		!!is_write;
+	writel(val, &gpmc_cfg->pref_config1);
+
+	/*  Start the prefetch engine */
+	writel(0x1, &gpmc_cfg->pref_control);
+}
+
+/**
+ * gpmc_prefetch_reset - disables and stops the prefetch engine
+ */
+static inline void gpmc_prefetch_reset(void)
+{
+	/* Stop the PFPW engine */
+	writel(0x0, &gpmc_cfg->pref_control);
+
+	/* Reset/disable the PFPW engine */
+	writel(0x0, &gpmc_cfg->pref_config1);
+}
+
+//#define FIFO_IOADDR		(nand->IO_ADDR_R)
+#define FIFO_IOADDR		PISMO1_NAND_BASE
+
+/**
+ * read_buf_pref - read data from NAND controller into buffer
+ * @mtd: MTD device structure
+ * @buf: buffer to store date
+ * @len: number of bytes to read
+ */
+static void read_buf_pref(struct mtd_info *mtd, u_char *buf, int len)
+{
+	gpmc_prefetch_enable(cs, PREFETCH_FIFOTHRESHOLD_MAX, len, 0);
+	do {
+		// Get number of bytes waiting in the FIFO
+		uint32_t read_bytes = GPMC_PREFETCH_STATUS_FIFO_CNT(readl(&gpmc_cfg->pref_status));
+
+		if (read_bytes == 0)
+			continue;
+		// Alignment of Destination Buffer
+		while (read_bytes && ((unsigned int)buf & 3)) {
+			*buf++ = readb(FIFO_IOADDR);
+			read_bytes--;
+			len--;
+		}
+		// Use maximum word size (32bit) inside this loop, because speed is limited by
+		// GPMC bus arbitration with a maximum transfer rate of 3.000.000/sec.
+		len -= read_bytes & ~3;
+		while (read_bytes >= 4) {
+			*((uint32_t*)buf) = readl(FIFO_IOADDR);
+			buf += 4;
+			read_bytes -= 4;
+		}
+		// Transfer the last (non-aligned) bytes only at the last iteration,
+		// to maintain full speed up to the end of the transfer.
+		if (read_bytes == len) {
+			while (read_bytes) {
+				*buf++ = readb(FIFO_IOADDR);
+				read_bytes--;
+			}
+			len = 0;
+		}
+	} while (len > 0);
+	gpmc_prefetch_reset();
+}
+
+/*
+ * write_buf_pref - write buffer to NAND controller
+ * @mtd: MTD device structure
+ * @buf: data buffer
+ * @len: number of bytes to write
+ */
+static void write_buf_pref(struct mtd_info *mtd, const u_char *buf, int len)
+{
+	/*  configure and start prefetch transfer */
+	gpmc_prefetch_enable(cs, PREFETCH_FIFOTHRESHOLD_MAX, len, 1);
+
+	while (len) {
+		// Get number of free bytes in the FIFO
+		uint32_t write_bytes = GPMC_PREFETCH_STATUS_FIFO_CNT(readl(&gpmc_cfg->pref_status));
+
+		// don't write more bytes than requested
+		if (write_bytes > len)
+			write_bytes = len;
+
+		// Alignment of Source Buffer
+		while (write_bytes && ((unsigned int)buf & 3)) {
+			writeb(*buf++, FIFO_IOADDR);
+			write_bytes--;
+			len--;
+		}
+
+		// Use maximum word size (32bit) inside this loop, because speed is limited by
+		// GPMC bus arbitration with a maximum transfer rate of 3.000.000/sec.
+		len -= write_bytes & ~3;
+		while (write_bytes >= 4) {
+			writel(*((uint32_t*)buf), FIFO_IOADDR);
+			buf += 4;
+			write_bytes -= 4;
+		}
+
+		// Transfer the last (non-aligned) bytes only at the last iteration,
+		// to maintain full speed up to the end of the transfer.
+		if (write_bytes == len) {
+			while (write_bytes) {
+				writeb(*buf++, FIFO_IOADDR);
+				write_bytes--;
+			}
+			len = 0;
+		}
+	}
+
+	/* wait for data to be flushed out before resetting the prefetch */
+	while ((len = GPMC_PREFETCH_STATUS_COUNT(readl(&gpmc_cfg->pref_status)))) {
+		debug("%u bytes still in FIFO\n", PREFETCH_FIFOTHRESHOLD_MAX - len);
+		ndelay(1);
+	}
+
+	/* disable and stop the PFPW engine */
+	gpmc_prefetch_reset();
+}
+#endif /* CONFIG_SYS_GPMC_PREFETCH_ENABLE */
+
 /*
  * omap_nand_hwcontrol - Set the address pointers corretly for the
  *			following address/data/command operation
@@ -417,29 +574,33 @@ static void omap_read_bch8_result(struct mtd_info *mtd, uint8_t big_endian,
 				uint8_t *ecc_code)
 {
 	uint32_t *ptr;
-	int8_t i = 0, j;
+	int8_t i = 0, j, k;
+	struct nand_chip *chip = mtd->priv;
+	int num_steps = chip->ecc.size / 512;
 
-	if (big_endian) {
-		ptr = &gpmc_cfg->bch_result_0_3[0].bch_result_x[3];
-		ecc_code[i++] = readl(ptr) & 0xFF;
-		ptr--;
-		for (j = 0; j < 3; j++) {
-			ecc_code[i++] = (readl(ptr) >> 24) & 0xFF;
-			ecc_code[i++] = (readl(ptr) >> 16) & 0xFF;
-			ecc_code[i++] = (readl(ptr) >>  8) & 0xFF;
+	for (k = 0; k < num_steps; k++) {
+		if (big_endian) {
+			ptr = &gpmc_cfg->bch_result_0_3[k].bch_result_x[3];
 			ecc_code[i++] = readl(ptr) & 0xFF;
 			ptr--;
-		}
-	} else {
-		ptr = &gpmc_cfg->bch_result_0_3[0].bch_result_x[0];
-		for (j = 0; j < 3; j++) {
+			for (j = 0; j < 3; j++) {
+				ecc_code[i++] = (readl(ptr) >> 24) & 0xFF;
+				ecc_code[i++] = (readl(ptr) >> 16) & 0xFF;
+				ecc_code[i++] = (readl(ptr) >>  8) & 0xFF;
+				ecc_code[i++] = readl(ptr) & 0xFF;
+				ptr--;
+			}
+		} else {
+			ptr = &gpmc_cfg->bch_result_0_3[k].bch_result_x[0];
+			for (j = 0; j < 3; j++) {
+				ecc_code[i++] = readl(ptr) & 0xFF;
+				ecc_code[i++] = (readl(ptr) >>  8) & 0xFF;
+				ecc_code[i++] = (readl(ptr) >> 16) & 0xFF;
+				ecc_code[i++] = (readl(ptr) >> 24) & 0xFF;
+				ptr++;
+			}
 			ecc_code[i++] = readl(ptr) & 0xFF;
-			ecc_code[i++] = (readl(ptr) >>  8) & 0xFF;
-			ecc_code[i++] = (readl(ptr) >> 16) & 0xFF;
-			ecc_code[i++] = (readl(ptr) >> 24) & 0xFF;
-			ptr++;
 		}
-		ecc_code[i++] = readl(ptr) & 0xFF;
 		ecc_code[i++] = 0;	/* 14th byte is always zero */
 	}
 }
@@ -564,35 +725,52 @@ static int omap_correct_data_bch(struct mtd_info *mtd, uint8_t *dat,
 	uint32_t error_count = 0;
 	uint32_t error_loc[8];
 	uint32_t i, ecc_flag;
+	int k, ecc_bytes, num_steps;
 
-	ecc_flag = 0;
-	for (i = 0; i < chip->ecc.bytes; i++)
-		if (read_ecc[i] != 0xff)
-			ecc_flag = 1;
+	num_steps = chip->ecc.size / 512;
+	ecc_bytes = chip->ecc.bytes / num_steps;
 
-	if (!ecc_flag)
-		return 0;
+	for (k = 0; k < num_steps; k++) {
+		ecc_flag = 0;
+		/* check if area is flashed */
+		for (i = 0; i < chip->ecc.bytes && !ecc_flag; i++)
+			if (read_ecc[i] != 0xff)
+				ecc_flag = 1;
 
-	elm_reset();
-	elm_config((enum bch_level)(bch->type));
+		if (ecc_flag) {
+			ecc_flag = 0;
+			/* check if any ecc error */
+			for (i = 0; (i < ecc_bytes) && !ecc_flag; i++)
+				if (calc_ecc[i] != 0)
+					ecc_flag = 1;
+		}
 
-	/*
-	 * while reading ECC result we read it in big endian.
-	 * Hence while loading to ELM we have rotate to get the right endian.
-	 */
-	omap_rotate_ecc_bch(mtd, calc_ecc, syndrome);
+		if (!ecc_flag)
+			return 0;
 
-	/* use elm module to check for errors */
-	if (elm_check_error(syndrome, bch->nibbles, &error_count,
-				error_loc) != 0) {
-		printf("ECC: uncorrectable.\n");
-		return -1;
+		elm_reset();
+		elm_config((enum bch_level)(bch->type));
+
+		/*
+		 * while reading ECC result we read it in big endian.
+		 * Hence while loading to ELM we have rotate to get the right endian.
+		 */
+		omap_rotate_ecc_bch(mtd, calc_ecc, syndrome);
+
+		/* use elm module to check for errors */
+		if (elm_check_error(syndrome, bch->nibbles, &error_count,
+					error_loc) != 0) {
+			printf("ECC: uncorrectable.\n");
+			return -1;
+		}
+
+		/* correct bch error */
+		if (error_count > 0)
+			omap_fix_errors_bch(mtd, dat, error_count, error_loc);
+		dat += 512;
+		read_ecc += ecc_bytes;
+		calc_ecc += ecc_bytes;
 	}
-
-	/* correct bch error */
-	if (error_count > 0)
-		omap_fix_errors_bch(mtd, dat, error_count, error_loc);
-
 	return 0;
 }
 
@@ -913,7 +1091,7 @@ int board_nand_init(struct nand_chip *nand)
 	nand->IO_ADDR_W = (void __iomem *)&gpmc_cfg->cs[cs].nand_cmd;
 
 	nand->cmd_ctrl = omap_nand_hwcontrol;
-	nand->options = NAND_NO_PADDING | NAND_CACHEPRG;
+	nand->options = NAND_NO_PADDING | NAND_CACHEPRG | NAND_NO_SUBPAGE_WRITE;
 	/* If we are 16 bit dev, our gpmc config tells us that */
 	if ((readl(&gpmc_cfg->cs[cs].config1) & 0x3000) == 0x1000)
 		nand->options |= NAND_BUSWIDTH_16;
@@ -944,8 +1122,13 @@ int board_nand_init(struct nand_chip *nand)
 #if defined(CONFIG_AM33XX) || defined(CONFIG_NAND_OMAP_BCH8)
 	nand->ecc.mode = NAND_ECC_HW;
 	nand->ecc.layout = &hw_bch8_nand_oob;
+#ifdef CONFIG_SYS_GPMC_PREFETCH_ENABLE
+	nand->ecc.size = CONFIG_SYS_NAND_ECCSIZE * 4;
+	nand->ecc.bytes = CONFIG_SYS_NAND_ECCBYTES * 4;
+#else
 	nand->ecc.size = CONFIG_SYS_NAND_ECCSIZE;
 	nand->ecc.bytes = CONFIG_SYS_NAND_ECCBYTES;
+#endif
 	nand->ecc.strength = 8;
 	nand->ecc.hwctl = omap_enable_ecc_bch;
 	nand->ecc.correct = omap_correct_data_bch;
@@ -991,7 +1174,12 @@ int board_nand_init(struct nand_chip *nand)
 	else
 		nand->read_buf = nand_read_buf;
 	nand->dev_ready = omap_spl_dev_ready;
-#endif
+#else
+#ifdef CONFIG_SYS_GPMC_PREFETCH_ENABLE
+	nand->write_buf = write_buf_pref;
+	nand->read_buf = read_buf_pref;
+#endif /* CONFIG_SYS_GPMC_PREFETCH_ENABLE */
+#endif /* CONFIG_SPL_BUILD */
 
 	return 0;
 }

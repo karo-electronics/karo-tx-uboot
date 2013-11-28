@@ -74,19 +74,23 @@ struct bch_res_0_3 {
 };
 
 struct gpmc {
-	u8 res1[0x10];
+	u32 res1[4];
 	u32 sysconfig;		/* 0x10 */
-	u8 res2[0x4];
+	u32 res2;
 	u32 irqstatus;		/* 0x18 */
 	u32 irqenable;		/* 0x1C */
-	u8 res3[0x20];
+	u32 res3[8];
 	u32 timeout_control;	/* 0x40 */
-	u8 res4[0xC];
+	u32 res4[3];
 	u32 config;		/* 0x50 */
 	u32 status;		/* 0x54 */
-	u8 res5[0x8];		/* 0x58 */
+	u32 res5[2];		/* 0x58 */
 	struct gpmc_cs cs[8];	/* 0x60, 0x90, .. */
-	u8 res6[0x14];		/* 0x1E0 */
+	u32 pref_config1;	/* 0x1E0 */
+	u32 pref_config2;	/* 0x1E4 */
+	u32 res6;		/* 0x1E8 */
+	u32 pref_control;	/* 0x1EC */
+	u32 pref_status;	/* 0x1F0 */
 	u32 ecc_config;		/* 0x1F4 */
 	u32 ecc_control;	/* 0x1F8 */
 	u32 ecc_size_config;	/* 0x1FC */
@@ -99,9 +103,9 @@ struct gpmc {
 	u32 ecc7_result;	/* 0x218 */
 	u32 ecc8_result;	/* 0x21C */
 	u32 ecc9_result;	/* 0x220 */
-	u8 res7[12];		/* 0x224 */
+	u32 res7[3];		/* 0x224 */
 	u32 testmomde_ctrl;	/* 0x230 */
-	u8 res8[12];		/* 0x234 */
+	u32 res8[3];		/* 0x234 */
 	struct bch_res_0_3 bch_result_0_3[2];	/* 0x240 */
 };
 
