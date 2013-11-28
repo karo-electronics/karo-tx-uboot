@@ -32,7 +32,6 @@
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/arch/nand.h>
 #include <asm/arch/clock.h>
 #include <video_fb.h>
 #include <asm/arch/da8xx-fb.h>
