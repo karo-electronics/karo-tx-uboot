@@ -88,6 +88,7 @@
 /*
  * Flattened Device Tree (FDT) support
 */
+#define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT /* set via cmdline parameter thru boards.cfg */
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_BOARD_SETUP
