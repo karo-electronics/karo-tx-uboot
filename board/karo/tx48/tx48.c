@@ -621,7 +621,7 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
-	if (tstc() || (prm_rstst & PRM_RSTST_WDT1_RST)) {
+	if (had_ctrlc() || (prm_rstst & PRM_RSTST_WDT1_RST)) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		setenv("splashimage", NULL);
@@ -816,6 +816,9 @@ int board_init(void)
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
+	if (ctrlc())
+		printf("CTRL-C detected\n");
+
 	return 0;
 }
 
@@ -869,7 +872,7 @@ static void tx48_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 
-	if (tstc() || (prm_rstst & PRM_RSTST_WDT1_RST))
+	if (had_ctrlc() || (prm_rstst & PRM_RSTST_WDT1_RST))
 		return;
 
 	if (cpu_clk == 0 || cpu_clk == mpu_clk_rate() / 1000000)
@@ -937,6 +940,7 @@ int board_late_init(void)
 	}
 exit:
 	tx48_init_mac();
+	clear_ctrlc();
 	return ret;
 }
 
