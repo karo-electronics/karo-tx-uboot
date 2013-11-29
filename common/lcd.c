@@ -1004,7 +1004,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	bmap = (uchar *)bmp + le32_to_cpu (bmp->header.data_offset);
 
 	if ((x + width) > pwidth)
-		width = max(pwidth - x, pwidth);
+		width = pwidth - x;
 	if ((y + height) > panel_info.vl_row) {
 		height = panel_info.vl_row - y;
 		bmap += (panel_info.vl_row - y) * padded_width;
@@ -1047,8 +1047,13 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 					FB_PUT_BYTE(fb, bmap);
 				}
 			}
-			bmap += padded_width - width;
-			fb   -= width + lcd_line_length;
+			if (bpix > 8) {
+				bmap += padded_width - width;
+				fb   -= width * bpix / 8 + lcd_line_length;
+			} else {
+				bmap += padded_width;
+				fb -= lcd_line_length;
+			}
 		}
 		break;
 
