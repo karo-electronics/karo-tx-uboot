@@ -205,10 +205,10 @@ enum LTC3589_REGS {
 
 #define LTC3589_CLK_RATE_LOW	(1 << 5)
 
-#define VDD_LDO2_10mV		vout_to_vref(1325 * 10, 2)
-#define VDD_CORE_10mV		vout_to_vref(1240 * 10, 3)
-#define VDD_SOC_10mV		vout_to_vref(1325 * 10, 4)
-#define VDD_BUCK3_10mV		vout_to_vref(2500 * 10, 5)
+#define VDD_LDO2_VAL		mV_to_regval(vout_to_vref(1325 * 10, 2))
+#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1240 * 10, 3))
+#define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1325 * 10, 4))
+#define VDD_BUCK3_VAL		mV_to_regval(vout_to_vref(2500 * 10, 5))
 
 #ifndef CONFIG_SYS_TX53_HWREV_2
 /* LDO2 vref divider */
@@ -251,17 +251,17 @@ static struct pmic_regs {
 } ltc3589_regs[] = {
 	{ LTC3589_SCR1, 0x15, }, /* burst mode for all regulators */
 
-	{ LTC3589_L2DTV1, mV_to_regval(VDD_LDO2_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_L2DTV2, mV_to_regval(VDD_LDO2_10mV) | LTC3589_CLK_RATE_LOW, },
+	{ LTC3589_L2DTV1, VDD_LDO2_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_L2DTV2, VDD_LDO2_VAL | LTC3589_CLK_RATE_LOW, },
 
-	{ LTC3589_B1DTV1, mV_to_regval(VDD_CORE_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_B1DTV2, mV_to_regval(VDD_CORE_10mV), },
+	{ LTC3589_B1DTV1, VDD_CORE_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B1DTV2, VDD_CORE_VAL, },
 
-	{ LTC3589_B2DTV1, mV_to_regval(VDD_SOC_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_B2DTV2, mV_to_regval(VDD_SOC_10mV), },
+	{ LTC3589_B2DTV1, VDD_SOC_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B2DTV2, VDD_SOC_VAL, },
 
-	{ LTC3589_B3DTV1, mV_to_regval(VDD_BUCK3_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_B3DTV2, mV_to_regval(VDD_BUCK3_10mV), },
+	{ LTC3589_B3DTV1, VDD_BUCK3_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B3DTV2, VDD_BUCK3_VAL, },
 
 	{ LTC3589_CLIRQ, 0, }, /* clear all interrupt flags */
 };
@@ -297,13 +297,11 @@ static int setup_pmic_voltages(void)
 			return ret;
 		}
 	}
-	printf("VDDCORE set to %3d.%dmV\n",
-		vref_to_vout(regval_to_mV(mV_to_regval(VDD_CORE_10mV)), 3) / 10,
-		vref_to_vout(regval_to_mV(mV_to_regval(VDD_CORE_10mV)), 3) % 10);
+	printf("VDDCORE set to %umV\n",
+		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_CORE_VAL), 3), 10));
 
-	printf("VDDSOC  set to %3d.%dmV\n",
-		vref_to_vout(regval_to_mV(mV_to_regval(VDD_SOC_10mV)), 4) / 10,
-		vref_to_vout(regval_to_mV(mV_to_regval(VDD_SOC_10mV)), 4) % 10);
+	printf("VDDSOC  set to %umV\n",
+		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_SOC_VAL), 4), 10));
 	return 0;
 }
 
