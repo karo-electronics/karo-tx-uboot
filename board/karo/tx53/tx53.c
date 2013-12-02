@@ -352,6 +352,11 @@ int board_init(void)
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
 
+	if (ctrlc() || (wrsr & WRSR_TOUT)) {
+		printf("CTRL-C detected; Skipping PMIC setup\n");
+		return 1;
+	}
+
 	ret = setup_pmic_voltages();
 	if (ret) {
 		printf("Failed to setup PMIC voltages\n");
@@ -857,7 +862,7 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
-	if (tstc() || (wrsr & WRSR_TOUT)) {
+	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		setenv("splashimage", NULL);
@@ -1091,7 +1096,7 @@ static void tx53_set_cpu_clock(void)
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 	int ret;
 
-	if (tstc() || (wrsr & WRSR_TOUT))
+	if (had_ctrlc() || (wrsr & WRSR_TOUT))
 		return;
 
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
@@ -1153,6 +1158,7 @@ int board_late_init(void)
 exit:
 	tx53_init_mac();
 	gpio_set_value(TX53_RESET_OUT_GPIO, 1);
+	clear_ctrlc();
 	return ret;
 }
 
