@@ -255,13 +255,13 @@ static struct pmic_regs {
 	{ LTC3589_L2DTV2, mV_to_regval(VDD_LDO2_10mV) | LTC3589_CLK_RATE_LOW, },
 
 	{ LTC3589_B1DTV1, mV_to_regval(VDD_CORE_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_B1DTV2, mV_to_regval(VDD_CORE_10mV) | LTC3589_CLK_RATE_LOW, },
+	{ LTC3589_B1DTV2, mV_to_regval(VDD_CORE_10mV), },
 
 	{ LTC3589_B2DTV1, mV_to_regval(VDD_SOC_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_B2DTV2, mV_to_regval(VDD_SOC_10mV) | LTC3589_CLK_RATE_LOW, },
+	{ LTC3589_B2DTV2, mV_to_regval(VDD_SOC_10mV), },
 
 	{ LTC3589_B3DTV1, mV_to_regval(VDD_BUCK3_10mV) | LTC3589_PGOOD_MASK, },
-	{ LTC3589_B3DTV2, mV_to_regval(VDD_BUCK3_10mV) | LTC3589_CLK_RATE_LOW, },
+	{ LTC3589_B3DTV2, mV_to_regval(VDD_BUCK3_10mV), },
 
 	{ LTC3589_CLIRQ, 0, }, /* clear all interrupt flags */
 };
