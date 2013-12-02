@@ -249,7 +249,7 @@ static struct pmic_regs {
 	enum LTC3589_REGS addr;
 	u8 val;
 } ltc3589_regs[] = {
-	{ LTC3589_SCR1, 0x55, }, /* burst mode for all regulators */
+	{ LTC3589_SCR1, 0x15, }, /* burst mode for all regulators */
 
 	{ LTC3589_L2DTV1, mV_to_regval(VDD_LDO2_10mV) | LTC3589_PGOOD_MASK, },
 	{ LTC3589_L2DTV2, mV_to_regval(VDD_LDO2_10mV) | LTC3589_CLK_RATE_LOW, },
