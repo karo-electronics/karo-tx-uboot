@@ -240,16 +240,16 @@ enum LTC3589_REGS {
 #define R2(idx)			R2_##idx
 
 #define vout_to_vref(vout, idx)	((vout) * R2(idx) / (R1(idx) + R2(idx)))
-#define vref_to_vout(vref, idx)	((vref) * (R1(idx) + R2(idx)) / R2(idx))
+#define vref_to_vout(vref, idx)	DIV_ROUND_UP((vref) * (R1(idx) + R2(idx)), R2(idx))
 
-#define mV_to_regval(mV)	(((((mV) < 3625) ? 3625 : (mV)) - 3625) / 125)
+#define mV_to_regval(mV)	DIV_ROUND(((((mV) < 3625) ? 3625 : (mV)) - 3625), 125)
 #define regval_to_mV(v)		(((v) * 125 + 3625))
 
 static struct pmic_regs {
 	enum LTC3589_REGS addr;
 	u8 val;
 } ltc3589_regs[] = {
-	{ LTC3589_SCR1, 0x15, }, /* burst mode for all regulators */
+	{ LTC3589_SCR1, 0x15, }, /* burst mode for all regulators except buck boost */
 
 	{ LTC3589_L2DTV1, VDD_LDO2_VAL | LTC3589_PGOOD_MASK, },
 	{ LTC3589_L2DTV2, VDD_LDO2_VAL | LTC3589_CLK_RATE_LOW, },
@@ -445,7 +445,10 @@ static struct tx53_esdhc_cfg {
 	},
 };
 
-#define to_tx53_esdhc_cfg(p) container_of(p, struct tx53_esdhc_cfg, cfg)
+static inline struct tx53_esdhc_cfg *to_tx53_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+{
+	return container_of(cfg, struct tx53_esdhc_cfg, cfg);
+}
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -472,11 +475,8 @@ int board_mmc_init(bd_t *bis)
 		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
 			break;
 
-		imx_iomux_v3_setup_multiple_pads(cfg->pads,
-						cfg->num_pads);
+		imx_iomux_v3_setup_multiple_pads(cfg->pads, cfg->num_pads);
 		cfg->cfg.sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
-
-		fsl_esdhc_initialize(bis, &cfg->cfg);
 
 		ret = gpio_request_one(cfg->cd_gpio,
 				GPIOF_INPUT, "MMC CD");
@@ -485,6 +485,9 @@ int board_mmc_init(bd_t *bis)
 				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
 			continue;
 		}
+
+		debug("%s: Initializing MMC slot %d\n", __func__, i);
+		fsl_esdhc_initialize(bis, &cfg->cfg);
 
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
@@ -534,6 +537,7 @@ int board_eth_init(bd_t *bis)
 	ret = cpu_eth_init(bis);
 	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
+
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -1174,7 +1178,7 @@ int checkboard(void)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info nodes[] = {
+static struct node_info nodes[] = {
 	{ "fsl,imx53-nand", MTD_DEV_TYPE_NAND, },
 };
 
@@ -1183,7 +1187,7 @@ struct node_info nodes[] = {
 #endif
 
 #ifdef CONFIG_SYS_TX53_HWREV_2
-void tx53_fixup_rtc(void *blob)
+static void tx53_fixup_rtc(void *blob)
 {
 	karo_fdt_del_prop(blob, "dallas,ds1339", 0x68, "interrupt-parent");
 	karo_fdt_del_prop(blob, "dallas,ds1339", 0x68, "interrupts");
