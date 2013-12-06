@@ -30,15 +30,16 @@ static GraphicDevice panel;
  * Freescale mx23evk/mx28evk with a Seiko 4.3'' WVGA panel:
  * setenv videomode
  * video=ctfb:x:800,y:480,depth:24,mode:0,pclk:29851,
- * 	 le:89,ri:164,up:23,lo:10,hs:10,vs:10,sync:0,vmode:0
+ *	 le:89,ri:164,up:23,lo:10,hs:10,vs:10,sync:0,vmode:0
  */
 
 static void mxs_lcd_init(GraphicDevice *panel,
 			struct ctfb_res_modes *mode, int bpp)
 {
 	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
-	uint32_t word_len = 0, bus_width = 0;
-	uint8_t valid_data = 0;
+	uint32_t word_len, bus_width;
+	uint8_t valid_data;
+	uint32_t vctrl0 = 0;
 
 	/* Kick in the LCDIF clock */
 	mxs_set_lcdclk(PS2KHZ(mode->pixclock));
@@ -67,6 +68,9 @@ static void mxs_lcd_init(GraphicDevice *panel,
 		bus_width = LCDIF_CTRL_LCD_DATABUS_WIDTH_8BIT;
 		valid_data = 0xf;
 		break;
+	default:
+		printf("Invalid color depth: %d\n", bpp);
+		hang();
 	}
 
 	writel(bus_width | word_len | LCDIF_CTRL_DOTCLK_MODE |
@@ -177,5 +181,5 @@ void *video_hw_init(void)
 	/* Start framebuffer */
 	mxs_lcd_init(&panel, &mode, bpp);
 
-	return (void *)&panel;
+	return &panel;
 }
