@@ -8,6 +8,7 @@
 #include <common.h>
 #include <malloc.h>
 #include <video_fb.h>
+#include <mxcfb.h>
 
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -84,7 +85,19 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	writel((mode->yres << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) | mode->xres,
 		&regs->hw_lcdif_transfer_count);
 
-	writel(LCDIF_VDCTRL0_ENABLE_PRESENT | LCDIF_VDCTRL0_ENABLE_POL |
+	if (!(mode->sync & FB_SYNC_OE_LOW_ACT))
+		vctrl0 |= LCDIF_VDCTRL0_ENABLE_POL;
+
+	if (mode->sync & FB_SYNC_CLK_LAT_FALL)
+		vctrl0 |= LCDIF_VDCTRL0_DOTCLK_POL;
+
+	if (mode->sync & FB_SYNC_HOR_HIGH_ACT)
+		vctrl0 |= LCDIF_VDCTRL0_HSYNC_POL;
+
+	if (mode->sync & FB_SYNC_VERT_HIGH_ACT)
+		vctrl0 |= LCDIF_VDCTRL0_VSYNC_POL;
+
+	writel(vctrl0 | LCDIF_VDCTRL0_ENABLE_PRESENT |
 		LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
 		LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
 		mode->vsync_len, &regs->hw_lcdif_vdctrl0);
