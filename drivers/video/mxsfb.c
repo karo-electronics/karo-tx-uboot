@@ -19,6 +19,8 @@
 
 #define	PS2KHZ(ps)	(1000000000UL / (ps))
 
+DECLARE_GLOBAL_DATA_PTR;
+
 static GraphicDevice panel;
 
 /*
@@ -120,7 +122,6 @@ void *video_hw_init(void)
 {
 	int bpp = -1;
 	char *penv;
-	void *fb;
 	struct ctfb_res_modes mode;
 
 	puts("Video: ");
@@ -164,17 +165,7 @@ void *video_hw_init(void)
 
 	panel.memSize = mode.xres * mode.yres * panel.gdfBytesPP;
 
-	/* Allocate framebuffer */
-	fb = malloc(panel.memSize);
-	if (!fb) {
-		printf("MXSFB: Error allocating framebuffer!\n");
-		return NULL;
-	}
-
-	/* Wipe framebuffer */
-	memset(fb, 0, panel.memSize);
-
-	panel.frameAdrs = (u32)fb;
+	panel.frameAdrs = gd->fb_base;
 
 	printf("%s\n", panel.modeIdent);
 
