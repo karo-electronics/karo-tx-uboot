@@ -1050,7 +1050,7 @@ void show_activity(int arg)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info nodes[] = {
+static struct node_info nodes[] = {
 	{ "ti,omap2-nand", MTD_DEV_TYPE_NAND, },
 };
 
