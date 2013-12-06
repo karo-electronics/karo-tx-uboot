@@ -4,12 +4,17 @@
 Building U-Boot
 ---------------
 
-Note: There are currently six variants of the TX51 module, that
+Note: There are currently three variants of the TX51 module, that
       require slightly different U-Boot configurations. They are
-      distinguished through the first and last digit of the module
-      name suffix. Replace the '?' in the following description with
-      the corresponding numbers from your TX51 module.
-      E.g. TX51-8021 => 'make tx51-8xx1_config'
+      distinguished through the last digit of the module name
+      suffix. The following table lists the module names and the
+      corresponding U-Boot configuration name:
+
+      Module Name		U-Boot config
+      ---------------------------------------
+      TX51-8xx0			tx51-8xx0_config
+      TX51-8xx1			tx51-8xx1_2_config
+      TX51-8xx2			tx51-8xx1_2_config
 
 Unpacking the source
 --------------------
@@ -25,7 +30,7 @@ Compiling U-Boot
 ----------------
 export ARCH=arm
 export CROSS_COMPILE=arm-cortexa8-linux-gnueabi-
-make tx51-?xx?_config            (see above Note!)
+make tx51-8xx?_config            (see above Note!)
 make
 
 

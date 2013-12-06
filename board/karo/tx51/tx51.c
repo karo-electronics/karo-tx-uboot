@@ -1054,10 +1054,11 @@ exit:
 int checkboard(void)
 {
 	tx51_print_cpuinfo();
-
-	printf("Board: Ka-Ro TX51-%sxx%s\n",
-		TX51_MOD_PREFIX, TX51_MOD_SUFFIX);
-
+#if CONFIG_NR_DRAM_BANKS > 1
+	printf("Board: Ka-Ro TX51-8xx1 | TX51-8xx2\n");
+#else
+	printf("Board: Ka-Ro TX51-8xx0\n");
+#endif
 	return 0;
 }
 

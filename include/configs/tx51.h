@@ -51,6 +51,9 @@
 /*
  * Memory configurations
  */
+#ifndef CONFIG_SYS_SDRAM_CLK
+#define CONFIG_SYS_SDRAM_CLK		166
+#endif
 #define PHYS_SDRAM_1			0x90000000	/* Base address of bank 1 */
 #define PHYS_SDRAM_1_SIZE		SZ_128M
 #if CONFIG_NR_DRAM_BANKS > 1
