@@ -1052,6 +1052,7 @@ void show_activity(int arg)
 #include <mtd_node.h>
 static struct node_info nodes[] = {
 	{ "ti,omap2-nand", MTD_DEV_TYPE_NAND, },
+	{ "ti,am3352-gpmc", MTD_DEV_TYPE_NAND, },
 };
 
 #else
