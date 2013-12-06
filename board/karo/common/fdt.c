@@ -389,7 +389,7 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 
 		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
-	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+	fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
 			xcvr_status, strlen(xcvr_status) + 1, 1);
 }
 
