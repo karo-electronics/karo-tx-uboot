@@ -406,11 +406,18 @@ void mxs_set_lcdclk(uint32_t freq)
 	writeb(CLKCTRL_FRAC_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_frac1_clr[CLKCTRL_FRAC1_PIX]);
 
-	writel(CLKCTRL_DIS_LCDIF_CLKGATE,
-		&clkctrl_regs->hw_clkctrl_lcdif_set);
-	clrsetbits_le32(&clkctrl_regs->hw_clkctrl_lcdif,
-			CLKCTRL_DIS_LCDIF_DIV_MASK | CLKCTRL_DIS_LCDIF_CLKGATE,
-			k_best << CLKCTRL_DIS_LCDIF_DIV_OFFSET);
+	/* The i.MX28 Ref. Manual states:
+	 * CLK_DIS_LCDIF Gate. If set to 1, CLK_DIS_LCDIF is gated off.
+	 * 0: CLK_DIS_LCDIF is not gated.
+	 * When this bit is modified, or when it is high,
+	 * the DIV field should not change its value.
+	 * The DIV field can change ONLY when this clock gate bit field is low.
+	 * Note: This register does not have set/clear/toggle functionality!
+	 */
+	/* clear CLKCTRL_DIS_LCDIF_CLKGATE */
+	writel(0, &clkctrl_regs->hw_clkctrl_lcdif);
+	writel(k_best << CLKCTRL_DIS_LCDIF_DIV_OFFSET,
+		&clkctrl_regs->hw_clkctrl_lcdif);
 
 	while (readl(&clkctrl_regs->hw_clkctrl_lcdif) & CLKCTRL_DIS_LCDIF_BUSY)
 		;
