@@ -516,9 +516,7 @@ static struct tx6_esdhc_cfg {
 
 static inline struct tx6_esdhc_cfg *to_tx6_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
 {
-	void *p = cfg;
-
-	return p - offsetof(struct tx6_esdhc_cfg, cfg);
+	return container_of(cfg, struct tx6_esdhc_cfg, cfg);
 }
 
 int board_mmc_getcd(struct mmc *mmc)
@@ -1280,7 +1278,7 @@ void get_board_serial(struct tag_serialnr *serialnr)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info nodes[] = {
+static struct node_info nodes[] = {
 	{ "fsl,imx6q-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
 
