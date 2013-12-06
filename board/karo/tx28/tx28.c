@@ -23,6 +23,7 @@
 #include <lcd.h>
 #include <netdev.h>
 #include <mmc.h>
+#include <mxcfb.h>
 #include <linux/list.h>
 #include <linux/fb.h>
 #include <asm/io.h>
@@ -231,8 +232,11 @@ static int fec_get_mac_addr(int index)
 			val = readl(&cust[index * 8 + i]);
 		mac[i] = val >> shift;
 	}
-	if (!is_valid_ether_addr(mac))
+	if (!is_valid_ether_addr(mac)) {
+		if (index == 0)
+			printf("No valid MAC address programmed\n");
 		return 0;
+	}
 
 	if (index == 0) {
 		printf("MAC addr from fuse: %pM\n", mac);
@@ -421,6 +425,7 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 2,
 		.vsync_len	= 10,
 		.lower_margin	= 2,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -569,7 +574,8 @@ extern void video_hw_init(void *lcdbase);
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	char *vm;
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	const char *vm;
 	unsigned long val;
 	int refresh = 60;
 	struct fb_videomode *p = tx28_fb_modes;
@@ -581,24 +587,33 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
-	if (tstc()) {
+	if (had_ctrlc()) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
+		setenv("splashimage", NULL);
 		return;
 	}
 
 	karo_fdt_move_fdt();
 
-	vm = getenv("video_mode");
-	if (vm == NULL) {
+	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
-	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+	vm = video_mode;
+	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
+		if (fb_mode.xres > panel_info.vl_col ||
+			fb_mode.yres > panel_info.vl_row) {
+			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
+				fb_mode.xres, fb_mode.yres,
+				panel_info.vl_col, panel_info.vl_row);
+			lcd_enabled = 0;
+			return;
+		}
 	}
 	if (p->name != NULL)
 		debug("Trying compiled-in video modes\n");
@@ -622,11 +637,13 @@ void lcd_ctrl_init(void *lcdbase)
 					if (val > panel_info.vl_col)
 						val = panel_info.vl_col;
 					p->xres = val;
+					panel_info.vl_col = val;
 					xres_set = 1;
 				} else if (!yres_set) {
 					if (val > panel_info.vl_row)
 						val = panel_info.vl_row;
 					p->yres = val;
+					panel_info.vl_row = val;
 					yres_set = 1;
 				} else if (!bpp_set) {
 					switch (val) {
@@ -679,6 +696,12 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
+		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
+			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		lcd_enabled = 0;
+		return;
+	}
 	panel_info.vl_col = p->xres;
 	panel_info.vl_row = p->yres;
 
@@ -700,6 +723,17 @@ void lcd_ctrl_init(void *lcdbase)
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 		PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
 
+	if (p != &fb_mode) {
+		int ret;
+
+		debug("Creating new display-timing node from '%s'\n",
+			video_mode);
+		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
+		if (ret)
+			printf("Failed to create new display-timing node from '%s': %d\n",
+				video_mode, ret);
+	}
+
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	mxs_iomux_setup_multiple_pads(stk5_lcd_pads,
 				ARRAY_SIZE(stk5_lcd_pads));
@@ -708,11 +742,14 @@ void lcd_ctrl_init(void *lcdbase)
 		color_depth, refresh);
 
 	if (karo_load_splashimage(0) == 0) {
-		char vmode[32];
+		char vmode[128];
 
 		/* setup env variable for mxsfb display driver */
-		snprintf(vmode, sizeof(vmode), "%dx%dMR-%d@%d",
-			p->xres, p->yres, color_depth, refresh);
+		snprintf(vmode, sizeof(vmode),
+			"x:%d,y:%d,le:%d,ri:%d,up:%d,lo:%d,hs:%d,vs:%d,sync:%d,pclk:%d,depth:%d",
+			p->xres, p->yres, p->left_margin, p->right_margin,
+			p->upper_margin, p->lower_margin, p->hsync_len,
+			p->vsync_len, p->sync, p->pixclock, color_depth);
 		setenv("videomode", vmode);
 
 		debug("Initializing LCD controller\n");
@@ -763,19 +800,40 @@ int tx28_fec1_enabled(void)
 	return status && (strcmp(status, "okay") == 0);
 }
 
-int board_late_init(void)
+static void tx28_init_mac(void)
 {
 	int ret;
+
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return;
+	}
+#ifdef CONFIG_FEC_MXC_MULTI
+	if (tx28_fec1_enabled()) {
+		ret = fec_get_mac_addr(1);
+		if (ret < 0) {
+			printf("Failed to read FEC1 MAC address from OCOTP\n");
+			return;
+		}
+	}
+#endif
+}
+
+int board_late_init(void)
+{
+	int ret = 0;
 	const char *baseboard;
 
 	karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)
-		return 0;
+		goto exit;
+
+	printf("Baseboard: %s\n", baseboard);
 
 	if (strncmp(baseboard, "stk5", 4) == 0) {
-		printf("Baseboard: %s\n", baseboard);
 		if ((strlen(baseboard) == 4) ||
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
@@ -795,24 +853,13 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	ret = fec_get_mac_addr(0);
-	if (ret < 0) {
-		printf("Failed to read FEC0 MAC address from OCOTP\n");
-		return ret;
-	}
-#ifdef CONFIG_FEC_MXC_MULTI
-	if (tx28_fec1_enabled()) {
-		ret = fec_get_mac_addr(1);
-		if (ret < 0) {
-			printf("Failed to read FEC1 MAC address from OCOTP\n");
-			return ret;
-		}
-	}
-#endif
-	return 0;
+exit:
+	tx28_init_mac();
+	clear_ctrlc();
+	return ret;
 }
 
 #define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
@@ -901,7 +948,7 @@ int checkboard(void)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info tx28_nand_nodes[] = {
+static struct node_info tx28_nand_nodes[] = {
 	{ "fsl,imx28-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
 #else
@@ -918,6 +965,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
 
 #ifdef CONFIG_TX28_S
 	/* TX28-41xx (aka TX28S) has no external RTC
@@ -926,9 +974,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_remove_node(blob, "ds1339");
 	karo_fdt_remove_node(blob, "gpio5");
 #endif
-	if (stk5_v5) {
-		karo_fdt_remove_node(blob, "stk5led");
-	}
+	if (stk5_v5)
+		karo_fdt_enable_node(blob, "stk5led", 0);
 
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
 	fdt_fixup_ethernet(blob);
@@ -937,6 +984,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 				ARRAY_SIZE(tx28_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
-	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
+	karo_fdt_update_fb_mode(blob, video_mode);
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

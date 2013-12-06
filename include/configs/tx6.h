@@ -39,6 +39,12 @@
 #endif /* CONFIG_LCD */
 #endif /* CONFIG_MFG */
 
+#ifdef CONFIG_SYS_LVDS_IF
+#define is_lvds()			1
+#else
+#define is_lvds()			0
+#endif
+
 /*
  * Memory configuration options
  */

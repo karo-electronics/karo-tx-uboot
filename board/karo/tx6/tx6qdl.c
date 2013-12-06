@@ -712,6 +712,7 @@ vidinfo_t panel_info = {
 };
 
 static struct fb_videomode tx6_fb_modes[] = {
+#ifndef CONFIG_SYS_LVDS_IF
 	{
 		/* Standard VGA timing */
 		.name		= "VGA",
@@ -830,6 +831,25 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.lower_margin	= 525 - 480 - 35,
 		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
+#else
+	{
+		/* HannStar HSD100PXN1
+		 * 202.7m mm x 152.06 mm display area.
+		 */
+		.name		= "HSD100PXN1",
+		.refresh	= 60,
+		.xres		= 1024,
+		.yres		= 768,
+		.pixclock	= KHZ2PICOS(65000),
+		.left_margin	= 0,
+		.hsync_len	= 0,
+		.right_margin	= 320,
+		.upper_margin	= 0,
+		.vsync_len	= 0,
+		.lower_margin	= 38,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+#endif
 	{
 		/* unnamed entry for assigning parameters parsed from 'video_mode' string */
 		.refresh	= 60,
@@ -862,7 +882,7 @@ void lcd_enable(void)
 		udelay(100);
 		gpio_set_value(TX6_LCD_RST_GPIO, 1);
 		udelay(300000);
-		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, 0);
+		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, is_lvds());
 	}
 }
 
@@ -878,7 +898,7 @@ void lcd_panel_disable(void)
 {
 	if (lcd_enabled) {
 		debug("Switching LCD off\n");
-		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, 1);
+		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, !is_lvds());
 		gpio_set_value(TX6_LCD_RST_GPIO, 0);
 		gpio_set_value(TX6_LCD_PWR_GPIO, 0);
 	}
@@ -932,15 +952,14 @@ static const struct gpio stk5_lcd_gpios[] = {
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	const char *video_mode = getenv("video_mode");
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
 	const char *vm;
 	unsigned long val;
 	int refresh = 60;
 	struct fb_videomode *p = &tx6_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
-	int pix_fmt = 0;
-	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
+	int pix_fmt = is_lvds() ? IPU_PIX_FMT_LVDS666 : IPU_PIX_FMT_RGB24;
 	unsigned long di_clk_rate = 65000000;
 
 	if (!lcd_enabled) {
@@ -957,14 +976,13 @@ void lcd_ctrl_init(void *lcdbase)
 
 	karo_fdt_move_fdt();
 
-	vm = karo_fdt_set_display(video_mode, "", "/soc/aips-bus/ldb");
-	if (vm == NULL) {
+	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
-	video_mode = vm;
-	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+	vm = video_mode;
+	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
@@ -1053,19 +1071,6 @@ void lcd_ctrl_init(void *lcdbase)
 			break;
 
 		default:
-			if (!pix_fmt) {
-				char *tmp;
-
-				if (strncmp(vm, "LVDS", 4) == 0) {
-					pix_fmt = IPU_PIX_FMT_LVDS666;
-					di_clk_parent = DI_PCLK_LDB;
-				} else {
-					pix_fmt = IPU_PIX_FMT_RGB24;
-				}
-				tmp = strchr(vm, ':');
-				if (tmp)
-					vm = tmp;
-			}
 			if (*vm != '\0')
 				vm++;
 		}
@@ -1102,11 +1107,10 @@ void lcd_ctrl_init(void *lcdbase)
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
-		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len)
-		/ 1000);
+		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
+				1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
-		PICOS2KHZ(p->pixclock) / 1000,
-		PICOS2KHZ(p->pixclock) % 1000);
+		PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
 
 	if (p != &fb_mode) {
 		int ret;
@@ -1124,24 +1128,23 @@ void lcd_ctrl_init(void *lcdbase)
 					ARRAY_SIZE(stk5_lcd_pads));
 
 	debug("Initializing FB driver\n");
-	if (!pix_fmt)
-		pix_fmt = IPU_PIX_FMT_RGB24;
-	else if (pix_fmt == IPU_PIX_FMT_LVDS666) {
+#ifdef CONFIG_SYS_LVDS_IF
+	if (pix_fmt == IPU_PIX_FMT_LVDS666) {
 		writel(0x01, IOMUXC_BASE_ADDR + 8);
 	} else if (pix_fmt == IPU_PIX_FMT_LVDS888) {
 		writel(0x21, IOMUXC_BASE_ADDR + 8);
 	}
-	if (pix_fmt != IPU_PIX_FMT_RGB24) {
+	{
 		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
 		/* enable LDB & DI0 clock */
 		writel(readl(&ccm_regs->CCGR3) | MXC_CCM_CCGR3_LDB_DI0_MASK |
 			MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK,
 			&ccm_regs->CCGR3);
 	}
-
+#endif
 	if (karo_load_splashimage(0) == 0) {
 		debug("Initializing LCD controller\n");
-		ipuv3_fb_init(p, 0, pix_fmt, di_clk_parent, di_clk_rate, -1);
+		ipuv3_fb_init(p, 0, pix_fmt, DI_PCLK_PLL3, di_clk_rate, -1);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -1255,10 +1258,10 @@ int checkboard(void)
 
 	tx6qdl_print_cpuinfo();
 
-	printf("Board: Ka-Ro TX6%c-%dx1%d\n",
+	printf("Board: Ka-Ro TX6%c-%d%d1%d\n",
 		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		1 - PHYS_SDRAM_1_WIDTH / 64);
+		is_lvds(), 1 - PHYS_SDRAM_1_WIDTH / 64);
 
 	return 0;
 }
@@ -1281,7 +1284,6 @@ void get_board_serial(struct tag_serialnr *serialnr)
 static struct node_info nodes[] = {
 	{ "fsl,imx6q-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
-
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
@@ -1291,13 +1293,25 @@ static const char *tx6_touchpanels[] = {
 	"edt,edt-ft5x06",
 };
 
+#ifndef CONFIG_SYS_LVDS_IF
+static inline void tx6_fdt_fixup_sata(void *blob)
+{
+	karo_fdt_enable_node(blob, "/soc/sata", 0);
+}
+#else
+static inline void tx6_fdt_fixup_sata(void *blob)
+{
+}
+#endif
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
-	const char *video_mode = getenv("video_mode");
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
 
-	karo_fdt_enable_node(blob, "stk5led", !stk5_v5);
+	if (stk5_v5)
+		karo_fdt_enable_node(blob, "stk5led", 0);
 
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
@@ -1306,8 +1320,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 				ARRAY_SIZE(tx6_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
+	tx6_fdt_fixup_sata(blob);
 
-	video_mode = karo_fdt_set_display(video_mode, "", "/soc/aips-bus/ldb");
 	karo_fdt_update_fb_mode(blob, video_mode);
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

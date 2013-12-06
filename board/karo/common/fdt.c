@@ -312,7 +312,7 @@ out:
 	karo_set_fdtsize(blob);
 }
 
-static int karo_fdt_flexcan_enabled(void *blob)
+static inline int karo_fdt_flexcan_enabled(void *blob)
 {
 	const char *can_ifs[] = {
 		"can0",
@@ -338,7 +338,7 @@ static int karo_fdt_flexcan_enabled(void *blob)
 	return 0;
 }
 
-static void karo_fdt_set_lcd_pins(void *blob, const char *name)
+static inline void karo_fdt_set_lcd_pins(void *blob, const char *name)
 {
 	int off = fdt_path_offset(blob, name);
 	u32 ph;
@@ -368,6 +368,7 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
 	const char *xcvr_status = "disabled";
 
+#ifndef CONFIG_SYS_LVDS_IF
 	if (xcvr_present) {
 		if (karo_fdt_flexcan_enabled(blob)) {
 			karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
@@ -383,6 +384,7 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 
 		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
+#endif
 	fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
 			xcvr_status, strlen(xcvr_status) + 1, 1);
 }
@@ -677,96 +679,6 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 out:
 	karo_set_fdtsize(blob);
 	return ret;
-}
-
-static int karo_fdt_set_display_alias(void *blob, const char *path,
-				const char *name)
-{
-	int ret;
-	int off;
-	size_t size = strlen(path) + strlen(name) + 2;
-	char *display;
-
-	display = malloc(size);
-	if (display == NULL) {
-		printf("%s: Failed to allocate buffer\n", __func__);
-		return -ENOMEM;
-	}
-	sprintf(display, "%s/%s", path, name);
-	if (strlen(display) != size - 1)
-		hang();
-	off = fdt_path_offset(blob, "/aliases");
-	if (off == FDT_ERR_BADMAGIC)
-		return -EINVAL;
-	ret = fdt_resize(blob);
-	if (ret < 0) {
-		printf("%s: Failed to resize FDT: %s\n",
-			__func__, fdt_strerror(ret));
-	}
-	if (off < 0) {
-		off = fdt_add_subnode(blob, 0, "aliases");
-		if (off < 0) {
-			printf("%s: Failed to create 'aliases' node: %s\n",
-				__func__, fdt_strerror(off));
-			return off;
-		}
-	}
-	ret = fdt_setprop_string(blob, off, "display", display);
-	debug("setprop_string(display='%s') returned %d (%s)\n", display, ret,
-		ret < 0 ? fdt_strerror(ret) : "OK");
-	return ret;
-}
-
-const char *karo_fdt_set_display(const char *video_mode, const char *lcd_path,
-				const char *lvds_path)
-{
-	const char *vmode = NULL;
-	int ret;
-	void *blob = working_fdt;
-
-	if (video_mode == NULL || strlen(video_mode) == 0)
-		return NULL;
-
-	vmode = strchr(video_mode, ':');
-
-	if (lvds_path == NULL)
-		return vmode ? vmode + 1 : video_mode;
-
-	if (lvds_path != NULL && vmode != NULL) {
-		if (strncmp(video_mode, "LVDS:", 5) == 0 ||
-			strncmp(video_mode, "LVDS0:", 6) == 0) {
-			ret = karo_fdt_set_display_alias(blob, lvds_path,
-							"lvds-channel@0");
-		} else if (strncmp(video_mode, "LVDS1:", 6) == 0) {
-			ret = karo_fdt_set_display_alias(blob, lvds_path,
-							"lvds-channel@1");
-		} else {
-			debug("%s: Syntax error in video_mode\n", __func__);
-			return vmode + 1;
-		}
-		video_mode = vmode + 1;
-	} else {
-		int off;
-
-		ret = karo_fdt_set_display_alias(blob, lcd_path,
-						"display@di0");
-
-		off = fdt_path_offset(blob, "lvds0");
-		if (off >= 0) {
-			ret = fdt_set_node_status(blob, off,
-						FDT_STATUS_DISABLED, 0);
-		}
-		off = fdt_path_offset(blob, "lvds1");
-		if (off >= 0) {
-			ret = fdt_set_node_status(blob, off,
-						FDT_STATUS_DISABLED, 0);
-		}
-	}
-	if (ret) {
-		printf("%s: failed to set 'display' alias: %s\n",
-			__func__, fdt_strerror(ret));
-	}
-	return video_mode;
 }
 
 int karo_fdt_update_fb_mode(void *blob, const char *name)

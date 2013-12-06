@@ -604,7 +604,7 @@ void lcd_panel_disable(void)
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	const char *video_mode = getenv("video_mode");
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
 	const char *vm;
 	unsigned long val;
 	int refresh = 60;
@@ -626,14 +626,13 @@ void lcd_ctrl_init(void *lcdbase)
 
 	karo_fdt_move_fdt();
 
-	vm = karo_fdt_set_display(video_mode, "/panel", NULL);
-	if (vm == NULL) {
+	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
-	video_mode = vm;
-	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+	vm = video_mode;
+	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
@@ -936,6 +935,7 @@ int board_late_init(void)
 			baseboard);
 		ret = -EINVAL;
 	}
+
 exit:
 	tx48_init_mac();
 	clear_ctrlc();
@@ -1069,7 +1069,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
-	const char *video_mode = getenv("video_mode");
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
 
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
@@ -1079,7 +1079,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_usb_otg(blob, "usb0", "phys");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
-	video_mode = karo_fdt_set_display(video_mode, "/panel", NULL);
 	karo_fdt_update_fb_mode(blob, video_mode);
 
 	tx48_disable_watchdog();
