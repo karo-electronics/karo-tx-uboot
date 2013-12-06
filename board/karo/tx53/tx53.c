@@ -1194,6 +1194,11 @@ static inline void tx53_fixup_rtc(void *blob)
 }
 #endif /* CONFIG_SYS_TX53_HWREV_2 */
 
+static const char *tx53_touchpanels[] = {
+	"ti,tsc2007",
+	"edt,edt-ft5x06",
+};
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -1203,7 +1208,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
-	karo_fdt_fixup_touchpanel(blob);
+	karo_fdt_fixup_touchpanel(blob, tx53_touchpanels,
+				ARRAY_SIZE(tx53_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	tx53_fixup_rtc(blob);

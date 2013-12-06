@@ -19,7 +19,8 @@ struct fb_videomode;
 #ifdef CONFIG_OF_LIBFDT
 void karo_fdt_remove_node(void *blob, const char *node);
 void karo_fdt_move_fdt(void);
-void karo_fdt_fixup_touchpanel(void *blob);
+void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
+			size_t num_panels);
 void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy);
 void karo_fdt_fixup_flexcan(void *blob, int xcvr_present);
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
@@ -39,7 +40,8 @@ static inline void karo_fdt_remove_node(void *blob, const char *node)
 static inline void karo_fdt_move_fdt(void)
 {
 }
-static inline void karo_fdt_fixup_touchpanel(void *blob)
+static inline void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
+					size_t num_panels)
 {
 }
 static inline void karo_fdt_fixup_usb_otg(void *blob, const char *node,
