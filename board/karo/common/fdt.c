@@ -203,14 +203,6 @@ void karo_fdt_enable_node(void *blob, const char *node, int enable)
 	karo_set_fdtsize(blob);
 }
 
-static const char *karo_touchpanels[] = {
-	"ti,tsc2007",
-	"edt,edt-ft5x06",
-#ifdef CONFIG_MX28
-	"fsl,imx28-lradc",
-#endif
-};
-
 static void fdt_disable_tp_node(void *blob, const char *name)
 {
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
@@ -224,25 +216,27 @@ static void fdt_disable_tp_node(void *blob, const char *name)
 	fdt_set_node_status(blob, offs, FDT_STATUS_DISABLED, 0);
 }
 
-void karo_fdt_fixup_touchpanel(void *blob)
+void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
+			size_t num_panels)
 {
 	int i;
 	const char *model = getenv("touchpanel");
 
-	for (i = 0; i < ARRAY_SIZE(karo_touchpanels); i++) {
-		const char *tp = karo_touchpanels[i];
-
-		if (model != NULL && strcmp(model, tp) == 0)
-			continue;
+	for (i = 0; i < num_panels; i++) {
+		const char *tp = panels[i];
 
 		if (model != NULL) {
 			if (strcmp(model, tp) == 0)
 				continue;
-			tp = strchr(tp, ',');
-			if (tp != NULL && *tp != '\0' && strcmp(model, tp + 1) == 0)
+			while (tp != NULL) {
+				if (*tp != '\0' && strcmp(model, tp + 1) == 0)
+					break;
+				tp = strpbrk(tp + 1, ",-");
+			}
+			if (tp != NULL)
 				continue;
 		}
-		fdt_disable_tp_node(blob, karo_touchpanels[i]);
+		fdt_disable_tp_node(blob, panels[i]);
 	}
 	karo_set_fdtsize(blob);
 }
@@ -389,7 +383,7 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 
 		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
-	fdt_find_and_setprop(blob, "/regulators/can-xcvr", "status",
+	fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
 			xcvr_status, strlen(xcvr_status) + 1, 1);
 }
 

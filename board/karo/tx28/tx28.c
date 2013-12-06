@@ -908,6 +908,12 @@ struct node_info tx28_nand_nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
+static const char *tx28_touchpanels[] = {
+	"ti,tsc2007",
+	"edt,edt-ft5x06",
+	"fsl,imx28-lradc",
+};
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -927,7 +933,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
 	fdt_fixup_ethernet(blob);
 
-	karo_fdt_fixup_touchpanel(blob);
+	karo_fdt_fixup_touchpanel(blob, tx28_touchpanels,
+				ARRAY_SIZE(tx28_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
