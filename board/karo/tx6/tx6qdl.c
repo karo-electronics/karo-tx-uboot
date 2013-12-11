@@ -1293,17 +1293,6 @@ static const char *tx6_touchpanels[] = {
 	"edt,edt-ft5x06",
 };
 
-#ifndef CONFIG_SYS_LVDS_IF
-static inline void tx6_fdt_fixup_sata(void *blob)
-{
-	karo_fdt_enable_node(blob, "/soc/sata", 0);
-}
-#else
-static inline void tx6_fdt_fixup_sata(void *blob)
-{
-}
-#endif
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -1320,7 +1309,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 				ARRAY_SIZE(tx6_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
-	tx6_fdt_fixup_sata(blob);
 
 	karo_fdt_update_fb_mode(blob, video_mode);
 }
