@@ -991,12 +991,6 @@ void lcd_ctrl_init(void *lcdbase)
 			break;
 
 		default:
-			if (!pix_fmt) {
-				char *tmp = strchr(vm, ':');
-
-				if (tmp)
-					vm = tmp;
-			}
 			if (*vm != '\0')
 				vm++;
 		}
