@@ -336,7 +336,7 @@ static int tx6_rev_2(void)
 	struct fuse_bank5_regs *fuse = (void *)ocotp->bank[5].fuse_regs;
 	u32 pad_settings = readl(&fuse->pad_settings);
 
-	debug("Fuse pad_settings @ %p = %08x\n",
+	debug("Fuse pad_settings @ %p = %02x\n",
 		&fuse->pad_settings, pad_settings);
 	return pad_settings & 1;
 }
@@ -425,15 +425,13 @@ int board_init(void)
 
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
-#ifdef CONFIG_OF_LIBFDT
 	gd->bd->bi_arch_number = -1;
-#else
-	gd->bd->bi_arch_number = 4429;
-#endif
+
 	if (ctrlc()) {
 		printf("CTRL-C detected; Skipping PMIC setup\n");
 		return 1;
 	}
+
 	ret = setup_pmic_voltages();
 	if (ret) {
 		printf("Failed to setup PMIC voltages\n");
@@ -1188,7 +1186,7 @@ static void tx6qdl_set_cpu_clock(void)
 		printf("CPU clock set to %lu.%03lu MHz\n",
 			cpu_clk / 1000000, cpu_clk / 1000 % 1000);
 	} else {
-		printf("Failed to set CPU clock to %lu MHz\n", cpu_clk);
+		printf("Error: Failed to set CPU clock to %lu MHz\n", cpu_clk);
 	}
 }
 
@@ -1202,8 +1200,8 @@ static void tx6_init_mac(void)
 		return;
 	}
 
-	eth_setenv_enetaddr("ethaddr", mac);
 	printf("MAC addr from fuse: %pM\n", mac);
+	eth_setenv_enetaddr("ethaddr", mac);
 }
 
 int board_late_init(void)
@@ -1293,17 +1291,6 @@ static const char *tx6_touchpanels[] = {
 	"edt,edt-ft5x06",
 };
 
-#ifndef CONFIG_SYS_LVDS_IF
-static inline void tx6_fdt_fixup_sata(void *blob)
-{
-	karo_fdt_enable_node(blob, "/soc/sata", 0);
-}
-#else
-static inline void tx6_fdt_fixup_sata(void *blob)
-{
-}
-#endif
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
@@ -1320,7 +1307,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 				ARRAY_SIZE(tx6_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
-	tx6_fdt_fixup_sata(blob);
 
 	karo_fdt_update_fb_mode(blob, video_mode);
 }

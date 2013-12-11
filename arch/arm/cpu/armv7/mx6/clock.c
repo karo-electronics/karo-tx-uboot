@@ -611,6 +611,70 @@ void ipu_clk_disable(void)
 	writel(reg, &imx_ccm->CCGR3);
 }
 
+void ipu_di_clk_enable(int di)
+{
+	switch (di) {
+	case 0:
+		setbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK);
+		break;
+	case 1:
+		setbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_IPU1_IPU_DI1_MASK);
+		break;
+	default:
+		printf("%s: Invalid DI index %d\n", __func__, di);
+	}
+}
+
+void ipu_di_clk_disable(int di)
+{
+	switch (di) {
+	case 0:
+		clrbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK);
+		break;
+	case 1:
+		clrbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_IPU1_IPU_DI1_MASK);
+		break;
+	default:
+		printf("%s: Invalid DI index %d\n", __func__, di);
+	}
+}
+
+void ldb_clk_enable(int ldb)
+{
+	switch (ldb) {
+	case 0:
+		setbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_LDB_DI0_MASK);
+		break;
+	case 1:
+		setbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_LDB_DI1_MASK);
+		break;
+	default:
+		printf("%s: Invalid LDB index %d\n", __func__, ldb);
+	}
+}
+
+void ldb_clk_disable(int ldb)
+{
+	switch (ldb) {
+	case 0:
+		clrbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_LDB_DI0_MASK);
+		break;
+	case 1:
+		clrbits_le32(&imx_ccm->CCGR3,
+			MXC_CCM_CCGR3_LDB_DI1_MASK);
+		break;
+	default:
+		printf("%s: Invalid LDB index %d\n", __func__, ldb);
+	}
+}
+
 void ocotp_clk_enable(void)
 {
 	u32 reg = readl(&imx_ccm->CCGR2);

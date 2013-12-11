@@ -99,6 +99,10 @@ int enable_sata_clock(void);
 int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
 void ipu_clk_enable(void);
 void ipu_clk_disable(void);
+void ipu_di_clk_enable(int di);
+void ipu_di_clk_disable(int di);
+void ldb_clk_enable(int ldb);
+void ldb_clk_disable(int ldb);
 void ocotp_clk_enable(void);
 void ocotp_clk_disable(void);
 
