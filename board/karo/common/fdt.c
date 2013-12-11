@@ -314,7 +314,7 @@ out:
 
 static inline int karo_fdt_flexcan_enabled(void *blob)
 {
-	const char *can_ifs[] = {
+	static const char *can_ifs[] = {
 		"can0",
 		"can1",
 	};
@@ -746,4 +746,57 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 	if (off > 0)
 		return fdt_update_native_fb_mode(blob, off);
 	return off;
+}
+
+int karo_fdt_get_lcd_bus_width(const void *blob, int default_width)
+{
+	int off = fdt_path_offset(blob, "display");
+
+	if (off >= 0) {
+		const uint32_t *prop;
+
+		prop = fdt_getprop(blob, off, "fsl,data-width", NULL);
+		if (prop)
+			return fdt32_to_cpu(*prop);
+	}
+	return default_width;
+}
+
+int karo_fdt_get_lvds_mapping(const void *blob, int default_mapping)
+{
+	int off = fdt_path_offset(blob, "display");
+
+	if (off >= 0) {
+		const char *prop;
+
+		prop = fdt_getprop(blob, off, "fsl,data-mapping", NULL);
+		if (prop)
+			return strcmp(prop, "jeida") == 0;
+	}
+	return default_mapping;
+}
+
+u8 karo_fdt_get_lvds_channels(const void *blob)
+{
+	static const char *lvds_chans[] = {
+		"lvds0",
+		"lvds1",
+	};
+	u8 lvds_chan_mask = 0;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(lvds_chans); i++) {
+		const char *status;
+		int off = fdt_path_offset(blob, lvds_chans[i]);
+
+		if (off < 0)
+			continue;
+
+		status = fdt_getprop(blob, off, "status", NULL);
+		if (status && strcmp(status, "okay") == 0) {
+			debug("%s is enabled\n", lvds_chans[i]);
+			lvds_chan_mask |= 1 << i;
+		}
+	}
+	return lvds_chan_mask;
 }
