@@ -76,7 +76,14 @@ int clk_enable(struct clk *clk)
 
 	if (!clk)
 		return 0;
+
+	if (clk->id >= 0)
+		printf("enabling %s.%d clock %d\n", clk->name, clk->id, clk->usecount);
+	else
+		printf("enabling %s clock %d\n", clk->name, clk->usecount);
 	if (clk->usecount++ == 0) {
+		if (!clk->enable)
+			return 0;
 		ret = clk->enable(clk);
 		if (ret)
 			clk->usecount--;
@@ -89,13 +96,17 @@ void clk_disable(struct clk *clk)
 	if (!clk)
 		return;
 
+	if (clk->id >= 0)
+		printf("disabling %s.%d clock %d\n", clk->name, clk->id, clk->usecount);
+	else
+		printf("disabling %s clock %d\n", clk->name, clk->usecount);
 	if (!(--clk->usecount)) {
 		if (clk->disable)
 			clk->disable(clk);
 	}
 	if (clk->usecount < 0) {
-		printf("%s: clk %p underflow\n", __func__, clk);
-		hang();
+		printf("%s: clk %p (%s) underflow\n", __func__, clk, clk->name);
+		//hang();
 	}
 }
 
@@ -205,6 +216,72 @@ void ipu_clk_disable(void)
 	/* Handshake with IPU when LPM is entered as its enabled. */
 	setbits_le32(&mxc_ccm->clpcr, MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS);
 }
+
+void ipu_di_clk_enable(int di)
+{
+	switch (di) {
+	case 0:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid DI index %d\n", __func__, di);
+	}
+}
+
+void ipu_di_clk_disable(int di)
+{
+	switch (di) {
+	case 0:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid DI index %d\n", __func__, di);
+	}
+}
+
+#ifdef CONFIG_MX53
+void ldb_clk_enable(int ldb)
+{
+	switch (ldb) {
+	case 0:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid LDB index %d\n", __func__, ldb);
+	}
+}
+
+void ldb_clk_disable(int ldb)
+{
+	switch (ldb) {
+	case 0:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid LDB index %d\n", __func__, ldb);
+	}
+}
+#endif
 
 #ifdef CONFIG_I2C_MXC
 /* i2c_num can be from 0, to 1 for i.MX51 and 2 for i.MX53 */

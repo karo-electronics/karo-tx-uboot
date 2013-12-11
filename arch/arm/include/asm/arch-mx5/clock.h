@@ -102,5 +102,9 @@ int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
 void enable_nfc_clk(unsigned char enable);
 void ipu_clk_enable(void);
 void ipu_clk_disable(void);
+void ipu_di_clk_enable(int di);
+void ipu_di_clk_disable(int di);
+void ldb_clk_enable(int ldb);
+void ldb_clk_disable(int ldb);
 
 #endif /* __ASM_ARCH_CLOCK_H */
