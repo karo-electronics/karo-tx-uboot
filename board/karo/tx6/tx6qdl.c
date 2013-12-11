@@ -957,7 +957,8 @@ void lcd_ctrl_init(void *lcdbase)
 	struct fb_videomode *p = &tx6_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
-	int pix_fmt = is_lvds() ? IPU_PIX_FMT_LVDS666 : IPU_PIX_FMT_RGB24;
+	int pix_fmt;
+	int lcd_bus_width;
 	unsigned long di_clk_rate = 65000000;
 
 	if (!lcd_enabled) {
@@ -1027,7 +1028,7 @@ void lcd_ctrl_init(void *lcdbase)
 					switch (val) {
 					case 32:
 					case 24:
-						if (pix_fmt == IPU_PIX_FMT_LVDS666)
+						if (is_lvds())
 							pix_fmt = IPU_PIX_FMT_LVDS888;
 						/* fallthru */
 					case 16:
@@ -1036,7 +1037,7 @@ void lcd_ctrl_init(void *lcdbase)
 						break;
 
 					case 18:
-						if (pix_fmt == IPU_PIX_FMT_LVDS666) {
+						if (is_lvds()) {
 							color_depth = val;
 							break;
 						}
@@ -1125,24 +1126,56 @@ void lcd_ctrl_init(void *lcdbase)
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
 
-	debug("Initializing FB driver\n");
-#ifdef CONFIG_SYS_LVDS_IF
-	if (pix_fmt == IPU_PIX_FMT_LVDS666) {
-		writel(0x01, IOMUXC_BASE_ADDR + 8);
-	} else if (pix_fmt == IPU_PIX_FMT_LVDS888) {
-		writel(0x21, IOMUXC_BASE_ADDR + 8);
+	lcd_bus_width = karo_fdt_get_lcd_bus_width(working_fdt, 24);
+	switch (lcd_bus_width) {
+	case 24:
+		pix_fmt = is_lvds() ? IPU_PIX_FMT_LVDS888 : IPU_PIX_FMT_RGB24;
+		break;
+
+	case 18:
+		pix_fmt = is_lvds() ? IPU_PIX_FMT_LVDS666 : IPU_PIX_FMT_RGB666;
+		break;
+
+	case 16:
+		if (!is_lvds()) {
+			pix_fmt = IPU_PIX_FMT_RGB565;
+			break;
+		}
+		/* fallthru */
+	default:
+		lcd_enabled = 0;
+		printf("Invalid %s bus width: %d\n", is_lvds() ? "LVDS" : "LCD",
+			lcd_bus_width);
+		return;
 	}
-	{
-		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
-		/* enable LDB & DI0 clock */
-		writel(readl(&ccm_regs->CCGR3) | MXC_CCM_CCGR3_LDB_DI0_MASK |
-			MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK,
-			&ccm_regs->CCGR3);
+	if (is_lvds()) {
+		int lvds_mapping = karo_fdt_get_lvds_mapping(working_fdt, 0);
+		int lvds_chan_mask = karo_fdt_get_lvds_channels(working_fdt);
+		uint32_t gpr2;
+
+		if (lvds_chan_mask == 0) {
+			printf("No LVDS channel active\n");
+			lcd_enabled = 0;
+			return;
+		}
+
+		gpr2 = (lvds_mapping << 6) | (lvds_mapping << 8);
+		if (lcd_bus_width == 24)
+			gpr2 |= (1 << 5) | (1 << 7);
+		gpr2 |= (lvds_chan_mask & 1) ? 1 << 0 : 0;
+		gpr2 |= (lvds_chan_mask & 2) ? 3 << 2 : 0;
+		debug("writing %08x to GPR2[%08x]\n", gpr2, IOMUXC_BASE_ADDR + 8);
+		writel(gpr2, IOMUXC_BASE_ADDR + 8);
 	}
-#endif
 	if (karo_load_splashimage(0) == 0) {
+		int ret;
+
 		debug("Initializing LCD controller\n");
-		ipuv3_fb_init(p, 0, pix_fmt, DI_PCLK_PLL3, di_clk_rate, -1);
+		ret = ipuv3_fb_init(p, 0, pix_fmt, DI_PCLK_PLL3, di_clk_rate, -1);
+		if (ret) {
+			printf("Failed to initialize FB driver: %d\n", ret);
+			lcd_enabled = 0;
+		}
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -1289,6 +1322,7 @@ static struct node_info nodes[] = {
 static const char *tx6_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
+	"eeti,egalax_ts",
 };
 
 void ft_board_setup(void *blob, bd_t *bd)

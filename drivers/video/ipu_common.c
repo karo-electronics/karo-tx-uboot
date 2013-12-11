@@ -95,22 +95,28 @@ static void clk_ipu_disable(struct clk *clk)
 static struct clk ipu_clk = {
 	.name = "ipu_clk",
 	.rate = CONFIG_IPUV3_CLK,
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53)
-	.enable_reg = (u32 *)(CCM_BASE_ADDR +
-		offsetof(struct mxc_ccm_reg, CCGR5)),
-	.enable_shift = MXC_CCM_CCGR5_IPU_OFFSET,
-#else
-	.enable_reg = (u32 *)(CCM_BASE_ADDR +
-		offsetof(struct mxc_ccm_reg, CCGR3)),
-	.enable_shift = MXC_CCM_CCGR3_IPU1_IPU_DI0_OFFSET,
-#endif
 	.enable = clk_ipu_enable,
 	.disable = clk_ipu_disable,
 };
 
+static int clk_ldb_enable(struct clk *clk)
+{
+	ldb_clk_enable(0);
+	ldb_clk_enable(1);
+	return 0;
+}
+
+static void clk_ldb_disable(struct clk *clk)
+{
+	ldb_clk_disable(0);
+	ldb_clk_disable(1);
+}
+
 static struct clk ldb_clk = {
 	.name = "ldb_clk",
 	.rate = 65000000,
+	.enable = clk_ldb_enable,
+	.disable = clk_ldb_disable,
 };
 
 /* Globals */
@@ -297,14 +303,29 @@ static struct clk pixel_clk[] = {
 	},
 };
 
+static int clk_ipu_di_enable(struct clk *clk)
+{
+	ipu_di_clk_enable(clk->id);
+	return 0;
+}
+
+static void clk_ipu_di_disable(struct clk *clk)
+{
+	ipu_di_clk_disable(clk->id);
+}
+
 static struct clk di_clk[] = {
 	{
 		.name = "ipu_di_clk",
 		.id = 0,
+		.enable = clk_ipu_di_enable,
+		.disable = clk_ipu_di_disable,
 	},
 	{
 		.name = "ipu_di_clk",
 		.id = 1,
+		.enable = clk_ipu_di_enable,
+		.disable = clk_ipu_di_disable,
 	},
 };
 
@@ -543,9 +564,11 @@ int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t *params)
 		ipu_conf |= IPU_CONF_DMFC_EN;
 	if (ipu_di_use_count[0] == 1) {
 		ipu_conf |= IPU_CONF_DI0_EN;
+		clk_enable(g_di_clk[0]);
 	}
 	if (ipu_di_use_count[1] == 1) {
 		ipu_conf |= IPU_CONF_DI1_EN;
+		clk_enable(g_di_clk[1]);
 	}
 
 	__raw_writel(ipu_conf, IPU_CONF);
@@ -626,11 +649,13 @@ void ipu_uninit_channel(ipu_channel_t channel)
 		ipu_conf &= ~IPU_CONF_DP_EN;
 	if (ipu_dmfc_use_count == 0)
 		ipu_conf &= ~IPU_CONF_DMFC_EN;
-	if (ipu_di_use_count[0] == 0) {
+	if (ipu_di_use_count[0] == 0 && ipu_conf & IPU_CONF_DI0_EN) {
 		ipu_conf &= ~IPU_CONF_DI0_EN;
+		clk_disable(g_di_clk[0]);
 	}
-	if (ipu_di_use_count[1] == 0) {
+	if (ipu_di_use_count[1] == 0 && ipu_conf & IPU_CONF_DI1_EN) {
 		ipu_conf &= ~IPU_CONF_DI1_EN;
+		clk_disable(g_di_clk[1]);
 	}
 
 	__raw_writel(ipu_conf, IPU_CONF);
