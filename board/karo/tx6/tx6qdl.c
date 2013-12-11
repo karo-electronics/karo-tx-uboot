@@ -1324,6 +1324,7 @@ static struct node_info nodes[] = {
 static const char *tx6_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
+	"eeti,egalax_ts",
 };
 
 #ifndef CONFIG_SYS_LVDS_IF

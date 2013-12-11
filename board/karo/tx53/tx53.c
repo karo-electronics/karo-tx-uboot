@@ -1248,6 +1248,7 @@ static inline void tx53_fdt_fixup_sata(void *blob)
 static const char *tx53_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
+	"eeti,egalax_ts",
 };
 
 void ft_board_setup(void *blob, bd_t *bd)
