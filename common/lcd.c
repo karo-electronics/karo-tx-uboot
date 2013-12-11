@@ -1001,7 +1001,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	splash_align_axis(&x, pwidth, width);
 	splash_align_axis(&y, panel_info.vl_row, height);
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
-	bmap = (uchar *)bmp + le32_to_cpu (bmp->header.data_offset);
+	bmap = (uchar *)bmp + le32_to_cpu(bmp->header.data_offset);
 
 	if ((x + width) > pwidth)
 		width = pwidth - x;
@@ -1010,7 +1010,6 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		bmap += (panel_info.vl_row - y) * padded_width;
 	}
 
-	bmap = (uchar *)bmp + le32_to_cpu(bmp->header.data_offset);
 	fb   = (uchar *)(lcd_base +
 		(y + height - 1) * lcd_line_length + x * bpix / 8);
 
