@@ -1206,17 +1206,6 @@ static inline void tx53_fixup_rtc(void *blob)
 }
 #endif /* CONFIG_SYS_TX53_HWREV_2 */
 
-#ifndef CONFIG_SYS_LVDS_IF
-static inline void tx53_fdt_fixup_sata(void *blob)
-{
-	karo_fdt_enable_node(blob, "/soc/sata", 0);
-}
-#else
-static inline void tx53_fdt_fixup_sata(void *blob)
-{
-}
-#endif
-
 static const char *tx53_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
