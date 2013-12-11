@@ -1027,11 +1027,10 @@ void lcd_ctrl_init(void *lcdbase)
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
-		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len)
-		/ 1000);
+		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
+				1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
-		PICOS2KHZ(p->pixclock) / 1000,
-		PICOS2KHZ(p->pixclock) % 1000);
+		PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
 
 	if (p != &fb_mode) {
 		int ret;
@@ -1104,7 +1103,6 @@ static void stk5v5_board_init(void)
 static void tx53_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
-	int ret;
 
 	if (had_ctrlc() || (wrsr & WRSR_TOUT))
 		return;
@@ -1112,14 +1110,13 @@ static void tx53_set_cpu_clock(void)
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
 
-	ret = mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK);
-	if (ret != 0) {
+	if (mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
+		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
+		printf("CPU clock set to %lu.%03lu MHz\n",
+			cpu_clk / 1000000, cpu_clk / 1000 % 1000);
+	} else {
 		printf("Error: Failed to set CPU clock to %lu MHz\n", cpu_clk);
-		return;
 	}
-	printf("CPU clock set to %u.%03u MHz\n",
-		mxc_get_clock(MXC_ARM_CLK) / 1000000,
-		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
 }
 
 static void tx53_init_mac(void)
@@ -1148,12 +1145,20 @@ int board_late_init(void)
 	if (!baseboard)
 		goto exit;
 
+	printf("Baseboard: %s\n", baseboard);
+
 	if (strncmp(baseboard, "stk5", 4) == 0) {
-		printf("Baseboard: %s\n", baseboard);
 		if ((strlen(baseboard) == 4) ||
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
 		} else if (strcmp(baseboard, "stk5-v5") == 0) {
+			const char *otg_mode = getenv("otg_mode");
+
+			if (otg_mode && strcmp(otg_mode, "host") == 0) {
+				printf("otg_mode='%s' is incompatible with baseboard %s; setting to 'none'\n",
+					otg_mode, baseboard);
+				setenv("otg_mode", "none");
+			}
 			stk5v5_board_init();
 		} else {
 			printf("WARNING: Unsupported STK5 board rev.: %s\n",
@@ -1167,6 +1172,7 @@ int board_late_init(void)
 
 exit:
 	tx53_init_mac();
+
 	gpio_set_value(TX53_RESET_OUT_GPIO, 1);
 	clear_ctrlc();
 	return ret;
@@ -1189,7 +1195,6 @@ int checkboard(void)
 static struct node_info nodes[] = {
 	{ "fsl,imx53-nand", MTD_DEV_TYPE_NAND, },
 };
-
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
