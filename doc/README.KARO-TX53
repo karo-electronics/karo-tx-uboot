@@ -23,7 +23,7 @@ cd u-boot
 tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
 
 Alternatively you can access the current source via the git repository:
-git://git.kernelconcepts.de/karo-tx-uboot.git master
+git://git.karo-electronics.de/karo-tx-uboot.git master
 
 
 Compiling U-Boot
