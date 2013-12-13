@@ -77,10 +77,6 @@ int clk_enable(struct clk *clk)
 	if (!clk)
 		return 0;
 
-	if (clk->id >= 0)
-		printf("enabling %s.%d clock %d\n", clk->name, clk->id, clk->usecount);
-	else
-		printf("enabling %s clock %d\n", clk->name, clk->usecount);
 	if (clk->usecount++ == 0) {
 		if (!clk->enable)
 			return 0;
@@ -96,17 +92,13 @@ void clk_disable(struct clk *clk)
 	if (!clk)
 		return;
 
-	if (clk->id >= 0)
-		printf("disabling %s.%d clock %d\n", clk->name, clk->id, clk->usecount);
-	else
-		printf("disabling %s clock %d\n", clk->name, clk->usecount);
 	if (!(--clk->usecount)) {
 		if (clk->disable)
 			clk->disable(clk);
 	}
 	if (clk->usecount < 0) {
 		printf("%s: clk %p (%s) underflow\n", __func__, clk, clk->name);
-		//hang();
+		hang();
 	}
 }
 
