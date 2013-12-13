@@ -1,15 +1,16 @@
-                                        U-Boot for TX28
-                                        ===============
+                                        U-Boot for TX6
+                                        ==============
 
 Building U-Boot
 ---------------
 
-Note: There are currently two variants of the TX28 module, that
+Note: There are currently six variants of the TX6 module, that
       require slightly different U-Boot configurations. They are
-      distinguished through the last digit of the module name. Replace
-      the '?' in the following description with the corresponding
-      number from your TX28 module.
-      E.g. TX28-4031 => 'make tx28-40x1_config'
+      distinguished through the 'TX6' suffix 'Q' or 'U' and the
+      numerical suffix of the module name. Replace the '?' in the
+      following description with the corresponding digits from your
+      TX6 module.
+      E.g. TX6Q-1010 => 'make tx6q-1010_config'
 
 Unpacking the source
 --------------------
@@ -24,8 +25,8 @@ git://git.kernelconcepts.de/karo-tx-uboot.git master
 Compiling U-Boot
 ----------------
 export ARCH=arm
-export CROSS_COMPILE=arm-926ejs-linux-gnueabi-
-make tx28-4?x?_config            (see above Note!)
+export CROSS_COMPILE=arm-cortexa9-linux-gnueabi-
+make tx6?-??1?_config            (see above Note!)
 make
 
 
@@ -37,10 +38,19 @@ with the 'romupdate' command.
 
 If you want to revive a bricked module, U-Boot can be downloaded via
 USB with the 'sbloader' tool in recovery boot mode (Bootmode jumper ST3
-on Starterkit-5 baseboard closed). See TX28_U-Boot.pdf for details.
+on Starterkit-5 baseboard closed). See TX6_U-Boot.pdf for details.
 
-e.g.: /cdrom/Flashtools/Linux/sbloader/sbloader-x86_32 -s /cdrom/U-Boot/u-boot-tx28-4031.bin
+e.g.: /cdrom/Flashtools/Linux/sbloader/sbloader-x86_32 -m -s /cdrom/U-Boot/target/u-boot-tx6q-1010.bin
 (This command can be used from within the ARMSK-VM)
+
+MfgTool
+-------
+For Windows users the application MfgTool allows the (re-)flashing of
+U-Boot. For more information either see:
+
+\U-Boot\TX6Q_U-Boot.pdf
+\STK5_TX6Q_Quickstart_Guide.pdf
+\Flashtools\Windows\Mfgtools-TX6...
 
 
 U-Boot Features
@@ -50,7 +60,7 @@ Environment variables:
 
 cpu_clk       <CPU freq [MHz]> CPU clock frequency set after boot.
 
-touchpanel    {tsc2007|edt-ft5x06|imx28-lradc} type of touchpanel.
+touchpanel    {tsc2007|edt-ft5x06|egalax_ts} type of touchpanel.
 	      No touchpanel will be enabled when unset.
 
 otg_mode      [host|device|none] operation mode of the USBOTG port

@@ -5,11 +5,16 @@ Building U-Boot
 ---------------
 
 Note: There are currently two variants of the TX53 module, that
-      require slightly different U-Boot configurations. They are
-      distinguished through the last digit of the module name. Replace
-      the '?' in the following description with the corresponding
-      number from your TX51 module.
-      E.g. TX53-8031 => 'make tx53-xx31_config'
+      require slightly different U-Boot configurations. The mapping
+      between module names and U-Boot config make targets is as
+      following:
+
+      Module Name       U-Boot config target
+      =====================================
+      TX53-8030		tx53-x030_config'
+      TX53-8130		tx53-x130_config'
+      TX53-1030		tx53-x030_config'
+      TX53-1331		tx53-x131_config'
 
 Unpacking the source
 --------------------
@@ -25,7 +30,7 @@ Compiling U-Boot
 ----------------
 export ARCH=arm
 export CROSS_COMPILE=arm-cortexa8-linux-gnueabi-
-make tx53-xx3?_config            (see above Note!)
+make tx53-x?3?_config            (see above Note!)
 make
 
 
@@ -45,16 +50,24 @@ U-Boot Features
 
 Environment variables:
 
-cpu_clk       <CPU freq [MHz]>
-touchpanel    {tsc2007|edt-ft5x06}
-otg_mode      [host|device|none]
-video_mode    <video mode as understood by Linux fb_find_mode() function>
-              e.g.: VGA-1:640x480MR-24@60
+cpu_clk       <CPU freq [MHz]> CPU clock frequency set after boot.
+
+touchpanel    {tsc2007|edt-ft5x06|egalax_ts} type of touchpanel.
+	      No touchpanel will be enabled when unset.
+
+otg_mode      [host|device|none] operation mode of the USBOTG port
+
+video_mode    <one of the display names from the Glyn Family Concept or
+	      a video mode as understood by Linux fb_find_mode() function
+              (e.g.: 640x480MR-24@60)>
+	      LCD interface will be disabled when unset.
+
 baseboard     {stk5-v3|stk5-v5} selects type of baseboard
-	      'stk5-v5' setting enables CAN transceiver switch on GPIO4_21 and
-	      disables USB Host mode on USBOTG port.
-	      strings not starting in 'stk5' prevent the STK5 specific
+	      'stk5-v5' setting disables USB Host mode on USBOTG port
+	      and redefines the LCD0 pin as CAN transceiver control pin.
+	      Strings not starting in 'stk5' prevent the STK5 specific
 	      pad initialization to be done.
+
 splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
 	      to be displayed instead of the built-in logo. Since NAND
 	      flash is not accessible in a memory mapped fashion,
@@ -75,6 +88,7 @@ splashpos     (when 'splashimage' contains a memory address) the
 Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
       board unbootable if incorrectly set. Therefore these variables
       will not be evaluated in case the board has been reset through a
-      watchdog reset or a character is available on the serial console
+      watchdog reset or <CTRL-C> is detected on the serial console
       during startup to give the user a chance to recover from this
-      situation.
+      situation. You should press and hold <CTRL-C> before applying
+      power to the module, for this to work.

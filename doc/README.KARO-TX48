@@ -39,12 +39,24 @@ U-Boot Features
 
 Environment variables:
 
-cpu_clk       <CPU freq [MHz]>
-touchpanel    {tsc2007|edt-ft5x06}
-otg_mode      [host|device|none]
-video_mode    <video mode as understood by Linux fb_find_mode() function>
-              e.g.: 640x480MR-24@60
+cpu_clk       <CPU freq [MHz]> CPU clock frequency set after boot.
+
+touchpanel    {tsc2007|edt-ft5x06|am3359-tscadc} type of touchpanel.
+	      No touchpanel will be enabled when unset.
+
+otg_mode      [host|device|none] operation mode of the USBOTG port
+
+video_mode    <one of the display names from the Glyn Family Concept or
+	      a video mode as understood by Linux fb_find_mode() function
+              (e.g.: 640x480MR-24@60)>
+	      LCD interface will be disabled when unset.
+
 baseboard     {stk5-v3|stk5-v5} selects type of baseboard
+	      'stk5-v5' setting disables USB Host mode on USBOTG port
+	      and redefines the LCD0 pin as CAN transceiver control pin.
+	      Strings not starting in 'stk5' prevent the STK5 specific
+	      pad initialization to be done.
+
 splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
 	      to be displayed instead of the built-in logo. Since NAND
 	      flash is not accessible in a memory mapped fashion,
@@ -65,6 +77,7 @@ splashpos     (when 'splashimage' contains a memory address) the
 Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
       board unbootable if incorrectly set. Therefore these variables
       will not be evaluated in case the board has been reset through a
-      watchdog reset or a character is available on the serial console
+      watchdog reset or <CTRL-C> is detected on the serial console
       during startup to give the user a chance to recover from this
-      situation.
+      situation. You should press and hold <CTRL-C> before applying
+      power to the module, for this to work.
