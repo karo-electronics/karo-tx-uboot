@@ -383,6 +383,7 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
 	int ret;
 	const char *xcvr_status = xcvr_present ? "disabled" : NULL;
+	const char *otg_mode = getenv("otg_mode");
 
 #ifndef CONFIG_SYS_LVDS_IF
 	if (xcvr_present) {
@@ -393,14 +394,12 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 		}
 	} else {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && (strcmp(otg_mode, "host") == 0))
-			karo_fdt_enable_node(blob, "can1", 0);
-
 		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
 #endif
+	if (otg_mode && strcmp(otg_mode, "host") == 0)
+		karo_fdt_enable_node(blob, "can1", 0);
+
 	if (xcvr_status) {
 		debug("Disabling CAN XCVR\n");
 		ret = fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
