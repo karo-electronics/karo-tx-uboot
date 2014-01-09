@@ -207,13 +207,11 @@ static void fdt_disable_tp_node(void *blob, const char *name)
 {
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
 
-	if (offs < 0) {
-		debug("node '%s' not found: %s\n", name, fdt_strerror(offs));
-		return;
+	while (offs >= 0) {
+		debug("Disabling node '%s'\n", name);
+		fdt_set_node_status(blob, offs, FDT_STATUS_DISABLED, 0);
+		offs = fdt_node_offset_by_compatible(blob, offs, name);
 	}
-
-	debug("Disabling node '%s'\n", name);
-	fdt_set_node_status(blob, offs, FDT_STATUS_DISABLED, 0);
 }
 
 void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
