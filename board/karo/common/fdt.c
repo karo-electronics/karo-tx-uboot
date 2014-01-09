@@ -207,13 +207,11 @@ static void fdt_disable_tp_node(void *blob, const char *name)
 {
 	int offs = fdt_node_offset_by_compatible(blob, -1, name);
 
-	if (offs < 0) {
-		debug("node '%s' not found: %s\n", name, fdt_strerror(offs));
-		return;
+	while (offs >= 0) {
+		debug("Disabling node '%s'\n", name);
+		fdt_set_node_status(blob, offs, FDT_STATUS_DISABLED, 0);
+		offs = fdt_node_offset_by_compatible(blob, offs, name);
 	}
-
-	debug("Disabling node '%s'\n", name);
-	fdt_set_node_status(blob, offs, FDT_STATUS_DISABLED, 0);
 }
 
 void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
@@ -241,12 +239,39 @@ void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
 	karo_set_fdtsize(blob);
 }
 
+static int karo_fdt_disable_node_phandle(void *blob, const char *parent,
+					const char *name)
+{
+	const uint32_t *ph;
+	int off;
+
+	off = fdt_path_offset(blob, parent);
+	if (off < 0) {
+		printf("Failed to find node '%s'\n", parent);
+		return off;
+	}
+
+	ph = fdt_getprop(blob, off, name, NULL);
+	if (ph == NULL) {
+		printf("Failed to find '%s' phandle in node '%s'\n", name,
+			fdt_get_name(blob, off, NULL));
+		return -FDT_ERR_NOTFOUND;
+	}
+
+	off = fdt_node_offset_by_phandle(blob, fdt32_to_cpu(*ph));
+	if (off <= 0) {
+		printf("Failed to find '%s' node via phandle %04x\n",
+			name, fdt32_to_cpu(*ph));
+		return -FDT_ERR_NOTFOUND;
+	}
+	return fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
+}
+
 void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 {
 	const char *otg_mode = getenv("otg_mode");
 	int off;
 	int ret;
-	const uint32_t *ph;
 	int disable_otg = 0;
 	int disable_phy_pins = 1;
 
@@ -280,29 +305,17 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	if ((!disable_phy_pins && !disable_otg) || ret)
 		goto out;
 
-	if (disable_otg) {
-		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
-		if (ret)
-			goto out;
-	}
-
-	ph = fdt_getprop(blob, off, phy, NULL);
-	if (ph == NULL) {
-		printf("Failed to find '%s' phandle in node '%s'\n", phy,
-			fdt_get_name(blob, off, NULL));
+	ret = karo_fdt_disable_node_phandle(blob, node, "vbus-supply");
+	if (ret)
 		goto out;
-	}
-
-	off = fdt_node_offset_by_phandle(blob, fdt32_to_cpu(*ph));
-	if (off <= 0) {
-		printf("Failed to find '%s' node via phandle %04x\n",
-			phy, fdt32_to_cpu(*ph));
-		goto out;
-	}
 
 	if (disable_otg) {
 		debug("Disabling usbphy\n");
 		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
+		if (ret)
+			goto out;
+
+		ret = karo_fdt_disable_node_phandle(blob, node, phy);
 	}
 out:
 	if (ret)
@@ -366,27 +379,33 @@ static inline void karo_fdt_set_lcd_pins(void *blob, const char *name)
 
 void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
-	const char *xcvr_status = "disabled";
+	int ret;
+	const char *xcvr_status = xcvr_present ? "disabled" : NULL;
+	const char *otg_mode = getenv("otg_mode");
 
 #ifndef CONFIG_SYS_LVDS_IF
 	if (xcvr_present) {
 		if (karo_fdt_flexcan_enabled(blob)) {
 			karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
-			xcvr_status = "okay";
+			xcvr_status = NULL;
 		} else {
 			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 		}
 	} else {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && (strcmp(otg_mode, "host") == 0))
-			karo_fdt_enable_node(blob, "can1", 0);
-
 		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
 #endif
-	fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
-			xcvr_status, strlen(xcvr_status) + 1, 1);
+	if (otg_mode && strcmp(otg_mode, "host") == 0)
+		karo_fdt_enable_node(blob, "can1", 0);
+
+	if (xcvr_status) {
+		debug("Disabling CAN XCVR\n");
+		ret = fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
+					xcvr_status, strlen(xcvr_status) + 1, 1);
+		if (ret)
+			printf("Failed to disable CAN transceiver switch: %s\n",
+				fdt_strerror(ret));
+	}
 }
 
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
