@@ -307,6 +307,10 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	if ((!disable_phy_pins && !disable_otg) || ret)
 		goto out;
 
+	ret = karo_fdt_disable_node_phandle(blob, node, "vbus-supply");
+	if (ret)
+		goto out;
+
 	if (disable_otg) {
 		debug("Disabling usbphy\n");
 		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
