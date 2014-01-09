@@ -382,13 +382,13 @@ static inline void karo_fdt_set_lcd_pins(void *blob, const char *name)
 void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
 	int ret;
-	const char *xcvr_status = "disabled";
+	const char *xcvr_status = xcvr_present ? "disabled" : NULL;
 
 #ifndef CONFIG_SYS_LVDS_IF
 	if (xcvr_present) {
 		if (karo_fdt_flexcan_enabled(blob)) {
 			karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
-			xcvr_status = "okay";
+			xcvr_status = NULL;
 		} else {
 			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 		}
@@ -401,12 +401,14 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
 #endif
-	debug("Disabling CAN XCVR\n");
-	ret = fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
-				xcvr_status, strlen(xcvr_status) + 1, 1);
-	if (ret)
-		printf("Failed to disable CAN transceiver switch: %s\n",
-			fdt_strerror(ret));
+	if (xcvr_status) {
+		debug("Disabling CAN XCVR\n");
+		ret = fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
+					xcvr_status, strlen(xcvr_status) + 1, 1);
+		if (ret)
+			printf("Failed to disable CAN transceiver switch: %s\n",
+				fdt_strerror(ret));
+	}
 }
 
 void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
