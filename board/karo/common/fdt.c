@@ -241,12 +241,39 @@ void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
 	karo_set_fdtsize(blob);
 }
 
+static int karo_fdt_disable_node_phandle(void *blob, const char *parent,
+					const char *name)
+{
+	const uint32_t *ph;
+	int off;
+
+	off = fdt_path_offset(blob, parent);
+	if (off < 0) {
+		printf("Failed to find node '%s'\n", parent);
+		return off;
+	}
+
+	ph = fdt_getprop(blob, off, name, NULL);
+	if (ph == NULL) {
+		printf("Failed to find '%s' phandle in node '%s'\n", name,
+			fdt_get_name(blob, off, NULL));
+		return -FDT_ERR_NOTFOUND;
+	}
+
+	off = fdt_node_offset_by_phandle(blob, fdt32_to_cpu(*ph));
+	if (off <= 0) {
+		printf("Failed to find '%s' node via phandle %04x\n",
+			name, fdt32_to_cpu(*ph));
+		return -FDT_ERR_NOTFOUND;
+	}
+	return fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
+}
+
 void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 {
 	const char *otg_mode = getenv("otg_mode");
 	int off;
 	int ret;
-	const uint32_t *ph;
 	int disable_otg = 0;
 	int disable_phy_pins = 1;
 
@@ -281,28 +308,12 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 		goto out;
 
 	if (disable_otg) {
+		debug("Disabling usbphy\n");
 		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
 		if (ret)
 			goto out;
-	}
 
-	ph = fdt_getprop(blob, off, phy, NULL);
-	if (ph == NULL) {
-		printf("Failed to find '%s' phandle in node '%s'\n", phy,
-			fdt_get_name(blob, off, NULL));
-		goto out;
-	}
-
-	off = fdt_node_offset_by_phandle(blob, fdt32_to_cpu(*ph));
-	if (off <= 0) {
-		printf("Failed to find '%s' node via phandle %04x\n",
-			phy, fdt32_to_cpu(*ph));
-		goto out;
-	}
-
-	if (disable_otg) {
-		debug("Disabling usbphy\n");
-		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
+		ret = karo_fdt_disable_node_phandle(blob, node, phy);
 	}
 out:
 	if (ret)
