@@ -119,16 +119,20 @@
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
+	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
-	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
+	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
+	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	";nboot linux\0"						\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
 	";mmc read ${loadaddr} 100 3000\0"				\
-	"bootcmd_nand=set autostart no;run bootargs_nand"		\
+	"bootcmd_nand=set autostart no;run bootargs_ubifs"		\
 	";nboot linux\0"						\
 	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
 	";dhcp\0"							\
