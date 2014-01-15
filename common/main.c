@@ -1439,10 +1439,10 @@ int run_command(const char *cmd, int flag)
 	 * builtin_run_command can return 0 or 1 for success, so clean up
 	 * its result.
 	 */
-	if (builtin_run_command(cmd, flag) != 1)
-		return 1;
+	if ((builtin_run_command(cmd, flag) & ~1) != 0)
+		return CMD_RET_FAILURE;
 
-	return 0;
+	return CMD_RET_SUCCESS;
 #else
 	return parse_string_outer(cmd,
 			FLAG_PARSE_SEMICOLON | FLAG_EXIT_FROM_LOOP);
@@ -1552,8 +1552,8 @@ int do_run (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		if (run_command(arg, flag) != 0)
-			return 1;
+			return CMD_RET_FAILURE;
 	}
-	return 0;
+	return CMD_RET_SUCCESS;
 }
 #endif
