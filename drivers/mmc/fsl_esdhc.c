@@ -410,7 +410,7 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 #else
 		unsigned long start = get_timer_masked();
 		unsigned long data_timeout = data->blocks *
-			(data->blocksize + 100) * 8 / mmc->bus_width /
+			data->blocksize * 100 / mmc->bus_width /
 			(mmc->tran_speed / CONFIG_SYS_HZ) + CONFIG_SYS_HZ;
 
 		do {
