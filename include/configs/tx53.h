@@ -123,7 +123,6 @@
 	" root=/dev/mmcblk0p3 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
-	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
@@ -133,13 +132,14 @@
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
 	"run bootm_cmd\0"						\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
+	"cpu_clk=800\0"							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
-	"cpu_clk=800\0"							\
 	"fdtaddr=71000000\0"						\
 	"fdtsave=nand erase.part dtb;nand write ${fdtaddr} dtb ${fdtsize}\0" \
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
