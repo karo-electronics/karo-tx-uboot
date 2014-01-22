@@ -76,15 +76,16 @@
 #else
 #define CONFIG_SYS_PROMPT		"TX6DL U-Boot > "
 #endif
-#define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-				sizeof(CONFIG_SYS_PROMPT) + 16) /* Print buffer size */
-#define CONFIG_SYS_MAXARGS		64		/* Max number of command args */
+#define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
+#define CONFIG_SYS_PBSIZE						\
+	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
+						/* Print buffer size */
+#define CONFIG_SYS_MAXARGS		64	/* Max number of command args */
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-					/* Boot argument buffer size */
-#define CONFIG_VERSION_VARIABLE		/* U-BOOT version */
-#define CONFIG_AUTO_COMPLETE		/* Command auto complete */
-#define CONFIG_CMDLINE_EDITING		/* Command history etc */
+						/* Boot argument buffer size */
+#define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
+#define CONFIG_AUTO_COMPLETE			/* Command auto complete */
+#define CONFIG_CMDLINE_EDITING			/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
 #define CONFIG_SYS_NO_FLASH
