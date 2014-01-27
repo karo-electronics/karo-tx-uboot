@@ -92,8 +92,6 @@
 #ifdef CONFIG_OF_LIBFDT /* set via cmdline parameter thru boards.cfg */
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_BOARD_SETUP
-#define CONFIG_DEFAULT_DEVICE_TREE	tx48
-#define CONFIG_ARCH_DEVICE_TREE		am33xx
 #define CONFIG_MACH_TYPE		(-1)
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #else
