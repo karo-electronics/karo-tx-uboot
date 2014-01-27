@@ -819,3 +819,28 @@ u8 karo_fdt_get_lvds_channels(const void *blob)
 	}
 	return lvds_chan_mask;
 }
+
+int karo_fdt_get_backlight_polarity(const void *blob)
+{
+	int off = fdt_path_offset(blob, "/backlight");
+	const struct fdt_property *prop;
+	int len;
+
+	if (off < 0) {
+		printf("/backlight node not found in DT\n");
+		return off;
+	}
+
+	prop = fdt_get_property(blob, off, "pwms", &len);
+	if (!prop)
+		printf("'pwms' property not found\n");
+	else
+		debug("'pwms' property has len %d\n", len);
+
+	len /= sizeof(u32);
+	if (prop && len > 3) {
+		const u32 *data = (const u32 *)prop->data;
+		return fdt32_to_cpu(data[3]) == 0;
+	}
+	return 0;
+}

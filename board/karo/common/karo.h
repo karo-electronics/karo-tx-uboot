@@ -34,6 +34,7 @@ int karo_fdt_create_fb_mode(void *blob, const char *name,
 int karo_fdt_get_lcd_bus_width(const void *blob, int default_width);
 int karo_fdt_get_lvds_mapping(const void *blob, int default_mapping);
 u8 karo_fdt_get_lvds_channels(const void *blob);
+int karo_fdt_get_backlight_polarity(const void *blob);
 #else
 static inline void karo_fdt_remove_node(void *blob, const char *node)
 {
@@ -86,6 +87,10 @@ int karo_fdt_get_lvds_mapping(const void *blob, int default_mapping)
 u8 karo_fdt_get_lvds_channels(const void *blob)
 {
 	return 0;
+}
+static inline int karo_fdt_get_backlight_polarity(const void *blob)
+{
+	return getenv_yesno("backlight_polarity");
 }
 #endif
 
