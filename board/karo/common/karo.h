@@ -75,15 +75,15 @@ static inline int karo_fdt_create_fb_mode(void *blob,
 {
 	return 0;
 }
-int karo_fdt_get_lcd_bus_width(const void *blob, int default_width)
+static inline int karo_fdt_get_lcd_bus_width(const void *blob, int default_width)
 {
 	return default_width;
 }
-int karo_fdt_get_lvds_mapping(const void *blob, int default_mapping)
+static inline int karo_fdt_get_lvds_mapping(const void *blob, int default_mapping)
 {
 	return default_mapping;
 }
-u8 karo_fdt_get_lvds_channels(const void *blob)
+static inline u8 karo_fdt_get_lvds_channels(const void *blob)
 {
 	return 0;
 }
