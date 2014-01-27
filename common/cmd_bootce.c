@@ -457,6 +457,7 @@ U_BOOT_CMD(
 	"\taddr\t\tboot image from address addr (default ${fileaddr})"
 );
 
+#ifdef CONFIG_CMD_NAND
 static int ce_nand_load(ce_bin *bin, loff_t *offset, void *buf, size_t max_len)
 {
 	int ret;
@@ -584,6 +585,7 @@ U_BOOT_CMD(
 	"\toff\t\t- flash offset (hex)\n"
 	"\tpartition\t- partition name"
 );
+#endif
 
 static int ce_send_write_ack(ce_net *net)
 {

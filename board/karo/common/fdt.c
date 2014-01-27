@@ -48,50 +48,6 @@ static void karo_set_fdtsize(void *fdt)
 	setenv_hex("fdtsize", fdt_totalsize(fdt));
 }
 
-static int karo_load_part(const char *part, void *addr, size_t len)
-{
-	int ret;
-	struct mtd_device *dev;
-	struct part_info *part_info;
-	u8 part_num;
-	size_t actual;
-
-	debug("Initializing mtd_parts\n");
-	ret = mtdparts_init();
-	if (ret)
-		return ret;
-
-	debug("Trying to find NAND partition '%s'\n", part);
-	ret = find_dev_and_part(part, &dev, &part_num, &part_info);
-	if (ret) {
-		printf("Failed to find flash partition '%s': %d\n",
-			part, ret);
-
-		return ret;
-	}
-	debug("Found partition '%s': offset=%08x size=%08x\n",
-		part, part_info->offset, part_info->size);
-	if (part_info->size < len) {
-		printf("Warning: partition '%s' smaller than requested size: %u; truncating data to %u byte\n",
-			part, len, part_info->size);
-		len = part_info->size;
-	}
-	debug("Reading NAND partition '%s' to %p\n", part, addr);
-	ret = nand_read_skip_bad(&nand_info[0], part_info->offset, &len,
-				&actual, len, addr);
-	if (ret) {
-		printf("Failed to load partition '%s' to %p\n", part, addr);
-		return ret;
-	}
-	if (actual < len)
-		printf("Read only %u of %u bytes due to bad blocks\n",
-			actual, len);
-
-	debug("Read %u byte from partition '%s' @ offset %08x\n",
-		len, part, part_info->offset);
-	return 0;
-}
-
 static void *karo_fdt_load_dtb(void)
 {
 	int ret;
