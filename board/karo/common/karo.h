@@ -105,4 +105,39 @@ static inline const char *karo_get_vmode(const char *video_mode)
 	return vmode ? vmode + 1 : video_mode;
 }
 
+#ifdef CONFIG_SPLASH_SCREEN
 int karo_load_splashimage(int mode);
+#else
+static inline int karo_load_splashimage(int mode)
+{
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_CMD_NAND
+int karo_load_nand_part(const char *part, void *addr, size_t len);
+#else
+static inline int karo_load_nand_part(const char *part, void *addr, size_t len)
+{
+	return -EOPNOTSUPP;
+}
+#endif
+
+#ifdef CONFIG_CMD_MMC
+int karo_load_mmc_part(const char *part, void *addr, size_t len);
+#else
+static inline int karo_load_mmc_part(const char *part, void *addr, size_t len)
+{
+	return -EOPNOTSUPP;
+}
+#endif
+
+static inline int karo_load_part(const char *part, void *addr, size_t len)
+{
+	int ret;
+
+	ret = karo_load_nand_part(part, addr, len);
+	if (ret == -EOPNOTSUPP)
+		return karo_load_mmc_part(part, addr, len);
+	return ret;
+}

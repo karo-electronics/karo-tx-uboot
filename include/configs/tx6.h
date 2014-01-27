@@ -28,8 +28,10 @@
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
 #ifdef CONFIG_LCD
+#ifndef CONFIG_TX6_V2
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
+#endif
 #define CONFIG_VIDEO_IPUV3
 #define CONFIG_IPUV3_CLK		266000000
 #define CONFIG_LCD_LOGO
@@ -96,7 +98,9 @@
 #ifndef CONFIG_MFG
 #define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT
+#ifndef CONFIG_TX6_V2
 #define CONFIG_FDT_FIXUP_PARTITIONS
+#endif
 #define CONFIG_OF_BOARD_SETUP
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif /* CONFIG_OF_LIBFDT */
@@ -184,9 +188,15 @@
 #endif /*  CONFIG_ENV_IS_NOWHERE */
 #endif /*  CONFIG_MFG */
 
+#ifndef CONFIG_TX6_V2
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define CONFIG_SYS_NAND_ONFI_DETECTION
+#else
+#define MTD_NAME			""
+#define MTDIDS_DEFAULT			""
+#define CONFIG_SUPPORT_EMMC_BOOT
+#endif
 
 /*
  * U-Boot Commands
@@ -194,8 +204,14 @@
 #include <config_cmd_default.h>
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_MMC
+#ifndef CONFIG_TX6_V2
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
+#else
+#define CONFIG_PARTITION_UUIDS
+#define CONFIG_EFI_PARTITION
+#define CONFIG_CMD_GPT
+#endif
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
 #define CONFIG_CMD_I2C
@@ -249,7 +265,11 @@
 #define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
 #define CONFIG_SYS_I2C_MX6_PORT1
 #define CONFIG_SYS_I2C_SPEED		400000
+#ifndef CONFIG_TX6_V2
 #define CONFIG_SYS_I2C_SLAVE		0x3c
+#else
+#define CONFIG_SYS_I2C_SLAVE		0x32
+#endif
 #endif
 
 #ifndef CONFIG_ENV_IS_NOWHERE
@@ -324,9 +344,8 @@
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #undef CONFIG_ENV_OFFSET
 #undef CONFIG_ENV_SIZE
-/* Associated with the MMC layout defined in mmcops.c */
-#define CONFIG_ENV_OFFSET		SZ_1K
-#define CONFIG_ENV_SIZE			(SZ_128K - CONFIG_ENV_OFFSET)
+#define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
+#define CONFIG_ENV_SIZE			SZ_128K
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
 #else
@@ -338,6 +357,7 @@
 #define CONFIG_ENV_SIZE			SZ_4K
 #endif
 
+#ifndef CONFIG_TX6_V2
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	xstr(CONFIG_SYS_U_BOOT_PART_SIZE)				\
 	"@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS)				\
@@ -348,6 +368,9 @@
 	"(dtb),"							\
 	xstr(CONFIG_SYS_NAND_BBT_SIZE)					\
 	"@" xstr(CONFIG_SYS_NAND_BBT_OFFSET) "(bbt)ro"
+#else
+#define MTDPARTS_DEFAULT		""
+#endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \

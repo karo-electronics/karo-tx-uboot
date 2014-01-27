@@ -9,7 +9,12 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
+ifeq ($(CONFIG_TX6_V2),)
 COBJS	:= tx6qdl.o
+else
+COBJS	:= tx6-1020.o
+endif
+
 SOBJS	:= lowlevel_init.o
 ifeq ($(CONFIG_CMD_ROMUPDATE),y)
 	COBJS += flash.o

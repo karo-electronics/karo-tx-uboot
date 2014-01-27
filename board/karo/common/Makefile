@@ -26,6 +26,8 @@ ifeq ($(CONFIG_SPL_BUILD),)
 	COBJS-$(CONFIG_OF_BOARD_SETUP)	+= fdt.o
 	COBJS-$(CONFIG_SPLASH_SCREEN)	+= splashimage.o
 endif
+COBJS-$(CONFIG_CMD_NAND)		+= nand.o
+COBJS-$(CONFIG_CMD_MMC)			+= mmc.o
 
 COBJS   := $(COBJS-y)
 SOBJS	:= 
