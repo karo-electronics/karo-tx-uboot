@@ -147,7 +147,6 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 
 static void ce_prepare_run_bin(ce_bin *bin)
 {
-	ce_driver_globals *drv_glb;
 	struct ce_magic *ce_magic = (void *)CONFIG_SYS_SDRAM_BASE + 0x160;
 	ce_std_driver_globals *std_drv_glb = &ce_magic->drv_glb;
 
@@ -161,50 +160,16 @@ static void ce_prepare_run_bin(ce_bin *bin)
 		printf("ok\n");
 	}
 
-	/* Prepare driver globals (if needed) */
-	if (bin->eDrvGlb) {
-		debug("Copying CE MAGIC from %p to %p..%p\n",
-			&ce_magic_template, ce_magic,
-			(void *)ce_magic + sizeof(*ce_magic) - 1);
-		memcpy(ce_magic, &ce_magic_template, sizeof(*ce_magic));
+	debug("Copying CE MAGIC from %p to %p..%p\n",
+		&ce_magic_template, ce_magic,
+		(void *)ce_magic + sizeof(*ce_magic) - 1);
+	memcpy(ce_magic, &ce_magic_template, sizeof(*ce_magic));
 
-		ce_setup_std_drv_globals(std_drv_glb);
-		ce_magic->size = sizeof(*std_drv_glb) +
-			strlen(std_drv_glb->mtdparts) + 1;
-		ce_dump_block(ce_magic, offsetof(struct ce_magic, drv_glb) +
-			ce_magic->size);
-
-		drv_glb = bin->eDrvGlb;
-		memset(drv_glb, 0, sizeof(*drv_glb));
-
-		drv_glb->signature = DRV_GLB_SIGNATURE;
-
-		/* Local ethernet MAC address */
-		memcpy(drv_glb->macAddr, std_drv_glb->kitl.mac,
-			sizeof(drv_glb->macAddr));
-		debug("got MAC address %pM from environment\n",
-			drv_glb->macAddr);
-
-		/* Local IP address */
-		drv_glb->ipAddr = getenv_IPaddr("ipaddr");
-
-		/* Subnet mask */
-		drv_glb->ipMask = getenv_IPaddr("netmask");
-
-		/* Gateway config */
-		drv_glb->ipGate = getenv_IPaddr("gatewayip");
-#ifdef DEBUG
-		debug("got IP address %pI4 from environment\n",
-			&drv_glb->ipAddr);
-		debug("got IP mask %pI4 from environment\n",
-			&drv_glb->ipMask);
-		debug("got gateway address %pI4 from environment\n",
-			&drv_glb->ipGate);
-#endif
-		/* EDBG services config */
-		memcpy(&drv_glb->edbgConfig, &bin->edbgConfig,
-			sizeof(bin->edbgConfig));
-	}
+	ce_setup_std_drv_globals(std_drv_glb);
+	ce_magic->size = sizeof(*std_drv_glb) +
+		strlen(std_drv_glb->mtdparts) + 1;
+	ce_dump_block(ce_magic, offsetof(struct ce_magic, drv_glb) +
+		ce_magic->size);
 
 	/*
 	 * Make sure, all the above makes it into SDRAM because
@@ -249,15 +214,6 @@ static int ce_lookup_ep_bin(ce_bin *bin)
 				e32->e32_entryrva;
 			bin->eRamStart = CE_FIX_ADDRESS(header->ramStart);
 			bin->eRamLen = header->ramEnd - header->ramStart;
-			// Save driver_globals address
-			// Must follow RAM section in CE config.bib file
-			//
-			// eg.
-			//
-			// RAM		80900000	03200000	RAM
-			// DRV_GLB	83B00000	00001000	RESERVED
-			//
-			bin->eDrvGlb = CE_FIX_ADDRESS(header->ramEnd);
 			return 1;
 		}
 	}
