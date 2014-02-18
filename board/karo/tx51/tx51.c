@@ -1002,7 +1002,6 @@ static void stk5v3_board_init(void)
 static void tx51_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
-	int ret;
 
 	if (had_ctrlc() || (wrsr & WRSR_TOUT))
 		return;
