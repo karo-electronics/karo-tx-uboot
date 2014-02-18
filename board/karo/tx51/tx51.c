@@ -1010,14 +1010,13 @@ static void tx51_set_cpu_clock(void)
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
 
-	ret = mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK);
-	if (ret != 0) {
+	if (mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
+		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
+		printf("CPU clock set to %lu.%03lu MHz\n",
+			cpu_clk / 1000000, cpu_clk / 1000 % 1000);
+	} else {
 		printf("Error: Failed to set CPU clock to %lu MHz\n", cpu_clk);
-		return;
 	}
-	printf("CPU clock set to %u.%03u MHz\n",
-		mxc_get_clock(MXC_ARM_CLK) / 1000000,
-		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
 }
 
 static void tx51_init_mac(void)
@@ -1046,8 +1045,9 @@ int board_late_init(void)
 	if (!baseboard)
 		goto exit;
 
+	printf("Baseboard: %s\n", baseboard);
+
 	if (strncmp(baseboard, "stk5", 4) == 0) {
-		printf("Baseboard: %s\n", baseboard);
 		if ((strlen(baseboard) == 4) ||
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
@@ -1088,10 +1088,9 @@ int checkboard(void)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info nodes[] = {
+static struct node_info nodes[] = {
 	{ "fsl,imx51-nand", MTD_DEV_TYPE_NAND, },
 };
-
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
