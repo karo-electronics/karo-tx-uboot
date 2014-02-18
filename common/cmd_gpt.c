@@ -119,6 +119,7 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	char *val, *p;
 	int p_count;
 	disk_partition_t *parts;
+	char *guid_str;
 	int errno = 0;
 	uint64_t size_ll, start_ll;
 
@@ -135,16 +136,20 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	tok = strsep(&s, ";");
 	val = extract_val(tok, "uuid_disk");
 	if (!val) {
-		free(str);
-		return -2;
+		errno = -2;
+		goto free_str;
 	}
-	if (extract_env(val, &p))
-		p = val;
-	*str_disk_guid = strdup(p);
+	if (extract_env(val, &p) == 0)
+		guid_str = strdup(p);
+	else
+		guid_str = strdup(val);
+
 	free(val);
 
-	if (strlen(s) == 0)
-		return -3;
+	if (strlen(s) == 0) {
+		errno = -3;
+		goto free_guid;
+	}
 
 	i = strlen(s) - 1;
 	if (s[i] == ';')
@@ -222,16 +227,23 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 		}
 	}
 
+	*str_disk_guid = guid_str;
 	*parts_count = p_count;
 	*partitions = parts;
 	free(str);
 
 	return 0;
-err:
-	free(str);
-	free(*str_disk_guid);
-	free(parts);
 
+err:
+	free(parts);
+free_guid:
+	free(guid_str);
+free_str:
+	free(str);
+
+	*str_disk_guid = NULL;
+	*parts_count = 0;
+	*partitions = NULL;
 	return errno;
 }
 
