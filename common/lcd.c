@@ -897,6 +897,12 @@ static inline void fb_put_word(uchar **fb, uchar **from)
 #endif
 #endif /* CONFIG_BMP_16BPP */
 
+static inline bmp_color_table_entry_t *get_color_table(bmp_image_t *bmp)
+{
+	bmp_header_t *bh = &bmp->header;
+	return (void *)bmp + offsetof(bmp_header_t, size) + bh->size;
+}
+
 int lcd_display_bitmap(ulong bmp_image, int x, int y)
 {
 #if !defined(CONFIG_MCC200)
@@ -912,6 +918,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	unsigned long pwidth = panel_info.vl_col;
 	unsigned long long colors;
 	unsigned bpix, bmp_bpix;
+	bmp_color_table_entry_t *cte;
 
 	if (!bmp || !(bmp->header.signature[0] == 'B' &&
 		bmp->header.signature[1] == 'M')) {
@@ -946,6 +953,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	debug("Display-bmp: %lu x %lu  with %llu colors\n",
 		width, height, colors);
 
+	cte = get_color_table(bmp);
 #if !defined(CONFIG_MCC200)
 	/* MCC200 LCD doesn't need CMAP, supports 1bpp b&w only */
 	if (bmp_bpix == 8) {
@@ -954,12 +962,11 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 
 		/* Set color map */
 		for (i = 0; i < colors; ++i) {
-			bmp_color_table_entry_t cte = bmp->color_table[i];
 #if !defined(CONFIG_ATMEL_LCD)
 			ushort colreg =
-				( ((cte.red)   << 8) & 0xf800) |
-				( ((cte.green) << 3) & 0x07e0) |
-				( ((cte.blue)  >> 3) & 0x001f) ;
+				( ((cte[i].red)   << 8) & 0xf800) |
+				( ((cte[i].green) << 3) & 0x07e0) |
+				( ((cte[i].blue)  >> 3) & 0x001f) ;
 #ifdef CONFIG_SYS_INVERT_COLORS
 			*cmap = 0xffff - colreg;
 #else
@@ -971,7 +978,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 			cmap++;
 #endif
 #else /* CONFIG_ATMEL_LCD */
-			lcd_setcolreg(i, cte.red, cte.green, cte.blue);
+			lcd_setcolreg(i, cte[i].red, cte[i].green, cte[i].blue);
 #endif
 		}
 	}
@@ -1035,9 +1042,9 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 					int i = *bmap++;
 
 					fb[3] = 0; /* T */
-					fb[0] = bmp->color_table[i].blue;
-					fb[1] = bmp->color_table[i].green;
-					fb[2] = bmp->color_table[i].red;
+					fb[0] = cte[i].blue;
+					fb[1] = cte[i].green;
+					fb[2] = cte[i].red;
 					fb += sizeof(uint32_t) / sizeof(*fb);
 				} else if (bpix == 16) {
 					*(uint16_t *)fb = cmap_base[*(bmap++)];
