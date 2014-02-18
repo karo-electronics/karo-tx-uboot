@@ -486,6 +486,7 @@ int board_eth_init(bd_t *bis)
 	ret = cpu_eth_init(bis);
 	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
+
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -1029,8 +1030,8 @@ static void tx51_init_mac(void)
 		return;
 	}
 
-	eth_setenv_enetaddr("ethaddr", mac);
 	printf("MAC addr from fuse: %pM\n", mac);
+	eth_setenv_enetaddr("ethaddr", mac);
 }
 
 int board_late_init(void)
