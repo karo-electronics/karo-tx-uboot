@@ -831,6 +831,23 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.lower_margin	= 525 - 480 - 35,
 		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
+	{
+		/* Emerging ET070001DM6 800 x 480 display.
+		 * 152.4 mm x 91.44 mm display area.
+		 */
+		.name		= "ET070001DM6",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= 0,
+	},
 #else
 	{
 		/* HannStar HSD100PXN1
