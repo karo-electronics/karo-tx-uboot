@@ -536,12 +536,14 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
+static u16 tx51_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 1600,
 	.vl_row = 1200,
 
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.cmap = tx51_cmap,
 };
 
 static struct fb_videomode tx51_fb_modes[] = {
@@ -763,13 +765,15 @@ static const struct gpio stk5_lcd_gpios[] = {
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	char *vm;
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	const char *vm;
 	unsigned long val;
 	int refresh = 60;
 	struct fb_videomode *p = &tx51_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
-	int pix_fmt = 0;
+	int pix_fmt;
+	int lcd_bus_width;
 	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
 	unsigned long di_clk_rate = 65000000;
 
@@ -787,13 +791,13 @@ void lcd_ctrl_init(void *lcdbase)
 
 	karo_fdt_move_fdt();
 
-	vm = getenv("video_mode");
-	if (vm == NULL) {
+	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
-	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+	vm = video_mode;
+	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
@@ -873,14 +877,6 @@ void lcd_ctrl_init(void *lcdbase)
 			break;
 
 		default:
-			if (!pix_fmt) {
-				char *tmp;
-
-				pix_fmt = IPU_PIX_FMT_RGB24;
-				tmp = strchr(vm, ':');
-				if (tmp)
-					vm = tmp;
-			}
 			if (*vm != '\0')
 				vm++;
 		}
@@ -917,32 +913,46 @@ void lcd_ctrl_init(void *lcdbase)
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
-		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len)
-		/ 1000);
+		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
+				1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 		PICOS2KHZ(p->pixclock) / 1000,
 		PICOS2KHZ(p->pixclock) % 1000);
 
 	if (p != &fb_mode) {
 		int ret;
-		char *modename = getenv("video_mode");
 
-		printf("Creating new display-timing node from '%s'\n",
-			modename);
-		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+		debug("Creating new display-timing node from '%s'\n",
+			video_mode);
+		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
 		if (ret)
 			printf("Failed to create new display-timing node from '%s': %d\n",
-				modename, ret);
+				video_mode, ret);
 	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
 
-	debug("Initializing FB driver\n");
-	if (!pix_fmt)
+	lcd_bus_width = karo_fdt_get_lcd_bus_width(working_fdt, 24);
+	switch (lcd_bus_width) {
+	case 24:
 		pix_fmt = IPU_PIX_FMT_RGB24;
+		break;
 
+	case 18:
+		pix_fmt = IPU_PIX_FMT_RGB666;
+		break;
+
+	case 16:
+		pix_fmt = IPU_PIX_FMT_RGB565;
+		break;
+
+	default:
+		lcd_enabled = 0;
+		printf("Invalid LCD bus width: %d\n", lcd_bus_width);
+		return;
+	}
 	if (karo_load_splashimage(0) == 0) {
 		int ret;
 		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
@@ -1081,12 +1091,14 @@ static const char *tx51_touchpanels[] = {
 
 void ft_board_setup(void *blob, bd_t *bd)
 {
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob, tx51_touchpanels,
 				ARRAY_SIZE(tx51_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
-	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
+	karo_fdt_update_fb_mode(blob, video_mode);
 }
-#endif
+#endif /* CONFIG_OF_BOARD_SETUP */
