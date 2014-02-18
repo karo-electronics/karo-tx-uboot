@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2014 <LW@KARO-electronics.de>
  *
  * SPDX-License-Identifier:      GPL-2.0
  *
@@ -49,7 +49,7 @@
 #endif /* CONFIG_LCD */
 
 /*
- * Memory configurations
+ * Memory configuration options
  */
 #ifndef CONFIG_SYS_SDRAM_CLK
 #define CONFIG_SYS_SDRAM_CLK		166
@@ -59,24 +59,13 @@
 #if CONFIG_NR_DRAM_BANKS > 1
 #define PHYS_SDRAM_2			0x98000000	/* Base address of bank 2 */
 #define PHYS_SDRAM_2_SIZE		SZ_128M
-#else
-#define TX51_MOD_SUFFIX			"0"
 #endif
 #define CONFIG_STACKSIZE		SZ_128K
 #define CONFIG_SYS_MALLOC_LEN		SZ_8M
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1 + SZ_4M)	/* 4 MB RAM test */
-#if CONFIG_SYS_SDRAM_CLK == 200
-#define CONFIG_SYS_CLKTL_CBCDR		0x59e35180
-#define TX51_MOD_SUFFIX			"1"
-#elif CONFIG_SYS_SDRAM_CLK == 166
+#define CONFIG_SYS_SDRAM_CLK		166
 #define CONFIG_SYS_CLKTL_CBCDR		0x01e35180
-#ifndef TX51_MOD_SUFFIX
-#define TX51_MOD_SUFFIX			"2"
-#endif
-#else
-#error Invalid SDRAM clock
-#endif
 
 /*
  * U-Boot general configurations
@@ -120,7 +109,7 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_BOOTARGS			"console=ttymxc0,115200 ro debug panic=1"
+#define CONFIG_BOOTARGS			"init=/linuxrc console=ttymxc0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
 #define CONFIG_LOADADDR			94000000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
@@ -128,8 +117,10 @@
 #define CONFIG_HW_WATCHDOG
 
 /*
- * Extra Environments
+ * Extra Environment Settings
  */
+#define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_CPU_CLK)
+
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
@@ -137,7 +128,6 @@
 	" root=/dev/mmcblk0p3 rootwait\0"				\
 	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
-	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0"\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
@@ -147,13 +137,14 @@
 	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
 	"run bootm_cmd\0"						\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
+	"cpu_clk=" CONFIG_SYS_CPU_CLK_STR "\0"				\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
-	"cpu_clk=" xstr(CONFIG_SYS_CPU_CLK) "\0"			\
 	"fdtaddr=91000000\0"						\
 	"fdtsave=nand erase.part dtb;nand write ${fdtaddr} dtb ${fdtsize}\0" \
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
@@ -216,8 +207,6 @@
 #define CONFIG_MXC_NAND_IP_REGS_BASE	NFC_BASE_ADDR
 #define CONFIG_MXC_NAND_HWECC
 #define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_SYS_MAX_FLASH_SECT	1024
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
@@ -228,14 +217,8 @@
 #define CONFIG_ENV_SIZE			0x20000 /* 128 KiB */
 #define CONFIG_ENV_RANGE		0x60000
 #endif
-#ifndef CONFIG_SYS_NO_FLASH
-#define CONFIG_CMD_FLASH
-#define CONFIG_SYS_NAND_BASE		0xa0000000
-#define CONFIG_FIT
-#else
 #define CONFIG_SYS_NAND_BASE		0x00000000
 #define CONFIG_CMD_ROMUPDATE
-#endif
 #endif /* CONFIG_CMD_NAND */
 
 /*
@@ -274,12 +257,12 @@
 	xstr(CONFIG_ENV_RANGE)						\
 	"(env),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),256k(dtb),?(userfs),512k@0x7f80000(bbt)ro"
+	"(env2),4m(linux),16m(rootfs),108032k(userfs),256k(dtb),512k@0x7f80000(bbt)ro"
 #else
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"1m(u-boot),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),256k(dtb),?(userfs),512k@0x7f80000(bbt)ro"
+	"(env),4m(linux),16m(rootfs),108416k(userfs),256k(dtb),512k@0x7f80000(bbt)ro"
 #endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
