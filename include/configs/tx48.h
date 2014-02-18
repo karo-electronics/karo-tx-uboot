@@ -107,7 +107,7 @@
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"init=/linuxrc console=ttyO0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
 #define CONFIG_LOADADDR			83000000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
@@ -117,39 +117,35 @@
  * Extra Environment Settings
  */
 #define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_MPU_CLK)
-#ifdef CONFIG_OF_LIBFDT
-#define TX48_BOOTM_CMD							\
-	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"
-#define TX48_MTDPARTS_CMD ""
-#else
-#define TX48_BOOTM_CMD							\
-	"bootm_cmd=bootm\0"
-#define TX48_MTDPARTS_CMD " ${mtdparts}"
-#endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
+	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p2 rootwait\0"				\
-	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
-	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0"\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
-	" fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
-	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
-	" nboot linux;run bootm_cmd\0"					\
-	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
-	" run bootm_cmd\0"						\
-	TX48_BOOTM_CMD							\
+	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
+	" ip=dhcp\0"							\
+	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
+	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	";nboot linux\0"						\
+	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	";fatload mmc 0 ${loadaddr} uImage\0"				\
+	"bootcmd_nand=set autostart no;run bootargs_ubifs"		\
+	";nboot linux\0"						\
+	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	";dhcp\0"							\
+	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
+	"boot_mode=nand\0"						\
 	"cpu_clk=" CONFIG_SYS_CPU_CLK_STR "\0"				\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
-	TX48_MTDPARTS_CMD						\
-	" ${append_bootargs}\0"			\
+	" ${append_bootargs}\0"						\
 	"fdtaddr=81000000\0"						\
-	"fdtsave=nand erase.part dtb;nand write ${fdtaddr} dtb ${fdtsize}\0" \
+	"fdtsave=nand erase.part dtb"					\
+	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
