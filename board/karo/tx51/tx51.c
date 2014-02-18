@@ -354,7 +354,10 @@ static struct tx51_esdhc_cfg {
 	},
 };
 
-#define to_tx51_esdhc_cfg(p) container_of(p, struct tx51_esdhc_cfg, cfg)
+static inline struct tx51_esdhc_cfg *to_tx51_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+{
+	return container_of(cfg, struct tx51_esdhc_cfg, cfg);
+}
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -385,8 +388,6 @@ int board_mmc_init(bd_t *bis)
 						cfg->num_pads);
 		cfg->cfg.sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 
-		fsl_esdhc_initialize(bis, &cfg->cfg);
-
 		ret = gpio_request_one(cfg->cd_gpio,
 				GPIOF_INPUT, "MMC CD");
 		if (ret) {
@@ -394,6 +395,9 @@ int board_mmc_init(bd_t *bis)
 				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
 			continue;
 		}
+
+		debug("%s: Initializing MMC slot %d\n", __func__, i);
+		fsl_esdhc_initialize(bis, &cfg->cfg);
 
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
