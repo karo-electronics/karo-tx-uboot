@@ -96,7 +96,7 @@ int karo_load_splashimage(int mode)
 		return 0;
 	}
 
-	if (tstc())
+	if (had_ctrlc())
 		return -ENODEV;
 
 	ret = karo_load_part(splashimage, (void *)la, fbsize);
