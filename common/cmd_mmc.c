@@ -138,17 +138,12 @@ static int boot_part_access(struct mmc *mmc, u8 ack, u8 part_num, u8 access)
 	err = mmc_boot_part_access(mmc, ack, part_num, access);
 
 	if ((err == 0) && (access != 0)) {
-		printf("\t\t\t!!!Notice!!!\n");
+		printf("Notice!\n");
 
-		printf("!You must close EMMC boot Partition");
-		printf("after all images are written\n");
-
-		printf("!EMMC boot partition has continuity");
-		printf("at image writing time.\n");
-
-		printf("!So, do not close the boot partition");
-		printf("before all images are written.\n");
-		return 0;
+		printf("You must close EMMC boot Partition after all images are written\n");
+		printf("EMMC boot partition has continuity at image writing time.\n");
+		printf("So, do not close the boot partition before all images are written.\n");
+		return CMD_RET_SUCCESS;
 	} else if ((err == 0) && (access == 0))
 		return CMD_RET_SUCCESS;
 	else if ((err != 0) && (access != 0)) {
