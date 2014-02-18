@@ -376,7 +376,7 @@ int gpt_fill_pte(gpt_header *gpt_h, gpt_entry *gpt_e,
 			offset += partitions[i].size;
 		}
 		if (offset >= gpt_h->last_usable_lba) {
-			printf("Partitions layout exceds disk size\n");
+			printf("Partitions layout exceeds disk size\n");
 			return -1;
 		}
 		/* partition ending lba */
