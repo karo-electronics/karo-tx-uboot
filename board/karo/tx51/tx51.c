@@ -1109,7 +1109,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	karo_fdt_fixup_touchpanel(blob, tx51_touchpanels,
 				ARRAY_SIZE(tx51_touchpanels));
-	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
+	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
 	karo_fdt_update_fb_mode(blob, video_mode);
 }
 #endif /* CONFIG_OF_BOARD_SETUP */
