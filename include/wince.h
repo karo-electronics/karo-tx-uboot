@@ -255,7 +255,6 @@ typedef struct {
 	void	     *eEntryPoint;
 	void	     *eRamStart;
 	unsigned int eRamLen;
-	ce_driver_globals *eDrvGlb;
 
 	unsigned char parseState;
 	unsigned int parseChkSum;
