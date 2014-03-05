@@ -1,7 +1,7 @@
 /*
  * tx48.h
  *
- * Copyright (C) 2012 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2014 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * based on: am335x_evm
  * Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
@@ -13,8 +13,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_OMAP
-#define CONFIG_AM33XX
+#define CONFIG_AM33XX			/* must be set before including omap.h */
 
 #include <asm/sizes.h>
 #include <asm/arch/omap.h>
@@ -22,8 +21,9 @@
 /*
  * Ka-Ro TX48 board - SoC configuration
  */
+#define CONFIG_OMAP
 #define CONFIG_AM33XX_GPIO
-#define CONFIG_SYS_HZ			1000		/* Ticks per second */
+#define CONFIG_SYS_HZ			1000	/* Ticks per second */
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SKIP_LOWLEVEL_INIT
@@ -71,7 +71,7 @@
  */
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PROMPT		"TX48 U-Boot > "
-#define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
+#define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 						/* Print buffer size */
@@ -89,17 +89,8 @@
  * Flattened Device Tree (FDT) support
 */
 #define CONFIG_OF_LIBFDT
-#ifdef CONFIG_OF_LIBFDT /* set via cmdline parameter thru boards.cfg */
-#define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_BOARD_SETUP
-#define CONFIG_MACH_TYPE		(-1)
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
-#else
-#ifndef MACH_TYPE_TIAM335EVM
-#define MACH_TYPE_TIAM335EVM		3589	 /* Until the next sync */
-#endif
-#define CONFIG_MACH_TYPE		MACH_TYPE_TIAM335EVM
-#endif
 
 /*
  * Boot Linux
@@ -115,57 +106,56 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_BOOTARGS			"console=ttyO0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_BOOTARGS			"init=/linuxrc console=ttyO0,115200 ro debug panic=1"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
 #define CONFIG_LOADADDR			83000000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 #define CONFIG_HW_WATCHDOG
 
 /*
- * Extra Environments
+ * Extra Environment Settings
  */
-#ifdef CONFIG_OF_LIBFDT
-#define TX48_BOOTM_CMD							\
-	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"
-#define TX48_MTDPARTS_CMD ""
-#else
-#define TX48_BOOTM_CMD							\
-	"bootm_cmd=bootm\0"
-#define TX48_MTDPARTS_CMD " ${mtdparts}"
-#endif
+#define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_MPU_CLK)
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
+	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p2 rootwait\0"				\
-	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
-	"nfsroot=/tftpboot/rootfs\0"					\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0"\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
-	" fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
-	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
-	" nboot linux;run bootm_cmd\0"					\
-	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
-	" run bootm_cmd\0"						\
-	TX48_BOOTM_CMD							\
+	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
+	" ip=dhcp\0"							\
+	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
+	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	";nboot linux\0"						\
+	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	";fatload mmc 0 ${loadaddr} uImage\0"				\
+	"bootcmd_nand=set autostart no;run bootargs_ubifs"		\
+	";nboot linux\0"						\
+	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	";dhcp\0"							\
+	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
+	"boot_mode=nand\0"						\
+	"cpu_clk=" CONFIG_SYS_CPU_CLK_STR "\0"				\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
-	TX48_MTDPARTS_CMD						\
-	" ${append_bootargs}\0"			\
-	"cpu_clk=" xstr(CONFIG_SYS_MPU_CLK) "\0"			\
+	" ${append_bootargs}\0"						\
 	"fdtaddr=81000000\0"						\
-	"fdtsave=nand erase.part dtb;nand write ${fdtaddr} dtb ${fdtsize}\0" \
+	"fdtsave=nand erase.part dtb"					\
+	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
 
 #define MTD_NAME			"omap2-nand.0"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
+#define CONFIG_FDT_FIXUP_PARTITIONS
 
 /*
  * U-Boot Commands
