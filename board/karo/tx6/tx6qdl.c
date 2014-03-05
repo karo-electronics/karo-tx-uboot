@@ -861,6 +861,12 @@ static struct fb_videomode tx6_fb_modes[] = {
 };
 
 static int lcd_enabled = 1;
+static int lcd_bl_polarity;
+
+static int lcd_backlight_polarity(void)
+{
+	return lcd_bl_polarity;
+}
 
 void lcd_enable(void)
 {
@@ -879,7 +885,8 @@ void lcd_enable(void)
 		udelay(100);
 		gpio_set_value(TX6_LCD_RST_GPIO, 1);
 		udelay(300000);
-		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, is_lvds());
+		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO,
+			lcd_backlight_polarity());
 	}
 }
 
@@ -895,7 +902,8 @@ void lcd_panel_disable(void)
 {
 	if (lcd_enabled) {
 		debug("Switching LCD off\n");
-		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO, !is_lvds());
+		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO,
+			!lcd_backlight_polarity());
 		gpio_set_value(TX6_LCD_RST_GPIO, 0);
 		gpio_set_value(TX6_LCD_PWR_GPIO, 0);
 	}
@@ -973,6 +981,7 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 
 	karo_fdt_move_fdt();
+	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 
 	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
