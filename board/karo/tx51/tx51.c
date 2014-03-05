@@ -269,6 +269,11 @@ int board_init(void)
 {
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
+
+	if (ctrlc() || (wrsr & WRSR_TOUT)) {
+		printf("CTRL-C detected; Skipping boot critical setup\n");
+		return 1;
+	}
 	return 0;
 }
 
@@ -354,7 +359,10 @@ static struct tx51_esdhc_cfg {
 	},
 };
 
-#define to_tx51_esdhc_cfg(p) container_of(p, struct tx51_esdhc_cfg, cfg)
+static inline struct tx51_esdhc_cfg *to_tx51_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+{
+	return container_of(cfg, struct tx51_esdhc_cfg, cfg);
+}
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -382,8 +390,6 @@ int board_mmc_init(bd_t *bis)
 						cfg->num_pads);
 		cfg->cfg.sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 
-		fsl_esdhc_initialize(bis, &cfg->cfg);
-
 		ret = gpio_request_one(cfg->cd_gpio,
 				GPIOF_INPUT, "MMC CD");
 		if (ret) {
@@ -391,6 +397,9 @@ int board_mmc_init(bd_t *bis)
 				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
 			continue;
 		}
+
+		debug("%s: Initializing MMC slot %d\n", __func__, i);
+		fsl_esdhc_initialize(bis, &cfg->cfg);
 
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
@@ -474,6 +483,7 @@ int board_eth_init(bd_t *bis)
 	ret = cpu_eth_init(bis);
 	if (ret)
 		printf("cpu_eth_init() failed: %d\n", ret);
+
 	return ret;
 }
 #endif /* CONFIG_FEC_MXC */
@@ -533,12 +543,14 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
+static u16 tx51_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 1600,
 	.vl_row = 1200,
 
 	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.cmap = tx51_cmap,
 };
 
 static struct fb_videomode tx51_fb_modes[] = {
@@ -768,13 +780,15 @@ static const struct gpio stk5_lcd_gpios[] = {
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	char *vm;
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	const char *vm;
 	unsigned long val;
 	int refresh = 60;
 	struct fb_videomode *p = &tx51_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
-	int pix_fmt = 0;
+	int pix_fmt;
+	int lcd_bus_width;
 	ipu_di_clk_parent_t di_clk_parent = DI_PCLK_PLL3;
 	unsigned long di_clk_rate = 65000000;
 
@@ -783,7 +797,7 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
-	if (tstc() || (wrsr & WRSR_TOUT)) {
+	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		setenv("splashimage", NULL);
@@ -793,13 +807,13 @@ void lcd_ctrl_init(void *lcdbase)
 	karo_fdt_move_fdt();
 	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 
-	vm = getenv("video_mode");
-	if (vm == NULL) {
+	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
-	if (karo_fdt_get_fb_mode(working_fdt, vm, &fb_mode) == 0) {
+	vm = video_mode;
+	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
@@ -879,14 +893,6 @@ void lcd_ctrl_init(void *lcdbase)
 			break;
 
 		default:
-			if (!pix_fmt) {
-				char *tmp;
-
-				pix_fmt = IPU_PIX_FMT_RGB24;
-				tmp = strchr(vm, ':');
-				if (tmp)
-					vm = tmp;
-			}
 			if (*vm != '\0')
 				vm++;
 		}
@@ -923,32 +929,46 @@ void lcd_ctrl_init(void *lcdbase)
 
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
-		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len)
-		/ 1000);
+		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
+				1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 		PICOS2KHZ(p->pixclock) / 1000,
 		PICOS2KHZ(p->pixclock) % 1000);
 
 	if (p != &fb_mode) {
 		int ret;
-		char *modename = getenv("video_mode");
 
-		printf("Creating new display-timing node from '%s'\n",
-			modename);
-		ret = karo_fdt_create_fb_mode(working_fdt, modename, p);
+		debug("Creating new display-timing node from '%s'\n",
+			video_mode);
+		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
 		if (ret)
 			printf("Failed to create new display-timing node from '%s': %d\n",
-				modename, ret);
+				video_mode, ret);
 	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
 
-	debug("Initializing FB driver\n");
-	if (!pix_fmt)
+	lcd_bus_width = karo_fdt_get_lcd_bus_width(working_fdt, 24);
+	switch (lcd_bus_width) {
+	case 24:
 		pix_fmt = IPU_PIX_FMT_RGB24;
+		break;
 
+	case 18:
+		pix_fmt = IPU_PIX_FMT_RGB666;
+		break;
+
+	case 16:
+		pix_fmt = IPU_PIX_FMT_RGB565;
+		break;
+
+	default:
+		lcd_enabled = 0;
+		printf("Invalid LCD bus width: %d\n", lcd_bus_width);
+		return;
+	}
 	if (karo_load_splashimage(0) == 0) {
 		int ret;
 		struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)MXC_CCM_BASE;
@@ -988,22 +1008,20 @@ static void stk5v3_board_init(void)
 static void tx51_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
-	int ret;
 
-	if (tstc() || (wrsr & WRSR_TOUT))
+	if (had_ctrlc() || (wrsr & WRSR_TOUT))
 		return;
 
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
 
-	ret = mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK);
-	if (ret != 0) {
+	if (mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
+		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
+		printf("CPU clock set to %lu.%03lu MHz\n",
+			cpu_clk / 1000000, cpu_clk / 1000 % 1000);
+	} else {
 		printf("Error: Failed to set CPU clock to %lu MHz\n", cpu_clk);
-		return;
 	}
-	printf("CPU clock set to %u.%03u MHz\n",
-		mxc_get_clock(MXC_ARM_CLK) / 1000000,
-		mxc_get_clock(MXC_ARM_CLK) / 1000 % 1000);
 }
 
 static void tx51_init_mac(void)
@@ -1016,8 +1034,8 @@ static void tx51_init_mac(void)
 		return;
 	}
 
-	eth_setenv_enetaddr("ethaddr", mac);
 	printf("MAC addr from fuse: %pM\n", mac);
+	eth_setenv_enetaddr("ethaddr", mac);
 }
 
 int board_late_init(void)
@@ -1032,8 +1050,9 @@ int board_late_init(void)
 	if (!baseboard)
 		goto exit;
 
+	printf("Baseboard: %s\n", baseboard);
+
 	if (strncmp(baseboard, "stk5", 4) == 0) {
-		printf("Baseboard: %s\n", baseboard);
 		if ((strlen(baseboard) == 4) ||
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
@@ -1053,7 +1072,9 @@ int board_late_init(void)
 
 exit:
 	tx51_init_mac();
+
 	gpio_set_value(TX51_RESET_OUT_GPIO, 1);
+	clear_ctrlc();
 	return ret;
 }
 
@@ -1072,10 +1093,9 @@ int checkboard(void)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info nodes[] = {
+static struct node_info nodes[] = {
 	{ "fsl,imx51-nand", MTD_DEV_TYPE_NAND, },
 };
-
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
@@ -1087,12 +1107,19 @@ static const char *tx51_touchpanels[] = {
 
 void ft_board_setup(void *blob, bd_t *bd)
 {
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	int ret;
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
+
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob, tx51_touchpanels,
 				ARRAY_SIZE(tx51_touchpanels));
-	karo_fdt_fixup_usb_otg(blob, "fsl,imx-otg", "fsl,usbphy");
-	karo_fdt_update_fb_mode(blob, getenv("video_mode"));
+	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
+	karo_fdt_update_fb_mode(blob, video_mode);
 }
-#endif
+#endif /* CONFIG_OF_BOARD_SETUP */
