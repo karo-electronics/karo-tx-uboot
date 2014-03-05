@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2014 <LW@KARO-electronics.de>
  *
  * SPDX-License-Identifier:      GPL-2.0
  *
@@ -47,7 +47,7 @@
 #endif
 
 /*
- * Memory configurations
+ * Memory configuration options
  */
 #define PHYS_SDRAM_1			0x70000000	/* Base address of bank 1 */
 #define PHYS_SDRAM_1_SIZE		SZ_512M
@@ -61,7 +61,7 @@
 #define CONFIG_STACKSIZE		SZ_128K
 #define CONFIG_SYS_MALLOC_LEN		SZ_8M
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
-#define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1 + SZ_4M)	/* 4 MB RAM test */
+#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_4M)
 #define CONFIG_SYS_SDRAM_CLK		400
 
 /*
@@ -112,7 +112,7 @@
 #define CONFIG_HW_WATCHDOG
 
 /*
- * Extra Environments
+ * Extra Environment Settings
  */
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
@@ -171,10 +171,14 @@
  */
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART1_BASE
-#define CONFIG_MXC_GPIO
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
+
+/*
+ * GPIO driver
+ */
+#define CONFIG_MXC_GPIO
 
 /*
  * Ethernet Driver
@@ -220,8 +224,6 @@
 #define CONFIG_MXC_NAND_IP_REGS_BASE	NFC_BASE_ADDR
 #define CONFIG_MXC_NAND_HWECC
 #define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_SYS_MAX_FLASH_SECT	1024
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
@@ -232,14 +234,8 @@
 #define CONFIG_ENV_SIZE			0x20000 /* 128 KiB */
 #define CONFIG_ENV_RANGE		0x60000
 #endif
-#ifndef CONFIG_SYS_NO_FLASH
-#define CONFIG_CMD_FLASH
-#define CONFIG_SYS_NAND_BASE		0xa0000000
-#define CONFIG_FIT
-#else
 #define CONFIG_SYS_NAND_BASE		0x00000000
 #define CONFIG_CMD_ROMUPDATE
-#endif
 #endif /* CONFIG_CMD_NAND */
 
 /*
