@@ -76,15 +76,16 @@
 #else
 #define CONFIG_SYS_PROMPT		"TX6DL U-Boot > "
 #endif
-#define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-				sizeof(CONFIG_SYS_PROMPT) + 16) /* Print buffer size */
-#define CONFIG_SYS_MAXARGS		64		/* Max number of command args */
+#define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
+#define CONFIG_SYS_PBSIZE						\
+	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
+						/* Print buffer size */
+#define CONFIG_SYS_MAXARGS		64	/* Max number of command args */
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-					/* Boot argument buffer size */
-#define CONFIG_VERSION_VARIABLE		/* U-BOOT version */
-#define CONFIG_AUTO_COMPLETE		/* Command auto complete */
-#define CONFIG_CMDLINE_EDITING		/* Command history etc */
+						/* Boot argument buffer size */
+#define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
+#define CONFIG_AUTO_COMPLETE			/* Command auto complete */
+#define CONFIG_CMDLINE_EDITING			/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
 #define CONFIG_SYS_NO_FLASH
@@ -97,13 +98,6 @@
 #ifdef CONFIG_OF_LIBFDT
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_BOARD_SETUP
-#ifdef CONFIG_MX6Q
-#define CONFIG_DEFAULT_DEVICE_TREE	tx6q
-#define CONFIG_ARCH_DEVICE_TREE		mx6q
-#else
-#define CONFIG_DEFAULT_DEVICE_TREE	tx6dl
-#define CONFIG_ARCH_DEVICE_TREE		mx6dl
-#endif
 #define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif /* CONFIG_OF_LIBFDT */
 #endif /* CONFIG_MFG */
@@ -119,7 +113,6 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_INITRD_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_SERIAL_TAG
 #ifndef CONFIG_MFG
 #define CONFIG_BOOTDELAY		1
 #else
@@ -313,7 +306,6 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
-#define CONFIG_SYS_FSL_ESDHC_NUM	2
 
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT

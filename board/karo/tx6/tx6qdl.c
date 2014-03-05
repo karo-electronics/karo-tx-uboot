@@ -539,9 +539,6 @@ int board_mmc_init(bd_t *bis)
 		struct tx6_esdhc_cfg *cfg = &tx6qdl_esdhc_cfg[i];
 		int ret;
 
-		if (i >= CONFIG_SYS_FSL_ESDHC_NUM)
-			break;
-
 		cfg->cfg.sdhc_clk = mxc_get_clock(cfg->clkid);
 		imx_iomux_v3_setup_multiple_pads(cfg->pads, cfg->num_pads);
 
