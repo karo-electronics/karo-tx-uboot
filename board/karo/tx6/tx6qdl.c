@@ -40,7 +40,7 @@
 
 #define TX6_FEC_RST_GPIO		IMX_GPIO_NR(7, 6)
 #define TX6_FEC_PWR_GPIO		IMX_GPIO_NR(3, 20)
-#define TX6_FEC_INT_GPIO		IMX_GPIO_NR(2, 4)
+#define TX6_FEC_INT_GPIO		IMX_GPIO_NR(7, 1)
 #define TX6_LED_GPIO			IMX_GPIO_NR(2, 20)
 
 #define TX6_LCD_PWR_GPIO		IMX_GPIO_NR(2, 31)
@@ -828,6 +828,23 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.lower_margin	= 525 - 480 - 35,
 		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
+	{
+		/* Emerging ET070001DM6 800 x 480 display.
+		 * 152.4 mm x 91.44 mm display area.
+		 */
+		.name		= "ET070001DM6",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 216 - 128,
+		.hsync_len	= 128,
+		.right_margin	= 1056 - 800 - 216,
+		.upper_margin	= 35 - 2,
+		.vsync_len	= 2,
+		.lower_margin	= 525 - 480 - 35,
+		.sync		= 0,
+	},
 #else
 	{
 		/* HannStar HSD100PXN1
@@ -1338,6 +1355,11 @@ void ft_board_setup(void *blob, bd_t *bd)
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
 	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	int ret;
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
 
 	if (stk5_v5)
 		karo_fdt_enable_node(blob, "stk5led", 0);
