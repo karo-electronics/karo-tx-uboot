@@ -1349,6 +1349,11 @@ void ft_board_setup(void *blob, bd_t *bd)
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
 	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	int ret;
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
 
 	if (stk5_v5)
 		karo_fdt_enable_node(blob, "stk5led", 0);
