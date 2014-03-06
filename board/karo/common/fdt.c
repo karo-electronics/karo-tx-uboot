@@ -734,6 +734,7 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 	return off;
 }
 
+#ifdef CONFIG_SYS_LVDS_IF
 int karo_fdt_get_lcd_bus_width(const void *blob, int default_width)
 {
 	int off = fdt_path_offset(blob, "display");
@@ -786,6 +787,7 @@ u8 karo_fdt_get_lvds_channels(const void *blob)
 	}
 	return lvds_chan_mask;
 }
+#endif
 
 int karo_fdt_get_backlight_polarity(const void *blob)
 {
