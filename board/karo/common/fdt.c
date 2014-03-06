@@ -789,13 +789,25 @@ u8 karo_fdt_get_lvds_channels(const void *blob)
 
 int karo_fdt_get_backlight_polarity(const void *blob)
 {
-	int off = fdt_path_offset(blob, "/backlight");
+#ifdef CONFIG_SYS_LVDS_IF
+	const char *backlight_node = "/backlight0";
+#else
+	const char *backlight_node = "/backlight";
+#endif
+	int off = fdt_path_offset(blob, "backlight"); /* first try alias */
 	const struct fdt_property *prop;
 	int len;
 
 	if (off < 0) {
-		printf("/backlight node not found in DT\n");
-		return off;
+		/*
+		 * if no 'backlight' alias exists try finding '/backlight0'
+		 * or '/backlight' depending on LVDS or not
+		 */
+		off = fdt_path_offset(blob, backlight_node);
+		if (off < 0) {
+			printf("/backlight node not found in DT\n");
+			return off;
+		}
 	}
 
 	prop = fdt_get_property(blob, off, "pwms", &len);
