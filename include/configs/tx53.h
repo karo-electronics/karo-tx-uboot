@@ -40,12 +40,6 @@
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
 
-#ifdef CONFIG_SYS_LVDS_IF
-#define is_lvds()			1
-#else
-#define is_lvds()			0
-#endif
-
 /*
  * Memory configuration options
  */
