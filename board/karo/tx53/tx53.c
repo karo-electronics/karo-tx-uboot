@@ -1264,6 +1264,9 @@ void ft_board_setup(void *blob, bd_t *bd)
 	if (ret)
 		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
 
+	if (stk5_v5)
+		karo_fdt_enable_node(blob, "stk5led", 0);
+
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
