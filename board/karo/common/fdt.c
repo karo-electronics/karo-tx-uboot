@@ -336,21 +336,32 @@ static inline void karo_fdt_set_lcd_pins(void *blob, const char *name)
 void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
 	int ret;
-	const char *xcvr_status = xcvr_present ? "disabled" : NULL;
+	const char *xcvr_status = "disabled";
 	const char *otg_mode = getenv("otg_mode");
 
-#ifndef CONFIG_SYS_LVDS_IF
 	if (xcvr_present) {
 		if (karo_fdt_flexcan_enabled(blob)) {
-			karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
-			xcvr_status = NULL;
-		} else {
+			if (!is_lvds()) {
+				debug("Changing LCD to use 23bits only\n");
+				karo_fdt_set_lcd_pins(blob, "lcdif_23bit_pins_a");
+				xcvr_status = NULL;
+			}
+		} else if (!is_lvds()) {
+			debug("Changing LCD to use 24bits\n");
 			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 		}
 	} else {
-		karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
+		int off = fdt_path_offset(blob, "can0");
+
+		if (off >= 0)
+			fdt_delprop(blob, off, "xceiver-supply");
+		off = fdt_path_offset(blob, "can1");
+		if (off >= 0)
+			fdt_delprop(blob, off, "xceiver-supply");
+		if (!is_lvds())
+			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
-#endif
+
 	if (otg_mode && strcmp(otg_mode, "host") == 0)
 		karo_fdt_enable_node(blob, "can1", 0);
 
