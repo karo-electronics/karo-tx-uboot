@@ -209,7 +209,7 @@ static int karo_fdt_disable_node_phandle(void *blob, const char *parent,
 
 	ph = fdt_getprop(blob, off, name, NULL);
 	if (ph == NULL) {
-		printf("Failed to find '%s' phandle in node '%s'\n", name,
+		debug("Failed to find '%s' phandle in node '%s'\n", name,
 			fdt_get_name(blob, off, NULL));
 		return -FDT_ERR_NOTFOUND;
 	}
@@ -250,6 +250,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	} else if (otg_mode && strcmp(otg_mode, "otg") == 0) {
 		debug("Setting dr_mode to 'host'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "otg");
+		disable_phy_pins = 0;
 	} else {
 		if (otg_mode && strcmp(otg_mode, "none") != 0)
 			printf("Invalid 'otg_mode' setting '%s'; disabling usbotg port\n",
@@ -272,7 +273,11 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 			goto out;
 
 		ret = karo_fdt_disable_node_phandle(blob, node, phy);
+	} else if (disable_phy_pins) {
+		debug("Removing 'vbus-supply' from usbotg node\n");
+		fdt_delprop(blob, off, "vbus-supply");
 	}
+
 out:
 	if (ret)
 		printf("Failed to update usbotg: %s\n", fdt_strerror(ret));
