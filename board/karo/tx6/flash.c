@@ -644,7 +644,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 	max_len1 = size;
 
-	printf("max_len1=%u\n", max_len1);
 	printf("Programming flash @ %08x..%08x from %p\n",
 		fcb->fw1_start_page * page_size,
 		fcb->fw1_start_page * page_size + max_len1 - 1, addr);
@@ -675,7 +674,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 	max_len2 = size;
 
-	printf("max_len2=%u\n", max_len2);
 	printf("Programming flash @ %08x..%08x from %p\n",
 		fcb->fw2_start_page * page_size,
 		fcb->fw2_start_page * page_size + max_len2 - 1, addr);
