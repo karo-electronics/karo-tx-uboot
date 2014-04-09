@@ -1123,7 +1123,7 @@ void mxc_set_sata_internal_clock(void)
 	pr_clk_val(c, __clk);					\
 }
 
-int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_mx5_showclocks(void)
 {
 	unsigned long freq;
 
@@ -1149,10 +1149,78 @@ int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
+static struct clk_lookup {
+	const char *name;
+	unsigned int index;
+} mx5_clk_lookup[] = {
+	{ "arm", MXC_ARM_CLK, },
+};
+
+int do_clocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int i;
+	unsigned long freq;
+	unsigned long ref = ~0UL;
+
+	if (argc < 2) {
+		do_mx5_showclocks();
+		return CMD_RET_SUCCESS;
+	} else if (argc == 2 || argc > 4) {
+		return CMD_RET_USAGE;
+	}
+
+	freq = simple_strtoul(argv[2], NULL, 0);
+	if (freq == 0) {
+		printf("Invalid clock frequency %lu\n", freq);
+		return CMD_RET_FAILURE;
+	}
+	if (argc > 3) {
+		ref = simple_strtoul(argv[3], NULL, 0);
+	}
+	for (i = 0; i < ARRAY_SIZE(mx5_clk_lookup); i++) {
+		if (strcasecmp(argv[1], mx5_clk_lookup[i].name) == 0) {
+			switch (mx5_clk_lookup[i].index) {
+			case MXC_ARM_CLK:
+				if (argc > 3)
+					return CMD_RET_USAGE;
+				ref = CONFIG_SYS_MX5_HCLK;
+				break;
+
+			case MXC_NFC_CLK:
+				if (argc > 3 && ref > 3) {
+					printf("Invalid clock selector value: %lu\n", ref);
+					return CMD_RET_FAILURE;
+				}
+				break;
+			}
+			printf("Setting %s clock to %lu MHz\n",
+				mx5_clk_lookup[i].name, freq);
+			if (mxc_set_clock(ref, freq, mx5_clk_lookup[i].index))
+				break;
+			freq = mxc_get_clock(mx5_clk_lookup[i].index);
+			printf("%s clock set to %lu.%03lu MHz\n",
+				mx5_clk_lookup[i].name,
+				freq / 1000000, freq / 1000 % 1000);
+			return CMD_RET_SUCCESS;
+		}
+	}
+	if (i == ARRAY_SIZE(mx5_clk_lookup)) {
+		printf("clock %s not found; supported clocks are:\n", argv[1]);
+		for (i = 0; i < ARRAY_SIZE(mx5_clk_lookup); i++) {
+			printf("\t%s\n", mx5_clk_lookup[i].name);
+		}
+	} else {
+		printf("Failed to set clock %s to %s MHz\n",
+			argv[1], argv[2]);
+	}
+	return CMD_RET_FAILURE;
+}
+
 /***************************************************/
 
 U_BOOT_CMD(
-	clocks,	CONFIG_SYS_MAXARGS, 1, do_mx5_showclocks,
-	"display clocks",
-	""
+	clocks,	4, 0, do_clocks,
+	"display/set clocks",
+	"                    - display clock settings\n"
+	"clocks <clkname> <freq>    - set clock <clkname> to <freq> MHz"
 );
