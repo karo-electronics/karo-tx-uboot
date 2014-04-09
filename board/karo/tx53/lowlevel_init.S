@@ -516,16 +516,6 @@ dcd_hdr:
 	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd9040, 0x00010000)
 	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 
-	/* Write Leveling */
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 1, mr1_val | (1 << 7)) | (1 << 9)) /* MRS: start write leveling */
-	MXC_DCD_ITEM(0x63fd901c, 0x00000000)
-	MXC_DCD_ITEM(0x63fd9048, 0x00000001)
-	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, 0, 0x63fd9048, 0x00000001)
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 1, mr1_val)) /* MRS: end write leveling */
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
-
 	/* DQS calibration */
 	MXC_DCD_ITEM(0x63fd901c, 0x04008010) /* precharge all */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
