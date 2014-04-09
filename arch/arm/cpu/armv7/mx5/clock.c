@@ -51,7 +51,7 @@ struct fixed_pll_mfd {
 	u32 mfd;
 };
 
-const struct fixed_pll_mfd fixed_mfd[] = {
+static const struct fixed_pll_mfd fixed_mfd[] = {
 	{MXC_HCLK, 24 * 16},
 };
 
@@ -341,9 +341,10 @@ void enable_usb_phy2_clk(unsigned char enable)
  */
 static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 {
-	uint32_t ctrl, op, mfd, mfn, mfi, pdf, ret;
+	uint32_t ctrl, op;
+	int mfd, mfn, mfi, pdf, ret;
 	uint64_t refclk, temp;
-	int32_t mfn_abs;
+	uint32_t mfn_abs;
 
 	ctrl = readl(&pll->ctrl);
 
@@ -370,9 +371,9 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	if (mfn >= 0x04000000) {
 		mfn |= 0xfc000000;
 		mfn_abs = -mfn;
-	} else
+	} else {
 		mfn_abs = mfn;
-
+	}
 	refclk = infreq * 2;
 	if (ctrl & MXC_DPLLC_CTL_DPDCK0_2_EN)
 		refclk *= 2;
@@ -382,7 +383,7 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	do_div(temp, mfd + 1);
 	ret = refclk * mfi;
 
-	if ((int)mfn < 0)
+	if (mfn < 0)
 		ret -= temp;
 	else
 		ret += temp;
@@ -732,17 +733,17 @@ static int gcd(int m, int n)
  */
 static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 {
-	u64 pd, mfi = 1, mfn, mfd, t1;
-	u32 n_target = target;
-	u32 n_ref = ref, i;
+	int pd, mfi = 1, mfn, mfd;
+	u64 t1;
+	size_t i;
 
 	/*
 	 * Make sure targeted freq is in the valid range.
 	 * Otherwise the following calculation might be wrong!!!
 	 */
-	if (n_target < PLL_FREQ_MIN(ref) ||
-		n_target > PLL_FREQ_MAX(ref)) {
-		printf("Targeted peripheral clock should be within [%d - %d]\n",
+	if (target < PLL_FREQ_MIN(ref) ||
+		target > PLL_FREQ_MAX(ref)) {
+		printf("Targeted pll clock should be within [%d - %d]\n",
 			PLL_FREQ_MIN(ref) / SZ_DEC_1M,
 			PLL_FREQ_MAX(ref) / SZ_DEC_1M);
 		return -EINVAL;
@@ -758,10 +759,9 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	if (i == ARRAY_SIZE(fixed_mfd))
 		return -EINVAL;
 
-	/* Use n_target and n_ref to avoid overflow */
 	for (pd = 1; pd <= PLL_PD_MAX; pd++) {
-		t1 = n_target * pd;
-		do_div(t1, (4 * n_ref));
+		t1 = (u64)target * pd;
+		do_div(t1, (4 * ref));
 		mfi = t1;
 		if (mfi > PLL_MFI_MAX)
 			return -EINVAL;
@@ -772,25 +772,26 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	/*
 	 * Now got pd and mfi already
 	 *
-	 * mfn = (((n_target * pd) / 4 - n_ref * mfi) * mfd) / n_ref;
+	 * mfn = (((target * pd) / 4 - ref * mfi) * mfd) / ref;
 	 */
-	t1 = n_target * pd;
+	t1 = (u64)target * pd;
 	do_div(t1, 4);
-	t1 -= n_ref * mfi;
-	t1 *= mfd;
-	do_div(t1, n_ref);
+	t1 = (t1 - ref * mfi) * mfd;
+	do_div(t1, ref);
 	mfn = t1;
-	debug("ref=%d, target=%d, pd=%d," "mfi=%d,mfn=%d, mfd=%d\n",
-		ref, n_target, (u32)pd, (u32)mfi, (u32)mfn, (u32)mfd);
-	i = 1;
-	if (mfn != 0)
+	if (mfn != 0) {
 		i = gcd(mfd, mfn);
-	pll->pd = (u32)pd;
-	pll->mfi = (u32)mfi;
-	do_div(mfn, i);
-	pll->mfn = (u32)mfn;
-	do_div(mfd, i);
-	pll->mfd = (u32)mfd;
+		mfn /= i;
+		mfd /= i;
+	} else {
+		mfd = 1;
+	}
+	debug("ref=%d, target=%d, pd=%d, mfi=%d, mfn=%d, mfd=%d\n",
+		ref, target, pd, mfi, mfn, mfd);
+	pll->pd = pd;
+	pll->mfi = mfi;
+	pll->mfn = mfn;
+	pll->mfd = mfd;
 
 	return 0;
 }
