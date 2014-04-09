@@ -68,7 +68,7 @@ GPU Memory                       0xF8020000 0xF805FFFF
 	.endif
 	.endm
 
-#define MXC_DCD_ITEM(addr, val)		mxc_dcd_item	addr, val
+#define MXC_DCD_ITEM(addr, val)		mxc_dcd_item	(addr), (val)
 
 #define MXC_DCD_CMD_SZ_BYTE		1
 #define MXC_DCD_CMD_SZ_SHORT		2
@@ -76,23 +76,37 @@ GPU Memory                       0xF8020000 0xF805FFFF
 #define MXC_DCD_CMD_FLAG_WRITE		0x0
 #define MXC_DCD_CMD_FLAG_CLR		0x1
 #define MXC_DCD_CMD_FLAG_SET		0x3
-#define MXC_DCD_CMD_FLAG_CHK_ANY	(1 << 0)
-#define MXC_DCD_CMD_FLAG_CHK_SET	(1 << 1)
-#define MXC_DCD_CMD_FLAG_CHK_CLR	(0 << 1)
+#define MXC_DCD_CMD_FLAG_CHK_CLR	((0 << 0) | (0 << 1))
+#define MXC_DCD_CMD_FLAG_CHK_SET	((0 << 0) | (1 << 1))
+#define MXC_DCD_CMD_FLAG_CHK_ANY_CLR	((1 << 0) | (0 << 1))
+#define MXC_DCD_CMD_FLAG_CHK_ANY_SET	((1 << 0) | (1 << 1))
 
-#define MXC_DCD_CMD_WRT(type, flags, next)					\
-	.word	CPU_2_BE_32((0xcc << 24) | (((next) - .) << 8) | ((flags) << 3) | (type))
+#define MXC_DCD_START							\
+	.word	CPU_2_BE_32((0xd2 << 24) | ((dcd_end - .) << 8) | DCD_VERSION) ; \
+dcd_start:
 
-#define MXC_DCD_CMD_CHK(type, flags, addr, mask)				\
-	.word	CPU_2_BE_32((0xcf << 24) | (12 << 8) | ((flags) << 3) | (type)),\
+	.macro	MXC_DCD_END
+1:
+	.ifgt	. - dcd_start - 1768
+	.error	"DCD too large!"
+	.endif
+dcd_end:
+	.endm
+
+#define MXC_DCD_CMD_WRT(type, flags)					\
+1:	.word	CPU_2_BE_32((0xcc << 24) | ((1f - .) << 8) | ((flags) << 3) | (type))
+
+#define MXC_DCD_CMD_CHK(type, flags, addr, mask)			\
+1:	.word	CPU_2_BE_32((0xcf << 24) | (12 << 8) | ((flags) << 3) | (type)), \
 		CPU_2_BE_32(addr), CPU_2_BE_32(mask)
 
-#define MXC_DCD_CMD_CHK_CNT(type, flags, addr, mask, count)			\
-	.word	CPU_2_BE_32((0xcf << 24) | (16 << 8) | ((flags) << 3) | (type)),\
+#define MXC_DCD_CMD_CHK_CNT(type, flags, addr, mask, count)		\
+1:	.word	CPU_2_BE_32((0xcf << 24) | (16 << 8) | ((flags) << 3) | (type)), \
 		CPU_2_BE_32(addr), CPU_2_BE_32(mask), CPU_2_BE_32(count)
 
-#define MXC_DCD_CMD_NOP()							\
-	.word	CPU_2_BE_32((0xc0 << 24) | (4 << 8))
+#define MXC_DCD_CMD_NOP()				\
+1:	.word	CPU_2_BE_32((0xc0 << 24) | (4 << 8))
+
 
 #define CK_TO_NS(ck)	(((ck) * 1000 + SDRAM_CLK / 2) / SDRAM_CLK)
 #define NS_TO_CK(ns)	(((ns) * SDRAM_CLK + 999) / 1000)
@@ -366,9 +380,8 @@ ivt_end:
 #define DCD_VERSION	0x40
 
 dcd_hdr:
-	.word	CPU_2_BE_32((0xd2 << 24) | ((dcd_end - .) << 8) | DCD_VERSION)
-dcd_start:
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE, zq_calib)
+	MXC_DCD_START
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 
 	MXC_DCD_ITEM(0x53fa8004, 0x00194005)	@ set LDO to 1.3V
 
@@ -476,6 +489,10 @@ dcd_start:
 	MXC_DCD_ITEM(0x63fd9004, ESDPDC_VAL_0)
 
 	/* MR0..3 - CS0 */
+	MXC_DCD_ITEM(0x63fd901c, 0x00008000) /* CON_REQ */
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_SET, 0x63fd901c, 0x00004000)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
+
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 2, mr2_val)) /* MRS: MR2 */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, mr3_val)) /* MRS: MR3 */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 1, mr1_val)) /* MRS: MR1 */
@@ -496,52 +513,43 @@ dcd_start:
 	MXC_DCD_ITEM(0x63fd901c, 0x04008010) /* precharge all */
 	MXC_DCD_ITEM(0x63fd901c, 0x00008040) /* MRS: ZQ calibration */
 	MXC_DCD_ITEM(0x63fd9040, 0x0539002b) /* Force ZQ calibration */
-zq_calib:
-	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, 0, 0x63fd9040, 0x00010000)
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE, wl_calib)
-
-	/* Write Leveling */
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 1, mr1_val | (1 << 7)) | (1 << 9)) /* MRS: start write leveling */
-	MXC_DCD_ITEM(0x63fd901c, 0x00000000)
-	MXC_DCD_ITEM(0x63fd9048, 0x00000001)
-wl_calib:
-	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, 0, 0x63fd9048, 0x00000001)
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE, dqs_calib)
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 1, mr1_val)) /* MRS: end write leveling */
-	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd9040, 0x00010000)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 
 	/* DQS calibration */
 	MXC_DCD_ITEM(0x63fd901c, 0x04008010) /* precharge all */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
 	MXC_DCD_ITEM(0x63fd907c, 0x90000000) /* reset RD fifo and start DQS calib. */
-dqs_calib:
-	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, 0, 0x63fd907c, 0x90000000)
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE, wr_dl_calib)
+
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd907c, 0x90000000)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
 
 	/* WR DL calibration */
-	MXC_DCD_ITEM(0x63fd901c, 0x00000000)
+	MXC_DCD_ITEM(0x63fd901c, 0x00008000)
 	MXC_DCD_ITEM(0x63fd901c, 0x04008010) /* precharge all */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
 	MXC_DCD_ITEM(0x63fd90a4, 0x00000010)
-wr_dl_calib: /* 6c4 */
-	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, 0, 0x63fd90a4, 0x00000010)
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE, rd_dl_calib)
+
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd90a4, 0x00000010)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
 
 	/* RD DL calibration */
 	MXC_DCD_ITEM(0x63fd901c, 0x04008010) /* precharge all */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
 	MXC_DCD_ITEM(0x63fd90a0, 0x00000010)
-rd_dl_calib: /* 70c */
-	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, 0, 0x63fd90a0, 0x00000010)
-	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE, dcd_end)
+
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd90a0, 0x00000010)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
 	MXC_DCD_ITEM(0x63fd9020, (3 << 11) | (0 << 14)) /* refresh interval: 4 cycles every 64kHz period */
 	MXC_DCD_ITEM(0x63fd9004, ESDPDC_VAL_1)
 
+	/* DDR calibration done */
 	MXC_DCD_ITEM(0x63fd901c, 0x00000000)
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd901c, 0x00004000)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 
 	/* setup NFC pads */
 	/* MUX_SEL */
@@ -576,7 +584,4 @@ rd_dl_calib: /* 70c */
 	MXC_DCD_ITEM(0x53fa85a8, 0x000000e4)	@ NANDF_WE_B
 	MXC_DCD_ITEM(0x53fa85ac, 0x000000e4)	@ NANDF_RB0
 	MXC_DCD_ITEM(0x53fa85b0, 0x00000004)	@ NANDF_CS0
-dcd_end:
-	.ifgt	dcd_end - dcd_start - 1768
-	.error	"DCD too large!"
-	.endif
+	MXC_DCD_END

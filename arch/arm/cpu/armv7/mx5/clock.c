@@ -51,7 +51,7 @@ struct fixed_pll_mfd {
 	u32 mfd;
 };
 
-const struct fixed_pll_mfd fixed_mfd[] = {
+static const struct fixed_pll_mfd fixed_mfd[] = {
 	{MXC_HCLK, 24 * 16},
 };
 
@@ -64,7 +64,7 @@ struct pll_param {
 
 #define PLL_FREQ_MAX(ref_clk)  (4 * (ref_clk) * PLL_MFI_MAX)
 #define PLL_FREQ_MIN(ref_clk) \
-		((2 * (ref_clk) * (PLL_MFI_MIN - 1)) / PLL_PD_MAX)
+	((4 * (ref_clk) * PLL_MFI_MIN) / PLL_PD_MAX)
 #define MAX_DDR_CLK     420000000
 #define NFC_CLK_MAX     34000000
 
@@ -341,9 +341,10 @@ void enable_usb_phy2_clk(unsigned char enable)
  */
 static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 {
-	uint32_t ctrl, op, mfd, mfn, mfi, pdf, ret;
+	uint32_t ctrl, op;
+	int mfd, mfn, mfi, pdf, ret;
 	uint64_t refclk, temp;
-	int32_t mfn_abs;
+	uint32_t mfn_abs;
 
 	ctrl = readl(&pll->ctrl);
 
@@ -370,23 +371,23 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	if (mfn >= 0x04000000) {
 		mfn |= 0xfc000000;
 		mfn_abs = -mfn;
-	} else
+	} else {
 		mfn_abs = mfn;
-
+	}
 	refclk = infreq * 2;
 	if (ctrl & MXC_DPLLC_CTL_DPDCK0_2_EN)
 		refclk *= 2;
 
-	do_div(refclk, pdf + 1);
 	temp = refclk * mfn_abs;
 	do_div(temp, mfd + 1);
 	ret = refclk * mfi;
 
-	if ((int)mfn < 0)
+	if (mfn < 0)
 		ret -= temp;
 	else
 		ret += temp;
 
+	ret /= pdf + 1;
 	return ret;
 }
 
@@ -732,17 +733,17 @@ static int gcd(int m, int n)
  */
 static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 {
-	u64 pd, mfi = 1, mfn, mfd, t1;
-	u32 n_target = target;
-	u32 n_ref = ref, i;
+	int pd, mfi = 1, mfn, mfd;
+	u64 t1;
+	size_t i;
 
 	/*
 	 * Make sure targeted freq is in the valid range.
 	 * Otherwise the following calculation might be wrong!!!
 	 */
-	if (n_target < PLL_FREQ_MIN(ref) ||
-		n_target > PLL_FREQ_MAX(ref)) {
-		printf("Targeted peripheral clock should be within [%d - %d]\n",
+	if (target < PLL_FREQ_MIN(ref) ||
+		target > PLL_FREQ_MAX(ref)) {
+		printf("Targeted pll clock should be within [%d - %d]\n",
 			PLL_FREQ_MIN(ref) / SZ_DEC_1M,
 			PLL_FREQ_MAX(ref) / SZ_DEC_1M);
 		return -EINVAL;
@@ -758,10 +759,9 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	if (i == ARRAY_SIZE(fixed_mfd))
 		return -EINVAL;
 
-	/* Use n_target and n_ref to avoid overflow */
 	for (pd = 1; pd <= PLL_PD_MAX; pd++) {
-		t1 = n_target * pd;
-		do_div(t1, (4 * n_ref));
+		t1 = (u64)target * pd;
+		do_div(t1, (4 * ref));
 		mfi = t1;
 		if (mfi > PLL_MFI_MAX)
 			return -EINVAL;
@@ -772,25 +772,26 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	/*
 	 * Now got pd and mfi already
 	 *
-	 * mfn = (((n_target * pd) / 4 - n_ref * mfi) * mfd) / n_ref;
+	 * mfn = (((target * pd) / 4 - ref * mfi) * mfd) / ref;
 	 */
-	t1 = n_target * pd;
+	t1 = (u64)target * pd;
 	do_div(t1, 4);
-	t1 -= n_ref * mfi;
-	t1 *= mfd;
-	do_div(t1, n_ref);
+	t1 = (t1 - ref * mfi) * mfd;
+	do_div(t1, ref);
 	mfn = t1;
-	debug("ref=%d, target=%d, pd=%d," "mfi=%d,mfn=%d, mfd=%d\n",
-		ref, n_target, (u32)pd, (u32)mfi, (u32)mfn, (u32)mfd);
-	i = 1;
-	if (mfn != 0)
+	if (mfn != 0) {
 		i = gcd(mfd, mfn);
-	pll->pd = (u32)pd;
-	pll->mfi = (u32)mfi;
-	do_div(mfn, i);
-	pll->mfn = (u32)mfn;
-	do_div(mfd, i);
-	pll->mfd = (u32)mfd;
+		mfn /= i;
+		mfd /= i;
+	} else {
+		mfd = 1;
+	}
+	debug("ref=%d, target=%d, pd=%d, mfi=%d, mfn=%d, mfd=%d\n",
+		ref, target, pd, mfi, mfn, mfd);
+	pll->pd = pd;
+	pll->mfi = mfi;
+	pll->mfn = mfn;
+	pll->mfd = mfd;
 
 	return 0;
 }
@@ -874,11 +875,22 @@ static int config_pll_clk(enum pll_clocks index, struct pll_param *pll_param)
 	return 0;
 }
 
+static int __adjust_core_voltage_stub(u32 freq)
+{
+	return 0;
+}
+int adjust_core_voltage(u32 freq)
+	__attribute__((weak, alias("__adjust_core_voltage_stub")));
+
 /* Config CPU clock */
 static int config_core_clk(u32 ref, u32 freq)
 {
 	int ret = 0;
 	struct pll_param pll_param;
+	u32 cur_freq = decode_pll(mxc_plls[PLL1_CLOCK], MXC_HCLK);
+
+	if (freq == cur_freq)
+		return 0;
 
 	memset(&pll_param, 0, sizeof(struct pll_param));
 
@@ -890,8 +902,33 @@ static int config_core_clk(u32 ref, u32 freq)
 			ref / 1000000, ref / 1000 % 1000);
 		return ret;
 	}
-
-	return config_pll_clk(PLL1_CLOCK, &pll_param);
+	if (freq > cur_freq) {
+		ret = adjust_core_voltage(freq);
+		if (ret < 0) {
+			printf("Failed to adjust core voltage for changing ARM clk from %u.%03uMHz to  %u.%03uMHz\n",
+				cur_freq / 1000000, cur_freq / 1000 % 1000,
+				freq / 1000000, freq / 1000 % 1000);
+			return ret;
+		}
+		ret = config_pll_clk(PLL1_CLOCK, &pll_param);
+		if (ret) {
+			adjust_core_voltage(cur_freq);
+		}
+	} else {
+		ret = config_pll_clk(PLL1_CLOCK, &pll_param);
+		if (ret) {
+			return ret;
+		}
+		ret = adjust_core_voltage(freq);
+		if (ret < 0) {
+			printf("Failed to adjust core voltage for changing ARM clk from %u.%03uMHz to  %u.%03uMHz\n",
+				cur_freq / 1000000, cur_freq / 1000 % 1000,
+				freq / 1000000, freq / 1000 % 1000);
+			calc_pll_params(ref, cur_freq, &pll_param);
+			config_pll_clk(PLL1_CLOCK, &pll_param);
+		}
+	}
+	return ret;
 }
 
 static int config_nfc_clk(u32 nfc_clk)
@@ -1086,7 +1123,7 @@ void mxc_set_sata_internal_clock(void)
 	pr_clk_val(c, __clk);					\
 }
 
-int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_mx5_showclocks(void)
 {
 	unsigned long freq;
 
@@ -1112,10 +1149,78 @@ int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
+static struct clk_lookup {
+	const char *name;
+	unsigned int index;
+} mx5_clk_lookup[] = {
+	{ "arm", MXC_ARM_CLK, },
+};
+
+int do_clocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int i;
+	unsigned long freq;
+	unsigned long ref = ~0UL;
+
+	if (argc < 2) {
+		do_mx5_showclocks();
+		return CMD_RET_SUCCESS;
+	} else if (argc == 2 || argc > 4) {
+		return CMD_RET_USAGE;
+	}
+
+	freq = simple_strtoul(argv[2], NULL, 0);
+	if (freq == 0) {
+		printf("Invalid clock frequency %lu\n", freq);
+		return CMD_RET_FAILURE;
+	}
+	if (argc > 3) {
+		ref = simple_strtoul(argv[3], NULL, 0);
+	}
+	for (i = 0; i < ARRAY_SIZE(mx5_clk_lookup); i++) {
+		if (strcasecmp(argv[1], mx5_clk_lookup[i].name) == 0) {
+			switch (mx5_clk_lookup[i].index) {
+			case MXC_ARM_CLK:
+				if (argc > 3)
+					return CMD_RET_USAGE;
+				ref = CONFIG_SYS_MX5_HCLK;
+				break;
+
+			case MXC_NFC_CLK:
+				if (argc > 3 && ref > 3) {
+					printf("Invalid clock selector value: %lu\n", ref);
+					return CMD_RET_FAILURE;
+				}
+				break;
+			}
+			printf("Setting %s clock to %lu MHz\n",
+				mx5_clk_lookup[i].name, freq);
+			if (mxc_set_clock(ref, freq, mx5_clk_lookup[i].index))
+				break;
+			freq = mxc_get_clock(mx5_clk_lookup[i].index);
+			printf("%s clock set to %lu.%03lu MHz\n",
+				mx5_clk_lookup[i].name,
+				freq / 1000000, freq / 1000 % 1000);
+			return CMD_RET_SUCCESS;
+		}
+	}
+	if (i == ARRAY_SIZE(mx5_clk_lookup)) {
+		printf("clock %s not found; supported clocks are:\n", argv[1]);
+		for (i = 0; i < ARRAY_SIZE(mx5_clk_lookup); i++) {
+			printf("\t%s\n", mx5_clk_lookup[i].name);
+		}
+	} else {
+		printf("Failed to set clock %s to %s MHz\n",
+			argv[1], argv[2]);
+	}
+	return CMD_RET_FAILURE;
+}
+
 /***************************************************/
 
 U_BOOT_CMD(
-	clocks,	CONFIG_SYS_MAXARGS, 1, do_mx5_showclocks,
-	"display clocks",
-	""
+	clocks,	4, 0, do_clocks,
+	"display/set clocks",
+	"                    - display clock settings\n"
+	"clocks <clkname> <freq>    - set clock <clkname> to <freq> MHz"
 );

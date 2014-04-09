@@ -189,6 +189,8 @@ static void tx53_print_cpuinfo(void)
 
 enum LTC3589_REGS {
 	LTC3589_SCR1 = 0x07,
+	LTC3589_SCR2 = 0x12,
+	LTC3589_VCCR = 0x20,
 	LTC3589_CLIRQ = 0x21,
 	LTC3589_B1DTV1 = 0x23,
 	LTC3589_B1DTV2 = 0x24,
@@ -201,12 +203,15 @@ enum LTC3589_REGS {
 	LTC3589_L2DTV2 = 0x33,
 };
 
-#define LTC3589_PGOOD_MASK	(1 << 5)
+#define LTC3589_BnDTV1_PGOOD_MASK	(1 << 5)
+#define LTC3589_BnDTV1_SLEW(n)		(((n) & 3) << 6)
 
-#define LTC3589_CLK_RATE_LOW	(1 << 5)
+#define LTC3589_CLK_RATE_LOW		(1 << 5)
+
+#define LTC3589_SCR2_PGOOD_SHUTDWN	(1 << 7)
 
 #define VDD_LDO2_VAL		mV_to_regval(vout_to_vref(1325 * 10, 2))
-#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1240 * 10, 3))
+#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1100 * 10, 3))
 #define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1325 * 10, 4))
 #define VDD_BUCK3_VAL		mV_to_regval(vout_to_vref(2500 * 10, 5))
 
@@ -250,18 +255,22 @@ static struct pmic_regs {
 	u8 val;
 } ltc3589_regs[] = {
 	{ LTC3589_SCR1, 0x15, }, /* burst mode for all regulators except buck boost */
+	{ LTC3589_SCR2, LTC3589_SCR2_PGOOD_SHUTDWN, }, /* enable shutdown on PGOOD Timeout */
 
-	{ LTC3589_L2DTV1, VDD_LDO2_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_L2DTV1, VDD_LDO2_VAL | LTC3589_BnDTV1_SLEW(3) | LTC3589_BnDTV1_PGOOD_MASK, },
 	{ LTC3589_L2DTV2, VDD_LDO2_VAL | LTC3589_CLK_RATE_LOW, },
 
-	{ LTC3589_B1DTV1, VDD_CORE_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B1DTV1, VDD_CORE_VAL | LTC3589_BnDTV1_SLEW(3) | LTC3589_BnDTV1_PGOOD_MASK, },
 	{ LTC3589_B1DTV2, VDD_CORE_VAL, },
 
-	{ LTC3589_B2DTV1, VDD_SOC_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B2DTV1, VDD_SOC_VAL | LTC3589_BnDTV1_SLEW(3) | LTC3589_BnDTV1_PGOOD_MASK, },
 	{ LTC3589_B2DTV2, VDD_SOC_VAL, },
 
-	{ LTC3589_B3DTV1, VDD_BUCK3_VAL | LTC3589_PGOOD_MASK, },
+	{ LTC3589_B3DTV1, VDD_BUCK3_VAL | LTC3589_BnDTV1_SLEW(3) | LTC3589_BnDTV1_PGOOD_MASK, },
 	{ LTC3589_B3DTV2, VDD_BUCK3_VAL, },
+
+	/* Select ref 0 for all regulators and enable slew */
+	{ LTC3589_VCCR, 0x55, },
 
 	{ LTC3589_CLIRQ, 0, }, /* clear all interrupt flags */
 };
@@ -303,6 +312,94 @@ static int setup_pmic_voltages(void)
 	printf("VDDSOC  set to %umV\n",
 		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_SOC_VAL), 4), 10));
 	return 0;
+}
+
+static struct {
+	u32 max_freq;
+	u32 mV;
+} tx53_core_voltages[] = {
+	{ 800000000, 1100, },
+	{ 1000000000, 1240, },
+	{ 1200000000, 1350, },
+};
+
+int adjust_core_voltage(u32 freq)
+{
+	int ret;
+	int i;
+
+	printf("%s@%d\n", __func__, __LINE__);
+
+	for (i = 0; i < ARRAY_SIZE(tx53_core_voltages); i++) {
+		if (freq <= tx53_core_voltages[i].max_freq) {
+			int retries = 0;
+			const int max_tries = 10;
+			const int delay_us = 1;
+			u32 mV = tx53_core_voltages[i].mV;
+			u8 val = mV_to_regval(vout_to_vref(mV * 10, 3));
+			u8 v;
+
+			printf("regval[%umV]=%02x\n", mV, val);
+
+			ret = i2c_read(CONFIG_SYS_I2C_SLAVE, LTC3589_B1DTV1, 1,
+				&v, 1);
+			if (ret) {
+				printf("%s: failed to read PMIC register %02x: %d\n",
+					__func__, LTC3589_B1DTV1, ret);
+				return ret;
+			}
+			printf("Changing reg %02x from %02x to %02x\n",
+				LTC3589_B1DTV1, v, (v & ~0x1f) |
+				mV_to_regval(vout_to_vref(mV * 10, 3)));
+			v &= ~0x1f;
+			v |= mV_to_regval(vout_to_vref(mV * 10, 3));
+			ret = i2c_write(CONFIG_SYS_I2C_SLAVE, LTC3589_B1DTV1, 1,
+					&v, 1);
+			if (ret) {
+				printf("%s: failed to write PMIC register %02x: %d\n",
+					__func__, LTC3589_B1DTV1, ret);
+				return ret;
+			}
+			ret = i2c_read(CONFIG_SYS_I2C_SLAVE, LTC3589_VCCR, 1,
+					&v, 1);
+			if (ret) {
+				printf("%s: failed to read PMIC register %02x: %d\n",
+					__func__, LTC3589_VCCR, ret);
+				return ret;
+			}
+			v |= 0x1;
+			ret = i2c_write(CONFIG_SYS_I2C_SLAVE, LTC3589_VCCR, 1,
+					&v, 1);
+			if (ret) {
+				printf("%s: failed to write PMIC register %02x: %d\n",
+					__func__, LTC3589_VCCR, ret);
+				return ret;
+			}
+			for (retries = 0; retries < max_tries; retries++) {
+				ret = i2c_read(CONFIG_SYS_I2C_SLAVE,
+					LTC3589_VCCR, 1, &v, 1);
+				if (ret) {
+					printf("%s: failed to read PMIC register %02x: %d\n",
+						__func__, LTC3589_VCCR, ret);
+					return ret;
+				}
+				if (!(v & 1))
+					break;
+				udelay(delay_us);
+			}
+			if (v & 1) {
+				printf("change of VDDCORE did not complete after %uµs\n",
+					retries * delay_us);
+				return -ETIMEDOUT;
+			}
+
+			printf("VDDCORE set to %umV after %u loops\n",
+				DIV_ROUND(vref_to_vout(regval_to_mV(val & 0x1f), 3),
+					10), retries);
+			return 0;
+		}
+	}
+	return -EINVAL;
 }
 
 int board_early_init_f(void)
