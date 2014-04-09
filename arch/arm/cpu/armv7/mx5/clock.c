@@ -64,7 +64,7 @@ struct pll_param {
 
 #define PLL_FREQ_MAX(ref_clk)  (4 * (ref_clk) * PLL_MFI_MAX)
 #define PLL_FREQ_MIN(ref_clk) \
-		((2 * (ref_clk) * (PLL_MFI_MIN - 1)) / PLL_PD_MAX)
+	((4 * (ref_clk) * PLL_MFI_MIN) / PLL_PD_MAX)
 #define MAX_DDR_CLK     420000000
 #define NFC_CLK_MAX     34000000
 
