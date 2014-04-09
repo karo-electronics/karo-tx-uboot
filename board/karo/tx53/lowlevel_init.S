@@ -526,7 +526,7 @@ dcd_hdr:
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, 0)) /* MRS: select normal data path */
 
 	/* WR DL calibration */
-	MXC_DCD_ITEM(0x63fd901c, 0x00000000)
+	MXC_DCD_ITEM(0x63fd901c, 0x00008000)
 	MXC_DCD_ITEM(0x63fd901c, 0x04008010) /* precharge all */
 	MXC_DCD_ITEM(0x63fd901c, ESDSCR_MRS_VAL(0, 3, (1 << 2))) /* MRS: select MPR */
 	MXC_DCD_ITEM(0x63fd90a4, 0x00000010)
@@ -548,6 +548,8 @@ dcd_hdr:
 
 	/* DDR calibration done */
 	MXC_DCD_ITEM(0x63fd901c, 0x00000000)
+	MXC_DCD_CMD_CHK(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, 0x63fd901c, 0x00004000)
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 
 	/* setup NFC pads */
 	/* MUX_SEL */
