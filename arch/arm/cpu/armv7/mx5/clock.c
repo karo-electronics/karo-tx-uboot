@@ -378,7 +378,6 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	if (ctrl & MXC_DPLLC_CTL_DPDCK0_2_EN)
 		refclk *= 2;
 
-	do_div(refclk, pdf + 1);
 	temp = refclk * mfn_abs;
 	do_div(temp, mfd + 1);
 	ret = refclk * mfi;
@@ -388,6 +387,7 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	else
 		ret += temp;
 
+	ret /= pdf + 1;
 	return ret;
 }
 
