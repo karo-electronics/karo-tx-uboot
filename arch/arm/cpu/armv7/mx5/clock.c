@@ -874,11 +874,22 @@ static int config_pll_clk(enum pll_clocks index, struct pll_param *pll_param)
 	return 0;
 }
 
+static int __adjust_core_voltage_stub(u32 freq)
+{
+	return 0;
+}
+int adjust_core_voltage(u32 freq)
+	__attribute__((weak, alias("__adjust_core_voltage_stub")));
+
 /* Config CPU clock */
 static int config_core_clk(u32 ref, u32 freq)
 {
 	int ret = 0;
 	struct pll_param pll_param;
+	u32 cur_freq = decode_pll(mxc_plls[PLL1_CLOCK], MXC_HCLK);
+
+	if (freq == cur_freq)
+		return 0;
 
 	memset(&pll_param, 0, sizeof(struct pll_param));
 
@@ -890,8 +901,33 @@ static int config_core_clk(u32 ref, u32 freq)
 			ref / 1000000, ref / 1000 % 1000);
 		return ret;
 	}
-
-	return config_pll_clk(PLL1_CLOCK, &pll_param);
+	if (freq > cur_freq) {
+		ret = adjust_core_voltage(freq);
+		if (ret < 0) {
+			printf("Failed to adjust core voltage for changing ARM clk from %u.%03uMHz to  %u.%03uMHz\n",
+				cur_freq / 1000000, cur_freq / 1000 % 1000,
+				freq / 1000000, freq / 1000 % 1000);
+			return ret;
+		}
+		ret = config_pll_clk(PLL1_CLOCK, &pll_param);
+		if (ret) {
+			adjust_core_voltage(cur_freq);
+		}
+	} else {
+		ret = config_pll_clk(PLL1_CLOCK, &pll_param);
+		if (ret) {
+			return ret;
+		}
+		ret = adjust_core_voltage(freq);
+		if (ret < 0) {
+			printf("Failed to adjust core voltage for changing ARM clk from %u.%03uMHz to  %u.%03uMHz\n",
+				cur_freq / 1000000, cur_freq / 1000 % 1000,
+				freq / 1000000, freq / 1000 % 1000);
+			calc_pll_params(ref, cur_freq, &pll_param);
+			config_pll_clk(PLL1_CLOCK, &pll_param);
+		}
+	}
+	return ret;
 }
 
 static int config_nfc_clk(u32 nfc_clk)
