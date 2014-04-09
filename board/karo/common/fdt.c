@@ -812,7 +812,7 @@ int karo_fdt_get_backlight_polarity(const void *blob)
 		 */
 		off = fdt_path_offset(blob, backlight_node);
 		if (off < 0) {
-			printf("/backlight node not found in DT\n");
+			printf("%s node not found in DT\n", backlight_node);
 			return off;
 		}
 	}
