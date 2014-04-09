@@ -13,13 +13,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
-*/
+ */
 
 #include <common.h>
 #include <errno.h>
 #include <libfdt.h>
 #include <fdt_support.h>
-//#include <nand.h>
 #include <mmc.h>
 #include <mxcfb.h>
 #include <linux/list.h>
@@ -33,22 +32,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static void __maybe_unused memdmp(void *addr, size_t len)
-{
-	size_t i;
-
-	for (i = 0; i < len; i+= 16) {
-		size_t j;
-		u32 *wp = addr + i;
-
-		debug("%p: ", addr + i);
-		for (j = 0; j < 4; j++) {
-			debug(" %08x", wp[j]);
-		}
-		debug("\n");
-	}
-}
-
 #define MAX_SEARCH_PARTITIONS 16
 
 static int find_efi_partition(const char *ifname, int devno, const char *part_str,
@@ -60,8 +43,6 @@ static int find_efi_partition(const char *ifname, int devno, const char *part_st
 	int p;
 	int part;
 	block_dev_desc_t *dd;
-
-printf("Searching for partition '%s'\n", part_str);
 
 	dd = get_dev(ifname, devno);
 	if (!dd || dd->type == DEV_TYPE_UNKNOWN) {
@@ -113,6 +94,7 @@ int karo_load_mmc_part(const char *part, void *addr, size_t len)
 	disk_partition_t part_info;
 	int devno = CONFIG_MMC_BOOT_DEV;
 	uint blk_start, blk_cnt;
+	block_dev_desc_t *mmc_dev;
 
 	mmc = find_mmc_device(devno);
 	if (!mmc) {
@@ -121,10 +103,6 @@ int karo_load_mmc_part(const char *part, void *addr, size_t len)
 	}
 
 	mmc_init(mmc);
-
-//	mmc_boot_part_access(mmc, 1, part_num, part_num);
-#if 1
-	block_dev_desc_t *mmc_dev;
 
 	ret = find_efi_partition("mmc", devno, part, &mmc_dev, &part_info);
 	if (ret < 0) {
@@ -136,30 +114,22 @@ int karo_load_mmc_part(const char *part, void *addr, size_t len)
 	blk_start = 0;
 	blk_cnt = DIV_ROUND_UP(len, part_info.blksz);
 
-	printf("Using mmc%d blksz %lu blks %lu\n", devno,
-		mmc_dev->blksz, mmc_dev->lba);
-#endif
 	debug("Found partition '%s': offset=%08x size=%08lx\n",
 		part, blk_start, part_info.size);
-	if (part_info.size < blk_cnt) {
-		printf("Warning: partition '%s' smaller than requested size: %u; truncating data to %lu blocks\n",
-			part, len, part_info.size * mmc->read_bl_len);
+	if (part_info.size < blk_cnt)
 		blk_cnt = part_info.size;
-	}
 
 	debug("Reading %u blks from MMC partition '%s' offset %u to %p\n",
 		blk_cnt, part, blk_start, addr);
 	ret = mmc->block_dev.block_read(devno, blk_start, blk_cnt, addr);
 	if (ret == 0) {
 		printf("Failed to read MMC partition %s\n", part);
+		ret = -EIO;
 		goto out;
 	}
 	debug("Read %u byte from partition '%s' @ offset %08x\n",
 		ret * mmc->read_bl_len, part, blk_start);
-	memdmp(addr, 512);
-	ret = 0;
 out:
-//	mmc_boot_part_access(mmc, 1, part_num, 0);
 	mmc_switch_part(devno, 0);
-	return ret;
+	return ret < 0 ? ret : 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012,2013 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012,2014 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -28,10 +28,6 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/imx-common/regs-gpmi.h>
 #include <asm/imx-common/regs-bch.h>
-
-#if CONFIG_SYS_NAND_U_BOOT_OFFS < 0x20000
-#error CONFIG_SYS_NAND_U_BOOT_OFFS must be >= 128kIB
-#endif
 
 struct mx6_nand_timing {
 	u8 data_setup;
@@ -103,22 +99,6 @@ extern void *_start;
 
 #define BIT(v,n)	(((v) >> (n)) & 0x1)
 
-static inline void memdump(const void *addr, size_t len)
-{
-	const char *buf = addr;
-	int i;
-
-	for (i = 0; i < len; i++) {
-		if (i % 16 == 0) {
-			if (i > 0)
-				printf("\n");
-			printf("%p:", &buf[i]);
-		}
-		printf(" %02x", buf[i]);
-	}
-	printf("\n");
-}
-
 static u8 calculate_parity_13_8(u8 d)
 {
 	u8 p = 0;
@@ -188,21 +168,31 @@ static inline int calc_bb_offset(nand_info_t *mtd, struct mx6_fcb *fcb)
 	return bb_mark_offset;
 }
 
+/*
+ * return number of blocks to skip for a contiguous partition
+ * of given # blocks
+ */
 static int find_contig_space(int block, int num_blocks, int max_blocks)
 {
-	int start = block;
+	int skip = 0;
 	int found = 0;
+	int last = block + max_blocks;
 
-	for (; block < block + max_blocks; block++) {
+	debug("Searching %u contiguous blocks from %d..%d\n",
+		num_blocks, block, block + max_blocks - 1);
+	for (; block < last; block++) {
 		if (nand_block_isbad(mtd, block * mtd->erasesize)) {
+			skip += found + 1;
 			found = 0;
-			printf("Adjusting start block from %u to %u\n",
-				start, block + 1);
-			start = block + 1;
+			debug("Skipping %u blocks to %u\n",
+				skip, block + 1);
 		} else {
 			found++;
-			if (found >= num_blocks)
-				return start;
+			if (found >= num_blocks) {
+				debug("Found %u good blocks from %d..%d\n",
+					found, block - found + 1, block);
+				return skip;
+			}
 		}
 	}
 	return -ENOSPC;
@@ -211,8 +201,7 @@ static int find_contig_space(int block, int num_blocks, int max_blocks)
 #define pr_fcb_val(p, n)	debug("%s=%08x(%d)\n", #n, (p)->n, (p)->n)
 
 static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
-				int fw2_start_block, int fw_num_blocks,
-				int max_blocks)
+				int fw2_start_block, int fw_num_blocks)
 {
 	struct gpmi_regs *gpmi_base = (void *)GPMI_BASE_ADDRESS;
 	struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
@@ -277,7 +266,7 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 
 	if (fw2_start_block != 0 && fw2_start_block < mtd->size / mtd->erasesize) {
 		fcb->fw2_start_page = fw2_start_block * fcb->sectors_per_block;
-		fcb->fw2_sectors = fw_num_blocks * fcb->sectors_per_block;
+		fcb->fw2_sectors = fcb->fw1_sectors;
 		pr_fcb_val(fcb, fw2_start_page);
 		pr_fcb_val(fcb, fw2_sectors);
 	}
@@ -315,13 +304,13 @@ static int find_fcb(void *ref, int page)
 		printf("Failed to read FCB from page %u: %d\n", page, ret);
 		goto out;
 	}
-	chip->select_chip(mtd, -1);
 	if (memcmp(buf, ref, mtd->writesize) == 0) {
 		debug("Found FCB in page %u (%08x)\n",
 			page, page * mtd->writesize);
 		ret = 1;
 	}
 out:
+	chip->select_chip(mtd, -1);
 	free(buf);
 	return ret;
 }
@@ -344,8 +333,8 @@ static int write_fcb(void *buf, int block)
 		return ret;
 	}
 
-	printf("Writing FCB to block %d @ %08x\n", block,
-		block * mtd->erasesize);
+	printf("Writing FCB to block %d @ %08llx\n", block,
+		(u64)block * mtd->erasesize);
 	chip->select_chip(mtd, 0);
 	ret = chip->write_page(mtd, chip, buf, 1, page, 0, 1);
 	if (ret) {
@@ -417,6 +406,43 @@ static int patch_ivt(void *buf, size_t fsize)
 	}							\
 } while (0)
 
+static int tx6_prog_uboot(void *addr, int start_block, int skip,
+			size_t size, size_t max_len)
+{
+	int ret;
+	nand_erase_options_t erase_opts = { 0, };
+	size_t actual;
+
+	erase_opts.offset = start_block * mtd->erasesize;
+	erase_opts.length = max_len;
+	erase_opts.quiet = 1;
+
+	printf("Erasing flash @ %08llx..%08llx\n", erase_opts.offset,
+		erase_opts.offset + erase_opts.length - 1);
+	ret = nand_erase_opts(mtd, &erase_opts);
+	if (ret) {
+		printf("Failed to erase flash: %d\n", ret);
+		return ret;
+	}
+
+	printf("Programming flash @ %08llx..%08llx from %p\n",
+		(u64)start_block * mtd->erasesize,
+		(u64)start_block * mtd->erasesize + size - 1, addr);
+	actual = size;
+	ret = nand_write_skip_bad(mtd, start_block * mtd->erasesize,
+				&actual, NULL, erase_opts.length, addr,
+				WITH_DROP_FFS);
+	if (ret) {
+		printf("Failed to program flash: %d\n", ret);
+		return ret;
+	}
+	if (actual < size) {
+		printf("Could only write %u of %u bytes\n", actual, size);
+		return -EIO;
+	}
+	return 0;
+}
+
 #ifdef CONFIG_ENV_IS_IN_NAND
 #ifndef CONFIG_ENV_OFFSET_REDUND
 #define TOTAL_ENV_SIZE CONFIG_ENV_RANGE
@@ -424,9 +450,6 @@ static int patch_ivt(void *buf, size_t fsize)
 #define TOTAL_ENV_SIZE (CONFIG_ENV_RANGE * 2)
 #endif
 #endif
-
-#define pr_fcb_offset(n)	printf("%s: %04x (%d)\n", #n, \
-		offsetof(struct mx6_fcb, n), offsetof(struct mx6_fcb, n))
 
 int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
@@ -447,31 +470,28 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		DIV_ROUND_UP(TOTAL_ENV_SIZE, mtd->erasesize) - 1;
 #endif
 	int optind;
-	int fw1_set = 0;
 	int fw2_set = 0;
 	unsigned long fw1_start_block = 0, fw1_end_block;
 	unsigned long fw2_start_block = 0, fw2_end_block;
 	unsigned long fw_num_blocks;
-	unsigned long extra_blocks = 2;
-	nand_erase_options_t erase_opts = { 0, };
+	int fw1_skip, fw2_skip;
+	unsigned long extra_blocks = 0;
 	size_t max_len1, max_len2;
 	struct mtd_device *dev;
 	struct part_info *part_info;
+	struct part_info *redund_part_info;
+	const char *uboot_part = "u-boot";
+	const char *redund_part = NULL;
 	u8 part_num;
-	size_t actual;
+	u8 redund_part_num;
 
 	ret = mtdparts_init();
 	if (ret)
 		return ret;
 
-	ret = find_dev_and_part("u-boot", &dev, &part_num,
-				&part_info);
-	if (ret) {
-		printf("Failed to find u-boot partition: %d\n", ret);
-		return ret;
-	}
-
 	for (optind = 1; optind < argc; optind++) {
+		char *endp;
+
 		if (strcmp(argv[optind], "-f") == 0) {
 			if (optind >= argc - 1) {
 				printf("Option %s requires an argument\n",
@@ -479,18 +499,27 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 				return -EINVAL;
 			}
 			optind++;
-			fw1_start_block = simple_strtoul(argv[optind], NULL, 0);
+			fw1_start_block = simple_strtoul(argv[optind], &endp, 0);
+			if (*endp != '\0') {
+				uboot_part = argv[optind];
+				continue;
+			}
+			uboot_part = NULL;
 			if (fw1_start_block >= mtd_num_blocks) {
 				printf("Block number %lu is out of range: 0..%lu\n",
 					fw1_start_block, mtd_num_blocks - 1);
 				return -EINVAL;
 			}
-			fw1_set = 1;
 		} else if (strcmp(argv[optind], "-r") == 0) {
+			fw2_set = 1;
 			if (optind < argc - 1 && argv[optind + 1][0] != '-') {
 				optind++;
 				fw2_start_block = simple_strtoul(argv[optind],
-								NULL, 0);
+								&endp, 0);
+				if (*endp != '\0') {
+					redund_part = argv[optind];
+					continue;
+				}
 				if (fw2_start_block >= mtd_num_blocks) {
 					printf("Block number %lu is out of range: 0..%lu\n",
 						fw2_start_block,
@@ -498,7 +527,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 					return -EINVAL;
 				}
 			}
-			fw2_set = 1;
 		} else if (strcmp(argv[optind], "-e") == 0) {
 			if (optind >= argc - 1) {
 				printf("Option %s requires an argument\n",
@@ -552,35 +580,85 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	if (size > 0) {
 		fw_num_blocks = DIV_ROUND_UP(size, mtd->erasesize);
 	} else {
-		fw_num_blocks = part_info->size / mtd->erasesize - extra_blocks;
+		fw_num_blocks = part_info->size / mtd->erasesize -
+			extra_blocks;
 		size = fw_num_blocks * mtd->erasesize;
 	}
-	if (!fw1_set)
-		fw1_start_block = part_info->offset / mtd->erasesize;
 
-	fw1_start_block = find_contig_space(fw1_start_block,
-					fw_num_blocks,
-					size / mtd->erasesize);
-	if (fw1_start_block < 0) {
+	if (uboot_part) {
+		ret = find_dev_and_part(uboot_part, &dev, &part_num,
+					&part_info);
+		if (ret) {
+			printf("Failed to find '%s' partition: %d\n",
+				uboot_part, ret);
+			return ret;
+		}
+		fw1_start_block = part_info->offset / mtd->erasesize;
+		max_len1 = part_info->size;
+	} else {
+		max_len1 = (fw_num_blocks + extra_blocks) * mtd->erasesize;
+	}
+
+	if (redund_part) {
+		ret = find_dev_and_part(redund_part, &dev, &redund_part_num,
+					&redund_part_info);
+		if (ret) {
+			printf("Failed to find '%s' partition: %d\n",
+				redund_part, ret);
+			return ret;
+		}
+		fw2_start_block = redund_part_info->offset / mtd->erasesize;
+		max_len2 = redund_part_info->size;
+	} else if (fw2_set) {
+		max_len2 = (fw_num_blocks + extra_blocks) * mtd->erasesize;
+	} else {
+		max_len2 = 0;
+	}
+
+	fw1_skip = find_contig_space(fw1_start_block, fw_num_blocks,
+				max_len1 / mtd->erasesize);
+	if (fw1_skip < 0) {
 		printf("Could not find %lu contiguous good blocks for fw image\n",
 			fw_num_blocks);
+		if (uboot_part) {
+#ifdef CONFIG_ENV_IS_IN_NAND
+			if (part_info->offset <= CONFIG_ENV_OFFSET + TOTAL_ENV_SIZE) {
+				printf("Use a different partition\n");
+			} else {
+				printf("Increase the size of the '%s' partition\n",
+					uboot_part);
+			}
+#else
+			printf("Increase the size of the '%s' partition\n",
+				uboot_part);
+#endif
+		} else {
+			printf("Increase the number of spare blocks to use with the '-e' option\n");
+		}
 		return -ENOSPC;
 	}
-	fw1_end_block = fw1_start_block + fw_num_blocks + extra_blocks - 1;
+	fw1_end_block = fw1_start_block + fw1_skip + fw_num_blocks - 1;
 
 	if (fw2_set && fw2_start_block == 0)
 		fw2_start_block = fw1_end_block + 1;
 	if (fw2_start_block > 0) {
-		fw2_start_block = find_contig_space(fw2_start_block,
-						fw_num_blocks,
-						size / mtd->erasesize);
-		if (fw2_start_block < 0) {
+		fw2_skip = find_contig_space(fw2_start_block, fw_num_blocks,
+					max_len2 / mtd->erasesize);
+		if (fw2_skip < 0) {
 			printf("Could not find %lu contiguous good blocks for redundant fw image\n",
 				fw_num_blocks);
+			if (redund_part) {
+				printf("Increase the size of the '%s' partition or use a different partition\n",
+					redund_part);
+			} else {
+				printf("Increase the number of spare blocks to use with the '-e' option\n");
+			}
 			return -ENOSPC;
 		}
+	} else {
+		fw2_skip = 0;
 	}
-	fw2_end_block = fw2_start_block + fw_num_blocks + extra_blocks - 1;
+	fw2_end_block = fw2_start_block + fw2_skip + fw_num_blocks - 1;
 
 #ifdef CONFIG_ENV_IS_IN_NAND
 	fail_if_overlap(fcb, env, "FCB", "Environment");
@@ -601,8 +679,8 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		return -ENOMEM;
 	}
 
-	fcb = create_fcb(buf, fw1_start_block, fw2_start_block, fw_num_blocks,
-			size / mtd->erasesize);
+	fcb = create_fcb(buf, fw1_start_block + fw1_skip,
+			fw2_start_block + fw2_skip, fw_num_blocks);
 	if (IS_ERR(fcb)) {
 		printf("Failed to initialize FCB: %ld\n", PTR_ERR(fcb));
 		free(buf);
@@ -621,79 +699,39 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		return ret;
 	}
 
-	printf("Programming U-Boot image from %p to block %lu\n",
-		addr, fw1_start_block);
 	if (size & (page_size - 1)) {
 		memset(addr + size, 0xff, size & (page_size - 1));
 		size = ALIGN(size, page_size);
 	}
 
-	erase_opts.offset = fcb->fw1_start_page * page_size;
-	erase_opts.length = (fw1_end_block - fw1_start_block + 1) *
-		mtd->erasesize;
-	erase_opts.quiet = 1;
+	printf("Programming U-Boot image from %p to block %lu @ %08llx\n",
+		addr, fw1_start_block + fw1_skip,
+		(u64)(fw1_start_block + fw1_skip) * mtd->erasesize);
+	ret = tx6_prog_uboot(addr, fw1_start_block, fw1_skip, size,
+			max_len1);
 
-	printf("Erasing flash @ %08llx..%08llx\n", erase_opts.offset,
-		erase_opts.offset + erase_opts.length - 1);
-
-	ret = nand_erase_opts(mtd, &erase_opts);
-	if (ret) {
-		printf("Failed to erase flash: %d\n", ret);
-		return ret;
-	}
-
-	max_len1 = size;
-
-	printf("Programming flash @ %08x..%08x from %p\n",
-		fcb->fw1_start_page * page_size,
-		fcb->fw1_start_page * page_size + max_len1 - 1, addr);
-	ret = nand_write_skip_bad(mtd, fcb->fw1_start_page * page_size,
-				&max_len1, &actual, erase_opts.length, addr,
-				WITH_DROP_FFS);
-	if (ret || actual < size) {
-		printf("Failed to program flash: %d\n", ret);
-		return ret ?: -EIO;
-	}
 	if (fw2_start_block == 0) {
 		return ret;
 	}
 
-	printf("Programming redundant U-Boot image to block %lu\n",
-		fw2_start_block);
-	erase_opts.offset = fcb->fw2_start_page * page_size;
-	erase_opts.length = (fw2_end_block - fw2_start_block + 1) *
-		mtd->erasesize;
-	printf("Erasing flash @ %08llx..%08llx\n", erase_opts.offset,
-		erase_opts.offset + erase_opts.length - 1);
-
-	ret = nand_erase_opts(mtd, &erase_opts);
-	if (ret) {
-		printf("Failed to erase flash: %d\n", ret);
-		return ret;
-	}
-
-	max_len2 = size;
-
-	printf("Programming flash @ %08x..%08x from %p\n",
-		fcb->fw2_start_page * page_size,
-		fcb->fw2_start_page * page_size + max_len2 - 1, addr);
-	ret = nand_write_skip_bad(mtd, fcb->fw2_start_page * page_size,
-				&max_len2, &actual, erase_opts.length, addr,
-				WITH_DROP_FFS);
-	if (ret || actual < size) {
-		printf("Failed to program flash: %d\n", ret);
-		return ret ?: -EIO;
-	}
+	printf("Programming redundant U-Boot image to block %lu @ %08llx\n",
+		fw2_start_block + fw2_skip,
+		(u64)(fw2_start_block + fw2_skip) * mtd->erasesize);
+	ret = tx6_prog_uboot(addr, fw2_start_block, fw2_skip, fw_num_blocks,
+			max_len2);
 	return ret;
 }
 
 U_BOOT_CMD(romupdate, 11, 0, do_update,
 	"Creates an FCB data structure and writes an U-Boot image to flash",
-	"[-f #] [-r [#]] [-e #] [<address>] [<length>]\n"
-	"\t-f #\twrite bootloader image at block #\n"
+	"[-f {<part>|block#}] [-r [{<part>|block#}]] [-e #] [<address>] [<length>]\n"
+	"\t-f <part>\twrite bootloader image to partition <part>\n"
+	"\t-f #\twrite bootloader image at block # (decimal)\n"
 	"\t-r\twrite redundant bootloader image at next free block after first image\n"
-	"\t-r #\twrite redundant bootloader image at block #\n"
-	"\t-e #\tspecify number of redundant blocks per boot loader image (default 2)\n"
+	"\t-r <part>\twrite redundant bootloader image to partition <part>\n"
+	"\t-r #\twrite redundant bootloader image at block # (decimal)\n"
+	"\t-e #\tspecify number of redundant blocks per boot loader image\n"
+	"\t\tonly valid if -f or -r specify a flash address rather than a partition name\n"
 	"\t<address>\tRAM address of bootloader image (default: ${fileaddr}\n"
 	"\t<length>\tlength of bootloader image in RAM (default: ${filesize}"
 	);
