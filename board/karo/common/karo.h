@@ -133,7 +133,7 @@ static inline int karo_load_nand_part(const char *part, void *addr, size_t len)
 }
 #endif
 
-#ifdef CONFIG_CMD_MMC
+#ifdef CONFIG_ENV_IS_IN_MMC
 int karo_load_mmc_part(const char *part, void *addr, size_t len);
 #else
 static inline int karo_load_mmc_part(const char *part, void *addr, size_t len)

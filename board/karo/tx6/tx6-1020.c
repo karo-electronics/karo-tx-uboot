@@ -239,15 +239,19 @@ static void tx6qdl_print_cpuinfo(void)
 #define VDD_DDR_VAL_LP		mV_to_regval(1500 * 10)
 
 /* calculate voltages in 10mV */
+/* DCDC1-3 */
 #define mV_to_regval(mV)	DIV_ROUND(((((mV) < 6000) ? 6000 : (mV)) - 6000), 125)
 #define regval_to_mV(v)		(((v) * 125 + 6000))
 
+/* LDO1-2 */
 #define mV_to_regval2(mV)	DIV_ROUND(((((mV) < 9000) ? 9000 : (mV)) - 9000), 250)
 #define regval2_to_mV(v)	(((v) * 250 + 9000))
 
+/* LDO3 */
 #define mV_to_regval3(mV)	DIV_ROUND(((((mV) < 6000) ? 6000 : (mV)) - 6000), 250)
 #define regval3_to_mV(v)	(((v) * 250 + 6000))
 
+/* LDORTC */
 #define mV_to_regval_rtc(mV)	DIV_ROUND(((((mV) < 17000) ? 17000 : (mV)) - 17000), 250)
 #define regval_rtc_to_mV(v)	(((v) * 250 + 17000))
 
@@ -263,7 +267,7 @@ static struct rn5t618_regs {
 	{ RN5T618_DC1DAC_SLP, VDD_CORE_VAL_LP, },
 	{ RN5T618_DC2DAC_SLP, VDD_SOC_VAL_LP, },
 	{ RN5T618_DC3DAC_SLP, VDD_DDR_VAL_LP, },
-	{ RN5T618_LDOEN1, 0x04, ~0x1f, },
+	{ RN5T618_LDOEN1, 0x01f, ~0x1f, },
 	{ RN5T618_LDOEN2, 0x10, ~0x30, },
 	{ RN5T618_LDODIS, 0x00, },
 	{ RN5T618_LDO3DAC, VDD_HIGH_VAL, },
@@ -411,13 +415,14 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 	MX6_PAD_SD3_CLK__GPIO_7_3,
 };
 
-static const iomux_v3_cfg_t mmc4_pads[] = {
+static const iomux_v3_cfg_t mmc3_pads[] = {
 	MX6_PAD_SD4_CMD__USDHC4_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_CLK__USDHC4_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT0__USDHC4_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT1__USDHC4_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT2__USDHC4_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT3__USDHC4_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	/* eMMC RESET */
 	MX6_PAD_NANDF_ALE__USDHC4_RST,
 };
 
@@ -428,6 +433,16 @@ static struct tx6_esdhc_cfg {
 	struct fsl_esdhc_cfg cfg;
 	int cd_gpio;
 } tx6qdl_esdhc_cfg[] = {
+	{
+		.pads = mmc3_pads,
+		.num_pads = ARRAY_SIZE(mmc3_pads),
+		.clkid = MXC_ESDHC4_CLK,
+		.cfg = {
+			.esdhc_base = (void __iomem *)USDHC4_BASE_ADDR,
+			.max_bus_width = 4,
+		},
+		.cd_gpio = -EINVAL,
+	},
 	{
 		.pads = mmc0_pads,
 		.num_pads = ARRAY_SIZE(mmc0_pads),
@@ -447,16 +462,6 @@ static struct tx6_esdhc_cfg {
 			.max_bus_width = 4,
 		},
 		.cd_gpio = IMX_GPIO_NR(7, 3),
-	},
-	{
-		.pads = mmc4_pads,
-		.num_pads = ARRAY_SIZE(mmc4_pads),
-		.clkid = MXC_ESDHC4_CLK,
-		.cfg = {
-			.esdhc_base = (void __iomem *)USDHC4_BASE_ADDR,
-			.max_bus_width = 4,
-		},
-		.cd_gpio = -EINVAL,
 	},
 };
 
@@ -844,9 +849,9 @@ void lcd_enable(void)
 	 */
 	lcd_is_enabled = 0;
 
-	karo_load_splashimage(1);
-
 	if (lcd_enabled) {
+		karo_load_splashimage(1);
+
 		debug("Switching LCD on\n");
 		gpio_set_value(TX6_LCD_PWR_GPIO, 1);
 		udelay(100);

@@ -28,10 +28,8 @@
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
 #ifdef CONFIG_LCD
-#ifndef CONFIG_TX6_V2
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
-#endif
 #define CONFIG_VIDEO_IPUV3
 #define CONFIG_IPUV3_CLK		266000000
 #define CONFIG_LCD_LOGO
@@ -171,8 +169,7 @@
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=11000000\0"						\
-	"fdtsave=nand erase.part dtb"					\
-	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
+	CONFIG_SYS_FDTSAVE_CMD						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
@@ -183,13 +180,19 @@
 #endif /*  CONFIG_MFG */
 
 #ifndef CONFIG_TX6_V2
+#define CONFIG_SYS_FDTSAVE_CMD				\
+	"fdtsave=nand erase.part dtb"			\
+	";nand write ${fdtaddr} dtb ${fdtsize}\0"
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #else
+#define CONFIG_SYS_FDTSAVE_CMD						\
+	"fdtsave=mmc open 0 1;mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80;mmc close 0 1\0"
 #define MTD_NAME			""
 #define MTDIDS_DEFAULT			""
 #define CONFIG_SUPPORT_EMMC_BOOT
+#define CONFIG_MMC_BOOT_DEV		0
 #endif
 
 /*
@@ -201,10 +204,6 @@
 #ifndef CONFIG_TX6_V2
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
-#else
-#define CONFIG_PARTITION_UUIDS
-#define CONFIG_EFI_PARTITION
-#define CONFIG_CMD_GPT
 #endif
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
@@ -298,13 +297,14 @@
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
 #define CONFIG_SYS_NAND_BASE		0x00000000
 #define CONFIG_CMD_ROMUPDATE
-#else
-#undef CONFIG_ENV_IS_IN_NAND
-#endif /* CONFIG_CMD_NAND */
 
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
 #define CONFIG_ENV_SIZE			SZ_128K
 #define CONFIG_ENV_RANGE		(3 * CONFIG_SYS_NAND_BLOCK_SIZE)
+#else
+#undef CONFIG_ENV_IS_IN_NAND
+#endif /* CONFIG_CMD_NAND */
+
 #ifdef CONFIG_ENV_OFFSET_REDUND
 #define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_SYS_ENV_PART_SIZE)	\
 	"(env),"							\
@@ -329,6 +329,7 @@
 
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
+#define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2
 
 /*
@@ -336,10 +337,7 @@
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		0
-#undef CONFIG_ENV_OFFSET
-#undef CONFIG_ENV_SIZE
-#define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
-#define CONFIG_ENV_SIZE			SZ_128K
+#define CONFIG_SYS_MMC_ENV_PART		1
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
 #else
