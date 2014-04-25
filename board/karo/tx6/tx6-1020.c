@@ -235,8 +235,8 @@ static void tx6qdl_print_cpuinfo(void)
 #define VDD_CORE_VAL_LP		mV_to_regval(900 * 10)
 #define VDD_SOC_VAL		mV_to_regval(1425 * 10)
 #define VDD_SOC_VAL_LP		mV_to_regval(900 * 10)
-#define VDD_DDR_VAL		mV_to_regval(1350 * 10)
-#define VDD_DDR_VAL_LP		mV_to_regval(1350 * 10)
+#define VDD_DDR_VAL		mV_to_regval(1500 * 10)
+#define VDD_DDR_VAL_LP		mV_to_regval(1500 * 10)
 
 /* calculate voltages in 10mV */
 #define mV_to_regval(mV)	DIV_ROUND(((((mV) < 6000) ? 6000 : (mV)) - 6000), 125)
