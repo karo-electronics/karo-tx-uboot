@@ -267,6 +267,7 @@ static void tx6qdl_print_cpuinfo(void)
 #define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1425 * 10, 6))
 #define VDD_SOC_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 6))
 #define VDD_DDR_VAL		mV_to_regval(vout_to_vref(1500 * 10, 7))
+#define VDD_DDR_VAL_LP		mV_to_regval(vout_to_vref(1500 * 10, 7))
 #define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1425 * 10, 8))
 #define VDD_CORE_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 8))
 
@@ -281,13 +282,13 @@ static void tx6qdl_print_cpuinfo(void)
 #define R2_5			110
 #define R1_5_2			470
 #define R2_5_2			150
-/* Buck2 */
+/* Buck2 (SOC) */
 #define R1_6			150
 #define R2_6			180
-/* Buck3 */
+/* Buck3 (DDR) */
 #define R1_7			150
 #define R2_7			140
-/* Buck4 */
+/* Buck4 (CORE) */
 #define R1_8			150
 #define R2_8			180
 
@@ -307,9 +308,9 @@ static struct ltc3673_regs {
 	u8 mask;
 } ltc3676_regs[] = {
 	{ LTC3676_MSKPG, ~LTC3676_MSKPG_BUCK1, },
-	{ LTC3676_DVB2B, VDD_SOC_VAL | LTC3676_PGOOD_MASK, ~0x3f, },
-	{ LTC3676_DVB3B, VDD_DDR_VAL, ~0x3f, },
-	{ LTC3676_DVB4B, VDD_CORE_VAL | LTC3676_PGOOD_MASK, ~0x3f, },
+	{ LTC3676_DVB2B, VDD_SOC_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
+	{ LTC3676_DVB3B, VDD_DDR_VAL_LP, ~0x3f, },
+	{ LTC3676_DVB4B, VDD_CORE_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
 	{ LTC3676_DVB2A, VDD_SOC_VAL, ~0x3f, },
 	{ LTC3676_DVB3A, VDD_DDR_VAL, ~0x3f, },
 	{ LTC3676_DVB4A, VDD_CORE_VAL, ~0x3f, },
