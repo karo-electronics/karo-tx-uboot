@@ -159,12 +159,11 @@
 	";nboot linux\0"						\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
 	";fatload mmc 0 ${loadaddr} uImage\0"				\
-	"bootcmd_nand=set autostart no;run bootargs_ubifs"		\
-	";nboot linux\0"						\
+	CONFIG_SYS_BOOT_CMD_NAND					\
 	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
-	"boot_mode=nand\0"						\
+	"boot_mode=" CONFIG_SYS_DEFAULT_BOOT_MODE "\0"			\
 	"cpu_clk=800\0"							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
@@ -180,6 +179,9 @@
 #endif /*  CONFIG_MFG */
 
 #ifndef CONFIG_TX6_V2
+#define CONFIG_SYS_DEFAULT_BOOT_MODE "nand"
+#define CONFIG_SYS_BOOT_CMD_NAND					\
+	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"
 #define CONFIG_SYS_FDTSAVE_CMD				\
 	"fdtsave=nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"
@@ -187,6 +189,8 @@
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #else
+#define CONFIG_SYS_DEFAULT_BOOT_MODE "mmc"
+#define CONFIG_SYS_BOOT_CMD_NAND ""
 #define CONFIG_SYS_FDTSAVE_CMD						\
 	"fdtsave=mmc open 0 1;mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80;mmc close 0 1\0"
 #define MTD_NAME			""
