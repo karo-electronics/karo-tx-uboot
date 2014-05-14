@@ -4,7 +4,7 @@
 Building U-Boot
 ---------------
 
-Note: There are currently six variants of the TX6 module, that
+Note: There are currently seven variants of the TX6 module, that
       require slightly different U-Boot configurations. They are
       distinguished through the 'TX6' suffix 'Q' or 'U' and the
       numerical suffix of the module name. Replace the '?' in the
@@ -26,12 +26,14 @@ Compiling U-Boot
 ----------------
 export ARCH=arm
 export CROSS_COMPILE=arm-cortexa9-linux-gnueabi-
-make tx6?-??1?_config            (see above Note!)
+make tx6?-????_config            (see above Note!)
 make
 
 
 Flashing U-Boot Image
 ---------------------
+For all TX6 modules except TX6Q-1020:
+-------------------------------------
 If you want to replace a working U-Boot with a new version, you can
 load the new U-Boot image via TFTP or SD-Card and write it to flash
 with the 'romupdate' command.
@@ -42,6 +44,18 @@ on Starterkit-5 baseboard closed). See TX6_U-Boot.pdf for details.
 
 e.g.: /cdrom/Flashtools/Linux/sbloader/sbloader-x86_32 -m -s /cdrom/U-Boot/target/u-boot-tx6q-1010.bin
 (This command can be used from within the ARMSK-VM)
+
+For TX6Q-1020:
+--------------
+The TX6Q-1020 is equipped with eMMC instead of NAND flash.
+The bootloader, U-Boot environment and DTB is stored in the first boot
+partition of the eMMC device. The command to update the bootloader
+TX6Q U-Boot > set autostart n
+TX6Q U-Boot > tftp u-boot-tx6q-1020.bin
+TX6Q U-Boot > mmc open 0 1
+TX6Q U-Boot > mmc write ${fileaddr} 0 400
+TX6Q U-Boot > mmc close 0 1
+
 
 MfgTool
 -------
