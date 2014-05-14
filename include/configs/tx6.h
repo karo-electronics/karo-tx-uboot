@@ -149,7 +149,7 @@
 	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mmcblk0p2 rootwait\0"				\
+	" root=PARTUUID=${rootpart_uuid} rootwait\0"			\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
@@ -173,6 +173,7 @@
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
+	"rootpart_uuid=0cc66cc0-02\0"					\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
 #endif /*  CONFIG_ENV_IS_NOWHERE */
