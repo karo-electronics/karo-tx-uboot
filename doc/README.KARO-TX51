@@ -47,6 +47,25 @@ U-Boot Features
 ---------------
 
 Environment variables:
+boot_mode     selects which boot script will be used by 'bootcmd' to
+	      boot the application (Linux)
+	      supported values:
+	      nand: (default) load kernel from NAND partition 'linux'
+			      and mount rootfs (fstype UBIFS)
+			      from partition 'rootfs'. 
+	      mmc:	      load kernel from file 'uImage' on first
+	      		      partition (FAT) on (first) SD/MMC card
+			      and mount rootfs (fstype autodetected)
+			      from second partition.
+	      net:	      load kernel image via tftp (file uImage)
+	      		      and mount rootfs via NFS. This requires
+			      the additional variables 'nfsroot'
+			      (path to rootfs on NFS server) and
+			      'nfs_server' (hostname or IP address of
+			      NFS server) to be set.
+	      jffs2: (legacy) load kernel from NAND partition 'linux'
+			      and mount rootfs (fstype JFFS2)
+			      from partition 'rootfs'.
 
 cpu_clk       <CPU freq [MHz]> CPU clock frequency set after boot.
 
