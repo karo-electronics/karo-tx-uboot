@@ -149,7 +149,7 @@
 	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=PARTUUID=${rootpart_uuid} rootwait\0"			\
+	MMC_ROOT_STR							\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
@@ -173,7 +173,7 @@
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
-	"rootpart_uuid=0cc66cc0-02\0"					\
+	ROOTPART_UUID_STR						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
 #endif /*  CONFIG_ENV_IS_NOWHERE */
@@ -189,11 +189,15 @@
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define CONFIG_SYS_NAND_ONFI_DETECTION
+#define MMC_ROOT_STR " root=dev/mmcblk0p2 rootwait\0"
+#define ROOTPART_UUID_STR ""
 #else
 #define CONFIG_SYS_DEFAULT_BOOT_MODE "mmc"
 #define CONFIG_SYS_BOOT_CMD_NAND ""
 #define CONFIG_SYS_FDTSAVE_CMD						\
 	"fdtsave=mmc open 0 1;mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80;mmc close 0 1\0"
+#define MMC_ROOT_STR " root=PARTUUID=${rootpart_uuid} rootwait\0"
+#define ROOTPART_UUID_STR "rootpart_uuid=0cc66cc0-02\0"
 #define MTD_NAME			""
 #define MTDIDS_DEFAULT			""
 #define CONFIG_SUPPORT_EMMC_BOOT
@@ -362,7 +366,7 @@
 	CONFIG_SYS_ENV_PART_STR						\
 	"4m(linux),32m(rootfs)," CONFIG_SYS_USERFS_PART_STR ","		\
 	xstr(CONFIG_SYS_DTB_PART_SIZE)					\
-	"(dtb),"							\
+	"@" xstr(CONFIG_SYS_NAND_DTB_OFFSET) "(dtb),"			\
 	xstr(CONFIG_SYS_NAND_BBT_SIZE)					\
 	"@" xstr(CONFIG_SYS_NAND_BBT_OFFSET) "(bbt)ro"
 #else

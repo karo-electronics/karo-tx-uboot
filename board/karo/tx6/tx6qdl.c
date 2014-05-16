@@ -1290,7 +1290,8 @@ int checkboard(void)
 	printf("Board: Ka-Ro TX6%c-%d%d1%d\n",
 		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), 1 - PHYS_SDRAM_1_WIDTH / 64);
+		is_lvds(), 1 - PHYS_SDRAM_1_WIDTH / 64 +
+		2 * (CONFIG_SYS_NAND_BLOCKS / 1024 - 1));
 
 	return 0;
 }
