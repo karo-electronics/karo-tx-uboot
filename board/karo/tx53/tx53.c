@@ -428,7 +428,7 @@ int board_early_init_f(void)
 	writel(0x00000000, AIPS2_BASE_ADDR + 0x50);
 
 	writel(0xffcf0fff, &ccm_regs->CCGR0);
-	writel(0x000fffc3, &ccm_regs->CCGR1);
+	writel(0x000fffcf, &ccm_regs->CCGR1);
 	writel(0x033c0000, &ccm_regs->CCGR2);
 	writel(0x000000ff, &ccm_regs->CCGR3);
 	writel(0x00000000, &ccm_regs->CCGR4);
