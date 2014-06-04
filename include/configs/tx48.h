@@ -279,13 +279,13 @@
 	xstr(CONFIG_ENV_RANGE)						\
 	"(env),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),107904k(userfs),256k(dtb),512k@0x7f80000(bbt)ro"
+	"(env2),6m(linux),32m(rootfs),89216k(userfs),512k@0x7f00000(dtb),512k@0x7f80000(bbt)ro"
 #else
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"128k(u-boot-spl),"						\
 	"1m(u-boot),"							\
 	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),108288k(userfs),256k(dtb),512k@0x7f80000(bbt)ro"
+	"(env),6m(linux),32m(rootfs),89600k(userfs),512k@0x7f00000(dtb),512k@0x7f80000(bbt)ro"
 #endif
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1

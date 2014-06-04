@@ -364,7 +364,7 @@
 	"@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS)				\
 	"(u-boot),"							\
 	CONFIG_SYS_ENV_PART_STR						\
-	"4m(linux),32m(rootfs)," CONFIG_SYS_USERFS_PART_STR ","		\
+	"6m(linux),32m(rootfs)," CONFIG_SYS_USERFS_PART_STR ","		\
 	xstr(CONFIG_SYS_DTB_PART_SIZE)					\
 	"@" xstr(CONFIG_SYS_NAND_DTB_OFFSET) "(dtb),"			\
 	xstr(CONFIG_SYS_NAND_BBT_SIZE)					\
