@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012,2014 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2014 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -412,6 +412,8 @@ static int tx6_prog_uboot(void *addr, int start_block, int skip,
 	int ret;
 	nand_erase_options_t erase_opts = { 0, };
 	size_t actual;
+	size_t prg_length = max_len - skip * mtd->erasesize;
+	int prg_start = (start_block + skip) * mtd->erasesize;
 
 	erase_opts.offset = start_block * mtd->erasesize;
 	erase_opts.length = max_len;
@@ -429,9 +431,8 @@ static int tx6_prog_uboot(void *addr, int start_block, int skip,
 		(u64)start_block * mtd->erasesize,
 		(u64)start_block * mtd->erasesize + size - 1, addr);
 	actual = size;
-	ret = nand_write_skip_bad(mtd, start_block * mtd->erasesize,
-				&actual, NULL, erase_opts.length, addr,
-				WITH_DROP_FFS);
+	ret = nand_write_skip_bad(mtd, prg_start, &actual, NULL,
+				prg_length, addr, WITH_DROP_FFS);
 	if (ret) {
 		printf("Failed to program flash: %d\n", ret);
 		return ret;
