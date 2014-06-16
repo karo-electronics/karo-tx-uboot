@@ -234,10 +234,7 @@ static struct mx28_fcb *create_fcb(void *buf, int fw1_start_block,
 	fcb->metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
 	fcb->ecc_blocks_per_page = BF_VAL(fl0, BCH_FLASHLAYOUT0_NBLOCKS);
 	fcb->bch_mode = readl(&bch_base->hw_bch_mode);
-/*
-	fcb->boot_patch = 0;
-	fcb->patch_sectors = 0;
-*/
+
 	fcb->fw1_start_page = fw1_start_block * fcb->sectors_per_block;
 	fcb->fw1_sectors = fw_num_blocks * fcb->sectors_per_block;
 	pr_fcb_val(fcb, fw1_start_page);
@@ -344,6 +341,8 @@ static int tx28_prog_uboot(void *addr, int start_block, int skip,
 	int ret;
 	nand_erase_options_t erase_opts = { 0, };
 	size_t actual;
+	size_t prg_length = max_len - skip * mtd->erasesize;
+	int prg_start = (start_block + skip) * mtd->erasesize;
 
 	erase_opts.offset = start_block * mtd->erasesize;
 	erase_opts.length = max_len;
@@ -361,9 +360,8 @@ static int tx28_prog_uboot(void *addr, int start_block, int skip,
 		(u64)start_block * mtd->erasesize,
 		(u64)start_block * mtd->erasesize + size - 1, addr);
 	actual = size;
-	ret = nand_write_skip_bad(mtd, start_block * mtd->erasesize,
-				&actual, NULL, erase_opts.length, addr,
-				WITH_DROP_FFS);
+	ret = nand_write_skip_bad(mtd, prg_start, &actual, NULL,
+				prg_length, addr, WITH_DROP_FFS);
 	if (ret) {
 		printf("Failed to program flash: %d\n", ret);
 		return ret;
