@@ -131,7 +131,7 @@ static void omap5_pbias_config(struct mmc *mmc)
 }
 #endif
 
-unsigned char mmc_board_init(struct mmc *mmc)
+static void mmc_board_init(struct mmc *mmc)
 {
 #if defined(CONFIG_OMAP34XX)
 	t2_t *t2_base = (t2_t *)T2_BASE;
@@ -180,8 +180,6 @@ unsigned char mmc_board_init(struct mmc *mmc)
 	if (mmc->block_dev.dev == 0)
 		omap5_pbias_config(mmc);
 #endif
-
-	return 0;
 }
 
 void mmc_init_stream(struct hsmmc *mmc_base)
@@ -211,7 +209,6 @@ void mmc_init_stream(struct hsmmc *mmc_base)
 	}
 	writel(readl(&mmc_base->con) & ~INIT_INITSTREAM, &mmc_base->con);
 }
-
 
 static int mmc_init_setup(struct mmc *mmc)
 {
@@ -583,8 +580,32 @@ static void mmc_set_ios(struct mmc *mmc)
 int omap_mmc_init(int dev_index, uint host_caps_mask, uint f_max, int cd_gpio,
 		int wp_gpio)
 {
-	struct mmc *mmc = &hsmmc_dev[dev_index];
-	struct omap_hsmmc_data *priv_data = &hsmmc_dev_data[dev_index];
+	struct mmc *mmc;
+	struct omap_hsmmc_data *priv_data;
+	unsigned long base_addr;
+
+	switch (dev_index) {
+	case 0:
+		base_addr = OMAP_HSMMC1_BASE;
+		break;
+#ifdef OMAP_HSMMC2_BASE
+	case 1:
+		base_addr = OMAP_HSMMC2_BASE;
+		break;
+#endif
+#ifdef OMAP_HSMMC3_BASE
+	case 2:
+		base_addr = OMAP_HSMMC3_BASE;
+		break;
+#endif
+	default:
+		printf("Invalid MMC device index: %d\n", dev_index);
+		return 1;
+	}
+
+	mmc = &hsmmc_dev[dev_index];
+	priv_data = &hsmmc_dev_data[dev_index];
+	priv_data->base_addr = (void *)base_addr;
 
 	sprintf(mmc->name, "OMAP SD/MMC");
 	mmc->send_cmd = mmc_send_cmd;
@@ -592,24 +613,6 @@ int omap_mmc_init(int dev_index, uint host_caps_mask, uint f_max, int cd_gpio,
 	mmc->init = mmc_init_setup;
 	mmc->priv = priv_data;
 
-	switch (dev_index) {
-	case 0:
-		priv_data->base_addr = (struct hsmmc *)OMAP_HSMMC1_BASE;
-		break;
-#ifdef OMAP_HSMMC2_BASE
-	case 1:
-		priv_data->base_addr = (struct hsmmc *)OMAP_HSMMC2_BASE;
-		break;
-#endif
-#ifdef OMAP_HSMMC3_BASE
-	case 2:
-		priv_data->base_addr = (struct hsmmc *)OMAP_HSMMC3_BASE;
-		break;
-#endif
-	default:
-		priv_data->base_addr = (struct hsmmc *)OMAP_HSMMC1_BASE;
-		return 1;
-	}
 	priv_data->cd_gpio = omap_mmc_setup_gpio_in(cd_gpio, "mmc_cd");
 	if (priv_data->cd_gpio != -1)
 		mmc->getcd = omap_mmc_getcd;
