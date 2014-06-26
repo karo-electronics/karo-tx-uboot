@@ -47,6 +47,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define TX48_LCD_RST_GPIO	AM33XX_GPIO_NR(1, 19)
 #define TX48_LCD_PWR_GPIO	AM33XX_GPIO_NR(1, 22)
 #define TX48_LCD_BACKLIGHT_GPIO	AM33XX_GPIO_NR(3, 14)
+#define TX48_MMC_CD_GPIO	AM33XX_GPIO_NR(3, 15)
 
 #define GMII_SEL		(CTRL_BASE + 0x650)
 
@@ -333,10 +334,13 @@ static const struct pin_mux stk5_pads[] = {
 	{ OFFSET(gpmc_a6), MODE(7) | PULLUDEN, },
 	/* LCD Backlight (PWM) */
 	{ OFFSET(mcasp0_aclkx), MODE(7) | PULLUDEN, },
+	/* MMC CD */
+	{ OFFSET(mcasp0_fsx), MODE(7) | PULLUDEN | PULLUP_EN, },
 };
 
 static const struct gpio stk5_gpios[] = {
-	{ AM33XX_GPIO_NR(1, 26), GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+	{ TX48_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+	{ TX48_MMC_CD_GPIO, GPIOF_INPUT, "HEARTBEAT LED", },
 };
 
 static const struct pin_mux stk5_lcd_pads[] = {
@@ -1014,6 +1018,13 @@ int board_eth_init(bd_t *bis)
 	return cpsw_register(&cpsw_data);
 }
 #endif /* CONFIG_DRIVER_TI_CPSW */
+
+#if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
+int cpu_mmc_init(bd_t *bis)
+{
+	return omap_mmc_init(1, 0, 0, TX48_MMC_CD_GPIO, -1);
+}
+#endif
 
 void tx48_disable_watchdog(void)
 {
