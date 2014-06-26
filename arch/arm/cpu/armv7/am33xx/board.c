@@ -98,7 +98,7 @@ void enable_caches(void)
 #endif
 
 #if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
-int cpu_mmc_init(bd_t *bis)
+int __cpu_mmc_init(bd_t *bis)
 {
 	int ret;
 
@@ -108,6 +108,8 @@ int cpu_mmc_init(bd_t *bis)
 
 	return omap_mmc_init(1, 0, 0, -1, -1);
 }
+/* let platform code be able to override this! */
+int cpu_mmc_init(bd_t *bis) __attribute__((weak, alias("__cpu_mmc_init")));
 #endif
 
 void setup_clocks_for_console(void)
