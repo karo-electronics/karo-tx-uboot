@@ -191,21 +191,25 @@ void mmc_init_stream(struct hsmmc *mmc_base)
 	writel(MMC_CMD0, &mmc_base->cmd);
 	start = get_timer(0);
 	while (!(readl(&mmc_base->stat) & CC_MASK)) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for cc!\n", __func__);
-			return;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
 	}
-	writel(CC_MASK, &mmc_base->stat)
-		;
-	writel(MMC_CMD0, &mmc_base->cmd)
-		;
+	if (!(readl(&mmc_base->stat) & CC_MASK)) {
+		printf("%s: timeout waiting for cc!\n", __func__);
+		return;
+	}
+
+	writel(CC_MASK, &mmc_base->stat);
+	writel(MMC_CMD0, &mmc_base->cmd);
+
 	start = get_timer(0);
 	while (!(readl(&mmc_base->stat) & CC_MASK)) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for cc2!\n", __func__);
-			return;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if (!(readl(&mmc_base->stat) & CC_MASK)) {
+		printf("%s: timeout waiting for cc2!\n", __func__);
+		return;
 	}
 	writel(readl(&mmc_base->con) & ~INIT_INITSTREAM, &mmc_base->con);
 }
@@ -224,19 +228,23 @@ static int mmc_init_setup(struct mmc *mmc)
 		&mmc_base->sysconfig);
 	start = get_timer(0);
 	while ((readl(&mmc_base->sysstatus) & RESETDONE) == 0) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for cc2!\n", __func__);
-			return TIMEOUT;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if ((readl(&mmc_base->sysstatus) & RESETDONE) == 0) {
+		printf("%s: timeout %08x waiting for softreset done!\n", __func__,
+			readl(&mmc_base->sysstatus));
+		return TIMEOUT;
 	}
 	writel(readl(&mmc_base->sysctl) | SOFTRESETALL, &mmc_base->sysctl);
 	start = get_timer(0);
-	while ((readl(&mmc_base->sysctl) & SOFTRESETALL) != 0x0) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for softresetall!\n",
-				__func__);
-			return TIMEOUT;
-		}
+	while ((readl(&mmc_base->sysctl) & SOFTRESETALL) != 0) {
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if ((readl(&mmc_base->sysctl) & SOFTRESETALL) != 0) {
+		printf("%s: timeout waiting for softresetall!\n", __func__);
+		return TIMEOUT;
 	}
 	writel(DTW_1_BITMODE | SDBP_PWROFF | SDVS_3V0, &mmc_base->hctl);
 	writel(readl(&mmc_base->capa) | VS30_3V0SUP | VS18_1V8SUP,
@@ -255,10 +263,12 @@ static int mmc_init_setup(struct mmc *mmc)
 		(dsor << CLKD_OFFSET) | ICE_OSCILLATE);
 	start = get_timer(0);
 	while ((readl(&mmc_base->sysctl) & ICS_MASK) == ICS_NOTREADY) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for ics!\n", __func__);
-			return TIMEOUT;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if ((readl(&mmc_base->sysctl) & ICS_MASK) == ICS_NOTREADY) {
+		printf("%s: timeout waiting for ics!\n", __func__);
+		return TIMEOUT;
 	}
 	writel(readl(&mmc_base->sysctl) | CEN_ENABLE, &mmc_base->sysctl);
 
@@ -287,11 +297,12 @@ static void mmc_reset_controller_fsm(struct hsmmc *mmc_base, u32 bit)
 
 	start = get_timer(0);
 	while ((readl(&mmc_base->sysctl) & bit) != 0) {
-		if (get_timer(0) - start > MAX_RETRY_MS) {
-			printf("%s: timedout waiting for sysctl %x to clear\n",
-				__func__, bit);
-			return;
-		}
+		if (get_timer(0) - start > MAX_RETRY_MS)
+			break;
+	}
+	if ((readl(&mmc_base->sysctl) & bit) != 0) {
+		printf("%s: timedout waiting for sysctl %x to clear\n", __func__, bit);
+		return;
 	}
 }
 
@@ -305,19 +316,22 @@ static int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 
 	start = get_timer(0);
 	while ((readl(&mmc_base->pstate) & (DATI_MASK | CMDI_MASK)) != 0) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting on cmd inhibit to clear\n",
-					__func__);
-			return TIMEOUT;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if ((readl(&mmc_base->pstate) & (DATI_MASK | CMDI_MASK)) != 0) {
+		printf("%s: timeout waiting on cmd inhibit to clear\n", __func__);
+		return TIMEOUT;
 	}
 	writel(0xFFFFFFFF, &mmc_base->stat);
 	start = get_timer(0);
 	while (readl(&mmc_base->stat)) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for stat!\n", __func__);
-			return TIMEOUT;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if (readl(&mmc_base->stat)) {
+		printf("%s: timeout waiting for stat!\n", __func__);
+		return TIMEOUT;
 	}
 	/*
 	 * CMDREG
@@ -375,13 +389,14 @@ static int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 	writel((cmd->cmdidx << 24) | flags, &mmc_base->cmd);
 
 	start = get_timer(0);
-	do {
-		mmc_stat = readl(&mmc_base->stat);
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s : timeout: No status update\n", __func__);
-			return TIMEOUT;
-		}
-	} while (!mmc_stat);
+	while (!(mmc_stat = readl(&mmc_base->stat))) {
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if (!mmc_stat) {
+		printf("%s : timeout: No status update\n", __func__);
+		return TIMEOUT;
+	}
 
 	if ((mmc_stat & IE_CTO) != 0) {
 		mmc_reset_controller_fsm(mmc_base, SYSCTL_SRC);
@@ -428,14 +443,15 @@ static int mmc_read_data(struct hsmmc *mmc_base, char *buf, unsigned int size)
 
 	while (size) {
 		ulong start = get_timer(0);
-		do {
-			mmc_stat = readl(&mmc_base->stat);
-			if (get_timer(start) > MAX_RETRY_MS) {
-				printf("%s: timeout waiting for status!\n",
-						__func__);
-				return TIMEOUT;
-			}
-		} while (mmc_stat == 0);
+
+		while (!(mmc_stat = readl(&mmc_base->stat))) {
+			if (get_timer(start) > MAX_RETRY_MS)
+				break;
+		}
+		if (!mmc_stat) {
+			printf("%s: timeout waiting for status!\n", __func__);
+			return TIMEOUT;
+		}
 
 		if ((mmc_stat & (IE_DTO | IE_DCRC | IE_DEB)) != 0)
 			mmc_reset_controller_fsm(mmc_base, SYSCTL_SRD);
@@ -483,14 +499,15 @@ static int mmc_write_data(struct hsmmc *mmc_base, const char *buf,
 
 	while (size) {
 		ulong start = get_timer(0);
-		do {
-			mmc_stat = readl(&mmc_base->stat);
-			if (get_timer(start) > MAX_RETRY_MS) {
-				printf("%s: timeout waiting for status!\n",
-						__func__);
-				return TIMEOUT;
-			}
-		} while (mmc_stat == 0);
+
+		while (!(mmc_stat = readl(&mmc_base->stat))) {
+			if (get_timer(start) > MAX_RETRY_MS)
+				break;
+		}
+		if (!mmc_stat) {
+			printf("%s: timeout waiting for status!\n", __func__);
+			return TIMEOUT;
+		}
 
 		if ((mmc_stat & (IE_DTO | IE_DCRC | IE_DEB)) != 0)
 			mmc_reset_controller_fsm(mmc_base, SYSCTL_SRD);
@@ -569,10 +586,12 @@ static void mmc_set_ios(struct mmc *mmc)
 
 	start = get_timer(0);
 	while ((readl(&mmc_base->sysctl) & ICS_MASK) == ICS_NOTREADY) {
-		if (get_timer(start) > MAX_RETRY_MS) {
-			printf("%s: timeout waiting for ics!\n", __func__);
-			return;
-		}
+		if (get_timer(start) > MAX_RETRY_MS)
+			break;
+	}
+	if ((readl(&mmc_base->sysctl) & ICS_MASK) == ICS_NOTREADY) {
+		printf("%s: timeout waiting for ics!\n", __func__);
+		return;
 	}
 	writel(readl(&mmc_base->sysctl) | CEN_ENABLE, &mmc_base->sysctl);
 }
