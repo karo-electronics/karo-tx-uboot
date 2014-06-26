@@ -154,7 +154,7 @@ static void enable_per_clocks(void)
 	enable_clk(cmper->cpgmac0clkctrl, PRCM_MOD_EN);
 
 	/* MMC */
-#ifndef CONFIG_OMAP_MMC_DEV_0
+#ifdef CONFIG_OMAP_MMC_DEV_0
 	enable_clk(cmper->mmc0clkctrl, PRCM_MOD_EN);
 #endif
 #ifdef CONFIG_OMAP_MMC_DEV_1
