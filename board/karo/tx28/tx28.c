@@ -993,7 +993,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	karo_fdt_fixup_touchpanel(blob, tx28_touchpanels,
 				ARRAY_SIZE(tx28_touchpanels));
-	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy");
+	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	karo_fdt_update_fb_mode(blob, video_mode);
 }

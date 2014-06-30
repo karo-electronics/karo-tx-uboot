@@ -1101,7 +1101,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 
 	karo_fdt_fixup_touchpanel(blob, tx48_touchpanels,
 				ARRAY_SIZE(tx48_touchpanels));
-	karo_fdt_fixup_usb_otg(blob, "usb0", "phys");
+	karo_fdt_fixup_usb_otg(blob, "usb0", "phys", "vcc-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
 	karo_fdt_update_fb_mode(blob, video_mode);

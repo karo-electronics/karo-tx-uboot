@@ -223,7 +223,8 @@ static int karo_fdt_disable_node_phandle(void *blob, const char *parent,
 	return fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
 }
 
-void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
+void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy,
+			const char *phy_supply)
 {
 	const char *otg_mode = getenv("otg_mode");
 	int off;
@@ -262,7 +263,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 	if ((!disable_phy_pins && !disable_otg) || ret)
 		goto out;
 
-	ret = karo_fdt_disable_node_phandle(blob, node, "vbus-supply");
+	ret = karo_fdt_disable_node_phandle(blob, node, phy_supply);
 	if (ret)
 		goto out;
 
@@ -275,7 +276,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy)
 		ret = karo_fdt_disable_node_phandle(blob, node, phy);
 	} else if (disable_phy_pins) {
 		debug("Removing 'vbus-supply' from usbotg node\n");
-		fdt_delprop(blob, off, "vbus-supply");
+		fdt_delprop(blob, off, phy_supply);
 	}
 
 out:
