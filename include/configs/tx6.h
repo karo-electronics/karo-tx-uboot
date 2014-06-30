@@ -183,8 +183,8 @@
 #define CONFIG_SYS_DEFAULT_BOOT_MODE "nand"
 #define CONFIG_SYS_BOOT_CMD_NAND					\
 	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"
-#define CONFIG_SYS_FDTSAVE_CMD				\
-	"fdtsave=nand erase.part dtb"			\
+#define CONFIG_SYS_FDTSAVE_CMD						\
+	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
@@ -195,7 +195,8 @@
 #define CONFIG_SYS_DEFAULT_BOOT_MODE "mmc"
 #define CONFIG_SYS_BOOT_CMD_NAND ""
 #define CONFIG_SYS_FDTSAVE_CMD						\
-	"fdtsave=mmc open 0 1;mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80;mmc close 0 1\0"
+	"fdtsave=mmc open 0 1;mmc write ${fdtaddr} "			\
+	xstr(CONFIG_SYS_DTB_BLKNO) " 80;mmc close 0 1\0"
 #define MMC_ROOT_STR " root=PARTUUID=${rootpart_uuid} rootwait\0"
 #define ROOTPART_UUID_STR "rootpart_uuid=0cc66cc0-02\0"
 #define MTD_NAME			""
