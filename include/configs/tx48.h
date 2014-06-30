@@ -257,6 +257,7 @@
 
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
+#define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2
 
 /*
