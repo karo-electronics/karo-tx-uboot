@@ -30,6 +30,7 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_SHOW_ACTIVITY
 #define CONFIG_ARCH_CPU_INIT
+#define CONFIG_ARCH_MISC_INIT		/* init vector table after relocation */
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
@@ -303,7 +304,6 @@
 
 /* Defines for SPL */
 #define CONFIG_SPL
-#define CONFIG_SPL_NO_CPU_SUPPORT_CODE
 #define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mxs"
 #define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
