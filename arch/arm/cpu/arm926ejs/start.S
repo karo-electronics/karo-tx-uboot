@@ -315,6 +315,19 @@ flush_dcache:
 	movs	pc, lr		@ jump to next instruction & switch modes.
 	.endm
 
+	.macro get_bad_stack_swi
+	@ space on current stack for scratch reg.
+	sub	r13, r13, #4
+	str	r0, [r13]
+	ldr	r0, IRQ_STACK_START_IN	@ get our mode stack
+	str	lr, [r0]	@ save caller lr in position 0 of saved stack
+	mrs	lr, spsr	@ get the spsr
+	str	lr, [r0, #4]	@ save spsr in position 1 of saved stack
+	ldr	lr, [r0]	@ restore lr
+	ldr	r0, [r13]	@ restore r0
+	add	r13, r13, #4	@ pop stack entry
+	.endm
+
 	.macro get_irq_stack			@ setup IRQ stack
 	ldr	sp, IRQ_STACK_START
 	.endm
@@ -342,7 +355,7 @@ undefined_instruction:
 
 	.align	5
 software_interrupt:
-	get_bad_stack
+	get_bad_stack_swi
 	bad_save_user_regs
 	bl	do_software_interrupt
 
