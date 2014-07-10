@@ -109,15 +109,12 @@ void enable_caches(void)
 void mx28_fixup_vt(uint32_t start_addr)
 {
 	/* ldr pc, [pc, #0x18] */
-	const uint32_t ldr_pc = 0xe59ff018;
 	/* Jumptable location is 0x0 */
-	uint32_t *vt = (uint32_t *)0x0;
-	int i;
+	uint32_t *vt = (uint32_t *)0x20;
+	uint32_t cr = get_cr();
 
-	for (i = 0; i < 8; i++) {
-		vt[i] = ldr_pc;
-		vt[i + 8] = start_addr + (4 * i);
-	}
+	memcpy(vt, (void *)start_addr + 0x20, 32);
+	set_cr(cr & ~CR_V);
 }
 
 #ifdef	CONFIG_ARCH_MISC_INIT

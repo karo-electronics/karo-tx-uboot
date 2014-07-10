@@ -36,14 +36,30 @@
 .globl _start
 _start:
 	b	reset
-	b	undefined_instruction
-	b	software_interrupt
-	b	prefetch_abort
-	b	data_abort
-	b	not_used
-	b	irq
-	b	fiq
+	ldr	pc, _undefined_instruction
+	ldr	pc, _software_interrupt
+	ldr	pc, _prefetch_abort
+	ldr	pc, _data_abort
+	ldr	pc, _not_used
+	ldr	pc, _irq
+	ldr	pc, _fiq
 
+#ifdef CONFIG_SPL_BUILD
+_undefined_instruction:
+	.word	_undefined_instruction
+_software_interrupt:
+	.word	_software_interrupt
+_prefetch_abort:
+	.word	_prefetch_abort
+_data_abort:
+	.word	_data_abort
+_not_used:
+	.word	_not_used
+_irq:
+	.word	_irq
+_fiq:
+	.word	_fiq
+#else
 /*
  * Vector table, located at address 0x20.
  * This table allows the code running AFTER SPL, the U-Boot, to install it's
@@ -52,41 +68,22 @@ _start:
  * SPLs. So if interrupt happens in U-Boot, the SPLs interrupt vectoring table
  * is still used.
  */
-_vt_reset:
-	.word	_reset
-_vt_undefined_instruction:
-	.word	_hang
-_vt_software_interrupt:
-	.word	_hang
-_vt_prefetch_abort:
-	.word	_hang
-_vt_data_abort:
-	.word	_hang
-_vt_not_used:
-	.word	_reset
-_vt_irq:
-	.word	_hang
-_vt_fiq:
-	.word	_hang
-
-reset:
-	ldr	pc, _vt_reset
-undefined_instruction:
-	ldr	pc, _vt_undefined_instruction
-software_interrupt:
-	ldr	pc, _vt_software_interrupt
-prefetch_abort:
-	ldr	pc, _vt_prefetch_abort
-data_abort:
-	ldr	pc, _vt_data_abort
-not_used:
-	ldr	pc, _vt_not_used
-irq:
-	ldr	pc, _vt_irq
-fiq:
-	ldr	pc, _vt_fiq
-
-	.balignl 16,0xdeadbeef
+_undefined_instruction:
+	.word	undefined_instruction
+_software_interrupt:
+	.word	software_interrupt
+_prefetch_abort:
+	.word	prefetch_abort
+_data_abort:
+	.word	data_abort
+_not_used:
+	.word	not_used
+_irq:
+	.word	irq
+_fiq:
+	.word	fiq
+#endif /* CONFIG_SPL_BUILD */
+	.balignl 16, 0xdeadbeef
 
 /*
  *************************************************************************
@@ -148,7 +145,7 @@ IRQ_STACK_START_IN:
  * the actual reset code
  */
 
-_reset:
+reset:
 	/*
 	 * Store all registers on old stack pointer, this will allow us later to
 	 * return to the BootROM and let the BootROM load U-Boot into RAM.
@@ -187,7 +184,3 @@ _reset:
 	pop	{r0-r12,r14}
 	bx	lr
 
-_hang:
-	ldr	sp, _TEXT_BASE			/* switch to abort stack */
-1:
-	bl	1b				/* hang and never return */
