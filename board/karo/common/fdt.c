@@ -240,20 +240,20 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy,
 		return;
 	}
 
-	if (otg_mode && (strcmp(otg_mode, "device") == 0 ||
-				strcmp(otg_mode, "gadget") == 0)) {
+	if (otg_mode && (strcasecmp(otg_mode, "device") == 0 ||
+				strcasecmp(otg_mode, "gadget") == 0)) {
 		debug("Setting dr_mode to 'peripheral'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "peripheral");
-	} else if (otg_mode && strcmp(otg_mode, "host") == 0) {
+	} else if (otg_mode && strcasecmp(otg_mode, "host") == 0) {
 		debug("Setting dr_mode to 'host'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "host");
 		disable_phy_pins = 0;
-	} else if (otg_mode && strcmp(otg_mode, "otg") == 0) {
-		debug("Setting dr_mode to 'host'\n");
+	} else if (otg_mode && strcasecmp(otg_mode, "otg") == 0) {
+		debug("Setting dr_mode to 'otg'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "otg");
 		disable_phy_pins = 0;
 	} else {
-		if (otg_mode && strcmp(otg_mode, "none") != 0)
+		if (otg_mode && strcasecmp(otg_mode, "none") != 0)
 			printf("Invalid 'otg_mode' setting '%s'; disabling usbotg port\n",
 				otg_mode);
 		disable_otg = 1;
@@ -368,7 +368,7 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 			karo_fdt_set_lcd_pins(blob, "lcdif_24bit_pins_a");
 	}
 
-	if (otg_mode && strcmp(otg_mode, "host") == 0)
+	if (otg_mode && strcasecmp(otg_mode, "host") == 0)
 		karo_fdt_enable_node(blob, "can1", 0);
 
 	if (xcvr_status) {
