@@ -230,7 +230,7 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy,
 	int off;
 	int ret;
 	int disable_otg = 0;
-	int disable_phy_pins = 1;
+	int disable_phy_pins = 0;
 
 	debug("OTG mode is '%s'\n", otg_mode ? otg_mode : "<UNSET>");
 
@@ -244,14 +244,13 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy,
 				strcasecmp(otg_mode, "gadget") == 0)) {
 		debug("Setting dr_mode to 'peripheral'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "peripheral");
+		disable_phy_pins = 1;
 	} else if (otg_mode && strcasecmp(otg_mode, "host") == 0) {
 		debug("Setting dr_mode to 'host'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "host");
-		disable_phy_pins = 0;
 	} else if (otg_mode && strcasecmp(otg_mode, "otg") == 0) {
 		debug("Setting dr_mode to 'otg'\n");
 		ret = fdt_setprop_string(blob, off, "dr_mode", "otg");
-		disable_phy_pins = 0;
 	} else {
 		if (otg_mode && strcasecmp(otg_mode, "none") != 0)
 			printf("Invalid 'otg_mode' setting '%s'; disabling usbotg port\n",
@@ -264,23 +263,56 @@ void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy,
 		goto out;
 
 	ret = karo_fdt_disable_node_phandle(blob, node, phy_supply);
-	if (ret)
+	if (ret && ret == -FDT_ERR_NOTFOUND) {
+		const uint32_t *ph;
+
+		ph = fdt_getprop(blob, off, phy, NULL);
+		if (ph == NULL) {
+			printf("Failed to find '%s' phandle in node '%s'\n",
+				phy, node);
+			ret = -FDT_ERR_NOTFOUND;
+			goto out;
+		}
+		off = fdt_node_offset_by_phandle(blob, fdt32_to_cpu(*ph));
+		if (off < 0) {
+			printf("Failed to find '%s' node via phandle %04x\n",
+				phy, fdt32_to_cpu(*ph));
+			ret = off;
+			goto out;
+		}
+		ph = fdt_getprop(blob, off, phy_supply, NULL);
+		if (ph == NULL) {
+			debug("Failed to find '%s' phandle in node '%s'\n",
+				phy_supply, fdt_get_name(blob, off, NULL));
+			ret = -FDT_ERR_NOTFOUND;
+			goto disable_otg;
+		}
+		ret = fdt_node_offset_by_phandle(blob, fdt32_to_cpu(*ph));
+		if (ret > 0) {
+			debug("Disabling node %s via phandle %s:%s\n",
+				fdt_get_name(blob, ret, NULL),
+				fdt_get_name(blob, off, NULL), phy_supply);
+			ret = fdt_set_node_status(blob, ret,
+						FDT_STATUS_DISABLED, 0);
+		}
+	}
+	if (ret && ret != -FDT_ERR_NOTFOUND)
 		goto out;
 
+disable_otg:
 	if (disable_otg) {
-		debug("Disabling usbphy\n");
+		debug("Disabling '%s'\n", fdt_get_name(blob, off, NULL));
 		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
-		if (ret)
-			goto out;
-
-		ret = karo_fdt_disable_node_phandle(blob, node, phy);
+		if (ret > 0)
+			ret = karo_fdt_disable_node_phandle(blob, node, phy);
 	} else if (disable_phy_pins) {
-		debug("Removing 'vbus-supply' from usbotg node\n");
-		fdt_delprop(blob, off, phy_supply);
+		debug("Removing '%s' from node '%s'\n", phy_supply,
+			fdt_get_name(blob, off, NULL));
+		ret = fdt_delprop(blob, off, phy_supply);
 	}
 
 out:
-	if (ret)
+	if (ret && ret != -FDT_ERR_NOTFOUND)
 		printf("Failed to update usbotg: %s\n", fdt_strerror(ret));
 	else
 		debug("node '%s' updated\n", node);
@@ -546,8 +578,6 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 				fdt_get_name(blob, off, NULL), d);
 			continue;
 		}
-		debug("parsing subnode @ %04x %s depth %d\n", off,
-			fdt_get_name(blob, off, NULL), d);
 
 		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
@@ -710,8 +740,6 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 				fdt_get_name(blob, off, NULL), d);
 			continue;
 		}
-		debug("parsing subnode @ %04x %s depth %d\n", off,
-			fdt_get_name(blob, off, NULL), d);
 
 		n = fdt_getprop(blob, off, "panel-name", &len);
 		if (!n) {
