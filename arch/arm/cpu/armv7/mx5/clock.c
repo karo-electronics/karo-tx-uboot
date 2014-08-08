@@ -46,6 +46,8 @@ struct mxc_pll_reg *mxc_plls[PLL_CLOCKS] = {
 #define EMI_DIV_MAX     8
 #define NFC_DIV_MAX     8
 
+#define MXC_IPG_PER_CLK	MXC_IPG_PERCLK
+
 struct fixed_pll_mfd {
 	u32 ref_clk_hz;
 	u32 mfd;
@@ -626,6 +628,17 @@ static u32 get_emi_slow_clk(void)
 	return  get_periph_clk() / (pdf + 1);
 }
 
+static u32 get_nfc_clk(void)
+{
+	u32 parent_rate = get_emi_slow_clk();
+	u32 div = readl(&mxc_ccm->cbcdr);
+
+	div &= MXC_CCM_CBCDR_NFC_PODF_MASK;
+	div >>= MXC_CCM_CBCDR_NFC_PODF_OFFSET;
+	div++;
+	return parent_rate / div;
+}
+
 static u32 get_ddr_clk(void)
 {
 	u32 ret_val = 0;
@@ -695,6 +708,14 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 		return get_ahb_clk();
 	case MXC_DDR_CLK:
 		return get_ddr_clk();
+	case MXC_AXI_A_CLK:
+		return get_axi_a_clk();
+	case MXC_AXI_B_CLK:
+		return get_axi_b_clk();
+	case MXC_EMI_SLOW_CLK:
+		return get_emi_slow_clk();
+	case MXC_NFC_CLK:
+		return get_nfc_clk();
 	default:
 		break;
 	}
@@ -1140,9 +1161,13 @@ static int do_mx5_showclocks(void)
 
 	printf("\n");
 	pr_clk(AHB);
+	pr_clk(AXI_A);
+	pr_clk(AXI_B);
 	pr_clk(IPG);
-	pr_clk(IPG);
+	pr_clk(IPG_PER);
 	pr_clk(DDR);
+	pr_clk(EMI_SLOW);
+	pr_clk(NFC);
 #ifdef CONFIG_MXC_SPI
 	pr_clk(CSPI);
 #endif

@@ -39,6 +39,9 @@ enum mxc_clock {
 	MXC_NFC_CLK,
 	MXC_PERIPH_CLK,
 	MXC_I2C_CLK,
+	MXC_AXI_A_CLK,
+	MXC_AXI_B_CLK,
+	MXC_EMI_SLOW_CLK,
 };
 
 
