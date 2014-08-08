@@ -62,7 +62,7 @@
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1 + SZ_4M)	/* 4 MB RAM test */
 #define CONFIG_SYS_SDRAM_CLK		166
-#define CONFIG_SYS_CLKTL_CBCDR		0x01e35180
+#define CONFIG_SYS_CLKTL_CBCDR		0x01e35100
 
 /*
  * U-Boot general configurations
