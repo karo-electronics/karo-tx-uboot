@@ -192,8 +192,8 @@ dcd_start:
 	DCDGEN(4, IOMUXC_BASE_ADDR + 0x574, 0x20a4)	@ NANDF_D1
 	DCDGEN(4, IOMUXC_BASE_ADDR + 0x578, 0x20a4)	@ NANDF_D0
 dcd_end:
-	.ifgt	dcd_end - dcd_start - 720
-	DCD too large!
+	.ifgt	dcd_end - dcd_start - 60 * 12
+	.error "DCD too large!"
 	.endif
 image_len:
 	.long	CONFIG_U_BOOT_IMG_SIZE
