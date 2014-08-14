@@ -346,8 +346,7 @@ fcb_start:
 	.org	0x68
 	.word	0x0	/* primary image starting page number */
 	.word	0x0	/* secondary image starting page number */
-	.word	0x6b
-	.word	0x6b
+	.org	0x78
 	.word	0x0	/* DBBT start page (0 == NO DBBT) */
 	.word	0	/* Bad block marker offset in main area (unused) */
 	.org	0xac
@@ -373,7 +372,7 @@ app_code_csf:
 boot_data:
 	.long	fcb_start
 image_len:
-	.long	CONFIG_U_BOOT_IMG_SIZE
+	.long	__rel_dyn_end - fcb_start
 plugin:
 	.word	0
 ivt_end:
