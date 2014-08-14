@@ -409,7 +409,7 @@ dcd_hdr:
 	MXC_DCD_ITEM(0x53fd4020, 0xb6b12f0a)	/* CSCMR2 */
 	MXC_DCD_ITEM(0x53fd4024, 0x00080b18)	/* CSCDR1 */
 
-#define DDR_SEL_VAL	2
+#define DDR_SEL_VAL	0
 #define DSE_VAL		5
 #define ODT_VAL		2
 
