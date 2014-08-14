@@ -173,9 +173,31 @@ static void print_reset_cause(void)
 	printf("\n");
 }
 
+#define pr_lpgr_val(v, n, b, c) do {					\
+	u32 __v = ((v) >> (b)) & ((1 << (c)) - 1);			\
+	if (__v)							\
+		printf(" %s=%0*x", #n, DIV_ROUND_UP(c, 4), __v);	\
+} while (0)
+
+static inline void print_lpgr(u32 lpgr)
+{
+	if (!lpgr)
+		return;
+
+	printf("LPGR=%08x:", lpgr);
+	pr_lpgr_val(lpgr, SW_ISO, 31, 1);
+	pr_lpgr_val(lpgr, SECONDARY_BOOT, 30, 1);
+	pr_lpgr_val(lpgr, BLOCK_REWRITE, 29, 1);
+	pr_lpgr_val(lpgr, WDOG_BOOT, 28, 1);
+	pr_lpgr_val(lpgr, SBMR_SHADOW, 0, 26);
+	printf("\n");
+}
+
 static void tx53_print_cpuinfo(void)
 {
 	u32 cpurev;
+	struct srtc_regs *srtc_regs = (void *)SRTC_BASE_ADDR;
+	u32 lpgr = readl(&srtc_regs->lpgr);
 
 	cpurev = get_cpu_rev();
 
@@ -185,6 +207,20 @@ static void tx53_print_cpuinfo(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 
 	print_reset_cause();
+
+	print_lpgr(lpgr);
+
+	if (lpgr & (1 << 30))
+		printf("WARNING: U-Boot started from secondary bootstrap image\n");
+
+	if (lpgr) {
+		struct mxc_ccm_reg *ccm_regs = (void *)CCM_BASE_ADDR;
+		u32 ccgr4 = readl(&ccm_regs->CCGR4);
+
+		writel(ccgr4 | MXC_CCM_CCGR4_SRTC(3), &ccm_regs->CCGR4);
+		writel(0, &srtc_regs->lpgr);
+		writel(ccgr4, &ccm_regs->CCGR4);
+	}
 }
 
 enum LTC3589_REGS {
