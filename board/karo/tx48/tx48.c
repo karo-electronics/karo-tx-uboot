@@ -325,6 +325,21 @@ static u32 prm_rstst __attribute__((section(".data")));
 /*
  * Basic board specific setup
  */
+static const struct pin_mux tx48_pads[] = {
+	{ OFFSET(i2c0_sda), MODE(7) | RXACTIVE | PULLUDEN | PULLUP_EN, },
+	{ OFFSET(i2c0_scl), MODE(7) | RXACTIVE | PULLUDEN | PULLUP_EN, },
+};
+
+static const struct pin_mux tx48_i2c_pads[] = {
+	{ OFFSET(i2c0_sda), MODE(0) | RXACTIVE | PULLUDEN | PULLUP_EN, },
+	{ OFFSET(i2c0_scl), MODE(0) | RXACTIVE | PULLUDEN | PULLUP_EN, },
+};
+
+static const struct gpio tx48_gpios[] = {
+	{ AM33XX_GPIO_NR(3, 5), GPIOF_INPUT, "I2C1_SDA", },
+	{ AM33XX_GPIO_NR(3, 6), GPIOF_INPUT, "I2C1_SCL", },
+};
+
 static const struct pin_mux stk5_pads[] = {
 	/* heartbeat LED */
 	{ OFFSET(gpmc_a10), MODE(7) | PULLUDEN, },
@@ -819,6 +834,8 @@ static void stk5v5_board_init(void)
 /* called with default environment! */
 int board_init(void)
 {
+	int i;
+
 	/* mach type passed to kernel */
 #ifdef CONFIG_OF_LIBFDT
 	gd->bd->bi_arch_number = -1;
@@ -829,6 +846,17 @@ int board_init(void)
 	if (ctrlc())
 		printf("CTRL-C detected\n");
 
+	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
+	tx48_set_pin_mux(tx48_pads, ARRAY_SIZE(tx48_pads));
+
+	for (i = 0; i < ARRAY_SIZE(tx48_gpios); i++) {
+		int gpio = tx48_gpios[i].gpio;
+
+		if (gpio_get_value(gpio) == 0)
+			gpio_direction_output(gpio, 1);
+	}
+
+	tx48_set_pin_mux(tx48_pads, ARRAY_SIZE(tx48_i2c_pads));
 	return 0;
 }
 
