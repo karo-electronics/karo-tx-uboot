@@ -878,18 +878,31 @@ int checkboard(void)
 static void tx48_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
-
-	if (had_ctrlc() || (prm_rstst & PRM_RSTST_WDT1_RST))
-		return;
+	unsigned long act_cpu_clk;
 
 	if (cpu_clk == 0 || cpu_clk == mpu_clk_rate() / 1000000)
 		return;
 
+	if (had_ctrlc() || (prm_rstst & PRM_RSTST_WDT1_RST)) {
+		if (prm_rstst & PRM_RSTST_WDT1_RST) {
+			printf("Watchdog reset detected; skipping cpu clock change\n");
+		} else {
+			printf("<CTRL-C> detected; skipping cpu clock change\n");
+		}
+		return;
+	}
+
 	mpu_pll_config_val(cpu_clk);
 
-	printf("CPU clock set to %lu.%03lu MHz\n",
-		mpu_clk_rate() / 1000000,
-		mpu_clk_rate() / 1000 % 1000);
+	act_cpu_clk = mpu_clk_rate();
+	if (cpu_clk * 1000000 != act_cpu_clk) {
+		printf("Failed to set CPU clock to %lu MHz; using %lu.%03lu MHz instead\n",
+			cpu_clk, act_cpu_clk / 1000000,
+			act_cpu_clk / 1000 % 1000);
+	} else {
+		printf("CPU clock set to %lu.%03lu MHz\n",
+			act_cpu_clk / 1000000, act_cpu_clk / 1000 % 1000);
+	}
 }
 
 static void tx48_init_mac(void)
