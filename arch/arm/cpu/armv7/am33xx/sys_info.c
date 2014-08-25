@@ -81,28 +81,12 @@ u32 get_sysboot_value(void)
 #define SYSBOOT_FREQ_SHIFT	22
 #define SYSBOOT_FREQ_MASK	(3 << SYSBOOT_FREQ_SHIFT)
 
-static unsigned long bootfreqs[] = {
-	19200000,
-	24000000,
-	25000000,
-	26000000,
-};
-
-static u32 get_sysboot_freq(void)
-{
-	int mode;
-	mode = readl(&cstat->statusreg) & SYSBOOT_FREQ_MASK;
-	return bootfreqs[mode >> SYSBOOT_FREQ_SHIFT];
-}
-
 /**
  * Print CPU information
  */
 int print_cpuinfo(void)
 {
 	char *cpu_s, *sec_s;
-	unsigned long clk;
-	const struct cm_wkuppll *cmwkup = (struct cm_wkuppll *)CM_WKUP;
 
 	switch (get_cpu_type()) {
 	case AM335X:
@@ -133,24 +117,6 @@ int print_cpuinfo(void)
 	}
 
 	printf("%s-%s rev %d\n", cpu_s, sec_s, get_cpu_rev());
-
-	clk = get_sysboot_freq();
-	printf("OSC clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, mpu);
-	printf("MPU clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, ddr);
-	printf("DDR clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, per);
-	printf("PER clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-#ifdef CONFIG_LCD
-	clk = clk_get_rate(cmwkup, disp);
-	printf("LCD clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-#endif
 
 	return 0;
 }
