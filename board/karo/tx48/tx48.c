@@ -869,11 +869,8 @@ int checkboard(void)
 	prm_rstst = readl(PRM_RSTST);
 	show_reset_cause(prm_rstst);
 
-#ifdef CONFIG_OF_LIBFDT
-	printf("Board: Ka-Ro TX48-7020 with FDT support\n");
-#else
 	printf("Board: Ka-Ro TX48-7020\n");
-#endif
+
 	timer_init();
 	return 0;
 }
