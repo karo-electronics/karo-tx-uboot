@@ -340,7 +340,7 @@ static const struct pin_mux stk5_pads[] = {
 
 static const struct gpio stk5_gpios[] = {
 	{ TX48_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
-	{ TX48_MMC_CD_GPIO, GPIOF_INPUT, "HEARTBEAT LED", },
+	{ TX48_MMC_CD_GPIO, GPIOF_INPUT, "MMC0 CD", },
 };
 
 static const struct pin_mux stk5_lcd_pads[] = {
