@@ -87,6 +87,19 @@ int gpio_set_value(unsigned gpio, int val)
 	return 0;
 }
 
+int gpio_get_value(unsigned gpio)
+{
+	int bank = gpio / 32;
+	int mask = 1 << (gpio % 32);
+
+	if (bank >= ARRAY_SIZE(gpio_base)) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
+		return -EINVAL;
+	}
+	return (readl(&gpio_base[bank]->datain) & mask) != 0;
+}
+
 int gpio_direction_input(unsigned gpio)
 {
 	int bank = gpio / 32;
@@ -97,7 +110,6 @@ int gpio_direction_input(unsigned gpio)
 			gpio / 32, gpio % 32);
 		return -EINVAL;
 	}
-
 	writel(readl(&gpio_base[bank]->oe) | mask, &gpio_base[bank]->oe);
 	return 0;
 }
