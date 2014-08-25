@@ -1145,5 +1145,11 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_update_fb_mode(blob, video_mode);
 
 	tx48_disable_watchdog();
+
+	if (get_cpu_rev() == 0) {
+		karo_fdt_del_prop(blob, "lltc,ltc3589-2", 0x34, "interrupts");
+		karo_fdt_del_prop(blob, "lltc,ltc3589-2", 0x34,
+				"interrupt-parent");
+	}
 }
 #endif /* CONFIG_OF_BOARD_SETUP */
