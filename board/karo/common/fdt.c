@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2012,2013 Lothar Waßmann <LW@KARO-electronics.de>
+ * (C) Copyright 2012-2014 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -413,37 +413,28 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 	}
 }
 
-void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
-			const char *prop)
+void karo_fdt_del_prop(void *blob, const char *compat, u32 offs,
+			const char *propname)
 {
-	int ret;
-	int offset;
-	const uint32_t *phandle;
-	uint32_t ph = 0;
+	int offset = -1;
+	const fdt32_t *reg = NULL;
 
-	offset = fdt_node_offset_by_compat_reg(blob, compat, offs);
-	if (offset <= 0)
-		return;
+	while (1) {
+		offset = fdt_node_offset_by_compatible(blob, offset, compat);
+		if (offset <= 0)
+			return;
 
-	phandle = fdt_getprop(blob, offset, prop, NULL);
-	if (phandle) {
-		ph = fdt32_to_cpu(*phandle);
+		reg = fdt_getprop(blob, offset, "reg", NULL);
+		if (reg == NULL)
+			return;
+
+		if (fdt32_to_cpu(*reg) == offs)
+			break;
 	}
+	debug("Removing property '%s' from node %s@%x\n",
+		propname, compat, offs);
+	fdt_delprop(blob, offset, propname);
 
-	debug("Removing property '%s' from node %s@%08lx\n", prop, compat, offs);
-	ret = fdt_delprop(blob, offset, prop);
-	if (ret == 0)
-		karo_set_fdtsize(blob);
-
-	if (!ph)
-		return;
-
-	offset = fdt_node_offset_by_phandle(blob, ph);
-	if (offset <= 0)
-		return;
-
-	debug("Removing node @ %08x\n", offset);
-	fdt_del_node(blob, offset);
 	karo_set_fdtsize(blob);
 }
 

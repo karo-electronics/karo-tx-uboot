@@ -30,7 +30,7 @@ void karo_fdt_fixup_touchpanel(void *blob, const char *panels[],
 void karo_fdt_fixup_usb_otg(void *blob, const char *node, const char *phy,
 			const char *phy_supply);
 void karo_fdt_fixup_flexcan(void *blob, int xcvr_present);
-void karo_fdt_del_prop(void *blob, const char *compat, phys_addr_t offs,
+void karo_fdt_del_prop(void *blob, const char *compat, u32 offs,
 		const char *prop);
 void karo_fdt_enable_node(void *blob, const char *node, int enable);
 int karo_fdt_get_fb_mode(void *blob, const char *name,
@@ -59,7 +59,7 @@ static inline void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 {
 }
 static inline void karo_fdt_del_prop(void *blob, const char *compat,
-				phys_addr_t offs, const char *prop)
+				u32 offs, const char *prop)
 {
 }
 static inline void karo_fdt_enable_node(void *blob, const char *node,
