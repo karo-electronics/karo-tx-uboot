@@ -85,7 +85,6 @@
 #ifdef CONFIG_OF_LIBFDT
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #define CONFIG_OF_BOARD_SETUP
-#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif
 
 /*
@@ -105,7 +104,9 @@
 #define CONFIG_BOOTARGS			"console=ttyAMA0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
 #define CONFIG_LOADADDR			43000000
+#define CONFIG_FDTADDR			40001000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 
 /*
@@ -137,7 +138,7 @@
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
-	"fdtaddr=41000000\0"						\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\

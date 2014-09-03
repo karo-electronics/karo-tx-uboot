@@ -51,7 +51,11 @@ static void karo_set_fdtsize(void *fdt)
 static void *karo_fdt_load_dtb(void)
 {
 	int ret;
-	void *fdt = (void *)getenv_ulong("fdtaddr", 16, CONFIG_SYS_FDT_ADDR);
+	void *fdt;
+
+	if (getenv("fdtaddr") == NULL)
+		setenv_hex("fdtaddr", CONFIG_SYS_FDT_ADDR);
+	fdt = (void *)getenv_ulong("fdtaddr", 16, CONFIG_SYS_FDT_ADDR);
 
 	if (had_ctrlc()) {
 		printf("aborting DTB load\n");
