@@ -103,7 +103,11 @@
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"console=ttyAMA0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#ifdef CONFIG_TX28_S
+#define CONFIG_LOADADDR			41000000
+#else
 #define CONFIG_LOADADDR			43000000
+#endif
 #define CONFIG_FDTADDR			40001000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
