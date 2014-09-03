@@ -91,8 +91,8 @@
 /*
  * Boot Linux
  */
-#define xstr(s)	str(s)
-#define str(s)	#s
+#define xstr(s)				str(s)
+#define str(s)				#s
 #define __pfx(x, s)			(x##s)
 #define _pfx(x, s)			__pfx(x, s)
 
@@ -116,7 +116,6 @@
 	"autostart=no\0"						\
 	"autoload=no\0"							\
 	"bootdelay=-1\0"						\
-	"fdtaddr=11000000\0"						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"
 #else
@@ -137,7 +136,7 @@
 	";run bootm_cmd\0"						\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
-	" ${append_bootargs}\0"		\
+	" ${append_bootargs}\0"						\
 	"fdtaddr=41000000\0"						\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
@@ -230,8 +229,6 @@
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x20000
 #define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_MXS_DMA_CHANNEL	4
-#define CONFIG_SYS_MAX_FLASH_SECT	1024
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
@@ -304,8 +301,8 @@
 
 /* Defines for SPL */
 #define CONFIG_SPL
-#define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mxs"
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
+#define CONFIG_SPL_START_S_PATH		"arch/arm/cpu/arm926ejs/mxs"
+#define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
