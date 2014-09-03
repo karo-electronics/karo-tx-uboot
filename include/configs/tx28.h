@@ -127,19 +127,24 @@
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
+	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
-	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/nfs ip=dhcp nfsroot=${nfs_server}:${nfsroot},nolock\0" \
+	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
+	" ip=dhcp\0"							\
+	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
+	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	";nboot linux\0"						\
 	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
-	";fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
-	"bootcmd_nand=set autostart no;run bootargs_nand"		\
-	";nboot linux;run bootm_cmd\0"					\
-	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp"		\
-	";run bootm_cmd\0"						\
+	";fatload mmc 0 ${loadaddr} uImage\0"				\
+	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"\
+	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
+	"boot_mode=nand\0"						\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
