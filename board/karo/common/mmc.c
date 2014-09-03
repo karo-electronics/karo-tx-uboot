@@ -93,6 +93,7 @@ static int karo_mmc_find_part(struct mmc *mmc, const char *part, int devno,
 	int ret;
 	block_dev_desc_t *mmc_dev;
 
+#if defined(CONFIG_SYS_DTB_OFFSET) && defined(CONFIG_SYS_MMC_ENV_PART)
 	if (strcmp(part, "dtb") == 0) {
 		const int partnum = CONFIG_SYS_MMC_ENV_PART;
 
@@ -104,10 +105,10 @@ static int karo_mmc_find_part(struct mmc *mmc, const char *part, int devno,
 			part_info->start + part_info->size - 1);
 		return partnum;
 	}
-
+#endif
 	ret = find_partitions("mmc", devno, FS_TYPE_FAT, &mmc_dev, part_info);
 	if (ret < 0) {
-		printf("No eMMC partition found: %d\n", ret);
+		printf("No (e)MMC partition found: %d\n", ret);
 		return ret;
 	}
 	return 0;
@@ -118,7 +119,7 @@ int karo_load_mmc_part(const char *part, void *addr, size_t len)
 	int ret;
 	struct mmc *mmc;
 	disk_partition_t part_info;
-	int devno = CONFIG_MMC_BOOT_DEV;
+	int devno = CONFIG_SYS_MMC_ENV_DEV;
 	lbaint_t blk_cnt;
 	int partnum;
 
