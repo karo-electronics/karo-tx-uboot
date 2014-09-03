@@ -145,20 +145,10 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 	}
 }
 
-static void ce_prepare_run_bin(ce_bin *bin)
+static void ce_init_drv_globals(void)
 {
 	struct ce_magic *ce_magic = (void *)CONFIG_SYS_SDRAM_BASE + 0x160;
 	ce_std_driver_globals *std_drv_glb = &ce_magic->drv_glb;
-
-	/* Clear os RAM area (if needed) */
-	if (bin->edbgConfig.flags & EDBG_FL_CLEANBOOT) {
-		debug("cleaning memory from %p to %p\n",
-			bin->eRamStart, bin->eRamStart + bin->eRamLen);
-
-		printf("Preparing clean boot ... ");
-		memset(bin->eRamStart, 0, bin->eRamLen);
-		printf("ok\n");
-	}
 
 	debug("Copying CE MAGIC from %p to %p..%p\n",
 		&ce_magic_template, ce_magic,
@@ -170,6 +160,21 @@ static void ce_prepare_run_bin(ce_bin *bin)
 		strlen(std_drv_glb->mtdparts) + 1;
 	ce_dump_block(ce_magic, offsetof(struct ce_magic, drv_glb) +
 		ce_magic->size);
+}
+
+static void ce_prepare_run_bin(ce_bin *bin)
+{
+	/* Clear os RAM area (if needed) */
+	if (bin->edbgConfig.flags & EDBG_FL_CLEANBOOT) {
+		debug("cleaning memory from %p to %p\n",
+			bin->eRamStart, bin->eRamStart + bin->eRamLen);
+
+		printf("Preparing clean boot ... ");
+		memset(bin->eRamStart, 0, bin->eRamLen);
+		printf("ok\n");
+	}
+
+	ce_init_drv_globals();
 
 	/*
 	 * Make sure, all the above makes it into SDRAM because
@@ -372,6 +377,10 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	size_t image_size;
 
 	if (argc > 1) {
+		if (strcmp(argv[1], "-i") == 0) {
+			ce_init_drv_globals();
+			return CMD_RET_SUCCESS;
+		}
 		addr = (void *)simple_strtoul(argv[1], NULL, 16);
 		image_size = INT_MAX;		/* actually we do not know the image size */
 	} else if (getenv("fileaddr") != NULL) {
@@ -410,7 +419,9 @@ U_BOOT_CMD(
 	bootce, 2, 0, do_bootce,
 	"Boot a Windows CE image from RAM",
 	"[addr]\n"
-	"\taddr\t\tboot image from address addr (default ${fileaddr})"
+	"\taddr\t\tboot image from address addr (default ${fileaddr})\n"
+	"or\n"
+	"\t-i\t\tinitialize the WinCE globals data structure (before loading a .nb0 image)"
 );
 
 #ifdef CONFIG_CMD_NAND
