@@ -86,7 +86,8 @@ static int mxsmmc_send_cmd_pio(struct mxsmmc_priv *priv, struct mmc_data *data)
 	return timeout ? 0 : COMM_ERR;
 }
 
-static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
+static int mxsmmc_send_cmd_dma(struct mmc *mmc, struct mxsmmc_priv *priv,
+			struct mmc_data *data)
 {
 	uint32_t data_count = data->blocksize * data->blocks;
 	int dmach;
@@ -94,6 +95,9 @@ static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
 	void *addr;
 	unsigned int flags;
 	struct bounce_buffer bbstate;
+	unsigned long xfer_rate = (mmc->clock ?: 400000) * mmc->bus_width;
+	unsigned long dma_timeout = data_count * 8 /
+		DIV_ROUND_UP(xfer_rate, 1000);
 
 	memset(desc, 0, sizeof(struct mxs_dma_desc));
 	desc->address = (dma_addr_t)desc;
@@ -117,6 +121,8 @@ static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
 
 	dmach = MXS_DMA_CHANNEL_AHB_APBH_SSP0 + priv->id;
 	mxs_dma_desc_append(dmach, priv->desc);
+	/* set DMA timeout adding 250ms for min timeout according to SD spec. */
+	mxs_dma_set_timeout(dmach, dma_timeout + 250);
 	if (mxs_dma_go(dmach)) {
 		bounce_buffer_stop(&bbstate);
 		return COMM_ERR;
@@ -278,7 +284,7 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 			return ret;
 		}
 	} else {
-		ret = mxsmmc_send_cmd_dma(priv, data);
+		ret = mxsmmc_send_cmd_dma(mmc, priv, data);
 		if (ret) {
 			printf("MMC%d: DMA transfer failed\n",
 				mmc->block_dev.dev);
