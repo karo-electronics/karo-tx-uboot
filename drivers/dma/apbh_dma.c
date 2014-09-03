@@ -290,6 +290,7 @@ static int mxs_dma_request(int channel)
 	pchan->flags |= MXS_DMA_FLAGS_ALLOCATED;
 	pchan->active_num = 0;
 	pchan->pending_num = 0;
+	pchan->timeout = 10000000;
 
 	INIT_LIST_HEAD(&pchan->active);
 	INIT_LIST_HEAD(&pchan->done);
@@ -325,6 +326,44 @@ int mxs_dma_release(int channel)
 	pchan->flags &= ~MXS_DMA_FLAGS_ALLOCATED;
 
 	return 0;
+}
+
+/*
+ * Set the timeout for any DMA operation started with mxs_dma_go()
+ * The timeout value given is in milliseconds
+ */
+int mxs_dma_set_timeout(int channel, unsigned long timeout)
+{
+	int ret;
+	struct mxs_dma_chan *pchan;
+
+	ret = mxs_dma_validate_chan(channel);
+	if (ret)
+		return ret;
+
+	pchan = &mxs_dma_channels[channel];
+
+	if (pchan->flags & MXS_DMA_FLAGS_BUSY)
+		return -EBUSY;
+
+	if (timeout > ~0UL / 1000)
+		return -EINVAL;
+
+	pchan->timeout = timeout;
+	return 0;
+}
+
+unsigned long mxs_dma_get_timeout(int channel)
+{
+	int ret;
+	struct mxs_dma_chan *pchan;
+
+	ret = mxs_dma_validate_chan(channel);
+	if (ret)
+		return 0;
+
+	pchan = &mxs_dma_channels[channel];
+	return pchan->timeout;
 }
 
 /*
@@ -513,16 +552,25 @@ static int mxs_dma_wait_complete(uint32_t timeout, unsigned int chan)
  */
 int mxs_dma_go(int chan)
 {
-	uint32_t timeout = 10000;
 	int ret;
-
+	struct mxs_dma_chan *pchan;
 	LIST_HEAD(tmp_desc_list);
 
+	ret = mxs_dma_validate_chan(chan);
+	if (ret)
+		return ret;
+
+	pchan = &mxs_dma_channels[chan];
+
 	mxs_dma_enable_irq(chan, 1);
-	mxs_dma_enable(chan);
+	ret = mxs_dma_enable(chan);
+	if (ret) {
+		mxs_dma_enable_irq(chan, 0);
+		return ret;
+	}
 
 	/* Wait for DMA to finish. */
-	ret = mxs_dma_wait_complete(timeout, chan);
+	ret = mxs_dma_wait_complete(pchan->timeout * 1000, chan);
 
 	/* Clear out the descriptors we just ran. */
 	mxs_dma_finish(chan, &tmp_desc_list);
