@@ -86,7 +86,7 @@ static int mxs_dma_read_semaphore(int channel)
 }
 
 #ifndef	CONFIG_SYS_DCACHE_OFF
-void mxs_dma_flush_desc(struct mxs_dma_desc *desc)
+static void mxs_dma_flush_desc(struct mxs_dma_desc *desc)
 {
 	uint32_t addr;
 	uint32_t size;
@@ -97,7 +97,9 @@ void mxs_dma_flush_desc(struct mxs_dma_desc *desc)
 	flush_dcache_range(addr, addr + size);
 }
 #else
-inline void mxs_dma_flush_desc(struct mxs_dma_desc *desc) {}
+static inline void mxs_dma_flush_desc(struct mxs_dma_desc *desc)
+{
+}
 #endif
 
 /*
