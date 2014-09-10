@@ -101,8 +101,8 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_BOOTARGS			"console=ttyAMA0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_BOOTARGS			"init=/linuxrc console=ttyAMA0,115200 ro debug panic=1"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
 #ifdef CONFIG_TX28_S
 #define CONFIG_LOADADDR			41000000
 #else
@@ -114,7 +114,7 @@
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 
 /*
- * Extra Environments
+ * Extra Environment Settings
  */
 #ifdef CONFIG_ENV_IS_NOWHERE
 #define CONFIG_EXTRA_ENV_SETTINGS					\
