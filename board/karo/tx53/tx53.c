@@ -58,6 +58,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define TX53_SDHC_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_HYS | PAD_CTL_DSE_HIGH |	\
 				PAD_CTL_SRE_FAST | PAD_CTL_PUS_47K_UP)
 
+char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
+
 static iomux_v3_cfg_t tx53_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
 

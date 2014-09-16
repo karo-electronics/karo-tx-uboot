@@ -62,14 +62,19 @@ SECTIONS
 		*(.rel*)
 	}
 
+	.rel_dyn_end :
+	{
+		*(.__rel_dyn_end)
+	}
+
 	/* Workaround for an apparent bug in i.MX53 ROM Code,
 	 * that skips loading the last block if it doesn't
 	 * end on a 4KiB boundary.
 	 */
 	. = ALIGN(4096);
-	.rel_dyn_end :
+	.uboot_img_end :
 	{
-		*(.__rel_dyn_end)
+		*(.__uboot_img_end)
 	}
 
 	_end = .;

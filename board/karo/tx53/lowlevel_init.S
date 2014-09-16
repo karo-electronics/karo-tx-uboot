@@ -372,7 +372,7 @@ app_code_csf:
 boot_data:
 	.long	fcb_start
 image_len:
-	.long	__rel_dyn_end - fcb_start
+	.long	__uboot_img_end - fcb_start
 plugin:
 	.word	0
 ivt_end:
