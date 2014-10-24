@@ -8,13 +8,7 @@
 #define LED_MUX_MODE		0x11
 
 #define SDRAM_CLK		CONFIG_SYS_SDRAM_CLK
-
-#ifdef PHYS_SDRAM_2_SIZE
-#define SDRAM_SIZE		(PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE)
-#else
-#define SDRAM_SIZE		PHYS_SDRAM_1_SIZE
-#endif
-
+#define SDRAM_SIZE		(CONFIG_SYS_SDRAM_SIZE / SZ_1M)
 
 #define REG_CCGR0		0x68
 #define REG_CCGR1		0x6c
@@ -150,11 +144,7 @@ dcd_end:
 #define ESDOR_CLK_PERIOD_ns		(1000000000 / CKIL_FREQ_Hz / 2)	/* base clock for ESDOR values */
 
 /* DDR3 SDRAM */
-#if SDRAM_SIZE > PHYS_SDRAM_1_SIZE
-#define BANK_ADDR_BITS			2
-#else
-#define BANK_ADDR_BITS			1
-#endif
+#define BANK_ADDR_BITS			CONFIG_NR_DRAM_BANKS
 #define SDRAM_BURST_LENGTH		8
 #define RALAT				5
 #define WALAT				0

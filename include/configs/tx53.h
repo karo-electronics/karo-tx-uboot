@@ -43,14 +43,15 @@
 /*
  * Memory configuration options
  */
+#ifndef CONFIG_SYS_SDRAM_SIZE
+#define CONFIG_SYS_SDRAM_SIZE		(SZ_512M * CONFIG_NR_DRAM_BANKS)
+#endif
+
 #define PHYS_SDRAM_1			0x70000000	/* Base address of bank 1 */
-#define PHYS_SDRAM_1_SIZE		SZ_512M
+#define PHYS_SDRAM_1_SIZE		(CONFIG_SYS_SDRAM_SIZE / CONFIG_NR_DRAM_BANKS)
 #if CONFIG_NR_DRAM_BANKS > 1
 #define PHYS_SDRAM_2			0xb0000000	/* Base address of bank 2 */
-#define PHYS_SDRAM_2_SIZE		SZ_512M
-#define TX53_MOD_SUFFIX			"1"
-#else
-#define TX53_MOD_SUFFIX			"0"
+#define PHYS_SDRAM_2_SIZE		PHYS_SDRAM_1_SIZE
 #endif
 #define CONFIG_STACKSIZE		SZ_128K
 #define CONFIG_SYS_MALLOC_LEN		SZ_8M

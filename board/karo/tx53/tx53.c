@@ -502,9 +502,13 @@ int dram_init(void)
 {
 	int ret;
 
-	/* dram_init must store complete ramsize in gd->ram_size */
-	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
-				PHYS_SDRAM_1_SIZE);
+	/*
+	 * U-Boot doesn't support RAM banks with intervening holes,
+	 * so let U-Boot only know about the first bank for its
+	 * internal data structures. The size reported to Linux is
+	 * determined from the individual bank sizes.
+	 */
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM_1, SZ_1G);
 
 	ret = mxc_set_clock(CONFIG_SYS_MX5_HCLK,
 		CONFIG_SYS_SDRAM_CLK, MXC_DDR_CLK);
@@ -521,14 +525,24 @@ int dram_init(void)
 
 void dram_init_banksize(void)
 {
+	long total_size = gd->ram_size;
+
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = get_ram_size((void *)PHYS_SDRAM_1,
-			PHYS_SDRAM_1_SIZE);
+	gd->bd->bi_dram[0].size = gd->ram_size;
+
 #if CONFIG_NR_DRAM_BANKS > 1
-	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
-	gd->bd->bi_dram[1].size = get_ram_size((void *)PHYS_SDRAM_2,
-			PHYS_SDRAM_2_SIZE);
+	gd->bd->bi_dram[1].size = get_ram_size((void *)PHYS_SDRAM_2, SZ_1G);
+
+	if (gd->bd->bi_dram[1].size) {
+		debug("Found %luMiB SDRAM in bank 2\n",
+			gd->bd->bi_dram[1].size / SZ_1M);
+		gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
+		total_size += gd->bd->bi_dram[1].size;
+	}
 #endif
+	if (total_size != CONFIG_SYS_SDRAM_SIZE)
+		printf("WARNING: SDRAM size mismatch: %uMiB configured; %luMiB detected\n",
+			CONFIG_SYS_SDRAM_SIZE / SZ_1M, total_size / SZ_1M);
 }
 
 #ifdef	CONFIG_CMD_MMC
@@ -1352,10 +1366,12 @@ exit:
 int checkboard(void)
 {
 	tx53_print_cpuinfo();
-
-	printf("Board: Ka-Ro TX53-x%d3%s\n",
-		is_lvds(), TX53_MOD_SUFFIX);
-
+#if CONFIG_SYS_SDRAM_SIZE < SZ_1G
+	printf("Board: Ka-Ro TX53-8%d3%c\n",
+		is_lvds(), '0' + CONFIG_SYS_SDRAM_SIZE / SZ_1G);
+#else
+	printf("Board: Ka-Ro TX53-1%d31\n", is_lvds() + 2);
+#endif
 	return 0;
 }
 
