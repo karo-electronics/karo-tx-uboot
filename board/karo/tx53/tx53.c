@@ -1369,8 +1369,12 @@ int checkboard(void)
 #if CONFIG_SYS_SDRAM_SIZE < SZ_1G
 	printf("Board: Ka-Ro TX53-8%d3%c\n",
 		is_lvds(), '0' + CONFIG_SYS_SDRAM_SIZE / SZ_1G);
+#elif CONFIG_SYS_SDRAM_SIZE < SZ_2G
+	printf("Board: Ka-Ro TX53-1%d3%c\n",
+		is_lvds() + 2, '0' + CONFIG_SYS_SDRAM_SIZE / SZ_1G);
 #else
-	printf("Board: Ka-Ro TX53-1%d31\n", is_lvds() + 2);
+	printf("Board: Ka-Ro TX53-123%c\n",
+		'0' + CONFIG_SYS_SDRAM_SIZE / SZ_1G);
 #endif
 	return 0;
 }
