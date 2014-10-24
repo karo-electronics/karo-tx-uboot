@@ -377,7 +377,7 @@ int adjust_core_voltage(u32 freq)
 			u8 val = mV_to_regval(vout_to_vref(mV * 10, 3));
 			u8 v;
 
-			printf("regval[%umV]=%02x\n", mV, val);
+			debug("regval[%umV]=%02x\n", mV, val);
 
 			ret = i2c_read(CONFIG_SYS_I2C_SLAVE, LTC3589_B1DTV1, 1,
 				&v, 1);
@@ -386,7 +386,7 @@ int adjust_core_voltage(u32 freq)
 					__func__, LTC3589_B1DTV1, ret);
 				return ret;
 			}
-			printf("Changing reg %02x from %02x to %02x\n",
+			debug("Changing reg %02x from %02x to %02x\n",
 				LTC3589_B1DTV1, v, (v & ~0x1f) |
 				mV_to_regval(vout_to_vref(mV * 10, 3)));
 			v &= ~0x1f;
