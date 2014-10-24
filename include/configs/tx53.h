@@ -106,6 +106,11 @@
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 #define CONFIG_HW_WATCHDOG
+#ifndef CONFIG_SYS_LVDS_IF
+#define DEFAULT_VIDEO_MODE		"VGA"
+#else
+#define DEFAULT_VIDEO_MODE		"HSD100PXN1"
+#endif
 
 /*
  * Extra Environment Settings
@@ -143,7 +148,7 @@
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
-	"video_mode=VGA\0"
+	"video_mode=" DEFAULT_VIDEO_MODE "\0"
 
 #define MTD_NAME			"mxc_nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
