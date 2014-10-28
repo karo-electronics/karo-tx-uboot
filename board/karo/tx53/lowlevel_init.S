@@ -174,6 +174,10 @@ dcd_end:
 
 #if SDRAM_SIZE < 2048
 /* 512/1024MiB SDRAM: NT5CB128M16FP-DII */
+
+#define ROW_ADDR_BITS			14
+#define COL_ADDR_BITS			10
+
 /* ESDCFG0 0x0c */
 NS_VAL	tRFC,	160, 1, 255		/* clks - 1 (0..255) */
 CK_MAX	tXS,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) tRFC + 10 */
@@ -202,6 +206,10 @@ CK_MAX	tRRD,	NS_TO_CK(10), 4, 1, 7	/* clks - 1 (0..7) */
 CK_MAX	tXPR,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) max(tRFC + 10, 5CK) */
 #else
 /* 4096MiB SDRAM: IM4G16D3EABG-125I */
+
+#define ROW_ADDR_BITS			15
+#define COL_ADDR_BITS			10
+
 /* ESDCFG0 0x0c */
 NS_VAL	tRFC,	260, 1, 255		/* clks - 1 (0..255) */
 CK_MAX	tXS,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) tRFC + 10 */
@@ -268,9 +276,6 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 	(PWDT << 12) |				\
 	(PWDT << 8)				\
 	)
-
-#define ROW_ADDR_BITS			14
-#define COL_ADDR_BITS			10
 
 #define Rtt_Nom				1 /* ODT: 0: off 1: RZQ/4 2: RZQ/2 3: RZQ/6 4: RZQ/12 5: RZQ/8 */
 #define Rtt_WR				0 /* Dynamic ODT: 0: off 1: RZQ/4 2: RZQ/2 */
