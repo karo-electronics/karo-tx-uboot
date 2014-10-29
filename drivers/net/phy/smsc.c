@@ -25,31 +25,106 @@
  *
  */
 #include <miiphy.h>
+#include <errno.h>
+
+#define MII_LAN83C185_CTRL_STATUS	17 /* Mode/Status Register */
+#define MII_LAN83C185_EDPWRDOWN		(1 << 13) /* EDPWRDOWN */
+#define MII_LAN83C185_ENERGYON		(1 << 1)  /* ENERGYON */
 
 static int smsc_parse_status(struct phy_device *phydev)
 {
-	int mii_reg;
+	int bmcr;
+	int aneg_exp;
+	int mii_adv;
+	int lpa;
 
-	mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
+	aneg_exp = phy_read(phydev, MDIO_DEVAD_NONE, MII_EXPANSION);
+	if (aneg_exp < 0)
+		return aneg_exp;
 
-	if (mii_reg & (BMSR_100FULL | BMSR_100HALF))
-		phydev->speed = SPEED_100;
-	else
-		phydev->speed = SPEED_10;
+	if (aneg_exp & EXPANSION_MFAULTS) {
+		/* second read to clear latched status */
+		aneg_exp = phy_read(phydev, MDIO_DEVAD_NONE, MII_EXPANSION);
+		if (aneg_exp & EXPANSION_MFAULTS)
+			return -EIO;
+	}
 
-	if (mii_reg & (BMSR_10FULL | BMSR_100FULL))
-		phydev->duplex = DUPLEX_FULL;
-	else
-		phydev->duplex = DUPLEX_HALF;
+	bmcr = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
+	if (bmcr < 0)
+		return bmcr;
+	if (bmcr & BMCR_ANENABLE) {
+		lpa = phy_read(phydev, MDIO_DEVAD_NONE, MII_LPA);
+		if (lpa < 0)
+			return lpa;
+		mii_adv = phy_read(phydev, MDIO_DEVAD_NONE, MII_ADVERTISE);
+		if (mii_adv < 0)
+			return mii_adv;
+		lpa &= mii_adv;
 
+		if (!(aneg_exp & EXPANSION_NWAY)) {
+			/* parallel detection */
+			phydev->duplex = DUPLEX_HALF;
+			if (lpa & (LPA_100HALF | LPA_100FULL))
+				phydev->speed = SPEED_100;
+			else
+				phydev->speed = SPEED_10;
+		}
+
+		if (lpa & (LPA_100FULL | LPA_100HALF)) {
+			phydev->speed = SPEED_100;
+			if (lpa & LPA_100FULL)
+				phydev->duplex = DUPLEX_FULL;
+			else
+				phydev->duplex = DUPLEX_HALF;
+		} else if (lpa & (LPA_10FULL | LPA_10HALF)) {
+			phydev->speed = SPEED_10;
+			if (lpa & LPA_10FULL)
+				phydev->duplex = DUPLEX_FULL;
+			else
+				phydev->duplex = DUPLEX_HALF;
+		} else {
+			return -EINVAL;
+		}
+	} else {
+		if (bmcr & BMCR_SPEED100)
+			phydev->speed = SPEED_100;
+		else
+			phydev->speed = SPEED_10;
+
+		if (bmcr & BMCR_FULLDPLX)
+			phydev->duplex = DUPLEX_FULL;
+		else
+			phydev->duplex = DUPLEX_HALF;
+	}
 	return 0;
 }
 
 static int smsc_startup(struct phy_device *phydev)
 {
-	genphy_update_link(phydev);
-	smsc_parse_status(phydev);
-	return 0;
+	int ret;
+
+	if (!phydev->link) {
+		/* Disable EDPD to wake up PHY */
+		ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_LAN83C185_CTRL_STATUS);
+
+		if (ret < 0)
+			return ret;
+
+		if (ret & MII_LAN83C185_EDPWRDOWN) {
+			ret = phy_write(phydev, MDIO_DEVAD_NONE, MII_LAN83C185_CTRL_STATUS,
+				ret & ~MII_LAN83C185_EDPWRDOWN);
+			if (ret < 0)
+				return ret;
+
+			/* Sleep 64 ms to allow ~5 link test pulses to be sent */
+			udelay(64 * 1000);
+		}
+	}
+
+	ret = genphy_update_link(phydev);
+	if (ret < 0)
+		return ret;
+	return smsc_parse_status(phydev);
 }
 
 static struct phy_driver lan8700_driver = {
