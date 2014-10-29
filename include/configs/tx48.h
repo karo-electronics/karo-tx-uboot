@@ -90,7 +90,6 @@
 */
 #define CONFIG_OF_LIBFDT
 #define CONFIG_OF_BOARD_SETUP
-#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 
 /*
  * Boot Linux
@@ -109,7 +108,9 @@
 #define CONFIG_BOOTARGS			"init=/linuxrc console=ttyO0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
 #define CONFIG_LOADADDR			83000000
+#define CONFIG_FDTADDR			80001000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 #define CONFIG_HW_WATCHDOG
 
@@ -143,8 +144,8 @@
 	"cpu_clk=" CONFIG_SYS_CPU_CLK_STR "\0"				\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
-	"fdtaddr=81000000\0"						\
-	"fdtsave=fdt resize;nand erase.part dtb"					\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
+	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
