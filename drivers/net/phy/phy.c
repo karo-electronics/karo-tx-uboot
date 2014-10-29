@@ -200,6 +200,7 @@ int genphy_config_aneg(struct phy_device *phydev)
 int genphy_update_link(struct phy_device *phydev)
 {
 	int mii_reg;
+	int bmcr;
 
 	/*
 	 * Wait if the link is up, and autonegotiation is in progress
@@ -214,6 +215,13 @@ int genphy_update_link(struct phy_device *phydev)
 	 * we don't need to wait for autoneg again
 	 */
 	if (phydev->link && mii_reg & BMSR_LSTATUS)
+		return 0;
+
+	bmcr = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
+	if (bmcr < 0)
+		return bmcr;
+
+	if (!(bmcr & BMCR_ANENABLE))
 		return 0;
 
 	if ((mii_reg & BMSR_ANEGCAPABLE) && !(mii_reg & BMSR_ANEGCOMPLETE)) {
