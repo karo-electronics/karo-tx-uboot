@@ -516,6 +516,14 @@ static int fec_open(struct eth_device *edev)
 		writel(ecr, &fec->eth->ecntrl);
 		writel(rcr, &fec->eth->r_cntrl);
 	}
+#elif defined(CONFIG_MX28)
+	{
+		u32 rcr = readl(&fec->eth->r_cntrl) & ~FEC_RCNTRL_RMII_10T;
+
+		if (speed == _10BASET)
+			rcr |= FEC_RCNTRL_RMII_10T;
+		writel(rcr, &fec->eth->r_cntrl);
+	}
 #endif
 	debug("%s:Speed=%i\n", __func__, speed);
 

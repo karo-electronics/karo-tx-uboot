@@ -111,7 +111,6 @@ static int genphy_config_advert(struct phy_device *phydev)
  */
 static int genphy_setup_forced(struct phy_device *phydev)
 {
-	int err;
 	int ctl = 0;
 
 	phydev->pause = phydev->asym_pause = 0;
@@ -124,9 +123,7 @@ static int genphy_setup_forced(struct phy_device *phydev)
 	if (DUPLEX_FULL == phydev->duplex)
 		ctl |= BMCR_FULLDPLX;
 
-	err = phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, ctl);
-
-	return err;
+	return phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, ctl);
 }
 
 
@@ -148,9 +145,7 @@ int genphy_restart_aneg(struct phy_device *phydev)
 	/* Don't isolate the PHY if we're negotiating */
 	ctl &= ~(BMCR_ISOLATE);
 
-	ctl = phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, ctl);
-
-	return ctl;
+	return phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, ctl);
 }
 
 
@@ -204,19 +199,29 @@ int genphy_config_aneg(struct phy_device *phydev)
  */
 int genphy_update_link(struct phy_device *phydev)
 {
-	unsigned int mii_reg;
+	int mii_reg;
+	int bmcr;
 
 	/*
 	 * Wait if the link is up, and autonegotiation is in progress
 	 * (ie - we're capable and it's not done)
 	 */
 	mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
+	if (mii_reg < 0)
+		return mii_reg;
 
 	/*
 	 * If we already saw the link up, and it hasn't gone down, then
 	 * we don't need to wait for autoneg again
 	 */
 	if (phydev->link && mii_reg & BMSR_LSTATUS)
+		return 0;
+
+	bmcr = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
+	if (bmcr < 0)
+		return bmcr;
+
+	if (!(bmcr & BMCR_ANENABLE))
 		return 0;
 
 	if ((mii_reg & BMSR_ANEGCAPABLE) && !(mii_reg & BMSR_ANEGCOMPLETE)) {
@@ -245,12 +250,16 @@ int genphy_update_link(struct phy_device *phydev)
 
 			udelay(1000);	/* 1 ms */
 			mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
+			if (mii_reg < 0)
+				return mii_reg;
 		}
 		printf(" done\n");
 		phydev->link = 1;
 	} else {
 		/* Read the link a second time to clear the latched state */
 		mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
+		if (mii_reg < 0)
+			return mii_reg;
 
 		if (mii_reg & BMSR_LSTATUS)
 			phydev->link = 1;
@@ -274,20 +283,30 @@ int genphy_parse_link(struct phy_device *phydev)
 {
 	int mii_reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
 
+	if (mii_reg < 0)
+		return mii_reg;
+
 	/* We're using autonegotiation */
 	if (mii_reg & BMSR_ANEGCAPABLE) {
-		u32 lpa = 0;
-		u32 gblpa = 0;
-		u32 estatus = 0;
+		int ret;
+		u16 lpa;
+		u16 gblpa = 0;
+		int estatus = 0;
 
 		/* Check for gigabit capability */
 		if (mii_reg & BMSR_ERCAP) {
 			/* We want a list of states supported by
 			 * both PHYs in the link
 			 */
-			gblpa = phy_read(phydev, MDIO_DEVAD_NONE, MII_STAT1000);
-			gblpa &= phy_read(phydev,
-					MDIO_DEVAD_NONE, MII_CTRL1000) << 2;
+			ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_STAT1000);
+			if (ret < 0)
+				return ret;
+			gblpa = ret;
+
+			ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_CTRL1000);
+			if (ret < 0)
+				return ret;
+			gblpa &= ret << 2;
 		}
 
 		/* Set the baseline so we only have to set them
@@ -307,8 +326,15 @@ int genphy_parse_link(struct phy_device *phydev)
 			return 0;
 		}
 
-		lpa = phy_read(phydev, MDIO_DEVAD_NONE, MII_ADVERTISE);
-		lpa &= phy_read(phydev, MDIO_DEVAD_NONE, MII_LPA);
+		ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_ADVERTISE);
+		if (ret < 0)
+			return ret;
+		lpa = ret;
+
+		ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_LPA);
+		if (ret < 0)
+			return ret;
+		lpa &= ret;
 
 		if (lpa & (LPA_100FULL | LPA_100HALF)) {
 			phydev->speed = SPEED_100;
@@ -330,6 +356,8 @@ int genphy_parse_link(struct phy_device *phydev)
 		if ((mii_reg & BMSR_ESTATEN) && !(mii_reg & BMSR_ERCAP))
 			estatus = phy_read(phydev, MDIO_DEVAD_NONE,
 					   MII_ESTATUS);
+		if (estatus < 0)
+			return estatus;
 
 		if (estatus & (ESTATUS_1000_XFULL | ESTATUS_1000_XHALF |
 				ESTATUS_1000_TFULL | ESTATUS_1000_THALF)) {
@@ -339,7 +367,10 @@ int genphy_parse_link(struct phy_device *phydev)
 		}
 
 	} else {
-		u32 bmcr = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
+		int bmcr = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
+
+		if (bmcr < 0)
+			return bmcr;
 
 		phydev->speed = SPEED_10;
 		phydev->duplex = DUPLEX_HALF;
@@ -667,6 +698,7 @@ static struct phy_device *get_phy_device(struct mii_dev *bus, int addr,
 
 int phy_reset(struct phy_device *phydev)
 {
+	int err;
 	int reg;
 	int timeout = 500;
 	int devad = MDIO_DEVAD_NONE;
@@ -689,9 +721,10 @@ int phy_reset(struct phy_device *phydev)
 
 	reg |= BMCR_RESET;
 
-	if (phy_write(phydev, devad, MII_BMCR, reg) < 0) {
+	err = phy_write(phydev, devad, MII_BMCR, reg);
+	if (err < 0) {
 		debug("PHY reset failed\n");
-		return -1;
+		return err;
 	}
 
 #ifdef CONFIG_PHY_RESET_DELAY
@@ -702,19 +735,19 @@ int phy_reset(struct phy_device *phydev)
 	 * auto-clearing).  This should happen within 0.5 seconds per the
 	 * IEEE spec.
 	 */
-	while ((reg & BMCR_RESET) && timeout--) {
+	while ((reg & BMCR_RESET) && timeout-- >= 0) {
 		reg = phy_read(phydev, devad, MII_BMCR);
 
 		if (reg < 0) {
 			debug("PHY status read failed\n");
-			return -1;
+			return reg;
 		}
 		udelay(1000);
 	}
 
 	if (reg & BMCR_RESET) {
 		puts("PHY reset timed out\n");
-		return -1;
+		return -ETIMEDOUT;
 	}
 
 	return 0;
