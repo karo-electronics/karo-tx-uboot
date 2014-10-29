@@ -94,7 +94,6 @@
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #endif
 #define CONFIG_OF_BOARD_SETUP
-#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif /* CONFIG_OF_LIBFDT */
 #endif /* CONFIG_MFG */
 
@@ -126,7 +125,9 @@
 #define CONFIG_DELAY_ENVIRONMENT
 #endif /* CONFIG_MFG */
 #define CONFIG_LOADADDR			18000000
+#define CONFIG_FDTADDR			10001000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_IMX_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT_MSECS	3000
 
@@ -139,7 +140,7 @@
 	"autostart=no\0"						\
 	"autoload=no\0"							\
 	"bootdelay=-1\0"						\
-	"fdtaddr=11000000\0"						\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"
 #else
@@ -167,7 +168,7 @@
 	"cpu_clk=800\0"							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
-	"fdtaddr=11000000\0"						\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	CONFIG_SYS_FDTSAVE_CMD						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
