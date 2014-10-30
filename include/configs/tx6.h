@@ -130,6 +130,11 @@
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_IMX_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT_MSECS	3000
+#ifndef CONFIG_SYS_LVDS_IF
+#define DEFAULT_VIDEO_MODE		"VGA"
+#else
+#define DEFAULT_VIDEO_MODE		"HSD100PXN1"
+#endif
 
 /*
  * Extra Environments
@@ -176,7 +181,7 @@
 	"otg_mode=device\0"						\
 	ROOTPART_UUID_STR						\
 	"touchpanel=tsc2007\0"						\
-	"video_mode=VGA\0"
+	"video_mode=" DEFAULT_VIDEO_MODE "\0"
 #endif /*  CONFIG_ENV_IS_NOWHERE */
 #endif /*  CONFIG_MFG */
 
