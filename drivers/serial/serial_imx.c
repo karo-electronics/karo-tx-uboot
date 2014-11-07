@@ -181,11 +181,11 @@ static void imx_serial_putc(const char c)
 	/* Wait for Tx FIFO not full */
 	while (base->uts & UTS_TXFULL);
 
-	base->utxd[0] = c;
-
 	/* If \n, also do \r */
 	if (c == '\n')
 		serial_putc ('\r');
+
+	base->utxd[0] = c;
 }
 
 /*
