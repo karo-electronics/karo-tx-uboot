@@ -329,6 +329,16 @@ static u32 prm_rstst __attribute__((section(".data")));
 /*
  * Basic board specific setup
  */
+static const struct pin_mux tx48_pads[] = {
+	{ OFFSET(i2c0_sda), MODE(0) | RXACTIVE | PULLUDEN | PULLUP_EN, },
+	{ OFFSET(i2c0_scl), MODE(0) | RXACTIVE | PULLUDEN | PULLUP_EN, },
+	{ OFFSET(emu1), MODE(7), }, /* ETH PHY Reset */
+};
+
+static const struct gpio tx48_gpios[] = {
+	{ AM33XX_GPIO_NR(3, 8), GPIOF_OUTPUT_INIT_LOW, "ETH_PHY_RESET", },
+};
+
 static const struct pin_mux stk5_pads[] = {
 	/* heartbeat LED */
 	{ OFFSET(gpmc_a10), MODE(7) | PULLUDEN, },
@@ -588,12 +598,18 @@ static void stk5v5_board_init(void)
 /* called with default environment! */
 int board_init(void)
 {
+	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
+	tx48_set_pin_mux(tx48_pads, ARRAY_SIZE(tx48_pads));
+
 	/* mach type passed to kernel */
 #ifdef CONFIG_OF_LIBFDT
 	gd->bd->bi_arch_number = -1;
 #endif
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
+
+	if (ctrlc())
+		printf("CTRL-C detected\n");
 
 	return 0;
 }
@@ -695,7 +711,7 @@ int board_late_init(void)
 }
 
 #ifdef CONFIG_DRIVER_TI_CPSW
-static void tx48_phy_init(char *name, int addr)
+static void tx48_phy_init(void)
 {
 	debug("%s: Resetting ethernet PHY\n", __func__);
 
@@ -744,7 +760,6 @@ static struct cpsw_platform_data cpsw_data = {
 	.hw_stats_reg_ofs	= 0x900,
 	.mac_control		= (1 << 5) /* MIIEN */,
 	.control		= cpsw_control,
-	.phy_init		= tx48_phy_init,
 	.gigabit_en		= 0,
 	.host_port_num		= 0,
 	.version		= CPSW_CTRL_VERSION_2,
@@ -775,6 +790,7 @@ int board_eth_init(bd_t *bis)
 
 	__raw_writel(RMII_MODE_ENABLE, MAC_MII_SEL);
 	__raw_writel(0x5D, GMII_SEL);
+	tx48_phy_init();
 	return cpsw_register(&cpsw_data);
 }
 #endif /* CONFIG_DRIVER_TI_CPSW */
