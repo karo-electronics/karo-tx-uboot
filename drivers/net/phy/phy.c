@@ -534,6 +534,69 @@ static struct phy_driver *get_phy_driver(struct phy_device *phydev,
 	return generic_for_interface(interface);
 }
 
+static int aneg_enabled(struct phy_device *phydev)
+{
+	static const char *aneg = "_aneg";
+	char varname[strlen(phydev->bus->name) + strlen(aneg) + 1];
+
+	snprintf(varname, sizeof(varname), "%s%s", phydev->bus->name, aneg);
+	return getenv_yesno(varname);
+}
+
+static int phy_get_speed(struct phy_device *phydev)
+{
+	int ret;
+	static const char *aneg = "_speed";
+	char varname[strlen(phydev->bus->name) + strlen(aneg) + 1];
+	ulong val;
+
+	snprintf(varname, sizeof(varname), "%s%s", phydev->bus->name, aneg);
+
+	val = getenv_ulong(varname, 10, 100);
+	switch (val) {
+	case 1000:
+		ret = SPEED_1000;
+		break;
+	case 100:
+		ret = SPEED_100;
+		break;
+	case 10:
+		ret = SPEED_10;
+		break;
+	default:
+		printf("Improper setting '%s' for %s; assuming 100\n",
+			getenv(varname), varname);
+		ret = SPEED_100;
+	}
+	return ret;
+}
+
+static int phy_get_duplex(struct phy_device *phydev)
+{
+	int ret = DUPLEX_FULL;
+	static const char *aneg = "_duplex";
+	char varname[strlen(phydev->bus->name) + strlen(aneg) + 4];
+	const char *val;
+
+	snprintf(varname, sizeof(varname), "%s%d%s",
+		phydev->bus->name, phydev->addr, aneg);
+
+	val = getenv(varname);
+	if (val != NULL) {
+		if (strcasecmp(val, "full") != 0) {
+			if (strcasecmp(val, "half") == 0) {
+				ret = DUPLEX_HALF;
+			} else {
+				printf("Improper setting '%s' for %s; assuming 'full'\n",
+					val, varname);
+				printf("Expected one of: 'full', 'half'\n");
+			}
+		}
+	}
+
+	return ret;
+}
+
 static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
 					    int phy_id,
 					    phy_interface_t interface)
@@ -555,13 +618,42 @@ static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
 	dev->link = 1;
 	dev->interface = interface;
 
-	dev->autoneg = AUTONEG_ENABLE;
-
 	dev->addr = addr;
 	dev->phy_id = phy_id;
 	dev->bus = bus;
 
 	dev->drv = get_phy_driver(dev, interface);
+
+	if (aneg_enabled(dev)) {
+		dev->autoneg = AUTONEG_ENABLE;
+	} else {
+		dev->autoneg = AUTONEG_DISABLE;
+		dev->speed = phy_get_speed(dev);
+		dev->duplex = phy_get_duplex(dev);
+
+		switch (dev->speed) {
+		case SPEED_1000:
+			if (dev->duplex == DUPLEX_FULL)
+				dev->supported &= SUPPORTED_1000baseT_Full;
+			else
+				dev->supported &= SUPPORTED_1000baseT_Half;
+			break;
+		case SPEED_100:
+			if (dev->duplex == DUPLEX_FULL)
+				dev->supported &= SUPPORTED_100baseT_Full;
+			else
+				dev->supported &= SUPPORTED_100baseT_Half;
+			break;
+		case SPEED_10:
+			if (dev->duplex == DUPLEX_FULL)
+				dev->supported &= SUPPORTED_10baseT_Full;
+			else
+				dev->supported &= SUPPORTED_10baseT_Half;
+			break;
+		default:
+			printf("Unsupported speed: %d\n", dev->speed);
+		}
+	}
 
 	phy_probe(dev);
 
