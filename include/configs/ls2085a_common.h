@@ -13,6 +13,7 @@
 #define CONFIG_FSL_LSCH3
 #define CONFIG_LS2085A
 #define CONFIG_GICV3
+#define CONFIG_FSL_TZPC_BP147
 
 /* Errata fixes */
 #define CONFIG_ARM_ERRATA_828024
