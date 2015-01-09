@@ -59,6 +59,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 static const iomux_v3_cfg_t tx6qdl_pads[] = {
+#ifdef CONFIG_TX6_V2
 	/* NAND flash pads */
 	MX6_PAD_NANDF_CLE__RAWNAND_CLE,
 	MX6_PAD_NANDF_ALE__RAWNAND_ALE,
@@ -75,7 +76,7 @@ static const iomux_v3_cfg_t tx6qdl_pads[] = {
 	MX6_PAD_NANDF_D5__RAWNAND_D5,
 	MX6_PAD_NANDF_D6__RAWNAND_D6,
 	MX6_PAD_NANDF_D7__RAWNAND_D7,
-
+#endif
 	/* RESET_OUT */
 	MX6_PAD_GPIO_17__GPIO_7_12,
 
@@ -276,27 +277,44 @@ void dram_init_banksize(void)
 }
 
 #ifdef	CONFIG_CMD_MMC
+#define USDHC_PAD_CTRL (PAD_CTL_PUS_47K_UP |			\
+	PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm |			\
+	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
+
 static const iomux_v3_cfg_t mmc0_pads[] = {
-	MX6_PAD_SD1_CMD__USDHC1_CMD,
-	MX6_PAD_SD1_CLK__USDHC1_CLK,
-	MX6_PAD_SD1_DAT0__USDHC1_DAT0,
-	MX6_PAD_SD1_DAT1__USDHC1_DAT1,
-	MX6_PAD_SD1_DAT2__USDHC1_DAT2,
-	MX6_PAD_SD1_DAT3__USDHC1_DAT3,
+	MX6_PAD_SD1_CMD__USDHC1_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_CLK__USDHC1_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT0__USDHC1_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT1__USDHC1_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT2__USDHC1_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT3__USDHC1_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* SD1 CD */
 	MX6_PAD_SD3_CMD__GPIO_7_2,
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
-	MX6_PAD_SD2_CMD__USDHC2_CMD,
-	MX6_PAD_SD2_CLK__USDHC2_CLK,
-	MX6_PAD_SD2_DAT0__USDHC2_DAT0,
-	MX6_PAD_SD2_DAT1__USDHC2_DAT1,
-	MX6_PAD_SD2_DAT2__USDHC2_DAT2,
-	MX6_PAD_SD2_DAT3__USDHC2_DAT3,
+	MX6_PAD_SD2_CMD__USDHC2_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_CLK__USDHC2_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT0__USDHC2_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT1__USDHC2_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT2__USDHC2_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT3__USDHC2_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* SD2 CD */
 	MX6_PAD_SD3_CLK__GPIO_7_3,
 };
+
+#ifdef CONFIG_MMC_BOOT_SIZE
+static const iomux_v3_cfg_t mmc3_pads[] = {
+	MX6_PAD_SD4_CMD__USDHC4_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_CLK__USDHC4_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT0__USDHC4_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT1__USDHC4_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT2__USDHC4_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT3__USDHC4_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	/* eMMC RESET */
+	MX6_PAD_NANDF_ALE__USDHC4_RST,
+};
+#endif
 
 static struct tx6_esdhc_cfg {
 	const iomux_v3_cfg_t *pads;
@@ -305,6 +323,18 @@ static struct tx6_esdhc_cfg {
 	struct fsl_esdhc_cfg cfg;
 	int cd_gpio;
 } tx6qdl_esdhc_cfg[] = {
+#ifdef CONFIG_MMC_BOOT_SIZE
+	{
+		.pads = mmc3_pads,
+		.num_pads = ARRAY_SIZE(mmc3_pads),
+		.clkid = MXC_ESDHC4_CLK,
+		.cfg = {
+			.esdhc_base = (void __iomem *)USDHC4_BASE_ADDR,
+			.max_bus_width = 4,
+		},
+		.cd_gpio = -EINVAL,
+	},
+#endif
 	{
 		.pads = mmc0_pads,
 		.num_pads = ARRAY_SIZE(mmc0_pads),
@@ -337,7 +367,7 @@ int board_mmc_getcd(struct mmc *mmc)
 	struct tx6_esdhc_cfg *cfg = to_tx6_esdhc_cfg(mmc->priv);
 
 	if (cfg->cd_gpio < 0)
-		return cfg->cd_gpio;
+		return 1;
 
 	debug("SD card %d is %spresent\n",
 		cfg - tx6qdl_esdhc_cfg,
@@ -357,12 +387,14 @@ int board_mmc_init(bd_t *bis)
 		cfg->cfg.sdhc_clk = mxc_get_clock(cfg->clkid);
 		imx_iomux_v3_setup_multiple_pads(cfg->pads, cfg->num_pads);
 
-		ret = gpio_request_one(cfg->cd_gpio,
-				GPIOF_INPUT, "MMC CD");
-		if (ret) {
-			printf("Error %d requesting GPIO%d_%d\n",
-				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
-			continue;
+		if (cfg->cd_gpio >= 0) {
+			ret = gpio_request_one(cfg->cd_gpio,
+					GPIOF_INPUT, "MMC CD");
+			if (ret) {
+				printf("Error %d requesting GPIO%d_%d\n",
+					ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
+				continue;
+			}
 		}
 
 		debug("%s: Initializing MMC slot %d\n", __func__, i);
@@ -371,7 +403,7 @@ int board_mmc_init(bd_t *bis)
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
 			continue;
-		if (board_mmc_getcd(mmc) > 0)
+		if (board_mmc_getcd(mmc))
 			mmc_init(mmc);
 	}
 	return 0;
@@ -1094,6 +1126,12 @@ exit:
 	return ret;
 }
 
+#ifdef CONFIG_TX6_V2
+#define TX6_FLASH_SZ	0
+#else
+#define TX6_FLASH_SZ	(2 * (CONFIG_SYS_NAND_BLOCKS / 1024 - 1))
+#endif
+
 int checkboard(void)
 {
 	u32 cpurev = get_cpu_rev();
@@ -1105,7 +1143,7 @@ int checkboard(void)
 		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
 		is_lvds(), 1 - PHYS_SDRAM_1_WIDTH / 64 +
-		2 * (CONFIG_SYS_NAND_BLOCKS / 1024 - 1));
+		TX6_FLASH_SZ);
 
 	return 0;
 }

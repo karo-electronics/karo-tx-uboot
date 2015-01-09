@@ -9,11 +9,7 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
-ifeq ($(CONFIG_TX6_V2),)
 COBJS-y	:= tx6qdl.o
-else
-COBJS-y	:= tx6-1020.o
-endif
 COBJS-$(CONFIG_LTC3676)	+= ltc3676.o
 COBJS-$(CONFIG_RN5T618)	+= rn5t618.o
 
