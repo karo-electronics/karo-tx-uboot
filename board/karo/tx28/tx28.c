@@ -51,6 +51,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define TX28_LED_GPIO		MX28_PAD_ENET0_RXD3__GPIO_4_10
 
+#define STK5_CAN_XCVR_GPIO	MX28_PAD_LCD_D00__GPIO_1_0
+
 static const struct gpio tx28_gpios[] = {
 	{ TX28_USBH_VBUSEN_GPIO, GPIOF_OUTPUT_INIT_LOW, "USBH VBUSEN", },
 	{ TX28_USBH_OC_GPIO, GPIOF_INPUT, "USBH OC", },
@@ -785,9 +787,9 @@ static void stk5v5_board_init(void)
 	stk5_board_init();
 
 	/* init flexcan transceiver enable GPIO */
-	gpio_request_one(MXS_GPIO_NR(0, 1), GPIOF_OUTPUT_INIT_HIGH,
+	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOF_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
-	mxs_iomux_setup_pad(MX28_PAD_LCD_D00__GPIO_1_0);
+	mxs_iomux_setup_pad(STK5_CAN_XCVR_GPIO);
 }
 
 int tx28_fec1_enabled(void)
