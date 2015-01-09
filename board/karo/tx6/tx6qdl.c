@@ -59,7 +59,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 static const iomux_v3_cfg_t tx6qdl_pads[] = {
-#ifdef CONFIG_TX6_V2
+#ifndef CONFIG_NO_NAND
 	/* NAND flash pads */
 	MX6_PAD_NANDF_CLE__RAWNAND_CLE,
 	MX6_PAD_NANDF_ALE__RAWNAND_ALE,
@@ -197,6 +197,8 @@ static void print_reset_cause(void)
 int read_cpu_temperature(void);
 int check_cpu_temperature(int boot);
 
+static const char *tx6_mod_suffix;
+
 static void tx6qdl_print_cpuinfo(void)
 {
 	u32 cpurev = get_cpu_rev();
@@ -205,15 +207,19 @@ static void tx6qdl_print_cpuinfo(void)
 	switch ((cpurev >> 12) & 0xff) {
 	case MXC_CPU_MX6SL:
 		cpu_str = "SL";
+		tx6_mod_suffix = "?";
 		break;
 	case MXC_CPU_MX6DL:
 		cpu_str = "DL";
+		tx6_mod_suffix = "U";
 		break;
 	case MXC_CPU_MX6SOLO:
 		cpu_str = "SOLO";
+		tx6_mod_suffix = "S";
 		break;
 	case MXC_CPU_MX6Q:
 		cpu_str = "Q";
+		tx6_mod_suffix = "Q";
 		break;
 	}
 
@@ -1126,11 +1132,64 @@ exit:
 	return ret;
 }
 
-#ifdef CONFIG_TX6_V2
-#define TX6_FLASH_SZ	0
+#ifdef CONFIG_NO_NAND
+#ifdef CONFIG_MMC_BOOT_SIZE
+#define TX6_FLASH_SZ	(CONFIG_MMC_BOOT_SIZE / 1024 - 1 + 2)
 #else
-#define TX6_FLASH_SZ	(2 * (CONFIG_SYS_NAND_BLOCKS / 1024 - 1))
+#define TX6_FLASH_SZ	3
 #endif
+#else /* CONFIG_NO_NAND */
+#define TX6_FLASH_SZ	(CONFIG_SYS_NAND_BLOCKS / 1024 - 1)
+#endif /* CONFIG_NO_NAND */
+
+#ifdef CONFIG_SYS_SDRAM_BUS_WIDTH
+#define TX6_DDR_SZ	(ffs(CONFIG_SYS_SDRAM_BUS_WIDTH / 16) - 1)
+#else
+#define TX6_DDR_SZ	2
+#endif
+
+#if CONFIG_TX6_REV >= 0x3
+static char tx6_mem_table[] = {
+	'4', /* 256MiB SDRAM; 128MiB NAND */
+	'1', /* 512MiB SDRAM; 128MiB NAND */
+	'0', /* 1GiB SDRAM; 128MiB NAND */
+	'?', /* 256MiB SDRAM; 256MiB NAND */
+	'?', /* 512MiB SDRAM; 256MiB NAND */
+	'2', /* 1GiB SDRAM; 256MiB NAND */
+	'?', /* 256MiB SDRAM; 4GiB eMMC */
+	'5', /* 512MiB SDRAM; 4GiB eMMC */
+	'3', /* 1GiB SDRAM; 4GiB eMMC */
+	'?', /* 256MiB SDRAM; 8GiB eMMC */
+	'?', /* 512MiB SDRAM; 8GiB eMMC */
+	'?', /* 1GiB SDRAM; 8GiB eMMC */
+};
+
+static inline char tx6_mem_suffix(void)
+{
+	size_t mem_idx = (TX6_FLASH_SZ * 3) + TX6_DDR_SZ;
+
+	debug("TX6_DDR_SZ=%d TX6_FLASH_SZ=%d idx=%d\n",
+		TX6_DDR_SZ, TX6_FLASH_SZ, mem_idx);
+
+	if (mem_idx >= ARRAY_SIZE(tx6_mem_table))
+		return '?';
+
+	return tx6_mem_table[mem_idx];
+};
+#else /* CONFIG_TX6_REV >= 0x3 */
+static inline char tx6_mem_suffix(void)
+{
+#ifdef CONFIG_SYS_SDRAM_BUS_WIDTH
+	if (CONFIG_SYS_SDRAM_BUS_WIDTH == 32)
+		return '1';
+#endif
+#ifdef CONFIG_SYS_NAND_BLOCKS
+	if (CONFIG_SYS_NAND_BLOCKS == 2048)
+		return '2';
+#endif
+	return '0';
+}
+#endif /* CONFIG_TX6_REV >= 0x3 */
 
 int checkboard(void)
 {
@@ -1139,11 +1198,11 @@ int checkboard(void)
 
 	tx6qdl_print_cpuinfo();
 
-	printf("Board: Ka-Ro TX6%c-%d%d1%d\n",
-		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
+	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
+		tx6_mod_suffix,
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), 1 - PHYS_SDRAM_1_WIDTH / 64 +
-		TX6_FLASH_SZ);
+		is_lvds(), CONFIG_TX6_REV,
+		tx6_mem_suffix());
 
 	return 0;
 }

@@ -14,6 +14,9 @@
 /*
  * Ka-Ro TX6 board - SoC configuration
  */
+#ifndef CONFIG_TX6_REV
+#define CONFIG_TX6_REV			0x1		/* '1' would be converted to 'y' by define2mk.sed */
+#endif
 #define CONFIG_MX6
 #define CONFIG_SYS_MX6_HCLK		24000000
 #define CONFIG_SYS_MX6_CLK32		32768
@@ -49,8 +52,7 @@
 #else
 #define PHYS_SDRAM_1_WIDTH		64
 #endif
-#define PHYS_SDRAM_1_SIZE		(SZ_512M * (PHYS_SDRAM_1_WIDTH / 32))
-
+#define PHYS_SDRAM_1_SIZE		(SZ_512M / 32 * PHYS_SDRAM_1_WIDTH)
 #ifdef CONFIG_MX6Q
 #define CONFIG_SYS_SDRAM_CLK		528
 #else
@@ -65,10 +67,14 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#ifdef CONFIG_MX6Q
+#if defined(CONFIG_MX6Q)
 #define CONFIG_SYS_PROMPT		"TX6Q U-Boot > "
-#else
+#elif defined(CONFIG_MX6DL)
 #define CONFIG_SYS_PROMPT		"TX6DL U-Boot > "
+#elif defined(CONFIG_MX6S)
+#define CONFIG_SYS_PROMPT		"TX6S U-Boot > "
+#else
+#error Unsupported i.MX6 processor variant
 #endif
 #define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE						\
@@ -90,7 +96,7 @@
 #ifndef CONFIG_MFG
 #define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT
-#ifndef CONFIG_TX6_V2
+#ifndef CONFIG_NO_NAND
 #define CONFIG_FDT_FIXUP_PARTITIONS
 #endif
 #define CONFIG_OF_BOARD_SETUP
@@ -185,7 +191,7 @@
 #endif /*  CONFIG_ENV_IS_NOWHERE */
 #endif /*  CONFIG_MFG */
 
-#ifndef CONFIG_TX6_V2
+#ifndef CONFIG_NO_NAND
 #define CONFIG_SYS_DEFAULT_BOOT_MODE "nand"
 #define CONFIG_SYS_BOOT_CMD_NAND					\
 	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"
@@ -217,11 +223,12 @@
 #include <config_cmd_default.h>
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_MMC
-#ifndef CONFIG_TX6_V2
+#ifndef CONFIG_NO_NAND
 #define CONFIG_CMD_NAND
 #define CONFIG_CMD_MTDPARTS
 #endif
 #define CONFIG_CMD_BOOTCE
+#define CONFIG_CMD_BOOTZ
 #define CONFIG_CMD_TIME
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MEMTEST
@@ -274,12 +281,17 @@
 #define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
 #define CONFIG_SYS_I2C_MX6_PORT1
 #define CONFIG_SYS_I2C_SPEED		400000
-#ifndef CONFIG_TX6_V2
+#if CONFIG_TX6_REV == 0x1
 #define CONFIG_SYS_I2C_SLAVE		0x3c
 #define CONFIG_LTC3676
-#else
+#elif CONFIG_TX6_REV == 0x2
 #define CONFIG_SYS_I2C_SLAVE		0x32
 #define CONFIG_RN5T618
+#elif CONFIG_TX6_REV == 0x3
+#define CONFIG_SYS_I2C_SLAVE		0x33
+#define CONFIG_RN5T567
+#else
+#error Unsupported TX6 module revision
 #endif
 #endif
 
@@ -295,7 +307,7 @@
 /*
  * NAND flash driver
  */
-#ifdef CONFIG_CMD_NAND
+#ifndef CONFIG_NO_NAND
 #define CONFIG_MTD_DEVICE
 #if 0
 #define CONFIG_MTD_DEBUG
@@ -321,7 +333,7 @@
 #define CONFIG_ENV_RANGE		(3 * CONFIG_SYS_NAND_BLOCK_SIZE)
 #else
 #undef CONFIG_ENV_IS_IN_NAND
-#endif /* CONFIG_CMD_NAND */
+#endif /* CONFIG_NO_NAND */
 
 #ifdef CONFIG_ENV_OFFSET_REDUND
 #define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_SYS_ENV_PART_SIZE)	\
@@ -367,7 +379,7 @@
 #define CONFIG_ENV_SIZE			SZ_4K
 #endif
 
-#ifndef CONFIG_TX6_V2
+#ifndef CONFIG_NO_NAND
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	xstr(CONFIG_SYS_U_BOOT_PART_SIZE)				\
 	"@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS)				\
