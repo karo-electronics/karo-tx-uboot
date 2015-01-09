@@ -28,6 +28,8 @@ static const char const *cleanup_vars[] = {
 	"bootargs",
 	"fileaddr",
 	"filesize",
+	"safeboot",
+	"wdreset",
 };
 
 void env_cleanup(void)

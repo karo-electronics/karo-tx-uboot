@@ -846,8 +846,12 @@ int board_init(void)
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
-	if (ctrlc())
-		printf("CTRL-C detected\n");
+	if (ctrlc() || (prm_rstst & PRM_RSTST_WDT1_RST)) {
+		if (prm_rstst & PRM_RSTST_WDT1_RST)
+			printf("WDOG RESET detected\n");
+		else
+			printf("<CTRL-C> detected; safeboot enabled\n");
+	}
 
 	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
 	tx48_set_pin_mux(tx48_pads, ARRAY_SIZE(tx48_pads));
@@ -915,11 +919,9 @@ static void tx48_set_cpu_clock(void)
 		return;
 
 	if (had_ctrlc() || (prm_rstst & PRM_RSTST_WDT1_RST)) {
-		if (prm_rstst & PRM_RSTST_WDT1_RST) {
-			printf("Watchdog reset detected; skipping cpu clock change\n");
-		} else {
-			printf("<CTRL-C> detected; skipping cpu clock change\n");
-		}
+		printf("%s detected; skipping cpu clock change\n",
+			(prm_rstst & PRM_RSTST_WDT1_RST) ?
+			"WDOG RESET" : "<CTRL-C>");
 		return;
 	}
 
@@ -969,7 +971,13 @@ int board_late_init(void)
 	env_cleanup();
 
 	tx48_set_cpu_clock();
-	karo_fdt_move_fdt();
+
+	if (had_ctrlc())
+		setenv_ulong("safeboot", 1);
+	else if (prm_rstst & PRM_RSTST_WDT1_RST)
+		setenv_ulong("wdreset", 1);
+	else
+		karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)

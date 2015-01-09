@@ -147,7 +147,7 @@ int board_early_init_f(void)
 	while ((rtc_stat = readl(&rtc_regs->hw_rtc_stat)) &
 		RTC_STAT_STALE_REGS_PERSISTENT0) {
 		if (timeout-- < 0)
-			return 0;
+			return 1;
 		udelay(1);
 	}
 	boot_cause = readl(&rtc_regs->hw_rtc_persistent0);
@@ -162,11 +162,16 @@ int board_early_init_f(void)
 
 rtc_err:
 	serial_puts("Inconsistent value in RTC_PERSISTENT0 register; power-on-reset required\n");
-	return 0;
+	return 1;
 }
 
 int board_init(void)
 {
+	if (ctrlc()) {
+		printf("CTRL-C detected; safeboot enabled\n");
+		return 1;
+	}
+
 	/* Address of boot parameters */
 #ifdef CONFIG_OF_LIBFDT
 	gd->bd->bi_arch_number = -1;
@@ -837,7 +842,10 @@ int board_late_init(void)
 
 	env_cleanup();
 
-	karo_fdt_move_fdt();
+	if (had_ctrlc())
+		setenv_ulong("safeboot", 1);
+	else
+		karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)
