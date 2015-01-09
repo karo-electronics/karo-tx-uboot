@@ -906,7 +906,6 @@ static void do_mx6_showclocks(void)
 	print_pfd(528, 0);
 	print_pfd(528, 1);
 	print_pfd(528, 2);
-	print_pfd(528, 3);
 	printf("\n");
 
 	print_clk(IPG);
