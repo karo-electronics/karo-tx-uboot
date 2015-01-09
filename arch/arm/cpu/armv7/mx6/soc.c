@@ -48,8 +48,8 @@ struct scu_regs {
 void hw_watchdog_reset(void)
 {
 	if (readw(wdog_base + WDOG_WCR) & WCR_WDE) {
-		static u16 toggle = 0xaaaa;
-		static int first = 1;
+		static u16 __data toggle = 0xaaaa;
+		static int __data first = 1;
 
 		if (first) {
 			printf("Watchdog active\n");
