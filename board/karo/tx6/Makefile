@@ -10,19 +10,20 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(BOARD).o
 
 ifeq ($(CONFIG_TX6_V2),)
-COBJS	:= tx6qdl.o
+COBJS-y	:= tx6qdl.o
 else
-COBJS	:= tx6-1020.o
+COBJS-y	:= tx6-1020.o
 endif
+COBJS-$(CONFIG_LTC3676)	+= ltc3676.o
+COBJS-$(CONFIG_RN5T618)	+= rn5t618.o
 
-SOBJS	:= lowlevel_init.o
-ifeq ($(CONFIG_CMD_ROMUPDATE),y)
-	COBJS += flash.o
-endif
+COBJS-$(CONFIG_CMD_ROMUPDATE) += flash.o
 
-SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS))
-SOBJS	:= $(addprefix $(obj),$(SOBJS))
+SOBJS-y	:= lowlevel_init.o
+
+SRCS	:= $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
+OBJS	:= $(addprefix $(obj),$(COBJS-y))
+SOBJS	:= $(addprefix $(obj),$(SOBJS-y))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
 	$(call cmd_link_o_target, $(OBJS) $(SOBJS))

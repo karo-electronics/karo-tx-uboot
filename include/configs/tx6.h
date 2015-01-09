@@ -276,8 +276,10 @@
 #define CONFIG_SYS_I2C_SPEED		400000
 #ifndef CONFIG_TX6_V2
 #define CONFIG_SYS_I2C_SLAVE		0x3c
+#define CONFIG_LTC3676
 #else
 #define CONFIG_SYS_I2C_SLAVE		0x32
+#define CONFIG_RN5T618
 #endif
 #endif
 
