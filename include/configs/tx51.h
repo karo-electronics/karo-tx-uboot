@@ -106,7 +106,7 @@
 #define CONFIG_BOOTARGS			"init=/linuxrc console=ttymxc0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
 #define CONFIG_LOADADDR			94000000
-#define CONFIG_FDTADDR			90001000
+#define CONFIG_FDTADDR			91000000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
