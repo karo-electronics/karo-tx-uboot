@@ -1039,7 +1039,9 @@ void lcd_ctrl_init(void *lcdbase)
 		int ret;
 
 		debug("Initializing LCD controller\n");
-		ret = ipuv3_fb_init(p, 0, pix_fmt, DI_PCLK_PLL3, di_clk_rate, -1);
+		ret = ipuv3_fb_init(p, 0, pix_fmt,
+				is_lvds() ? DI_PCLK_LDB : DI_PCLK_PLL3,
+				di_clk_rate, -1);
 		if (ret) {
 			printf("Failed to initialize FB driver: %d\n", ret);
 			lcd_enabled = 0;
