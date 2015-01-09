@@ -113,6 +113,51 @@ static int smsc_startup(struct phy_device *phydev)
 	return smsc_parse_status(phydev);
 }
 
+static int smsc_mdix_setup(struct phy_device *phydev)
+{
+	int ret;
+	static const char *mdix = "_mdi";
+	char varname[strlen(phydev->bus->name) + strlen(mdix) + 1];
+	const char *val;
+
+	snprintf(varname, sizeof(varname), "%s%s", phydev->bus->name, mdix);
+
+	val = getenv(varname);
+	if (val) {
+		if (strcasecmp(val, "auto") == 0) {
+			ret = 0;
+		} else if (strcasecmp(val, "mdix") == 0) {
+			ret = 1;
+		} else if (strcasecmp(val, "mdi") == 0) {
+			ret = 2;
+		} else {
+			printf("Improper setting '%s' for %s\n", val, varname);
+			printf("Expected one of: 'auto', 'mdi', 'mdix'\n");
+			return -EINVAL;
+		}
+	} else {
+		ret = 0;
+	}
+	return ret;
+}
+
+static int smsc_config(struct phy_device *phydev)
+{
+	int mdix = smsc_mdix_setup(phydev);
+
+	if (mdix < 0) {
+		return mdix;
+	} else if (mdix) {
+		int ret = phy_write(phydev, MDIO_DEVAD_NONE, 0x1b,
+				(1 << 15) | ((mdix & 1) << 13));
+		if (ret) {
+			printf("Failed to setup MDI/MDIX mode: %d\n", ret);
+			return ret;
+		}
+	}
+	return genphy_config_aneg(phydev);
+}
+
 static struct phy_driver lan8700_driver = {
 	.name = "SMSC LAN8700",
 	.uid = 0x0007c0c0,
@@ -138,7 +183,7 @@ static struct phy_driver lan8710_driver = {
 	.uid = 0x0007c0f0,
 	.mask = 0xffff0,
 	.features = PHY_GBIT_FEATURES,
-	.config = &genphy_config_aneg,
+	.config = &smsc_config,
 	.startup = &smsc_startup,
 	.shutdown = &genphy_shutdown,
 };
