@@ -802,7 +802,7 @@ int ipu_pixfmt_to_map(uint32_t fmt)
 		return 4;
 	}
 
-	return -1;
+	return -EINVAL;
 }
 
 /*
@@ -882,7 +882,7 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	debug("panel size = %d x %d\n", width, height);
 
 	if ((v_sync_width == 0) || (h_sync_width == 0))
-		return EINVAL;
+		return -EINVAL;
 
 	adapt_panel_to_ipu_restricitions(&pixel_clk, width, height,
 					 h_start_width, h_end_width,
@@ -926,12 +926,6 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		if (clk_get_usecount(g_pixel_clk[disp]) != 0)
 			clk_set_parent(g_pixel_clk[disp], g_ipu_clk);
 	}
-	rounded_pixel_clk = clk_round_rate(g_pixel_clk[disp], pixel_clk);
-	clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
-	udelay(5000);
-	/* Get integer portion of divider */
-	div = clk_get_rate(clk_get_parent(g_pixel_clk[disp])) /
-		rounded_pixel_clk;
 
 	/* Enable for a divide by 2 clock change. */
 	reg = __raw_readl(IPU_PM);
@@ -945,6 +939,7 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 	if (pixel_fmt != IPU_PIX_FMT_LVDS666 &&
 			pixel_fmt != IPU_PIX_FMT_LVDS888) {
+		rounded_pixel_clk = clk_round_rate(g_pixel_clk[disp], pixel_clk);
 		clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
 		udelay(5000);
 		/* Get integer portion of divider */
@@ -952,7 +947,8 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 			rounded_pixel_clk;
 		ipu_di_data_wave_config(disp, SYNC_WAVE, div - 1, div - 1);
 	} else {
-		clk_set_rate(g_pixel_clk[disp], clk_get_rate(g_ipu_clk));
+		rounded_pixel_clk = clk_get_rate(clk_get_parent(g_pixel_clk[disp]));
+		clk_set_rate(g_pixel_clk[disp], rounded_pixel_clk);
 		div = 1;
 		ipu_di_data_wave_config(disp, SYNC_WAVE, 0, 0);
 		di_gen |= (6 << 24);
@@ -962,8 +958,10 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 
 	map = ipu_pixfmt_to_map(pixel_fmt);
 	if (map < 0) {
-		debug("IPU_DISP: No MAP\n");
-		return -EINVAL;
+		printf("IPU_DISP: No MAP for pixel format: %c%c%c%c\n",
+			pixel_fmt, pixel_fmt >> 8, pixel_fmt >> 16,
+			pixel_fmt >> 24);
+		return map;
 	}
 
 	if (sig.interlaced) {
