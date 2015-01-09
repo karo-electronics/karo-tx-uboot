@@ -1112,6 +1112,8 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
+	env_cleanup();
+
 	if (tx6_temp_check_enabled)
 		check_cpu_temperature(1);
 

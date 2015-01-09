@@ -835,6 +835,8 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
+	env_cleanup();
+
 	karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");

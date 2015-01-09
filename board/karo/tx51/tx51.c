@@ -1043,6 +1043,8 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
+	env_cleanup();
+
 	tx51_set_cpu_clock();
 	karo_fdt_move_fdt();
 
