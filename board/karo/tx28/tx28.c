@@ -109,9 +109,11 @@ static inline void random_init(void)
 	int i;
 
 	for (i = 0; i < MAX_LOOPS; i++) {
-		unsigned int usec = readl(&digctl_regs->hw_digctl_microseconds);
+		u32 hclk = readl(&digctl_regs->hw_digctl_hclkcount);
+		u32 entropy = readl(&digctl_regs->hw_digctl_entropy);
+		u32 usec = readl(&digctl_regs->hw_digctl_microseconds);
 
-		seed = get_timer(usec + random + seed);
+		seed = get_timer(hclk ^ entropy ^ usec ^ random ^ seed);
 		srand(seed);
 		random = rand();
 	}
