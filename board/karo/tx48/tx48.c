@@ -654,13 +654,14 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 
 	karo_fdt_move_fdt();
-	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 
 	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+
+	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 	vm = video_mode;
 	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
