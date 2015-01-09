@@ -43,4 +43,7 @@ int mxs_wait_mask_set(struct mxs_register_32 *reg,
 int mxs_wait_mask_clr(struct mxs_register_32 *reg,
 		       uint32_t mask,
 		       unsigned int timeout);
+
+int read_cpu_temperature(void);
+int check_cpu_temperature(int boot);
 #endif

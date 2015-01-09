@@ -24,9 +24,23 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define TEMPERATURE_MIN			-40
+#ifdef CONFIG_MX6_TEMPERATURE_MIN
+#define TEMPERATURE_MIN			CONFIG_MX6_TEMPERATURE_MIN
+#else
+#define TEMPERATURE_MIN			(-40)
+#endif
+#ifdef CONFIG_MX6_TEMPERATURE_HOT
+#define TEMPERATURE_HOT			CONFIG_MX6_TEMPERATURE_HOT
+#else
 #define TEMPERATURE_HOT			80
+#endif
+#ifdef CONFIG_MX6_TEMPERATURE_MAX
+#define TEMPERATURE_MAX			CONFIG_MX6_TEMPERATURE_MAX
+#else
 #define TEMPERATURE_MAX			125
+#endif
+#define TEMP_AVG_COUNT			5
+#define TEMP_WARN_THRESHOLD		5
 #define REG_VALUE_TO_CEL(ratio, raw) ((raw_n40c - raw) * 100 / ratio - 40)
 
 #define __data	__attribute__((section(".data")))
@@ -188,7 +202,8 @@ int read_cpu_temperature(void)
 	raw_n40c = raw_25c + (13 * ratio) / 20;
 
 	/* now we only using single measure, every time we measure
-	the temperature, we will power on/down the anadig module*/
+	 * the temperature, we will power on/off the anadig module
+	 */
 	writel(BM_ANADIG_TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_clr);
 	writel(BM_ANADIG_ANA_MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_set);
 
@@ -231,36 +246,43 @@ int read_cpu_temperature(void)
 int check_cpu_temperature(int boot)
 {
 	static int __data max_temp;
-	int boot_limit = TEMPERATURE_HOT;
+	int boot_limit = getenv_ulong("max_boot_temp", 10, TEMPERATURE_HOT);
 	int tmp = read_cpu_temperature();
+	bool first = true;
 
 	if (tmp < TEMPERATURE_MIN || tmp > TEMPERATURE_MAX) {
 		printf("Temperature:   can't get valid data!\n");
 		return tmp;
 	}
 
-	while (tmp >= boot_limit) {
-		if (boot) {
-			printf("CPU is %d C, too hot to boot, waiting...\n",
-				tmp);
-			udelay(5000000);
-			tmp = read_cpu_temperature();
-			boot_limit = TEMPERATURE_HOT - 1;
-		} else {
-			printf("CPU is %d C, too hot, resetting...\n",
-				tmp);
-			udelay(1000000);
+	if (!boot) {
+		if (tmp > boot_limit) {
+			printf("CPU is %d C, too hot, resetting...\n", tmp);
+			udelay(100000);
 			reset_cpu(0);
 		}
-	}
-
-	if (boot) {
+		if (tmp > max_temp) {
+			if (tmp > boot_limit - TEMP_WARN_THRESHOLD)
+				printf("WARNING: CPU temperature %d C\n", tmp);
+			max_temp = tmp;
+		}
+	} else {
 		printf("Temperature:   %d C, calibration data 0x%x\n",
 			tmp, thermal_calib);
-	} else if (tmp > max_temp) {
-		if (tmp > TEMPERATURE_HOT - 5)
-			printf("WARNING: CPU temperature %d C\n", tmp);
-		max_temp = tmp;
+		while (tmp >= boot_limit) {
+			if (first) {
+				printf("CPU is %d C, too hot to boot, waiting...\n",
+					tmp);
+				first = false;
+			}
+			if (ctrlc())
+				break;
+			udelay(50000);
+			tmp = read_cpu_temperature();
+			if (tmp > boot_limit - TEMP_WARN_THRESHOLD && tmp != max_temp)
+				printf("WARNING: CPU temperature %d C\n", tmp);
+			max_temp = tmp;
+		}
 	}
 	return tmp;
 }

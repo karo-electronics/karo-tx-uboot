@@ -50,9 +50,16 @@
 
 #define TX6_RESET_OUT_GPIO		IMX_GPIO_NR(7, 12)
 
-#define TEMPERATURE_MIN			-40
+#ifdef CONFIG_MX6_TEMPERATURE_MIN
+#define TEMPERATURE_MIN			CONFIG_MX6_TEMPERATURE_MIN
+#else
+#define TEMPERATURE_MIN			(-40)
+#endif
+#ifdef CONFIG_MX6_TEMPERATURE_HOT
+#define TEMPERATURE_HOT			CONFIG_MX6_TEMPERATURE_HOT
+#else
 #define TEMPERATURE_HOT			80
-#define TEMPERATURE_MAX			125
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -194,9 +201,6 @@ static void print_reset_cause(void)
 	printf("\n");
 }
 
-int read_cpu_temperature(void);
-int check_cpu_temperature(int boot);
-
 static const char *tx6_mod_suffix;
 
 static void tx6qdl_print_cpuinfo(void)
@@ -230,7 +234,9 @@ static void tx6qdl_print_cpuinfo(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 
 	print_reset_cause();
+#ifdef CONFIG_MX6_TEMPERATURE_HOT
 	check_cpu_temperature(1);
+#endif
 }
 
 int board_early_init_f(void)
@@ -241,6 +247,12 @@ int board_early_init_f(void)
 	return 0;
 }
 
+#ifndef CONFIG_MX6_TEMPERATURE_HOT
+static bool tx6_temp_check_enabled = true;
+#else
+#define tx6_temp_check_enabled	0
+#endif
+
 int board_init(void)
 {
 	int ret;
@@ -250,6 +262,9 @@ int board_init(void)
 	gd->bd->bi_arch_number = -1;
 
 	if (ctrlc()) {
+#ifndef CONFIG_MX6_TEMPERATURE_HOT
+		tx6_temp_check_enabled = false;
+#endif
 		printf("CTRL-C detected; Skipping PMIC setup\n");
 		return 1;
 	}
@@ -453,10 +468,13 @@ enum {
 	LED_STATE_ON,
 };
 
-static inline int calc_blink_rate(int tmp)
+static inline int calc_blink_rate(void)
 {
+	if (!tx6_temp_check_enabled)
+		return CONFIG_SYS_HZ;
+
 	return CONFIG_SYS_HZ + CONFIG_SYS_HZ / 10 -
-		(tmp - TEMPERATURE_MIN) * CONFIG_SYS_HZ /
+		(check_cpu_temperature(0) - TEMPERATURE_MIN) * CONFIG_SYS_HZ /
 		(TEMPERATURE_HOT - TEMPERATURE_MIN);
 }
 
@@ -470,10 +488,10 @@ void show_activity(int arg)
 		last = get_timer(0);
 		gpio_set_value(TX6_LED_GPIO, 1);
 		led_state = LED_STATE_ON;
-		blink_rate = calc_blink_rate(check_cpu_temperature(0));
+		blink_rate = calc_blink_rate();
 	} else {
 		if (get_timer(last) > blink_rate) {
-			blink_rate = calc_blink_rate(check_cpu_temperature(0));
+			blink_rate = calc_blink_rate();
 			last = get_timer_masked();
 			if (led_state == LED_STATE_ON) {
 				gpio_set_value(TX6_LED_GPIO, 0);
@@ -1092,8 +1110,12 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
+	if (tx6_temp_check_enabled)
+		check_cpu_temperature(1);
+
 	tx6qdl_set_cpu_clock();
-	karo_fdt_move_fdt();
+	if (!had_ctrlc())
+		karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)
