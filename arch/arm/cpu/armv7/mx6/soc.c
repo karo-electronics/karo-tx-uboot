@@ -8,6 +8,7 @@
  */
 
 #include <common.h>
+#include <div64.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
@@ -41,7 +42,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #endif
 #define TEMP_AVG_COUNT			5
 #define TEMP_WARN_THRESHOLD		5
-#define REG_VALUE_TO_CEL(ratio, raw) ((raw_n40c - raw) * 100 / ratio - 40)
 
 #define __data	__attribute__((section(".data")))
 
@@ -171,10 +171,56 @@ static void set_vddsoc(u32 mv)
 
 static u32 __data thermal_calib;
 
+#define FACTOR0				10000000
+#define FACTOR1				15976
+#define FACTOR2				4297157
+
+int raw_to_celsius(unsigned int raw, unsigned int raw_25c, unsigned int raw_hot,
+		unsigned int hot_temp)
+{
+	int temperature;
+
+	if (raw_hot != 0 && hot_temp != 0) {
+		unsigned int raw_n40c, ratio;
+
+		ratio = ((raw_25c - raw_hot) * 100) / (hot_temp - 25);
+		raw_n40c = raw_25c + (13 * ratio) / 20;
+		if (raw <= raw_n40c)
+			temperature = (raw_n40c - raw) * 100 / ratio - 40;
+		else
+			temperature = TEMPERATURE_MIN;
+	} else {
+		u64 temp64 = FACTOR0;
+		unsigned int c1, c2;
+		/*
+		 * Derived from linear interpolation:
+		 * slope = 0.4297157 - (0.0015976 * 25C fuse)
+		 * slope = (FACTOR2 - FACTOR1 * n1) / FACTOR0
+		 * (Nmeas - n1) / (Tmeas - t1) = slope
+		 * We want to reduce this down to the minimum computation necessary
+		 * for each temperature read.  Also, we want Tmeas in millicelsius
+		 * and we don't want to lose precision from integer division. So...
+		 * Tmeas = (Nmeas - n1) / slope + t1
+		 * milli_Tmeas = 1000 * (Nmeas - n1) / slope + 1000 * t1
+		 * milli_Tmeas = -1000 * (n1 - Nmeas) / slope + 1000 * t1
+		 * Let constant c1 = (-1000 / slope)
+		 * milli_Tmeas = (n1 - Nmeas) * c1 + 1000 * t1
+		 * Let constant c2 = n1 *c1 + 1000 * t1
+		 * milli_Tmeas = c2 - Nmeas * c1
+		 */
+		temp64 *= 1000;
+		do_div(temp64, FACTOR1 * raw_25c - FACTOR2);
+		c1 = temp64;
+		c2 = raw_25c * c1 + 1000 * 25;
+		temperature = (c2 - raw * c1) / 1000;
+	}
+	return temperature;
+}
+
 int read_cpu_temperature(void)
 {
 	unsigned int reg, tmp, i;
-	unsigned int raw_25c, raw_hot, hot_temp, raw_n40c, ratio;
+	unsigned int raw_25c, raw_hot, hot_temp;
 	int temperature;
 	struct anatop_regs *const anatop = (void *)ANATOP_BASE_ADDR;
 	struct mx6_ocotp_regs *const ocotp_regs = (void *)OCOTP_BASE_ADDR;
@@ -198,9 +244,6 @@ int read_cpu_temperature(void)
 	raw_hot = (thermal_calib & 0xfff00) >> 8;
 	hot_temp = thermal_calib & 0xff;
 
-	ratio = ((raw_25c - raw_hot) * 100) / (hot_temp - 25);
-	raw_n40c = raw_25c + (13 * ratio) / 20;
-
 	/* now we only using single measure, every time we measure
 	 * the temperature, we will power on/off the anadig module
 	 */
@@ -208,33 +251,43 @@ int read_cpu_temperature(void)
 	writel(BM_ANADIG_ANA_MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_set);
 
 	/* write measure freq */
-	reg = readl(&anatop->tempsense1);
-	reg &= ~BM_ANADIG_TEMPSENSE1_MEASURE_FREQ;
-	reg |= 327;
-	writel(reg, &anatop->tempsense1);
-
+	writel(327, &anatop->tempsense1);
 	writel(BM_ANADIG_TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_clr);
 	writel(BM_ANADIG_TEMPSENSE0_FINISHED, &anatop->tempsense0_clr);
 	writel(BM_ANADIG_TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_set);
 
-	tmp = 0;
-	/* read five times of temperature values to get average*/
-	for (i = 0; i < 5; i++) {
+	/* average the temperature value over multiple readings */
+	for (i = 0; i < TEMP_AVG_COUNT; i++) {
+		static int failed;
+		int limit = 100;
+
 		while ((readl(&anatop->tempsense0) &
-				BM_ANADIG_TEMPSENSE0_FINISHED) == 0)
+				BM_ANADIG_TEMPSENSE0_FINISHED) == 0) {
 			udelay(10000);
-		reg = readl(&anatop->tempsense0);
-		tmp += (reg & BM_ANADIG_TEMPSENSE0_TEMP_VALUE) >>
+			if (--limit < 0)
+				break;
+		}
+		if ((readl(&anatop->tempsense0) &
+				BM_ANADIG_TEMPSENSE0_FINISHED) == 0) {
+			if (!failed) {
+				printf("Failed to read temp sensor\n");
+				failed = 1;
+			}
+			return 0;
+		}
+		failed = 0;
+		reg = (readl(&anatop->tempsense0) &
+			BM_ANADIG_TEMPSENSE0_TEMP_VALUE) >>
 			BP_ANADIG_TEMPSENSE0_TEMP_VALUE;
+		if (i == 0)
+			tmp = reg;
+		else
+			tmp = (tmp * i + reg) / (i + 1);
 		writel(BM_ANADIG_TEMPSENSE0_FINISHED,
 			&anatop->tempsense0_clr);
 	}
 
-	tmp = tmp / 5;
-	if (tmp <= raw_n40c)
-		temperature = REG_VALUE_TO_CEL(ratio, tmp);
-	else
-		temperature = TEMPERATURE_MIN;
+	temperature = raw_to_celsius(tmp, raw_25c, raw_hot, hot_temp);
 
 	/* power down anatop thermal sensor */
 	writel(BM_ANADIG_TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_set);
