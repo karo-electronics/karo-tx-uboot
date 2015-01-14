@@ -130,10 +130,10 @@ void init_aips(void)
 	struct aipstz_regs *aips3;
 #endif
 
-	aips1 = (struct aipstz_regs *)AIPS1_BASE_ADDR;
-	aips2 = (struct aipstz_regs *)AIPS2_BASE_ADDR;
+	aips1 = (struct aipstz_regs *)AIPS1_ARB_BASE_ADDR;
+	aips2 = (struct aipstz_regs *)AIPS2_ARB_BASE_ADDR;
 #ifdef CONFIG_SOC_MX6SX
-	aips3 = (struct aipstz_regs *)AIPS3_BASE_ADDR;
+	aips3 = (struct aipstz_regs *)AIPS3_ARB_BASE_ADDR;
 #endif
 
 	/*
