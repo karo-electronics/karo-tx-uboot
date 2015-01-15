@@ -42,32 +42,35 @@
 
 #define NOETIMSET_DIS_OFF_NOE_TIM	(1 << 3)
 
-#define VDD_RTC_VAL		mV_to_regval_rtc(3000 * 10)
-#define VDD_HIGH_VAL		mV_to_regval3(3000 * 10)
-#define VDD_HIGH_VAL_LP		mV_to_regval3(3000 * 10)
-#define VDD_CORE_VAL		mV_to_regval(1425 * 10)
-#define VDD_CORE_VAL_LP		mV_to_regval(900 * 10)
-#define VDD_SOC_VAL		mV_to_regval(1425 * 10)
-#define VDD_SOC_VAL_LP		mV_to_regval(900 * 10)
-#define VDD_DDR_VAL		mV_to_regval(1500 * 10)
-#define VDD_DDR_VAL_LP		mV_to_regval(1500 * 10)
+#define VDD_RTC_VAL		mV_to_regval_rtc(3000)
+#define VDD_HIGH_VAL		mV_to_regval3(3000)
+#define VDD_HIGH_VAL_LP		mV_to_regval3(3000)
+#define VDD_CORE_VAL		mV_to_regval(1425)		/* DCDC1 */
+#define VDD_CORE_VAL_LP		mV_to_regval(900)
+#define VDD_SOC_VAL		mV_to_regval(1425)		/* DCDC2 */
+#define VDD_SOC_VAL_LP		mV_to_regval(900)
+#define VDD_DDR_VAL		mV_to_regval(1350)		/* DCDC3 */
+#define VDD_DDR_VAL_LP		mV_to_regval(1350)
 
 /* calculate voltages in 10mV */
+#define v2r(v,n,m)		DIV_ROUND(((((v) < (n)) ? (n) : (v)) - (n)), (m))
+#define r2v(r,n,m)		(((r) * (m) + (n)) / 10)
+
 /* DCDC1-3 */
-#define mV_to_regval(mV)	DIV_ROUND(((((mV) < 6000) ? 6000 : (mV)) - 6000), 125)
-#define regval_to_mV(v)		(((v) * 125 + 6000))
+#define mV_to_regval(mV)	v2r((mV) * 10, 6000, 125)
+#define regval_to_mV(r)		r2v(r, 6000, 125)
 
 /* LDO1-2 */
-#define mV_to_regval2(mV)	DIV_ROUND(((((mV) < 9000) ? 9000 : (mV)) - 9000), 250)
-#define regval2_to_mV(v)	(((v) * 250 + 9000))
+#define mV_to_regval2(mV)	v2r((mV) * 10, 9000, 250)
+#define regval2_to_mV(r)	r2v(r, 9000, 250)
 
 /* LDO3 */
-#define mV_to_regval3(mV)	DIV_ROUND(((((mV) < 6000) ? 6000 : (mV)) - 6000), 250)
-#define regval3_to_mV(v)	(((v) * 250 + 6000))
+#define mV_to_regval3(mV)	v2r((mV) * 10, 6000, 250)
+#define regval3_to_mV(r)	r2v(r, 6000, 250)
 
 /* LDORTC */
-#define mV_to_regval_rtc(mV)	DIV_ROUND(((((mV) < 17000) ? 17000 : (mV)) - 17000), 250)
-#define regval_rtc_to_mV(v)	(((v) * 250 + 17000))
+#define mV_to_regval_rtc(mV)	v2r((mV) * 10, 17000, 250)
+#define regval_rtc_to_mV(r)	r2v(r, 17000, 250)
 
 static struct rn5t567_regs {
 	u8 addr;
@@ -75,7 +78,6 @@ static struct rn5t567_regs {
 	u8 mask;
 } rn5t567_regs[] = {
 	{ RN5T567_NOETIMSET, NOETIMSET_DIS_OFF_NOE_TIM | 0x5, },
-#if 0
 	{ RN5T567_DC1DAC, VDD_CORE_VAL, },
 	{ RN5T567_DC2DAC, VDD_SOC_VAL, },
 	{ RN5T567_DC3DAC, VDD_DDR_VAL, },
@@ -86,23 +88,8 @@ static struct rn5t567_regs {
 	{ RN5T567_LDOEN2, 0x10, ~0x30, },
 	{ RN5T567_LDODIS, 0x00, },
 	{ RN5T567_LDO3DAC, VDD_HIGH_VAL, },
-	{ RN5T567_LDORTCDAC, VDD_RTC_VAL, },
+	{ RN5T567_LDORTC1DAC, VDD_RTC_VAL, },
 	{ RN5T567_LDORTC1_SLOT, 0x0f, ~0x3f, },
-#endif
-};
-
-static struct rn5t567_regs debug_regs[] __maybe_unused = {
-	{ 0x00,  4, },
-	{ 0x09,  4, },
-	{ 0x10, 16, },
-	{ 0x25, 26, },
-	{ 0x44,  3, },
-	{ 0x4c,  5, },
-	{ 0x56,  1, },
-	{ 0x58,  5, },
-	{ 0x97,  2, },
-	{ 0xb0,  1, },
-	{ 0xbc,  1, },
 };
 
 static int rn5t567_setup_regs(uchar slave_addr, struct rn5t567_regs *r,
@@ -126,33 +113,13 @@ static int rn5t567_setup_regs(uchar slave_addr, struct rn5t567_regs *r,
 			return ret;
 		}
 #endif
-//		value = (value & ~r->mask) | r->val;
 		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
 		if (ret) {
 			printf("%s: failed to write PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
 			return ret;
 		}
-#ifdef DEBUG
-		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
-		printf("PMIC reg %02x is %02x\n", r->addr, value);
-#endif
 	}
-#if 0
-	for (i = 0; i < ARRAY_SIZE(debug_regs); i++) {
-		int j;
-
-		r = &debug_regs[i];
-		for (j = r->addr; j < r->addr + r->val; j++) {
-			unsigned char value;
-
-			ret = i2c_read(slave_addr, j, 1, &value, 1);
-			printf("PMIC reg %02x = %02x\n",
-				j, value);
-		}
-	}
-#endif
-	debug("%s() complete\n", __func__);
 	return 0;
 }
 
@@ -172,10 +139,19 @@ int rn5t567_pmic_setup(uchar slave_addr)
 	if (ret)
 		return ret;
 
-	printf("VDDCORE set to %umV\n",
-		DIV_ROUND(regval_to_mV(VDD_CORE_VAL), 10));
-	printf("VDDSOC  set to %umV\n",
-		DIV_ROUND(regval_to_mV(VDD_SOC_VAL), 10));
+	ret = i2c_read(slave_addr, RN5T567_DC1DAC, 1, &value, 1);
+	if (ret == 0) {
+		printf("VDDCORE set to %umV\n", regval_to_mV(value));
+	} else {
+		printf("Failed to read VDDCORE register setting\n");
+	}
+
+	ret = i2c_read(slave_addr, RN5T567_DC2DAC, 1, &value, 1);
+	if (ret == 0) {
+		printf("VDDSOC  set to %umV\n", regval_to_mV(value));
+	} else {
+		printf("Failed to read VDDSOC register setting\n");
+	}
 
 	return ret;
 }

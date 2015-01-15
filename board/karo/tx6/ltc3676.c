@@ -56,16 +56,16 @@
 #define LTC3676_MSKPG_LDO3	(1 << 6)
 #define LTC3676_MSKPG_LDO4	(1 << 7)
 
-#define VDD_IO_VAL		mV_to_regval(vout_to_vref(3300 * 10, 5))
-#define VDD_IO_VAL_LP		mV_to_regval(vout_to_vref(3100 * 10, 5))
-#define VDD_IO_VAL_2		mV_to_regval(vout_to_vref(3300 * 10, 5_2))
-#define VDD_IO_VAL_2_LP		mV_to_regval(vout_to_vref(3100 * 10, 5_2))
-#define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1425 * 10, 6))
-#define VDD_SOC_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 6))
-#define VDD_DDR_VAL		mV_to_regval(vout_to_vref(1500 * 10, 7))
-#define VDD_DDR_VAL_LP		mV_to_regval(vout_to_vref(1500 * 10, 7))
-#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1425 * 10, 8))
-#define VDD_CORE_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 8))
+#define VDD_IO_VAL		mV_to_regval(vout_to_vref(3300, 5))
+#define VDD_IO_VAL_LP		mV_to_regval(vout_to_vref(3100, 5))
+#define VDD_IO_VAL_2		mV_to_regval(vout_to_vref(3300, 5_2))
+#define VDD_IO_VAL_2_LP		mV_to_regval(vout_to_vref(3100, 5_2))
+#define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1425, 6))
+#define VDD_SOC_VAL_LP		mV_to_regval(vout_to_vref(900, 6))
+#define VDD_DDR_VAL		mV_to_regval(vout_to_vref(1500, 7))
+#define VDD_DDR_VAL_LP		mV_to_regval(vout_to_vref(1500, 7))
+#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1425, 8))
+#define VDD_CORE_VAL_LP		mV_to_regval(vout_to_vref(900, 8))
 
 /* LDO1 */
 #define R1_1			470
@@ -92,11 +92,14 @@
 #define R1(idx)			R1_##idx
 #define R2(idx)			R2_##idx
 
+#define v2r(v,n,m)		DIV_ROUND(((((v) < (n)) ? (n) : (v)) - (n)), (m))
+#define r2v(r,n,m)		(((r) * (m) + (n)) / 10)
+
 #define vout_to_vref(vout, idx)	((vout) * R2(idx) / (R1(idx) + R2(idx)))
 #define vref_to_vout(vref, idx)	DIV_ROUND_UP((vref) * (R1(idx) + R2(idx)), R2(idx))
 
-#define mV_to_regval(mV)	DIV_ROUND(((((mV) < 4125) ? 4125 : (mV)) - 4125), 125)
-#define regval_to_mV(v)		(((v) * 125 + 4125))
+#define mV_to_regval(mV)	v2r((mV) * 10, 4125, 125)
+#define regval_to_mV(r)		r2v(r, 4125, 125)
 
 static struct ltc3676_regs {
 	u8 addr;
@@ -185,17 +188,33 @@ int ltc3676_pmic_setup(uchar slave_addr)
 	if (ret)
 		return ret;
 
-	printf("VDDCORE set to %umV\n",
-		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_CORE_VAL), 8), 10));
-	printf("VDDSOC  set to %umV\n",
-		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_SOC_VAL), 6), 10));
+	ret = i2c_read(slave_addr, LTC3676_DVB4A, 1, &value, 1);
+	if (ret == 0) {
+		printf("VDDCORE set to %umV\n",
+			vref_to_vout(regval_to_mV(value), 8));
+	} else {
+		printf("Failed to read VDDCORE register setting\n");
+	}
+
+	ret = i2c_read(slave_addr, LTC3676_DVB2A, 1, &value, 1);
+	if (ret == 0) {
+		printf("VDDSOC  set to %umV\n",
+			vref_to_vout(regval_to_mV(value), 6));
+	} else {
+		printf("Failed to read VDDSOC register setting\n");
+	}
 
 	if (tx6_rev_2()) {
 		ret = ltc3676_setup_regs(slave_addr, ltc3676_regs_2,
 				ARRAY_SIZE(ltc3676_regs_2));
-		printf("VDDIO   set to %umV\n",
-			DIV_ROUND(vref_to_vout(
-					regval_to_mV(VDD_IO_VAL_2), 5_2), 10));
+
+		ret = i2c_read(slave_addr, LTC3676_DVB1A, 1, &value, 1);
+		if (ret == 0) {
+			printf("VDDIO   set to %umV\n",
+				vref_to_vout(regval_to_mV(value), 5_2));
+		} else {
+			printf("Failed to read VDDIO register setting\n");
+		}
 	} else {
 		ret = ltc3676_setup_regs(slave_addr, ltc3676_regs_1,
 				ARRAY_SIZE(ltc3676_regs_1));
