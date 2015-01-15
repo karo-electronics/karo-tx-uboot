@@ -105,7 +105,8 @@ static struct rn5t567_regs debug_regs[] __maybe_unused = {
 	{ 0xbc,  1, },
 };
 
-static int rn5t567_setup_regs(struct rn5t567_regs *r, size_t count)
+static int rn5t567_setup_regs(uchar slave_addr, struct rn5t567_regs *r,
+			size_t count)
 {
 	int ret;
 	int i;
@@ -114,7 +115,7 @@ static int rn5t567_setup_regs(struct rn5t567_regs *r, size_t count)
 #ifdef DEBUG
 		unsigned char value;
 
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
 		if ((value & ~r->mask) != r->val) {
 			printf("Changing PMIC reg %02x from %02x to %02x\n",
 				r->addr, value, r->val);
@@ -126,15 +127,14 @@ static int rn5t567_setup_regs(struct rn5t567_regs *r, size_t count)
 		}
 #endif
 //		value = (value & ~r->mask) | r->val;
-		ret = i2c_write(CONFIG_SYS_I2C_SLAVE,
-				r->addr, 1, &r->val, 1);
+		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
 		if (ret) {
 			printf("%s: failed to write PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
 			return ret;
 		}
 #ifdef DEBUG
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
 		printf("PMIC reg %02x is %02x\n", r->addr, value);
 #endif
 	}
@@ -146,7 +146,7 @@ static int rn5t567_setup_regs(struct rn5t567_regs *r, size_t count)
 		for (j = r->addr; j < r->addr + r->val; j++) {
 			unsigned char value;
 
-			ret = i2c_read(CONFIG_SYS_I2C_SLAVE, j, 1, &value, 1);
+			ret = i2c_read(slave_addr, j, 1, &value, 1);
 			printf("PMIC reg %02x = %02x\n",
 				j, value);
 		}
@@ -156,24 +156,19 @@ static int rn5t567_setup_regs(struct rn5t567_regs *r, size_t count)
 	return 0;
 }
 
-int setup_pmic_voltages(void)
+int rn5t567_pmic_setup(uchar slave_addr)
 {
 	int ret;
 	unsigned char value;
 
-	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
-	if (ret != 0) {
-		printf("Failed to initialize I2C\n");
-		return ret;
-	}
-
-	ret = i2c_read(CONFIG_SYS_I2C_SLAVE, 0x11, 1, &value, 1);
+	ret = i2c_read(slave_addr, 0x11, 1, &value, 1);
 	if (ret) {
 		printf("%s: i2c_read error: %d\n", __func__, ret);
 		return ret;
 	}
 
-	ret = rn5t567_setup_regs(rn5t567_regs, ARRAY_SIZE(rn5t567_regs));
+	ret = rn5t567_setup_regs(slave_addr, rn5t567_regs,
+				ARRAY_SIZE(rn5t567_regs));
 	if (ret)
 		return ret;
 

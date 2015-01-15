@@ -138,7 +138,8 @@ static int tx6_rev_2(void)
 	return pad_settings & 1;
 }
 
-static int ltc3676_setup_regs(struct ltc3676_regs *r, size_t count)
+static int ltc3676_setup_regs(uchar slave_addr, struct ltc3676_regs *r,
+			size_t count)
 {
 	int ret;
 	int i;
@@ -147,7 +148,7 @@ static int ltc3676_setup_regs(struct ltc3676_regs *r, size_t count)
 #ifdef DEBUG
 		unsigned char value;
 
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
 		if ((value & ~r->mask) != r->val) {
 			printf("Changing PMIC reg %02x from %02x to %02x\n",
 				r->addr, value, r->val);
@@ -158,8 +159,7 @@ static int ltc3676_setup_regs(struct ltc3676_regs *r, size_t count)
 			return ret;
 		}
 #endif
-		ret = i2c_write(CONFIG_SYS_I2C_SLAVE,
-				r->addr, 1, &r->val, 1);
+		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
 		if (ret) {
 			printf("%s: failed to write PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
@@ -169,24 +169,19 @@ static int ltc3676_setup_regs(struct ltc3676_regs *r, size_t count)
 	return 0;
 }
 
-int setup_pmic_voltages(void)
+int ltc3676_pmic_setup(uchar slave_addr)
 {
 	int ret;
 	unsigned char value;
 
-	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
-	if (ret != 0) {
-		printf("Failed to initialize I2C\n");
-		return ret;
-	}
-
-	ret = i2c_read(CONFIG_SYS_I2C_SLAVE, 0x11, 1, &value, 1);
+	ret = i2c_read(slave_addr, 0x11, 1, &value, 1);
 	if (ret) {
 		printf("%s: i2c_read error: %d\n", __func__, ret);
 		return ret;
 	}
 
-	ret = ltc3676_setup_regs(ltc3676_regs, ARRAY_SIZE(ltc3676_regs));
+	ret = ltc3676_setup_regs(slave_addr, ltc3676_regs,
+				ARRAY_SIZE(ltc3676_regs));
 	if (ret)
 		return ret;
 
@@ -196,13 +191,13 @@ int setup_pmic_voltages(void)
 		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_SOC_VAL), 6), 10));
 
 	if (tx6_rev_2()) {
-		ret = ltc3676_setup_regs(ltc3676_regs_2,
+		ret = ltc3676_setup_regs(slave_addr, ltc3676_regs_2,
 				ARRAY_SIZE(ltc3676_regs_2));
 		printf("VDDIO   set to %umV\n",
 			DIV_ROUND(vref_to_vout(
 					regval_to_mV(VDD_IO_VAL_2), 5_2), 10));
 	} else {
-		ret = ltc3676_setup_regs(ltc3676_regs_1,
+		ret = ltc3676_setup_regs(slave_addr, ltc3676_regs_1,
 				ARRAY_SIZE(ltc3676_regs_1));
 	}
 	return ret;

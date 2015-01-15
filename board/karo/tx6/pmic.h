@@ -15,4 +15,8 @@
  *
  */
 
-int setup_pmic_voltages(void);
+int ltc3676_pmic_setup(uchar addr);
+int rn5t618_pmic_setup(uchar addr);
+int rn5t567_pmic_setup(uchar addr);
+
+int tx6_pmic_init(void);

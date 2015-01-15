@@ -72,7 +72,6 @@ static struct rn5t618_regs {
 	u8 val;
 	u8 mask;
 } rn5t618_regs[] = {
-#if CONFIG_TX6_REV == 2
 	{ RN5T618_NOETIMSET, 0, },
 	{ RN5T618_DC1DAC, VDD_CORE_VAL, },
 	{ RN5T618_DC2DAC, VDD_SOC_VAL, },
@@ -86,26 +85,10 @@ static struct rn5t618_regs {
 	{ RN5T618_LDO3DAC, VDD_HIGH_VAL, },
 	{ RN5T618_LDORTCDAC, VDD_RTC_VAL, },
 	{ RN5T618_LDORTC1_SLOT, 0x0f, ~0x3f, },
-#elif CONFIG_TX6_REV == 3
-	{ RN5T618_NOETIMSET, 0, },
-	{ RN5T618_DC1DAC, VDD_CORE_VAL, },
-	{ RN5T618_DC2DAC, VDD_SOC_VAL, },
-	{ RN5T618_DC3DAC, VDD_DDR_VAL, },
-	{ RN5T618_DC1DAC_SLP, VDD_CORE_VAL_LP, },
-	{ RN5T618_DC2DAC_SLP, VDD_SOC_VAL_LP, },
-	{ RN5T618_DC3DAC_SLP, VDD_DDR_VAL_LP, },
-	{ RN5T618_LDOEN1, 0x01f, ~0x1f, },
-	{ RN5T618_LDOEN2, 0x10, ~0x30, },
-	{ RN5T618_LDODIS, 0x00, },
-	{ RN5T618_LDO3DAC, VDD_HIGH_VAL, },
-	{ RN5T618_LDORTCDAC, VDD_RTC_VAL, },
-	{ RN5T618_LDORTC1_SLOT, 0x0f, ~0x3f, },
-#else
-#error Unsupported TX6 module revision
-#endif
 };
 
-static int rn5t618_setup_regs(struct rn5t618_regs *r, size_t count)
+static int rn5t618_setup_regs(uchar slave_addr, struct rn5t618_regs *r,
+			size_t count)
 {
 	int ret;
 	int i;
@@ -113,15 +96,14 @@ static int rn5t618_setup_regs(struct rn5t618_regs *r, size_t count)
 	for (i = 0; i < count; i++, r++) {
 		unsigned char value;
 
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
-		printf("PMIC reg %02x = %02x\n",
-			r->addr, value);
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
+		debug("PMIC reg %02x = %02x\n", r->addr, value);
 	}
 	for (i = 0; i < count; i++, r++) {
 #ifdef DEBUG
 		unsigned char value;
 
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
 		if ((value & ~r->mask) != r->val) {
 			printf("Changing PMIC reg %02x from %02x to %02x\n",
 				r->addr, value, r->val);
@@ -132,39 +114,33 @@ static int rn5t618_setup_regs(struct rn5t618_regs *r, size_t count)
 			return ret;
 		}
 #endif
-		ret = i2c_write(CONFIG_SYS_I2C_SLAVE,
-				r->addr, 1, &r->val, 1);
+		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
 		if (ret) {
 			printf("%s: failed to write PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
 			return ret;
 		}
 #ifdef DEBUG
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
 		printf("PMIC reg %02x is %02x\n", r->addr, value);
 #endif
 	}
 	return 0;
 }
 
-int setup_pmic_voltages(void)
+int rn5t618_pmic_setup(uchar slave_addr)
 {
 	int ret;
 	unsigned char value;
 
-	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
-	if (ret != 0) {
-		printf("Failed to initialize I2C\n");
-		return ret;
-	}
-
-	ret = i2c_read(CONFIG_SYS_I2C_SLAVE, 0x11, 1, &value, 1);
+	ret = i2c_read(slave_addr, 0x11, 1, &value, 1);
 	if (ret) {
 		printf("%s: i2c_read error: %d\n", __func__, ret);
 		return ret;
 	}
 
-	ret = rn5t618_setup_regs(rn5t618_regs, ARRAY_SIZE(rn5t618_regs));
+	ret = rn5t618_setup_regs(slave_addr, rn5t618_regs,
+				ARRAY_SIZE(rn5t618_regs));
 	if (ret)
 		return ret;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012,2013 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2015 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -14,7 +14,6 @@
  * GNU General Public License for more details.
  *
  */
-
 #include <common.h>
 #include <errno.h>
 #include <libfdt.h>
@@ -272,7 +271,7 @@ int board_init(void)
 		return 1;
 	}
 
-	ret = setup_pmic_voltages();
+	ret = tx6_pmic_init();
 	if (ret) {
 		printf("Failed to setup PMIC voltages\n");
 		hang();
@@ -393,9 +392,10 @@ int board_mmc_getcd(struct mmc *mmc)
 	if (cfg->cd_gpio < 0)
 		return 1;
 
-	debug("SD card %d is %spresent\n",
+	debug("SD card %d is %spresent (GPIO %d)\n",
 		cfg - tx6qdl_esdhc_cfg,
-		gpio_get_value(cfg->cd_gpio) ? "NOT " : "");
+		gpio_get_value(cfg->cd_gpio) ? "NOT " : "",
+		cfg->cd_gpio);
 	return !gpio_get_value(cfg->cd_gpio);
 }
 
@@ -1169,11 +1169,7 @@ exit:
 }
 
 #ifdef CONFIG_NO_NAND
-#ifdef CONFIG_MMC_BOOT_SIZE
-#define TX6_FLASH_SZ	(CONFIG_MMC_BOOT_SIZE / 1024 - 1 + 2)
-#else
-#define TX6_FLASH_SZ	3
-#endif
+#define TX6_FLASH_SZ	(CONFIG_MMC_BOOT_SIZE / 4096 + 2)
 #else /* CONFIG_NO_NAND */
 #define TX6_FLASH_SZ	(CONFIG_SYS_NAND_BLOCKS / 1024 - 1)
 #endif /* CONFIG_NO_NAND */
@@ -1184,20 +1180,19 @@ exit:
 #define TX6_DDR_SZ	2
 #endif
 
-#if CONFIG_TX6_REV >= 0x3
 static char tx6_mem_table[] = {
-	'4', /* 256MiB SDRAM; 128MiB NAND */
-	'1', /* 512MiB SDRAM; 128MiB NAND */
-	'0', /* 1GiB SDRAM; 128MiB NAND */
-	'?', /* 256MiB SDRAM; 256MiB NAND */
-	'?', /* 512MiB SDRAM; 256MiB NAND */
-	'2', /* 1GiB SDRAM; 256MiB NAND */
-	'?', /* 256MiB SDRAM; 4GiB eMMC */
-	'5', /* 512MiB SDRAM; 4GiB eMMC */
-	'3', /* 1GiB SDRAM; 4GiB eMMC */
-	'?', /* 256MiB SDRAM; 8GiB eMMC */
-	'?', /* 512MiB SDRAM; 8GiB eMMC */
-	'?', /* 1GiB SDRAM; 8GiB eMMC */
+	'4', /* 256MiB SDRAM 16bit; 128MiB NAND */
+	'1', /* 512MiB SDRAM 32bit; 128MiB NAND */
+	'0', /* 1GiB SDRAM 64bit; 128MiB NAND */
+	'?', /* 256MiB SDRAM 16bit; 256MiB NAND */
+	'?', /* 512MiB SDRAM 32bit; 256MiB NAND */
+	'2', /* 1GiB SDRAM 64bit; 256MiB NAND */
+	'?', /* 256MiB SDRAM 16bit; 4GiB eMMC */
+	'5', /* 512MiB SDRAM 32bit; 4GiB eMMC */
+	'3', /* 1GiB SDRAM 64bit; 4GiB eMMC */
+	'?', /* 256MiB SDRAM 16bit; 8GiB eMMC */
+	'?', /* 512MiB SDRAM 32bit; 8GiB eMMC */
+	'0', /* 1GiB SDRAM 64bit; 8GiB eMMC */
 };
 
 static inline char tx6_mem_suffix(void)
@@ -1212,20 +1207,31 @@ static inline char tx6_mem_suffix(void)
 
 	return tx6_mem_table[mem_idx];
 };
-#else /* CONFIG_TX6_REV >= 0x3 */
-static inline char tx6_mem_suffix(void)
+
+static struct {
+	uchar addr;
+	uchar rev;
+} tx6_mod_revs[] = {
+	{ 0x3c, 1, },
+	{ 0x32, 2, },
+	{ 0x33, 3, },
+};
+
+static int tx6_get_mod_rev(void)
 {
-#ifdef CONFIG_SYS_SDRAM_BUS_WIDTH
-	if (CONFIG_SYS_SDRAM_BUS_WIDTH == 32)
-		return '1';
-#endif
-#ifdef CONFIG_SYS_NAND_BLOCKS
-	if (CONFIG_SYS_NAND_BLOCKS == 2048)
-		return '2';
-#endif
-	return '0';
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
+		int ret = i2c_probe(tx6_mod_revs[i].addr);
+		if (ret == 0) {
+			debug("I2C probe succeeded for addr %02x\n", tx6_mod_revs[i].addr);
+			return tx6_mod_revs[i].rev;
+		}
+		debug("I2C probe returned %d for addr %02x\n", ret,
+			tx6_mod_revs[i].addr);
+	}
+	return 0;
 }
-#endif /* CONFIG_TX6_REV >= 0x3 */
 
 int checkboard(void)
 {
@@ -1234,10 +1240,12 @@ int checkboard(void)
 
 	tx6qdl_print_cpuinfo();
 
+	i2c_init(CONFIG_SYS_I2C_SPEED, 0 /* unused */);
+
 	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
 		tx6_mod_suffix,
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), CONFIG_TX6_REV,
+		is_lvds(), tx6_get_mod_rev(),
 		tx6_mem_suffix());
 
 	return 0;

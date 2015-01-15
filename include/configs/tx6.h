@@ -14,9 +14,6 @@
 /*
  * Ka-Ro TX6 board - SoC configuration
  */
-#ifndef CONFIG_TX6_REV
-#define CONFIG_TX6_REV			0x1		/* '1' would be converted to 'y' by define2mk.sed */
-#endif
 #define CONFIG_MX6
 #define CONFIG_SYS_MX6_HCLK		24000000
 #define CONFIG_SYS_MX6_CLK32		32768
@@ -280,6 +277,7 @@
 #define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
 #define CONFIG_SYS_I2C_MX6_PORT1
 #define CONFIG_SYS_I2C_SPEED		400000
+#if defined(CONFIG_TX6_REV)
 #if CONFIG_TX6_REV == 0x1
 #define CONFIG_SYS_I2C_SLAVE		0x3c
 #define CONFIG_LTC3676
@@ -292,7 +290,11 @@
 #else
 #error Unsupported TX6 module revision
 #endif
-#endif
+#endif /* CONFIG_TX6_REV */
+/* autodetect which PMIC is present to derive TX6_REV */
+#define CONFIG_LTC3676			/* TX6_REV == 1 */
+#define CONFIG_RN5T567			/* TX6_REV == 3 */
+#endif /* CONFIG_CMD_I2C */
 
 #ifndef CONFIG_ENV_IS_NOWHERE
 /* define one of the following options:
