@@ -93,7 +93,7 @@
 #define R1(idx)			R1_##idx
 #define R2(idx)			R2_##idx
 
-#define v2r(v,n,m)		DIV_ROUND_UP(((((v) < (n)) ? (n) : (v)) - (n)), (m))
+#define v2r(v,n,m)		DIV_ROUND(((((v) < (n)) ? (n) : (v)) - (n)), (m))
 #define r2v(r,n,m)		(((r) * (m) + (n)) / 10)
 
 #define vout_to_vref(vout, idx)	((vout) * R2(idx) / (R1(idx) + R2(idx)))

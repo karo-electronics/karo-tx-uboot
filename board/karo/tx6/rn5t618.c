@@ -51,7 +51,7 @@
 #define VDD_DDR_VAL_LP		mV_to_regval(1500)
 
 /* calculate voltages in 10mV */
-#define v2r(v,n,m)		DIV_ROUND_UP(((((v) < (n)) ? (n) : (v)) - (n)), (m))
+#define v2r(v,n,m)		DIV_ROUND(((((v) < (n)) ? (n) : (v)) - (n)), (m))
 #define r2v(r,n,m)		(((r) * (m) + (n)) / 10)
 
 /* DCDC1-3 */
