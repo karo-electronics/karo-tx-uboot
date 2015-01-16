@@ -45,9 +45,9 @@
 #define VDD_RTC_VAL		mV_to_regval_rtc(3000)
 #define VDD_HIGH_VAL		mV_to_regval3(3000)
 #define VDD_HIGH_VAL_LP		mV_to_regval3(3000)
-#define VDD_CORE_VAL		mV_to_regval(1425)		/* DCDC1 */
+#define VDD_CORE_VAL		mV_to_regval(1350)		/* DCDC1 */
 #define VDD_CORE_VAL_LP		mV_to_regval(900)
-#define VDD_SOC_VAL		mV_to_regval(1425)		/* DCDC2 */
+#define VDD_SOC_VAL		mV_to_regval(1350)		/* DCDC2 */
 #define VDD_SOC_VAL_LP		mV_to_regval(900)
 #define VDD_DDR_VAL		mV_to_regval(1350)		/* DCDC3 */
 #define VDD_DDR_VAL_LP		mV_to_regval(1350)
