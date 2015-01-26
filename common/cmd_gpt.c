@@ -155,23 +155,28 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 
 	/* extract disk guid */
 	s = str;
-	tok = strsep(&s, ";");
-	val = extract_val(tok, "uuid_disk");
+	val = extract_val(str, "uuid_disk");
 	if (!val) {
-		errno = -2;
-		goto free_str;
-	}
-	if (extract_env(val, &p) == 0)
-		guid_str = strdup(p);
-	else
-		guid_str = strdup(val);
+#ifdef CONFIG_RANDOM_UUID
+		*str_disk_guid = malloc(UUID_STR_LEN + 1);
+		gen_rand_uuid_str(*str_disk_guid, UUID_STR_FORMAT_STD);
+#else
+		free(str);
+		return -2;
+#endif
+	} else {
+		char *v = val;
 
-	free(val);
-
-	if (strlen(s) == 0) {
-		errno = -3;
-		goto free_guid;
+		v = strsep(&v, ";");
+		if (extract_env(v, &p))
+			p = v;
+		*str_disk_guid = strdup(p);
+		free(val);
+		/* Move s to first partition */
+		strsep(&s, ";");
 	}
+	if (strlen(s) == 0)
+		return -3;
 
 	i = strlen(s) - 1;
 	if (s[i] == ';')
@@ -197,20 +202,25 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 
 		/* uuid */
 		val = extract_val(tok, "uuid");
-		if (!val) { /* 'uuid' is mandatory */
+		if (!val) {
+			/* 'uuid' is optional if random uuid's are enabled */
+#ifdef CONFIG_RANDOM_UUID
+			gen_rand_uuid_str(parts[i].uuid, UUID_STR_FORMAT_STD);
+#else
 			errno = -4;
 			goto err;
+#endif
+		} else {
+			if (extract_env(val, &p))
+				p = val;
+			if (strlen(p) >= sizeof(parts[i].uuid)) {
+				printf("Wrong uuid format for partition %d\n", i);
+				errno = -4;
+				goto err;
+			}
+			strcpy((char *)parts[i].uuid, p);
+			free(val);
 		}
-		if (extract_env(val, &p))
-			p = val;
-		if (strlen(p) >= sizeof(parts[i].uuid)) {
-			printf("Wrong uuid format for partition %d\n", i);
-			errno = -4;
-			goto err;
-		}
-		strcpy((char *)parts[i].uuid, p);
-		free(val);
-
 		/* name */
 		val = extract_val(tok, "name");
 		if (!val) { /* name is mandatory */
