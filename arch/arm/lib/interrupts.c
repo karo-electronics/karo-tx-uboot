@@ -135,20 +135,17 @@ void show_regs (struct pt_regs *regs)
 	"UK12_32",	"UK13_32",	"UK14_32",	"SYS_32",
 	};
 
-	flags = condition_codes(regs);
+	flags = condition_codes (regs);
 
-	if (gd->flags & GD_FLG_RELOC)
-		printf ("pc : [<%08lx>] (pre-reloc: [<%08lx>]) lr : [<%08lx>]\n"
-			"sp : %08lx  ip : %08lx	 fp : %08lx\n",
-			instruction_pointer(regs),
-			instruction_pointer(regs) - gd->reloc_off,
-			regs->ARM_lr, regs->ARM_sp,
-			regs->ARM_ip, regs->ARM_fp);
-	else
-		printf ("pc : [<%08lx>] lr : [<%08lx>]\n"
-			"sp : %08lx  ip : %08lx	 fp : %08lx\n",
-			instruction_pointer(regs), regs->ARM_lr, regs->ARM_sp,
-			regs->ARM_ip, regs->ARM_fp);
+	printf("pc : [<%08lx>]	   lr : [<%08lx>]\n",
+	       instruction_pointer(regs), regs->ARM_lr);
+	if (gd->flags & GD_FLG_RELOC) {
+		printf("reloc pc : [<%08lx>]	   lr : [<%08lx>]\n",
+		       instruction_pointer(regs) - gd->reloc_off,
+		       regs->ARM_lr - gd->reloc_off);
+	}
+	printf("sp : %08lx  ip : %08lx	 fp : %08lx\n",
+	       regs->ARM_sp, regs->ARM_ip, regs->ARM_fp);
 	printf ("r10: %08lx  r9 : %08lx	 r8 : %08lx\n",
 		regs->ARM_r10, regs->ARM_r9, regs->ARM_r8);
 	printf ("r7 : %08lx  r6 : %08lx	 r5 : %08lx  r4 : %08lx\n",
