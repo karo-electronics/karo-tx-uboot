@@ -661,11 +661,10 @@ static void lcd_display_rle8_bitmap(bmp_image_t *bmp, ushort *cmap, uchar *fb,
 }
 #endif
 
-#if defined(CONFIG_MPC823)
-#define FB_PUT_BYTE(fb, from) *(fb)++ = (255 - *(from)++)
-#else
-#define FB_PUT_BYTE(fb, from) *(fb)++ = *(from)++
-#endif
+__weak void fb_put_byte(uchar **fb, uchar **from)
+{
+	*(*fb)++ = *(*from)++;
+}
 
 #if defined(CONFIG_BMP_16BPP)
 __weak void fb_put_word(uchar **fb, uchar **from)
