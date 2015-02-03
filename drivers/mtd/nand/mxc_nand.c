@@ -1041,9 +1041,6 @@ static void mxc_nand_chip_init(int devno)
 	this->read_word = mxc_nand_read_word;
 	this->write_buf = mxc_nand_write_buf;
 	this->read_buf = mxc_nand_read_buf;
-#if defined(__UBOOT__) && defined(CONFIG_MTD_NAND_VERIFY_WRITE)
-	this->verify_buf = mxc_nand_verify_buf;
-#endif
 	host->base = (void __iomem *)CONFIG_MXC_NAND_REGS_BASE;
 	if (!host->base) {
 		return;
