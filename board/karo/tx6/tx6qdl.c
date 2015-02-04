@@ -1023,6 +1023,7 @@ void lcd_ctrl_init(void *lcdbase)
 		int lvds_mapping = karo_fdt_get_lvds_mapping(working_fdt, 0);
 		int lvds_chan_mask = karo_fdt_get_lvds_channels(working_fdt);
 		uint32_t gpr2;
+		uint32_t gpr3;
 
 		if (lvds_chan_mask == 0) {
 			printf("No LVDS channel active\n");
@@ -1037,6 +1038,10 @@ void lcd_ctrl_init(void *lcdbase)
 		gpr2 |= (lvds_chan_mask & 2) ? 3 << 2 : 0;
 		debug("writing %08x to GPR2[%08x]\n", gpr2, IOMUXC_BASE_ADDR + 8);
 		writel(gpr2, IOMUXC_BASE_ADDR + 8);
+
+		gpr3 = readl(IOMUXC_BASE_ADDR + 0xc);
+		gpr3 &= ~((3 << 8) | (3 << 6));
+		writel(gpr3, IOMUXC_BASE_ADDR + 0xc);
 	}
 	if (karo_load_splashimage(0) == 0) {
 		int ret;
