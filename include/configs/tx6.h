@@ -197,7 +197,7 @@
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define CONFIG_SYS_NAND_ONFI_DETECTION
-#define MMC_ROOT_STR " root=dev/mmcblk0p2 rootwait\0"
+#define MMC_ROOT_STR " root=/dev/mmcblk0p2 rootwait\0"
 #define ROOTPART_UUID_STR ""
 #else
 #define CONFIG_SYS_DEFAULT_BOOT_MODE "mmc"
