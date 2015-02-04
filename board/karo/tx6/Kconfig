@@ -53,6 +53,7 @@ config TX6
 	select SYS_I2C
 	select SYS_I2C_MXC
 	select GET_FEC_MAC_ADDR_FROM_IIM
+	select OF_LIBFDT
 
 config TX6_NAND
 	bool
