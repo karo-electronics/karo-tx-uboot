@@ -90,7 +90,6 @@
 /*
  * Flattened Device Tree (FDT) support
 */
-#ifndef CONFIG_MFG
 #define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT
 #ifndef CONFIG_NO_NAND
@@ -98,7 +97,6 @@
 #endif
 #define CONFIG_OF_BOARD_SETUP
 #endif /* CONFIG_OF_LIBFDT */
-#endif /* CONFIG_MFG */
 
 /*
  * Boot Linux
