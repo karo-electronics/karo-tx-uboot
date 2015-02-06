@@ -19,3 +19,5 @@ config MTD_PARTITIONS
 	default y
 
 source "drivers/mtd/nand/Kconfig"
+
+source "drivers/mtd/spi/Kconfig"
