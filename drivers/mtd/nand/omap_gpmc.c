@@ -814,6 +814,12 @@ static int omap_read_page_bch(struct mtd_info *mtd, struct nand_chip *chip,
 		/* read syndrome */
 		chip->ecc.calculate(mtd, p, &ecc_calc[i]);
 
+		if (oob_required) {
+			/* reread the OOB area to get the metadata */
+			chip->cmdfunc(mtd, NAND_CMD_RNDOUT, mtd->writesize, page);
+			chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
+		}
+
 		data_pos += eccsize;
 		oob_pos += eccbytes;
 	}
