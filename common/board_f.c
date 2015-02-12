@@ -744,6 +744,13 @@ static int setup_reloc(void)
 	gd->reloc_off = gd->relocaddr - (unsigned long)__image_copy_start;
 #else
 	gd->reloc_off = gd->relocaddr - CONFIG_SYS_TEXT_BASE;
+#ifdef CONFIG_M68K
+	/*
+	 * On all ColdFire arch cpu, monitor code starts always
+	 * just after the default vector table location, so at 0x400
+	 */
+	gd->reloc_off = gd->relocaddr - (CONFIG_SYS_TEXT_BASE + 0x400);
+#endif
 #endif
 #endif
 	memcpy(gd->new_gd, (char *)gd, sizeof(gd_t));
