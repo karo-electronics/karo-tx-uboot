@@ -1193,12 +1193,15 @@ int board_nand_init(struct nand_chip *nand)
 	nand->bbt_md = &bbt_mirror_descr;
 #endif
 
-#ifdef CONFIG_NAND_OMAP_GPMC_PREFETCH
 	/* TODO: Implement for 16-bit bus width */
 	if (nand->options & NAND_BUSWIDTH_16)
 		nand->read_buf = nand_read_buf16;
+#ifdef CONFIG_NAND_OMAP_GPMC_PREFETCH
 	else
 		nand->read_buf = omap_nand_read_prefetch8;
+#else
+	else
+		nand->read_buf = nand_read_buf;
 #endif
 
 	nand->dev_ready = omap_dev_ready;
