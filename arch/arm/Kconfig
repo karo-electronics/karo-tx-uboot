@@ -815,7 +815,7 @@ source "arch/arm/cpu/armv7/exynos/Kconfig"
 
 source "arch/arm/cpu/armv7/highbank/Kconfig"
 
-source "arch/arm/cpu/armv7/keystone/Kconfig"
+source "arch/arm/mach-keystone/Kconfig"
 
 source "arch/arm/mach-kirkwood/Kconfig"
 
