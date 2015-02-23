@@ -17,6 +17,8 @@
 /* High Level Configuration Options */
 #define CONFIG_MX31_CLK32	32000
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
