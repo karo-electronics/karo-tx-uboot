@@ -130,10 +130,6 @@ config TARGET_INTEGRATORCP_CM920T
 	bool "Support integratorcp_cm920t"
 	select CPU_ARM920T
 
-config TARGET_A320EVB
-	bool "Support a320evb"
-	select CPU_ARM920T
-
 config ARCH_AT91
 	bool "Atmel AT91"
 
@@ -143,14 +139,6 @@ config TARGET_EDB93XX
 
 config TARGET_SCB9328
 	bool "Support scb9328"
-	select CPU_ARM920T
-
-config TARGET_CM4008
-	bool "Support cm4008"
-	select CPU_ARM920T
-
-config TARGET_CM41XX
-	bool "Support cm41xx"
 	select CPU_ARM920T
 
 config TARGET_VCMA9
@@ -385,9 +373,9 @@ config TARGET_RPI
 	bool "Support rpi"
 	select CPU_ARM1176
 
-config TARGET_TNETV107X_EVM
-	bool "Support tnetv107x_evm"
-	select CPU_ARM1176
+config TARGET_RPI_2
+	bool "Support rpi_2"
+	select CPU_V7
 
 config TARGET_INTEGRATORAP_CM946ES
 	bool "Support integratorap_cm946es"
@@ -804,7 +792,7 @@ source "arch/arm/cpu/arm1176/bcm2835/Kconfig"
 
 source "arch/arm/cpu/armv7/exynos/Kconfig"
 
-source "arch/arm/cpu/armv7/highbank/Kconfig"
+source "arch/arm/mach-highbank/Kconfig"
 
 source "arch/arm/mach-keystone/Kconfig"
 
@@ -832,7 +820,7 @@ source "arch/arm/mach-tegra/Kconfig"
 
 source "arch/arm/cpu/armv7/uniphier/Kconfig"
 
-source "arch/arm/cpu/arm926ejs/versatile/Kconfig"
+source "arch/arm/mach-versatile/Kconfig"
 
 source "arch/arm/cpu/armv7/zynq/Kconfig"
 
@@ -860,8 +848,6 @@ source "board/broadcom/bcm28155_ap/Kconfig"
 source "board/broadcom/bcmcygnus/Kconfig"
 source "board/broadcom/bcmnsp/Kconfig"
 source "board/cirrus/edb93xx/Kconfig"
-source "board/cm4008/Kconfig"
-source "board/cm41xx/Kconfig"
 source "board/compulab/cm_t335/Kconfig"
 source "board/compulab/cm_fx6/Kconfig"
 source "board/congatec/cgtqmx6eval/Kconfig"
@@ -871,7 +857,6 @@ source "board/denx/m28evk/Kconfig"
 source "board/denx/m53evk/Kconfig"
 source "board/embest/mx6boards/Kconfig"
 source "board/esg/ima3-mx53/Kconfig"
-source "board/faraday/a320evb/Kconfig"
 source "board/freescale/ls2085a/Kconfig"
 source "board/freescale/ls1021aqds/Kconfig"
 source "board/freescale/ls1021atwr/Kconfig"
@@ -921,6 +906,7 @@ source "board/phytec/pcm051/Kconfig"
 source "board/ppcag/bg0900/Kconfig"
 source "board/pxa255_idp/Kconfig"
 source "board/raspberrypi/rpi/Kconfig"
+source "board/raspberrypi/rpi_2/Kconfig"
 source "board/samsung/smdk2410/Kconfig"
 source "board/sandisk/sansa_fuze_plus/Kconfig"
 source "board/scb9328/Kconfig"
@@ -945,7 +931,6 @@ source "board/ti/am335x/Kconfig"
 source "board/ti/am43xx/Kconfig"
 source "board/ti/ti814x/Kconfig"
 source "board/ti/ti816x/Kconfig"
-source "board/ti/tnetv107xevm/Kconfig"
 source "board/timll/devkit3250/Kconfig"
 source "board/toradex/colibri_pxa270/Kconfig"
 source "board/tqc/tqma6/Kconfig"
