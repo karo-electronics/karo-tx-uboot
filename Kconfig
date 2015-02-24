@@ -11,9 +11,6 @@ config UBOOTVERSION
 # Allow defaults in arch-specific code to override any given here
 source "arch/Kconfig"
 
-# Allow defaults in arch-specific code to override any given here
-source "arch/Kconfig"
-
 menu "General setup"
 
 config LOCALVERSION
