@@ -690,20 +690,6 @@ The following options need to be configured:
 		exists, unlike the similar options in the Linux kernel. Do not
 		set these options unless they apply!
 
-		NOTE: The following can be machine specific errata. These
-		do have ability to provide rudimentary version and machine
-		specific checks, but expect no product checks.
-		CONFIG_ARM_ERRATA_430973
-		CONFIG_ARM_ERRATA_454179
-		CONFIG_ARM_ERRATA_621766
-		CONFIG_ARM_ERRATA_798870
-
-- Tegra SoC options:
-		CONFIG_TEGRA_SUPPORT_NON_SECURE
-
-		Support executing U-Boot in non-secure (NS) mode. Certain
-		impossible actions will be skipped if the CPU is in NS mode,
-		such as ARM architectural timer initialization.
 
 - Linux Kernel Interface:
 		CONFIG_CLOCKS_IN_MHZ
