@@ -9,7 +9,7 @@ extra-y	:= start.o
 
 obj-y	+= cache_v7.o
 
-obj-y	+= cpu.o cp15.o
+obj-y	+= cpu.o
 obj-y	+= syslib.o
 
 ifneq ($(CONFIG_AM43XX)$(CONFIG_AM33XX)$(CONFIG_OMAP44XX)$(CONFIG_OMAP54XX)$(CONFIG_TEGRA)$(CONFIG_SOC_MX6)$(CONFIG_TI81XX)$(CONFIG_AT91FAMILY)$(CONFIG_SUNXI),)
@@ -39,6 +39,7 @@ endif
 
 obj-$(if $(filter am33xx,$(SOC)),y) += am33xx/
 obj-$(if $(filter armada-xp,$(SOC)),y) += armada-xp/
+obj-$(CONFIG_BCM2835) += bcm2835/
 obj-$(if $(filter bcm281xx,$(SOC)),y) += bcm281xx/
 obj-$(if $(filter bcmcygnus,$(SOC)),y) += bcmcygnus/
 obj-$(if $(filter bcmnsp,$(SOC)),y) += bcmnsp/
