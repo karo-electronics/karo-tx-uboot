@@ -54,6 +54,14 @@ config DM_CROS_EC
 	  LPC (which doesn't support driver model yet), a full
 	  conversion is not yet possible.
 
+config FSL_SEC_MON
+	bool "Enable FSL SEC_MON Driver"
+	help
+	  Freescale Security Monitor block is responsible for monitoring
+	  system states.
+	  Security Monitor can be transitioned on any security failures,
+	  like software violations or hardware security violations.
+
 config MXC_OCOTP
 	bool "Freescale OCOTP support"
 	depends on SOC_MX5 || SOC_MX6
