@@ -25,6 +25,5 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 int fecmxc_initialize(bd_t *bis);
 u32 get_ahb_clk(void);
 u32 get_periph_clk(void);
-char *get_reset_cause(void);
 
 #endif
