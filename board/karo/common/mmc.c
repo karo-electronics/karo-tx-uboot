@@ -42,6 +42,7 @@ static int find_partitions(const char *ifname, int devno, int fstype,
 	int p;
 	int part;
 	block_dev_desc_t *dd;
+	char dev_part_str[16];
 
 	dd = get_dev(ifname, devno);
 	if (!dd || dd->type == DEV_TYPE_UNKNOWN) {
@@ -78,7 +79,8 @@ static int find_partitions(const char *ifname, int devno, int fstype,
 		ret = -1;
 		goto cleanup;
 	}
-
+	snprintf(dev_part_str, sizeof(dev_part_str), "%d:%d", devno, part);
+	fs_set_blk_dev(ifname, dev_part_str, fstype);
 	ret = part;
 	*dev_desc = dd;
 
@@ -164,10 +166,9 @@ int karo_load_mmc_part(const char *part, void *addr, size_t len)
 		int len_read;
 
 		printf("Reading file %s from mmc partition %d\n", part, 0);
-		len_read = fs_read(part, (ulong)addr, 0, len);
-		if (len_read < len) {
-			printf("Read only %u of %u bytes\n", len_read, len);
-		}
+		len_read = fs_read(part, (ulong)addr, 0, 0);
+		if (len_read < 0)
+			printf("Read from %s failed: %d\n", part, len_read);
 	} else {
 		ret = partnum;
 		goto out;
