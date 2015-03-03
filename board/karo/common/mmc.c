@@ -42,6 +42,7 @@ static int find_partitions(const char *ifname, int devno, int fstype,
 	int p;
 	int part;
 	block_dev_desc_t *dd;
+	char dev_part_str[16];
 
 	dd = get_dev(ifname, devno);
 	if (!dd || dd->type == DEV_TYPE_UNKNOWN) {
@@ -78,7 +79,8 @@ static int find_partitions(const char *ifname, int devno, int fstype,
 		ret = -1;
 		goto cleanup;
 	}
-
+	snprintf(dev_part_str, sizeof(dev_part_str), "%d:%d", devno, part);
+	fs_set_blk_dev(ifname, dev_part_str, fstype);
 	ret = part;
 	*dev_desc = dd;
 
