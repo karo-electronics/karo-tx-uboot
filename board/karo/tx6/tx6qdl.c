@@ -308,8 +308,8 @@ void dram_init_banksize(void)
 
 #ifdef	CONFIG_CMD_MMC
 #define SD_PAD_CTRL (PAD_CTL_PUS_47K_UP |			\
-	PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm |			\
-	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
+	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |		\
+	PAD_CTL_SRE_FAST)
 
 static const iomux_v3_cfg_t mmc0_pads[] = {
 	MX6_PAD_SD1_CMD__SD1_CMD | MUX_PAD_CTRL(SD_PAD_CTRL),
