@@ -17,7 +17,7 @@
 
 ENTRY(lowlevel_init)
 	/*
-	 * Setup a temporary stack
+	 * Setup a temporary stack. Global data is not available yet.
 	 */
 #ifndef CONFIG_SPL_BUILD
 	ldr	sp, =CONFIG_SYS_INIT_SP_ADDR
@@ -25,6 +25,13 @@ ENTRY(lowlevel_init)
 	ldr	sp, =CONFIG_SPL_STACK
 #endif
 	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
+#ifdef CONFIG_DM
+	mov	r9, #0
+#else
+	/*
+	 * Set up global data for boards that still need it. This will be
+	 * removed soon.
+	 */
 #ifdef CONFIG_SPL_BUILD
 	ldr	r9, =gdata
 #else
@@ -32,13 +39,24 @@ ENTRY(lowlevel_init)
 	bic	sp, sp, #7
 	mov	r9, sp
 #endif
+#endif
 	/*
 	 * Save the old lr(passed in ip) and the current lr to stack
 	 */
 	push	{ip, lr}
 
 	/*
-	 * go setup pll, mux, memory
+	 * Call the very early init function. This should do only the
+	 * absolute bare minimum to get started. It should not:
+	 *
+	 * - set up DRAM
+	 * - use global_data
+	 * - clear BSS
+	 * - try to start a console
+	 *
+	 * For boards with SPL this should be empty since SPL can do all of
+	 * this init in the SPL board_init_f() function which is called
+	 * immediately after this.
 	 */
 	bl	s_init
 	pop	{ip, pc}
