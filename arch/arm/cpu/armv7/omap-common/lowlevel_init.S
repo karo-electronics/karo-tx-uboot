@@ -26,7 +26,11 @@ ENTRY(set_pl310_ctrl_reg)
 	PUSH	{r4-r11, lr}	@ save registers - ROM code may pollute
 				@ our registers
 	LDR	r12, =0x102	@ Set PL310 control register - value in R0
-	.word	0xe1600070	@ SMC #0 - hand assembled because -march=armv5
-				@ call ROM Code API to set control register
+#if __GNUC__ >= 4 && __GNUC_MINOR__ >= 6 && defined(__ARM_ARCH_7A__)
+	.arch_extension sec
+	smc	#0		@ call ROM Code API to set control register
+#else
+	.word	0xe1600070
+#endif
 	POP	{r4-r11, pc}
 ENDPROC(set_pl310_ctrl_reg)

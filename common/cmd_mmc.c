@@ -32,7 +32,7 @@ int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 		if (mmc_legacy_init(dev) != 0) {
 			puts("No MMC card found\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 
 		curr_device = dev;
@@ -41,14 +41,14 @@ int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (argc == 2) {
 			if (curr_device < 0) {
 				puts("No MMC device available\n");
-				return 1;
+				return CMD_RET_FAILURE;
 			}
 		} else if (argc == 3) {
 			dev = (int)simple_strtoul(argv[2], NULL, 10);
 
 #ifdef CONFIG_SYS_MMC_SET_DEV
 			if (mmc_set_dev(dev) != 0)
-				return 1;
+				return CMD_RET_FAILURE;
 #endif
 			curr_device = dev;
 		} else {
@@ -60,7 +60,7 @@ int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return CMD_RET_USAGE;
 	}
 
-	return 0;
+	return CMD_RET_SUCCESS;
 }
 
 U_BOOT_CMD(
@@ -116,7 +116,7 @@ static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			curr_device = 0;
 		else {
 			puts("No MMC device available\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 	}
 

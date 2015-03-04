@@ -1,0 +1,127 @@
+if TARGET_TX28_40X1
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-40x1"
+
+endif
+
+if TARGET_TX28_40X1_NOENV
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-40x1_noenv"
+
+endif
+
+if TARGET_TX28_40X2
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-40x2"
+
+endif
+
+if TARGET_TX28_40X2_NOENV
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-40x2_noenv"
+
+endif
+
+if TARGET_TX28_40X3
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-40x3"
+
+endif
+
+if TARGET_TX28_40X3_NOENV
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-40x3_noenv"
+
+endif
+
+if TARGET_TX28_41X0
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-41x0"
+
+endif
+
+if TARGET_TX28_41X0_NOENV
+
+config SYS_BOARD
+	default "tx28"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mxs"
+
+config SYS_CONFIG_NAME
+	default "tx28-41x0_noenv"
+
+endif

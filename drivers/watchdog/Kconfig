@@ -1,0 +1,7 @@
+config HW_WATCHDOG
+	bool "Generic SoC specific watchdog support"
+	depends on !MX6
+
+config IMX_WATCHDOG
+	bool "Freescale i.MX watchdog support"
+	depends on MX31 || MX35 || MX5 || MX6 || VF610 || LS102XA

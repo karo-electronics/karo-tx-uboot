@@ -25,6 +25,18 @@
  * an error value of -1.
  */
 
+enum gpio_flags {
+	GPIOFLAG_INPUT,
+	GPIOFLAG_OUTPUT_INIT_LOW,
+	GPIOFLAG_OUTPUT_INIT_HIGH,
+};
+
+struct gpio {
+	unsigned int gpio;
+	enum gpio_flags flags;
+	const char *label;
+};
+
 /**
  * Request a GPIO. This should be called before any of the other functions
  * are used on this GPIO.
@@ -39,12 +51,33 @@
 int gpio_request(unsigned gpio, const char *label);
 
 /**
+ * Request a GPIO and configure it
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+int gpio_request_one(unsigned gpio, enum gpio_flags flags, const char *label);
+
+/**
+ * Request a set of GPIOs and configure them
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+int gpio_request_array(const struct gpio *gpios, int count);
+
+/**
  * Stop using the GPIO.  This function should not alter pin configuration.
  *
  * @param gpio	GPIO number
  * @return 0 if ok, -1 on error
  */
 int gpio_free(unsigned gpio);
+
+/**
+ * Release a set of GPIOs
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+int gpio_free_array(const struct gpio *gpios, int count);
 
 /**
  * Make a GPIO an input.

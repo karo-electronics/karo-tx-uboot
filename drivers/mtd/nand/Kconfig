@@ -1,4 +1,10 @@
-menu "NAND Device Support"
+menuconfig NAND
+	bool "NAND Device Support"
+
+if NAND
+
+config SYS_NAND_USE_FLASH_BBT
+	bool "Use a flash based bad block table"
 
 config SYS_NAND_SELF_INIT
 	bool
@@ -46,4 +52,23 @@ config SPL_NAND_DENALI
 
 endif
 
-endmenu
+config NAND_MXC
+	bool "Support Freescale i.MX NAND controller"
+	select SYS_NAND_SELF_INIT if SPL
+	help
+	  Enable support for the Freescale NAND controller found on
+	  i.MX processors.
+
+config NAND_MXS
+	bool "Support Freescale GPMI NAND controller"
+	select SYS_NAND_SELF_INIT if SPL
+	help
+	  Enable support for the Freescale GPMI NAND controller found
+	  on i.MX28 and i.MX6 processors.
+
+config NAND_MXS_NO_BBM_SWAP
+	bool "disable bad block mark swapping"
+	depends on NAND_MXS && MX6
+	select SYS_NAND_USE_FLASH_BBT
+
+endif

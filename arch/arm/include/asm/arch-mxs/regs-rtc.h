@@ -14,20 +14,20 @@
 
 #ifndef	__ASSEMBLY__
 struct mxs_rtc_regs {
-	mxs_reg_32(hw_rtc_ctrl)
-	mxs_reg_32(hw_rtc_stat)
-	mxs_reg_32(hw_rtc_milliseconds)
-	mxs_reg_32(hw_rtc_seconds)
-	mxs_reg_32(hw_rtc_rtc_alarm)
-	mxs_reg_32(hw_rtc_watchdog)
-	mxs_reg_32(hw_rtc_persistent0)
-	mxs_reg_32(hw_rtc_persistent1)
-	mxs_reg_32(hw_rtc_persistent2)
-	mxs_reg_32(hw_rtc_persistent3)
-	mxs_reg_32(hw_rtc_persistent4)
-	mxs_reg_32(hw_rtc_persistent5)
-	mxs_reg_32(hw_rtc_debug)
-	mxs_reg_32(hw_rtc_version)
+	mxs_reg_32(hw_rtc_ctrl);
+	mxs_reg_32(hw_rtc_stat);
+	mxs_reg_32(hw_rtc_milliseconds);
+	mxs_reg_32(hw_rtc_seconds);
+	mxs_reg_32(hw_rtc_rtc_alarm);
+	mxs_reg_32(hw_rtc_watchdog);
+	mxs_reg_32(hw_rtc_persistent0);
+	mxs_reg_32(hw_rtc_persistent1);
+	mxs_reg_32(hw_rtc_persistent2);
+	mxs_reg_32(hw_rtc_persistent3);
+	mxs_reg_32(hw_rtc_persistent4);
+	mxs_reg_32(hw_rtc_persistent5);
+	mxs_reg_32(hw_rtc_debug);
+	mxs_reg_32(hw_rtc_version);
 };
 #endif
 
@@ -46,8 +46,24 @@ struct mxs_rtc_regs {
 #define	RTC_STAT_WATCHDOG_PRESENT		(1 << 29)
 #define	RTC_STAT_XTAL32000_PRESENT		(1 << 28)
 #define	RTC_STAT_XTAL32768_PRESENT		(1 << 27)
+#define RTC_STAT_STALE_REGS_SECONDS		(1 << 23)
+#define RTC_STAT_STALE_REGS_ALARM		(1 << 22)
+#define RTC_STAT_STALE_REGS_PERSISTENT5		(1 << 21)
+#define RTC_STAT_STALE_REGS_PERSISTENT4		(1 << 20)
+#define RTC_STAT_STALE_REGS_PERSISTENT3		(1 << 19)
+#define RTC_STAT_STALE_REGS_PERSISTENT2		(1 << 18)
+#define RTC_STAT_STALE_REGS_PERSISTENT1		(1 << 17)
+#define RTC_STAT_STALE_REGS_PERSISTENT0		(1 << 16)
 #define	RTC_STAT_STALE_REGS_MASK		(0xff << 16)
 #define	RTC_STAT_STALE_REGS_OFFSET		16
+#define RTC_STAT_NEW_REGS_SECONDS		(1 << 15)
+#define RTC_STAT_NEW_REGS_ALARM			(1 << 14)
+#define RTC_STAT_NEW_REGS_PERSISTENT5		(1 << 13)
+#define RTC_STAT_NEW_REGS_PERSISTENT4		(1 << 12)
+#define RTC_STAT_NEW_REGS_PERSISTENT3		(1 << 11)
+#define RTC_STAT_NEW_REGS_PERSISTENT2		(1 << 10)
+#define RTC_STAT_NEW_REGS_PERSISTENT1		(1 << 9)
+#define RTC_STAT_NEW_REGS_PERSISTENT0		(1 << 8)
 #define	RTC_STAT_NEW_REGS_MASK			(0xff << 8)
 #define	RTC_STAT_NEW_REGS_OFFSET		8
 

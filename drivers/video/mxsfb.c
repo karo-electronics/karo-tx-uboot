@@ -8,6 +8,7 @@
 #include <common.h>
 #include <malloc.h>
 #include <video_fb.h>
+#include <mxcfb.h>
 
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -20,6 +21,8 @@
 #include "videomodes.h"
 
 #define	PS2KHZ(ps)	(1000000000UL / (ps))
+
+DECLARE_GLOBAL_DATA_PTR;
 
 static GraphicDevice panel;
 struct mxs_dma_desc desc;
@@ -44,15 +47,16 @@ __weak void mxsfb_system_setup(void)
  * Freescale mx23evk/mx28evk with a Seiko 4.3'' WVGA panel:
  * setenv videomode
  * video=ctfb:x:800,y:480,depth:24,mode:0,pclk:29851,
- * 	 le:89,ri:164,up:23,lo:10,hs:10,vs:10,sync:0,vmode:0
+ *	 le:89,ri:164,up:23,lo:10,hs:10,vs:10,sync:0,vmode:0
  */
 
 static void mxs_lcd_init(GraphicDevice *panel,
 			struct ctfb_res_modes *mode, int bpp)
 {
 	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
-	uint32_t word_len = 0, bus_width = 0;
-	uint8_t valid_data = 0;
+	uint32_t word_len, bus_width;
+	uint8_t valid_data;
+	uint32_t vctrl0 = 0;
 
 	/* Kick in the LCDIF clock */
 	mxs_set_lcdclk(PS2KHZ(mode->pixclock));
@@ -81,6 +85,9 @@ static void mxs_lcd_init(GraphicDevice *panel,
 		bus_width = LCDIF_CTRL_LCD_DATABUS_WIDTH_8BIT;
 		valid_data = 0xf;
 		break;
+	default:
+		printf("Invalid color depth: %d\n", bpp);
+		hang();
 	}
 
 	writel(bus_width | word_len | LCDIF_CTRL_DOTCLK_MODE |
@@ -95,7 +102,19 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	writel((mode->yres << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) | mode->xres,
 		&regs->hw_lcdif_transfer_count);
 
-	writel(LCDIF_VDCTRL0_ENABLE_PRESENT | LCDIF_VDCTRL0_ENABLE_POL |
+	if (!(mode->sync & FB_SYNC_OE_LOW_ACT))
+		vctrl0 |= LCDIF_VDCTRL0_ENABLE_POL;
+
+	if (mode->sync & FB_SYNC_CLK_LAT_FALL)
+		vctrl0 |= LCDIF_VDCTRL0_DOTCLK_POL;
+
+	if (mode->sync & FB_SYNC_HOR_HIGH_ACT)
+		vctrl0 |= LCDIF_VDCTRL0_HSYNC_POL;
+
+	if (mode->sync & FB_SYNC_VERT_HIGH_ACT)
+		vctrl0 |= LCDIF_VDCTRL0_VSYNC_POL;
+
+	writel(vctrl0 | LCDIF_VDCTRL0_ENABLE_PRESENT |
 		LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
 		LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
 		mode->vsync_len, &regs->hw_lcdif_vdctrl0);
@@ -135,7 +154,6 @@ void *video_hw_init(void)
 {
 	int bpp = -1;
 	char *penv;
-	void *fb;
 	struct ctfb_res_modes mode;
 
 	puts("Video: ");
@@ -179,18 +197,7 @@ void *video_hw_init(void)
 
 	panel.memSize = mode.xres * mode.yres * panel.gdfBytesPP;
 
-	/* Allocate framebuffer */
-	fb = memalign(ARCH_DMA_MINALIGN,
-		      roundup(panel.memSize, ARCH_DMA_MINALIGN));
-	if (!fb) {
-		printf("MXSFB: Error allocating framebuffer!\n");
-		return NULL;
-	}
-
-	/* Wipe framebuffer */
-	memset(fb, 0, panel.memSize);
-
-	panel.frameAdrs = (u32)fb;
+	panel.frameAdrs = gd->fb_base;
 
 	printf("%s\n", panel.modeIdent);
 

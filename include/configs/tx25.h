@@ -95,14 +95,12 @@
  * Flash & Environment
  */
 /* No NOR flash present */
-#define CONFIG_SYS_NO_FLASH
 #define	CONFIG_ENV_IS_IN_NAND
 #define	CONFIG_ENV_OFFSET	CONFIG_SYS_MONITOR_LEN
 #define CONFIG_ENV_SIZE		(128 * 1024)	/* 128 kB NAND block size */
 #define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
 
 /* NAND */
-#define CONFIG_NAND_MXC
 #define CONFIG_MXC_NAND_REGS_BASE	(0xBB000000)
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		(0xBB000000)
@@ -123,16 +121,10 @@
 
 /* U-Boot commands */
 #include <config_cmd_default.h>
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_CACHE
 
 /*
  * Ethernet
  */
-#define CONFIG_FEC_MXC
-#define CONFIG_FEC_MXC_PHYADDR		0x1f
-#define CONFIG_MII
-#define CONFIG_CMD_NET
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_ENV_OVERWRITE
 

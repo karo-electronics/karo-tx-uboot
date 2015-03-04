@@ -1,0 +1,14 @@
+menuconfig SYS_I2C
+	bool "I2C device support"
+
+if SYS_I2C
+
+config HARD_I2C
+	bool
+
+config SYS_I2C_MXC
+	bool "Freescale i.MX I2C controller"
+	select HARD_I2C
+	select I2C_QUIRK_REG if FSL_LSCH3 || LS102XA
+
+endif

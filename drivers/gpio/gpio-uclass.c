@@ -151,6 +151,48 @@ int gpio_requestf(unsigned gpio, const char *fmt, ...)
 	return gpio_request(gpio, buf);
 }
 
+int gpio_request_one(unsigned int gpio, enum gpio_flags flags,
+		const char *label)
+{
+	int ret;
+
+	ret = gpio_request(gpio, label);
+	if (ret)
+		return ret;
+
+	if (flags == GPIOFLAG_INPUT)
+		gpio_direction_input(gpio);
+	else if (flags == GPIOFLAG_OUTPUT_INIT_LOW)
+		gpio_direction_output(gpio, 0);
+	else if (flags == GPIOFLAG_OUTPUT_INIT_HIGH)
+		gpio_direction_output(gpio, 1);
+
+	return ret;
+}
+
+int gpio_request_array(const struct gpio *gpios, int count)
+{
+	int ret;
+	int i;
+
+	for (i = 0; i < count; i++) {
+		ret = gpio_request_one(gpios[i].gpio, gpios[i].flags,
+				gpios[i].label);
+		if (ret) {
+			printf("Failed to request GPIO%d (%u of %u): %d\n",
+				gpios[i].gpio, i, count, ret);
+			goto error;
+		}
+	}
+	return 0;
+
+error:
+	while (--i >= 0)
+		gpio_free(gpios[i].gpio);
+
+	return ret;
+}
+
 /**
  * gpio_free() - [COMPAT] Relinquish GPIO
  * gpio:	GPIO number
@@ -183,6 +225,17 @@ int gpio_free(unsigned gpio)
 	uc_priv->name[offset] = NULL;
 
 	return 0;
+}
+
+int gpio_free_array(const struct gpio *gpios, int count)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < count; i++)
+		ret |= gpio_free(gpios[i].gpio);
+
+	return ret;
 }
 
 static int check_reserved(struct udevice *dev, unsigned offset,

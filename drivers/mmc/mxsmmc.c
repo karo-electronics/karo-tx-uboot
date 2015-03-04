@@ -87,7 +87,8 @@ static int mxsmmc_send_cmd_pio(struct mxsmmc_priv *priv, struct mmc_data *data)
 	return timeout ? 0 : COMM_ERR;
 }
 
-static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
+static int mxsmmc_send_cmd_dma(struct mmc *mmc, struct mxsmmc_priv *priv,
+			struct mmc_data *data)
 {
 	uint32_t data_count = data->blocksize * data->blocks;
 	int dmach;
@@ -95,6 +96,9 @@ static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
 	void *addr;
 	unsigned int flags;
 	struct bounce_buffer bbstate;
+	unsigned long xfer_rate = (mmc->clock ?: 400000) * mmc->bus_width;
+	unsigned long dma_timeout = data_count * 8 /
+		DIV_ROUND_UP(xfer_rate, 1000);
 
 	memset(desc, 0, sizeof(struct mxs_dma_desc));
 	desc->address = (dma_addr_t)desc;
@@ -118,6 +122,8 @@ static int mxsmmc_send_cmd_dma(struct mxsmmc_priv *priv, struct mmc_data *data)
 
 	dmach = MXS_DMA_CHANNEL_AHB_APBH_SSP0 + priv->id;
 	mxs_dma_desc_append(dmach, priv->desc);
+	/* set DMA timeout adding 250ms for min timeout according to SD spec. */
+	mxs_dma_set_timeout(dmach, dma_timeout + 250);
 	if (mxs_dma_go(dmach)) {
 		bounce_buffer_stop(&bbstate);
 		return COMM_ERR;
@@ -140,23 +146,20 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	uint32_t reg;
 	int timeout;
 	uint32_t ctrl0;
+	const uint32_t busy_stat = SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
+		SSP_STATUS_CMD_BUSY;
 	int ret;
 
 	debug("MMC%d: CMD%d\n", mmc->block_dev.dev, cmd->cmdidx);
 
 	/* Check bus busy */
 	timeout = MXSMMC_MAX_TIMEOUT;
-	while (--timeout) {
-		udelay(1000);
-		reg = readl(&ssp_regs->hw_ssp_status);
-		if (!(reg &
-			(SSP_STATUS_BUSY | SSP_STATUS_DATA_BUSY |
-			SSP_STATUS_CMD_BUSY))) {
+	while ((reg = readl(&ssp_regs->hw_ssp_status)) & busy_stat) {
+		if (timeout-- <= 0)
 			break;
-		}
+		udelay(1000);
 	}
-
-	if (!timeout) {
+	if (reg & busy_stat && readl(&ssp_regs->hw_ssp_status) & busy_stat) {
 		printf("MMC%d: Bus busy timeout!\n", mmc->block_dev.dev);
 		return TIMEOUT;
 	}
@@ -240,8 +243,8 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		if (!(reg & SSP_STATUS_CMD_BUSY))
 			break;
 	}
-
-	if (!timeout) {
+	if ((reg & SSP_STATUS_CMD_BUSY) &&
+		(readl(&ssp_regs->hw_ssp_status) & SSP_STATUS_CMD_BUSY)) {
 		printf("MMC%d: Command %d busy\n",
 			mmc->block_dev.dev, cmd->cmdidx);
 		return TIMEOUT;
@@ -277,13 +280,12 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 	if (data->blocksize * data->blocks < MXSMMC_SMALL_TRANSFER) {
 		ret = mxsmmc_send_cmd_pio(priv, data);
 		if (ret) {
-			printf("MMC%d: Data timeout with command %d "
-				"(status 0x%08x)!\n",
+			printf("MMC%d: Data timeout with command %d (status 0x%08x)!\n",
 				mmc->block_dev.dev, cmd->cmdidx, reg);
 			return ret;
 		}
 	} else {
-		ret = mxsmmc_send_cmd_dma(priv, data);
+		ret = mxsmmc_send_cmd_dma(mmc, priv, data);
 		if (ret) {
 			printf("MMC%d: DMA transfer failed\n",
 				mmc->block_dev.dev);
@@ -372,27 +374,27 @@ static const struct mmc_ops mxsmmc_ops = {
 
 int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int))
 {
-	struct mmc *mmc = NULL;
-	struct mxsmmc_priv *priv = NULL;
+	struct mmc *mmc;
+	struct mxsmmc_priv *priv;
 	int ret;
 	const unsigned int mxsmmc_clk_id = mxs_ssp_clock_by_bus(id);
 
 	if (!mxs_ssp_bus_id_valid(id))
 		return -ENODEV;
 
-	priv = malloc(sizeof(struct mxsmmc_priv));
+	priv = calloc(sizeof(struct mxsmmc_priv), 1);
 	if (!priv)
 		return -ENOMEM;
 
 	priv->desc = mxs_dma_desc_alloc();
 	if (!priv->desc) {
-		free(priv);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_priv;
 	}
 
 	ret = mxs_dma_init_channel(MXS_DMA_CHANNEL_AHB_APBH_SSP0 + id);
 	if (ret)
-		return ret;
+		goto free_priv;
 
 	priv->mmc_is_wp = wp;
 	priv->mmc_cd = cd;
@@ -420,9 +422,14 @@ int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int))
 
 	mmc = mmc_create(&priv->cfg, priv);
 	if (mmc == NULL) {
-		mxs_dma_desc_free(priv->desc);
-		free(priv);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto free_dma;
 	}
 	return 0;
+
+free_dma:
+	mxs_dma_desc_free(priv->desc);
+free_priv:
+	free(priv);
+	return ret;
 }

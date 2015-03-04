@@ -150,11 +150,14 @@ struct mxs_dma_chan {
 	unsigned int pending_num;
 	struct list_head active;
 	struct list_head done;
+	unsigned long timeout;
 };
 
 struct mxs_dma_desc *mxs_dma_desc_alloc(void);
 void mxs_dma_desc_free(struct mxs_dma_desc *);
 int mxs_dma_desc_append(int channel, struct mxs_dma_desc *pdesc);
+int mxs_dma_set_timeout(int channel, unsigned long timeout);
+unsigned long mxs_dma_get_timeout(int channel);
 
 int mxs_dma_go(int chan);
 void mxs_dma_init(void);

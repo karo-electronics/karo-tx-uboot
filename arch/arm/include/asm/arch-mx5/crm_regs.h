@@ -303,7 +303,7 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CSCDR1_UART_CLK_PODF_RD(r)		((r) & 0x7)
 
 /* Define the bits in register CCDR */
-#define MXC_CCM_CCDR_IPU_HS_MASK			(0x1 << 17)
+#define MXC_CCM_CCDR_IPU_HS_MASK			(0x1 << 21)
 
 /* Define the bits in register CGPR */
 #define MXC_CCM_CGPR_EFUSE_PROG_SUPPLY_GATE		(1 << 4)
@@ -591,7 +591,7 @@ struct mxc_ccm_reg {
 #endif
 
 /* Define the bits in register CLPCR */
-#define MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS                 (0x1 << 18)
+#define MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS			(0x1 << 18)
 
 #define	MXC_DPLLC_CTL_HFSM				(1 << 7)
 #define	MXC_DPLLC_CTL_DPDCK0_2_EN			(1 << 12)

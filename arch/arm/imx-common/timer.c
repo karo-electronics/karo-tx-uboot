@@ -75,6 +75,15 @@ static inline unsigned long long tick_to_time(unsigned long long tick)
 	return tick;
 }
 
+static inline unsigned long time_to_tick(unsigned long time)
+{
+	unsigned long long ticks = (unsigned long long)time;
+
+	ticks *= MXC_CLK32;
+	do_div(ticks, CONFIG_SYS_HZ);
+	return ticks;
+}
+
 static inline unsigned long long us_to_tick(unsigned long long usec)
 {
 	ulong gpt_clk = gpt_get_clk();
@@ -125,6 +134,7 @@ int timer_init(void)
 	gd->arch.tbl = __raw_readl(&cur_gpt->counter);
 	gd->arch.tbu = 0;
 
+	gd->arch.timer_rate_hz = MXC_CLK32;
 	return 0;
 }
 
@@ -147,25 +157,36 @@ ulong get_timer_masked(void)
 	 * 5 * 10^9 days... and get_ticks() * CONFIG_SYS_HZ wraps in
 	 * 5 * 10^6 days - long enough.
 	 */
+	/*
+	 * LW: get_ticks() returns a long long with the top 32 bits always ZERO!
+	 * Thus the calculation above is not true.
+	 * A 64bit timer value would only make sense if it was
+	 * consistently used throughout the code. Thus also the parameter
+	 * to get_timer() and its return value would need to be 64bit wide!
+	 */
 	return tick_to_time(get_ticks());
 }
 
 ulong get_timer(ulong base)
 {
-	return get_timer_masked() - base;
+	return tick_to_time(get_ticks() - time_to_tick(base));
 }
 
 /* delay x useconds AND preserve advance timstamp value */
 void __udelay(unsigned long usec)
 {
-	unsigned long long tmp;
-	ulong tmo;
+	unsigned long start = __raw_readl(&cur_gpt->counter);
+	unsigned long ticks;
 
-	tmo = us_to_tick(usec);
-	tmp = get_ticks() + tmo;	/* get current timestamp */
+	if (usec == 0)
+		return;
 
-	while (get_ticks() < tmp)	/* loop till event */
-		 /*NOP*/;
+	ticks = us_to_tick(usec);
+	if (ticks == 0)
+		ticks++;
+
+	while (__raw_readl(&cur_gpt->counter) - start < ticks)
+		/* loop till event */;
 }
 
 /*

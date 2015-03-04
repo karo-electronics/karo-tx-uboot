@@ -2513,7 +2513,7 @@ static uint8_t *nand_fill_oob(struct mtd_info *mtd, uint8_t *oob, size_t len,
 	return NULL;
 }
 
-#define NOTALIGNED(x)	((x & (chip->subpagesize - 1)) != 0)
+#define NOTALIGNED(x)	(((x) & (chip->subpagesize - 1)) != 0)
 
 /**
  * nand_do_write_ops - [INTERN] NAND write with ECC
@@ -4260,6 +4260,8 @@ int nand_scan_tail(struct mtd_info *mtd)
 	ecc->steps = mtd->writesize / ecc->size;
 	if (ecc->steps * ecc->size != mtd->writesize) {
 		pr_warn("Invalid ECC parameters\n");
+		pr_warn("steps=%d size=%d writesize=%d\n",
+			chip->ecc.steps, chip->ecc.size, mtd->writesize);
 		BUG();
 	}
 	ecc->total = ecc->steps * ecc->bytes;

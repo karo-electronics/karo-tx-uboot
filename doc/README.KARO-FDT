@@ -1,0 +1,52 @@
+                                 Managing the device tree data in U-Boot
+				 =======================================
+
+The 'fdt' command can be used to manipulate the device tree (DT) data
+that is passed from U-Boot to Linux.
+
+- 'fdt boardsetup' (which is automatically being run by the 'bootm'
+  command) will disable some device nodes according to environment
+  settings:
+
+Environment setting		disabled nodes
+---------------------------------------------
+otg_mode=host			usbh1
+otg_mode=device			usbotg
+otg_mode=<UNSET>		<both of the above> + usbphy
+
+touchpanel=edt-ft5x06		ti,tsc2007
+touchpanel=tsc2007		edt,edt-ft5x06
+touchpanel=<UNSET>		<both of the above>
+
+Note: This command is automatically executed when booting Linux via
+      'run bootm_cmd'.
+
+- 'fdt rm' and 'fdt mknode' can be used to remove/create additional nodes.
+
+- 'fdt set' can be used to change properties or add new properties to
+  existing nodes.
+
+The whole DT data can be saved to and reloaded from the flash partition
+'dtb' (or any other partition):
+  nand erase.part dtb
+  nand write.jffs2 ${fdtaddr} dtb ${fdtsize}
+The predefined variable 'fdtsave' contains these commands as a macro
+to facilitate the update of the 'dtb' partition with the currently
+active FDT. Thus:
+  'run fdtsave' will achive the same as above commands.
+
+(Re)Loading the DT data from flash:
+  nand read ${fdtaddr} dtb
+
+Enabling/Disabling individual nodes in FDT:
+Most device nodes in FDT use a property named 'status' that can be set
+to either 'disabled' or 'okay' to disable or enable the device.
+This property can be manipulated
+  fdt set /<path> status disabled
+  fdt set /<path> status okay
+
+e.g.: fdt set /soc/aips-bus@02100000/ethernet@02188000 status disabled
+      will disable the ethernet interface on a TX6.
+
+Refer to Linux/TX*-driver.pdf for a complete list of the device paths
+for the individual TX modules.

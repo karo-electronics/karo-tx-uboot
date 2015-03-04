@@ -111,7 +111,7 @@ const struct gpio_bank *const omap_gpio_bank = gpio_bank_am33xx;
 #endif
 
 #if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
-int cpu_mmc_init(bd_t *bis)
+int __cpu_mmc_init(bd_t *bis)
 {
 	int ret;
 
@@ -121,6 +121,8 @@ int cpu_mmc_init(bd_t *bis)
 
 	return omap_mmc_init(1, 0, 0, -1, -1);
 }
+/* let platform code be able to override this! */
+int cpu_mmc_init(bd_t *bis) __attribute__((weak, alias("__cpu_mmc_init")));
 #endif
 
 /* AM33XX has two MUSB controllers which can be host or gadget */

@@ -144,7 +144,7 @@ static iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_DAT1__SD3_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT2__SD3_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT3__SD3_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_SD3_DAT5__GPIO7_IO00    | MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */
+	MX6_PAD_SD3_DAT5__GPIO7_IO00, /* CD */
 };
 
 static iomux_v3_cfg_t const usdhc4_pads[] = {
@@ -154,7 +154,7 @@ static iomux_v3_cfg_t const usdhc4_pads[] = {
 	MX6_PAD_SD4_DAT1__SD4_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT2__SD4_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT3__SD4_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_D6__GPIO2_IO06    | MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */
+	MX6_PAD_NANDF_D6__GPIO2_IO06, /* CD */
 };
 
 static iomux_v3_cfg_t const enet_pads1[] = {
@@ -168,20 +168,20 @@ static iomux_v3_cfg_t const enet_pads1[] = {
 	MX6_PAD_RGMII_TX_CTL__RGMII_TX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_ENET_REF_CLK__ENET_TX_CLK	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	/* pin 35 - 1 (PHY_AD2) on reset */
-	MX6_PAD_RGMII_RXC__GPIO6_IO30		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_RGMII_RXC__GPIO6_IO30,
 	/* pin 32 - 1 - (MODE0) all */
-	MX6_PAD_RGMII_RD0__GPIO6_IO25		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_RGMII_RD0__GPIO6_IO25,
 	/* pin 31 - 1 - (MODE1) all */
-	MX6_PAD_RGMII_RD1__GPIO6_IO27		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_RGMII_RD1__GPIO6_IO27,
 	/* pin 28 - 1 - (MODE2) all */
-	MX6_PAD_RGMII_RD2__GPIO6_IO28		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_RGMII_RD2__GPIO6_IO28,
 	/* pin 27 - 1 - (MODE3) all */
-	MX6_PAD_RGMII_RD3__GPIO6_IO29		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_RGMII_RD3__GPIO6_IO29,
 	/* pin 33 - 1 - (CLK125_EN) 125Mhz clockout enabled */
-	MX6_PAD_RGMII_RX_CTL__GPIO6_IO24	| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_RGMII_RX_CTL__GPIO6_IO24,
 	/* pin 42 PHY nRST */
-	MX6_PAD_EIM_D23__GPIO3_IO23		| MUX_PAD_CTRL(NO_PAD_CTRL),
-	MX6_PAD_ENET_RXD0__GPIO1_IO27		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_D23__GPIO3_IO23,
+	MX6_PAD_ENET_RXD0__GPIO1_IO27,
 };
 
 static iomux_v3_cfg_t const enet_pads2[] = {
@@ -252,7 +252,7 @@ static void setup_iomux_enet(void)
 }
 
 static iomux_v3_cfg_t const usb_pads[] = {
-	MX6_PAD_GPIO_17__GPIO7_IO12 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_GPIO_17__GPIO7_IO12,
 };
 
 static void setup_iomux_uart(void)
@@ -345,7 +345,7 @@ int board_spi_cs_gpio(unsigned bus, unsigned cs)
 
 static iomux_v3_cfg_t const ecspi1_pads[] = {
 	/* SS1 */
-	MX6_PAD_EIM_D19__GPIO3_IO19  | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_D19__GPIO3_IO19,
 	MX6_PAD_EIM_D17__ECSPI1_MISO | MUX_PAD_CTRL(SPI_PAD_CTRL),
 	MX6_PAD_EIM_D18__ECSPI1_MOSI | MUX_PAD_CTRL(SPI_PAD_CTRL),
 	MX6_PAD_EIM_D16__ECSPI1_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
@@ -420,11 +420,11 @@ static void setup_buttons(void)
 
 static iomux_v3_cfg_t const backlight_pads[] = {
 	/* Backlight on RGB connector: J15 */
-	MX6_PAD_SD1_DAT3__GPIO1_IO21 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_SD1_DAT3__GPIO1_IO21,
 #define RGB_BACKLIGHT_GP IMX_GPIO_NR(1, 21)
 
 	/* Backlight on LVDS connector: J6 */
-	MX6_PAD_SD1_CMD__GPIO1_IO18 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_SD1_CMD__GPIO1_IO18,
 #define LVDS_BACKLIGHT_GP IMX_GPIO_NR(1, 18)
 };
 

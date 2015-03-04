@@ -16,22 +16,6 @@
 
 #include <config.h>
 
-/*
- * All boards using a given driver must convert to self-init
- * at the same time, so do it here.  When all drivers are
- * converted, this will go away.
- */
-#ifdef CONFIG_SPL_BUILD
-#if defined(CONFIG_NAND_FSL_ELBC) || defined(CONFIG_NAND_FSL_IFC)
-#define CONFIG_SYS_NAND_SELF_INIT
-#endif
-#else
-#if defined(CONFIG_NAND_FSL_ELBC) || defined(CONFIG_NAND_ATMEL)\
-	|| defined(CONFIG_NAND_FSL_IFC)
-#define CONFIG_SYS_NAND_SELF_INIT
-#endif
-#endif
-
 extern void nand_init(void);
 
 #include <linux/compat.h>

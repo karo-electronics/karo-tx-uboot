@@ -1,0 +1,117 @@
+/*
+ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+
+#include "am33xx.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TX48 module";
+	compatible = "karo,tx48", "ti,am33xx";
+
+	memory {
+		device_type = "memory";
+		reg = <0x80000000 0x10000000>; /* 256 MB */
+	};
+
+	ocp {
+		i2c@44E0B000 {
+			rtc1: ds1339@68 {
+				compatible = "dallas,ds1339";
+				reg = <0x68>;
+				trickle-charge = <0xa5>;
+			};
+
+			pmic: lt3589@48 {
+				compatible = "lt,lt3589";
+				reg = <0x48>;
+			};
+
+			codec: sgtl5000@0a {
+				compatible = "fsl,sgtl5000";
+				reg = <0x0a>;
+				VDDA-supply = <&reg_2p5v>;
+				VDDIO-supply = <&reg_3p3v>;
+			};
+
+			touchscreen: tsc2007@48 {
+				compatible = "ti,tsc2007";
+				reg = <0x48>;
+				interrupt-parent = <&gpio3>;
+				interrupts = <16 0>;
+				pendown-gpio = <&gpio3 16 1>;
+				model = "2007";
+				x-plate-ohms = <660>;
+			};
+
+			polytouch: edt-ft5x06@38 {
+				compatible = "edt,edt-ft5x06";
+				reg = <0x38>;
+				interrupt-parent = <&gpio1>;
+				interrupts = <17>;
+				reset-switch = <&edt_ft5x06_reset>;
+				wake-switch = <&edt_ft5x06_wake>;
+			};
+		};
+	};
+
+	gpio-switch {
+		compatible = "gpio-switch";
+
+		can_xcvr_enable: can-xcvr-enable {
+			gpio = <&gpio0 22 1>;
+			label = "Flexcan Transceiver Enable";
+			gpio-shared;
+		};
+
+		lcd_power: lcd-power {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio1 22 0>;
+			label = "LCD Power Enable";
+		};
+
+		lcd_reset: lcd-reset {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio1 19 1>;
+			label = "LCD Reset";
+			init-state = <1>;
+		};
+
+		edt_ft5x06_reset: edt-ft5x06-reset {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio1 18 1>;
+			label = "EDT-FT5x06 RESET";
+		};
+
+		edt_ft5x06_wake: edt-ft5x06-wake {
+			compatible = "linux,gpio-switch";
+			gpio = <&gpio1 27 0>;
+			label = "EDT-FT5x06 WAKE";
+			init-state = <1>;
+		};
+	};
+
+	regulators {
+		compatible = "simple-bus";
+
+		reg_2p5v: 2p5v {
+			compatible = "regulator-fixed";
+			regulator-name = "2P5V";
+			regulator-min-microvolt = <2500000>;
+			regulator-max-microvolt = <2500000>;
+			regulator-always-on;
+		};
+
+		reg_3p3v: 3p3v {
+			compatible = "regulator-fixed";
+			regulator-name = "3P3V";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			regulator-always-on;
+		};
+	};
+};

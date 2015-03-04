@@ -509,7 +509,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	debug("monitor flash len: %08lX\n", monitor_flash_len);
 	board_init();	/* Setup chipselects */
 	/*
-	 * TODO: printing of the clock inforamtion of the board is now
+	 * TODO: printing of the clock information of the board is now
 	 * implemented as part of bdinfo command. Currently only support for
 	 * davinci SOC's is added. Remove this check once all the board
 	 * implement this.

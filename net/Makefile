@@ -8,6 +8,7 @@
 #ccflags-y += -DDEBUG
 
 obj-$(CONFIG_CMD_NET)  += arp.o
+obj-$(CONFIG_CMD_BOOTCE) += bootme.o
 obj-$(CONFIG_CMD_NET)  += bootp.o
 obj-$(CONFIG_CMD_CDP)  += cdp.o
 obj-$(CONFIG_CMD_DNS)  += dns.o

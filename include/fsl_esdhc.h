@@ -10,6 +10,7 @@
 #ifndef  __FSL_ESDHC_H__
 #define	__FSL_ESDHC_H__
 
+#include <linux/compat.h>
 #include <asm/errno.h>
 #include <asm/byteorder.h>
 
@@ -155,7 +156,7 @@
 #define ESDHC_HOSTCAPBLT_HSS	0x00200000
 
 struct fsl_esdhc_cfg {
-	u32	esdhc_base;
+	void __iomem *esdhc_base;
 	u32	sdhc_clk;
 	u8	max_bus_width;
 	struct mmc_config cfg;

@@ -52,7 +52,7 @@ checkthumb:
 endif
 endif
 
-# Try if EABI is supported, else fall back to old API,
+# Try if EABI is supported, else fall back to old ABI,
 # i. e. for example:
 # - with ELDK 4.2 (EABI supported), use:
 #	-mabi=aapcs-linux

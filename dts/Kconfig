@@ -52,4 +52,8 @@ config DEFAULT_DEVICE_TREE
 	  It can be overridden from the command line:
 	  $ make DEVICE_TREE=<device-tree-name>
 
+config FDT_FIXUP_PARTITIONS
+	bool
+	depends on MTD_PARTITIONS && OF_LIBFDT
+
 endmenu

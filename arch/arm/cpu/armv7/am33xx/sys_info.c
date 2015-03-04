@@ -65,7 +65,7 @@ u32 __weak get_board_rev(void)
 u32 get_device_type(void)
 {
 	int mode;
-	mode = readl(&cstat->statusreg) & (DEVICE_MASK);
+	mode = readl(&cstat->statusreg) & DEVICE_MASK;
 	return mode >>= 8;
 }
 
@@ -75,22 +75,23 @@ u32 get_device_type(void)
 u32 get_sysboot_value(void)
 {
 	int mode;
-	mode = readl(&cstat->statusreg) & (SYSBOOT_MASK);
+	mode = readl(&cstat->statusreg) & SYSBOOT_MASK;
 	return mode;
 }
 
 #ifdef CONFIG_DISPLAY_CPUINFO
 static char *cpu_revs[] = {
-		"1.0",
-		"2.0",
-		"2.1"};
-
+	"1.0",
+	"2.0",
+	"2.1",
+};
 
 static char *dev_types[] = {
-		"TST",
-		"EMU",
-		"HS",
-		"GP"};
+	"TST",
+	"EMU",
+	"HS",
+	"GP",
+};
 
 /**
  * Print CPU information
@@ -108,7 +109,6 @@ int print_cpuinfo(void)
 		break;
 	default:
 		cpu_s = "Unknown CPU type";
-		break;
 	}
 
 	if (get_cpu_rev() < ARRAY_SIZE(cpu_revs))

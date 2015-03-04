@@ -85,7 +85,7 @@ void save_omap_boot_params(void)
 #ifdef CONFIG_SPL_BUILD
 u32 spl_boot_device(void)
 {
-	return (u32) (gd->arch.omap_boot_params.omap_bootdevice);
+	return gd->arch.omap_boot_params.omap_bootdevice;
 }
 
 u32 spl_boot_mode(void)

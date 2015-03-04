@@ -26,6 +26,31 @@ DECLARE_GLOBAL_DATA_PTR;
 /* Lowlevel init isn't used on i.MX28, so just have a dummy here */
 inline void lowlevel_init(void) {}
 
+#define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
+				RTC_PERSISTENT0_ALARM_WAKE |		\
+				RTC_PERSISTENT0_THERMAL_RESET)
+
+static int wait_rtc_stat(u32 mask)
+{
+	int timeout = 5000;
+	u32 val;
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
+	u32 old_val = readl(&rtc_regs->hw_rtc_stat);
+
+	debug("stat=%x\n", old_val);
+
+	while ((val = readl(&rtc_regs->hw_rtc_stat)) & mask) {
+		if (val != old_val) {
+			old_val = val;
+			debug("stat: %x -> %x\n", old_val, val);
+		}
+		udelay(1);
+		if (timeout-- < 0)
+			break;
+	}
+	return !!(readl(&rtc_regs->hw_rtc_stat) & mask);
+}
+
 void reset_cpu(ulong ignored) __attribute__((noreturn));
 
 void reset_cpu(ulong ignored)
@@ -34,6 +59,7 @@ void reset_cpu(ulong ignored)
 		(struct mxs_rtc_regs *)MXS_RTC_BASE;
 	struct mxs_lcdif_regs *lcdif_regs =
 		(struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
+	u32 reg;
 
 	/*
 	 * Shut down the LCD controller as it interferes with BootROM boot mode
@@ -41,7 +67,13 @@ void reset_cpu(ulong ignored)
 	 */
 	writel(LCDIF_CTRL_RUN, &lcdif_regs->hw_lcdif_ctrl_clr);
 
-	/* Wait 1 uS before doing the actual watchdog reset */
+	reg = readl(&rtc_regs->hw_rtc_persistent0);
+	if (reg & BOOT_CAUSE_MASK) {
+		writel(reg & ~BOOT_CAUSE_MASK, &rtc_regs->hw_rtc_persistent0);
+		wait_rtc_stat(RTC_STAT_NEW_REGS_PERSISTENT0);
+	}
+
+	/* Wait 1 mS before doing the actual watchdog reset */
 	writel(1, &rtc_regs->hw_rtc_watchdog);
 	writel(RTC_CTRL_WATCHDOGEN, &rtc_regs->hw_rtc_ctrl_set);
 
@@ -77,17 +109,21 @@ void enable_caches(void)
 void mx28_fixup_vt(uint32_t start_addr)
 {
 	/* ldr pc, [pc, #0x18] */
-	const uint32_t ldr_pc = 0xe59ff018;
 	/* Jumptable location is 0x0 */
-	uint32_t *vt = (uint32_t *)0x0;
-	int i;
+	uint32_t *vt = (uint32_t *)0x20;
+	uint32_t cr = get_cr();
 
+<<<<<<< HEAD
 	for (i = 0; i < 8; i++) {
 		/* cppcheck-suppress nullPointer */
 		vt[i] = ldr_pc;
 		/* cppcheck-suppress nullPointer */
 		vt[i + 8] = start_addr + (4 * i);
 	}
+=======
+	memcpy(vt, (void *)start_addr + 0x20, 32);
+	set_cr(cr & ~CR_V);
+>>>>>>> karo-tx-uboot
 }
 
 #ifdef	CONFIG_ARCH_MISC_INIT
@@ -98,6 +134,7 @@ int arch_misc_init(void)
 }
 #endif
 
+#ifdef CONFIG_ARCH_CPU_INIT
 int arch_cpu_init(void)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =
@@ -131,6 +168,7 @@ int arch_cpu_init(void)
 
 	return 0;
 }
+#endif
 
 #if defined(CONFIG_DISPLAY_CPUINFO)
 static const char *get_cpu_type(void)
@@ -196,12 +234,21 @@ int print_cpuinfo(void)
 }
 #endif
 
+#define pr_clk(n, c) {						\
+	unsigned long clk = c;	\
+	printf("%-5s  %3lu.%03lu MHz\n", #n ":", clk / 1000000,	\
+		clk / 1000 % 1000);				\
+}
+
 int do_mx28_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	printf("CPU:   %3d MHz\n", mxc_get_clock(MXC_ARM_CLK) / 1000000);
-	printf("BUS:   %3d MHz\n", mxc_get_clock(MXC_AHB_CLK) / 1000000);
-	printf("EMI:   %3d MHz\n", mxc_get_clock(MXC_EMI_CLK));
-	printf("GPMI:  %3d MHz\n", mxc_get_clock(MXC_GPMI_CLK) / 1000000);
+	pr_clk(CPU, mxc_get_clock(MXC_ARM_CLK));
+	pr_clk(APBH, mxc_get_clock(MXC_AHB_CLK));
+	pr_clk(APBX, mxc_get_clock(MXC_XBUS_CLK));
+	pr_clk(IO0, mxc_get_clock(MXC_IO0_CLK) * 1000);
+	pr_clk(IO1, mxc_get_clock(MXC_IO1_CLK) * 1000);
+	pr_clk(EMI, mxc_get_clock(MXC_EMI_CLK) * 1000000);
+	pr_clk(GPMI, mxc_get_clock(MXC_GPMI_CLK));
 	return 0;
 }
 
@@ -225,13 +272,17 @@ int cpu_eth_init(bd_t *bis)
 
 	udelay(10);
 
+	/*
+	 * Enable pad output; must be done BEFORE enabling PLL
+	 * according to i.MX28 Ref. Manual Rev. 1, 2010 p. 883
+	 */
+	setbits_le32(&clkctrl_regs->hw_clkctrl_enet, CLKCTRL_ENET_CLK_OUT_EN);
+
 	/* Gate on ENET PLL */
 	writel(CLKCTRL_PLL2CTRL0_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_pll2ctrl0_clr);
 
-	/* Enable pad output */
-	setbits_le32(&clkctrl_regs->hw_clkctrl_enet, CLKCTRL_ENET_CLK_OUT_EN);
-
+	udelay(6000);
 	return 0;
 }
 #endif

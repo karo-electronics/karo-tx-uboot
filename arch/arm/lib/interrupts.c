@@ -135,12 +135,20 @@ void show_regs (struct pt_regs *regs)
 	"UK12_32",	"UK13_32",	"UK14_32",	"SYS_32",
 	};
 
-	flags = condition_codes (regs);
+	flags = condition_codes(regs);
 
-	printf ("pc : [<%08lx>]	   lr : [<%08lx>]\n"
-		"sp : %08lx  ip : %08lx	 fp : %08lx\n",
-		instruction_pointer (regs),
-		regs->ARM_lr, regs->ARM_sp, regs->ARM_ip, regs->ARM_fp);
+	if (gd->flags & GD_FLG_RELOC)
+		printf ("pc : [<%08lx>] (pre-reloc: [<%08lx>]) lr : [<%08lx>]\n"
+			"sp : %08lx  ip : %08lx	 fp : %08lx\n",
+			instruction_pointer(regs),
+			instruction_pointer(regs) - gd->reloc_off,
+			regs->ARM_lr, regs->ARM_sp,
+			regs->ARM_ip, regs->ARM_fp);
+	else
+		printf ("pc : [<%08lx>] lr : [<%08lx>]\n"
+			"sp : %08lx  ip : %08lx	 fp : %08lx\n",
+			instruction_pointer(regs), regs->ARM_lr, regs->ARM_sp,
+			regs->ARM_ip, regs->ARM_fp);
 	printf ("r10: %08lx  r9 : %08lx	 r8 : %08lx\n",
 		regs->ARM_r10, regs->ARM_r9, regs->ARM_r8);
 	printf ("r7 : %08lx  r6 : %08lx	 r5 : %08lx  r4 : %08lx\n",
@@ -158,9 +166,17 @@ void show_regs (struct pt_regs *regs)
 		thumb_mode (regs) ? " (T)" : "");
 }
 
+/* fixup PC to point to instruction leading to exception */
+static inline void fixup_pc(struct pt_regs *regs, int offset)
+{
+	uint32_t pc = instruction_pointer(regs) + offset;
+	regs->ARM_pc = pc | (regs->ARM_pc & PCMASK);
+}
+
 void do_undefined_instruction (struct pt_regs *pt_regs)
 {
 	printf ("undefined instruction\n");
+	fixup_pc(pt_regs, -4);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -168,6 +184,7 @@ void do_undefined_instruction (struct pt_regs *pt_regs)
 void do_software_interrupt (struct pt_regs *pt_regs)
 {
 	printf ("software interrupt\n");
+	fixup_pc(pt_regs, -4);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -175,6 +192,7 @@ void do_software_interrupt (struct pt_regs *pt_regs)
 void do_prefetch_abort (struct pt_regs *pt_regs)
 {
 	printf ("prefetch abort\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -182,6 +200,7 @@ void do_prefetch_abort (struct pt_regs *pt_regs)
 void do_data_abort (struct pt_regs *pt_regs)
 {
 	printf ("data abort\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -189,6 +208,7 @@ void do_data_abort (struct pt_regs *pt_regs)
 void do_not_used (struct pt_regs *pt_regs)
 {
 	printf ("not used\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -196,6 +216,7 @@ void do_not_used (struct pt_regs *pt_regs)
 void do_fiq (struct pt_regs *pt_regs)
 {
 	printf ("fast interrupt request\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -204,6 +225,7 @@ void do_fiq (struct pt_regs *pt_regs)
 void do_irq (struct pt_regs *pt_regs)
 {
 	printf ("interrupt request\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }

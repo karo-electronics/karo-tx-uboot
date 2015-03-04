@@ -324,8 +324,7 @@ static int sd_send_op_cond(struct mmc *mmc)
 
 		udelay(1000);
 	} while ((!(cmd.response[0] & OCR_BUSY)) && timeout--);
-
-	if (timeout <= 0)
+	if (!(cmd.response[0] & OCR_BUSY))
 		return UNUSABLE_ERR;
 
 	if (mmc->version != SD_VERSION_2)
@@ -383,7 +382,7 @@ static int mmc_send_op_cond(struct mmc *mmc)
 	/* Some cards seem to need this */
 	mmc_go_idle(mmc);
 
- 	/* Asking to the card its capabilities */
+	/* Asking to the card its capabilities */
 	mmc->op_cond_pending = 1;
 	for (i = 0; i < 2; i++) {
 		err = mmc_send_op_cond_iter(mmc, &cmd, i != 0);
@@ -411,9 +410,13 @@ static int mmc_complete_op_cond(struct mmc *mmc)
 		if (err)
 			return err;
 		if (get_timer(start) > timeout)
-			return UNUSABLE_ERR;
+			break;
 		udelay(100);
 	} while (!(mmc->op_cond_response & OCR_BUSY));
+	if (!(mmc->op_cond_response & OCR_BUSY)) {
+		debug("%s: timeout\n", __func__);
+		return UNUSABLE_ERR;
+	}
 
 	if (mmc_host_is_spi(mmc)) { /* read OCR for spi */
 		cmd.cmdidx = MMC_CMD_SPI_READ_OCR;

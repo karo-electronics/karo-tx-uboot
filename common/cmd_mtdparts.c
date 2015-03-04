@@ -325,8 +325,7 @@ static int part_validate_eraseblock(struct mtdids *id, struct part_info *part)
 		 */
 		offset = part->offset;
 		if (do_div(offset, mtd->erasesize)) {
-			printf("%s%d: partition (%s) start offset"
-			       "alignment incorrect\n",
+			printf("%s%d: partition (%s) start offset alignment incorrect\n",
 			       MTD_DEV_TYPE(id->type), id->num, part->name);
 			return 1;
 		}

@@ -40,6 +40,11 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 		pad_ctrl |= PAD_CTL_LVE_BIT;
 	}
 #endif
+#ifdef DEBUG
+	printf("PAD[%2d]=%016llx mux[%03x]=%02x pad[%03x]=%05x%c inp[%03x]=%d\n",
+		i, pad, mux_ctrl_ofs, mux_mode, pad_ctrl_ofs, pad_ctrl,
+		pad & PAD_CTRL_VALID ? ' ' : '!', sel_input_ofs, sel_input);
+#endif
 
 	if (mux_ctrl_ofs)
 		__raw_writel(mux_mode, base + mux_ctrl_ofs);
@@ -48,11 +53,11 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 		__raw_writel(sel_input, base + sel_input_ofs);
 
 #ifdef CONFIG_IOMUX_SHARE_CONF_REG
-	if (!(pad_ctrl & NO_PAD_CTRL))
+	if (pad & PAD_CTRL_VALID)
 		__raw_writel((mux_mode << PAD_MUX_MODE_SHIFT) | pad_ctrl,
 			base + pad_ctrl_ofs);
 #else
-	if (!(pad_ctrl & NO_PAD_CTRL) && pad_ctrl_ofs)
+	if ((pad & PAD_CTRL_VALID) && pad_ctrl_ofs)
 		__raw_writel(pad_ctrl, base + pad_ctrl_ofs);
 #endif
 }
@@ -79,16 +84,11 @@ void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 }
 
 void imx_iomux_set_gpr_register(int group, int start_bit,
-					int num_bits, int value)
+				int num_bits, int value)
 {
-	int i = 0;
-	u32 reg;
-	reg = readl(base + group * 4);
-	while (num_bits) {
-		reg &= ~(1<<(start_bit + i));
-		i++;
-		num_bits--;
-	}
-	reg |= (value << start_bit);
+	u32 reg = readl(base + group * 4);
+
+	reg &= ~(((1 << num_bits) - 1) << start_bit);
+	reg |= value << start_bit;
 	writel(reg, base + group * 4);
 }

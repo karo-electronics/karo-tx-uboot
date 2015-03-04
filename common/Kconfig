@@ -53,6 +53,17 @@ config CMD_BOOTM
 	help
 	  Boot an application image from the memory.
 
+config CMD_BOOTZ
+	bool "bootz"
+	default y
+	help
+	  Boot a Linux kernel zImage.
+
+config CMD_BOOTCE
+	bool "bootce"
+	help
+	  Boot a WindowsCE image.
+
 config CMD_GO
 	bool "go"
 	default y
@@ -81,6 +92,17 @@ config CMD_XIMG
 
 endmenu
 
+menu "DTB support"
+
+config OF_LIBFDT
+	bool "Enable FDT commands"
+
+config OF_BOARD_SETUP
+	bool "Support DT modifications by board code"
+	depends on OF_LIBFDT
+
+endmenu
+
 menu "Environment commands"
 
 config CMD_EXPORTENV
@@ -104,6 +126,26 @@ config CMD_SAVEENV
 	bool "saveenv"
 	help
 	  Run the command in the given environment variable.
+
+endmenu
+
+menu "Environment configuration settings"
+
+choice
+	prompt "Select environment non-volatile storage"
+
+config ENV_IS_NOWHERE
+	bool "do not store environment"
+
+config ENV_IS_IN_NAND
+	bool "store environment in NAND"
+	depends on NAND
+
+config ENV_IS_IN_MMC
+	bool "store environment in MMC"
+	depends on MMC
+
+endchoice
 
 endmenu
 
@@ -171,10 +213,31 @@ config CMD_FLASH
 	    erase - FLASH memory
 	    protect - enable or disable FLASH write protection
 
+config MTD_DEVICE
+	bool "MTD device support"
+
+config CMD_MTDPARTS
+	bool "MTD partitioning support"
+	default y
+	depends on MTD_DEVICE && (CMD_FLASH || CMD_NAND)
+
 config CMD_NAND
 	bool "nand"
 	help
 	  NAND support.
+
+config CMD_NAND_TRIMFFS
+	bool "Enable nand write.trimffs command"
+	help
+	  Enable command to leave page sized runs of 0xff patterns in
+	  erased state rather than overwriting them. This is required
+	  for using NAND flash filesystems on NAND controllers with
+	  a non-0xff ECC code for all 0xff data.
+
+config CMD_MMC
+	bool "mmc/sd"
+	help
+	  MMC/SD support.
 
 config CMD_SPI
 	bool "sspi"
@@ -285,6 +348,11 @@ config CMD_LINK_LOCAL
 endmenu
 
 menu "Misc commands"
+
+config CMD_CACHE
+	bool "cache control"
+	help
+	  Enable commands to switch data cache on/off.
 
 config CMD_TIME
 	bool "time"

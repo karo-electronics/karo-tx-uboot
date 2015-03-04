@@ -16,25 +16,27 @@
 #include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
-struct mxs_gpmi_regs {
-	mxs_reg_32(hw_gpmi_ctrl0)
-	mxs_reg_32(hw_gpmi_compare)
-	mxs_reg_32(hw_gpmi_eccctrl)
-	mxs_reg_32(hw_gpmi_ecccount)
-	mxs_reg_32(hw_gpmi_payload)
-	mxs_reg_32(hw_gpmi_auxiliary)
-	mxs_reg_32(hw_gpmi_ctrl1)
-	mxs_reg_32(hw_gpmi_timing0)
-	mxs_reg_32(hw_gpmi_timing1)
+struct gpmi_regs {
+	mxs_reg_32(hw_gpmi_ctrl0);
+	mxs_reg_32(hw_gpmi_compare);
+	mxs_reg_32(hw_gpmi_eccctrl);
+	mxs_reg_32(hw_gpmi_ecccount);
+	mxs_reg_32(hw_gpmi_payload);
+	mxs_reg_32(hw_gpmi_auxiliary);
+	mxs_reg_32(hw_gpmi_ctrl1);
+	mxs_reg_32(hw_gpmi_timing0);
+	mxs_reg_32(hw_gpmi_timing1);
 
 	uint32_t	reserved[4];
 
-	mxs_reg_32(hw_gpmi_data)
-	mxs_reg_32(hw_gpmi_stat)
-	mxs_reg_32(hw_gpmi_debug)
-	mxs_reg_32(hw_gpmi_version)
+	mxs_reg_32(hw_gpmi_data);
+	mxs_reg_32(hw_gpmi_stat);
+	mxs_reg_32(hw_gpmi_debug);
+	mxs_reg_32(hw_gpmi_version);
 };
 #endif
+
+#define GPMI_BASE_ADDRESS				MXS_GPMI_BASE
 
 #define	GPMI_CTRL0_SFTRST				(1 << 31)
 #define	GPMI_CTRL0_CLKGATE				(1 << 30)

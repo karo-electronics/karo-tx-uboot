@@ -71,7 +71,7 @@ static iomux_v3_cfg_t const usdhc1_pads[] = {
 	MX6_PAD_SD1_DAT2__SD1_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD1_DAT3__SD1_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* Carrier MicroSD Card Detect */
-	MX6_PAD_GPIO_2__GPIO1_IO02      | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_GPIO_2__GPIO1_IO02,
 };
 
 static iomux_v3_cfg_t const usdhc3_pads[] = {
@@ -82,7 +82,7 @@ static iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_DAT2__SD3_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT3__SD3_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* SOM MicroSD Card Detect */
-	MX6_PAD_EIM_DA9__GPIO3_IO09     | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_DA9__GPIO3_IO09,
 };
 
 static iomux_v3_cfg_t const enet_pads[] = {
@@ -102,7 +102,7 @@ static iomux_v3_cfg_t const enet_pads[] = {
 	MX6_PAD_RGMII_RD3__RGMII_RD3	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_RGMII_RX_CTL__RGMII_RX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	/* AR8031 PHY Reset */
-	MX6_PAD_EIM_D29__GPIO3_IO29		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_D29__GPIO3_IO29,
 };
 
 static void setup_iomux_uart(void)
@@ -262,10 +262,8 @@ static iomux_v3_cfg_t const fwadapt_7wvga_pads[] = {
 	MX6_PAD_DISP0_DAT16__IPU1_DISP0_DATA16,
 	MX6_PAD_DISP0_DAT17__IPU1_DISP0_DATA17,
 
-	MX6_PAD_SD4_DAT2__GPIO2_IO10
-		| MUX_PAD_CTRL(NO_PAD_CTRL), /* DISP0_BKLEN */
-	MX6_PAD_SD4_DAT3__GPIO2_IO11
-		| MUX_PAD_CTRL(NO_PAD_CTRL), /* DISP0_VDDEN */
+	MX6_PAD_SD4_DAT2__GPIO2_IO10, /* DISP0_BKLEN */
+	MX6_PAD_SD4_DAT3__GPIO2_IO11, /* DISP0_VDDEN */
 };
 
 static void do_enable_hdmi(struct display_info_t const *dev)

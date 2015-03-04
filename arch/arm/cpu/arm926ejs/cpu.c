@@ -15,6 +15,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <lcd.h>
 #include <asm/system.h>
 
 static void cache_flush(void);
@@ -30,6 +31,14 @@ int cleanup_before_linux (void)
 
 	disable_interrupts ();
 
+#ifdef CONFIG_LCD
+	{
+		/* switch off LCD panel */
+		lcd_panel_disable();
+		/* disable LCD controller */
+		lcd_disable();
+	}
+#endif
 
 	/* turn off I/D-cache */
 	icache_disable();

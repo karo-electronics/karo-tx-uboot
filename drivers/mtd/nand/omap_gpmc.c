@@ -42,6 +42,190 @@ struct omap_nand_info {
 /* We are wasting a bit of memory but al least we are safe */
 static struct omap_nand_info omap_nand_info[GPMC_MAX_CS];
 
+static struct gpmc __iomem *gpmc_cfg = (void __iomem *)GPMC_BASE;
+
+#ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
+static uint8_t bbt_pattern[] = {'B', 'b', 't', '0' };
+static uint8_t mirror_pattern[] = {'1', 't', 'b', 'B' };
+
+static struct nand_bbt_descr bbt_main_descr = {
+	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE |
+		NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
+	.offs = 0, /* may be overwritten depending on ECC layout */
+	.len = 4,
+	.veroffs = 4, /* may be overwritten depending on ECC layout */
+	.maxblocks = 4,
+	.pattern = bbt_pattern,
+};
+
+static struct nand_bbt_descr bbt_mirror_descr = {
+	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE |
+		NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
+	.offs = 0, /* may be overwritten depending on ECC layout */
+	.len = 4,
+	.veroffs = 4, /* may be overwritten depending on ECC layout */
+	.maxblocks = 4,
+	.pattern = mirror_pattern,
+};
+#endif
+
+#define PREFETCH_FIFOTHRESHOLD_MAX		0x40
+#define PREFETCH_FIFOTHRESHOLD(val)		((val) << 8)
+
+#define PREFETCH_ENABLEOPTIMIZEDACCESS		(0x1 << 27)
+
+#define GPMC_PREFETCH_STATUS_FIFO_CNT(val)	(((val) >> 24) & 0x7F)
+#define GPMC_PREFETCH_STATUS_COUNT(val)		((val) & 0x00003fff)
+
+#define CS_NUM_SHIFT				24
+#define ENABLE_PREFETCH				(0x1 << 7)
+#define DMA_MPU_MODE				2
+
+#define OMAP_NAND_TIMEOUT_MS			5000
+
+#define PRINT_REG(x) debug("+++ %.15s (0x%08x)=0x%08x\n", #x, &gpmc_cfg->x, readl(&gpmc_cfg->x))
+
+#ifdef CONFIG_SYS_GPMC_PREFETCH_ENABLE
+/**
+ * gpmc_prefetch_enable - configures and starts prefetch transfer
+ * @cs: cs (chip select) number
+ * @fifo_th: fifo threshold to be used for read/ write
+ * @count: number of bytes to be transferred
+ * @is_write: prefetch read(0) or write post(1) mode
+ */
+static inline void gpmc_prefetch_enable(int cs, int fifo_th,
+					unsigned int count, int is_write)
+{
+	writel(count, &gpmc_cfg->pref_config2);
+
+	/* Set the prefetch read / post write and enable the engine.
+	 * Set which cs is has requested for.
+	 */
+	uint32_t val = (cs << CS_NUM_SHIFT) |
+		PREFETCH_ENABLEOPTIMIZEDACCESS |
+		PREFETCH_FIFOTHRESHOLD(fifo_th) |
+		ENABLE_PREFETCH |
+		!!is_write;
+	writel(val, &gpmc_cfg->pref_config1);
+
+	/*  Start the prefetch engine */
+	writel(0x1, &gpmc_cfg->pref_control);
+}
+
+/**
+ * gpmc_prefetch_reset - disables and stops the prefetch engine
+ */
+static inline void gpmc_prefetch_reset(void)
+{
+	/* Stop the PFPW engine */
+	writel(0x0, &gpmc_cfg->pref_control);
+
+	/* Reset/disable the PFPW engine */
+	writel(0x0, &gpmc_cfg->pref_config1);
+}
+
+//#define FIFO_IOADDR		(nand->IO_ADDR_R)
+#define FIFO_IOADDR		PISMO1_NAND_BASE
+
+/**
+ * read_buf_pref - read data from NAND controller into buffer
+ * @mtd: MTD device structure
+ * @buf: buffer to store date
+ * @len: number of bytes to read
+ */
+static void read_buf_pref(struct mtd_info *mtd, u_char *buf, int len)
+{
+	gpmc_prefetch_enable(cs, PREFETCH_FIFOTHRESHOLD_MAX, len, 0);
+	do {
+		// Get number of bytes waiting in the FIFO
+		uint32_t read_bytes = GPMC_PREFETCH_STATUS_FIFO_CNT(readl(&gpmc_cfg->pref_status));
+
+		if (read_bytes == 0)
+			continue;
+		// Alignment of Destination Buffer
+		while (read_bytes && ((unsigned int)buf & 3)) {
+			*buf++ = readb(FIFO_IOADDR);
+			read_bytes--;
+			len--;
+		}
+		// Use maximum word size (32bit) inside this loop, because speed is limited by
+		// GPMC bus arbitration with a maximum transfer rate of 3.000.000/sec.
+		len -= read_bytes & ~3;
+		while (read_bytes >= 4) {
+			*((uint32_t*)buf) = readl(FIFO_IOADDR);
+			buf += 4;
+			read_bytes -= 4;
+		}
+		// Transfer the last (non-aligned) bytes only at the last iteration,
+		// to maintain full speed up to the end of the transfer.
+		if (read_bytes == len) {
+			while (read_bytes) {
+				*buf++ = readb(FIFO_IOADDR);
+				read_bytes--;
+			}
+			len = 0;
+		}
+	} while (len > 0);
+	gpmc_prefetch_reset();
+}
+
+/*
+ * write_buf_pref - write buffer to NAND controller
+ * @mtd: MTD device structure
+ * @buf: data buffer
+ * @len: number of bytes to write
+ */
+static void write_buf_pref(struct mtd_info *mtd, const u_char *buf, int len)
+{
+	/*  configure and start prefetch transfer */
+	gpmc_prefetch_enable(cs, PREFETCH_FIFOTHRESHOLD_MAX, len, 1);
+
+	while (len) {
+		// Get number of free bytes in the FIFO
+		uint32_t write_bytes = GPMC_PREFETCH_STATUS_FIFO_CNT(readl(&gpmc_cfg->pref_status));
+
+		// don't write more bytes than requested
+		if (write_bytes > len)
+			write_bytes = len;
+
+		// Alignment of Source Buffer
+		while (write_bytes && ((unsigned int)buf & 3)) {
+			writeb(*buf++, FIFO_IOADDR);
+			write_bytes--;
+			len--;
+		}
+
+		// Use maximum word size (32bit) inside this loop, because speed is limited by
+		// GPMC bus arbitration with a maximum transfer rate of 3.000.000/sec.
+		len -= write_bytes & ~3;
+		while (write_bytes >= 4) {
+			writel(*((uint32_t*)buf), FIFO_IOADDR);
+			buf += 4;
+			write_bytes -= 4;
+		}
+
+		// Transfer the last (non-aligned) bytes only at the last iteration,
+		// to maintain full speed up to the end of the transfer.
+		if (write_bytes == len) {
+			while (write_bytes) {
+				writeb(*buf++, FIFO_IOADDR);
+				write_bytes--;
+			}
+			len = 0;
+		}
+	}
+
+	/* wait for data to be flushed out before resetting the prefetch */
+	while ((len = GPMC_PREFETCH_STATUS_COUNT(readl(&gpmc_cfg->pref_status)))) {
+		debug("%u bytes still in FIFO\n", PREFETCH_FIFOTHRESHOLD_MAX - len);
+		ndelay(1);
+	}
+
+	/* disable and stop the PFPW engine */
+	gpmc_prefetch_reset();
+}
+#endif /* CONFIG_SYS_GPMC_PREFETCH_ENABLE */
+
 /*
  * omap_nand_hwcontrol - Set the address pointers corretly for the
  *			following address/data/command operation
@@ -76,7 +260,7 @@ static void omap_nand_hwcontrol(struct mtd_info *mtd, int32_t cmd,
 /* Check wait pin as dev ready indicator */
 static int omap_dev_ready(struct mtd_info *mtd)
 {
-	return gpmc_cfg->status & (1 << 8);
+	return readl(&gpmc_cfg->status) & (1 << 8);
 }
 
 /*
@@ -460,14 +644,13 @@ static int omap_read_page_bch(struct mtd_info *mtd, struct nand_chip *chip,
 	uint8_t *ecc_calc = chip->buffers->ecccalc;
 	uint8_t *ecc_code = chip->buffers->ecccode;
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
-	uint8_t *oob = chip->oob_poi;
+	uint8_t *oob = &chip->oob_poi[eccpos[0]];
 	uint32_t data_pos;
 	uint32_t oob_pos;
 
 	data_pos = 0;
 	/* oob area start */
-	oob_pos = (eccsize * eccsteps) + chip->ecc.layout->eccpos[0];
-	oob += chip->ecc.layout->eccpos[0];
+	oob_pos = (eccsize * eccsteps) + eccpos[0];
 
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize,
 				oob += eccbytes) {
@@ -535,22 +718,22 @@ static int omap_correct_data_bch_sw(struct mtd_info *mtd, u_char *data,
 				data[errloc[i]/8] ^= 1 << (errloc[i] & 7);
 			printf("corrected bitflip %u\n", errloc[i]);
 #ifdef DEBUG
-			puts("read_ecc: ");
+			printf("read_ecc: ");
 			/*
 			 * BCH8 have 13 bytes of ECC; BCH4 needs adoption
 			 * here!
 			 */
 			for (i = 0; i < 13; i++)
 				printf("%02x ", read_ecc[i]);
-			puts("\n");
-			puts("calc_ecc: ");
+			printf("\n");
+			printf("calc_ecc: ");
 			for (i = 0; i < 13; i++)
 				printf("%02x ", calc_ecc[i]);
-			puts("\n");
+			printf("\n");
 #endif
 		}
 	} else if (count < 0) {
-		puts("ecc unrecoverable error\n");
+		printf("ecc unrecoverable error\n");
 	}
 	return count;
 }
@@ -879,6 +1062,21 @@ int board_nand_init(struct nand_chip *nand)
 #endif
 	if (err)
 		return err;
+#ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
+	if (nand->ecc.layout) {
+		bbt_main_descr.offs = nand->ecc.layout->oobfree[0].offset;
+		bbt_main_descr.veroffs = bbt_main_descr.offs +
+			sizeof(bbt_pattern);
+
+		bbt_mirror_descr.offs = nand->ecc.layout->oobfree[0].offset;
+		bbt_mirror_descr.veroffs = bbt_mirror_descr.offs +
+			sizeof(mirror_pattern);
+	}
+
+	nand->bbt_options |= NAND_BBT_USE_FLASH;
+	nand->bbt_td = &bbt_main_descr;
+	nand->bbt_md = &bbt_mirror_descr;
+#endif
 
 #ifdef CONFIG_SPL_BUILD
 	if (nand->options & NAND_BUSWIDTH_16)

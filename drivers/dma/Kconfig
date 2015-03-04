@@ -1,0 +1,14 @@
+config APBH_DMA
+	bool "Freescale MXS and i.MX6 APBH DMA support"
+	default y
+	depends on MX28 || MX6
+
+config APBH_DMA_BURST
+	bool "Enable DMA burst mode"
+	default y
+	depends on APBH_DMA
+
+config APBH_DMA_BURST8
+	bool "Use 8-beat DMA bursts"
+	default y
+	depends on APBH_DMA_BURST

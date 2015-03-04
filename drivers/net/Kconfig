@@ -1,0 +1,33 @@
+menuconfig NETDEVICES
+	bool "Network device support"
+	depends on NET
+
+if NETDEVICES
+
+config MII
+	bool
+
+config FEC_MXC
+	bool "Freescale FEC ethernet controller"
+	select MII
+
+config GET_FEC_MAC_ADDR_FROM_IIM
+	bool "Read FEC MAC address from fuses"
+	depends on FEC_MXC
+
+if FEC_MXC
+
+config FEC_MXC_MULTI
+	bool "Support multiple ethernet interfaces"
+	depends on MX28 || MX6
+
+config FEC_MXC_PHYADDR
+	int "FEC Ethernet PHY address"
+       	default 0
+	depends on !FEC_MXC_MULTI
+
+endif
+
+source "drivers/net/phy/Kconfig"
+
+endif

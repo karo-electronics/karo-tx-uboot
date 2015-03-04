@@ -29,15 +29,18 @@ static bd_t bdata __section(".data");
  * takes a few seconds to roll. The boot doesn't take that long, so to keep the
  * code simple, it doesn't take rolling into consideration.
  */
+/*
+ * There's nothing to be taken into consideration for the rollover.
+ * Two's complement arithmetic used correctly does all that's needed
+ * automagically.
+ */
 void early_delay(int delay)
 {
 	struct mxs_digctl_regs *digctl_regs =
 		(struct mxs_digctl_regs *)MXS_DIGCTL_BASE;
+	u32 start = readl(&digctl_regs->hw_digctl_microseconds);
 
-	uint32_t st = readl(&digctl_regs->hw_digctl_microseconds);
-	st += delay;
-	while (st > readl(&digctl_regs->hw_digctl_microseconds))
-		;
+	while (readl(&digctl_regs->hw_digctl_microseconds) - start < delay);
 }
 
 #define	MUX_CONFIG_BOOTMODE_PAD	(MXS_PAD_3V3 | MXS_PAD_4MA | MXS_PAD_NOPULL)
@@ -158,7 +161,7 @@ void mxs_common_spl_init(const uint32_t arg, const uint32_t *resptr,
 	mxs_power_wait_pswitch();
 }
 
-/* Support aparatus */
+/* Support apparatus */
 inline void board_init_f(unsigned long bootflag)
 {
 	for (;;)

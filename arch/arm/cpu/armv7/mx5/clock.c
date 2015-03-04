@@ -46,15 +46,14 @@ struct mxc_pll_reg *mxc_plls[PLL_CLOCKS] = {
 #define EMI_DIV_MAX     8
 #define NFC_DIV_MAX     8
 
-#define MX5_CBCMR	0x00015154
-#define MX5_CBCDR	0x02888945
+#define MXC_IPG_PER_CLK	MXC_IPG_PERCLK
 
 struct fixed_pll_mfd {
 	u32 ref_clk_hz;
 	u32 mfd;
 };
 
-const struct fixed_pll_mfd fixed_mfd[] = {
+static const struct fixed_pll_mfd fixed_mfd[] = {
 	{MXC_HCLK, 24 * 16},
 };
 
@@ -67,11 +66,101 @@ struct pll_param {
 
 #define PLL_FREQ_MAX(ref_clk)  (4 * (ref_clk) * PLL_MFI_MAX)
 #define PLL_FREQ_MIN(ref_clk) \
-		((2 * (ref_clk) * (PLL_MFI_MIN - 1)) / PLL_PD_MAX)
+	((4 * (ref_clk) * PLL_MFI_MIN) / PLL_PD_MAX)
 #define MAX_DDR_CLK     420000000
 #define NFC_CLK_MAX     34000000
 
 struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)MXC_CCM_BASE;
+
+int clk_enable(struct clk *clk)
+{
+	int ret = 0;
+
+	if (!clk)
+		return 0;
+
+	if (clk->usecount++ == 0) {
+		if (!clk->enable)
+			return 0;
+		ret = clk->enable(clk);
+		if (ret)
+			clk->usecount--;
+	}
+	return ret;
+}
+
+void clk_disable(struct clk *clk)
+{
+	if (!clk)
+		return;
+
+	if (!(--clk->usecount)) {
+		if (clk->disable)
+			clk->disable(clk);
+	}
+	if (clk->usecount < 0) {
+		printf("%s: clk %p (%s) underflow\n", __func__, clk, clk->name);
+		hang();
+	}
+}
+
+int clk_get_usecount(struct clk *clk)
+{
+	if (clk == NULL)
+		return 0;
+
+	return clk->usecount;
+}
+
+u32 clk_get_rate(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->rate;
+}
+
+struct clk *clk_get_parent(struct clk *clk)
+{
+	if (!clk)
+		return 0;
+
+	return clk->parent;
+}
+
+int clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk && clk->set_rate)
+		clk->set_rate(clk, rate);
+	return clk->rate;
+}
+
+long clk_round_rate(struct clk *clk, unsigned long rate)
+{
+	if (clk == NULL || !clk->round_rate)
+		return 0;
+
+	return clk->round_rate(clk, rate);
+}
+
+int clk_set_parent(struct clk *clk, struct clk *parent)
+{
+	debug("Setting parent of clk %p to %p (%p)\n", clk, parent,
+		clk ? clk->parent : NULL);
+
+	if (!clk || clk == parent)
+		return 0;
+
+	if (clk->set_parent) {
+		int ret;
+
+		ret = clk->set_parent(clk, parent);
+		if (ret)
+			return ret;
+	}
+	clk->parent = parent;
+	return 0;
+}
 
 void set_usboh3_clk(void)
 {
@@ -93,6 +182,100 @@ void enable_usboh3_clk(bool enable)
 			MXC_CCM_CCGR2_USBOH3_60M(MXC_CCM_CCGR_CG_MASK),
 			MXC_CCM_CCGR2_USBOH3_60M(cg));
 }
+
+void ipu_clk_enable(void)
+{
+	/* IPU root clock derived from AXI B */
+	clrsetbits_le32(&mxc_ccm->cbcmr, MXC_CCM_CBCMR_IPU_HSP_CLK_SEL_MASK,
+			MXC_CCM_CBCMR_IPU_HSP_CLK_SEL(1));
+
+	setbits_le32(&mxc_ccm->CCGR5,
+		MXC_CCM_CCGR5_IPU(MXC_CCM_CCGR_CG_MASK));
+
+	/* Handshake with IPU when certain clock rates are changed. */
+	clrbits_le32(&mxc_ccm->ccdr, MXC_CCM_CCDR_IPU_HS_MASK);
+
+	/* Handshake with IPU when LPM is entered as its enabled. */
+	clrbits_le32(&mxc_ccm->clpcr, MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS);
+}
+
+void ipu_clk_disable(void)
+{
+	clrbits_le32(&mxc_ccm->CCGR5,
+		MXC_CCM_CCGR5_IPU(MXC_CCM_CCGR_CG_MASK));
+
+	/* Handshake with IPU when certain clock rates are changed. */
+	setbits_le32(&mxc_ccm->ccdr, MXC_CCM_CCDR_IPU_HS_MASK);
+
+	/* Handshake with IPU when LPM is entered as its enabled. */
+	setbits_le32(&mxc_ccm->clpcr, MXC_CCM_CLPCR_BYPASS_IPU_LPM_HS);
+}
+
+void ipu_di_clk_enable(int di)
+{
+	switch (di) {
+	case 0:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid DI index %d\n", __func__, di);
+	}
+}
+
+void ipu_di_clk_disable(int di)
+{
+	switch (di) {
+	case 0:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_IPU_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid DI index %d\n", __func__, di);
+	}
+}
+
+#ifdef CONFIG_MX53
+void ldb_clk_enable(int ldb)
+{
+	switch (ldb) {
+	case 0:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		setbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid LDB index %d\n", __func__, ldb);
+	}
+}
+
+void ldb_clk_disable(int ldb)
+{
+	switch (ldb) {
+	case 0:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI0(MXC_CCM_CCGR_CG_MASK));
+		break;
+	case 1:
+		clrbits_le32(&mxc_ccm->CCGR6,
+			MXC_CCM_CCGR6_LDB_DI1(MXC_CCM_CCGR_CG_MASK));
+		break;
+	default:
+		printf("%s: Invalid LDB index %d\n", __func__, ldb);
+	}
+}
+#endif
 
 #ifdef CONFIG_SYS_I2C_MXC
 /* i2c_num can be from 0, to 1 for i.MX51 and 2 for i.MX53 */
@@ -160,9 +343,10 @@ void enable_usb_phy2_clk(bool enable)
  */
 static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 {
-	uint32_t ctrl, op, mfd, mfn, mfi, pdf, ret;
+	uint32_t ctrl, op;
+	int mfd, mfn, mfi, pdf, ret;
 	uint64_t refclk, temp;
-	int32_t mfn_abs;
+	uint32_t mfn_abs;
 
 	ctrl = readl(&pll->ctrl);
 
@@ -189,23 +373,23 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	if (mfn >= 0x04000000) {
 		mfn |= 0xfc000000;
 		mfn_abs = -mfn;
-	} else
+	} else {
 		mfn_abs = mfn;
-
+	}
 	refclk = infreq * 2;
 	if (ctrl & MXC_DPLLC_CTL_DPDCK0_2_EN)
 		refclk *= 2;
 
-	do_div(refclk, pdf + 1);
 	temp = refclk * mfn_abs;
 	do_div(temp, mfd + 1);
 	ret = refclk * mfi;
 
-	if ((int)mfn < 0)
+	if (mfn < 0)
 		ret -= temp;
 	else
 		ret += temp;
 
+	ret /= pdf + 1;
 	return ret;
 }
 
@@ -444,6 +628,17 @@ static u32 get_emi_slow_clk(void)
 	return  get_periph_clk() / (pdf + 1);
 }
 
+static u32 get_nfc_clk(void)
+{
+	u32 parent_rate = get_emi_slow_clk();
+	u32 div = readl(&mxc_ccm->cbcdr);
+
+	div &= MXC_CCM_CBCDR_NFC_PODF_MASK;
+	div >>= MXC_CCM_CBCDR_NFC_PODF_OFFSET;
+	div++;
+	return parent_rate / div;
+}
+
 static u32 get_ddr_clk(void)
 {
 	u32 ret_val = 0;
@@ -513,6 +708,14 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 		return get_ahb_clk();
 	case MXC_DDR_CLK:
 		return get_ddr_clk();
+	case MXC_AXI_A_CLK:
+		return get_axi_a_clk();
+	case MXC_AXI_B_CLK:
+		return get_axi_b_clk();
+	case MXC_EMI_SLOW_CLK:
+		return get_emi_slow_clk();
+	case MXC_NFC_CLK:
+		return get_nfc_clk();
 	default:
 		break;
 	}
@@ -551,18 +754,17 @@ static int gcd(int m, int n)
  */
 static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 {
-	u64 pd, mfi = 1, mfn, mfd, t1;
-	u32 n_target = target;
-	u32 n_ref = ref, i;
+	int pd, mfi = 1, mfn, mfd;
+	u64 t1;
+	size_t i;
 
 	/*
 	 * Make sure targeted freq is in the valid range.
 	 * Otherwise the following calculation might be wrong!!!
 	 */
-	if (n_target < PLL_FREQ_MIN(ref) ||
-		n_target > PLL_FREQ_MAX(ref)) {
-		printf("Targeted peripheral clock should be"
-			"within [%d - %d]\n",
+	if (target < PLL_FREQ_MIN(ref) ||
+		target > PLL_FREQ_MAX(ref)) {
+		printf("Targeted pll clock should be within [%d - %d]\n",
 			PLL_FREQ_MIN(ref) / SZ_DEC_1M,
 			PLL_FREQ_MAX(ref) / SZ_DEC_1M);
 		return -EINVAL;
@@ -578,10 +780,9 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	if (i == ARRAY_SIZE(fixed_mfd))
 		return -EINVAL;
 
-	/* Use n_target and n_ref to avoid overflow */
 	for (pd = 1; pd <= PLL_PD_MAX; pd++) {
-		t1 = n_target * pd;
-		do_div(t1, (4 * n_ref));
+		t1 = (u64)target * pd;
+		do_div(t1, (4 * ref));
 		mfi = t1;
 		if (mfi > PLL_MFI_MAX)
 			return -EINVAL;
@@ -592,25 +793,26 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 	/*
 	 * Now got pd and mfi already
 	 *
-	 * mfn = (((n_target * pd) / 4 - n_ref * mfi) * mfd) / n_ref;
+	 * mfn = (((target * pd) / 4 - ref * mfi) * mfd) / ref;
 	 */
-	t1 = n_target * pd;
+	t1 = (u64)target * pd;
 	do_div(t1, 4);
-	t1 -= n_ref * mfi;
-	t1 *= mfd;
-	do_div(t1, n_ref);
+	t1 = (t1 - ref * mfi) * mfd;
+	do_div(t1, ref);
 	mfn = t1;
-	debug("ref=%d, target=%d, pd=%d," "mfi=%d,mfn=%d, mfd=%d\n",
-		ref, n_target, (u32)pd, (u32)mfi, (u32)mfn, (u32)mfd);
-	i = 1;
-	if (mfn != 0)
+	if (mfn != 0) {
 		i = gcd(mfd, mfn);
-	pll->pd = (u32)pd;
-	pll->mfi = (u32)mfi;
-	do_div(mfn, i);
-	pll->mfn = (u32)mfn;
-	do_div(mfd, i);
-	pll->mfd = (u32)mfd;
+		mfn /= i;
+		mfd /= i;
+	} else {
+		mfd = 1;
+	}
+	debug("ref=%d, target=%d, pd=%d, mfi=%d, mfn=%d, mfd=%d\n",
+		ref, target, pd, mfi, mfn, mfd);
+	pll->pd = pd;
+	pll->mfi = mfi;
+	pll->mfn = mfn;
+	pll->mfd = mfd;
 
 	return 0;
 }
@@ -628,71 +830,63 @@ static int calc_pll_params(u32 ref, u32 target, struct pll_param *pll)
 
 #define CHANGE_PLL_SETTINGS(pll, pd, fi, fn, fd) \
 	{	\
-		writel(0x1232, &pll->ctrl);		\
-		writel(0x2, &pll->config);		\
-		writel((((pd) - 1) << 0) | ((fi) << 4),	\
-			&pll->op);			\
-		writel(fn, &(pll->mfn));		\
-		writel((fd) - 1, &pll->mfd);		\
-		writel((((pd) - 1) << 0) | ((fi) << 4),	\
-			&pll->hfs_op);			\
-		writel(fn, &pll->hfs_mfn);		\
-		writel((fd) - 1, &pll->hfs_mfd);	\
-		writel(0x1232, &pll->ctrl);		\
-		while (!readl(&pll->ctrl) & 0x1)	\
+		__raw_writel(0x1232, &pll->ctrl);		\
+		__raw_writel(0x2, &pll->config);		\
+		__raw_writel((((pd) - 1) << 0) | ((fi) << 4),	\
+			&pll->op);				\
+		__raw_writel(fn, &(pll->mfn));			\
+		__raw_writel((fd) - 1, &pll->mfd);		\
+		__raw_writel((((pd) - 1) << 0) | ((fi) << 4),	\
+			&pll->hfs_op);				\
+		__raw_writel(fn, &pll->hfs_mfn);		\
+		__raw_writel((fd) - 1, &pll->hfs_mfd);		\
+		__raw_writel(0x1232, &pll->ctrl);		\
+		while (!__raw_readl(&pll->ctrl) & 0x1)		\
 			;\
 	}
 
 static int config_pll_clk(enum pll_clocks index, struct pll_param *pll_param)
 {
-	u32 ccsr = readl(&mxc_ccm->ccsr);
+	u32 ccsr = __raw_readl(&mxc_ccm->ccsr);
 	struct mxc_pll_reg *pll = mxc_plls[index];
 
 	switch (index) {
 	case PLL1_CLOCK:
 		/* Switch ARM to PLL2 clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL1_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x4, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL1_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x4, &mxc_ccm->ccsr);
 		break;
 	case PLL2_CLOCK:
 		/* Switch to pll2 bypass clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL2_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x2, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL2_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x2, &mxc_ccm->ccsr);
 		break;
 	case PLL3_CLOCK:
 		/* Switch to pll3 bypass clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL3_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x1, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL3_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x1, &mxc_ccm->ccsr);
 		break;
 #ifdef CONFIG_MX53
 	case PLL4_CLOCK:
 		/* Switch to pll4 bypass clock */
-		writel(ccsr | MXC_CCM_CCSR_PLL4_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr | 0x20, &mxc_ccm->ccsr);
 		CHANGE_PLL_SETTINGS(pll, pll_param->pd,
 					pll_param->mfi, pll_param->mfn,
 					pll_param->mfd);
 		/* Switch back */
-		writel(ccsr & ~MXC_CCM_CCSR_PLL4_SW_CLK_SEL,
-				&mxc_ccm->ccsr);
+		__raw_writel(ccsr & ~0x20, &mxc_ccm->ccsr);
 		break;
 #endif
 	default:
@@ -702,22 +896,60 @@ static int config_pll_clk(enum pll_clocks index, struct pll_param *pll_param)
 	return 0;
 }
 
+static int __adjust_core_voltage_stub(u32 freq)
+{
+	return 0;
+}
+int adjust_core_voltage(u32 freq)
+	__attribute__((weak, alias("__adjust_core_voltage_stub")));
+
 /* Config CPU clock */
 static int config_core_clk(u32 ref, u32 freq)
 {
 	int ret = 0;
 	struct pll_param pll_param;
+	u32 cur_freq = decode_pll(mxc_plls[PLL1_CLOCK], MXC_HCLK);
+
+	if (freq == cur_freq)
+		return 0;
 
 	memset(&pll_param, 0, sizeof(struct pll_param));
 
 	/* The case that periph uses PLL1 is not considered here */
 	ret = calc_pll_params(ref, freq, &pll_param);
 	if (ret != 0) {
-		printf("Error:Can't find pll parameters: %d\n", ret);
+		printf("Error: Can't find pll parameters for %u.%03uMHz ref %u.%03uMHz\n",
+			freq / 1000000, freq / 1000 % 1000,
+			ref / 1000000, ref / 1000 % 1000);
 		return ret;
 	}
-
-	return config_pll_clk(PLL1_CLOCK, &pll_param);
+	if (freq > cur_freq) {
+		ret = adjust_core_voltage(freq);
+		if (ret < 0) {
+			printf("Failed to adjust core voltage for changing ARM clk from %u.%03uMHz to  %u.%03uMHz\n",
+				cur_freq / 1000000, cur_freq / 1000 % 1000,
+				freq / 1000000, freq / 1000 % 1000);
+			return ret;
+		}
+		ret = config_pll_clk(PLL1_CLOCK, &pll_param);
+		if (ret) {
+			adjust_core_voltage(cur_freq);
+		}
+	} else {
+		ret = config_pll_clk(PLL1_CLOCK, &pll_param);
+		if (ret) {
+			return ret;
+		}
+		ret = adjust_core_voltage(freq);
+		if (ret < 0) {
+			printf("Failed to adjust core voltage for changing ARM clk from %u.%03uMHz to  %u.%03uMHz\n",
+				cur_freq / 1000000, cur_freq / 1000 % 1000,
+				freq / 1000000, freq / 1000 % 1000);
+			calc_pll_params(ref, cur_freq, &pll_param);
+			config_pll_clk(PLL1_CLOCK, &pll_param);
+		}
+	}
+	return ret;
 }
 
 static int config_nfc_clk(u32 nfc_clk)
@@ -914,36 +1146,118 @@ void mxc_set_sata_internal_clock(void)
 /*
  * Dump some core clockes.
  */
-int do_mx5_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+#define pr_clk_val(c, v) {					\
+	printf("%-11s %3lu.%03lu MHz\n", #c,			\
+		(v) / 1000000, (v) / 1000 % 1000);		\
+}
+
+#define pr_clk(c) {						\
+	unsigned long __clk = mxc_get_clock(MXC_##c##_CLK);	\
+	pr_clk_val(c, __clk);					\
+}
+
+static int do_mx5_showclocks(void)
 {
-	u32 freq;
+	unsigned long freq;
 
 	freq = decode_pll(mxc_plls[PLL1_CLOCK], MXC_HCLK);
-	printf("PLL1       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL1, freq);
 	freq = decode_pll(mxc_plls[PLL2_CLOCK], MXC_HCLK);
-	printf("PLL2       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL2, freq);
 	freq = decode_pll(mxc_plls[PLL3_CLOCK], MXC_HCLK);
-	printf("PLL3       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL3, freq);
 #ifdef	CONFIG_MX53
 	freq = decode_pll(mxc_plls[PLL4_CLOCK], MXC_HCLK);
-	printf("PLL4       %8d MHz\n", freq / 1000000);
+	pr_clk_val(PLL4, freq);
 #endif
 
 	printf("\n");
-	printf("AHB        %8d kHz\n", mxc_get_clock(MXC_AHB_CLK) / 1000);
-	printf("IPG        %8d kHz\n", mxc_get_clock(MXC_IPG_CLK) / 1000);
-	printf("IPG PERCLK %8d kHz\n", mxc_get_clock(MXC_IPG_PERCLK) / 1000);
-	printf("DDR        %8d kHz\n", mxc_get_clock(MXC_DDR_CLK) / 1000);
+	pr_clk(AHB);
+	pr_clk(AXI_A);
+	pr_clk(AXI_B);
+	pr_clk(IPG);
+	pr_clk(IPG_PER);
+	pr_clk(DDR);
+	pr_clk(EMI_SLOW);
+	pr_clk(NFC);
 #ifdef CONFIG_MXC_SPI
-	printf("CSPI       %8d kHz\n", mxc_get_clock(MXC_CSPI_CLK) / 1000);
+	pr_clk(CSPI);
 #endif
 	return 0;
+}
+
+static struct clk_lookup {
+	const char *name;
+	unsigned int index;
+} mx5_clk_lookup[] = {
+	{ "arm", MXC_ARM_CLK, },
+};
+
+int do_clocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+{
+	int i;
+	unsigned long freq;
+	unsigned long ref = ~0UL;
+
+	if (argc < 2) {
+		do_mx5_showclocks();
+		return CMD_RET_SUCCESS;
+	} else if (argc == 2 || argc > 4) {
+		return CMD_RET_USAGE;
+	}
+
+	freq = simple_strtoul(argv[2], NULL, 0);
+	if (freq == 0) {
+		printf("Invalid clock frequency %lu\n", freq);
+		return CMD_RET_FAILURE;
+	}
+	if (argc > 3) {
+		ref = simple_strtoul(argv[3], NULL, 0);
+	}
+	for (i = 0; i < ARRAY_SIZE(mx5_clk_lookup); i++) {
+		if (strcasecmp(argv[1], mx5_clk_lookup[i].name) == 0) {
+			switch (mx5_clk_lookup[i].index) {
+			case MXC_ARM_CLK:
+				if (argc > 3)
+					return CMD_RET_USAGE;
+				ref = CONFIG_SYS_MX5_HCLK;
+				break;
+
+			case MXC_NFC_CLK:
+				if (argc > 3 && ref > 3) {
+					printf("Invalid clock selector value: %lu\n", ref);
+					return CMD_RET_FAILURE;
+				}
+				break;
+			}
+			printf("Setting %s clock to %lu MHz\n",
+				mx5_clk_lookup[i].name, freq);
+			if (mxc_set_clock(ref, freq, mx5_clk_lookup[i].index))
+				break;
+			freq = mxc_get_clock(mx5_clk_lookup[i].index);
+			printf("%s clock set to %lu.%03lu MHz\n",
+				mx5_clk_lookup[i].name,
+				freq / 1000000, freq / 1000 % 1000);
+			return CMD_RET_SUCCESS;
+		}
+	}
+	if (i == ARRAY_SIZE(mx5_clk_lookup)) {
+		printf("clock %s not found; supported clocks are:\n", argv[1]);
+		for (i = 0; i < ARRAY_SIZE(mx5_clk_lookup); i++) {
+			printf("\t%s\n", mx5_clk_lookup[i].name);
+		}
+	} else {
+		printf("Failed to set clock %s to %s MHz\n",
+			argv[1], argv[2]);
+	}
+	return CMD_RET_FAILURE;
 }
 
 /***************************************************/
 
 U_BOOT_CMD(
-	clocks,	CONFIG_SYS_MAXARGS, 1, do_mx5_showclocks,
-	"display clocks",
-	""
+	clocks,	4, 0, do_clocks,
+	"display/set clocks",
+	"                    - display clock settings\n"
+	"clocks <clkname> <freq>    - set clock <clkname> to <freq> MHz"
 );

@@ -24,6 +24,10 @@
 #define CONFIG_SYS_MPUCLK	MPUPLL_M_550
 #endif
 
+#define DISPPLL_M	200
+#define DISPPLL_N	(OSC - 1)
+#define DISPPLL_M2	1
+
 #define UART_RESET		(0x1 << 1)
 #define UART_CLK_RUNNING_MASK	0x1
 #define UART_SMART_IDLE_EN	(0x1 << 0x3)

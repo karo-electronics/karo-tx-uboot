@@ -14,6 +14,8 @@
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
+#include <asm/arch/crm_regs.h>
+#include <asm/arch/regs-ocotp.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/imx-common/boot_mode.h>
@@ -24,6 +26,30 @@
 #include <asm/bootm.h>
 #include <dm.h>
 #include <imx_thermal.h>
+#include <div64.h>
+#include <ipu.h>
+
+DECLARE_GLOBAL_DATA_PTR;
+
+#define __data __attribute__((section(".data")))
+
+#ifdef CONFIG_MX6_TEMPERATURE_MIN
+#define TEMPERATURE_MIN			CONFIG_MX6_TEMPERATURE_MIN
+#else
+#define TEMPERATURE_MIN			(-40)
+#endif
+#ifdef CONFIG_MX6_TEMPERATURE_HOT
+#define TEMPERATURE_HOT			CONFIG_MX6_TEMPERATURE_HOT
+#else
+#define TEMPERATURE_HOT			80
+#endif
+#ifdef CONFIG_MX6_TEMPERATURE_MAX
+#define TEMPERATURE_MAX			CONFIG_MX6_TEMPERATURE_MAX
+#else
+#define TEMPERATURE_MAX			125
+#endif
+#define TEMP_AVG_COUNT			5
+#define TEMP_WARN_THRESHOLD		5
 
 enum ldo_reg {
 	LDO_ARM,
@@ -225,6 +251,177 @@ static int set_ldo_voltage(enum ldo_reg ldo, u32 mv)
 	return 0;
 }
 
+static u32 __data thermal_calib;
+
+#define FACTOR0				10000000
+#define FACTOR1				15976
+#define FACTOR2				4297157
+
+int raw_to_celsius(unsigned int raw, unsigned int raw_25c, unsigned int raw_hot,
+		unsigned int hot_temp)
+{
+	int temperature;
+
+	if (raw_hot != 0 && hot_temp != 0) {
+		unsigned int raw_n40c, ratio;
+
+		ratio = ((raw_25c - raw_hot) * 100) / (hot_temp - 25);
+		raw_n40c = raw_25c + (13 * ratio) / 20;
+		if (raw <= raw_n40c)
+			temperature = (raw_n40c - raw) * 100 / ratio - 40;
+		else
+			temperature = TEMPERATURE_MIN;
+	} else {
+		u64 temp64 = FACTOR0;
+		unsigned int c1, c2;
+		/*
+		 * Derived from linear interpolation:
+		 * slope = 0.4297157 - (0.0015976 * 25C fuse)
+		 * slope = (FACTOR2 - FACTOR1 * n1) / FACTOR0
+		 * (Nmeas - n1) / (Tmeas - t1) = slope
+		 * We want to reduce this down to the minimum computation necessary
+		 * for each temperature read.  Also, we want Tmeas in millicelsius
+		 * and we don't want to lose precision from integer division. So...
+		 * Tmeas = (Nmeas - n1) / slope + t1
+		 * milli_Tmeas = 1000 * (Nmeas - n1) / slope + 1000 * t1
+		 * milli_Tmeas = -1000 * (n1 - Nmeas) / slope + 1000 * t1
+		 * Let constant c1 = (-1000 / slope)
+		 * milli_Tmeas = (n1 - Nmeas) * c1 + 1000 * t1
+		 * Let constant c2 = n1 *c1 + 1000 * t1
+		 * milli_Tmeas = c2 - Nmeas * c1
+		 */
+		temp64 *= 1000;
+		do_div(temp64, FACTOR1 * raw_25c - FACTOR2);
+		c1 = temp64;
+		c2 = raw_25c * c1 + 1000 * 25;
+		temperature = (c2 - raw * c1) / 1000;
+	}
+	return temperature;
+}
+
+int read_cpu_temperature(void)
+{
+	unsigned int reg, tmp, i;
+	unsigned int raw_25c, raw_hot, hot_temp;
+	int temperature;
+	struct anatop_regs *const anatop = (void *)ANATOP_BASE_ADDR;
+	struct mx6_ocotp_regs *const ocotp_regs = (void *)OCOTP_BASE_ADDR;
+
+	if (!thermal_calib) {
+		ocotp_clk_enable();
+		writel(1, &ocotp_regs->hw_ocotp_read_ctrl);
+		thermal_calib = readl(&ocotp_regs->hw_ocotp_ana1);
+		writel(0, &ocotp_regs->hw_ocotp_read_ctrl);
+		ocotp_clk_disable();
+	}
+
+	if (thermal_calib == 0 || thermal_calib == 0xffffffff)
+		return TEMPERATURE_MIN;
+
+	/* Fuse data layout:
+	 * [31:20] sensor value @ 25C
+	 * [19:8] sensor value of hot
+	 * [7:0] hot temperature value */
+	raw_25c = thermal_calib >> 20;
+	raw_hot = (thermal_calib & 0xfff00) >> 8;
+	hot_temp = thermal_calib & 0xff;
+
+	/* now we only using single measure, every time we measure
+	 * the temperature, we will power on/off the anadig module
+	 */
+	writel(BM_ANADIG_TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_clr);
+	writel(BM_ANADIG_ANA_MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_set);
+
+	/* write measure freq */
+	writel(327, &anatop->tempsense1);
+	writel(BM_ANADIG_TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_clr);
+	writel(BM_ANADIG_TEMPSENSE0_FINISHED, &anatop->tempsense0_clr);
+	writel(BM_ANADIG_TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_set);
+
+	/* average the temperature value over multiple readings */
+	for (i = 0; i < TEMP_AVG_COUNT; i++) {
+		static int failed;
+		int limit = 100;
+
+		while ((readl(&anatop->tempsense0) &
+				BM_ANADIG_TEMPSENSE0_FINISHED) == 0) {
+			udelay(10000);
+			if (--limit < 0)
+				break;
+		}
+		if ((readl(&anatop->tempsense0) &
+				BM_ANADIG_TEMPSENSE0_FINISHED) == 0) {
+			if (!failed) {
+				printf("Failed to read temp sensor\n");
+				failed = 1;
+			}
+			return 0;
+		}
+		failed = 0;
+		reg = (readl(&anatop->tempsense0) &
+			BM_ANADIG_TEMPSENSE0_TEMP_VALUE) >>
+			BP_ANADIG_TEMPSENSE0_TEMP_VALUE;
+		if (i == 0)
+			tmp = reg;
+		else
+			tmp = (tmp * i + reg) / (i + 1);
+		writel(BM_ANADIG_TEMPSENSE0_FINISHED,
+			&anatop->tempsense0_clr);
+	}
+
+	temperature = raw_to_celsius(tmp, raw_25c, raw_hot, hot_temp);
+
+	/* power down anatop thermal sensor */
+	writel(BM_ANADIG_TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_set);
+	writel(BM_ANADIG_ANA_MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_clr);
+
+	return temperature;
+}
+
+int check_cpu_temperature(int boot)
+{
+	static int __data max_temp;
+	int boot_limit = getenv_ulong("max_boot_temp", 10, TEMPERATURE_HOT);
+	int tmp = read_cpu_temperature();
+	bool first = true;
+
+	if (tmp < TEMPERATURE_MIN || tmp > TEMPERATURE_MAX) {
+		printf("Temperature:   can't get valid data!\n");
+		return tmp;
+	}
+
+	if (!boot) {
+		if (tmp > boot_limit) {
+			printf("CPU is %d C, too hot, resetting...\n", tmp);
+			udelay(100000);
+			reset_cpu(0);
+		}
+		if (tmp > max_temp) {
+			if (tmp > boot_limit - TEMP_WARN_THRESHOLD)
+				printf("WARNING: CPU temperature %d C\n", tmp);
+			max_temp = tmp;
+		}
+	} else {
+		printf("Temperature:   %d C, calibration data 0x%x\n",
+			tmp, thermal_calib);
+		while (tmp >= boot_limit) {
+			if (first) {
+				printf("CPU is %d C, too hot to boot, waiting...\n",
+					tmp);
+				first = false;
+			}
+			if (ctrlc())
+				break;
+			udelay(50000);
+			tmp = read_cpu_temperature();
+			if (tmp > boot_limit - TEMP_WARN_THRESHOLD && tmp != max_temp)
+				printf("WARNING: CPU temperature %d C\n", tmp);
+			max_temp = tmp;
+		}
+	}
+	return tmp;
+}
+
 static void imx_set_wdog_powerdown(bool enable)
 {
 	struct wdog_regs *wdog1 = (struct wdog_regs *)WDOG1_BASE_ADDR;
@@ -289,8 +486,12 @@ int arch_cpu_init(void)
 
 	imx_set_wdog_powerdown(false); /* Disable PDE bit of WMCR register */
 
-#ifdef CONFIG_APBH_DMA
-	/* Start APBH DMA */
+#ifdef CONFIG_VIDEO_IPUV3
+	gd->arch.ipu_hw_rev = IPUV3_HW_REV_IPUV3H;
+#endif
+#ifdef  CONFIG_APBH_DMA
+	/* Timer is required for Initializing APBH DMA */
+	timer_init();
 	mxs_dma_init();
 #endif
 
@@ -339,14 +540,13 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 
 	u32 value = readl(&fuse->mac_addr_high);
 	mac[0] = (value >> 8);
-	mac[1] = value ;
+	mac[1] = value;
 
 	value = readl(&fuse->mac_addr_low);
-	mac[2] = value >> 24 ;
-	mac[3] = value >> 16 ;
-	mac[4] = value >> 8 ;
-	mac[5] = value ;
-
+	mac[2] = value >> 24;
+	mac[3] = value >> 16;
+	mac[4] = value >> 8;
+	mac[5] = value;
 }
 #endif
 

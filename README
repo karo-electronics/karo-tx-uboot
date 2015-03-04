@@ -2208,6 +2208,17 @@ CBFS (Coreboot Filesystem) support
 		requests. Increasing this will allow U-Boot to accept offers
 		from a BOOTP client in networks with unusually high latency.
 
+- BOOTP Random transaction ID:
+		CONFIG_BOOTP_RANDOM_ID
+
+		The standard algorithm to generate a DHCP/BOOTP transaction ID
+		by using the MAC address and the current time stamp may not
+		quite unlikely produce duplicate transaction IDs from different
+		clients in the same network. This option creates a transaction
+		ID using the rand() function. Provided that the RNG has been
+		seeded well, this should guarantee unique transaction IDs
+		always.
+
 - DHCP Advanced Options:
 		You can fine tune the DHCP functionality by defining
 		CONFIG_BOOTP_* symbols:

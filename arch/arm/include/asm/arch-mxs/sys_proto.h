@@ -22,6 +22,8 @@ int mxs_wait_mask_clr(struct mxs_register_32 *reg,
 
 int mxsmmc_initialize(bd_t *bis, int id, int (*wp)(int), int (*cd)(int));
 
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
+
 #ifdef CONFIG_SPL_BUILD
 
 #if defined(CONFIG_MX23)

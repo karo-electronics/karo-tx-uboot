@@ -1,1 +1,21 @@
+menuconfig NOR_FLASH
+	bool "NOR flash support"
+
+if NOR_FLASH
+
+config CONFIG_FLASH_CFI_DRIVER
+	bool "CFI flash driver"
+
+endif
+
+config SYS_NO_FLASH
+	bool
+	default y
+	depends on !NOR_FLASH
+
+config MTD_PARTITIONS
+	bool "Support MTD partition tables"
+	depends on MTD_DEVICE
+	default y
+
 source "drivers/mtd/nand/Kconfig"

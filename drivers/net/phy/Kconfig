@@ -1,0 +1,5 @@
+config PHYLIB
+	bool "Generic PHY support"
+
+config PHY_SMSC
+	bool "SMSC PHY support"

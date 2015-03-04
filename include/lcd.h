@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2004-2010 Freescale Semiconductor, Inc.
+ *
  * MPC823 and PXA LCD Controller
  *
  * Modeled after video interface by Paolo Scaffardi
@@ -256,6 +258,9 @@ extern vidinfo_t panel_info;
 
 /* Video functions */
 
+void	lcd_disable(void);
+void	lcd_panel_disable(void);
+
 void	lcd_putc(const char c);
 void	lcd_puts(const char *s);
 void	lcd_printf(const char *fmt, ...);
@@ -397,14 +402,23 @@ void lcd_sync(void);
 # define CONSOLE_COLOR_WHITE	0x00ffffff	/* Must remain last / highest*/
 # define NBYTES(bit_code)	(NBITS(bit_code) >> 3)
 
-#else
+#elif LCD_BPP == LCD_COLOR16
 
 /*
  * 16bpp color definitions
  */
 # define CONSOLE_COLOR_BLACK	0x0000
+# define CONSOLE_COLOR_RED	0xf800
+# define CONSOLE_COLOR_GREEN	0x07e0
+# define CONSOLE_COLOR_YELLOW	0xffe0
+# define CONSOLE_COLOR_BLUE	0x001f
+# define CONSOLE_COLOR_MAGENTA	0xf81f
+# define CONSOLE_COLOR_CYAN	0x07ff
+# define CONSOLE_COLOR_GREY	0xcccc
 # define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
 
+#else
+#error Invalid LCD_BPP setting
 #endif /* color definitions */
 
 /************************************************************************/

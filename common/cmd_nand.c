@@ -489,7 +489,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* Only "dump" is repeatable. */
 	if (repeat && strcmp(cmd, "dump"))
-		return 0;
+		return CMD_RET_FAILURE;
 
 	if (strcmp(cmd, "info") == 0) {
 
@@ -498,7 +498,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			if (nand_info[i].name)
 				nand_print_and_set_info(i);
 		}
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	if (strcmp(cmd, "device") == 0) {
@@ -508,19 +508,20 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				puts("no devices available\n");
 			else
 				nand_print_and_set_info(dev);
-			return 0;
+			return CMD_RET_SUCCESS;
 		}
 
 		dev = (int)simple_strtoul(argv[2], NULL, 10);
 		set_dev(dev);
 
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 #ifdef CONFIG_ENV_OFFSET_OOB
 	/* this command operates only on the first nand device */
 	if (strcmp(cmd, "env.oob") == 0)
-		return do_nand_env_oob(cmdtp, argc - 1, argv + 1);
+		return do_nand_env_oob(cmdtp, argc - 1, argv + 1) ?
+			CMD_RET_FAILURE : CMD_RET_SUCCESS;;
 #endif
 
 	/* The following commands operate on the current device, unless
@@ -532,7 +533,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (dev < 0 || dev >= CONFIG_SYS_MAX_NAND_DEVICE ||
 	    !nand_info[dev].name) {
 		puts("\nno devices available\n");
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	nand = &nand_info[dev];
 
@@ -541,7 +542,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		for (off = 0; off < nand->size; off += nand->erasesize)
 			if (nand_block_isbad(nand, off))
 				printf("  %08llx\n", (unsigned long long)off);
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	/*
@@ -593,7 +594,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		/* skip first two or three arguments, look for offset and size */
 		if (arg_off_size(argc - o, argv + o, &dev, &off, &size,
 				 &maxsize) != 0)
-			return 1;
+			return CMD_RET_FAILURE;
 
 		nand = &nand_info[dev];
 
@@ -613,14 +614,14 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 					opts.scrub = 1;
 				} else {
 					puts("scrub aborted\n");
-					return 1;
+					return CMD_RET_FAILURE;
 				}
 			}
 		}
 		ret = nand_erase_opts(nand, &opts);
 		printf("%s\n", ret ? "ERROR" : "OK");
 
-		return ret == 0 ? 0 : 1;
+		return ret == 0 ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 	}
 
 	if (strncmp(cmd, "dump", 4) == 0) {
@@ -630,7 +631,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		off = (int)simple_strtoul(argv[2], NULL, 16);
 		ret = nand_dump(nand, off, !strcmp(&cmd[4], ".oob"), repeat);
 
-		return ret == 0 ? 1 : 0;
+		return ret == 0 ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 	}
 
 	if (strncmp(cmd, "read", 4) == 0 || strncmp(cmd, "write", 5) == 0) {
@@ -695,7 +696,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		} else if (!strcmp(s, ".trimffs")) {
 			if (read) {
 				printf("Unknown nand command suffix '%s'\n", s);
-				return 1;
+				return CMD_RET_FAILURE;
 			}
 			ret = nand_write_skip_bad(nand, off, &rwsize, NULL,
 						maxsize, (u_char *)addr,
@@ -705,7 +706,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		} else if (!strcmp(s, ".yaffs")) {
 			if (read) {
 				printf("Unknown nand command suffix '%s'.\n", s);
-				return 1;
+				return CMD_RET_FAILURE;
 			}
 			ret = nand_write_skip_bad(nand, off, &rwsize, NULL,
 						maxsize, (u_char *)addr,
@@ -727,13 +728,13 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			ret = raw_access(nand, addr, off, pagecount, read);
 		} else {
 			printf("Unknown nand command suffix '%s'.\n", s);
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 
 		printf(" %zu bytes %s: %s\n", rwsize,
 		       read ? "read" : "written", ret ? "ERROR" : "OK");
 
-		return ret == 0 ? 0 : 1;
+		return ret == 0 ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 	}
 
 #ifdef CONFIG_CMD_NAND_TORTURE
@@ -778,12 +779,12 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			--argc;
 			++argv;
 		}
-		return ret;
+		return ret == 0 ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 	}
 
 	if (strcmp(cmd, "biterr") == 0) {
 		/* todo */
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
@@ -803,10 +804,10 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				puts("NAND flash successfully locked\n");
 			} else {
 				puts("Error locking NAND flash\n");
-				return 1;
+				return CMD_RET_FAILURE;
 			}
 		}
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	if (strncmp(cmd, "unlock", 5) == 0) {
@@ -819,16 +820,16 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 		if (arg_off_size(argc - 2, argv + 2, &dev, &off, &size,
 				 &maxsize) < 0)
-			return 1;
+			return CMD_RET_FAILURE;
 
 		if (!nand_unlock(&nand_info[dev], off, size, allexcept)) {
 			puts("NAND flash successfully unlocked\n");
 		} else {
 			puts("Error unlocking NAND flash, "
 			     "write and erase will probably fail\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 #endif
 

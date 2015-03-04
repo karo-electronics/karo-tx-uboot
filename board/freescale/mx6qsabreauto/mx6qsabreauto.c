@@ -125,11 +125,11 @@ static struct i2c_pads_info i2c_pad_info2 = {
 #endif
 
 static iomux_v3_cfg_t const i2c3_pads[] = {
-	MX6_PAD_EIM_A24__GPIO5_IO04		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_A24__GPIO5_IO04,
 };
 
 static iomux_v3_cfg_t const port_exp[] = {
-	MX6_PAD_SD2_DAT0__GPIO1_IO15		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_SD2_DAT0__GPIO1_IO15,
 };
 
 /*Define for building port exp gpio, pin starts from 0*/
@@ -211,9 +211,9 @@ static iomux_v3_cfg_t const eimnor_pads[] = {
 	MX6_PAD_EIM_A21__EIM_ADDR21	| MUX_PAD_CTRL(WEIM_NOR_PAD_CTRL),
 	MX6_PAD_EIM_A22__EIM_ADDR22	| MUX_PAD_CTRL(WEIM_NOR_PAD_CTRL),
 	MX6_PAD_EIM_A23__EIM_ADDR23	| MUX_PAD_CTRL(WEIM_NOR_PAD_CTRL),
-	MX6_PAD_EIM_OE__EIM_OE_B	| MUX_PAD_CTRL(NO_PAD_CTRL),
-	MX6_PAD_EIM_RW__EIM_RW		| MUX_PAD_CTRL(NO_PAD_CTRL),
-	MX6_PAD_EIM_CS0__EIM_CS0_B	| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_OE__EIM_OE_B,
+	MX6_PAD_EIM_RW__EIM_RW,
+	MX6_PAD_EIM_CS0__EIM_CS0_B,
 };
 
 static void eimnor_cs_setup(void)
@@ -256,7 +256,7 @@ static iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_DAT6__SD3_DATA6	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT7__SD3_DATA7	| MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_GPIO_18__SD3_VSELECT | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-	MX6_PAD_NANDF_CS2__GPIO6_IO15   | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_NANDF_CS2__GPIO6_IO15,
 };
 
 static void setup_iomux_uart(void)
@@ -565,7 +565,7 @@ int checkboard(void)
 #define USB_OTG_PWR       PORTEXP_IO_NR(0x34, 1)
 
 iomux_v3_cfg_t const usb_otg_pads[] = {
-	MX6_PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_ENET_RX_ER__USB_OTG_ID,
 };
 
 int board_ehci_hcd_init(int port)

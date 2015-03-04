@@ -17,7 +17,7 @@
 #ifdef CONFIG_STATUS_LED
 #include <status_led.h>
 #endif
-#ifdef CONFIG_BOOTP_RANDOM_DELAY
+#if defined(CONFIG_BOOTP_RANDOM_DELAY) || defined(CONFIG_BOOTP_RANDOM_ID)
 #include "net_rand.h"
 #endif
 
@@ -725,6 +725,9 @@ BootpRequest(void)
 	 *	Bootp ID is the lower 4 bytes of our ethernet address
 	 *	plus the current time in ms.
 	 */
+#ifdef CONFIG_BOOTP_RANDOM_ID
+	BootpID = rand();
+#else
 	BootpID = ((ulong)NetOurEther[2] << 24)
 		| ((ulong)NetOurEther[3] << 16)
 		| ((ulong)NetOurEther[4] << 8)
@@ -732,6 +735,7 @@ BootpRequest(void)
 	BootpID += get_timer(0);
 	BootpID = htonl(BootpID);
 	bootp_add_id(BootpID);
+#endif
 	NetCopyLong(&bp->bp_id, &BootpID);
 
 	/*

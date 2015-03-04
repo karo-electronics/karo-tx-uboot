@@ -70,8 +70,7 @@ menu "Boot images"
 
 config SPL_BUILD
 	bool
-	depends on $KCONFIG_OBJDIR="spl" || $KCONFIG_OBJDIR="tpl"
-	default y
+	default y if $KCONFIG_OBJDIR="spl" || $KCONFIG_OBJDIR="tpl"
 
 config TPL_BUILD
 	bool

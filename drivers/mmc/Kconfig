@@ -1,0 +1,23 @@
+menuconfig MMC
+	bool "MMC/SD device support"
+	select CMD_MMC
+
+if MMC
+
+config GENERIC_MMC
+	bool
+
+config FSL_ESDHC
+	bool "Freescale ESDHC controller"
+	select GENERIC_MMC
+
+config FSL_USDHC
+	bool "Support USDHC"
+	depends on MX6Q
+	depends on FSL_ESDHC
+
+config SUPPORT_EMMC_BOOT
+	bool "Support boot from eMMC"
+	depends on MMC
+
+endif
