@@ -22,15 +22,18 @@ ENTRY(save_boot_params)
 	b	save_boot_params_ret
 ENDPROC(save_boot_params)
 
-ENTRY(set_pl310_ctrl_reg)
-	PUSH	{r4-r11, lr}	@ save registers - ROM code may pollute
+ENTRY(omap_smc1)
+	PUSH	{r4-r12, lr}	@ save registers - ROM code may pollute
 				@ our registers
-	LDR	r12, =0x102	@ Set PL310 control register - value in R0
+	MOV	r12, r0		@ Service
+	MOV	r0, r1		@ Argument
+	DSB
+	DMB
 #if __GNUC__ >= 4 && __GNUC_MINOR__ >= 6 && defined(__ARM_ARCH_7A__)
 	.arch_extension sec
 	smc	#0		@ call ROM Code API to set control register
 #else
 	.word	0xe1600070
 #endif
-	POP	{r4-r11, pc}
-ENDPROC(set_pl310_ctrl_reg)
+	POP	{r4-r12, pc}
+ENDPROC(omap_smc1)
