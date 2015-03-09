@@ -182,7 +182,6 @@ Directory Hierarchy:
     /lib		Architecture specific library files
   /powerpc		Files generic to PowerPC architecture
     /cpu		CPU specific files
-      /74xx_7xx		Files specific to Freescale MPC74xx and 7xx CPUs
       /mpc5xx		Files specific to Freescale MPC5xx CPUs
       /mpc5xxx		Files specific to Freescale MPC5xxx CPUs
       /mpc8xx		Files specific to Freescale MPC8xx CPUs
@@ -3188,8 +3187,13 @@ CBFS (Coreboot Filesystem) support
 		This enables the RSA algorithm used for FIT image verification
 		in U-Boot. See doc/uImage.FIT/signature.txt for more information.
 
+		The Modular Exponentiation algorithm in RSA is implemented using
+		driver model. So CONFIG_DM needs to be enabled by default for this
+		library to function.
+
 		The signing part is build into mkimage regardless of this
-		option.
+		option. The software based modular exponentiation is built into
+		mkimage irrespective of this option.
 
 - bootcount support:
 		CONFIG_BOOTCOUNT_LIMIT
@@ -5911,9 +5915,10 @@ option performs the converse operation of the mkimage's second form (the "-d"
 option). Given an image built by mkimage, the dumpimage extracts a "data file"
 from the image:
 
-	tools/dumpimage -i image -p position data_file
-	  -i ==> extract from the 'image' a specific 'data_file', \
-	   indexed by 'position'
+	tools/dumpimage -i image -T type -p position data_file
+	  -i ==> extract from the 'image' a specific 'data_file'
+	  -T ==> set image type to 'type'
+	  -p ==> 'position' (starting at 0) of the 'data_file' inside the 'image'
 
 
 Installing a Linux Image:

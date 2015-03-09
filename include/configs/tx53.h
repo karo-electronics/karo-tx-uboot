@@ -211,12 +211,9 @@
 /*
  * MMC Driver
  */
-#ifdef CONFIG_CMD_MMC
-#ifndef CONFIG_ENV_IS_IN_NAND
-#endif
+#ifdef CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 
-#define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2

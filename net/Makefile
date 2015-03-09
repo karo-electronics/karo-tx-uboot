@@ -7,6 +7,7 @@
 
 #ccflags-y += -DDEBUG
 
+obj-y += checksum.o
 obj-$(CONFIG_CMD_NET)  += arp.o
 obj-$(CONFIG_CMD_BOOTCE) += bootme.o
 obj-$(CONFIG_CMD_NET)  += bootp.o

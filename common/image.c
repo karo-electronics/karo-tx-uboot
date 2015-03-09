@@ -120,6 +120,10 @@ static const table_entry_t uimage_os[] = {
 	{	IH_OS_SOLARIS,	"solaris",	"Solaris",		},
 	{	IH_OS_SVR4,	"svr4",		"SVR4",			},
 #endif
+#if defined(CONFIG_BOOTM_OPENRTOS) || defined(USE_HOSTCC)
+	{	IH_OS_OPENRTOS,	"openrtos",	"OpenRTOS",		},
+#endif
+
 	{	-1,		"",		"",			},
 };
 
@@ -752,7 +756,7 @@ int genimg_get_format(const void *img_addr)
  * genimg_get_image - get image from special storage (if necessary)
  * @img_addr: image start address
  *
- * genimg_get_image() checks if provided image start adddress is located
+ * genimg_get_image() checks if provided image start address is located
  * in a dataflash storage. If so, image is moved to a system RAM memory.
  *
  * returns:

@@ -228,12 +228,13 @@ int run_command_list(const char *cmd, int len, int flag);
 extern char console_buffer[];
 
 /* arch/$(ARCH)/lib/board.c */
-void	board_init_f(ulong);
-void	board_init_r  (gd_t *, ulong) __attribute__ ((noreturn));
-int	checkboard    (void);
-int	checkflash    (void);
-int	checkdram     (void);
-int	last_stage_init(void);
+void board_init_f(ulong);
+void board_init_r(gd_t *, ulong) __attribute__ ((noreturn));
+int checkboard(void);
+int show_board_info(void);
+int checkflash(void);
+int checkdram(void);
+int last_stage_init(void);
 extern ulong monitor_flash_len;
 int mac_read_from_eeprom(void);
 extern u8 __dtb_dt_begin[];	/* embedded device tree blob */
@@ -435,13 +436,6 @@ extern ssize_t spi_read	 (uchar *, int, uchar *, int);
 extern ssize_t spi_write (uchar *, int, uchar *, int);
 #endif
 
-#ifdef CONFIG_EVB64260
-void  evb64260_init(void);
-void  debug_led(int, int);
-void  display_mem_map(void);
-void  perform_soft_reset(void);
-#endif
-
 /* $(BOARD)/$(BOARD).c */
 int board_early_init_f (void);
 int board_late_init (void);
@@ -486,10 +480,6 @@ ulong	get_endaddr   (void);
 void	trap_init     (ulong);
 #if defined (CONFIG_4xx)	|| \
     defined (CONFIG_MPC5xxx)	|| \
-    defined (CONFIG_74xx_7xx)	|| \
-    defined (CONFIG_74x)	|| \
-    defined (CONFIG_75x)	|| \
-    defined (CONFIG_74xx)	|| \
     defined (CONFIG_MPC85xx)	|| \
     defined (CONFIG_MPC86xx)	|| \
     defined (CONFIG_MPC83xx)

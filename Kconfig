@@ -115,8 +115,9 @@ config FIT_VERBOSE
 	depends on FIT
 
 config FIT_SIGNATURE
-	bool "Enabel signature verification of FIT uImages"
+	bool "Enable signature verification of FIT uImages"
 	depends on FIT
+	select RSA
 	help
 	  This option enables signature verification of FIT uImages,
 	  using a hash signed and verified using RSA.
@@ -142,11 +143,19 @@ config SYS_TEXT_BASE
 	help
 	  TODO: Move CONFIG_SYS_TEXT_BASE for all the architecture
 
+config SYS_CLK_FREQ
+	depends on ARC
+	int "CPU clock frequency"
+	help
+	  TODO: Move CONFIG_SYS_CLK_FREQ for all the architecture
+
 endmenu		# Boot images
 
 source "arch/Kconfig"
 
 source "common/Kconfig"
+
+source "disk/Kconfig"
 
 source "dts/Kconfig"
 

@@ -1,7 +1,7 @@
 VERSION = 2015
-PATCHLEVEL = 01
+PATCHLEVEL = 04
 SUBLEVEL =
-EXTRAVERSION = -rc4
+EXTRAVERSION = -rc1
 NAME =
 
 # *DOCUMENTATION*
@@ -776,6 +776,13 @@ ifneq ($(CONFIG_SYS_GENERIC_BOARD),y)
 	@echo "See doc/README.generic-board for further information"
 	@echo "===================================================="
 endif
+ifeq ($(CONFIG_DM_I2C_COMPAT),y)
+	@echo "===================== WARNING ======================"
+	@echo "This board uses CONFIG_DM_I2C_COMPAT. Please remove"
+	@echo "(possibly in a subsequent patch in your series)"
+	@echo "before sending patches to the mailing list."
+	@echo "===================================================="
+endif
 
 PHONY += dtbs
 dtbs dts/dt.dtb: checkdtc u-boot
@@ -1278,7 +1285,7 @@ CLEAN_DIRS  += $(MODVERDIR) \
 			$(filter-out include, $(shell ls -1 $d 2>/dev/null))))
 
 CLEAN_FILES += include/bmp_logo.h include/bmp_logo_data.h \
-	       u-boot* MLO* SPL System.map
+	       boot* u-boot* MLO* SPL System.map
 
 # Directories & files removed with 'make mrproper'
 MRPROPER_DIRS  += include/config include/generated spl tpl \

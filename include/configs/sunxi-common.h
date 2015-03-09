@@ -40,6 +40,8 @@
  */
 #define CONFIG_DISPLAY_CPUINFO
 
+#define CONFIG_SYS_PROMPT	"sunxi# "
+
 /* Serial & console */
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
@@ -160,7 +162,10 @@
 #define CONFIG_SPL_MAX_SIZE		0x5fe0		/* 24KB on sun4i/sun7i */
 
 #define CONFIG_SPL_LIBDISK_SUPPORT
+
+#if !defined(CONFIG_UART0_PORT_F)
 #define CONFIG_SPL_MMC_SUPPORT
+#endif
 
 #define CONFIG_SPL_LDSCRIPT "arch/arm/cpu/armv7/sunxi/u-boot-spl.lds"
 
@@ -176,7 +181,10 @@
 #define CONFIG_SYS_SPL_MALLOC_SIZE	0x00080000	/* 512 KiB */
 
 /* I2C */
+#if defined CONFIG_AXP152_POWER || defined CONFIG_AXP209_POWER
 #define CONFIG_SPL_I2C_SUPPORT
+#endif
+
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MVTWSI
 #define CONFIG_SYS_I2C_SPEED		400000
@@ -202,7 +210,7 @@
  * The amount of RAM that is reserved for the FB. This will not show up as
  * RAM to the kernel, but will be reclaimed by a KMS driver in future.
  */
-#define CONFIG_SUNXI_FB_SIZE (8 << 20)
+#define CONFIG_SUNXI_FB_SIZE (9 << 20)
 
 /* Do we want to initialize a simple FB? */
 #define CONFIG_VIDEO_DT_SIMPLEFB
@@ -212,6 +220,8 @@
 #define CONFIG_CFB_CONSOLE
 #define CONFIG_VIDEO_SW_CURSOR
 #define CONFIG_VIDEO_LOGO
+#define CONFIG_VIDEO_STD_TIMINGS
+#define CONFIG_I2C_EDID
 
 /* allow both serial and cfb console. */
 #define CONFIG_CONSOLE_MUX
@@ -242,8 +252,16 @@
 #endif
 
 #ifdef CONFIG_USB_EHCI
-#define CONFIG_CMD_USB
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS 1
+#endif
+
+#ifdef CONFIG_USB_MUSB_SUNXI
+#define CONFIG_MUSB_HOST
+#define CONFIG_MUSB_PIO_ONLY
+#endif
+
+#if defined CONFIG_USB_EHCI || defined CONFIG_USB_MUSB_SUNXI
+#define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
 #endif
 
@@ -267,10 +285,19 @@
 #ifndef CONFIG_SPL_BUILD
 #include <config_distro_defaults.h>
 
-/* 256M RAM (minimum), 32M uncompressed kernel, 16M compressed kernel, 1M fdt,
- * 1M script, 1M pxe and the ramdisk at the end */
+/* Enable pre-console buffer to get complete log on the VGA console */
+#define CONFIG_PRE_CONSOLE_BUFFER
+#define CONFIG_PRE_CON_BUF_SZ		(1024 * 1024)
+/* Use the room between the end of bootm_size and the framebuffer */
+#define CONFIG_PRE_CON_BUF_ADDR		0x4f000000
+
+/*
+ * 240M RAM (256M minimum minus space for the framebuffer),
+ * 32M uncompressed kernel, 16M compressed kernel, 1M fdt,
+ * 1M script, 1M pxe and the ramdisk at the end.
+ */
 #define MEM_LAYOUT_ENV_SETTINGS \
-	"bootm_size=0x10000000\0" \
+	"bootm_size=0xf000000\0" \
 	"kernel_addr_r=0x42000000\0" \
 	"fdt_addr_r=0x43000000\0" \
 	"scriptaddr=0x43100000\0" \

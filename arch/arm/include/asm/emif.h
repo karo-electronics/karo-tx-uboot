@@ -648,9 +648,10 @@ struct emif_reg_struct {
 	u32 emif_connect_id_serv_2_map;		/* 0x108 */
 	u32 padding8[5];			/* 0x10c */
 	u32 emif_rd_wr_exec_thresh;		/* 0x120 */
-	u32 padding9[6];			/* 0x124 */
-	u32 emif_ddr_phy_status[21];		/* 0x13c */
-	u32 padding10[27];			/* 0x1fc */
+	u32 emif_cos_config;			/* 0x124 */
+	u32 padding9[6];			/* 0x128 */
+	u32 emif_ddr_phy_status[28];		/* 0x140 */
+	u32 padding10[20];			/* 0x1b0 */
 	u32 emif_ddr_ext_phy_ctrl_1;		/* 0x200 */
 	u32 emif_ddr_ext_phy_ctrl_1_shdw;	/* 0x204 */
 	u32 emif_ddr_ext_phy_ctrl_2;		/* 0x248 */
@@ -699,9 +700,36 @@ struct emif_reg_struct {
 	u32 emif_ddr_ext_phy_ctrl_23_shdw;	/* 0x2a4 */
 	u32 emif_ddr_ext_phy_ctrl_24;		/* 0x2a8 */
 	u32 emif_ddr_ext_phy_ctrl_24_shdw;	/* 0x2ac */
-	u32 padding[22];			/* 0x2b0 */
-	u32 emif_ddr_fifo_misaligned_clear_1;	/* 0x308 */
-	u32 emif_ddr_fifo_misaligned_clear_2;	/* 0x30c */
+	u32 emif_ddr_ext_phy_ctrl_25;		/* 0x2b0 */
+	u32 emif_ddr_ext_phy_ctrl_25_shdw;	/* 0x2b4 */
+	u32 emif_ddr_ext_phy_ctrl_26;		/* 0x2b8 */
+	u32 emif_ddr_ext_phy_ctrl_26_shdw;	/* 0x2bc */
+	u32 emif_ddr_ext_phy_ctrl_27;		/* 0x2c0 */
+	u32 emif_ddr_ext_phy_ctrl_27_shdw;	/* 0x2c4 */
+	u32 emif_ddr_ext_phy_ctrl_28;		/* 0x2c8 */
+	u32 emif_ddr_ext_phy_ctrl_28_shdw;	/* 0x2cc */
+	u32 emif_ddr_ext_phy_ctrl_29;		/* 0x2d0 */
+	u32 emif_ddr_ext_phy_ctrl_29_shdw;	/* 0x2d4 */
+	u32 emif_ddr_ext_phy_ctrl_30;		/* 0x2d8 */
+	u32 emif_ddr_ext_phy_ctrl_30_shdw;	/* 0x2dc */
+	u32 emif_ddr_ext_phy_ctrl_31;		/* 0x2e0 */
+	u32 emif_ddr_ext_phy_ctrl_31_shdw;	/* 0x2e4 */
+	u32 emif_ddr_ext_phy_ctrl_32;		/* 0x2e8 */
+	u32 emif_ddr_ext_phy_ctrl_32_shdw;	/* 0x2ec */
+	u32 emif_ddr_ext_phy_ctrl_33;		/* 0x2f0 */
+	u32 emif_ddr_ext_phy_ctrl_33_shdw;	/* 0x2f4 */
+	u32 emif_ddr_ext_phy_ctrl_34;		/* 0x2f8 */
+	u32 emif_ddr_ext_phy_ctrl_34_shdw;	/* 0x2fc */
+	u32 emif_ddr_ext_phy_ctrl_35;		/* 0x300 */
+	u32 emif_ddr_ext_phy_ctrl_35_shdw;	/* 0x304 */
+	union {
+		u32 emif_ddr_ext_phy_ctrl_36;	/* 0x308 */
+		u32 emif_ddr_fifo_misaligned_clear_1;
+	};
+	union {
+		u32 emif_ddr_ext_phy_ctrl_36_shdw; /* 0x30c */
+		u32 emif_ddr_fifo_misaligned_clear_2;
+	};
 };
 
 struct dmm_lisa_map_regs {

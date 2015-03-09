@@ -807,6 +807,12 @@ static int initf_dm(void)
 	return 0;
 }
 
+/* Architecture-specific memory reservation */
+__weak int reserve_arch(void)
+{
+	return 0;
+}
+
 static init_fnc_t init_sequence_f[] = {
 #ifdef CONFIG_SANDBOX
 	setup_ram_buf,
@@ -888,7 +894,7 @@ static init_fnc_t init_sequence_f[] = {
 	prt_mpc5xxx_clks,
 #endif /* CONFIG_MPC5xxx */
 #if defined(CONFIG_DISPLAY_BOARDINFO)
-	checkboard,		/* display board info */
+	show_board_info,
 #endif
 	INIT_FUNC_WATCHDOG_INIT
 #if defined(CONFIG_MISC_INIT_F)
@@ -970,6 +976,7 @@ static init_fnc_t init_sequence_f[] = {
 	setup_machine,
 	reserve_global_data,
 	reserve_fdt,
+	reserve_arch,
 	reserve_stacks,
 	setup_dram_config,
 	show_dram_config,
@@ -985,6 +992,11 @@ static init_fnc_t init_sequence_f[] = {
 	INIT_FUNC_WATCHDOG_RESET
 	reloc_fdt,
 	setup_reloc,
+#ifdef CONFIG_X86
+	copy_uboot_to_ram,
+	clear_bss,
+	do_elf_reloc_fixups,
+#endif
 #if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX)
 	jump_to_copy,
 #endif
@@ -1044,9 +1056,6 @@ void board_init_f(ulong boot_flags)
  */
 static init_fnc_t init_sequence_f_r[] = {
 	init_cache_f_r,
-	copy_uboot_to_ram,
-	clear_bss,
-	do_elf_reloc_fixups,
 
 	NULL,
 };

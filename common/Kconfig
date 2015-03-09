@@ -236,6 +236,7 @@ config CMD_NAND_TRIMFFS
 
 config CMD_MMC
 	bool "mmc/sd"
+	select PARTITIONS
 	help
 	  MMC/SD support.
 
