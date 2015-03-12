@@ -68,3 +68,16 @@ config MXC_OCOTP
 config MXS_OCOTP
 	bool "Freescale OCOTP support"
 	depends on SOC_MXS
+
+config PCA9551_LED
+	bool "Enable PCA9551 LED driver"
+	help
+	  Enable driver for PCA9551 LED controller. This controller
+	  is connected via I2C. So I2C needs to be enabled.
+
+config PCA9551_I2C_ADDR
+	hex "I2C address of PCA9551 LED controller"
+	depends on PCA9551_LED
+	default 0x60
+	help
+	  The I2C address of the PCA9551 LED controller.
