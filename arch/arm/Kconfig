@@ -688,6 +688,9 @@ config TARGET_CM_FX6
 	bool "Support cm_fx6"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_SOCFPGA_ARRIA5
 	bool "Support socfpga_arria5"
@@ -720,7 +723,11 @@ config TARGET_VF610TWR
 	bool "Support vf610twr"
 	select CPU_V7
 
-config ZYNQ
+config TARGET_COLIBRI_VF
+	bool "Support Colibri VF50/61"
+	select CPU_V7
+
+config ARCH_ZYNQ
 	bool "Xilinx Zynq Platform"
 	select CPU_V7
 	select SUPPORT_SPL
@@ -1024,6 +1031,7 @@ source "board/ti/ti814x/Kconfig"
 source "board/ti/ti816x/Kconfig"
 source "board/timll/devkit3250/Kconfig"
 source "board/toradex/colibri_pxa270/Kconfig"
+source "board/toradex/colibri_vf/Kconfig"
 source "board/tqc/tqma6/Kconfig"
 source "board/trizepsiv/Kconfig"
 source "board/ttcontrol/vision2/Kconfig"
