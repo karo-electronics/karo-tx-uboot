@@ -39,7 +39,6 @@ endif
 
 obj-$(if $(filter am33xx,$(SOC)),y) += am33xx/
 obj-$(if $(filter armada-xp,$(SOC)),y) += armada-xp/
-obj-$(CONFIG_BCM2835) += bcm2835/
 obj-$(if $(filter bcm281xx,$(SOC)),y) += bcm281xx/
 obj-$(if $(filter bcmcygnus,$(SOC)),y) += bcmcygnus/
 obj-$(if $(filter bcmnsp,$(SOC)),y) += bcmnsp/
@@ -57,4 +56,3 @@ obj-$(if $(filter stv0991,$(SOC)),y) += stv0991/
 obj-$(CONFIG_ARCH_SUNXI) += sunxi/
 obj-$(CONFIG_U8500) += u8500/
 obj-$(CONFIG_SOC_VF610) += vf610/
-obj-$(CONFIG_ZYNQ) += zynq/
