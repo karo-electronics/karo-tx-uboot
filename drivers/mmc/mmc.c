@@ -399,22 +399,24 @@ static int mmc_complete_op_cond(struct mmc *mmc)
 {
 	struct mmc_cmd cmd;
 	int timeout = 1000;
-	uint start;
+	unsigned long start;
 	int err;
 
 	mmc->op_cond_pending = 0;
-	start = get_timer(0);
-	do {
-		err = mmc_send_op_cond_iter(mmc, 1);
-		if (err)
-			return err;
-		if (get_timer(start) > timeout)
-			break;
-		udelay(100);
-	} while (!(mmc->ocr & OCR_BUSY));
 	if (!(mmc->ocr & OCR_BUSY)) {
-		debug("%s: timeout\n", __func__);
-		return UNUSABLE_ERR;
+		start = get_timer_masked();
+		do {
+			err = mmc_send_op_cond_iter(mmc, 1);
+			if (err)
+				return err;
+			udelay(100);
+			if (get_timer(start) > timeout)
+				break;
+		} while (!(mmc->ocr & OCR_BUSY));
+		if (!(mmc->ocr & OCR_BUSY)) {
+			debug("%s: timeout\n", __func__);
+			return UNUSABLE_ERR;
+		}
 	}
 
 	if (mmc_host_is_spi(mmc)) { /* read OCR for spi */
@@ -1660,7 +1662,7 @@ static int mmc_complete_init(struct mmc *mmc)
 int mmc_init(struct mmc *mmc)
 {
 	int err = IN_PROGRESS;
-	unsigned start;
+	unsigned long start;
 
 	if (mmc->has_init)
 		return 0;
