@@ -114,6 +114,9 @@ static u16 i2c_clk_div[50][2] = {
 #ifndef CONFIG_SYS_MXC_I2C3_SPEED
 #define CONFIG_SYS_MXC_I2C3_SPEED 100000
 #endif
+#ifndef CONFIG_SYS_MXC_I2C4_SPEED
+#define CONFIG_SYS_MXC_I2C4_SPEED 100000
+#endif
 
 #ifndef CONFIG_SYS_MXC_I2C1_SLAVE
 #define CONFIG_SYS_MXC_I2C1_SLAVE 0
@@ -123,6 +126,9 @@ static u16 i2c_clk_div[50][2] = {
 #endif
 #ifndef CONFIG_SYS_MXC_I2C3_SLAVE
 #define CONFIG_SYS_MXC_I2C3_SLAVE 0
+#endif
+#ifndef CONFIG_SYS_MXC_I2C4_SLAVE
+#define CONFIG_SYS_MXC_I2C4_SLAVE 0
 #endif
 
 
@@ -411,23 +417,30 @@ int bus_i2c_write(void *base, uchar chip, uint addr, int alen,
 	return ret;
 }
 
-#if !defined(I2C2_BASE_ADDR)
-#define I2C2_BASE_ADDR	NULL
-#endif
-
-#if !defined(I2C3_BASE_ADDR)
-#define I2C3_BASE_ADDR	NULL
-#endif
-
-#if !defined(I2C4_BASE_ADDR)
-#define I2C4_BASE_ADDR	NULL
-#endif
-
 static void * const i2c_bases[] = {
+#if defined(CONFIG_SOC_MX25)
+	(void *)IMX_I2C_BASE,
+	(void *)IMX_I2C2_BASE,
+	(void *)IMX_I2C3_BASE
+#elif defined(CONFIG_SOC_MX27)
+	(void *)IMX_I2C1_BASE,
+	(void *)IMX_I2C2_BASE
+#elif defined(CONFIG_SOC_MX31) || defined(CONFIG_SOC_MX35) || \
+	defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53) ||	\
+	defined(CONFIG_SOC_MX6) || defined(CONFIG_LS102XA)
+	(void *)I2C1_BASE_ADDR,
+	(void *)I2C2_BASE_ADDR,
+	(void *)I2C3_BASE_ADDR
+#elif defined(CONFIG_SOC_VF610)
+	(void *)I2C0_BASE_ADDR
+#elif defined(CONFIG_FSL_LSCH3)
 	(void *)I2C1_BASE_ADDR,
 	(void *)I2C2_BASE_ADDR,
 	(void *)I2C3_BASE_ADDR,
 	(void *)I2C4_BASE_ADDR
+#else
+#error "architecture not supported"
+#endif
 };
 
 struct i2c_parms {
@@ -545,12 +558,17 @@ U_BOOT_I2C_ADAP_COMPLETE(mxc1, mxc_i2c_init, mxc_i2c_probe,
 			 mxc_i2c_set_bus_speed,
 			 CONFIG_SYS_MXC_I2C2_SPEED,
 			 CONFIG_SYS_MXC_I2C2_SLAVE, 1)
-#if defined(CONFIG_SOC_MX31) || defined(CONFIG_SOC_MX35) ||\
-	defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53) ||\
-	defined(CONFIG_SOC_MX6) || defined(CONFIG_SOC_LS102XA)
+#ifdef CONFIG_SYS_I2C_MXC_I2C3
 U_BOOT_I2C_ADAP_COMPLETE(mxc2, mxc_i2c_init, mxc_i2c_probe,
 			 mxc_i2c_read, mxc_i2c_write,
 			 mxc_i2c_set_bus_speed,
 			 CONFIG_SYS_MXC_I2C3_SPEED,
 			 CONFIG_SYS_MXC_I2C3_SLAVE, 2)
+#endif
+#ifdef CONFIG_SYS_I2C_MXC_I2C4
+U_BOOT_I2C_ADAP_COMPLETE(mxc3, mxc_i2c_init, mxc_i2c_probe,
+			 mxc_i2c_read, mxc_i2c_write,
+			 mxc_i2c_set_bus_speed,
+			 CONFIG_SYS_MXC_I2C4_SPEED,
+			 CONFIG_SYS_MXC_I2C4_SLAVE, 3)
 #endif
