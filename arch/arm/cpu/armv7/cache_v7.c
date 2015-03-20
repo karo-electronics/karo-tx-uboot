@@ -68,7 +68,7 @@ static void v7_inval_dcache_level_setway(u32 level, u32 num_sets,
 		}
 	}
 	/* DSB to make sure the operation is complete */
-	CP15DSB;
+	DSB;
 }
 
 static void v7_clean_inval_dcache_level_setway(u32 level, u32 num_sets,
@@ -96,7 +96,7 @@ static void v7_clean_inval_dcache_level_setway(u32 level, u32 num_sets,
 		}
 	}
 	/* DSB to make sure the operation is complete */
-	CP15DSB;
+	DSB;
 }
 
 static void v7_maint_dcache_level_setway(u32 level, u32 operation)
@@ -215,7 +215,7 @@ static void v7_dcache_maint_range(u32 start, u32 stop, u32 range_op)
 	}
 
 	/* DSB to make sure the operation is complete */
-	CP15DSB;
+	DSB;
 }
 
 /* Invalidate TLB */
@@ -228,11 +228,11 @@ static void v7_inval_tlb(void)
 		"mcr p15, 0, %0, c8, c6, 0\n"
 		/* Invalidate entire instruction TLB */
 		"mcr p15, 0, %0, c8, c5, 0\n"
-		/* Full system DSB - make sure that the invalidation is complete */
-		"mcr     p15, 0, %0, c7, c10, 4\n"
-		/* Full system ISB - make sure the instruction stream sees it */
-		"mcr     p15, 0, %0, c7, c5, 4\n"
 		: : "r" (0));
+	/* Full system DSB - make sure that the invalidation is complete */
+	DSB;
+	/* Full system ISB - make sure the instruction stream sees it */
+	ISB;
 }
 
 void invalidate_dcache_all(void)
@@ -335,19 +335,23 @@ void arm_init_domains(void)
 /* Invalidate entire I-cache and branch predictor array */
 void invalidate_icache_all(void)
 {
-	/*
-	 * Invalidate all instruction caches to PoU.
-	 * Also flushes branch target cache.
-	 */
 	asm volatile (
+		/*
+		 * Invalidate all instruction caches to PoU.
+		 * Also flushes branch target cache.
+		 */
 		"mcr p15, 0, %0, c7, c5, 0\n"
+
 		/* Invalidate entire branch predictor array */
 		"mcr p15, 0, %0, c7, c5, 6\n"
-		/* Full system DSB - make sure that the invalidation is complete */
-		"mcr     p15, 0, %0, c7, c10, 4\n"
-		/* ISB - make sure the instruction stream sees it */
-		"mcr     p15, 0, %0, c7, c5, 4\n"
+
 		: : "r" (0));
+
+	/* Full system DSB - make sure that the invalidation is complete */
+	DSB;
+
+	/* ISB - make sure the instruction stream sees it */
+	ISB;
 }
 #else
 void invalidate_icache_all(void)
