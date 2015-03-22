@@ -11,8 +11,23 @@ config DM_ETH
 menuconfig NETDEVICES
 	bool "Network device support"
 	depends on NET
+	help
+	  You must select Y to enable any network device support
+	  Generally if you have any networking support this is a given
+
+	  If unsure, say Y
 
 if NETDEVICES
+
+config ETH_SANDBOX
+	depends on DM_ETH && SANDBOX
+	default y
+	bool "Sandbox: Mocked Ethernet driver"
+	help
+	  This driver simply responds with fake ARP replies and ping
+	  replies that are used to verify network stack functionality
+
+	  This driver is particularly useful in the test/dm/eth.c tests
 
 config MII
 	bool
@@ -36,4 +51,4 @@ endif
 
 source "drivers/net/phy/Kconfig"
 
-endif
+endif # NETDEVICES
