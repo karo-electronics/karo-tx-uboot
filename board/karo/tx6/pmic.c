@@ -16,6 +16,7 @@
  */
 
 #include <common.h>
+#include <errno.h>
 #include <i2c.h>
 
 #include "pmic.h"
@@ -37,7 +38,7 @@ static struct {
 
 int tx6_pmic_init(void)
 {
-	int ret;
+	int ret = -ENODEV;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(i2c_addrs); i++) {
