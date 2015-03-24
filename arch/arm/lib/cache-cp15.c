@@ -86,15 +86,26 @@ static inline void mmu_setup(void)
 		dram_bank_mmu_setup(i);
 	}
 
-	asm volatile(
-		/* Copy the page table address to cp15 */
-		"mcr p15, 0, %0, c2, c0, 0\n"
-		/* Set the access control to all-supervisor */
-		"mcr p15, 0, %1, c3, c0, 0\n"
-		:
-		: "r"(gd->arch.tlb_addr), "r"(~0)
-		: "memory"
-		);
+#ifdef CONFIG_ARMV7
+	/* Set TTBR0 */
+	reg = gd->arch.tlb_addr & TTBR0_BASE_ADDR_MASK;
+#if defined(CONFIG_SYS_ARM_CACHE_WRITETHROUGH)
+	reg |= TTBR0_RGN_WT | TTBR0_IRGN_WT;
+#elif defined(CONFIG_SYS_ARM_CACHE_WRITEALLOC)
+	reg |= TTBR0_RGN_WBWA | TTBR0_IRGN_WBWA;
+#else
+	reg |= TTBR0_RGN_WB | TTBR0_IRGN_WB;
+#endif
+	asm volatile("mcr p15, 0, %0, c2, c0, 0"
+		     : : "r" (reg) : "memory");
+#else
+	/* Copy the page table address to cp15 */
+	asm volatile("mcr p15, 0, %0, c2, c0, 0"
+		     : : "r" (gd->arch.tlb_addr) : "memory");
+#endif
+	/* Set the access control to all-supervisor */
+	asm volatile("mcr p15, 0, %0, c3, c0, 0"
+		     : : "r" (~0));
 
 	arm_init_domains();
 
