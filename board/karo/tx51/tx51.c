@@ -476,10 +476,12 @@ int board_eth_init(bd_t *bis)
 	/* Deassert RESET to the external phy */
 	gpio_set_value(TX51_FEC_RST_GPIO, 1);
 
-	/* Without this delay the PHY won't work, though nothing in
-	 * the datasheets suggests that it should be necessary!
+	/*
+	 * Due to an RC-filter in the PHY RESET line, a minimum
+	 * delay of 535us is required to let the RESET line rise
+	 * above the logic high threshold of the PHY input pin.
 	 */
-	udelay(400);
+	udelay(550);
 	imx_iomux_v3_setup_multiple_pads(tx51_fec_pads,
 					ARRAY_SIZE(tx51_fec_pads));
 
