@@ -189,6 +189,11 @@ config TARGET_DEVKIT3250
 	bool "Support devkit3250"
 	select CPU_ARM926EJS
 
+config TARGET_WORK_92105
+	bool "Support work_92105"
+	select CPU_ARM926EJS
+	select SUPPORT_SPL
+
 config TARGET_MX25PDK
 	bool "Support mx25pdk"
 	select CPU_ARM926EJS
@@ -369,13 +374,11 @@ config TARGET_MX35PDK
 	bool "Support mx35pdk"
 	select CPU_ARM1136
 
-config TARGET_RPI
-	bool "Support rpi"
-	select CPU_ARM1176
-
-config TARGET_RPI_2
-	bool "Support rpi_2"
-	select CPU_V7
+config ARCH_BCM283X
+	bool "Broadcom BCM283X family"
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_INTEGRATORAP_CM946ES
 	bool "Support integratorap_cm946es"
@@ -413,21 +416,33 @@ config TARGET_CM_T335
 	bool "Support cm_t335"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_PEPPER
 	bool "Support pepper"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_AM335X_IGEP0033
 	bool "Support am335x_igep0033"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_PCM051
 	bool "Support pcm051"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_DRACO
 	bool "Support draco"
@@ -453,16 +468,35 @@ config TARGET_PENGWYN
 	bool "Support pengwyn"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_AM335X_EVM
 	bool "Support am335x_evm"
 	select CPU_V7
 	select SUPPORT_SPL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config TARGET_AM43XX_EVM
 	bool "Support am43xx_evm"
 	select CPU_V7
 	select SUPPORT_SPL
+
+config TARGET_BAV335X
+	bool "Support bav335x"
+	select CPU_V7
+	select SUPPORT_SPL
+	help
+	  The BAV335x OEM Network Processor integrates all the functions of an
+	  embedded network computer in a small, easy to use SODIMM module which
+	  incorporates the popular Texas Instruments Sitara 32bit ARM Coretex-A8
+	  processor, with fast DDR3 512MB SDRAM, 4GB of embedded MMC and a Gigabit
+	  ethernet with simple connection to external connectors.
+
+	  For more information, visit: http://birdland.com/oem
 
 config TARGET_TI814X_EVM
 	bool "Support ti814x_evm"
@@ -489,10 +523,18 @@ config TARGET_BCMNSP
 config ARCH_EXYNOS
 	bool "Samsung EXYNOS"
 	select CPU_V7
+	select DM
+	select DM_SPI_FLASH
+	select DM_SERIAL
+	select DM_SPI
+	select DM_GPIO
 
 config ARCH_S5PC1XX
 	bool "Samsung S5PC1XX"
 	select CPU_V7
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
 
 config ARCH_HIGHBANK
 	bool "Calxeda Highbank"
@@ -554,6 +596,10 @@ config TARGET_UDOO
 
 config TARGET_WANDBOARD
 	bool "Support wandboard"
+	select CPU_V7
+
+config TARGET_WARP
+	bool "Support WaRP"
 	select CPU_V7
 
 config TARGET_TITANIUM
@@ -658,6 +704,11 @@ config TARGET_CM_FX6
 	select CPU_V7
 	select SUPPORT_SPL
 
+config TARGET_SOCFPGA_ARRIA5
+	bool "Support socfpga_arria5"
+	select CPU_V7
+	select SUPPORT_SPL
+
 config TARGET_SOCFPGA_CYCLONE5
 	bool "Support socfpga_cyclone5"
 	select CPU_V7
@@ -693,6 +744,12 @@ config TEGRA
 	select SPL
 	select OF_CONTROL
 	select CPU_V7
+	select DM
+	select DM_SPI_FLASH
+	select DM_SERIAL
+	select DM_I2C
+	select DM_SPI
+	select DM_GPIO
 
 config TARGET_VEXPRESS64_AEMV8A
 	bool "Support vexpress_aemv8a"
@@ -710,10 +767,12 @@ config TARGET_VEXPRESS64_JUNO
 config TARGET_LS2085A_EMU
 	bool "Support ls2085a_emu"
 	select ARM64
+	select ARMV8_MULTIENTRY
 
 config TARGET_LS2085A_SIMU
 	bool "Support ls2085a_simu"
 	select ARM64
+	select ARMV8_MULTIENTRY
 
 config TARGET_LS1021AQDS
 	bool "Support ls1021aqds"
@@ -790,9 +849,9 @@ endchoice
 
 source "arch/arm/mach-at91/Kconfig"
 
-source "arch/arm/mach-davinci/Kconfig"
+source "arch/arm/mach-bcm283x/Kconfig"
 
-source "arch/arm/cpu/arm1176/bcm2835/Kconfig"
+source "arch/arm/mach-davinci/Kconfig"
 
 source "arch/arm/cpu/armv7/exynos/Kconfig"
 
@@ -829,6 +888,10 @@ source "arch/arm/mach-versatile/Kconfig"
 source "arch/arm/cpu/armv7/zynq/Kconfig"
 
 source "arch/arm/cpu/armv7/Kconfig"
+
+source "arch/arm/cpu/armv8/Kconfig"
+
+source "arch/arm/imx-common/Kconfig"
 
 source "board/aristainetos/Kconfig"
 source "board/BuR/kwb/Kconfig"
@@ -909,8 +972,6 @@ source "board/palmtreo680/Kconfig"
 source "board/phytec/pcm051/Kconfig"
 source "board/ppcag/bg0900/Kconfig"
 source "board/pxa255_idp/Kconfig"
-source "board/raspberrypi/rpi/Kconfig"
-source "board/raspberrypi/rpi_2/Kconfig"
 source "board/samsung/smdk2410/Kconfig"
 source "board/sandisk/sansa_fuze_plus/Kconfig"
 source "board/scb9328/Kconfig"
@@ -933,6 +994,7 @@ source "board/syteco/zmx25/Kconfig"
 source "board/tbs/tbs2910/Kconfig"
 source "board/ti/am335x/Kconfig"
 source "board/ti/am43xx/Kconfig"
+source "board/birdland/bav335x/Kconfig"
 source "board/ti/ti814x/Kconfig"
 source "board/ti/ti816x/Kconfig"
 source "board/timll/devkit3250/Kconfig"
@@ -943,7 +1005,9 @@ source "board/ttcontrol/vision2/Kconfig"
 source "board/udoo/Kconfig"
 source "board/vpac270/Kconfig"
 source "board/wandboard/Kconfig"
+source "board/warp/Kconfig"
 source "board/woodburn/Kconfig"
+source "board/work-microwave/work_92105/Kconfig"
 source "board/xaeniax/Kconfig"
 source "board/xilinx/zynqmp/Kconfig"
 source "board/zipitz2/Kconfig"
