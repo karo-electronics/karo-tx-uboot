@@ -228,6 +228,12 @@ config CMD_FLASH
 	    erase - FLASH memory
 	    protect - enable or disable FLASH write protection
 
+config CMD_ARMFLASH
+	depends on FLASH_CFI_DRIVER
+	bool "armflash"
+	help
+	  ARM Ltd reference designs flash partition access
+
 config MTD_DEVICE
 	bool "MTD device support"
 
