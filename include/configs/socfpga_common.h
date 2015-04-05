@@ -3,13 +3,17 @@
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
+#ifndef __CONFIG_SOCFPGA_CYCLONE5_COMMON_H__
+#define __CONFIG_SOCFPGA_CYCLONE5_COMMON_H__
 
 #define CONFIG_SYS_GENERIC_BOARD
 
 /* Virtual target or real hardware */
+#undef CONFIG_SOCFPGA_VIRTUAL_TARGET
 
 #define CONFIG_SYS_THUMB_BUILD
 
+#define CONFIG_SOCFPGA
 
 /*
  * High level configuration
@@ -42,6 +46,7 @@
 	GENERATED_GBL_DATA_SIZE)
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
 #define CONFIG_SYS_TEXT_BASE		0x08000040
 #else
 #define CONFIG_SYS_TEXT_BASE		0x01000040
@@ -93,7 +98,7 @@
 /*
  * Ethernet on SoC (EMAC)
  */
-#define CONFIG_DESIGNWARE_ETH
+#if defined(CONFIG_CMD_NET) && !defined(CONFIG_SOCFPGA_VIRTUAL_TARGET)
 #define CONFIG_NET_MULTI
 #define CONFIG_DW_ALTDESCRIPTOR
 #define CONFIG_MII
@@ -119,6 +124,7 @@
 #define CONFIG_SYS_TIMERBASE		SOCFPGA_OSC1TIMER0_ADDRESS
 #define CONFIG_SYS_TIMER_COUNTS_DOWN
 #define CONFIG_SYS_TIMER_COUNTER	(CONFIG_SYS_TIMERBASE + 0x4)
+#ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
 #define CONFIG_SYS_TIMER_RATE		2400000
 #else
 #define CONFIG_SYS_TIMER_RATE		25000000
@@ -142,6 +148,10 @@
 #define CONFIG_BOUNCE_BUFFER
 #define CONFIG_GENERIC_MMC
 #define CONFIG_DWMMC
+#define CONFIG_SOCFPGA_DWMMC
+#define CONFIG_SOCFPGA_DWMMC_FIFO_DEPTH	1024
+#define CONFIG_SOCFPGA_DWMMC_DRVSEL	3
+#define CONFIG_SOCFPGA_DWMMC_SMPSEL	0
 /* FIXME */
 /* using smaller max blk cnt to avoid flooding the limited stack we have */
 #define CONFIG_SYS_MMC_MAX_BLK_COUNT	256	/* FIXME -- SPL only? */
@@ -205,6 +215,7 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4
 #define CONFIG_SYS_NS16550_COM1		SOCFPGA_UART0_ADDRESS
+#ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
 #define CONFIG_SYS_NS16550_CLK		1000000
 #else
 #define CONFIG_SYS_NS16550_CLK		100000000
@@ -297,3 +308,4 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
 #undef CONFIG_PARTITIONS
 #endif
 
+#endif	/* __CONFIG_SOCFPGA_CYCLONE5_COMMON_H__ */
