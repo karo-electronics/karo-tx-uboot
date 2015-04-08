@@ -197,7 +197,7 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, struct in_addr src_ip
 	}
 	if (bootme_state == BOOTME_INIT || bootme_state == BOOTME_DEBUG_INIT) {
 		struct ethernet_hdr *eth = (struct ethernet_hdr *)(pkt -
-					NetEthHdrSize() - IP_UDP_HDR_SIZE);
+					net_eth_hdr_size() - IP_UDP_HDR_SIZE);
 		memcpy(bootme_ether, eth->et_src, sizeof(bootme_ether));
 		printf("Target MAC address set to %pM\n", bootme_ether);
 
@@ -262,7 +262,7 @@ void BootmeStart(void)
 
 		net_set_arp_handler(bootme_wait_arp_handler);
 		assert(net_tx_packet != NULL);
-		pkt = (uchar *)net_tx_packet + NetEthHdrSize() + IP_UDP_HDR_SIZE;
+		pkt = (uchar *)net_tx_packet + net_eth_hdr_size() + IP_UDP_HDR_SIZE;
 		memcpy(pkt, output_packet, output_packet_len);
 		debug("%s@%d: Sending ARP request:\n", __func__, __LINE__);
 		ce_dump_block(pkt, output_packet_len);
@@ -286,7 +286,7 @@ int bootme_send_frame(const void *buf, size_t len)
 		check_net_config();
 
 	debug("%s: buf: %p len: %u from %pI4:%d to %pI4:%d\n",
-		__func__, buf, len, &NetOurIP, bootme_src_port, &bootme_ip,
+		__func__, buf, len, &net_ip, bootme_src_port, &bootme_ip,
 		bootme_dst_port);
 
 	if (is_zero_ether_addr(bootme_ether)) {
@@ -316,7 +316,7 @@ int bootme_send_frame(const void *buf, size_t len)
 	}
 
 	assert(net_tx_packet != NULL);
-	pkt = (uchar *)net_tx_packet + NetEthHdrSize() + IP_UDP_HDR_SIZE;
+	pkt = (uchar *)net_tx_packet + net_eth_hdr_size() + IP_UDP_HDR_SIZE;
 	memcpy(pkt, buf, len);
 
 	ret = net_send_udp_packet(bootme_ether, bootme_ip, bootme_dst_port,
