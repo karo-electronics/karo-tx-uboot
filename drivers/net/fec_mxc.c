@@ -868,9 +868,8 @@ static int fec_recv(struct eth_device *dev)
 #ifdef CONFIG_FEC_MXC_SWAP_PACKET
 			swap_packet((uint32_t *)frame->data, frame_length);
 #endif
-			memcpy((void *)NetRxPackets[rx_idx], frame->data, frame_length);
-			NetReceive(NetRxPackets[rx_idx], frame_length);
-			rx_idx = (rx_idx + 1) % PKTBUFSRX;
+			memcpy(buff, frame->data, frame_length);
+			net_process_received_packet(buff, frame_length);
 			len = frame_length;
 		} else {
 			if (bd_status & FEC_RBD_ERR)

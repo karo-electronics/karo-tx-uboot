@@ -113,7 +113,7 @@ static int check_net_config(void)
 		if (bootme_ip == 0) {
 			bip = getenv("bootmeip");
 			if (bip) {
-				bootme_ip = getenv_IPaddr("bootmeip");
+				bootme_ip = getenv_ip("bootmeip");
 				if (!bootme_ip)
 					return -EINVAL;
 				p = strchr(bip, ':');
@@ -261,12 +261,12 @@ void BootmeStart(void)
 		uchar *pkt;
 
 		net_set_arp_handler(bootme_wait_arp_handler);
-		assert(NetTxPacket != NULL);
-		pkt = (uchar *)NetTxPacket + NetEthHdrSize() + IP_UDP_HDR_SIZE;
+		assert(net_tx_packet != NULL);
+		pkt = (uchar *)net_tx_packet + NetEthHdrSize() + IP_UDP_HDR_SIZE;
 		memcpy(pkt, output_packet, output_packet_len);
 		debug("%s@%d: Sending ARP request:\n", __func__, __LINE__);
 		ce_dump_block(pkt, output_packet_len);
-		NetSendUDPPacket(bootme_ether, bootme_ip, bootme_dst_port,
+		net_send_udp_packet(bootme_ether, bootme_ip, bootme_dst_port,
 				bootme_src_port, output_packet_len);
 		output_packet_len = 0;
 	}
@@ -315,11 +315,11 @@ int bootme_send_frame(const void *buf, size_t len)
 		}
 	}
 
-	assert(NetTxPacket != NULL);
-	pkt = (uchar *)NetTxPacket + NetEthHdrSize() + IP_UDP_HDR_SIZE;
+	assert(net_tx_packet != NULL);
+	pkt = (uchar *)net_tx_packet + NetEthHdrSize() + IP_UDP_HDR_SIZE;
 	memcpy(pkt, buf, len);
 
-	ret = NetSendUDPPacket(bootme_ether, bootme_ip, bootme_dst_port,
+	ret = net_send_udp_packet(bootme_ether, bootme_ip, bootme_dst_port,
 			bootme_src_port, len);
 	if (ret)
 		printf("Failed to send packet: %d\n", ret);
