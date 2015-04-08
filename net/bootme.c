@@ -251,7 +251,7 @@ void BootmeStart(void)
 		check_net_config();
 
 	if (output_packet_len == 0 ||
-		is_valid_ether_addr(bootme_ether)) {
+		is_valid_ethaddr(bootme_ether)) {
 		/* wait for incoming packet */
 		net_set_udp_handler(bootme_handler);
 		bootme_timed_out = 0;

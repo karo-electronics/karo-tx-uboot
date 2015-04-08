@@ -272,7 +272,7 @@ static void txa5_init_mac(void)
 	mac_addr[4] = mac_lo & 0xFF;
 	mac_addr[5] = (mac_lo >> 8) & 0xFF;
 
-	if (!is_valid_ether_addr(mac_addr)) {
+	if (!is_valid_ethaddr(mac_addr)) {
 		printf("No valid MAC address programmed\n");
 		return;
 	}

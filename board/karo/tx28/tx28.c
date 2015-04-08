@@ -241,7 +241,7 @@ static int fec_get_mac_addr(int index)
 			val = readl(&cust[index * 8 + i]);
 		mac[i] = val >> shift;
 	}
-	if (!is_valid_ether_addr(mac)) {
+	if (!is_valid_ethaddr(mac)) {
 		if (index == 0)
 			printf("No valid MAC address programmed\n");
 		return 0;

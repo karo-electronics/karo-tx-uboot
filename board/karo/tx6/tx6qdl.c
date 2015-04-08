@@ -625,7 +625,7 @@ static void tx6_init_mac(void)
 	u8 mac[ETH_ALEN];
 
 	imx_get_mac_from_fuse(-1, mac);
-	if (!is_valid_ether_addr(mac)) {
+	if (!is_valid_ethaddr(mac)) {
 		printf("No valid MAC address programmed\n");
 		return;
 	}

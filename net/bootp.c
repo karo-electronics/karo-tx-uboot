@@ -147,7 +147,8 @@ static void BootpCopyNetParams(struct Bootp_t *bp)
 	net_copy_ip(&tmp_ip, &bp->bp_siaddr);
 	if (tmp_ip.s_addr != 0)
 		net_copy_ip(&net_server_ip, &bp->bp_siaddr);
-	memcpy(NetServerEther, ((struct ethernet_hdr *)NetRxPacket)->et_src, 6);
+	memcpy(net_server_ethaddr, ((struct ethernet_hdr *)NetRxPacket)->et_src,
+	       6);
 	if (strlen(bp->bp_file) > 0)
 		copy_filename(net_boot_file_name, bp->bp_file,
 			      sizeof(net_boot_file_name));
@@ -693,7 +694,7 @@ BootpRequest(void)
 	pkt = NetTxPacket;
 	memset((void *)pkt, 0, PKTSIZE);
 
-	eth_hdr_size = NetSetEther(pkt, NetBcastAddr, PROT_IP);
+	eth_hdr_size = NetSetEther(pkt, net_bcast_ethaddr, PROT_IP);
 	pkt += eth_hdr_size;
 
 	/*
@@ -719,7 +720,7 @@ BootpRequest(void)
 	net_write_ip(&bp->bp_yiaddr, zero_ip);
 	net_write_ip(&bp->bp_siaddr, zero_ip);
 	net_write_ip(&bp->bp_giaddr, zero_ip);
-	memcpy(bp->bp_chaddr, NetOurEther, 6);
+	memcpy(bp->bp_chaddr, net_ethaddr, 6);
 	copy_filename(bp->bp_file, net_boot_file_name, sizeof(bp->bp_file));
 
 	/* Request additional information from the BOOTP/DHCP server */
@@ -737,14 +738,14 @@ BootpRequest(void)
 #ifdef CONFIG_BOOTP_RANDOM_ID
 	BootpID = rand();
 #else
-	BootpID = ((ulong)NetOurEther[2] << 24)
-		| ((ulong)NetOurEther[3] << 16)
-		| ((ulong)NetOurEther[4] << 8)
-		| (ulong)NetOurEther[5];
+	BootpID = ((ulong)net_ethaddr[2] << 24)
+		| ((ulong)net_ethaddr[3] << 16)
+		| ((ulong)net_ethaddr[4] << 8)
+		| (ulong)net_ethaddr[5];
 	BootpID += get_timer(0);
 	BootpID = htonl(BootpID);
-	bootp_add_id(BootpID);
 #endif
+	bootp_add_id(BootpID);
 	NetCopyLong(&bp->bp_id, &BootpID);
 
 	/*
@@ -900,7 +901,7 @@ static void DhcpSendRequestPkt(struct Bootp_t *bp_offer)
 	pkt = NetTxPacket;
 	memset((void *)pkt, 0, PKTSIZE);
 
-	eth_hdr_size = NetSetEther(pkt, NetBcastAddr, PROT_IP);
+	eth_hdr_size = NetSetEther(pkt, net_bcast_ethaddr, PROT_IP);
 	pkt += eth_hdr_size;
 
 	iphdr = pkt;	/* We'll need this later to set proper pkt size */
@@ -922,7 +923,7 @@ static void DhcpSendRequestPkt(struct Bootp_t *bp_offer)
 	zero_ip.s_addr = 0;
 	net_write_ip(&bp->bp_giaddr, zero_ip);
 
-	memcpy(bp->bp_chaddr, NetOurEther, 6);
+	memcpy(bp->bp_chaddr, net_ethaddr, 6);
 
 	/*
 	 * ID is the id of the OFFER packet
