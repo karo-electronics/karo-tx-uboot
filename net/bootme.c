@@ -225,7 +225,7 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, struct in_addr src_ip
 
 	case BOOTME_DOWNLOAD:
 		if (last_state != BOOTME_INIT)
-			NetBootFileXferSize += len - 4;
+			net_boot_file_size += len - 4;
 		/* fallthru */
 	case BOOTME_DEBUG:
 		if (last_state == BOOTME_INIT ||
