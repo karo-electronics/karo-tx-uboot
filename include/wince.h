@@ -275,7 +275,7 @@ typedef struct {
 
 /* Socket/connection information */
 struct sockaddr_in {
-	IPaddr_t sin_addr;
+	struct in_addr sin_addr;
 	unsigned short sin_port;
 	unsigned short sin_family;
 	short	       sin_len;
@@ -304,7 +304,7 @@ typedef struct {
 	struct sockaddr_in srvAddrSend;
 	struct sockaddr_in srvAddrRecv;
 #else
-	IPaddr_t server_ip;
+	struct in_addr server_ip;
 #endif
 	int gotJumpingRequest;
 	int dataLen;
@@ -441,8 +441,8 @@ typedef enum bootme_state bootme_hand_f(const void *pkt, size_t len);
 
 int bootme_recv_frame(void *buf, size_t len, int timeout);
 int bootme_send_frame(const void *buf, size_t len);
-//void bootme_init(IPaddr_t server_ip);
-int BootMeRequest(IPaddr_t server_ip, const void *buf, size_t len, int timeout);
+//void bootme_init(struct in_addr server_ip);
+int BootMeRequest(struct in_addr server_ip, const void *buf, size_t len, int timeout);
 //int ce_download_handler(const void *buf, size_t len);
 int BootMeDownload(bootme_hand_f *pkt_handler);
 int BootMeDebugStart(bootme_hand_f *pkt_handler);

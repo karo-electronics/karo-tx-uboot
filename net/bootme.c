@@ -33,7 +33,7 @@ static enum bootme_state bootme_state;
 static int bootme_src_port = 0xdeadface;
 static int bootme_dst_port = 0xdeadbeef;
 static uchar bootme_ether[ETH_ALEN];
-static IPaddr_t bootme_ip;
+static struct in_addr bootme_ip;
 static int bootme_timed_out;
 static const char *output_packet; /* used by first send udp */
 static int output_packet_len;
@@ -93,10 +93,10 @@ static inline int env_changed(int *id)
 
 static int env_id;
 
-static int is_broadcast(IPaddr_t ip)
+static int is_broadcast(struct in_addr ip)
 {
-	static IPaddr_t netmask;
-	static IPaddr_t our_ip;
+	static struct in_addr netmask;
+	static struct in_addr our_ip;
 
 	return (ip == ~0 ||				/* 255.255.255.255 */
 	    ((netmask & our_ip) == (netmask & ip) &&	/* on the same net */
@@ -141,13 +141,13 @@ static int check_net_config(void)
 			memset(bootme_ether, 0, sizeof(bootme_ether));
 
 		net_init();
-		NetServerIP = bootme_ip;
+		net_copy_ip(&net_server_ip, &bootme_ip);
 	}
 	return 0;
 }
 
 static void bootme_wait_arp_handler(uchar *pkt, unsigned dest,
-				IPaddr_t sip, unsigned src,
+				struct in_addr sip, unsigned src,
 				unsigned len)
 {
 	net_set_state(NETLOOP_SUCCESS); /* got arp reply - quit net loop */
@@ -168,7 +168,7 @@ static inline char next_cursor(char c)
 	return 0;
 }
 
-static void bootme_handler(uchar *pkt, unsigned dest_port, IPaddr_t src_ip,
+static void bootme_handler(uchar *pkt, unsigned dest_port, struct in_addr src_ip,
 			unsigned src_port, unsigned len)
 {
 	uchar *eth_pkt = pkt;
@@ -202,7 +202,7 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, IPaddr_t src_ip,
 		printf("Target MAC address set to %pM\n", bootme_ether);
 
 		if (is_broadcast(bootme_ip)) {
-			NetCopyIP(&bootme_ip, &src_ip);
+			net_copy_ip(&bootme_ip, &src_ip);
 		}
 	}
 	if (bootme_state == BOOTME_INIT) {
@@ -327,12 +327,12 @@ int bootme_send_frame(const void *buf, size_t len)
 	return ret;
 }
 
-static void bootme_init(IPaddr_t server_ip)
+static void bootme_init(struct in_addr server_ip)
 {
 	debug("%s@%d: bootme_state: %d -> %d\n", __func__, __LINE__,
 		bootme_state, BOOTME_INIT);
 	bootme_state = BOOTME_INIT;
-	bootme_ip = server_ip;
+	net_copy_ip(&bootme_ip, &server_ip);
 	/* force reconfiguration in check_net_config() */
 	env_id = 0;
 }
@@ -374,7 +374,7 @@ int BootMeDebugStart(bootme_hand_f *handler)
 	return bootme_state;
 }
 
-int BootMeRequest(IPaddr_t server_ip, const void *buf, size_t len, int timeout)
+int BootMeRequest(struct in_addr server_ip, const void *buf, size_t len, int timeout)
 {
 	bootme_init(server_ip);
 	bootme_timeout = timeout * 1000;

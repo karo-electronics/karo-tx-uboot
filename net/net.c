@@ -112,14 +112,14 @@ DECLARE_GLOBAL_DATA_PTR;
 /** BOOTP EXTENTIONS **/
 
 /* Our subnet mask (0=unknown) */
-IPaddr_t	NetOurSubnetMask;
+struct in_addr net_netmask;
 /* Our gateways IP address */
-IPaddr_t	NetOurGatewayIP;
+struct in_addr net_gateway;
 /* Our DNS IP address */
-IPaddr_t	NetOurDNSIP;
+struct in_addr net_dns_server;
 #if defined(CONFIG_BOOTP_DNS2)
 /* Our 2nd DNS IP address */
-IPaddr_t	NetOurDNS2IP;
+struct in_addr net_dns_server2;
 #endif
 /* Our NIS domain */
 char		NetOurNISDomain[32] = {0,};
@@ -127,25 +127,21 @@ char		NetOurNISDomain[32] = {0,};
 char		NetOurHostName[32] = {0,};
 /* Our bootpath */
 char		NetOurRootPath[64] = {0,};
-/* Our bootfile size in blocks */
-ushort		NetBootFileSize;
 
 #ifdef CONFIG_MCAST_TFTP	/* Multicast TFTP */
-IPaddr_t Mcast_addr;
+struct in_addr net_mcast_addr;
 #endif
 
 /** END OF BOOTP EXTENTIONS **/
 
-/* The actual transferred size of the bootfile (in bytes) */
-ulong		NetBootFileXferSize;
 /* Our ethernet address */
 uchar		NetOurEther[6];
 /* Boot server enet address */
 uchar		NetServerEther[6];
 /* Our IP addr (0 = unknown) */
-IPaddr_t	NetOurIP;
+struct in_addr	net_ip;
 /* Server IP addr (0 = unknown) */
-IPaddr_t	NetServerIP;
+struct in_addr	net_server_ip;
 /* Current receive packet */
 uchar *NetRxPacket;
 /* Current rx packet length */
@@ -174,11 +170,15 @@ ushort		NetOurVLAN = 0xFFFF;
 ushort		NetOurNativeVLAN = 0xFFFF;
 
 /* Boot File name */
-char		BootFile[128];
+char net_boot_file_name[128];
+/* The actual transferred size of the bootfile (in bytes) */
+u32 net_boot_file_size;
+/* Boot file size in blocks as reported by the DHCP server */
+u32 net_boot_file_expected_size_in_blocks;
 
 #if defined(CONFIG_CMD_SNTP)
 /* NTP server IP address */
-IPaddr_t	NetNtpServerIP;
+struct in_addr	net_ntp_server;
 /* offset time from UTC */
 int		NetTimeOffset;
 #endif
@@ -222,7 +222,8 @@ static int on_bootfile(const char *name, const char *value, enum env_op op,
 	switch (op) {
 	case env_op_create:
 	case env_op_overwrite:
-		copy_filename(BootFile, value, sizeof(BootFile));
+		copy_filename(net_boot_file_name, value,
+			      sizeof(net_boot_file_name));
 		break;
 	default:
 		break;
@@ -267,14 +268,14 @@ static void NetInitLoop(void)
 
 	/* update only when the environment has changed */
 	if (env_changed_id != env_id) {
-		NetOurIP = getenv_IPaddr("ipaddr");
-		NetOurGatewayIP = getenv_IPaddr("gatewayip");
-		NetOurSubnetMask = getenv_IPaddr("netmask");
-		NetServerIP = getenv_IPaddr("serverip");
+		net_ip = getenv_ip("ipaddr");
+		net_gateway = getenv_ip("gatewayip");
+		net_netmask = getenv_ip("netmask");
+		net_server_ip = getenv_ip("serverip");
 		NetOurNativeVLAN = getenv_VLAN("nvlan");
 		NetOurVLAN = getenv_VLAN("vlan");
 #if defined(CONFIG_CMD_DNS)
-		NetOurDNSIP = getenv_IPaddr("dnsip");
+		net_dns_server = getenv_ip("dnsip");
 #endif
 		env_changed_id = env_id;
 	}
@@ -380,7 +381,7 @@ restart:
 
 	case 0:
 		NetDevExists = 1;
-		NetBootFileXferSize = 0;
+		net_boot_file_size = 0;
 		switch (protocol) {
 		case TFTPGET:
 #ifdef CONFIG_CMD_TFTPPUT
@@ -397,21 +398,21 @@ restart:
 #if defined(CONFIG_CMD_DHCP)
 		case DHCP:
 			BootpReset();
-			NetOurIP = 0;
+			net_ip.s_addr = 0;
 			DhcpRequest();		/* Basically same as BOOTP */
 			break;
 #endif
 
 		case BOOTP:
 			BootpReset();
-			NetOurIP = 0;
+			net_ip.s_addr = 0;
 			BootpRequest();
 			break;
 
 #if defined(CONFIG_CMD_RARP)
 		case RARP:
 			RarpTry = 0;
-			NetOurIP = 0;
+			net_ip.s_addr = 0;
 			RarpRequest();
 			break;
 #endif
@@ -501,7 +502,7 @@ restart:
 		 */
 		if (ctrlc()) {
 			/* cancel any ARP that may not have completed */
-			NetArpWaitPacketIP = 0;
+			net_arp_wait_packet_ip.s_addr = 0;
 
 			net_cleanup_loop();
 			eth_halt();
@@ -556,11 +557,10 @@ restart:
 
 		case NETLOOP_SUCCESS:
 			net_cleanup_loop();
-			if (NetBootFileXferSize > 0) {
-				printf("Bytes transferred = %ld (%lx hex)\n",
-					NetBootFileXferSize,
-					NetBootFileXferSize);
-				setenv_hex("filesize", NetBootFileXferSize);
+			if (net_boot_file_size > 0) {
+				printf("Bytes transferred = %d (%x hex)\n",
+				       net_boot_file_size, net_boot_file_size);
+				setenv_hex("filesize", net_boot_file_size);
 				setenv_hex("fileaddr", load_addr);
 			}
 			if (protocol != NETCONS) {
@@ -571,7 +571,7 @@ restart:
 
 			eth_set_last_protocol(protocol);
 
-			ret = NetBootFileXferSize;
+			ret = net_boot_file_size;
 			debug_cond(DEBUG_INT_STATE, "--- NetLoop Success!\n");
 			goto done;
 
@@ -666,7 +666,7 @@ int NetStartAgain(void)
  */
 
 static void dummy_handler(uchar *pkt, unsigned dport,
-			IPaddr_t sip, unsigned sport,
+			struct in_addr sip, unsigned sport,
 			unsigned len)
 {
 }
@@ -722,7 +722,7 @@ NetSetTimeout(ulong iv, thand_f *f)
 	}
 }
 
-int NetSendUDPPacket(uchar *ether, IPaddr_t dest, int dport, int sport,
+int NetSendUDPPacket(uchar *ether, struct in_addr dest, int dport, int sport,
 		int payload_len)
 {
 	uchar *pkt;
@@ -735,11 +735,11 @@ int NetSendUDPPacket(uchar *ether, IPaddr_t dest, int dport, int sport,
 		return -1;
 
 	/* convert to new style broadcast */
-	if (dest == 0)
-		dest = 0xFFFFFFFF;
+	if (dest.s_addr == 0)
+		dest.s_addr = 0xFFFFFFFF;
 
 	/* if broadcast, make the ether address a broadcast and don't do ARP */
-	if (dest == 0xFFFFFFFF)
+	if (dest.s_addr == 0xFFFFFFFF)
 		ether = NetBcastAddr;
 
 	pkt = (uchar *)NetTxPacket;
@@ -754,7 +754,7 @@ int NetSendUDPPacket(uchar *ether, IPaddr_t dest, int dport, int sport,
 		debug_cond(DEBUG_DEV_PKT, "sending ARP for %pI4\n", &dest);
 
 		/* save the ip and eth addr for the packet to send after arp */
-		NetArpWaitPacketIP = dest;
+		net_arp_wait_packet_ip = dest;
 		NetArpWaitPacketMAC = ether;
 
 		/* size of the waiting packet */
@@ -952,7 +952,7 @@ static inline struct ip_udp_hdr *NetDefragment(struct ip_udp_hdr *ip, int *lenp)
  * @parma ip	IP packet containing the ICMP
  */
 static void receive_icmp(struct ip_udp_hdr *ip, int len,
-			IPaddr_t src_ip, struct ethernet_hdr *et)
+			struct in_addr src_ip, struct ethernet_hdr *et)
 {
 	struct icmp_hdr *icmph = (struct icmp_hdr *)&ip->udp_src;
 
@@ -981,8 +981,8 @@ void net_process_received_packet(uchar *in_packet, int len)
 {
 	struct ethernet_hdr *et;
 	struct ip_udp_hdr *ip;
-	IPaddr_t dst_ip;
-	IPaddr_t src_ip;
+	struct in_addr dst_ip;
+	struct in_addr src_ip;
 	int eth_proto;
 #if defined(CONFIG_CMD_CDP)
 	int iscdp;
@@ -1118,15 +1118,16 @@ void net_process_received_packet(uchar *in_packet, int len)
 			return;
 		}
 		/* If it is not for us, ignore it */
-		dst_ip = NetReadIP(&ip->ip_dst);
-		if (NetOurIP && dst_ip != NetOurIP && dst_ip != 0xFFFFFFFF) {
+		dst_ip = net_read_ip(&ip->ip_dst);
+		if (net_ip.s_addr && dst_ip.s_addr != net_ip.s_addr &&
+		    dst_ip.s_addr != 0xFFFFFFFF) {
 #ifdef CONFIG_MCAST_TFTP
-			if (Mcast_addr != dst_ip)
+			if (net_mcast_addr != dst_ip)
 #endif
 				return;
 		}
 		/* Read source IP address for later use */
-		src_ip = NetReadIP(&ip->ip_src);
+		src_ip = net_read_ip(&ip->ip_src);
 		/*
 		 * The function returns the unchanged packet if it's not
 		 * a fragment, and either the complete packet or NULL if
@@ -1175,10 +1176,10 @@ void net_process_received_packet(uchar *in_packet, int len)
 
 			xsum  = ip->ip_p;
 			xsum += (ntohs(ip->udp_len));
-			xsum += (ntohl(ip->ip_src) >> 16) & 0x0000ffff;
-			xsum += (ntohl(ip->ip_src) >>  0) & 0x0000ffff;
-			xsum += (ntohl(ip->ip_dst) >> 16) & 0x0000ffff;
-			xsum += (ntohl(ip->ip_dst) >>  0) & 0x0000ffff;
+			xsum += (ntohl(ip->ip_src.s_addr) >> 16) & 0x0000ffff;
+			xsum += (ntohl(ip->ip_src.s_addr) >>  0) & 0x0000ffff;
+			xsum += (ntohl(ip->ip_dst.s_addr) >> 16) & 0x0000ffff;
+			xsum += (ntohl(ip->ip_dst.s_addr) >>  0) & 0x0000ffff;
 
 			sumlen = ntohs(ip->udp_len);
 			sumptr = (ushort *) &(ip->udp_src);
@@ -1237,7 +1238,7 @@ static int net_check_prereq(enum proto_t protocol)
 	switch (protocol) {
 #if defined(CONFIG_CMD_PING)
 	case PING:
-		if (NetPingIP == 0) {
+		if (net_ping_ip.s_addr == 0) {
 			puts("*** ERROR: ping address not given\n");
 			return 1;
 		}
@@ -1245,7 +1246,7 @@ static int net_check_prereq(enum proto_t protocol)
 #endif
 #if defined(CONFIG_CMD_SNTP)
 	case SNTP:
-		if (NetNtpServerIP == 0) {
+		if (net_ntp_server.s_addr == 0) {
 			puts("*** ERROR: NTP server address not given\n");
 			return 1;
 		}
@@ -1253,7 +1254,7 @@ static int net_check_prereq(enum proto_t protocol)
 #endif
 #if defined(CONFIG_CMD_DNS)
 	case DNS:
-		if (NetOurDNSIP == 0) {
+		if (net_dns_server.s_addr == 0) {
 			puts("*** ERROR: DNS server address not given\n");
 			return 1;
 		}
@@ -1264,7 +1265,7 @@ static int net_check_prereq(enum proto_t protocol)
 #endif
 	case TFTPGET:
 	case TFTPPUT:
-		if (NetServerIP == 0) {
+		if (net_server_ip.s_addr == 0) {
 			puts("*** ERROR: `serverip' not set\n");
 			return 1;
 		}
@@ -1277,7 +1278,7 @@ common:
 	case BOOTME:
 	case NETCONS:
 	case TFTPSRV:
-		if (NetOurIP == 0) {
+		if (net_ip.s_addr == 0) {
 			puts("*** ERROR: `ipaddr' not set\n");
 			return 1;
 		}
@@ -1379,7 +1380,7 @@ int net_update_ether(struct ethernet_hdr *et, uchar *addr, uint prot)
 	}
 }
 
-void net_set_ip_header(uchar *pkt, IPaddr_t dest, IPaddr_t source)
+void net_set_ip_header(uchar *pkt, struct in_addr dest, struct in_addr source)
 {
 	struct ip_udp_hdr *ip = (struct ip_udp_hdr *)pkt;
 
@@ -1395,12 +1396,12 @@ void net_set_ip_header(uchar *pkt, IPaddr_t dest, IPaddr_t source)
 	ip->ip_ttl   = 255;
 	ip->ip_sum   = 0;
 	/* already in network byte order */
-	NetCopyIP((void *)&ip->ip_src, &source);
+	net_copy_ip((void *)&ip->ip_src, &source);
 	/* already in network byte order */
-	NetCopyIP((void *)&ip->ip_dst, &dest);
+	net_copy_ip((void *)&ip->ip_dst, &dest);
 }
 
-void net_set_udp_header(uchar *pkt, IPaddr_t dest, int dport, int sport,
+void net_set_udp_header(uchar *pkt, struct in_addr dest, int dport, int sport,
 			int len)
 {
 	struct ip_udp_hdr *ip = (struct ip_udp_hdr *)pkt;
@@ -1413,7 +1414,7 @@ void net_set_udp_header(uchar *pkt, IPaddr_t dest, int dport, int sport,
 	if (len & 1)
 		pkt[IP_UDP_HDR_SIZE + len] = 0;
 
-	net_set_ip_header(pkt, dest, NetOurIP);
+	net_set_ip_header(pkt, dest, net_ip);
 	ip->ip_len   = htons(IP_UDP_HDR_SIZE + len);
 	ip->ip_p     = IPPROTO_UDP;
 	ip->ip_sum   = compute_ip_checksum(ip, IP_HDR_SIZE);
@@ -1450,13 +1451,14 @@ unsigned int random_port(void)
 }
 #endif
 
-void ip_to_string(IPaddr_t x, char *s)
+void ip_to_string(struct in_addr x, char *s)
 {
-	x = ntohl(x);
+	x.s_addr = ntohl(x.s_addr);
 	sprintf(s, "%d.%d.%d.%d",
-		(int) ((x >> 24) & 0xff),
-		(int) ((x >> 16) & 0xff),
-		(int) ((x >> 8) & 0xff), (int) ((x >> 0) & 0xff)
+		(int) ((x.s_addr >> 24) & 0xff),
+		(int) ((x.s_addr >> 16) & 0xff),
+		(int) ((x.s_addr >> 8) & 0xff),
+		(int) ((x.s_addr >> 0) & 0xff)
 	);
 }
 

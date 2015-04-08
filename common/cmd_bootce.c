@@ -52,7 +52,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static ce_bin __attribute__ ((aligned (32))) g_bin;
 static ce_net __attribute__ ((aligned (32))) g_net;
-static IPaddr_t server_ip;
+static struct in_addr server_ip;
 
 static void ce_init_bin(ce_bin *bin, unsigned char *dataBuffer)
 {
@@ -133,7 +133,7 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 	snprintf(std_drv_glb->deviceId, sizeof(std_drv_glb->deviceId),
 		"Triton%02X", eth_get_dev()->enetaddr[5]);
 
-	NetCopyIP(&std_drv_glb->kitl.ipAddress, &NetOurIP);
+	net_copy_ip(&std_drv_glb->kitl.ipAddress, &net_ip);
 	std_drv_glb->kitl.ipMask = getenv_IPaddr("netmask");
 	std_drv_glb->kitl.ipRoute = getenv_IPaddr("gatewayip");
 
@@ -617,9 +617,9 @@ static enum bootme_state ce_process_download(ce_net *net, ce_bin *bin)
 					// Some diag output
 					if (net->verbose) {
 						printf("Locked Down download link, IP: %pI4\n",
-							&NetServerIP);
+							&net_server_ip);
 						printf("Sending BOOTME request [%d] to %pI4\n",
-							net->seqNum, &NetServerIP);
+							net->seqNum, &net_server_ip);
 					}
 
 					// Lock down EShell download link
@@ -705,7 +705,7 @@ static enum bootme_state ce_process_edbg(ce_net *net, ce_bin *bin)
 		/* Some diag output */
 		if (net->verbose) {
 			printf("Locked Down EDBG service link, IP: %pI4\n",
-				&NetServerIP);
+				&net_server_ip);
 		}
 
 		/* Lock down EDBG link */
@@ -837,7 +837,7 @@ static int ce_send_bootme(ce_net *net)
 	}
 
 	/* IP address from active config */
-	NetCopyIP(&data->ipAddr, &NetOurIP);
+	net_copy_ip(&data->ipAddr, &net_ip);
 
 	// Device name string (NULL terminated). Should include
 	// platform and number based on Ether address (e.g. Odo42, CEPCLS2346, etc)
@@ -966,7 +966,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 	int ret = 1;
 	int i;
 
-	server_ip = 0;
+	server_ip.s_addr = 0;
 
 	for (i = 1; i < argc; i++){
 		if (*argv[i] != '-')
