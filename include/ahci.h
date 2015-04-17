@@ -1,7 +1,4 @@
 /*
- * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
- * Terry Lv <r65388@freescale.com>
- *
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
  * Author: Jason Jin<Jason.jin@freescale.com>
  *         Zhang Wei<wei.zhang@freescale.com>
@@ -15,7 +12,6 @@
 
 #define AHCI_PCI_BAR		0x24
 #define AHCI_MAX_SG		56 /* hardware max is 64K */
-#define AHCI_MAX_CMD_SLOT	32
 #define AHCI_CMD_SLOT_SZ	32
 #define AHCI_MAX_CMD_SLOT	32
 #define AHCI_RX_FIS_SZ		256
@@ -155,8 +151,8 @@ struct ahci_probe_ent {
 	u32	hard_port_no;
 	u32	host_flags;
 	u32	host_set_flags;
-	u32	mmio_base;
-	u32	pio_mask;
+	void __iomem *mmio_base;
+	u32     pio_mask;
 	u32	udma_mask;
 	u32	flags;
 	u32	cap;	/* cache of HOST_CAP register */
@@ -164,7 +160,7 @@ struct ahci_probe_ent {
 	u32	link_port_map; /*linkup port map*/
 };
 
-int ahci_init(u32 base);
-int ahci_reset(u32 base);
+int ahci_init(void __iomem *base);
+int ahci_reset(void __iomem *base);
 
 #endif
