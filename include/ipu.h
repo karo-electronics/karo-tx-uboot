@@ -290,5 +290,4 @@ int ipu_dp_init(ipu_channel_t channel, uint32_t in_pixel_fmt,
 void ipu_dp_uninit(ipu_channel_t channel);
 void ipu_dp_dc_disable(ipu_channel_t channel, unsigned char swap);
 ipu_color_space_t format_to_colorspace(uint32_t fmt);
-
-#endif /* __IPU_H */
+#endif
