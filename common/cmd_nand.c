@@ -133,115 +133,6 @@ static int set_dev(int dev)
 	return 0;
 }
 
-static inline int str2off(const char *p, loff_t *num)
-{
-	char *endptr;
-
-	*num = simple_strtoull(p, &endptr, 16);
-	return *p != '\0' && *endptr == '\0';
-}
-
-static inline int str2long(const char *p, ulong *num)
-{
-	char *endptr;
-
-	*num = simple_strtoul(p, &endptr, 16);
-	return *p != '\0' && *endptr == '\0';
-}
-
-static int get_part(const char *partname, int *idx, loff_t *off, loff_t *size,
-		loff_t *maxsize)
-{
-#ifdef CONFIG_CMD_MTDPARTS
-	struct mtd_device *dev;
-	struct part_info *part;
-	u8 pnum;
-	int ret;
-
-	ret = mtdparts_init();
-	if (ret)
-		return ret;
-
-	ret = find_dev_and_part(partname, &dev, &pnum, &part);
-	if (ret)
-		return ret;
-
-	if (dev->id->type != MTD_DEV_TYPE_NAND) {
-		puts("not a NAND device\n");
-		return -1;
-	}
-
-	*off = part->offset;
-	*size = part->size;
-	*maxsize = part->size;
-	*idx = dev->id->num;
-
-	ret = set_dev(*idx);
-	if (ret)
-		return ret;
-
-	return 0;
-#else
-	puts("offset is not a number\n");
-	return -1;
-#endif
-}
-
-static int arg_off(const char *arg, int *idx, loff_t *off, loff_t *size,
-		loff_t *maxsize)
-{
-	if (!str2off(arg, off))
-		return get_part(arg, idx, off, size, maxsize);
-
-	if (*off >= nand_info[*idx].size) {
-		puts("Offset exceeds device limit\n");
-		return -1;
-	}
-
-	*maxsize = nand_info[*idx].size - *off;
-	*size = *maxsize;
-	return 0;
-}
-
-static int arg_off_size(int argc, char *const argv[], int *idx,
-			loff_t *off, loff_t *size, loff_t *maxsize)
-{
-	int ret;
-
-	if (argc == 0) {
-		*off = 0;
-		*size = nand_info[*idx].size;
-		*maxsize = *size;
-		goto print;
-	}
-
-	ret = arg_off(argv[0], idx, off, size, maxsize);
-	if (ret)
-		return ret;
-
-	if (argc == 1)
-		goto print;
-
-	if (!str2off(argv[1], size)) {
-		printf("'%s' is not a number\n", argv[1]);
-		return -1;
-	}
-
-	if (*size > *maxsize) {
-		puts("Size exceeds partition or device limit\n");
-		return -1;
-	}
-
-print:
-	printf("device %d ", *idx);
-	if (*size == nand_info[*idx].size)
-		puts("whole chip\n");
-	else
-		printf("offset 0x%llx, size 0x%llx\n",
-		       (unsigned long long)*off, (unsigned long long)*size);
-	return 0;
-}
-
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 static void print_status(ulong start, ulong end, ulong erasesize, int status)
 {
@@ -322,7 +213,12 @@ int do_nand_env_oob(cmd_tbl_t *cmdtp, int argc, char *const argv[])
 			goto usage;
 
 		/* We don't care about size, or maxsize. */
-		if (arg_off(argv[2], &idx, &addr, &maxsize, &maxsize)) {
+		if (mtd_arg_off(argv[2], &idx, &addr, &maxsize, &maxsize,
+				MTD_DEV_TYPE_NAND, nand_info[idx].size)) {
+			puts("Offset or partition name expected\n");
+			return 1;
+		}
+		if (set_dev(idx)) {
 			puts("Offset or partition name expected\n");
 			return 1;
 		}
@@ -598,8 +494,12 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 		printf("\nNAND %s: ", cmd);
 		/* skip first two or three arguments, look for offset and size */
-		if (arg_off_size(argc - o, argv + o, &dev, &off, &size,
-				 &maxsize) != 0)
+		if (mtd_arg_off_size(argc - o, argv + o, &dev, &off, &size,
+				     &maxsize, MTD_DEV_TYPE_NAND,
+				     nand_info[dev].size) != 0)
+			return CMD_RET_FAILURE;
+
+		if (set_dev(dev))
 			return CMD_RET_FAILURE;
 
 		nand = &nand_info[dev];
@@ -659,26 +559,36 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (s && !strcmp(s, ".raw")) {
 			raw = 1;
 
-			if (arg_off(argv[3], &dev, &off, &size, &maxsize))
-				return 1;
+			if (mtd_arg_off(argv[3], &dev, &off, &size, &maxsize,
+					MTD_DEV_TYPE_NAND,
+					nand_info[dev].size))
+				return CMD_RET_FAILURE;
+
+			if (set_dev(dev))
+				return CMD_RET_FAILURE;
 
 			nand = &nand_info[dev];
 
 			if (argc > 4 && !str2long(argv[4], &pagecount)) {
 				printf("'%s' is not a number\n", argv[4]);
-				return 1;
+				return CMD_RET_FAILURE;
 			}
 
 			if (pagecount * nand->writesize > size) {
 				puts("Size exceeds partition or device limit\n");
-				return -1;
+				return CMD_RET_FAILURE;
 			}
 
 			rwsize = pagecount * (nand->writesize + nand->oobsize);
 		} else {
-			if (arg_off_size(argc - 3, argv + 3, &dev,
-						&off, &size, &maxsize) != 0)
-				return 1;
+			if (mtd_arg_off_size(argc - 3, argv + 3, &dev, &off,
+					     &size, &maxsize,
+					     MTD_DEV_TYPE_NAND,
+					     nand_info[dev].size) != 0)
+				return CMD_RET_FAILURE;
+
+			if (set_dev(dev))
+				return CMD_RET_FAILURE;
 
 			/* size is unspecified */
 			if (argc < 5)
@@ -741,7 +651,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 		if (!str2off(argv[2], &off)) {
 			puts("Offset is not a valid number\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 
 		printf("\nNAND torture: device %d offset 0x%llx size 0x%x\n",
@@ -749,7 +659,7 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		ret = nand_torture(nand, off);
 		printf(" %s\n", ret ? "Failed" : "Passed");
 
-		return ret == 0 ? 0 : 1;
+		return ret == 0 ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 	}
 #endif
 
@@ -815,8 +725,12 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (s && !strcmp(s, ".allexcept"))
 			allexcept = 1;
 
-		if (arg_off_size(argc - 2, argv + 2, &dev, &off, &size,
-				 &maxsize) < 0)
+		if (mtd_arg_off_size(argc - 2, argv + 2, &dev, &off, &size,
+				     &maxsize, MTD_DEV_TYPE_NAND,
+				     nand_info[dev].size) < 0)
+			return CMD_RET_FAILURE;
+
+		if (set_dev(dev))
 			return CMD_RET_FAILURE;
 
 		if (!nand_unlock(&nand_info[dev], off, size, allexcept)) {
@@ -905,7 +819,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	    (strcmp(s, ".jffs2") && strcmp(s, ".e") && strcmp(s, ".i"))) {
 		printf("Unknown nand load suffix '%s'\n", s);
 		bootstage_error(BOOTSTAGE_ID_NAND_SUFFIX);
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 
 	printf("\nLoading from %s, offset 0x%lx\n", nand->name, offset);
@@ -916,7 +830,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	if (r) {
 		puts("** Read error\n");
 		bootstage_error(BOOTSTAGE_ID_NAND_HDR_READ);
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	bootstage_mark(BOOTSTAGE_ID_NAND_HDR_READ);
 
@@ -942,7 +856,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	default:
 		bootstage_error(BOOTSTAGE_ID_NAND_TYPE);
 		puts ("** Unknown image type\n");
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	bootstage_mark(BOOTSTAGE_ID_NAND_TYPE);
 
@@ -951,7 +865,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	if (r) {
 		puts("** Read error\n");
 		bootstage_error(BOOTSTAGE_ID_NAND_READ);
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	bootstage_mark(BOOTSTAGE_ID_NAND_READ);
 
@@ -961,7 +875,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 		if (!fit_check_format (fit_hdr)) {
 			bootstage_error(BOOTSTAGE_ID_NAND_FIT_READ);
 			puts ("** Bad FIT image format\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 		bootstage_mark(BOOTSTAGE_ID_NAND_FIT_READ_OK);
 		fit_print_contents (fit_hdr);
@@ -972,7 +886,10 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 
 	load_addr = addr;
 
-	return bootm_maybe_autostart(cmdtp, cmd);
+	if (bootm_maybe_autostart(cmdtp, cmd))
+		return CMD_RET_FAILURE;
+
+	return CMD_RET_SUCCESS;
 }
 
 static int do_nandboot(cmd_tbl_t *cmdtp, int flag, int argc,
@@ -992,7 +909,7 @@ static int do_nandboot(cmd_tbl_t *cmdtp, int flag, int argc,
 		    (find_dev_and_part(p, &dev, &pnum, &part) == 0)) {
 			if (dev->id->type != MTD_DEV_TYPE_NAND) {
 				puts("Not a NAND device\n");
-				return 1;
+				return CMD_RET_FAILURE;
 			}
 			if (argc > 3)
 				goto usage;
@@ -1037,7 +954,7 @@ usage:
 	if (!boot_device) {
 		puts("\n** No boot device **\n");
 		bootstage_error(BOOTSTAGE_ID_NAND_BOOT_DEVICE);
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	bootstage_mark(BOOTSTAGE_ID_NAND_BOOT_DEVICE);
 
@@ -1046,7 +963,7 @@ usage:
 	if (idx < 0 || idx >= CONFIG_SYS_MAX_NAND_DEVICE || !nand_info[idx].name) {
 		printf("\n** Device %d not available\n", idx);
 		bootstage_error(BOOTSTAGE_ID_NAND_AVAILABLE);
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	bootstage_mark(BOOTSTAGE_ID_NAND_AVAILABLE);
 
