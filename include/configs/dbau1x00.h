@@ -32,8 +32,6 @@
 #endif
 #endif
 
-#define CONFIG_ETHADDR		DE:AD:BE:EF:01:01    /* Ethernet address */
-
 #define CONFIG_BOOTDELAY	2	/* autoboot after 2 seconds	*/
 
 #define CONFIG_BAUDRATE		115200
