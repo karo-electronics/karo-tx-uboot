@@ -1275,6 +1275,7 @@ FINDFLAGS := -L
 tags ctags:
 		ctags -w -o ctags `$(FIND) $(FINDFLAGS) $(TAG_SUBDIRS) \
 						-name '*.[chS]' -print`
+		ln -s ctags tags
 
 etags:
 		etags -a -o etags `$(FIND) $(FINDFLAGS) $(TAG_SUBDIRS) \
