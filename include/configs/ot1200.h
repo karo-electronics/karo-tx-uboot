@@ -123,7 +123,6 @@
 
 /* Miscellaneous commands */
 #define CONFIG_CMD_BMODE
-#define CONFIG_CMD_SETEXPR
 
 #define CONFIG_PREBOOT                 ""
 

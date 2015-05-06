@@ -114,7 +114,6 @@
 /* Command definition */
 #define CONFIG_CMD_BMODE
 #define CONFIG_CMD_ITEST
-#define CONFIG_CMD_SETEXPR
 
 /* place code in last 4 MiB of RAM */
 #define CONFIG_SYS_TEXT_BASE		0x2fc00000
