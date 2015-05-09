@@ -358,7 +358,7 @@
 	"mmc_boot=" \
 		"setenv fsload 'ext2load mmc 0:1'; " \
 		"mmc dev 0 && mmc rescan && " \
-		"run loadscript; " \
+		"setenv dtype mmc; run loadscript; " \
 		"if ${fsload} ${loadaddr} ${bootdir}/${uimage}; then " \
 			"setenv bootargs console=${console},${baudrate} " \
 				"root=/dev/mmcblk0p1 rootfstype=ext4 " \
@@ -372,7 +372,7 @@
 	\
 	"sata_boot=" \
 		"setenv fsload 'ext2load sata 0:1'; sata init && " \
-		"run loadscript; " \
+		"setenv dtype sata; run loadscript; " \
 		"if ${fsload} ${loadaddr} ${bootdir}/${uimage}; then " \
 			"setenv bootargs console=${console},${baudrate} " \
 				"root=/dev/sda1 rootfstype=ext4 " \
@@ -385,7 +385,7 @@
 		"fi\0" \
 	"usb_boot=" \
 		"setenv fsload 'ext2load usb 0:1'; usb start && usb dev 0 && " \
-		"run loadscript; " \
+		"setenv dtype usb; run loadscript; " \
 		"if ${fsload} ${loadaddr} ${bootdir}/${uimage}; then " \
 			"setenv bootargs console=${console},${baudrate} " \
 				"root=/dev/sda1 rootfstype=ext4 " \
@@ -449,7 +449,7 @@
 			"setenv root ubi0:rootfs ubi.mtd=2 " \
 				"rootfstype=ubifs; " \
 		"fi; " \
-		"run loadscript; " \
+		"setenv dtype nand; run loadscript; " \
 		"if ${fsload} ${loadaddr} ${bootdir}/${uimage}; then " \
 			"setenv bootargs console=${console},${baudrate} " \
 				"root=${root} ${video} ${extra}; " \
