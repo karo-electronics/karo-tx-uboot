@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Markus Niebel <Markus.Niebel@tq-group.com>
+ * Copyright (C) 2013 - 2015 Markus Niebel <Markus.Niebel@tq-group.com>
  *
  * Configuration settings for the TQ Systems TQMa6<Q,S> module.
  *
