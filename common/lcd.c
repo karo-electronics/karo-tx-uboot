@@ -605,7 +605,8 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	unsigned long pwidth = panel_info.vl_col;
 	unsigned long long colors;
 	unsigned bpix, bmp_bpix;
-	bmp_color_table_entry_t *cte;
+	int hdr_size;
+	struct bmp_color_table_entry *palette = bmp->color_table;
 
 	if (!bmp || !(bmp->header.signature[0] == 'B' &&
 		bmp->header.signature[1] == 'M')) {
@@ -617,6 +618,8 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	width = get_unaligned_le32(&bmp->header.width);
 	height = get_unaligned_le32(&bmp->header.height);
 	bmp_bpix = get_unaligned_le16(&bmp->header.bit_count);
+	hdr_size = get_unaligned_le16(&bmp->header.size);
+	debug("hdr_size=%d, bmp_bpix=%d\n", hdr_size, bmp_bpix);
 
 	colors = 1 << bmp_bpix;
 
@@ -641,8 +644,8 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		return 1;
 	}
 
-	debug("Display-bmp: %lu x %lu  with %llu colors\n",
-		width, height, colors);
+	debug("Display-bmp: %lu x %lu  with %llu colors, display %d\n",
+		width, height, colors, NBITS(bmp_bpix));
 
 	if (bmp_bpix == 8)
 		lcd_set_cmap(bmp, colors);
@@ -671,6 +674,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		cmap_base = configuration_get_cmap();
 #ifdef CONFIG_LCD_BMP_RLE8
 		u32 compression = get_unaligned_le32(&bmp->header.compression);
+		debug("compressed %d %d\n", compression, BMP_BI_RLE8);
 		if (compression == BMP_BI_RLE8) {
 			if (bpix != 16) {
 				/* TODO implement render code for bpix != 16 */
@@ -685,16 +689,22 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		for (i = 0; i < height; ++i) {
 			WATCHDOG_RESET();
 			for (j = 0; j < width; j++) {
-				if (bpix == 32) {
-					int i = *bmap++;
+				if (bpix != 16) {
+					fb_put_byte(&fb, &bmap);
+				} else {
+					struct bmp_color_table_entry *entry;
+					uint val;
 
-					fb[3] = 0; /* T */
-					fb[0] = cte[i].blue;
-					fb[1] = cte[i].green;
-					fb[2] = cte[i].red;
-					fb += sizeof(uint32_t) / sizeof(*fb);
-				} else if (bpix == 16) {
-					*(uint16_t *)fb = cmap_base[*(bmap++)];
+					if (cmap_base) {
+						val = cmap_base[*bmap];
+					} else {
+						entry = &palette[*bmap];
+						val = entry->blue >> 3 |
+							entry->green >> 2 << 5 |
+							entry->red >> 3 << 11;
+					}
+					*(uint16_t *)fb = val;
+					bmap++;
 					fb += sizeof(uint16_t) / sizeof(*fb);
 				} else {
 					FB_PUT_BYTE(fb, bmap);
