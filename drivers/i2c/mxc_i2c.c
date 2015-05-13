@@ -415,7 +415,10 @@ static void * const i2c_bases[] = {
 	defined(CONFIG_SOC_MX6) || defined(CONFIG_SOC_LS102XA)
 	(void *)I2C1_BASE_ADDR,
 	(void *)I2C2_BASE_ADDR,
-	(void *)I2C3_BASE_ADDR
+	(void *)I2C3_BASE_ADDR,
+#if defined(CONFIG_SOC_MX6DL)
+	(void *)I2C4_BASE_ADDR
+#endif
 #elif defined(CONFIG_SOC_VF610)
 	(void *)I2C0_BASE_ADDR
 #elif defined(CONFIG_FSL_LSCH3)
