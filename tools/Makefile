@@ -122,7 +122,8 @@ endif
 
 # MXSImage needs LibSSL
 ifneq ($(CONFIG_SOC_MX23)$(CONFIG_SOC_MX28)$(CONFIG_FIT_SIGNATURE),)
-HOSTLOADLIBES_mkimage += -lssl -lcrypto
+HOSTLOADLIBES_mkimage += \
+	$(shell pkg-config --libs libssl libcrypto 2> /dev/null || echo "-lssl -lcrypto")
 endif
 
 HOSTLOADLIBES_dumpimage := $(HOSTLOADLIBES_mkimage)
@@ -208,8 +209,6 @@ HOST_EXTRACFLAGS += -include $(srctree)/include/libfdt_env.h \
 		$(patsubst -I%,-idirafter%, $(filter -I%, $(UBOOTINCLUDE))) \
 		-I$(srctree)/lib/libfdt \
 		-I$(srctree)/tools \
-                -include $(srctree)/include/linux/kconfig.h \
-		-Wno-variadic-macros \
 		-DCONFIG_SYS_TEXT_BASE=$(CONFIG_SYS_TEXT_BASE) \
 		-DUSE_HOSTCC \
 		-D__KERNEL_STRICT_NAMES \
