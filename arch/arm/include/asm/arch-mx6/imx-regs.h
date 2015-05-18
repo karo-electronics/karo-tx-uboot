@@ -624,20 +624,27 @@ struct fuse_bank0_regs {
 	reg_32(cfg6);
 };
 
+struct fuse_bank1_regs {
+	reg_32(mem0);
+	reg_32(mem1);
+	reg_32(mem2);
+	reg_32(mem3);
+	reg_32(mem4);
+	reg_32(ana0);
+	reg_32(ana1);
+	reg_32(ana2);
+};
+
 #ifdef CONFIG_SOC_MX6SX
 struct fuse_bank4_regs {
-	u32 sjc_resp_low;
-	u32 rsvd0[3];
-	u32 sjc_resp_high;
-	u32 rsvd1[3];
-	u32 mac_addr_low;
-	u32 rsvd2[3];
-	u32 mac_addr_high;
-	u32 rsvd3[3];
-	u32 mac_addr2;
-	u32 rsvd4[7];
-	u32 gp1;
-	u32 rsvd5[7];
+	reg_32(sjc_resp_low);
+	reg_32(sjc_resp_high);
+	reg_32(mac_addr_low);
+	reg_32(mac_addr_high);
+	reg_32(mac_addr2);
+	reg_32(rsvd1);
+	reg_32(gp1);
+	reg_32(rsvd2);
 };
 #else
 struct fuse_bank4_regs {
