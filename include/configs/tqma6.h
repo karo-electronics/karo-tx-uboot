@@ -24,9 +24,6 @@
 /* #endif */
 
 #include "mx6_common.h"
-#include <asm/arch/imx-regs.h>
-#include <asm/imx-common/gpio.h>
-#include <linux/sizes.h>
 
 #define PHYS_SDRAM_SIZE			(512u * SZ_1M)
 #define PHYS_SDRAM_SIZE			(1024u * SZ_1M)
@@ -145,13 +142,10 @@
 #define CONFIG_BAUDRATE			115200
 
 /* Command definition */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_BMODE
 #define CONFIG_CMD_BOOTZ
 #define CONFIG_CMD_ITEST
 #define CONFIG_CMD_SETEXPR
-#undef CONFIG_CMD_IMLS
 
 #define CONFIG_BOOTDELAY		3
 
@@ -437,9 +431,6 @@
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-/* FLASH and environment organization */
-#define CONFIG_SYS_NO_FLASH
 
 #define CONFIG_OF_LIBFDT
 #define CONFIG_OF_BOARD_SETUP

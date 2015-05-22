@@ -10,8 +10,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/arch/imx-regs.h>
-#include <linux/sizes.h>
 #include "mx6_common.h"
 
 #define CONFIG_DISPLAY_CPUINFO
@@ -44,9 +42,6 @@
 #define CONFIG_BAUDRATE			115200
 
 /* Command definition */
-#include <config_cmd_default.h>
-
-#undef CONFIG_CMD_IMLS
 
 #define CONFIG_BOOTDELAY		3
 
@@ -231,9 +226,6 @@
 #if defined(CONFIG_CMD_FUSE) || defined(CONFIG_IMX6_THERMAL)
 #define CONFIG_MXC_OCOTP
 #endif
-
-/* FLASH and environment organization */
-#define CONFIG_SYS_NO_FLASH
 
 #define CONFIG_CMD_TIME
 
