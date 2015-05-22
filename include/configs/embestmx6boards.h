@@ -13,8 +13,6 @@
 #ifndef __RIOTBOARD_CONFIG_H
 #define __RIOTBOARD_CONFIG_H
 
-#include "mx6_common.h"
-
 #define CONFIG_MXC_UART_BASE		UART2_BASE
 #define CONFIG_CONSOLE_DEV		"ttymxc1"
 #define CONFIG_MMCROOT			"/dev/mmcblk0p2"
@@ -56,14 +54,7 @@
 #define CONFIG_MXC_USB_FLAGS	0
 
 /* MMC Configs */
-#define CONFIG_FSL_ESDHC
-#define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
-
-#define CONFIG_MMC
-#define CONFIG_CMD_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_BOUNCE_BUFFER
 
 #define CONFIG_FEC_MXC
 #define CONFIG_MII
@@ -160,5 +151,6 @@
 #define CONFIG_IMX_VIDEO_SKIP
 
 #include <config_distro_defaults.h>
+#include "mx6_common.h"
 
 #endif                         /* __RIOTBOARD_CONFIG_H */
