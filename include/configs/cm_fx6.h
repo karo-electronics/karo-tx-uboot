@@ -21,11 +21,6 @@
 #define CONFIG_CMD_GPIO
 #endif
 
-/* Display information on boot */
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_TIMESTAMP
-
 /* CMD */
 #define CONFIG_CMD_GREPENV
 #undef CONFIG_CMD_LOADB
@@ -270,7 +265,6 @@
 #define CONFIG_SERIAL_TAG
 
 /* misc */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_STACKSIZE			(128 * 1024)
 #define CONFIG_SYS_MALLOC_LEN			(10 * 1024 * 1024)
 #define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS	800 /* 400 KB */

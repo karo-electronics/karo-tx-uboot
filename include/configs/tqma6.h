@@ -9,7 +9,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-
 /* SPL */
 /* #if defined(CONFIG_SPL_BUILD) */
 
@@ -28,10 +27,6 @@
 #define PHYS_SDRAM_SIZE			(512u * SZ_1M)
 #define PHYS_SDRAM_SIZE			(1024u * SZ_1M)
 #endif
-
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
