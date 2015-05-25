@@ -47,6 +47,9 @@ config REGEX
 	  regex support to some commands, for example "env grep" and
 	  "setexpr".
 
+config LIB_RAND
+	bool
+
 source lib/rsa/Kconfig
 
 menu "Hashing Support"
