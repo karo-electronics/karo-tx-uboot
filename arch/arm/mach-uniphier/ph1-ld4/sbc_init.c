@@ -1,14 +1,13 @@
 /*
- * Copyright (C) 2011-2014 Panasonic Corporation
- *   Author: Masahiro Yamada <yamada.m@jp.panasonic.com>
+ * Copyright (C) 2011-2015 Masahiro Yamada <yamada.masahiro@socionext.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/io.h>
-#include <asm/arch/sbc-regs.h>
-#include <asm/arch/sg-regs.h>
+#include <linux/io.h>
+#include <mach/sbc-regs.h>
+#include <mach/sg-regs.h>
 
 void sbc_init(void)
 {
