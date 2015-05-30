@@ -332,6 +332,7 @@ menu "Network commands"
 config CMD_NET
 	bool "bootp, tftpboot"
 	default y
+        select NET
 	help
 	  Network commands.
 	  bootp - boot image via network using BOOTP/TFTP protocol

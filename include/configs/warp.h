@@ -31,7 +31,6 @@
 #define CONFIG_SUPPORT_EMMC_BOOT
 
 /* Command definition */
-#undef CONFIG_CMD_NET
 #undef CONFIG_CMD_NFS
 
 /* Watchdog */
