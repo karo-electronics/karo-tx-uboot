@@ -45,7 +45,6 @@
 #define CONFIG_DOS_PARTITION
 
 /* Ethernet on FEC */
-#define CONFIG_NET_MULTI
 #define CONFIG_MII
 
 #define CONFIG_FEC_MXC
