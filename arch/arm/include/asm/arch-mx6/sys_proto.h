@@ -30,6 +30,9 @@ const char *get_imx_type(u32 imxtype);
 unsigned imx_ddr_size(void);
 void set_chipselect_size(int const);
 
+#define is_mx6dqp() ((is_cpu_type(MXC_CPU_MX6Q) || \
+		     is_cpu_type(MXC_CPU_MX6D)) && \
+		     (soc_rev() >= CHIP_REV_2_0))
 
 struct mxs_register_32;
 
