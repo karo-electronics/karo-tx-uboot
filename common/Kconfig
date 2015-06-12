@@ -214,6 +214,10 @@ config CMD_NAND_TRIMFFS
 	  for using NAND flash filesystems on NAND controllers with
 	  a non-0xff ECC code for all 0xff data.
 
+config CMD_ROMUPDATE
+	bool
+	depends on NAND
+
 config CMD_MMC
 	bool "mmc/sd"
 	select PARTITIONS
