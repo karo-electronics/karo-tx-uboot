@@ -27,6 +27,9 @@ config SYS_HZ
 	  get_timer() must operate in milliseconds and this option must be
 	  set to 1000.
 
+config LIB_RAND
+	bool
+
 source lib/rsa/Kconfig
 
 endmenu
