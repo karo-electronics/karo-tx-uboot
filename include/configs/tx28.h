@@ -189,11 +189,6 @@
 #endif
 
 #define CONFIG_FEC_XCV_TYPE		RMII
-/* Add for working with "strict" DHCP server */
-#define CONFIG_BOOTP_SUBNETMASK
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_DNS
-#define CONFIG_BOOTP_RANDOM_ID
 #endif
 
 #ifndef CONFIG_ENV_IS_NOWHERE
