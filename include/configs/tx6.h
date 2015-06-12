@@ -27,7 +27,6 @@
 
 #ifndef CONFIG_TX6_UBOOT_MFG
 /* LCD Logo and Splash screen support */
-#define CONFIG_LCD
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN

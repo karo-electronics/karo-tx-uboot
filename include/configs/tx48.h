@@ -34,7 +34,6 @@
 #define CONFIG_SYS_GENERIC_BOARD
 
 /* LCD Logo and Splash screen support */
-#define CONFIG_LCD
 #ifdef CONFIG_LCD
 #define CONFIG_VIDEO_DA8XX
 #define CONFIG_SPLASH_SCREEN

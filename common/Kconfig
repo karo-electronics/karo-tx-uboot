@@ -381,3 +381,13 @@ config ENV_IS_IN_SPI_FLASH
 endchoice
 
 endmenu
+
+menu "Display configuration"
+
+config LCD
+	bool "LCD support"
+
+config DISPLAY_BOARDINFO
+	bool "Display board info"
+
+endmenu
