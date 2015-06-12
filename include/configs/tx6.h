@@ -211,11 +211,6 @@
 #endif /* CONFIG_TX6_NAND */
 
 /*
- * U-Boot Commands
- */
-#include <config_cmd_default.h>
-
-/*
  * Serial Driver
  */
 #define CONFIG_MXC_UART

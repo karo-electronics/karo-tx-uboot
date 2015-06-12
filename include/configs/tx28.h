@@ -159,11 +159,6 @@
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 
 /*
- * U-Boot Commands
- */
-#include <config_cmd_default.h>
-
-/*
  * Serial Driver
  */
 #define CONFIG_PL011_SERIAL
