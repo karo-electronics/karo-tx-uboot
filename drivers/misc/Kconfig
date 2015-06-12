@@ -1,0 +1,7 @@
+config MXC_OCOTP
+	bool "Freescale OCOTP support"
+	depends on MX5 || MX6
+
+config MXS_OCOTP
+	bool "Freescale OCOTP support"
+	depends on MX23 || MX28
