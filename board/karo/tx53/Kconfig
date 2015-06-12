@@ -12,18 +12,6 @@ config SYS_SOC
 config SYS_CONFIG_NAME
 	default "tx53"
 
-config CMD_ROMUPDATE
-	bool
-
-config MX5
-	bool
-
-config MX53
-	bool
-	default y
-	select CPU_V7
-	select MX5
-
 config TX53
 	bool
 	default y
@@ -35,6 +23,7 @@ config TX53
 	select CMD_I2C if I2C
 	select CMD_MEMINFO
 	select CMD_MEMTEST
+	select CMD_MMC
 	select CMD_NAND
 	select CMD_NAND_TRIMFFS
 	select CMD_ROMUPDATE
@@ -44,15 +33,17 @@ config TX53
 	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
 	select GET_FEC_MAC_ADDR_FROM_IIM
 	select IMX_WATCHDOG
+	select LIB_RAND
+	select MMC
 	select MTD_PARTITIONS
 	select MTD_DEVICE
-	select MX53
 	select NAND
 	select NAND_MXC
 	select OF_LIBFDT
 	select OF_BOARD_SETUP
 	select PHYLIB
 	select PHY_SMSC
+	select SOC_MX53
 	select SYS_I2C
 	select SYS_I2C_MXC
 	select SYS_NAND_USE_FLASH_BBT if NAND_MXC
@@ -64,10 +55,6 @@ config TX53
 config SYS_LVDS_IF
 	bool
 
-config NR_DRAM_BANKS
-	int
-	default 1
-
 choice
 	prompt "TX53 module variant"
 
@@ -75,15 +62,22 @@ config TARGET_TX53_X030
 	bool "TX53-8030 and TX53-1030"
 
 config TARGET_TX53_X130
-	bool "TX53-8030 and TX53-1030"
+	bool "TX53-8130 and TX53-1330"
+	select SYS_LVDS_IF
 
 config TARGET_TX53_X131
-	bool "TX53-8131 and TX53-1131"
+	bool "TX53-8131 and TX53-1331"
+	select SYS_LVDS_IF
 
 config TARGET_TX53_1232
-	bool "TX53-1232
+	bool "TX53-1232"
 
 endchoice
+
+config NR_DRAM_BANKS
+	int
+	default 2 if TARGET_TX53_1232 || TARGET_TX53_X131
+	default 1
 
 choice
 	prompt "U-Boot image variant"
@@ -93,6 +87,7 @@ config TX53_UBOOT
 
 config TX53_UBOOT_NOENV
 	bool "U-Boot using only built-in environment"
+	select ENV_IS_NOWHERE
 
 endchoice
 
