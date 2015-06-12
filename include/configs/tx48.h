@@ -31,6 +31,7 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
+#define CONFIG_SYS_GENERIC_BOARD
 
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD

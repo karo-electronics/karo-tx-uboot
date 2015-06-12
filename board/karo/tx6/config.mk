@@ -2,7 +2,6 @@
 CONFIG_SYS_TEXT_BASE := 0x10100000
 
 __HAVE_ARCH_GENERIC_BOARD := y
-
 LOGO_BMP = logos/karo.bmp
 #PLATFORM_CPPFLAGS += -DDEBUG
 #PLATFORM_CPPFLAGS += -Wno-unused-but-set-variable
