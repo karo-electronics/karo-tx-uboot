@@ -35,6 +35,7 @@
 /* LCD Logo and Splash screen support */
 #define CONFIG_LCD
 #ifdef CONFIG_LCD
+#define CONFIG_VIDEO_DA8XX
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_AM335X_LCD
@@ -183,7 +184,6 @@
  */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_DRIVER_TI_CPSW
-#define CONFIG_NET_MULTI
 #define CONFIG_PHY_GIGE
 #define CONFIG_CMD_MII
 /* Add for working with "strict" DHCP server */
@@ -196,7 +196,7 @@
 /*
  * NAND flash driver
  */
-#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_NAND
 #define CONFIG_NAND_OMAP_GPMC
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SYS_GPMC_PREFETCH_ENABLE
@@ -227,8 +227,6 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#ifndef CONFIG_ENV_IS_IN_NAND
-#endif
 #define CONFIG_OMAP_HSMMC
 #define CONFIG_OMAP_MMC_DEV_1
 
@@ -249,6 +247,10 @@
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
 #endif /* CONFIG_CMD_MMC */
+
+#ifdef CONFIG_ENV_IS_NOWHERE
+#define CONFIG_ENV_SIZE			SZ_4K
+#endif
 
 #ifdef CONFIG_ENV_OFFSET_REDUND
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
@@ -277,7 +279,6 @@
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - CONFIG_SPL_TEXT_BASE)
 #define CONFIG_SPL_GPIO_SUPPORT

@@ -184,13 +184,11 @@
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 #define CONFIG_SYS_CACHELINE_SIZE	32
 
-#ifndef CONFIG_TX28_S
-#else
+#ifdef CONFIG_FEC_MXC_PHYADDR
 #define IMX_FEC_BASE			MXS_ENET0_BASE
 #endif
 
 #define CONFIG_FEC_XCV_TYPE		RMII
-#define CONFIG_NET_MULTI
 #define CONFIG_CMD_MII
 /* Add for working with "strict" DHCP server */
 #define CONFIG_BOOTP_SUBNETMASK
@@ -208,7 +206,7 @@
 /*
  * NAND flash driver
  */
-#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_NAND
 #define CONFIG_SYS_NAND_BLOCK_SIZE	SZ_128K
 #define CONFIG_NAND_MXS
 #define CONFIG_APBH_DMA
@@ -285,7 +283,6 @@
 					GENERATED_GBL_DATA_SIZE)
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_START_S_PATH		"arch/arm/cpu/arm926ejs/mxs"
 #define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT

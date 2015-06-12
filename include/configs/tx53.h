@@ -8,6 +8,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_MX53			/* must be defined before including imx-regs.h */
+
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 
@@ -170,6 +172,7 @@
  */
 #ifdef CONFIG_FEC_MXC
 #define IMX_FEC_BASE			FEC_BASE_ADDR
+#define CONFIG_FEC_MXC_PHYADDR		0
 #define CONFIG_FEC_XCV_TYPE		MII100
 #define CONFIG_CMD_MII
 /* Add for working with "strict" DHCP server */
@@ -184,7 +187,6 @@
 #ifdef CONFIG_CMD_I2C
 #define CONFIG_I2C_MXC
 #define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
-#define CONFIG_SYS_I2C_MX6_PORT1
 #define CONFIG_SYS_I2C_SPEED		400000
 #define CONFIG_SYS_I2C_SLAVE		0x34
 #endif
