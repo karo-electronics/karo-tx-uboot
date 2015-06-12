@@ -129,26 +129,6 @@ config CMD_SAVEENV
 
 endmenu
 
-menu "Environment configuration settings"
-
-choice
-	prompt "Select environment non-volatile storage"
-
-config ENV_IS_NOWHERE
-	bool "do not store environment"
-
-config ENV_IS_IN_NAND
-	bool "store environment in NAND"
-	depends on NAND
-
-config ENV_IS_IN_MMC
-	bool "store environment in MMC"
-	depends on MMC
-
-endchoice
-
-endmenu
-
 menu "Memory commands"
 
 config CMD_MEMORY
@@ -376,5 +356,28 @@ config CMD_SETGETDCR
 	  setidcr - Set a register value via indirect DCR addressing
 
 endmenu
+
+endmenu
+
+menu "Environment configuration settings"
+
+choice
+	prompt "Select environment non-volatile storage"
+
+config ENV_IS_NOWHERE
+	bool "do not store environment"
+
+config ENV_IS_IN_NAND
+	bool "store environment in NAND"
+	depends on NAND
+
+config ENV_IS_IN_MMC
+	bool "store environment in MMC"
+	depends on MMC
+
+config ENV_IS_IN_SPI_FLASH
+	bool "store environment in SPI flash"
+
+endchoice
 
 endmenu
