@@ -185,7 +185,6 @@
 #ifdef CONFIG_CMD_NET
 #define CONFIG_DRIVER_TI_CPSW
 #define CONFIG_PHY_GIGE
-#define CONFIG_CMD_MII
 /* Add for working with "strict" DHCP server */
 #define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_BOOTP_GATEWAY

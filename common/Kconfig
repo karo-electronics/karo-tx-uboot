@@ -325,6 +325,11 @@ config CMD_LINK_LOCAL
 	help
 	  Acquire a network IP address using the link-local protocol
 
+config CMD_MII
+	bool "MII register access"
+	help
+	  Support reading/writing ETH PHY registers via MII bus
+
 endmenu
 
 menu "Misc commands"

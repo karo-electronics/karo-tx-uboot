@@ -172,7 +172,6 @@
 #ifdef CONFIG_FEC_MXC
 #define IMX_FEC_BASE			FEC_BASE_ADDR
 #define CONFIG_FEC_XCV_TYPE		MII100
-#define CONFIG_CMD_MII
 /* Add for working with "strict" DHCP server */
 #define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_BOOTP_GATEWAY
