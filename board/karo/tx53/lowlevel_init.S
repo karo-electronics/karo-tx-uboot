@@ -1,5 +1,7 @@
 #include <config.h>
+#include <asm-offsets.h>
 #include <configs/tx53.h>
+#include <linux/linkage.h>
 #include <asm/arch/imx-regs.h>
 
 #define DEBUG_LED_BIT		20
@@ -85,6 +87,8 @@ dcd_start:
 	.error	"DCD too large!"
 	.endif
 dcd_end:
+	.section ".pad"
+	.section ".text"
 	.endm
 
 #define MXC_DCD_CMD_WRT(type, flags)					\
@@ -365,22 +369,7 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 				(tODTLon << 12) |	\
 				(tODTLoff << 4))
 
-fcb_start:
-	b	_start
-	.word	0x20424346	/* "FCB " marker */
-	.word	0x01	/* FCB version number */
-	.org	0x68
-	.word	0x0	/* primary image starting page number */
-	.word	0x0	/* secondary image starting page number */
-	.org	0x78
-	.word	0x0	/* DBBT start page (0 == NO DBBT) */
-	.word	0	/* Bad block marker offset in main area (unused) */
-	.org	0xac
-	.word	0	/* BI Swap disabled */
-	.word	0	/* Bad Block marker offset in spare area */
-fcb_end:
-
-	.org	0x400
+	.section ".ivt"
 ivt_header:
 	.word	CPU_2_BE_32((0xd1 << 24) | (32 << 8) | 0x40)
 app_start_addr:
@@ -393,12 +382,12 @@ boot_data_ptr:
 self_ptr:
 	.word	ivt_header
 app_code_csf:
-	.word	0x0
+	.word	__csf_data
 	.word	0x0
 boot_data:
-	.long	fcb_start
+	.long	CONFIG_SYS_TEXT_BASE
 image_len:
-	.long	__uboot_img_end - fcb_start
+	.long	__uboot_img_len
 plugin:
 	.word	0
 ivt_end:
@@ -415,7 +404,12 @@ dcd_hdr:
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR1, 0x000fffcf)
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR2, 0x033c0000)
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR3, 0x000000ff)
+#ifdef CONFIG_SECURE_BOOT
+	/* enable Sahara */
+	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR4, 0x0000c000)
+#else
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR4, 0x00000000)
+#endif
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR5, 0x00fff033)
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR6, 0x0f00030f)
 	MXC_DCD_ITEM(CCM_BASE_ADDR + REG_CCGR7, 0xfff00000)

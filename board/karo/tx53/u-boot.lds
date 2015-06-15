@@ -27,41 +27,17 @@ SECTIONS
 	. = 0x00000000;
 	.text :
 	{
+		__uboot_img_start = .;
+		. = 0x400;
+		__ivt_start = .;
+		KEEP(*(.ivt*))
+		. = 0x1000;
+		__ivt_end = .;
 		*(.__image_copy_start)
 		*(.vectors)
 		CPUDIR/start.o (.text*)
-		. = 0x400;
-		KEEP(BOARDDIR/lowlevel_init.o (.text*))
 		*(.text*)
-	}
-
-#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT) || defined(CONFIG_ARMV7_PSCI)
-
-#ifndef CONFIG_ARMV7_SECURE_BASE
-#define CONFIG_ARMV7_SECURE_BASE
-#endif
-
-	.__secure_start : {
-		. = ALIGN(0x1000);
-		*(.__secure_start)
-	}
-
-	.secure_text CONFIG_ARMV7_SECURE_BASE :
-		AT(ADDR(.__secure_start) + SIZEOF(.__secure_start))
-	{
-		*(._secure.text)
-	}
-
-	. = LOADADDR(.__secure_start) +
-		SIZEOF(.__secure_start) +
-		SIZEOF(.secure_text);
-
-	__secure_end_lma = .;
-	.__secure_end : AT(__secure_end_lma) {
-		*(.__secure_end)
-		LONG(0x1d1071c);	/* Must output something to reset LMA */
-	}
-#endif
+	} = 0xadde01f0
 
 	. = ALIGN(4);
 	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
@@ -69,9 +45,9 @@ SECTIONS
 	. = ALIGN(4);
 	.data : {
 		*(.data*)
+		. = ALIGN(4);
 	}
 
-	. = ALIGN(4);
 	.u_boot_list : {
 		KEEP(*(SORT(.u_boot_list*)));
 	}
@@ -97,18 +73,30 @@ SECTIONS
 		*(.__rel_dyn_end)
 	}
 
-	/* Workaround for an apparent bug in i.MX53 ROM Code,
-	 * that skips loading the last block if it doesn't
-	 * end on a 4KiB boundary.
-	 */
+	.pad :
+	{
+		/* Workaround for a bug in i.MX53 ROM Code,
+		 * which skips loading the last block if it doesn't
+		 * end on a 4KiB boundary.
+		 */
+		*(.pad)
+		. = ALIGN(4096);
+	} = 0x01f0adde
 
-	. = ALIGN(4096);
+	_image_binary_end = . + (__ivt_end - __uboot_img_start);
+
 	.uboot_img_end :
 	{
-		*(.__uboot_img_end)
+		KEEP(*(.__uboot_img_end))
 	}
 
-	_image_binary_end = .;
+	. = CONFIG_SYS_TEXT_BASE + 0x70000;
+	.csf_data :
+	{
+		*(.__csf_data)
+		. = . + 0x2000;
+	}
+	__uboot_img_len = . - __uboot_img_start;
 
 /*
  * Compiler-generated __bss_start and __bss_end, see arch/arm/lib/bss.c
@@ -130,13 +118,16 @@ SECTIONS
 	}
 
 	.dynsym _image_binary_end : { *(.dynsym) }
-	.dynbss : { *(.dynbss) }
-	.dynstr : { *(.dynstr*) }
-	.dynamic : { *(.dynamic*) }
-	.plt : { *(.plt*) }
-	.interp : { *(.interp*) }
-	.gnu.hash : { *(.gnu.hash) }
-	.gnu : { *(.gnu*) }
-	.ARM.exidx : { *(.ARM.exidx*) }
-	.gnu.linkonce.armexidx : { *(.gnu.linkonce.armexidx.*) }
+	/DISCARD/ : { *(.debug*) }
+	/DISCARD/ : { *(.note*) }
+	/DISCARD/ : { *(.comment*) }
+	/DISCARD/ : { *(.dynbss) }
+	/DISCARD/ : { *(.dynstr*) }
+	/DISCARD/ : { *(.dynamic*) }
+	/DISCARD/ : { *(.plt*) }
+	/DISCARD/ : { *(.interp*) }
+	/DISCARD/ : { *(.gnu.hash) }
+	/DISCARD/ : { *(.gnu*) }
+	/DISCARD/ : { *(.ARM.exidx*) }
+	/DISCARD/ : { *(.gnu.linkonce.armexidx.*) }
 }
