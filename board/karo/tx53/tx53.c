@@ -444,9 +444,6 @@ int board_early_init_f(void)
 {
 	struct mxc_ccm_reg *ccm_regs = (void *)CCM_BASE_ADDR;
 
-	gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
-	imx_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
-
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x00);
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x04);
 
@@ -475,12 +472,19 @@ int board_early_init_f(void)
 	writel(0xfff00000, &ccm_regs->CCGR7);
 	writel(0x00000000, &ccm_regs->cmeor);
 
+	imx_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
+
 	return 0;
 }
 
 int board_init(void)
 {
 	int ret;
+
+	ret = gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
+	if (ret < 0) {
+		printf("Failed to request tx53_gpios: %d\n", ret);
+	}
 
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
