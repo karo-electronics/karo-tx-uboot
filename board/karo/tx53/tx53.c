@@ -837,7 +837,6 @@ static struct fb_videomode tx53_fb_modes[] = {
 		.upper_margin	= 2,
 		.vsync_len	= 10,
 		.lower_margin	= 2,
-		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
 	{
 		/* Emerging ET0500G0DH6 800 x 480 display.
