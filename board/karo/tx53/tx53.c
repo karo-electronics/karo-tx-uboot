@@ -33,6 +33,7 @@
 #include <asm/gpio.h>
 #include <asm/arch/iomux-mx53.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/hab.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/sys_proto.h>
@@ -59,6 +60,7 @@ DECLARE_GLOBAL_DATA_PTR;
 				PAD_CTL_SRE_FAST | PAD_CTL_PUS_47K_UP)
 
 char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
+char __csf_data[0] __attribute__((section(".__csf_data")));
 
 static iomux_v3_cfg_t tx53_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
@@ -1378,6 +1380,9 @@ exit:
 
 	gpio_set_value(TX53_RESET_OUT_GPIO, 1);
 	clear_ctrlc();
+
+	get_hab_status();
+
 	return ret;
 }
 

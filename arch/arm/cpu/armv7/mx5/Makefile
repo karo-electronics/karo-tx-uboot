@@ -9,3 +9,5 @@
 
 obj-y := soc.o clock.o
 obj-y += lowlevel_init.o
+
+obj-$(CONFIG_SECURE_BOOT) += hab.o
