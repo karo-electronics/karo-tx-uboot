@@ -75,11 +75,11 @@ static inline unsigned long long tick_to_time(unsigned long long tick)
 	return tick;
 }
 
-static inline unsigned long time_to_tick(unsigned long time)
+static inline unsigned long long time_to_tick(unsigned long time)
 {
 	unsigned long long ticks = (unsigned long long)time;
 
-	ticks *= MXC_CLK32;
+	ticks *= gpt_get_clk();
 	do_div(ticks, CONFIG_SYS_HZ);
 	return ticks;
 }
@@ -134,7 +134,7 @@ int timer_init(void)
 	gd->arch.tbl = __raw_readl(&cur_gpt->counter);
 	gd->arch.tbu = 0;
 
-	gd->arch.timer_rate_hz = MXC_CLK32;
+	gd->arch.timer_rate_hz = gpt_get_clk();
 	return 0;
 }
 
@@ -156,13 +156,6 @@ ulong get_timer_masked(void)
 	 * 2^64 / GPT_CLK = 2^64 / 2^15 = 2^49 ~ 5 * 10^14 (s) ~
 	 * 5 * 10^9 days... and get_ticks() * CONFIG_SYS_HZ wraps in
 	 * 5 * 10^6 days - long enough.
-	 */
-	/*
-	 * LW: get_ticks() returns a long long with the top 32 bits always ZERO!
-	 * Thus the calculation above is not true.
-	 * A 64bit timer value would only make sense if it was
-	 * consistently used throughout the code. Thus also the parameter
-	 * to get_timer() and its return value would need to be 64bit wide!
 	 */
 	return tick_to_time(get_ticks());
 }
