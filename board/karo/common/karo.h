@@ -14,6 +14,9 @@
  * GNU General Public License for more details.
  *
 */
+
+#include <errno.h>
+
 struct fb_videomode;
 
 #ifdef CONFIG_SYS_LVDS_IF
