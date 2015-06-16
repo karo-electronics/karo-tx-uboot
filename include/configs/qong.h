@@ -12,7 +12,6 @@
 #include <asm/arch/imx-regs.h>
 
 /* High Level Configuration Options */
-#define CONFIG_MX31			/* This is a mx31 */
 #define CONFIG_QONG
 
 #define CONFIG_DISPLAY_CPUINFO

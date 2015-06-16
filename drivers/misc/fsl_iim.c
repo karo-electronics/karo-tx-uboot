@@ -16,7 +16,7 @@
 #ifndef CONFIG_MPC512X
 #include <asm/arch/imx-regs.h>
 #endif
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53)
 #include <asm/arch/clock.h>
 #endif
 
@@ -96,7 +96,7 @@ struct fsl_iim {
 	} bank[8];
 };
 
-#if !defined(CONFIG_MX51) && !defined(CONFIG_MX53)
+#if !defined(CONFIG_SOC_MX51) && !defined(CONFIG_SOC_MX53)
 #define enable_efuse_prog_supply(enable)
 #endif
 

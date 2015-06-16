@@ -9,7 +9,6 @@
 
 #include <config_cmd_default.h>
 
-#define CONFIG_LS102XA
 
 #define CONFIG_SYS_GENERIC_BOARD
 

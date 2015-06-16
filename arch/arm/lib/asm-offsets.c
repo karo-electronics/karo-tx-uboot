@@ -18,11 +18,11 @@
 #if defined(CONFIG_MB86R0x)
 #include <asm/arch/mb86r0x.h>
 #endif
-#if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX35) \
-	|| defined(CONFIG_MX51) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX27) || defined(CONFIG_SOC_MX35) \
+	|| defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
 #include <asm/arch/imx-regs.h>
 #endif
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 #include <asm/arch/crm_regs.h>
 #endif
 
@@ -84,7 +84,7 @@ int main(void)
 	DEFINE(MEMC_MCFAREA4, offsetof(struct mb86r0x_memc, mcfarea[4]));
 #endif
 
-#if defined(CONFIG_MX25)
+#if defined(CONFIG_SOC_MX25)
 	/* Clock Control Module */
 	DEFINE(CCM_CCTL, offsetof(struct ccm_regs, cctl));
 	DEFINE(CCM_CGCR0, offsetof(struct ccm_regs, cgr0));
@@ -120,7 +120,7 @@ int main(void)
 	DEFINE(AIPS_MPR_8_15, offsetof(struct aips_regs, mpr_8_15));
 #endif
 
-#if defined(CONFIG_MX27)
+#if defined(CONFIG_SOC_MX27)
 	DEFINE(AIPI1_PSR0, IMX_AIPI1_BASE + offsetof(struct aipi_regs, psr0));
 	DEFINE(AIPI1_PSR1, IMX_AIPI1_BASE + offsetof(struct aipi_regs, psr1));
 	DEFINE(AIPI2_PSR0, IMX_AIPI2_BASE + offsetof(struct aipi_regs, psr0));
@@ -146,7 +146,7 @@ int main(void)
 		offsetof(struct system_control_regs, fmcr));
 #endif
 
-#if defined(CONFIG_MX35)
+#if defined(CONFIG_SOC_MX35)
 	/* Round up to make sure size gives nice stack alignment */
 	DEFINE(CLKCTL_CCMR, offsetof(struct ccm_regs, ccmr));
 	DEFINE(CLKCTL_PDR0, offsetof(struct ccm_regs, pdr0));
@@ -196,7 +196,7 @@ int main(void)
 	DEFINE(AIPS_OPACR_32_39, offsetof(struct aips_regs, opacr_32_39));
 #endif
 
-#if defined(CONFIG_MX51) || defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53)
 	/* Round up to make sure size gives nice stack alignment */
 	DEFINE(CLKCTL_CCMR, offsetof(struct clkctl, ccr));
 	DEFINE(CLKCTL_CCDR, offsetof(struct clkctl, ccdr));
@@ -232,7 +232,7 @@ int main(void)
 	DEFINE(CLKCTL_CCGR5, offsetof(struct clkctl, ccgr5));
 	DEFINE(CLKCTL_CCGR6, offsetof(struct clkctl, ccgr6));
 	DEFINE(CLKCTL_CMEOR, offsetof(struct clkctl, cmeor));
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 	DEFINE(CLKCTL_CCGR7, offsetof(struct clkctl, ccgr7));
 #endif
 
@@ -246,7 +246,7 @@ int main(void)
 	DEFINE(PLL_DP_HFS_MFD, offsetof(struct dpll, dp_hfs_mfd));
 	DEFINE(PLL_DP_HFS_MFN, offsetof(struct dpll, dp_hfs_mfn));
 #endif
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 	DEFINE(CCM_CCR, offsetof(struct mxc_ccm_reg, ccr));
 	DEFINE(CCM_CCDR, offsetof(struct mxc_ccm_reg, ccdr));
 	DEFINE(CCM_CSR, offsetof(struct mxc_ccm_reg, csr));

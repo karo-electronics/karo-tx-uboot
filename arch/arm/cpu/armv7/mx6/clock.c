@@ -172,7 +172,7 @@ void enable_usboh3_clk(unsigned char enable)
 
 }
 
-#if defined(CONFIG_FEC_MXC) && !defined(CONFIG_MX6SX)
+#if defined(CONFIG_FEC_MXC) && !defined(CONFIG_SOC_MX6SX)
 void enable_enet_clk(unsigned char enable)
 {
 	u32 mask = MXC_CCM_CCGR1_ENET_CLK_ENABLE_MASK;
@@ -437,7 +437,7 @@ static u32 get_ipg_per_clk(void)
 	u32 reg, perclk_podf;
 
 	reg = __raw_readl(&imx_ccm->cscmr1);
-#if (defined(CONFIG_MX6SL) || defined(CONFIG_MX6SX))
+#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX))
 	if (reg & MXC_CCM_CSCMR1_PER_CLK_SEL_MASK)
 		return MXC_HCLK; /* OSC 24Mhz */
 #endif
@@ -451,7 +451,7 @@ static u32 get_uart_clk(void)
 	u32 reg, uart_podf;
 	u32 freq = decode_pll(PLL_USBOTG, MXC_HCLK) / 6; /* static divider */
 	reg = __raw_readl(&imx_ccm->cscdr1);
-#if (defined(CONFIG_MX6SL) || defined(CONFIG_MX6SX))
+#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX))
 	if (reg & MXC_CCM_CSCDR1_UART_CLK_SEL)
 		freq = MXC_HCLK;
 #endif
@@ -617,7 +617,7 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 	return 0;
 }
 
-#if (defined(CONFIG_MX6SL) || defined(CONFIG_MX6SX))
+#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX))
 static u32 get_mmdc_ch0_clk(void)
 {
 	u32 cbcmr = __raw_readl(&imx_ccm->cbcmr);
@@ -657,7 +657,7 @@ static u32 get_mmdc_ch0_clk(void)
 }
 #endif
 
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 /* qspi_num can be from 0 - 1 */
 void enable_qspi_clk(int qspi_num)
 {
@@ -740,7 +740,7 @@ int enable_fec_anatop_clock(enum enet_freq freq)
 	reg &= ~BM_ANADIG_PLL_ENET_BYPASS;
 	writel(reg, &anatop->pll_enet);
 
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	/*
 	 * Set enet ahb clock to 200MHz
 	 * pll2_pfd2_396m-> ENET_PODF-> ENET_AHB
@@ -841,7 +841,7 @@ static int enable_enet_pll(uint32_t en)
 	return 0;
 }
 
-#ifndef CONFIG_MX6SX
+#ifndef CONFIG_SOC_MX6SX
 static void ungate_sata_clock(void)
 {
 	struct mxc_ccm_reg *const imx_ccm =
@@ -861,7 +861,7 @@ static void ungate_pcie_clock(void)
 	setbits_le32(&imx_ccm->CCGR4, MXC_CCM_CCGR4_PCIE_MASK);
 }
 
-#ifndef CONFIG_MX6SX
+#ifndef CONFIG_SOC_MX6SX
 int enable_sata_clock(void)
 {
 	ungate_sata_clock();
@@ -916,7 +916,7 @@ int enable_pcie_clock(void)
 	clrbits_le32(&ccm_regs->cbcmr, MXC_CCM_CBCMR_PCIE_AXI_CLK_SEL);
 
 	/* Party time! Ungate the clock to the PCIe. */
-#ifndef CONFIG_MX6SX
+#ifndef CONFIG_SOC_MX6SX
 	ungate_sata_clock();
 #endif
 	ungate_pcie_clock();
@@ -1379,7 +1379,7 @@ int do_clocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	return CMD_RET_FAILURE;
 }
 
-#ifndef CONFIG_MX6SX
+#ifndef CONFIG_SOC_MX6SX
 void enable_ipu_clock(void)
 {
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;

@@ -12,7 +12,7 @@
 #include <asm/io.h>
 #include <asm/types.h>
 
-#if defined(CONFIG_MX6QDL) || defined(CONFIG_MX6Q) || defined(CONFIG_MX6D)
+#if defined(CONFIG_SOC_MX6QDL) || defined(CONFIG_SOC_MX6Q) || defined(CONFIG_SOC_MX6D)
 /* Configure MX6DQ mmdc iomux */
 void mx6dq_dram_iocfg(unsigned width,
 		      const struct mx6dq_iomux_ddr_regs *ddr,
@@ -90,7 +90,7 @@ void mx6dq_dram_iocfg(unsigned width,
 }
 #endif
 
-#if defined(CONFIG_MX6QDL) || defined(CONFIG_MX6DL) || defined(CONFIG_MX6S)
+#if defined(CONFIG_SOC_MX6QDL) || defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
 /* Configure MX6SDL mmdc iomux */
 void mx6sdl_dram_iocfg(unsigned width,
 		       const struct mx6sdl_iomux_ddr_regs *ddr,

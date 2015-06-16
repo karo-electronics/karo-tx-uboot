@@ -881,7 +881,7 @@ static void mxs_power_configure_power_source(void)
 
 	mxs_switch_vddd_to_dcdc_source();
 
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 	/* Fire up the VDDMEM LinReg now that we're all set. */
 	writel(POWER_VDDMEMCTRL_ENABLE_LINREG | POWER_VDDMEMCTRL_ENABLE_ILIMIT,
 		&power_regs->hw_power_vddmemctrl);
@@ -1029,7 +1029,7 @@ struct mxs_vddx_cfg {
 
 static const struct mxs_vddx_cfg mxs_vddio_cfg = {
 	.reg			= POWER_REG(hw_power_vddioctrl),
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	.step_mV		= 25,
 #else
 	.step_mV		= 50,
@@ -1070,7 +1070,7 @@ static const struct mxs_vddx_cfg mxs_vdda_cfg = {
 	.bo_offset_offset	= POWER_VDDACTRL_BO_OFFSET_OFFSET,
 };
 
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 static const struct mxs_vddx_cfg mxs_vddmem_cfg = {
 	.reg			= POWER_REG(hw_power_vddmemctrl),
 	.step_mV		= 50,
@@ -1198,7 +1198,7 @@ static void mxs_setup_batt_detect(void)
  */
 static void mxs_ungate_power(void)
 {
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 	writel(POWER_CTRL_CLKGATE, &power_regs->hw_power_ctrl_clr);
 #endif
 }
@@ -1236,7 +1236,7 @@ void mxs_power_init(void)
 	mxs_power_set_vddx(&mxs_vddio_cfg, VDDIO_VAL, VDDIO_BO_VAL);
 	mxs_power_set_vddx(&mxs_vddd_cfg, VDDD_VAL, VDDD_BO_VAL);
 	mxs_power_set_vddx(&mxs_vdda_cfg, VDDA_VAL, VDDA_BO_VAL);
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 	mxs_power_set_vddx(&mxs_vddmem_cfg, VDDMEM_VAL, VDDMEM_BO_VAL);
 
 	setbits_le32(&power_regs->hw_power_vddmemctrl,

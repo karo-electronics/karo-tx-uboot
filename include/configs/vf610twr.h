@@ -12,7 +12,6 @@
 #include <asm/arch/imx-regs.h>
 #include <config_cmd_default.h>
 
-#define CONFIG_VF610
 
 #define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_CPUINFO

@@ -212,7 +212,7 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		ctrl0 |= SSP_CTRL0_DATA_XFER;
 
 		reg = data->blocksize * data->blocks;
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 		ctrl0 |= reg & SSP_CTRL0_XFER_COUNT_MASK;
 
 		clrsetbits_le32(&ssp_regs->hw_ssp_cmd0,
@@ -220,7 +220,7 @@ mxsmmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 			((data->blocks - 1) << SSP_CMD0_BLOCK_COUNT_OFFSET) |
 			((ffs(data->blocksize) - 1) <<
 				SSP_CMD0_BLOCK_SIZE_OFFSET));
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 		writel(reg, &ssp_regs->hw_ssp_xfer_size);
 
 		reg = ((data->blocks - 1) <<

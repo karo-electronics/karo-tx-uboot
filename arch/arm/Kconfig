@@ -58,6 +58,63 @@ config SEMIHOSTING
 	  the hosted environment to call out to the emulator to
 	  retrieve files from the host machine.
 
+config SOC_AM335X
+	bool
+	select CPU_V7
+	select OMAP_COMMON
+
+config SOC_MXS
+	bool
+	select CPU_ARM926EJS
+
+config SOC_MX23
+	bool
+	select SOC_MXS
+
+config SOC_MX28
+	bool
+	select SOC_MXS
+
+config SOC_MX5
+	bool
+	select CPU_V7
+
+config SOC_MX53
+	bool
+	select SOC_MX5
+
+config SOC_MX51
+	bool
+	select SOC_MX5
+
+config SOC_MX53
+	bool
+	select SOC_MX5
+
+config SOC_MX6
+	bool
+	select CPU_V7
+
+config SOC_MX6Q
+	bool
+	select SOC_MX6
+
+config SOC_MX6DL
+	bool
+	select SOC_MX6
+
+config SOC_MX6S
+	bool
+	select SOC_MX6
+
+config SOC_MX6SX
+	bool
+	select SOC_MX6
+
+config SOC_SAMA5D4
+	bool
+	select CPU_V7
+
 choice
 	prompt "Target select"
 
@@ -255,30 +312,30 @@ config TARGET_MX25PDK
 
 config TARGET_TX25
 	bool "Support tx25"
-	select CPU_ARM926EJS
+	select SOC_MX25
 	select SUPPORT_SPL
 
 config TARGET_TX28
 	bool "Support tx28"
-	select CPU_ARM926EJS
+	select SOC_MX28
 	select SUPPORT_SPL
 
 config TARGET_TX48
 	bool "Support tx48"
-	select CPU_V7
+	select SOC_AM335X
 	select SUPPORT_SPL
 
 config TARGET_TX51
 	bool "Support tx51"
-	select CPU_V7
+	select SOC_MX51
 
 config TARGET_TX53
 	bool "Support tx53"
-	select CPU_V7
+	select SOC_MX53
 
 config TARGET_TX6
 	bool "Support tx6"
-	select CPU_V7
+	select SOC_MX6
 
 config TARGET_ZMX25
 	bool "Support zmx25"
@@ -696,15 +753,18 @@ config TARGET_OT1200
 config OMAP34XX
 	bool "OMAP34XX SoC"
 	select CPU_V7
+	select OMAP_COMMON
 
 config OMAP44XX
 	bool "OMAP44XX SoC"
 	select CPU_V7
+	select OMAP_COMMON
 	select SUPPORT_SPL
 
 config OMAP54XX
 	bool "OMAP54XX SoC"
 	select CPU_V7
+	select OMAP_COMMON
 	select SUPPORT_SPL
 
 config RMOBILE

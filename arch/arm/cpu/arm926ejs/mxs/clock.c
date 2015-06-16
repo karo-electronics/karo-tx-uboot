@@ -28,9 +28,9 @@
 #define	PLL_FREQ_MHZ	(PLL_FREQ_KHZ / 1000)
 #define	XTAL_FREQ_MHZ	(XTAL_FREQ_KHZ / 1000)
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define MXC_SSPCLK_MAX MXC_SSPCLK0
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define MXC_SSPCLK_MAX MXC_SSPCLK3
 #endif
 
@@ -137,10 +137,10 @@ static uint32_t mxs_get_emiclk(void)
 
 static uint32_t mxs_get_gpmiclk(void)
 {
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	uint8_t *reg =
 		&clkctrl_regs->hw_clkctrl_frac0[CLKCTRL_FRAC0_CPU];
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	uint8_t *reg =
 		&clkctrl_regs->hw_clkctrl_frac1[CLKCTRL_FRAC1_GPMI];
 #endif
@@ -334,9 +334,9 @@ void mxs_set_lcdclk(uint32_t freq)
 	if (freq == 0)
 		return;
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writel(CLKCTRL_CLKSEQ_BYPASS_PIX, &clkctrl_regs->hw_clkctrl_clkseq_clr);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writel(CLKCTRL_CLKSEQ_BYPASS_DIS_LCDIF, &clkctrl_regs->hw_clkctrl_clkseq_clr);
 #endif
 
@@ -382,7 +382,7 @@ void mxs_set_lcdclk(uint32_t freq)
 
 	k_best /= 1000;
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writeb(CLKCTRL_FRAC_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_frac0_set[CLKCTRL_FRAC0_PIX]);
 	writeb(CLKCTRL_FRAC_CLKGATE | (x_best & CLKCTRL_FRAC_FRAC_MASK),
@@ -398,7 +398,7 @@ void mxs_set_lcdclk(uint32_t freq)
 
 	while (readl(&clkctrl_regs->hw_clkctrl_pix) & CLKCTRL_PIX_BUSY)
 		;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writeb(CLKCTRL_FRAC_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_frac1_set[CLKCTRL_FRAC1_PIX]);
 	writeb(CLKCTRL_FRAC_CLKGATE | (x_best & CLKCTRL_FRAC_FRAC_MASK),
@@ -459,7 +459,7 @@ uint32_t mxc_get_clock(enum mxc_clock clk)
 		return XTAL_FREQ_KHZ * 1000;
 	case MXC_SSP0_CLK:
 		return mxs_get_sspclk(MXC_SSPCLK0);
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 	case MXC_SSP1_CLK:
 		return mxs_get_sspclk(MXC_SSPCLK1);
 	case MXC_SSP2_CLK:

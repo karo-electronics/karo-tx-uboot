@@ -52,7 +52,7 @@ HOSTCFLAGS_xway-swap-bytes.o := -pedantic
 hostprogs-y += mkenvimage
 mkenvimage-objs := mkenvimage.o os_support.o lib/crc32.o
 
-#hostprogs-y += dumpimage mkimage
+hostprogs-y += dumpimage mkimage
 hostprogs-$(CONFIG_FIT_SIGNATURE) += fit_info fit_check_sign
 
 FIT_SIG_OBJS-$(CONFIG_FIT_SIGNATURE) := common/image-sig.o
@@ -103,7 +103,7 @@ fit_check_sign-objs   := $(dumpimage-mkimage-objs) fit_check_sign.o
 
 # TODO(sjg@chromium.org): Is this correct on Mac OS?
 
-ifneq ($(CONFIG_MX23)$(CONFIG_MX28),)
+ifneq ($(CONFIG_SOC_MX23)$(CONFIG_SOC_MX28),)
 # Add CONFIG_MXS into host CFLAGS, so we can check whether or not register
 # the mxsimage support within tools/mxsimage.c .
 HOSTCFLAGS_mxsimage.o += -DCONFIG_MXS
@@ -116,7 +116,7 @@ HOST_EXTRACFLAGS	+= -DCONFIG_FIT_SIGNATURE
 endif
 
 # MXSImage needs LibSSL
-ifneq ($(CONFIG_MX23)$(CONFIG_MX28)$(CONFIG_FIT_SIGNATURE),)
+ifneq ($(CONFIG_SOC_MX23)$(CONFIG_SOC_MX28)$(CONFIG_FIT_SIGNATURE),)
 HOSTLOADLIBES_mkimage += -lssl -lcrypto
 endif
 
@@ -133,8 +133,8 @@ HOSTCFLAGS_mkexynosspl.o := -pedantic
 ifdtool-objs := $(LIBFDT_OBJS) ifdtool.o
 hostprogs-$(CONFIG_X86) += ifdtool
 
-hostprogs-$(CONFIG_MX23) += mxsboot
-hostprogs-$(CONFIG_MX28) += mxsboot
+hostprogs-$(CONFIG_SOC_MX23) += mxsboot
+hostprogs-$(CONFIG_SOC_MX28) += mxsboot
 HOSTCFLAGS_mxsboot.o := -pedantic
 
 hostprogs-$(CONFIG_SUNXI) += mksunxiboot

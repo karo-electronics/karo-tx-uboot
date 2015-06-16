@@ -33,7 +33,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int dram_init(void)
 {
-#if defined(CONFIG_MX6DL) && !defined(CONFIG_MX6DL_LPDDR2) && \
+#if defined(CONFIG_SOC_MX6DL) && !defined(CONFIG_MX6DL_LPDDR2) && \
 	defined(CONFIG_DDR_32BIT)
 	gd->ram_size = ((phys_size_t)CONFIG_DDR_MB * 1024 * 1024) / 2;
 #else
@@ -273,7 +273,7 @@ int board_init(void)
 
 int checkboard(void)
 {
-#ifdef CONFIG_MX6DL
+#ifdef CONFIG_SOC_MX6DL
 	puts("Board: MX6DL-Armadillo2\n");
 #else
 	puts("Board: MX6Q-Armadillo2\n");

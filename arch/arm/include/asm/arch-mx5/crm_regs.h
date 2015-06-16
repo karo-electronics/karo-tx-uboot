@@ -60,7 +60,7 @@ struct mxc_ccm_reg {
 	u32 CCGR4;
 	u32 CCGR5;
 	u32 CCGR6;	/* 0x0080 */
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 	u32 CCGR7;      /* 0x0084 */
 #endif
 	u32 cmeor;
@@ -68,12 +68,12 @@ struct mxc_ccm_reg {
 
 /* Define the bits in register CCR */
 #define MXC_CCM_CCR_COSC_EN			(0x1 << 12)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCR_FPM_MULT			(0x1 << 11)
 #endif
 #define MXC_CCM_CCR_CAMP2_EN			(0x1 << 10)
 #define MXC_CCM_CCR_CAMP1_EN			(0x1 << 9)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCR_FPM_EN			(0x1 << 8)
 #endif
 #define MXC_CCM_CCR_OSCNT_OFFSET		0
@@ -82,9 +82,9 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCR_OSCNT_RD(r)			((r) & 0xFF)
 
 /* Define the bits in register CCSR */
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCSR_LP_APM			(0x1 << 9)
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCSR_LP_APM			(0x1 << 10)
 #define MXC_CCM_CCSR_PLL4_SW_CLK_SEL		(0x1 << 9)
 #endif
@@ -369,12 +369,12 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR1_I2C1(v)				(((v) & 0x3) << 18)
 #define MXC_CCM_CCGR1_I2C2_OFFSET			20
 #define MXC_CCM_CCGR1_I2C2(v)				(((v) & 0x3) << 20)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCGR1_HSI2C_IPG_OFFSET			22
 #define MXC_CCM_CCGR1_HSI2C_IPG(v)			(((v) & 0x3) << 22)
 #define MXC_CCM_CCGR1_HSI2C_SERIAL_OFFSET		24
 #define MXC_CCM_CCGR1_HSI2C_SERIAL(v)			(((v) & 0x3) << 24)
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCGR1_I2C3_OFFSET			22
 #define MXC_CCM_CCGR1_I2C3(v)				(((v) & 0x3) << 22)
 #endif
@@ -385,7 +385,7 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR1_SCC_OFFSET			30
 #define MXC_CCM_CCGR1_SCC(v)				(((v) & 0x3) << 30)
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCGR2_USB_PHY_OFFSET			0
 #define MXC_CCM_CCGR2_USB_PHY(v)			(((v) & 0x3) << 0)
 #endif
@@ -455,12 +455,12 @@ struct mxc_ccm_reg {
 
 #define MXC_CCM_CCGR4_PATA_OFFSET			0
 #define MXC_CCM_CCGR4_PATA(v)				(((v) & 0x3) << 0)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCGR4_SIM_IPG_OFFSET			2
 #define MXC_CCM_CCGR4_SIM_IPG(v)			(((v) & 0x3) << 2)
 #define MXC_CCM_CCGR4_SIM_SERIAL_OFFSET			4
 #define MXC_CCM_CCGR4_SIM_SERIAL(v)			(((v) & 0x3) << 4)
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCGR4_SATA_OFFSET			2
 #define MXC_CCM_CCGR4_SATA(v)				(((v) & 0x3) << 2)
 #define MXC_CCM_CCGR4_CAN2_IPG_OFFSET			6
@@ -503,10 +503,10 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR5_VPU_REF(v)			(((v) & 0x3) << 8)
 #define MXC_CCM_CCGR5_IPU_OFFSET			10
 #define MXC_CCM_CCGR5_IPU(v)				(((v) & 0x3) << 10)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCGR5_IPUMUX12_OFFSET			12
 #define MXC_CCM_CCGR5_IPUMUX12(v)			(((v) & 0x3) << 12)
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCGR5_IPUMUX1_OFFSET			12
 #define MXC_CCM_CCGR5_IPUMUX1(v)			(((v) & 0x3) << 12)
 #endif
@@ -524,14 +524,14 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR5_GPC_IPG(v)			(((v) & 0x3) << 24)
 #define MXC_CCM_CCGR5_SPDIF0_OFFSET			26
 #define MXC_CCM_CCGR5_SPDIF0(v)				(((v) & 0x3) << 26)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCGR5_SPDIF1_OFFSET			28
 #define MXC_CCM_CCGR5_SPDIF1(v)				(((v) & 0x3) << 28)
 #endif
 #define MXC_CCM_CCGR5_SPDIF_IPG_OFFSET			30
 #define MXC_CCM_CCGR5_SPDIF_IPG(v)			(((v) & 0x3) << 30)
 
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCGR6_IPUMUX2_OFFSET			0
 #define MXC_CCM_CCGR6_IPUMUX2(v)			(((v) & 0x3) << 0)
 #define MXC_CCM_CCGR6_OCRAM_OFFSET			2
@@ -539,12 +539,12 @@ struct mxc_ccm_reg {
 #endif
 #define MXC_CCM_CCGR6_CSI_MCLK1_OFFSET			4
 #define MXC_CCM_CCGR6_CSI_MCLK1(v)			(((v) & 0x3) << 4)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define MXC_CCM_CCGR6_CSI_MCLK2_OFFSET			6
 #define MXC_CCM_CCGR6_CSI_MCLK2(v)			(((v) & 0x3) << 6)
 #define MXC_CCM_CCGR6_EMI_GARB_OFFSET			8
 #define MXC_CCM_CCGR6_EMI_GARB(v)			(((v) & 0x3) << 8)
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCGR6_EMI_INT2_OFFSET			8
 #define MXC_CCM_CCGR6_EMI_INT2(v)			(((v) & 0x3) << 8)
 #endif
@@ -554,7 +554,7 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR6_IPU_DI1(v)			(((v) & 0x3) << 12)
 #define MXC_CCM_CCGR6_GPU2D_OFFSET			14
 #define MXC_CCM_CCGR6_GPU2D(v)				(((v) & 0x3) << 14)
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 #define MXC_CCM_CCGR6_ESAI_IPG_OFFSET			16
 #define MXC_CCM_CCGR6_ESAI_IPG(v)			(((v) & 0x3) << 16)
 #define MXC_CCM_CCGR6_ESAI_ROOT_OFFSET			18

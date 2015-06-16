@@ -51,7 +51,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * The i.MX28 operates with packets in big endian. We need to swap them before
  * sending and after receiving.
  */
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 #define CONFIG_FEC_MXC_SWAP_PACKET
 #endif
 
@@ -212,7 +212,7 @@ static int miiphy_restart_aneg(struct eth_device *dev)
 	 * Wake up from sleep if necessary
 	 * Reset PHY, then delay 300ns
 	 */
-#ifdef CONFIG_MX27
+#ifdef CONFIG_SOC_MX27
 	fec_mdio_write(eth, fec->phy_id, MII_DCOUNTER, 0x00FF);
 #endif
 	fec_mdio_write(eth, fec->phy_id, MII_BMCR, BMCR_RESET);
@@ -458,7 +458,7 @@ static int fec_open(struct eth_device *edev)
 	 */
 	writel(readl(&fec->eth->ecntrl) | FEC_ECNTRL_ETHER_EN,
 		&fec->eth->ecntrl);
-#if defined(CONFIG_MX25) || defined(CONFIG_MX53) || defined(CONFIG_MX6SL)
+#if defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6SL)
 	udelay(100);
 	/*
 	 * setup the MII gasket for RMII mode
@@ -517,7 +517,7 @@ static int fec_open(struct eth_device *edev)
 		writel(ecr, &fec->eth->ecntrl);
 		writel(rcr, &fec->eth->r_cntrl);
 	}
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	{
 		u32 rcr = readl(&fec->eth->r_cntrl) & ~FEC_RCNTRL_RMII_10T;
 
@@ -1104,7 +1104,7 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 #endif
 	int ret;
 
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 	/*
 	 * The i.MX28 has two ethernet interfaces, but they are not equal.
 	 * Only the first one can access the MDIO bus.

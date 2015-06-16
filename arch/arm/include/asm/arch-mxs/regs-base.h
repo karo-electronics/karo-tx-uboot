@@ -18,7 +18,7 @@
 /*
  * Register base addresses for i.MX23
  */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define	MXS_ICOLL_BASE		0x80000000
 #define	MXS_APBH_BASE		0x80004000
 #define	MXS_ECC8_BASE		0x80008000
@@ -60,7 +60,7 @@
 /*
  * Register base addresses for i.MX28
  */
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define	MXS_ICOL_BASE		0x80000000
 #define	MXS_HSADC_BASE		0x80002000
 #define	MXS_APBH_BASE		0x80004000
@@ -115,7 +115,7 @@
 #define	MXS_ENET0_BASE		0x800F0000
 #define	MXS_ENET1_BASE		0x800F4000
 #else
-#error Unkown SoC. Please set CONFIG_MX23 or CONFIG_MX28
+#error Unkown SoC. Please set CONFIG_SOC_MX23 or CONFIG_SOC_MX28
 #endif
 
 #endif /* __MXS_REGS_BASE_H__ */

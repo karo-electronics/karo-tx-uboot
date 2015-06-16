@@ -54,7 +54,7 @@
 #define PHYS_SDRAM_1_WIDTH		64
 #endif
 #define PHYS_SDRAM_1_SIZE		(SZ_512M / 32 * PHYS_SDRAM_1_WIDTH)
-#ifdef CONFIG_MX6Q
+#ifdef CONFIG_SOC_MX6Q
 #define CONFIG_SYS_SDRAM_CLK		528
 #else
 #define CONFIG_SYS_SDRAM_CLK		400
@@ -68,11 +68,11 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#if defined(CONFIG_MX6Q)
+#if defined(CONFIG_SOC_MX6Q)
 #define CONFIG_SYS_PROMPT		"TX6Q U-Boot > "
-#elif defined(CONFIG_MX6DL)
+#elif defined(CONFIG_SOC_MX6DL)
 #define CONFIG_SYS_PROMPT		"TX6DL U-Boot > "
-#elif defined(CONFIG_MX6S)
+#elif defined(CONFIG_SOC_MX6S)
 #define CONFIG_SYS_PROMPT		"TX6S U-Boot > "
 #else
 #error Unsupported i.MX6 processor variant

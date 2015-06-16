@@ -12,7 +12,6 @@
 #ifndef __ARISTAINETOS_CONFIG_H
 #define __ARISTAINETOS_CONFIG_H
 
-#define CONFIG_MX6
 
 #include "mx6_common.h"
 #include <linux/sizes.h>

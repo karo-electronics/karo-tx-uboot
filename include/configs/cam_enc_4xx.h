@@ -16,7 +16,6 @@
 /* SoC Configuration */
 #define CONFIG_SYS_TIMERBASE		0x01c21400	/* use timer 0 */
 #define CONFIG_SYS_HZ_CLOCK		24000000	/* timer0 freq */
-#define CONFIG_SOC_DM365
 
 #define CONFIG_MACH_TYPE	MACH_TYPE_DAVINCI_DM365_EVM
 

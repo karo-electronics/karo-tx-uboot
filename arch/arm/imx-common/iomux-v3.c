@@ -11,7 +11,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-#if !defined(CONFIG_MX25) && !defined(CONFIG_VF610)
+#if !defined(CONFIG_SOC_MX25) && !defined(CONFIG_SOC_VF610)
 #include <asm/arch/sys_proto.h>
 #endif
 #include <asm/imx-common/iomux-v3.h>
@@ -33,7 +33,7 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 		(pad & MUX_PAD_CTRL_OFS_MASK) >> MUX_PAD_CTRL_OFS_SHIFT;
 	u32 pad_ctrl = (pad & MUX_PAD_CTRL_MASK) >> MUX_PAD_CTRL_SHIFT;
 
-#if defined CONFIG_MX6SL
+#if defined CONFIG_SOC_MX6SL
 	/* Check whether LVE bit needs to be set */
 	if (pad_ctrl & PAD_CTL_LVE) {
 		pad_ctrl &= ~PAD_CTL_LVE;
@@ -70,7 +70,7 @@ void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 	int stride;
 	int i;
 
-#if defined(CONFIG_MX6QDL)
+#if defined(CONFIG_SOC_MX6QDL)
 	stride = 2;
 	if (!is_cpu_type(MXC_CPU_MX6Q) && !is_cpu_type(MXC_CPU_MX6D))
 		p += 1;

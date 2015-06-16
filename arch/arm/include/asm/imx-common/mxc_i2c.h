@@ -19,7 +19,7 @@ struct i2c_pads_info {
 	struct i2c_pin_ctrl sda;
 };
 
-#if defined(CONFIG_MX6QDL)
+#if defined(CONFIG_SOC_MX6QDL)
 #define I2C_PADS(name, scl_i2c, scl_gpio, scl_gp, sda_i2c, sda_gpio, sda_gp) \
 	struct i2c_pads_info mx6q_##name = {		\
 		.scl = {				\

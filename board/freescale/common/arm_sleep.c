@@ -14,7 +14,7 @@
 #include <asm/armv7.h>
 #include <asm/cache.h>
 
-#if defined(CONFIG_LS102XA)
+#if defined(CONFIG_SOC_LS102XA)
 #include <asm/arch/immap_ls102xa.h>
 #endif
 

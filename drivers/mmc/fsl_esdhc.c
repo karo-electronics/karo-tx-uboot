@@ -103,7 +103,7 @@ static uint esdhc_xfertyp(struct mmc_cmd *cmd, struct mmc_data *data)
 	else if (cmd->resp_type & MMC_RSP_PRESENT)
 		xfertyp |= XFERTYP_RSPTYP_48;
 
-#if defined(CONFIG_MX53) || defined(CONFIG_PPC_T4240) || defined(CONFIG_LS102XA)
+#if defined(CONFIG_SOC_MX53) || defined(CONFIG_PPC_T4240) || defined(CONFIG_SOC_LS102XA)
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
 		xfertyp |= XFERTYP_CMDTYP_ABORT;
 #endif

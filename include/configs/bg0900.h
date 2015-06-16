@@ -7,7 +7,6 @@
 #define __CONFIGS_BG0900_H__
 
 /* System configurations */
-#define CONFIG_MX28				/* i.MX28 SoC */
 
 /* U-Boot Commands */
 #define CONFIG_SYS_NO_FLASH

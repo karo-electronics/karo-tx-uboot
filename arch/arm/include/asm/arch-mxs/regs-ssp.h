@@ -15,7 +15,7 @@
 #include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 struct mxs_ssp_regs {
 	mxs_reg_32(hw_ssp_ctrl0);
 	mxs_reg_32(hw_ssp_cmd0);
@@ -34,7 +34,7 @@ struct mxs_ssp_regs {
 	mxs_reg_32(hw_ssp_debug);
 	mxs_reg_32(hw_ssp_version);
 };
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 struct mxs_ssp_regs {
 	mxs_reg_32(hw_ssp_ctrl0);
 	mxs_reg_32(hw_ssp_cmd0);
@@ -61,9 +61,9 @@ struct mxs_ssp_regs {
 
 static inline int mxs_ssp_bus_id_valid(int bus)
 {
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	const unsigned int mxs_ssp_chan_count = 2;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	const unsigned int mxs_ssp_chan_count = 4;
 #endif
 
@@ -78,9 +78,9 @@ static inline int mxs_ssp_bus_id_valid(int bus)
 
 static inline int mxs_ssp_clock_by_bus(unsigned int clock)
 {
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	return 0;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	return clock;
 #endif
 }
@@ -92,7 +92,7 @@ static inline struct mxs_ssp_regs *mxs_ssp_regs_by_bus(unsigned int port)
 		return (struct mxs_ssp_regs *)MXS_SSP0_BASE;
 	case 1:
 		return (struct mxs_ssp_regs *)MXS_SSP1_BASE;
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 	case 2:
 		return (struct mxs_ssp_regs *)MXS_SSP2_BASE;
 	case 3:
@@ -124,7 +124,7 @@ static inline struct mxs_ssp_regs *mxs_ssp_regs_by_bus(unsigned int port)
 #define	SSP_CTRL0_GET_RESP			(1 << 17)
 #define	SSP_CTRL0_ENABLE			(1 << 16)
 
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 #define	SSP_CTRL0_XFER_COUNT_OFFSET		0
 #define	SSP_CTRL0_XFER_COUNT_MASK		0xffff
 #endif
@@ -136,7 +136,7 @@ static inline struct mxs_ssp_regs *mxs_ssp_regs_by_bus(unsigned int port)
 #define	SSP_CMD0_SLOW_CLKING_EN			(1 << 22)
 #define	SSP_CMD0_CONT_CLKING_EN			(1 << 21)
 #define	SSP_CMD0_APPEND_8CYC			(1 << 20)
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define	SSP_CMD0_BLOCK_SIZE_MASK		(0xf << 16)
 #define	SSP_CMD0_BLOCK_SIZE_OFFSET		16
 #define	SSP_CMD0_BLOCK_COUNT_MASK		(0xff << 8)
@@ -215,7 +215,7 @@ static inline struct mxs_ssp_regs *mxs_ssp_regs_by_bus(unsigned int port)
 #define	SSP_CMD1_CMD_ARG_MASK			0xffffffff
 #define	SSP_CMD1_CMD_ARG_OFFSET			0
 
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 #define	SSP_XFER_SIZE_XFER_COUNT_MASK		0xffffffff
 #define	SSP_XFER_SIZE_XFER_COUNT_OFFSET		0
 

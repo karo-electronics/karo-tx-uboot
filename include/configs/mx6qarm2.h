@@ -9,7 +9,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_MX6
 
 #include "mx6_common.h"
 

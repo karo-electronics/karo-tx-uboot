@@ -9,7 +9,6 @@
 #define __CONFIG_H
 
 #include "mx6_common.h"
-#define CONFIG_MX6
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -91,7 +90,6 @@
 #define CONFIG_MXC_USB_PORTSC   (PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 2
 
-#ifdef CONFIG_MX6Q
 #define CONFIG_CMD_SATA
 #endif
 

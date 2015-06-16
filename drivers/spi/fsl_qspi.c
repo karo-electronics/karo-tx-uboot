@@ -14,7 +14,7 @@
 #include "fsl_qspi.h"
 
 #define RX_BUFFER_SIZE		0x80
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 #define TX_BUFFER_SIZE		0x200
 #else
 #define TX_BUFFER_SIZE		0x40
@@ -73,14 +73,14 @@
 
 static unsigned long spi_bases[] = {
 	QSPI0_BASE_ADDR,
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	QSPI1_BASE_ADDR,
 #endif
 };
 
 static unsigned long amba_bases[] = {
 	QSPI0_AMBA_BASE,
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	QSPI1_AMBA_BASE,
 #endif
 };
@@ -97,7 +97,7 @@ struct fsl_qspi {
  * in hardware for LS102xA, but not for VF610 */
 static inline u32 qspi_endian_xchg(u32 data)
 {
-#ifdef CONFIG_VF610
+#ifdef CONFIG_SOC_VF610
 	return swab32(data);
 #else
 	return data;
@@ -203,7 +203,7 @@ static void qspi_set_lut(struct fsl_qspi *qspi)
 			PAD0(LUT_PAD1) | INSTR0(LUT_CMD) | OPRND1(ADDR32BIT) |
 			PAD1(LUT_PAD1) | INSTR1(LUT_ADDR));
 #endif
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	/*
 	 * To MX6SX, OPRND0(TX_BUFFER_SIZE) can not work correctly.
 	 * So, Use IDATSZ in IPCR to determine the size and here set 0.

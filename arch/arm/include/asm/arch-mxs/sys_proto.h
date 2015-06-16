@@ -26,9 +26,9 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 
 #ifdef CONFIG_SPL_BUILD
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #include <asm/arch/iomux-mx23.h>
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #include <asm/arch/iomux-mx28.h>
 #endif
 
@@ -44,7 +44,7 @@ struct mxs_pair {
 };
 
 static const struct mxs_pair mxs_boot_modes[] = {
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	{ 0x00, 0x0f, "USB" },
 	{ 0x01, 0x1f, "I2C, master" },
 	{ 0x02, 0x1f, "SSP SPI #1, master, NOR" },
@@ -55,7 +55,7 @@ static const struct mxs_pair mxs_boot_modes[] = {
 	{ 0x09, 0x1f, "SSP SD/MMC #0" },
 	{ 0x0a, 0x1f, "SSP SD/MMC #1" },
 	{ 0x00, 0x00, "Reserved/Unknown/Wrong" },
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	{ 0x00, 0x0f, "USB #0" },
 	{ 0x01, 0x1f, "I2C #0, master, 3V3" },
 	{ 0x11, 0x1f, "I2C #0, master, 1V8" },

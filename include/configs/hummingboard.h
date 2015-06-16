@@ -16,7 +16,6 @@
 #include <asm/imx-common/gpio.h>
 #include <linux/sizes.h>
 
-#define CONFIG_MX6
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -88,7 +87,6 @@
 #define CONFIG_PHY_ATHEROS
 #endif
 
-#if defined(CONFIG_MX6S)
 #define CONFIG_DEFAULT_FDT_FILE		"imx6dl-hummingboard.dtb"
 #endif
 

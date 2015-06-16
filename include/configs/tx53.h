@@ -8,8 +8,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_MX53			/* must be defined before including imx-regs.h */
-
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 

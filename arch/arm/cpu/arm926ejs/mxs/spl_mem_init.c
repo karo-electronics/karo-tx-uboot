@@ -20,7 +20,7 @@ static uint32_t dram_vals[] = {
 /*
  * i.MX28 DDR2 at 200MHz
  */
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -73,7 +73,7 @@ static uint32_t dram_vals[] = {
 /*
  * i.MX23 DDR at 133MHz
  */
-#elif defined(CONFIG_MX23)
+#elif defined(CONFIG_SOC_MX23)
 	0x01010001, 0x00010100, 0x01000101, 0x00000001,
 	0x00000101, 0x00000000, 0x00010000, 0x01000001,
 	0x00000000, 0x00000001, 0x07000200, 0x00070202,
@@ -94,7 +94,7 @@ __weak void mxs_adjust_memory_params(uint32_t *dram_vals)
 {
 }
 
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 static void initialize_dram_values(void)
 {
 	int i;
@@ -138,10 +138,10 @@ static void mxs_mem_init_clock(void)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =
 		(struct mxs_clkctrl_regs *)MXS_CLKCTRL_BASE;
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	/* Fractional divider for ref_emi is 33 ; 480 * 18 / 33 = 266MHz */
 	const unsigned char divider = 33;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	/* Fractional divider for ref_emi is 21 ; 480 * 18 / 21 = 411MHz */
 	const unsigned char divider = 21;
 #endif
@@ -235,7 +235,7 @@ uint32_t mxs_mem_get_size(void)
 	return sz;
 }
 
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 static void mx23_mem_setup_vddmem(void)
 {
 	struct mxs_power_regs *power_regs =
@@ -292,7 +292,7 @@ static void mx23_mem_init(void)
 }
 #endif
 
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 static void mx28_mem_init(void)
 {
 	struct mxs_pinctrl_regs *pinctrl_regs =
@@ -329,9 +329,9 @@ void mxs_mem_init(void)
 
 	mxs_mem_init_clock();
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	mx23_mem_init();
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	mx28_mem_init();
 #endif
 

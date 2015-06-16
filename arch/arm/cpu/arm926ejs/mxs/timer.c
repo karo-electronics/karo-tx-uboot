@@ -16,9 +16,9 @@
 #include <asm/arch/sys_proto.h>
 
 /* Maximum fixed count */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define TIMER_LOAD_VAL 0xffff
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define TIMER_LOAD_VAL 0xffffffff
 #endif
 
@@ -63,9 +63,9 @@ int timer_init(void)
 	mxs_reset_block(&timrot_regs->hw_timrot_rotctrl_reg);
 
 	/* Set fixed_count to 0 */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writel(0, &timrot_regs->hw_timrot_timcount0);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writel(0, &timrot_regs->hw_timrot_fixed_count0);
 #endif
 
@@ -76,16 +76,16 @@ int timer_init(void)
 
 #ifndef DEBUG_TIMER_WRAP
 	/* Set fixed_count to maximum value */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writel(TIMER_LOAD_VAL - 1, &timrot_regs->hw_timrot_timcount0);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
 #endif
 #else /* DEBUG_TIMER_WRAP */
 	/* Set fixed_count so that the counter will wrap after 20 seconds */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writel(20 * MXS_INCREMENTER_HZ - 1, &timrot_regs->hw_timrot_timcount0);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writel(20 * MXS_INCREMENTER_HZ,
 		&timrot_regs->hw_timrot_fixed_count0);
 #endif
@@ -98,9 +98,9 @@ int timer_init(void)
 		&timrot_regs->hw_timrot_timctrl0_clr);
 #ifdef DEBUG_TIMER_WRAP
 	/* Set fixed_count to maximum value for subsequent loads */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writel(20 * MXS_INCREMENTER_HZ - 1, &timrot_regs->hw_timrot_timcount0);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
 #endif
 #endif /* DEBUG_TIMER_WRAP */
@@ -121,11 +121,11 @@ unsigned long long get_ticks(void)
 	struct mxs_timrot_regs *timrot_regs =
 		(struct mxs_timrot_regs *)MXS_TIMROT_BASE;
 	unsigned long now;
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	/* Upper bits are the valid ones. */
 	now = readl(&timrot_regs->hw_timrot_timcount0) >>
 		TIMROT_RUNNING_COUNTn_RUNNING_COUNT_OFFSET;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	/* The timer is counting down, so subtract the register value from
 	 * the counter period length (implicitly 2^32) to get an incrementing
 	 * timestamp

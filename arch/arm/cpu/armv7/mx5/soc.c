@@ -16,7 +16,7 @@
 #include <asm/io.h>
 #include <asm/imx-common/boot_mode.h>
 
-#if !(defined(CONFIG_MX51) || defined(CONFIG_MX53))
+#if !(defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53))
 #error "CPU_TYPE not defined"
 #endif
 
@@ -39,14 +39,14 @@ void hw_watchdog_reset(void)
 
 u32 get_cpu_rev(void)
 {
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 	int system_rev = 0x51000;
 #else
 	int system_rev = 0x53000;
 #endif
 	int reg = __raw_readl(ROM_SI_REV);
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 	switch (reg) {
 	case 0x02:
 		system_rev |= CHIP_REV_1_1;
@@ -106,7 +106,7 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 
 #endif
 
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 void boot_mode_apply(unsigned cfg_val)
 {
 	writel(cfg_val, &((struct srtc_regs *)SRTC_BASE_ADDR)->lpgr);

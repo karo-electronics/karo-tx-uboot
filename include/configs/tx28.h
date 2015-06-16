@@ -8,8 +8,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_MX28			/* must be defined before including regs-base.h */
-
 #include <linux/sizes.h>
 #include <asm/arch/regs-base.h>
 

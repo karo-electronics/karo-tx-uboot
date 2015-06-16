@@ -7,7 +7,6 @@
 #define __CONFIGS_SANSA_FUZE_PLUS_H__
 
 /* System configurations */
-#define CONFIG_MX23				/* i.MX23 SoC */
 
 /* U-Boot Commands */
 #define CONFIG_SYS_NO_FLASH

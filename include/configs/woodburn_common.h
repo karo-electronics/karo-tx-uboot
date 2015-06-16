@@ -14,7 +14,6 @@
 #include <asm/arch/imx-regs.h>
 
  /* High Level Configuration Options */
-#define CONFIG_MX35
 #define CONFIG_MX35_HCLK_FREQ	24000000
 
 #define CONFIG_SYS_DCACHE_OFF

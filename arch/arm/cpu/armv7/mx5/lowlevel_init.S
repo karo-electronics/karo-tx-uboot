@@ -36,7 +36,7 @@
 		 1 << 23 |		/* disable write allocate combine */ \
 		 1 << 22		/* disable write allocate */
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 	ldr r3, [r4, #ROM_SI_REV]
 	cmp r3, #0x10
 
@@ -76,7 +76,7 @@
 
 /* M4IF setup */
 .macro init_m4if
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 	/* VPU and IPU given higher priority (0x4)
 	 * IPU accesses with ID=0x1 given highest priority (=0xA)
 	 */
@@ -163,7 +163,7 @@ setup_pll_func:
 
 .macro init_clock
 	ldr r0, =CCM_BASE_ADDR
-#if defined (CONFIG_MX51)
+#if defined (CONFIG_SOC_MX51)
 	/* Gate off clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -276,7 +276,7 @@ setup_pll_func:
 	mov r1, #0x000A0000
 	add r1, r1, #0x00000F0
 	str r1, [r0, #CLKCTL_CCOSR]
-#else	/* CONFIG_MX53 */
+#else	/* CONFIG_SOC_MX53 */
 	/* Gate off clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
 	str r1, [r0, #CLKCTL_CCGR0]
@@ -420,7 +420,7 @@ setup_pll_func:
 	add r1, r1, #0x00000F0
 	str r1, [r0, #CLKCTL_CCOSR]
 
-#endif	/* CONFIG_MX53 */
+#endif	/* CONFIG_SOC_MX53 */
 .endm
 
 ENTRY(lowlevel_init)
@@ -461,7 +461,7 @@ W_DP_800:		.word DP_OP_800
 			.word DP_MFD_800
 			.word DP_MFN_800
 #endif
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 W_DP_665:		.word DP_OP_665
 			.word DP_MFD_665
 			.word DP_MFN_665

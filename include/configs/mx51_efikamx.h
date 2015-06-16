@@ -17,7 +17,6 @@
  * High Level Board Configuration Options
  */
 /* An i.MX51 CPU */
-#define CONFIG_MX51
 
 #define	machine_is_efikamx()	(CONFIG_MACH_TYPE == MACH_TYPE_MX51_EFIKAMX)
 #define	machine_is_efikasb()	(CONFIG_MACH_TYPE == MACH_TYPE_MX51_EFIKASB)

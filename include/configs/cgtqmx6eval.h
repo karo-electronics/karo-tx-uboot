@@ -13,7 +13,6 @@
 #ifndef __CONFIG_CGTQMX6EVAL_H
 #define __CONFIG_CGTQMX6EVAL_H
 
-#define CONFIG_MX6
 
 #include "mx6_common.h"
 

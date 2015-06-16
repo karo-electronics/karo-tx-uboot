@@ -11,15 +11,15 @@
 #include <nand.h>
 #include <linux/err.h>
 #include <asm/io.h>
-#if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX35) || \
-	defined(CONFIG_MX51) || defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX27) || defined(CONFIG_SOC_MX35) || \
+	defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53)
 #include <asm/arch/imx-regs.h>
 #endif
 
 static struct mxc_nand_host mxc_host;
 static struct mxc_nand_host *host = &mxc_host;
 
-#ifdef CONFIG_MX27
+#ifdef CONFIG_SOC_MX27
 static int is_16bit_nand(void)
 {
 	struct system_control_regs *sc_regs =
@@ -30,7 +30,7 @@ static int is_16bit_nand(void)
 	else
 		return 0;
 }
-#elif defined(CONFIG_MX31)
+#elif defined(CONFIG_SOC_MX31)
 static int is_16bit_nand(void)
 {
 	struct clock_control_regs *sc_regs =
@@ -41,7 +41,7 @@ static int is_16bit_nand(void)
 	else
 		return 0;
 }
-#elif defined(CONFIG_MX25) || defined(CONFIG_MX35)
+#elif defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX35)
 static int is_16bit_nand(void)
 {
 	struct ccm_regs *ccm =
@@ -52,7 +52,7 @@ static int is_16bit_nand(void)
 	else
 		return 0;
 }
-#elif defined(CONFIG_MX51)
+#elif defined(CONFIG_SOC_MX51)
 static int is_16bit_nand(void)
 {
 	struct src *src = (struct src *)SRC_BASE_ADDR;
@@ -62,7 +62,7 @@ static int is_16bit_nand(void)
 	else
 		return 0;
 }
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 /* BOOT_CFG[1..3][0..7] */
 #define SRC_BOOT_CFG(m, n)		(1 << ((m) * 8 + (n)))
 static int is_16bit_nand(void)
@@ -90,19 +90,19 @@ static int is_16bit_nand(void)
 #error CONFIG_MXC_NAND_REGS_BASE not defined
 #endif
 
-#if defined(CONFIG_MX27) || defined(CONFIG_MX31)
+#if defined(CONFIG_SOC_MX27) || defined(CONFIG_SOC_MX31)
 #define nfc_is_v1()		1
 #define nfc_is_v21()		0
 #define nfc_is_v3_2()		0
 #define nfc_is_v3()		nfc_is_v3_2()
 #define NFC_VERSION		"V1"
-#elif defined(CONFIG_MX25) || defined(CONFIG_MX35)
+#elif defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX35)
 #define nfc_is_v1()		0
 #define nfc_is_v21()		1
 #define nfc_is_v3_2()		0
 #define nfc_is_v3()		nfc_is_v3_2()
 #define NFC_VERSION		"V2"
-#elif defined(CONFIG_MX51) || defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53)
 #define nfc_is_v1()		0
 #define nfc_is_v21()		0
 #define nfc_is_v3_2()		1
@@ -871,7 +871,7 @@ static void preset_v3(struct mtd_info *mtd)
 	}
 
 	if (mtd->writesize) {
-#if defined CONFIG_MX53
+#if defined CONFIG_SOC_MX53
 		config2 |= MX53_CONFIG2_PPB(ffs(mtd->erasesize / mtd->writesize) - 6);
 #else
 		config2 |= NFC_V3_CONFIG2_PPB(ffs(mtd->erasesize / mtd->writesize) - 6);

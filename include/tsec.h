@@ -21,7 +21,7 @@
 #include <config.h>
 #include <phy.h>
 
-#ifdef CONFIG_LS102XA
+#ifdef CONFIG_SOC_LS102XA
 #define TSEC_SIZE		0x40000
 #define TSEC_MDIO_OFFSET	0x40000
 #else
@@ -129,7 +129,7 @@
 
 #define MINFLR_INIT_SETTINGS	0x00000040
 
-#ifdef CONFIG_LS102XA
+#ifdef CONFIG_SOC_LS102XA
 #define DMACTRL_INIT_SETTINGS	0x00000003
 #else
 #define DMACTRL_INIT_SETTINGS	0x000000c3

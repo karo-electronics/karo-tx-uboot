@@ -9,7 +9,6 @@
 #ifndef __MX6QSABRE_COMMON_CONFIG_H
 #define __MX6QSABRE_COMMON_CONFIG_H
 
-#define CONFIG_MX6
 
 #include "mx6_common.h"
 #include <linux/sizes.h>

@@ -19,7 +19,7 @@ config FSL_ESDHC
 
 config FSL_USDHC
 	bool "Support USDHC"
-	depends on MX6Q
+	depends on SOC_MX6
 	depends on FSL_ESDHC
 
 config SUPPORT_EMMC_BOOT

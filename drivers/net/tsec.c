@@ -271,7 +271,7 @@ void redundant_init(struct eth_device *dev)
 	out_be32(&regs->tstat, TSTAT_CLEAR_THALT);
 	out_be32(&regs->rstat, RSTAT_CLEAR_RHALT);
 	clrbits_be32(&regs->dmactrl, DMACTRL_GRS | DMACTRL_GTS);
-#ifdef CONFIG_LS102XA
+#ifdef CONFIG_SOC_LS102XA
 	setbits_be32(&regs->dmactrl, DMACTRL_LE);
 #endif
 
@@ -370,7 +370,7 @@ static void startup_tsec(struct eth_device *dev)
 	out_be32(&regs->tstat, TSTAT_CLEAR_THALT);
 	out_be32(&regs->rstat, RSTAT_CLEAR_RHALT);
 	clrbits_be32(&regs->dmactrl, DMACTRL_GRS | DMACTRL_GTS);
-#ifdef CONFIG_LS102XA
+#ifdef CONFIG_SOC_LS102XA
 	setbits_be32(&regs->dmactrl, DMACTRL_LE);
 #endif
 }

@@ -19,7 +19,6 @@
 
 #include "imx6_spl.h"                  /* common IMX6 SPL configuration */
 #include "mx6_common.h"
-#define CONFIG_MX6
 #define CONFIG_DISPLAY_CPUINFO         /* display cpu info */
 #define CONFIG_DISPLAY_BOARDINFO_LATE  /* display board info (after reloc) */
 

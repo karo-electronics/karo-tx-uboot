@@ -59,7 +59,7 @@ typedef u32 iomux_cfg_t;
 #define PAD_16MA		3
 
 #define PAD_1V8			0
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 #define PAD_3V3			1
 #else
 #define PAD_3V3			0

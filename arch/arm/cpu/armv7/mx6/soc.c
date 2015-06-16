@@ -128,13 +128,13 @@ u32 __weak get_board_rev(void)
 void init_aips(void)
 {
 	struct aipstz_regs *aips1, *aips2;
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	struct aipstz_regs *aips3;
 #endif
 
 	aips1 = (struct aipstz_regs *)AIPS1_BASE_ADDR;
 	aips2 = (struct aipstz_regs *)AIPS2_BASE_ADDR;
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	aips3 = (struct aipstz_regs *)AIPS3_BASE_ADDR;
 #endif
 
@@ -163,7 +163,7 @@ void init_aips(void)
 	writel(0x00000000, &aips2->opacr3);
 	writel(0x00000000, &aips2->opacr4);
 
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	/*
 	 * Set all MPROTx to be non-bufferable, trusted for R/W,
 	 * not forced to user-mode.
@@ -452,7 +452,7 @@ static void clear_mmdc_ch_mask(void)
 	writel(0, &mxc_ccm->ccdr);
 }
 
-#ifdef CONFIG_MX6SL
+#ifdef CONFIG_SOC_MX6SL
 static void set_preclk_from_osc(void)
 {
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
@@ -480,7 +480,7 @@ int arch_cpu_init(void)
 		set_ahb_rate(132000000);
 
 		/* Set perclk to source from OSC 24MHz */
-#if defined(CONFIG_MX6SL)
+#if defined(CONFIG_SOC_MX6SL)
 	set_preclk_from_osc();
 #endif
 
@@ -677,7 +677,7 @@ void v7_outer_cache_enable(void)
 	struct pl310_regs *const pl310 = (struct pl310_regs *)L2_PL310_BASE;
 	unsigned int val;
 
-#if defined CONFIG_MX6SL
+#if defined CONFIG_SOC_MX6SL
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
 	val = readl(&iomux->gpr[11]);
 	if (val & IOMUXC_GPR11_L2CACHE_AS_OCRAM) {
@@ -708,7 +708,7 @@ void v7_outer_cache_enable(void)
 	 * double linefill feature. This is the default behavior.
 	 */
 
-#ifndef CONFIG_MX6Q
+#ifndef CONFIG_SOC_MX6Q
 	val |= 0x40800000;
 #endif
 	writel(val, &pl310->pl310_prefetch_ctrl);

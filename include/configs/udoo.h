@@ -14,7 +14,6 @@
 #include <asm/imx-common/gpio.h>
 #include <linux/sizes.h>
 
-#define CONFIG_MX6
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 

@@ -10,7 +10,6 @@
 #define __CONFIGS_SC_SPS_1_H__
 
 /* System configuration */
-#define CONFIG_MX28				/* i.MX28 SoC */
 #define MACH_TYPE_SC_SPS_1	4172
 #define CONFIG_MACH_TYPE	MACH_TYPE_SC_SPS_1
 

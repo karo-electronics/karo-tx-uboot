@@ -15,7 +15,6 @@
 #define __CONFIGS_APX4DEVKIT_H__
 
 /* System configurations */
-#define CONFIG_MX28				/* i.MX28 SoC */
 #define MACH_TYPE_APX4DEVKIT	3712
 #define CONFIG_MACH_TYPE	MACH_TYPE_APX4DEVKIT
 

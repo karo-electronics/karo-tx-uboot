@@ -53,8 +53,8 @@ char *get_reset_cause(void)
 	}
 }
 
-#if defined(CONFIG_MX53) || defined(CONFIG_MX6)
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_SOC_MX53)
 #define MEMCTL_BASE	ESDCTL_BASE_ADDR
 #else
 #define MEMCTL_BASE	MMDC_P0_BASE_ADDR
@@ -136,7 +136,7 @@ int print_cpuinfo(void)
 {
 	u32 cpurev;
 
-#if defined(CONFIG_MX6) && defined(CONFIG_IMX6_THERMAL)
+#if defined(CONFIG_SOC_MX6) && defined(CONFIG_IMX6_THERMAL)
 	struct udevice *thermal_dev;
 	int cpu_tmp, ret;
 #endif
@@ -149,7 +149,7 @@ int print_cpuinfo(void)
 		(cpurev & 0x0000F) >> 0,
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 
-#if defined(CONFIG_MX6) && defined(CONFIG_IMX6_THERMAL)
+#if defined(CONFIG_SOC_MX6) && defined(CONFIG_IMX6_THERMAL)
 	ret = uclass_get_device(UCLASS_THERMAL, 0, &thermal_dev);
 	if (!ret) {
 		ret = thermal_get_temp(thermal_dev, &cpu_tmp);
@@ -206,7 +206,7 @@ void arch_preboot_os(void)
 {
 #if defined(CONFIG_CMD_SATA)
 	sata_stop();
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 	disable_sata_clock();
 #endif
 #endif

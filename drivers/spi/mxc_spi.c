@@ -14,7 +14,7 @@
 #include <asm/arch/clock.h>
 #include <asm/imx-common/spi.h>
 
-#ifdef CONFIG_MX27
+#ifdef CONFIG_SOC_MX27
 /* i.MX27 has a completely wrong register layout and register definitions in the
  * datasheet, the correct one is in the Freescale's Linux driver */
 
@@ -105,7 +105,7 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs)
 		MXC_CSPICTRL_BITCOUNT(MXC_CSPICTRL_MAXBITS) |
 		MXC_CSPICTRL_DATARATE(div) |
 		MXC_CSPICTRL_EN |
-#ifdef CONFIG_MX35
+#ifdef CONFIG_SOC_MX35
 		MXC_CSPICTRL_SSCTL |
 #endif
 		MXC_CSPICTRL_MODE;

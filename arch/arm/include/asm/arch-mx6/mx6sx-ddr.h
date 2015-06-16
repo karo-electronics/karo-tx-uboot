@@ -7,7 +7,7 @@
 #ifndef __ASM_ARCH_MX6SX_DDR_H__
 #define __ASM_ARCH_MX6SX_DDR_H__
 
-#ifndef CONFIG_MX6SX
+#ifndef CONFIG_SOC_MX6SX
 #error "wrong CPU"
 #endif
 

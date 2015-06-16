@@ -134,7 +134,7 @@
  * ECC status is stored at NFC_CFG[ECCADD] +4 for little-endian
  * and +7 for big-endian SOC.
  */
-#ifdef CONFIG_VF610
+#ifdef CONFIG_SOC_VF610
 #define ECC_OFFSET	4
 #else
 #define ECC_OFFSET	7
@@ -476,7 +476,7 @@ static int vf610_nfc_dev_ready(struct mtd_info *mtd)
  */
 static void vf610_nfc_select_chip(struct mtd_info *mtd, int chip)
 {
-#ifdef CONFIG_VF610
+#ifdef CONFIG_SOC_VF610
 	u32 tmp = vf610_nfc_read(mtd, NFC_ROW_ADDR);
 	tmp &= ~(ROW_ADDR_CHIP_SEL_RB_MASK | ROW_ADDR_CHIP_SEL_MASK);
 	tmp |= 1 << ROW_ADDR_CHIP_SEL_RB_SHIFT;

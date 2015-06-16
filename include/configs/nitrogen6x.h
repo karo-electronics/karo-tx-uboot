@@ -11,7 +11,6 @@
 #define __CONFIG_H
 
 #include "mx6_common.h"
-#define CONFIG_MX6
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -82,7 +81,6 @@
 #define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
 
-#ifdef CONFIG_MX6Q
 #define CONFIG_CMD_SATA
 #endif
 

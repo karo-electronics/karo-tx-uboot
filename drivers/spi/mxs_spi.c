@@ -136,10 +136,10 @@ static int mxs_spi_xfer_pio(struct mxs_spi_slave *slave,
 
 	while (length--) {
 		/* We transfer 1 byte */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 		writel(SSP_CTRL0_XFER_COUNT_MASK, &ssp_regs->hw_ssp_ctrl0_clr);
 		writel(1, &ssp_regs->hw_ssp_ctrl0_set);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 		writel(1, &ssp_regs->hw_ssp_xfer_size);
 #endif
 
@@ -199,9 +199,9 @@ static int mxs_spi_xfer_dma(struct mxs_spi_slave *slave,
 	int tl;
 	int ret = 0;
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	const int mxs_spi_pio_words = 1;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	const int mxs_spi_pio_words = 4;
 #endif
 
@@ -285,7 +285,7 @@ static int mxs_spi_xfer_dma(struct mxs_spi_slave *slave,
 		 * descriptor!
 		 */
 		dp->cmd.pio_words[0] = ctrl0;
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 		dp->cmd.pio_words[1] = 0;
 		dp->cmd.pio_words[2] = 0;
 		dp->cmd.pio_words[3] = tl;

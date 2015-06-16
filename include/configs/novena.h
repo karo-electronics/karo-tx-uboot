@@ -10,7 +10,6 @@
 #define __CONFIG_H
 
 /* System configurations */
-#define CONFIG_MX6
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_MISC_INIT_R

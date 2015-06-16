@@ -12,7 +12,6 @@
 #define __CONFIG_H
 
 /* SOC type must be included before imx-regs.h */
-#define CONFIG_MX53
 #include <asm/arch/imx-regs.h>
 
 #define CONFIG_DISPLAY_CPUINFO

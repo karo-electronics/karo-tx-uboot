@@ -17,8 +17,6 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/imx-common/gpio.h>
 
-#define CONFIG_MX6
-#define CONFIG_MX6Q
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 

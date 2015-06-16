@@ -92,7 +92,7 @@ typedef u64 iomux_v3_cfg_t;
 #define __PAD_CTRL_VALID	(1 << 17)
 #define PAD_CTRL_VALID		((iomux_v3_cfg_t)__PAD_CTRL_VALID << MUX_PAD_CTRL_SHIFT)
 
-#ifdef CONFIG_MX6
+#ifdef CONFIG_SOC_MX6
 
 #define PAD_CTL_HYS		__MUX_PAD_CTRL(1 << 16)
 
@@ -118,12 +118,12 @@ typedef u64 iomux_v3_cfg_t;
 #define PAD_CTL_DSE_40ohm	__MUX_PAD_CTRL(6 << 3)
 #define PAD_CTL_DSE_34ohm	__MUX_PAD_CTRL(7 << 3)
 
-#if defined CONFIG_MX6SL
+#if defined CONFIG_SOC_MX6SL
 #define PAD_CTL_LVE		__MUX_PAD_CTRL(1 << 1)
 #define PAD_CTL_LVE_BIT		__MUX_PAD_CTRL(1 << 22)
 #endif
 
-#elif defined(CONFIG_VF610)
+#elif defined(CONFIG_SOC_VF610)
 
 #define PAD_MUX_MODE_SHIFT	20
 
@@ -196,7 +196,7 @@ void imx_iomux_set_gpr_register(int group, int start_bit,
 					 int num_bits, int value);
 
 /* macros for declaring and using pinmux array */
-#if defined(CONFIG_MX6QDL)
+#if defined(CONFIG_SOC_MX6QDL)
 #define IOMUX_PADS(x) (MX6Q_##x), (MX6DL_##x)
 #define SETUP_IOMUX_PAD(def)					\
 if (is_cpu_type(MXC_CPU_MX6Q)) {				\
@@ -206,7 +206,7 @@ if (is_cpu_type(MXC_CPU_MX6Q)) {				\
 }
 #define SETUP_IOMUX_PADS(x)					\
 	imx_iomux_v3_setup_multiple_pads(x, ARRAY_SIZE(x)/2)
-#elif defined(CONFIG_MX6Q) || defined(CONFIG_MX6D)
+#elif defined(CONFIG_SOC_MX6Q) || defined(CONFIG_SOC_MX6D)
 #define IOMUX_PADS(x) MX6Q_##x
 #define SETUP_IOMUX_PAD(def)					\
 	imx_iomux_v3_setup_pad(MX6Q_##def);

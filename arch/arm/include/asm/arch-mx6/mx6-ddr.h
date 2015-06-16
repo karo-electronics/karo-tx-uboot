@@ -7,19 +7,19 @@
 #define __ASM_ARCH_MX6_DDR_H__
 
 #ifndef CONFIG_SPL_BUILD
-#ifdef CONFIG_MX6Q
+#ifdef CONFIG_SOC_MX6Q
 #include "mx6q-ddr.h"
 #else
-#if defined(CONFIG_MX6DL) || defined(CONFIG_MX6S)
+#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
 #include "mx6dl-ddr.h"
 #else
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 #include "mx6sx-ddr.h"
 #else
 #error "Please select cpu"
-#endif	/* CONFIG_MX6SX */
-#endif	/* CONFIG_MX6DL or CONFIG_MX6S */
-#endif	/* CONFIG_MX6Q */
+#endif	/* CONFIG_SOC_MX6SX */
+#endif	/* CONFIG_SOC_MX6DL or CONFIG_SOC_MX6S */
+#endif	/* CONFIG_SOC_MX6Q */
 #else
 
 /* MMDC P0/P1 Registers */

@@ -23,7 +23,7 @@
 #define PCI_ACCESS_READ  0
 #define PCI_ACCESS_WRITE 1
 
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 #define MX6_DBI_ADDR	0x08ffc000
 #define MX6_IO_ADDR	0x08000000
 #define MX6_MEM_ADDR	0x08100000
@@ -430,7 +430,7 @@ static int imx_pcie_write_config(struct pci_controller *hose, pci_dev_t d,
 static int imx6_pcie_assert_core_reset(void)
 {
 	struct iomuxc *iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
-#if defined(CONFIG_MX6SX)
+#if defined(CONFIG_SOC_MX6SX)
 	struct gpc *gpc_regs = (struct gpc *)GPC_BASE_ADDR;
 
 	/* SSP_EN is not used on MX6SX anymore */
@@ -460,7 +460,7 @@ static int imx6_pcie_init_phy(void)
 			IOMUXC_GPR12_LOS_LEVEL_MASK,
 			IOMUXC_GPR12_LOS_LEVEL_9);
 
-#ifdef CONFIG_MX6SX
+#ifdef CONFIG_SOC_MX6SX
 	clrsetbits_le32(&iomuxc_regs->gpr[12],
 			IOMUXC_GPR12_RX_EQ_MASK,
 			IOMUXC_GPR12_RX_EQ_2);
@@ -542,7 +542,7 @@ static int imx6_pcie_deassert_core_reset(void)
 	 */
 	mdelay(50);
 
-#if defined(CONFIG_MX6SX)
+#if defined(CONFIG_SOC_MX6SX)
 	/* SSP_EN is not used on MX6SX anymore */
 	clrbits_le32(&iomuxc_regs->gpr[12], IOMUXC_GPR12_TEST_POWERDOWN);
 	/* Clear PCIe PHY reset bit */

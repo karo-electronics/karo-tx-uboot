@@ -54,12 +54,12 @@ DECLARE_GLOBAL_DATA_PTR;
 	PAD_CTL_DSE_40ohm | PAD_CTL_HYS |			\
 	PAD_CTL_ODE | PAD_CTL_SRE_FAST)
 
-#if defined(CONFIG_MX6Q)
+#if defined(CONFIG_SOC_MX6Q)
 
 #define IOMUX_SW_PAD_CTRL_GRP_DDR_TYPE_RGMII	0x02e0790
 #define IOMUX_SW_PAD_CTRL_GRP_RGMII_TERM	0x02e07ac
 
-#elif defined(CONFIG_MX6S)
+#elif defined(CONFIG_SOC_MX6S)
 
 #define IOMUX_SW_PAD_CTRL_GRP_DDR_TYPE_RGMII	0x02e0768
 #define IOMUX_SW_PAD_CTRL_GRP_RGMII_TERM	0x02e0788
@@ -261,12 +261,12 @@ int board_phy_config(struct phy_device *phydev)
  * optimized pad skew values depends on CPU variant on the TQMa6x module:
  * i.MX6Q/D or i.MX6DL/S
  */
-#if defined(CONFIG_MX6Q) || defined(CONFIG_MX6Q)
+#if defined(CONFIG_SOC_MX6Q) || defined(CONFIG_SOC_MX6Q)
 #define MBA6X_KSZ9031_CTRL_SKEW	0x0032
 #define MBA6X_KSZ9031_CLK_SKEW	0x03ff
 #define MBA6X_KSZ9031_RX_SKEW	0x3333
 #define MBA6X_KSZ9031_TX_SKEW	0x2036
-#elif defined(CONFIG_MX6DL) || defined(CONFIG_MX6S)
+#elif defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
 #define MBA6X_KSZ9031_CTRL_SKEW	0x0030
 #define MBA6X_KSZ9031_CLK_SKEW	0x03ff
 #define MBA6X_KSZ9031_RX_SKEW	0x3333

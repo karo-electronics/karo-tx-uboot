@@ -13,7 +13,6 @@
 /*
  * KARO TX25 board - SoC Configuration
  */
-#define CONFIG_MX25
 #define CONFIG_MX25_CLK32		32000	/* OSC32K frequency */
 #define CONFIG_SYS_TIMER_RATE		CONFIG_MX25_CLK32
 #define CONFIG_SYS_TIMER_COUNTER	\

@@ -31,7 +31,7 @@
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		512
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT	2
 #else
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT	0
@@ -589,7 +589,7 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		length;
 
 	mxs_dma_desc_append(channel, d);
-#ifndef CONFIG_MX6Q
+#ifndef CONFIG_SOC_MX6Q
 	/*
 	 * A DMA descriptor that waits for the command to end and the chip to
 	 * become ready.

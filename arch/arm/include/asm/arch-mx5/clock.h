@@ -109,7 +109,7 @@ void ipu_clk_enable(void);
 void ipu_clk_disable(void);
 void ipu_di_clk_enable(int di);
 void ipu_di_clk_disable(int di);
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 void ldb_clk_enable(int ldb);
 void ldb_clk_disable(int ldb);
 #else
@@ -119,6 +119,6 @@ static inline void ldb_clk_enable(int ldb)
 static inline void ldb_clk_disable(int ldb)
 {
 }
-#endif /* CONFIG_MX53 */
+#endif /* CONFIG_SOC_MX53 */
 
 #endif /* __ASM_ARCH_CLOCK_H */

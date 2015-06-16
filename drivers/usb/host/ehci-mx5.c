@@ -101,7 +101,7 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 			else
 				/* OC/USBPWR is not used */
 				v |= MXC_OTG_PHYCTRL_OC_DIS_BIT;
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 			if (flags & MXC_EHCI_PWR_PIN_ACTIVE_HIGH)
 				v |= MXC_OTG_PHYCTRL_PWR_POL_BIT;
 			else
@@ -111,13 +111,13 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 					MXC_USB_PHY_CTR_FUNC_OFFSET);
 
 			v = __raw_readl(usbother_base + MXC_USBCTRL_OFFSET);
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 			if (flags & MXC_EHCI_POWER_PINS_ENABLED)
 				v &= ~MXC_OTG_UCTRL_OPM_BIT;
 			else
 				v |= MXC_OTG_UCTRL_OPM_BIT;
 #endif
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 			if (flags & MXC_EHCI_PWR_PIN_ACTIVE_HIGH)
 				v |= MXC_OTG_UCTRL_O_PWR_POL_BIT;
 			else
@@ -127,7 +127,7 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 		}
 		break;
 	case 1:	/* Host 1 ULPI */
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 		/* The clock for the USBH1 ULPI port will come externally
 		   from the PHY. */
 		v = __raw_readl(usbother_base + MXC_USB_CTRL_1_OFFSET);
@@ -136,13 +136,13 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 #endif
 
 		v = __raw_readl(usbother_base + MXC_USBCTRL_OFFSET);
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 		if (flags & MXC_EHCI_POWER_PINS_ENABLED)
 			v &= ~MXC_H1_UCTRL_H1PM_BIT; /* H1 power mask unused */
 		else
 			v |= MXC_H1_UCTRL_H1PM_BIT; /* H1 power mask used */
 #endif
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 		if (flags & MXC_EHCI_PWR_PIN_ACTIVE_HIGH)
 			v |= MXC_H1_UCTRL_H1_PWR_POL_BIT;
 		else
@@ -164,13 +164,13 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 		break;
 	case 2: /* Host 2 ULPI */
 		v = __raw_readl(usbother_base + MXC_USBH2CTRL_OFFSET);
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 		if (flags & MXC_EHCI_POWER_PINS_ENABLED)
 			v &= ~MXC_H2_UCTRL_H2PM_BIT; /* H2 power mask unused */
 		else
 			v |= MXC_H2_UCTRL_H2PM_BIT; /* H2 power mask used */
 #endif
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 		if (flags & MXC_EHCI_OC_PIN_ACTIVE_LOW)
 			v |= MXC_H2_UCTRL_H2_OC_POL_BIT;
 		else
@@ -186,7 +186,7 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 #endif
 		__raw_writel(v, usbother_base + MXC_USBH2CTRL_OFFSET);
 		break;
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 	case 3: /* Host 3 ULPI */
 		v = __raw_readl(usbother_base + MXC_USBH3CTRL_OFFSET);
 		if (flags & MXC_EHCI_OC_PIN_ACTIVE_LOW)

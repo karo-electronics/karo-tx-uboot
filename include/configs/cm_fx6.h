@@ -16,7 +16,6 @@
 #include "mx6_common.h"
 
 /* Machine config */
-#define CONFIG_MX6
 #define CONFIG_SYS_LITTLE_ENDIAN
 #define CONFIG_MACH_TYPE		4273
 

@@ -31,6 +31,6 @@ config HARD_I2C
 config SYS_I2C_MXC
 	bool "Freescale i.MX I2C controller"
 	select HARD_I2C
-	select I2C_QUIRK_REG if FSL_LSCH3 || LS102XA
+	select I2C_QUIRK_REG if FSL_LSCH3 || SOC_LS102XA
 
 endif
