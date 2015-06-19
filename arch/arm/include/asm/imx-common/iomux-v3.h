@@ -133,6 +133,7 @@ typedef u64 iomux_v3_cfg_t;
 #define PAD_CTL_SPEED_HIGH	__MUX_PAD_CTRL(3 << 12)
 
 #define PAD_CTL_SRE		__MUX_PAD_CTRL(1 << 11)
+#define PAD_CTL_ODE		__MUX_PAD_CTRL(1 << 10)
 
 #define PAD_CTL_DSE_150ohm	__MUX_PAD_CTRL(1 << 6)
 #define PAD_CTL_DSE_50ohm	__MUX_PAD_CTRL(3 << 6)
