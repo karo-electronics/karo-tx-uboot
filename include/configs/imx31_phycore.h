@@ -51,9 +51,6 @@
 /***********************************************************
  * Command definition
  ***********************************************************/
-
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_I2C

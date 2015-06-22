@@ -156,7 +156,6 @@
 /*=================*/
 /* U-Boot commands */
 /*=================*/
-#include <config_cmd_default.h>
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
@@ -165,12 +164,7 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
 #define CONFIG_CMD_EEPROM
-#undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_SETGETDCR
 #ifdef CONFIG_SYS_USE_NAND
-#undef CONFIG_CMD_FLASH
-#undef CONFIG_CMD_IMLS
 #define CONFIG_CMD_NAND
 #elif defined(CONFIG_SYS_USE_NOR)
 #define CONFIG_CMD_JFFS2

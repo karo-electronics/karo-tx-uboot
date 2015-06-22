@@ -110,7 +110,6 @@
 /*=================*/
 /* U-Boot commands */
 /*=================*/
-#include <config_cmd_default.h>
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
@@ -121,11 +120,6 @@
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_NAND
 #undef CONFIG_CMD_EEPROM
-#undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_SETGETDCR
-#undef CONFIG_CMD_FLASH
-#undef CONFIG_CMD_IMLS
 
 #ifdef CONFIG_CMD_BDI
 #define CONFIG_CLOCKS

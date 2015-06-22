@@ -118,9 +118,6 @@
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 
-/* U-Boot commands */
-#include <config_cmd_default.h>
-
 /*
  * Ethernet
  */

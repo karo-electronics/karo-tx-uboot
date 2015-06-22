@@ -150,8 +150,6 @@
 #define CONFIG_SYS_MAX_FLASH_SECT       128
 #define CONFIG_FLASH_16BIT              /* Flash is 16-bit */
 
-#define CONFIG_CMD_FLASH
-
 #define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_SYS_MONITOR_LEN	0x80000
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + \
@@ -244,7 +242,6 @@
 /*
  * U-Boot commands
  */
-#include <config_cmd_default.h>
 #define CONFIG_CMD_ENV
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
@@ -252,7 +249,6 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_MEMORY
 #define CONFIG_CMD_CACHE
 
 #ifdef CONFIG_CMD_BDI
@@ -266,7 +262,6 @@
 #endif
 
 #ifdef CONFIG_USE_NAND
-#undef CONFIG_CMD_IMLS
 #define CONFIG_CMD_NAND
 
 #define CONFIG_CMD_MTDPARTS
@@ -284,7 +279,6 @@
 #define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_SIZE		(16 << 10)
-#undef CONFIG_CMD_IMLS
 #undef CONFIG_CMD_ENV
 #endif
 

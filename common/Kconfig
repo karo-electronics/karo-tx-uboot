@@ -224,6 +224,7 @@ config CMD_SAVEENV
 
 config CMD_ENV_EXISTS
 	bool "env exists"
+	default y
 	help
 	  Check if a variable is defined in the environment for use in
 	  shell scripting.
@@ -404,6 +405,7 @@ config CMD_SOURCE
 
 config CMD_SETEXPR
 	bool "setexpr"
+	default y
 	help
 	  Evaluate boolean and math expressions and store the result in an env
 	    variable.
@@ -418,6 +420,7 @@ config CMD_NET
 	bool "bootp, tftpboot"
 	default y
         select NET
+	default y
 	help
 	  Network commands.
 	  bootp - boot image via network using BOOTP/TFTP protocol

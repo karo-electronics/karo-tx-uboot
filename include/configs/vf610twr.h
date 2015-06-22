@@ -10,7 +10,6 @@
 #define __CONFIG_H
 
 #include <asm/arch/imx-regs.h>
-#include <config_cmd_default.h>
 
 
 #define CONFIG_SYS_GENERIC_BOARD
@@ -41,8 +40,6 @@
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_SYS_UART_PORT		(1)
 #define CONFIG_BAUDRATE			115200
-
-#undef CONFIG_CMD_IMLS
 
 /* NAND support */
 #define CONFIG_CMD_NAND

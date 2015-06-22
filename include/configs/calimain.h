@@ -309,7 +309,6 @@
 /*
  * U-Boot commands
  */
-#include <config_cmd_default.h>
 #define CONFIG_CMD_ENV
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
@@ -317,7 +316,6 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_MEMORY
 #define CONFIG_CMD_GPIO
 
 #ifndef CONFIG_DRIVER_TI_EMAC
