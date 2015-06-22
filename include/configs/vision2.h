@@ -49,7 +49,6 @@
 #define CONFIG_FSL_SF
 #define CONFIG_CMD_SF
 
-#define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_STMICRO
 
 /*
