@@ -219,7 +219,8 @@ config CMD_SAVEENV
 	bool "saveenv"
 	default y
 	help
-	  Run the command in the given environment variable.
+	  Save all environment variables into the compiled-in persistent
+	  storage.
 
 endmenu
 
