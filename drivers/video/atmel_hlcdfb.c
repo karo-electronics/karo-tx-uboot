@@ -46,7 +46,7 @@ void lcd_ctrl_init(void *lcdbase)
 	if (!has_lcdc())
 		return;     /* No lcdc */
 
-	regs = (struct atmel_hlcd_regs *)panel_info.mmio;
+	regs = panel_info.mmio;
 
 	/* Disable DISP signal */
 	lcdc_writel(&regs->lcdc_lcddis, LCDC_LCDDIS_DISPDIS);
