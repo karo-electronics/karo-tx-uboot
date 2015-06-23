@@ -203,7 +203,7 @@ static inline void *pin_to_controller(unsigned pin)
 {
 	pin -= PIN_BASE;
 	pin /= 32;
-	return (void *)(at91_pios[pin]);
+	return at91_pios[pin];
 }
 
 static inline unsigned pin_to_mask(unsigned pin)
@@ -214,25 +214,27 @@ static inline unsigned pin_to_mask(unsigned pin)
 
 /* The following macros are need for backward compatibility */
 #define at91_set_GPIO_periph(x, y) \
-	at91_set_pio_periph((x - PIN_BASE) / 32,(x % 32), y)
+	at91_set_pio_periph(((x) - PIN_BASE) / 32, (x) % 32, y)
 #define at91_set_A_periph(x, y) \
-	at91_set_a_periph((x - PIN_BASE) / 32,(x % 32), y)
+	at91_set_a_periph(((x) - PIN_BASE) / 32, (x) % 32, y)
 #define at91_set_B_periph(x, y) \
-	at91_set_b_periph((x - PIN_BASE) / 32,(x % 32), y)
+	at91_set_b_periph(((x) - PIN_BASE) / 32, (x) % 32, y)
 #define at91_set_gpio_output(x, y) \
-	at91_set_pio_output((x - PIN_BASE) / 32,(x % 32), y)
+	at91_set_pio_output(((x) - PIN_BASE) / 32, (x) % 32, y)
 #define at91_set_gpio_input(x, y) \
-	at91_set_pio_input((x - PIN_BASE) / 32,(x % 32), y)
+	at91_set_pio_input(((x) - PIN_BASE) / 32, (x) % 32, y)
 #define at91_set_gpio_value(x, y) \
-	at91_set_pio_value((x - PIN_BASE) / 32,(x % 32), y)
+	at91_set_pio_value(((x) - PIN_BASE) / 32, (x) % 32, y)
 #define at91_get_gpio_value(x) \
-	at91_get_pio_value((x - PIN_BASE) / 32,(x % 32))
+	at91_get_pio_value(((x) - PIN_BASE) / 32, (x) % 32)
 #else
-#define at91_set_gpio_value(x, y)	at91_set_pio_value(x, y)
-#define at91_get_gpio_value(x)		at91_get_pio_value(x)
+#define at91_set_gpio_value(x, y)	at91_set_pio_value(at91_gpio_to_port(x), \
+							at91_gpio_to_pin(x), y)
+#define at91_get_gpio_value(x)		at91_get_pio_value(at91_gpio_to_port(x), \
+							at91_gpio_to_pin(x))
 #endif
 
-#define GPIO_PIOA_BASE  (0)
+#define GPIO_PIOA_BASE  0
 #define GPIO_PIOB_BASE  (GPIO_PIOA_BASE + 32)
 #define GPIO_PIOC_BASE  (GPIO_PIOB_BASE + 32)
 #define GPIO_PIOD_BASE  (GPIO_PIOC_BASE + 32)
