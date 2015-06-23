@@ -42,11 +42,13 @@ void lcd_ctrl_init(void *lcdbase)
 	unsigned long value;
 	struct lcd_dma_desc *desc;
 	struct atmel_hlcd_regs *regs;
+	u32 clk_pol;
 
 	if (!has_lcdc())
 		return;     /* No lcdc */
 
 	regs = panel_info.mmio;
+	clk_pol = panel_info.vl_clk_pol ? LCDC_LCDCFG0_CLKPOL : 0;
 
 	/* Disable DISP signal */
 	lcdc_writel(&regs->lcdc_lcddis, LCDC_LCDDIS_DISPDIS);
@@ -78,8 +80,8 @@ void lcd_ctrl_init(void *lcdbase)
 					| LCDC_LCDCFG0_CGDISHEO
 					| LCDC_LCDCFG0_CGDISOVR1
 					| LCDC_LCDCFG0_CGDISBASE
-					| panel_info.vl_clk_pol
-					| LCDC_LCDCFG0_CLKSEL);
+					| LCDC_LCDCFG0_CLKSEL
+					| clk_pol);
 
 	} else {
 		lcdc_writel(&regs->lcdc_lcdcfg0,
@@ -88,7 +90,7 @@ void lcd_ctrl_init(void *lcdbase)
 				| LCDC_LCDCFG0_CGDISHEO
 				| LCDC_LCDCFG0_CGDISOVR1
 				| LCDC_LCDCFG0_CGDISBASE
-				| panel_info.vl_clk_pol);
+				| clk_pol);
 	}
 
 	/* Initialize control register 5 */
