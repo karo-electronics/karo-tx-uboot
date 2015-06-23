@@ -280,6 +280,11 @@ __weak int arch_cpu_init(void)
 	return 0;
 }
 
+__weak unsigned long get_timer_masked(void)
+{
+	return get_timer(0);
+}
+
 #ifdef CONFIG_OF_HOSTFILE
 
 static int read_fdt_from_file(void)
