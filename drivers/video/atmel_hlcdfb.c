@@ -31,10 +31,10 @@
  */
 void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
 {
-	lcdc_writel(((red << LCDC_BASECLUT_RCLUT_Pos) & LCDC_BASECLUT_RCLUT_Msk)
-		| ((green << LCDC_BASECLUT_GCLUT_Pos) & LCDC_BASECLUT_GCLUT_Msk)
-		| ((blue << LCDC_BASECLUT_BCLUT_Pos) & LCDC_BASECLUT_BCLUT_Msk),
-		panel_info.mmio + ATMEL_LCDC_LUT(regno));
+	lcdc_writel(panel_info.mmio + ATMEL_LCDC_LUT(regno),
+		((red << LCDC_BASECLUT_RCLUT_Pos) & LCDC_BASECLUT_RCLUT_Msk) |
+		((green << LCDC_BASECLUT_GCLUT_Pos) & LCDC_BASECLUT_GCLUT_Msk) |
+		((blue << LCDC_BASECLUT_BCLUT_Pos) & LCDC_BASECLUT_BCLUT_Msk));
 }
 
 void lcd_ctrl_init(void *lcdbase)
