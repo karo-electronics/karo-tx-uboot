@@ -703,7 +703,7 @@ struct reg_cell {
 	unsigned int r1;
 };
 
-int fdt_del_subnodes(const void *blob, int parent_offset)
+static int fdt_del_subnodes(const void *blob, int parent_offset)
 {
 	int off, ndepth;
 	int ret;
@@ -711,18 +711,20 @@ int fdt_del_subnodes(const void *blob, int parent_offset)
 	for (ndepth = 0, off = fdt_next_node(blob, parent_offset, &ndepth);
 	     (off >= 0) && (ndepth > 0);
 	     off = fdt_next_node(blob, off, &ndepth)) {
-		if (ndepth == 1) {
-			debug("delete %s: offset: %x\n",
-				fdt_get_name(blob, off, 0), off);
-			ret = fdt_del_node((void *)blob, off);
-			if (ret < 0) {
-				printf("Can't delete node: %s\n",
-					fdt_strerror(ret));
-				return ret;
-			} else {
-				ndepth = 0;
-				off = parent_offset;
-			}
+		if (ndepth != 1)
+			continue;
+		if (fdt_getprop(blob, off, "compatible", NULL))
+			continue;
+		debug("delete %s: offset: %x\n",
+			fdt_get_name(blob, off, 0), off);
+		ret = fdt_del_node((void *)blob, off);
+		if (ret < 0) {
+			printf("Can't delete node: %s\n",
+				fdt_strerror(ret));
+			return ret;
+		} else {
+			ndepth = 0;
+			off = parent_offset;
 		}
 	}
 	return 0;
@@ -732,11 +734,14 @@ int fdt_del_partitions(void *blob, int parent_offset)
 {
 	const void *prop;
 	int ndepth = 0;
-	int off;
+	int off = parent_offset;
 	int ret;
 
-	off = fdt_next_node(blob, parent_offset, &ndepth);
-	if (off > 0 && ndepth == 1) {
+	while ((off = fdt_next_node(blob, off, &ndepth)) > 0) {
+		if (ndepth != 1)
+			continue;
+		if (fdt_getprop(blob, off, "compatible", NULL))
+			continue;
 		prop = fdt_getprop(blob, off, "label", NULL);
 		if (prop == NULL) {
 			/*
@@ -762,7 +767,7 @@ int fdt_node_set_part_info(void *blob, int parent_offset,
 	struct list_head *pentry;
 	struct part_info *part;
 	struct reg_cell cell;
-	int off, ndepth = 0;
+	int off = parent_offset, ndepth = 0;
 	int part_num, ret;
 	char buf[64];
 
@@ -774,10 +779,14 @@ int fdt_node_set_part_info(void *blob, int parent_offset,
 	 * Check if it is nand {}; subnode, adjust
 	 * the offset in this case
 	 */
-	off = fdt_next_node(blob, parent_offset, &ndepth);
-	if (off > 0 && ndepth == 1)
+	while ((off = fdt_next_node(blob, off, &ndepth)) > 0) {
+		if (ndepth != 1)
+			continue;
+		if (fdt_getprop(blob, off, "compatible", NULL))
+			continue;
 		parent_offset = off;
-
+		break;
+	}
 	part_num = 0;
 	list_for_each_prev(pentry, &dev->parts) {
 		int newoff;
