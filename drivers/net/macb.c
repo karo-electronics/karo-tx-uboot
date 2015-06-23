@@ -419,6 +419,15 @@ static int macb_phy_find(struct macb_device *macb)
 }
 #endif /* CONFIG_MACB_SEARCH_PHY */
 
+#ifdef CONFIG_PHYLIB
+#define gbit_phy_support(p)	((p)->supported &			\
+					(SUPPORTED_1000baseT_Full |	\
+					SUPPORTED_1000baseT_Half))
+#elif defined(CONFIG_RGMII) || defined(CONFIG_GMII)
+#define gbit_phy_support(p)	1
+#else
+#define gbit_phy_support(p)	0
+#endif
 
 static int macb_phy_init(struct macb_device *macb)
 {
@@ -478,26 +487,28 @@ static int macb_phy_init(struct macb_device *macb)
 
 	/* First check for GMAC */
 	if (macb_is_gem(macb)) {
-		lpa = macb_mdio_read(macb, MII_STAT1000);
+		if (gbit_phy_support(phydev)) {
+			lpa = macb_mdio_read(macb, MII_STAT1000);
 
-		if (lpa & (LPA_1000FULL | LPA_1000HALF)) {
-			duplex = ((lpa & LPA_1000FULL) ? 1 : 0);
+			if (lpa & (LPA_1000FULL | LPA_1000HALF)) {
+				duplex = ((lpa & LPA_1000FULL) ? 1 : 0);
 
-			printf("%s: link up, 1000Mbps %s-duplex (lpa: 0x%04x)\n",
-			       netdev->name,
-			       duplex ? "full" : "half",
-			       lpa);
+				printf("%s: link up, 1000Mbps %s-duplex (lpa: 0x%04x)\n",
+					netdev->name,
+					duplex ? "full" : "half",
+					lpa);
 
-			ncfgr = macb_readl(macb, NCFGR);
-			ncfgr &= ~(MACB_BIT(SPD) | MACB_BIT(FD));
-			ncfgr |= GEM_BIT(GBE);
+				ncfgr = macb_readl(macb, NCFGR);
+				ncfgr &= ~(MACB_BIT(SPD) | MACB_BIT(FD));
+				ncfgr |= GEM_BIT(GBE);
 
-			if (duplex)
-				ncfgr |= MACB_BIT(FD);
+				if (duplex)
+					ncfgr |= MACB_BIT(FD);
 
-			macb_writel(macb, NCFGR, ncfgr);
+				macb_writel(macb, NCFGR, ncfgr);
 
-			return 1;
+				return 1;
+			}
 		}
 	}
 
