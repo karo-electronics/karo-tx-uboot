@@ -1,0 +1,93 @@
+if TARGET_TXA5
+
+config SYS_BOARD
+	default "txa5"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "at91"
+
+config SYS_CONFIG_NAME
+	default "txa5"
+
+config TXA5
+	bool
+	default y
+	select CC_OPTIMIZE_LIBS_FOR_SPEED
+	select CMD_BMP if LCD
+	select CMD_BOOTCE
+	select CMD_BOOTZ
+	select CMD_CACHE
+	select CMD_I2C if I2C
+	select CMD_MEMINFO
+	select CMD_MEMTEST
+	select CMD_MMC
+	select CMD_TIME
+	select DM
+	select DM_GPIO
+#	select GET_FEC_MAC_ADDR_FROM_IIM
+#	select IMX_WATCHDOG
+	select MMC
+	select OF_LIBFDT
+	select OF_BOARD_SETUP
+	select PHYLIB
+#	select PHY_SMSC
+#	select SYS_I2C
+#	select SYS_I2C_MXC
+
+config TXA5_NAND
+	bool
+	select TXA5
+	select CMD_NAND
+	select CMD_NAND_TRIMFFS
+	select CMD_ROMUPDATE
+	select ENV_IS_IN_NAND if !TXA5_UBOOT_NOENV
+	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
+	select MTD_PARTITIONS
+	select MTD_DEVICE
+	select NAND
+	select NAND_ATMEL
+	select SYS_NAND_USE_FLASH_BBT
+
+config TXA5_EMMC
+	bool
+	select TXA5
+	select SUPPORT_EMMC_BOOT
+	select ENV_IS_IN_MMC if !TXA5_UBOOT_NOENV
+
+choice
+	prompt "TXA5 module variant"
+
+config TARGET_TXA5_5010
+	bool "TXA5-5010 (NAND)"
+	select TXA5_NAND
+
+config TARGET_TXA5_5011
+	bool "TXA5-5011 (eMMC)"
+	select TXA5_EMMC
+
+endchoice
+
+#
+# variables selected depending on module variant
+#
+
+config NR_DRAM_BANKS
+	int
+	default 1
+
+choice
+	prompt "U-Boot image variant"
+
+config TXA5_UBOOT
+	bool "Standard U-Boot image"
+
+config TXA5_UBOOT_NOENV
+	bool "U-Boot using only built-in environment"
+	select ENV_IS_NOWHERE
+
+endchoice
+
+endif

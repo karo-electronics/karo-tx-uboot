@@ -337,6 +337,10 @@ config TARGET_TX6
 	bool "Support tx6"
 	select SOC_MX6
 
+config TARGET_TXA5
+	bool "Support txA5"
+	select SOC_SAMA5D4
+
 config TARGET_ZMX25
 	bool "Support zmx25"
 	select CPU_ARM926EJS
@@ -1030,6 +1034,7 @@ source "board/karo/tx48/Kconfig"
 source "board/karo/tx51/Kconfig"
 source "board/karo/tx53/Kconfig"
 source "board/karo/tx6/Kconfig"
+source "board/karo/txa5/Kconfig"
 source "board/kosagi/novena/Kconfig"
 source "board/logicpd/imx27lite/Kconfig"
 source "board/logicpd/imx31_litekit/Kconfig"
