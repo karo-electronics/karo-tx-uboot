@@ -359,6 +359,11 @@ config CMD_MMC
 	help
 	  MMC/SD support.
 
+config CMD_SF
+	bool "sf"
+	help
+	  SPI Flash support
+
 config CMD_SPI
 	bool "sspi"
 	help
