@@ -1,5 +1,7 @@
+menu "SPI Support"
+
 config SPI
-	bool "Enable SPI bus support"
+	bool "Enable SPI support"
 
 config DM_SPI
 	bool "Enable Driver Model for SPI drivers"
@@ -62,3 +64,5 @@ config ZYNQ_SPI
 	  Enable the Zynq SPI driver. This driver can be used to
 	  access the SPI NOR flash on platforms embedding this Zynq
 	  SPI IP core.
+
+endmenu # menu "SPI Support"
