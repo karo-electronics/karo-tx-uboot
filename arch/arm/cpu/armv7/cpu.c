@@ -35,15 +35,7 @@ int cleanup_before_linux_select(int flags)
 	 */
 #ifndef CONFIG_SPL_BUILD
 	disable_interrupts();
-#ifdef CONFIG_LCD
-	{
-		/* switch off LCD panel */
-		lcd_panel_disable();
-		/* disable LCD controller */
-		lcd_disable();
-	}
-#endif /* CONFIG_LCD */
-#endif /* CONFIG_SPL_BUILD */
+#endif
 
 	/*
 	 * Turn off I-cache and invalidate it

@@ -10,7 +10,6 @@
 
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
-#include "mx6_common.h"
 
 /*
  * Ka-Ro TX6 board - SoC configuration

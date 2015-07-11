@@ -11,72 +11,17 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/hab.h>
 
-HAB_FUNC(entry, hab_status_t)
-HAB_FUNC(exit, hab_status_t)
+HAB_FUNC(entry, enum hab_status)
+HAB_FUNC(exit, enum hab_status)
 HAB_FUNC5(authenticate_image, void *, uint8_t, size_t, void **, size_t *, hab_loader_callback_f_t)
-//HAB_FUNC1(run_dcd, hab_status_t, const uint8_t *)
-HAB_FUNC2(run_csf, hab_status_t, const uint8_t *, uint8_t)
-HAB_FUNC2(report_status, hab_status_t, hab_config_t *, hab_state_t *)
-HAB_FUNC4(report_event, hab_status_t, hab_status_t, uint32_t, uint8_t *, size_t *)
-HAB_FUNC3(check_target, hab_status_t, uint8_t, const void *, size_t)
-HAB_FUNC3(assert, hab_status_t, uint8_t, const void *, size_t)
+//HAB_FUNC1(run_dcd, enum hab_status, const uint8_t *)
+HAB_FUNC2(run_csf, enum hab_status, const uint8_t *, uint8_t)
+HAB_FUNC2(report_status, enum hab_status, enum hab_config *, enum hab_state *)
+HAB_FUNC4(report_event, enum hab_status, enum hab_status, uint32_t, uint8_t *, size_t *)
+HAB_FUNC3(check_target, enum hab_status, uint8_t, const void *, size_t)
+HAB_FUNC3(assert, enum hab_status, uint8_t, const void *, size_t)
 
-struct mx6_ivt {
-	u32 header;
-	u32 entry;
-	u32 rsrvd1;
-	void *dcd;
-	struct mx6_boot_data *boot_data;
-	void *self;
-	void *csf;
-	u32 rsrvd2;
-};
-
-struct mx6_boot_data {
-	void *start;
-	u32 length;
-	u32 plugin;
-};
-
-#define IVT_SIZE		0x20
-#define ALIGN_SIZE		0x400
-#define CSF_PAD_SIZE		0x2000
-#define MX6DQ_PU_IROM_MMU_EN_VAR	0x009024a8
-#define MX6DLS_PU_IROM_MMU_EN_VAR	0x00901dd0
-#define MX6SL_PU_IROM_MMU_EN_VAR	0x00900a18
-
-/*
- * +------------+  0x0 (DDR_UIMAGE_START) -
- * |   Header   |                          |
- * +------------+  0x40                    |
- * |            |                          |
- * |            |                          |
- * |            |                          |
- * |            |                          |
- * | Image Data |                          |
- * .            |                          |
- * .            |                           > Stuff to be authenticated ----+
- * .            |                          |                                |
- * |            |                          |                                |
- * |            |                          |                                |
- * +------------+                          |                                |
- * |            |                          |                                |
- * | Fill Data  |                          |                                |
- * |            |                          |                                |
- * +------------+ Align to ALIGN_SIZE      |                                |
- * |    IVT     |                          |                                |
- * +------------+ + IVT_SIZE              -                                 |
- * |            |                                                           |
- * |  CSF DATA  | <---------------------------------------------------------+
- * |            |
- * +------------+
- * |            |
- * | Fill Data  |
- * |            |
- * +------------+ + CSF_PAD_SIZE
- */
-
-#define MAX_RECORD_BYTES     (8*1024) /* 4 kbytes */
+#define MAX_RECORD_BYTES     (8 * 1024)
 
 struct record {
 	uint8_t  tag;						/* Tag */
@@ -86,73 +31,78 @@ struct record {
 	bool	 any_rec_flag;
 };
 
-char *rsn_str[] = {"RSN = HAB_RSN_ANY (0x00)\n",
-				   "RSN = HAB_ENG_FAIL (0x30)\n",
-				   "RSN = HAB_INV_ADDRESS (0x22)\n",
-				   "RSN = HAB_INV_ASSERTION (0x0C)\n",
-				   "RSN = HAB_INV_CALL (0x28)\n",
-				   "RSN = HAB_INV_CERTIFICATE (0x21)\n",
-				   "RSN = HAB_INV_COMMAND (0x06)\n",
-				   "RSN = HAB_INV_CSF (0x11)\n",
-				   "RSN = HAB_INV_DCD (0x27)\n",
-				   "RSN = HAB_INV_INDEX (0x0F)\n",
-				   "RSN = HAB_INV_IVT (0x05)\n",
-				   "RSN = HAB_INV_KEY (0x1D)\n",
-				   "RSN = HAB_INV_RETURN (0x1E)\n",
-				   "RSN = HAB_INV_SIGNATURE (0x18)\n",
-				   "RSN = HAB_INV_SIZE (0x17)\n",
-				   "RSN = HAB_MEM_FAIL (0x2E)\n",
-				   "RSN = HAB_OVR_COUNT (0x2B)\n",
-				   "RSN = HAB_OVR_STORAGE (0x2D)\n",
-				   "RSN = HAB_UNS_ALGORITHM (0x12)\n",
-				   "RSN = HAB_UNS_COMMAND (0x03)\n",
-				   "RSN = HAB_UNS_ENGINE (0x0A)\n",
-				   "RSN = HAB_UNS_ITEM (0x24)\n",
-				   "RSN = HAB_UNS_KEY (0x1B)\n",
-				   "RSN = HAB_UNS_PROTOCOL (0x14)\n",
-				   "RSN = HAB_UNS_STATE (0x09)\n",
-				   "RSN = INVALID\n",
-				   NULL};
+char *rsn_str[] = {
+	"RSN = HAB_RSN_ANY (0x00)\n",
+	"RSN = HAB_ENG_FAIL (0x30)\n",
+	"RSN = HAB_INV_ADDRESS (0x22)\n",
+	"RSN = HAB_INV_ASSERTION (0x0C)\n",
+	"RSN = HAB_INV_CALL (0x28)\n",
+	"RSN = HAB_INV_CERTIFICATE (0x21)\n",
+	"RSN = HAB_INV_COMMAND (0x06)\n",
+	"RSN = HAB_INV_CSF (0x11)\n",
+	"RSN = HAB_INV_DCD (0x27)\n",
+	"RSN = HAB_INV_INDEX (0x0F)\n",
+	"RSN = HAB_INV_IVT (0x05)\n",
+	"RSN = HAB_INV_KEY (0x1D)\n",
+	"RSN = HAB_INV_RETURN (0x1E)\n",
+	"RSN = HAB_INV_SIGNATURE (0x18)\n",
+	"RSN = HAB_INV_SIZE (0x17)\n",
+	"RSN = HAB_MEM_FAIL (0x2E)\n",
+	"RSN = HAB_OVR_COUNT (0x2B)\n",
+	"RSN = HAB_OVR_STORAGE (0x2D)\n",
+	"RSN = HAB_UNS_ALGORITHM (0x12)\n",
+	"RSN = HAB_UNS_COMMAND (0x03)\n",
+	"RSN = HAB_UNS_ENGINE (0x0A)\n",
+	"RSN = HAB_UNS_ITEM (0x24)\n",
+	"RSN = HAB_UNS_KEY (0x1B)\n",
+	"RSN = HAB_UNS_PROTOCOL (0x14)\n",
+	"RSN = HAB_UNS_STATE (0x09)\n",
+	"RSN = INVALID\n",
+};
 
-char *sts_str[] = {"STS = HAB_SUCCESS (0xF0)\n",
-				   "STS = HAB_FAILURE (0x33)\n",
-				   "STS = HAB_WARNING (0x69)\n",
-				   "STS = INVALID\n",
-				   NULL};
+char *sts_str[] = {
+	"STS = HAB_STS_ANY (0x00)\n",
+	"STS = HAB_FAILURE (0x33)\n",
+	"STS = HAB_WARNING (0x69)\n",
+	"STS = HAB_SUCCESS (0xF0)\n",
+	"STS = INVALID\n",
+};
 
-char *eng_str[] = {"ENG = HAB_ENG_ANY (0x00)\n",
-				   "ENG = HAB_ENG_SCC (0x03)\n",
-				   "ENG = HAB_ENG_RTIC (0x05)\n",
-				   "ENG = HAB_ENG_SAHARA (0x06)\n",
-				   "ENG = HAB_ENG_CSU (0x0A)\n",
-				   "ENG = HAB_ENG_SRTC (0x0C)\n",
-				   "ENG = HAB_ENG_DCP (0x1B)\n",
-				   "ENG = HAB_ENG_CAAM (0x1D)\n",
-				   "ENG = HAB_ENG_SNVS (0x1E)\n",
-				   "ENG = HAB_ENG_OCOTP (0x21)\n",
-				   "ENG = HAB_ENG_DTCP (0x22)\n",
-				   "ENG = HAB_ENG_ROM (0x36)\n",
-				   "ENG = HAB_ENG_HDCP (0x24)\n",
-				   "ENG = HAB_ENG_RTL (0x77)\n",
-				   "ENG = HAB_ENG_SW (0xFF)\n",
-				   "ENG = INVALID\n",
-				   NULL};
+char *eng_str[] = {
+	"ENG = HAB_ENG_ANY (0x00)\n",
+	"ENG = HAB_ENG_SCC (0x03)\n",
+	"ENG = HAB_ENG_RTIC (0x05)\n",
+	"ENG = HAB_ENG_SAHARA (0x06)\n",
+	"ENG = HAB_ENG_CSU (0x0A)\n",
+	"ENG = HAB_ENG_SRTC (0x0C)\n",
+	"ENG = HAB_ENG_DCP (0x1B)\n",
+	"ENG = HAB_ENG_CAAM (0x1D)\n",
+	"ENG = HAB_ENG_SNVS (0x1E)\n",
+	"ENG = HAB_ENG_OCOTP (0x21)\n",
+	"ENG = HAB_ENG_DTCP (0x22)\n",
+	"ENG = HAB_ENG_ROM (0x36)\n",
+	"ENG = HAB_ENG_HDCP (0x24)\n",
+	"ENG = HAB_ENG_RTL (0x77)\n",
+	"ENG = HAB_ENG_SW (0xFF)\n",
+	"ENG = INVALID\n",
+};
 
-char *ctx_str[] = {"CTX = HAB_CTX_ANY(0x00)\n",
-				   "CTX = HAB_CTX_FAB (0xFF)\n",
-				   "CTX = HAB_CTX_ENTRY (0xE1)\n",
-				   "CTX = HAB_CTX_TARGET (0x33)\n",
-				   "CTX = HAB_CTX_AUTHENTICATE (0x0A)\n",
-				   "CTX = HAB_CTX_DCD (0xDD)\n",
-				   "CTX = HAB_CTX_CSF (0xCF)\n",
-				   "CTX = HAB_CTX_COMMAND (0xC0)\n",
-				   "CTX = HAB_CTX_AUT_DAT (0xDB)\n",
-				   "CTX = HAB_CTX_ASSERT (0xA0)\n",
-				   "CTX = HAB_CTX_EXIT (0xEE)\n",
-				   "CTX = INVALID\n",
-				   NULL};
+char *ctx_str[] = {
+	"CTX = HAB_CTX_ANY(0x00)\n",
+	"CTX = HAB_CTX_FAB (0xFF)\n",
+	"CTX = HAB_CTX_ENTRY (0xE1)\n",
+	"CTX = HAB_CTX_TARGET (0x33)\n",
+	"CTX = HAB_CTX_AUTHENTICATE (0x0A)\n",
+	"CTX = HAB_CTX_DCD (0xDD)\n",
+	"CTX = HAB_CTX_CSF (0xCF)\n",
+	"CTX = HAB_CTX_COMMAND (0xC0)\n",
+	"CTX = HAB_CTX_AUT_DAT (0xDB)\n",
+	"CTX = HAB_CTX_ASSERT (0xA0)\n",
+	"CTX = HAB_CTX_EXIT (0xEE)\n",
+	"CTX = INVALID\n",
+};
 
-uint8_t hab_statuses[5] = {
+uint8_t hab_statuses[ARRAY_SIZE(sts_str)] = {
 	HAB_STS_ANY,
 	HAB_FAILURE,
 	HAB_WARNING,
@@ -160,7 +110,7 @@ uint8_t hab_statuses[5] = {
 	-1
 };
 
-uint8_t hab_reasons[26] = {
+uint8_t hab_reasons[ARRAY_SIZE(rsn_str)] = {
 	HAB_RSN_ANY,
 	HAB_ENG_FAIL,
 	HAB_INV_ADDRESS,
@@ -189,7 +139,7 @@ uint8_t hab_reasons[26] = {
 	-1
 };
 
-uint8_t hab_contexts[12] = {
+uint8_t hab_contexts[ARRAY_SIZE(ctx_str)] = {
 	HAB_CTX_ANY,
 	HAB_CTX_FAB,
 	HAB_CTX_ENTRY,
@@ -204,7 +154,7 @@ uint8_t hab_contexts[12] = {
 	-1
 };
 
-uint8_t hab_engines[16] = {
+uint8_t hab_engines[ARRAY_SIZE(eng_str)] = {
 	HAB_ENG_ANY,
 	HAB_ENG_SCC,
 	HAB_ENG_RTIC,
@@ -330,9 +280,9 @@ int get_hab_status(void)
 	return ret;
 }
 
-static inline hab_status_t hab_init(void)
+static inline enum hab_status hab_init(void)
 {
-	hab_status_t ret;
+	enum hab_status ret;
 
 	if (!is_hab_enabled()) {
 		puts("hab fuse not enabled\n");
@@ -351,9 +301,9 @@ static inline hab_status_t hab_init(void)
 	return ret;
 }
 
-static inline hab_status_t hab_exit(void)
+static inline enum hab_status hab_exit(void)
 {
-	hab_status_t ret;
+	enum hab_status ret;
 
 	ret = hab_rvt_exit();
 	if (ret != HAB_SUCCESS)
@@ -364,9 +314,9 @@ static inline hab_status_t hab_exit(void)
 	return ret;
 }
 
-static hab_status_t hab_check_target(hab_target_t type, uint32_t addr, size_t len)
+static enum hab_status hab_check_target(enum hab_target type, uint32_t addr, size_t len)
 {
-	hab_status_t ret;
+	enum hab_status ret;
 
 	ret = hab_init();
 	if (ret != HAB_SUCCESS)
@@ -386,9 +336,9 @@ static hab_status_t hab_check_target(hab_target_t type, uint32_t addr, size_t le
 	return ret;
 }
 
-static hab_status_t hab_assert(uint32_t type, uint32_t addr, size_t len)
+static enum hab_status hab_assert(uint32_t type, uint32_t addr, size_t len)
 {
-	hab_status_t ret;
+	enum hab_status ret;
 
 	ret = hab_init();
 	if (ret != HAB_SUCCESS)
@@ -422,7 +372,7 @@ static int do_hab_status(cmd_tbl_t *cmdtp, int flag, int argc,
 static int do_hab_check_target(cmd_tbl_t *cmdtp, int flag, int argc,
 			char *const argv[])
 {
-	hab_target_t type = HAB_TGT_ANY;
+	enum hab_target type = HAB_TGT_ANY;
 	uint32_t addr;
 	size_t len;
 
