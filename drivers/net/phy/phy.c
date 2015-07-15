@@ -642,7 +642,7 @@ static int phy_get_duplex(struct phy_device *phydev)
 }
 
 static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
-					    int phy_id,
+					    u32 phy_id,
 					    phy_interface_t interface)
 {
 	struct phy_device *dev;
