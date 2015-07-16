@@ -739,7 +739,7 @@ static int reloc_fdt(void)
 static int setup_reloc(void)
 {
 #ifdef CONFIG_SYS_TEXT_BASE
-#ifndef CONFIG_SECURE_BOOT
+#ifndef CONFIG_ARM
 	gd->reloc_off = gd->relocaddr - CONFIG_SYS_TEXT_BASE;
 #else
 	gd->reloc_off = gd->relocaddr - (unsigned long)__image_copy_start;
