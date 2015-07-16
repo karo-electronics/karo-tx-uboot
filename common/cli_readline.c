@@ -272,6 +272,12 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len,
 			first = 0;
 		}
 
+#ifdef CONFIG_SHOW_ACTIVITY
+		while (!tstc()) {	/* while no incoming data */
+			show_activity(0);
+			WATCHDOG_RESET();
+		}
+#endif
 		ichar = getcmd_getch();
 
 		if ((ichar == '\n') || (ichar == '\r')) {
