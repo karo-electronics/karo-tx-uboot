@@ -62,35 +62,12 @@ int gpio_request(unsigned gpio, const char *label);
 
 /**
  * @deprecated	Please use driver model instead
- * Request a GPIO and configure it
- * @param gpios	pointer to array of gpio defs
- * @param count	number of GPIOs to set up
- */
-int gpio_request_one(unsigned gpio, enum gpio_flags flags, const char *label);
-
-/**
- * Request a set of GPIOs and configure them
- * @param gpios	pointer to array of gpio defs
- * @param count	number of GPIOs to set up
- */
-int gpio_request_array(const struct gpio *gpios, int count);
-
-/**
- * @deprecated	Please use driver model instead
  * Stop using the GPIO.  This function should not alter pin configuration.
  *
  * @param gpio	GPIO number
  * @return 0 if ok, -1 on error
  */
 int gpio_free(unsigned gpio);
-
-/**
- * @deprecated	Please use driver model instead
- * Release a set of GPIOs
- * @param gpios	pointer to array of gpio defs
- * @param count	number of GPIOs to set up
- */
-int gpio_free_array(const struct gpio *gpios, int count);
 
 /**
  * @deprecated	Please use driver model instead
@@ -568,4 +545,73 @@ int dm_gpio_set_dir_flags(struct gpio_desc *desc, ulong flags);
  */
 int gpio_get_number(struct gpio_desc *desc);
 
+/**
+ * @deprecated	Please use driver model instead
+ * Request a GPIO and configure it
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+static inline int gpio_request_one(unsigned int gpio, enum gpio_flags flags,
+				const char *label)
+{
+	int ret;
+
+	ret = gpio_request(gpio, label);
+	if (ret)
+		return ret;
+
+	if (flags == GPIOFLAG_INPUT)
+		gpio_direction_input(gpio);
+	else if (flags == GPIOFLAG_OUTPUT_INIT_LOW)
+		gpio_direction_output(gpio, 0);
+	else if (flags == GPIOFLAG_OUTPUT_INIT_HIGH)
+		gpio_direction_output(gpio, 1);
+
+	return ret;
+}
+
+/**
+ * Request a set of GPIOs and configure them
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+static inline int gpio_request_array(const struct gpio *gpios, int count)
+{
+	int ret;
+	int i;
+
+	for (i = 0; i < count; i++) {
+		ret = gpio_request_one(gpios[i].gpio, gpios[i].flags,
+				gpios[i].label);
+		if (ret) {
+			printf("Failed to request GPIO%d (%u of %u): %d\n",
+				gpios[i].gpio, i, count, ret);
+			goto error;
+		}
+	}
+	return 0;
+
+error:
+	while (--i >= 0)
+		gpio_free(gpios[i].gpio);
+
+	return ret;
+}
+
+/**
+ * @deprecated	Please use driver model instead
+ * Release a set of GPIOs
+ * @param gpios	pointer to array of gpio defs
+ * @param count	number of GPIOs to set up
+ */
+static inline int gpio_free_array(const struct gpio *gpios, int count)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < count; i++)
+		ret |= gpio_free(gpios[i].gpio);
+
+	return ret;
+}
 #endif	/* _ASM_GENERIC_GPIO_H_ */
