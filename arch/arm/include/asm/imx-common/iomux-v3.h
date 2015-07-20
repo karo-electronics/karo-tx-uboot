@@ -105,8 +105,8 @@ typedef u64 iomux_v3_cfg_t;
 
 #define PAD_CTL_ODE		__MUX_PAD_CTRL(1 << 11)
 
-#define PAD_CTL_SPEED_LOW	__MUX_PAD_CTRL(1 << 6)
-#define PAD_CTL_SPEED_MED	__MUX_PAD_CTRL(2 << 6)
+#define PAD_CTL_SPEED_LOW	__MUX_PAD_CTRL(0 << 6)
+#define PAD_CTL_SPEED_MED	__MUX_PAD_CTRL(1 << 6)
 #define PAD_CTL_SPEED_HIGH	__MUX_PAD_CTRL(3 << 6)
 
 #define PAD_CTL_DSE_DISABLE	__MUX_PAD_CTRL(0 << 3)
