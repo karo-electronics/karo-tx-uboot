@@ -175,6 +175,8 @@ static inline void dump_regs(void)
 #endif
 
 struct nand_ecclayout fake_ecc_layout;
+static int chunk_data_size = MXS_NAND_CHUNK_DATA_CHUNK_SIZE;
+static int galois_field = 13;
 
 /*
  * Cache management functions
@@ -235,15 +237,14 @@ static void mxs_nand_return_dma_descs(struct mxs_nand_info *info)
 	info->desc_index = 0;
 }
 
-static uint32_t mxs_nand_ecc_chunk_cnt(struct mtd_info *mtd)
+static uint32_t mxs_nand_ecc_chunk_cnt(uint32_t page_data_size)
 {
-	struct nand_chip *nand = mtd->priv;
-	return mtd->writesize / nand->ecc.size;
+	return page_data_size / chunk_data_size;
 }
 
-static inline uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
+static uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
 {
-	return ecc_strength * MXS_NAND_BITS_PER_ECC_LEVEL;
+	return ecc_strength * galois_field;
 }
 
 static uint32_t mxs_nand_aux_status_offset(void)
@@ -257,8 +258,16 @@ static int mxs_nand_gpmi_init(void)
 
 	/* Reset the GPMI block. */
 	ret = mxs_reset_block(&gpmi_regs->hw_gpmi_ctrl0_reg);
-	if (ret)
+	if (ret) {
+		printf("Failed to reset GPMI block\n");
 		return ret;
+	}
+
+	ret = mxs_reset_block(&bch_regs->hw_bch_ctrl_reg);
+	if (ret) {
+		printf("Failed to reset BCH block\n");
+		return ret;
+	}
 
 	/*
 	 * Choose NAND mode, set IRQ polarity, disable write protection and
@@ -286,8 +295,8 @@ static inline uint32_t mxs_nand_get_ecc_strength(uint32_t page_data_size,
 	 *		(page oob size - meta data size) * (bits per byte)
 	 */
 	ecc_strength = ((page_oob_size - MXS_NAND_METADATA_SIZE) * 8)
-			/ (MXS_NAND_BITS_PER_ECC_LEVEL *
-				mxs_nand_ecc_chunk_cnt(page_data_size));
+			/ (galois_field *
+			   mxs_nand_ecc_chunk_cnt(page_data_size));
 
 	return round_down(ecc_strength, 2);
 }
@@ -302,7 +311,7 @@ static inline uint32_t mxs_nand_get_mark_offset(uint32_t page_data_size,
 	uint32_t block_mark_chunk_bit_offset;
 	uint32_t block_mark_bit_offset;
 
-	chunk_data_size_in_bits = MXS_NAND_CHUNK_DATA_CHUNK_SIZE * 8;
+	chunk_data_size_in_bits = chunk_data_size * 8;
 	chunk_ecc_size_in_bits  = mxs_nand_ecc_size_in_bits(ecc_strength);
 
 	chunk_total_size_in_bits =
@@ -564,8 +573,6 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		return;
 	}
 
-	memset(buf, 0xee, length);
-
 	/* Compile the DMA descriptor - a descriptor that reads data. */
 	d = mxs_nand_get_dma_desc(nand_info);
 	d->cmd.data =
@@ -584,6 +591,7 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		length;
 
 	mxs_dma_desc_append(channel, d);
+
 #ifndef CONFIG_SOC_MX6Q
 	/*
 	 * A DMA descriptor that waits for the command to end and the chip to
@@ -808,7 +816,7 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 
 	/* Loop over status bytes, accumulating ECC status. */
 	status = nand_info->oob_buf + mxs_nand_aux_status_offset();
-	for (i = 0; i < mxs_nand_ecc_chunk_cnt(mtd); i++) {
+	for (i = 0; i < mxs_nand_ecc_chunk_cnt(mtd->writesize); i++) {
 		if (status[i] == 0x00)
 			continue;
 
@@ -1134,37 +1142,42 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 	struct mxs_nand_info *nand_info = nand->priv;
 	uint32_t tmp;
 
+	if (mtd->oobsize > MXS_NAND_CHUNK_DATA_CHUNK_SIZE) {
+		galois_field = 14;
+		chunk_data_size = MXS_NAND_CHUNK_DATA_CHUNK_SIZE * 2;
+	}
+
+	if (mtd->oobsize > chunk_data_size) {
+		printf("OOB size of chip (%u bytes) is larger than max. supported size (%u bytes)\n",
+			mtd->oobsize, chunk_data_size);
+		return -EINVAL;
+	}
+
 	/* Configure BCH and set NFC geometry */
-	if (readl(&bch_regs->hw_bch_ctrl_reg) &
-		(BCH_CTRL_SFTRST | BCH_CTRL_CLKGATE))
-		/* When booting from NAND the BCH engine will already
-		 * be operational and obviously does not like being reset here.
-		 * There will be occasional read errors upon boot when this
-		 * reset is done.
-		 */
-		mxs_reset_block(&bch_regs->hw_bch_ctrl_reg);
-	readl(&bch_regs->hw_bch_ctrl_reg);
+	mxs_reset_block(&bch_regs->hw_bch_ctrl_reg);
 
 	debug("mtd->writesize=%d\n", mtd->writesize);
 	debug("mtd->oobsize=%d\n", mtd->oobsize);
 	debug("ecc_strength=%d\n", mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize));
 
 	/* Configure layout 0 */
-	tmp = (mxs_nand_ecc_chunk_cnt(mtd) - 1)
+	tmp = (mxs_nand_ecc_chunk_cnt(mtd->writesize) - 1)
 		<< BCH_FLASHLAYOUT0_NBLOCKS_OFFSET;
 	tmp |= MXS_NAND_METADATA_SIZE << BCH_FLASHLAYOUT0_META_SIZE_OFFSET;
 	tmp |= (mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize) >> 1)
 		<< BCH_FLASHLAYOUT0_ECC0_OFFSET;
-	tmp |= MXS_NAND_CHUNK_DATA_CHUNK_SIZE
-		>> MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT;
+	tmp |= chunk_data_size >> MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT;
+	tmp |= (14 == galois_field ? 1 : 0) <<
+		BCH_FLASHLAYOUT0_GF13_0_GF14_1_OFFSET;
 	writel(tmp, &bch_regs->hw_bch_flash0layout0);
 
 	tmp = (mtd->writesize + mtd->oobsize)
 		<< BCH_FLASHLAYOUT1_PAGE_SIZE_OFFSET;
 	tmp |= (mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize) >> 1)
 		<< BCH_FLASHLAYOUT1_ECCN_OFFSET;
-	tmp |= MXS_NAND_CHUNK_DATA_CHUNK_SIZE
-		>> MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT;
+	tmp |= chunk_data_size >> MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT;
+	tmp |= (14 == galois_field ? 1 : 0) <<
+		BCH_FLASHLAYOUT1_GF13_0_GF14_1_OFFSET;
 	writel(tmp, &bch_regs->hw_bch_flash0layout1);
 
 	/* Set *all* chip selects to use layout 0 */
@@ -1236,8 +1249,9 @@ int mxs_nand_init(struct mxs_nand_info *info)
 	int ret;
 	int i;
 
-	info->desc = malloc(sizeof(struct mxs_dma_desc *) *
-				MXS_NAND_DMA_DESCRIPTOR_COUNT);
+	info->desc = calloc(MXS_NAND_DMA_DESCRIPTOR_COUNT,
+			sizeof(struct mxs_dma_desc *));
+
 	if (!info->desc) {
 		printf("MXS NAND: Unable to allocate DMA descriptor table\n");
 		ret = -ENOMEM;
@@ -1292,14 +1306,14 @@ err1:
  *                information that is used by the suspend, resume and
  *                remove functions
  *
- * @return  The function always returns 0.
+ * @return  0 for success; errno value in case of error
  */
 int board_nand_init(struct nand_chip *nand)
 {
 	struct mxs_nand_info *nand_info;
 	int err;
 
-	nand_info = calloc(1, sizeof(struct mxs_nand_info));
+	nand_info = kzalloc(sizeof(struct mxs_nand_info), 0);
 	if (!nand_info) {
 		printf("MXS NAND: Failed to allocate private data\n");
 		return -ENOMEM;
