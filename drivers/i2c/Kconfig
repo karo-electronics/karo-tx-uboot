@@ -1,15 +1,14 @@
-menuconfig SYS_I2C
-	bool "I2C device support"
+#
+# I2C subsystem configuration
+#
 
-if SYS_I2C
+menu "I2C device support"
 
 config HARD_I2C
 	bool
 
-config SYS_I2C_MXC
-	bool "Freescale i.MX I2C controller"
-	select HARD_I2C
-	select I2C_QUIRK_REG if FSL_LSCH3 || SOC_LS102XA
+config SYS_I2C
+	bool
 
 config DM_I2C
 	bool "Enable Driver Model for I2C drivers"
@@ -65,6 +64,14 @@ config DM_I2C_GPIO
 	  bindings are supported.
 	  Binding info: doc/device-tree-bindings/i2c/i2c-gpio.txt
 
+config SYS_I2C_MXC
+	bool "Freescale i.MX I2C controller"
+	select HARD_I2C
+	select I2C_QUIRK_REG if FSL_LSCH3 || SOC_LS102XA
+
+config I2C_QUIRK_REG
+	bool
+
 config SYS_I2C_SANDBOX
 	bool "Sandbox I2C driver"
 	depends on SANDBOX && DM_I2C
@@ -113,4 +120,4 @@ config SYS_I2C_UNIPHIER_F
 
 source "drivers/i2c/muxes/Kconfig"
 
-endif
+endmenu
