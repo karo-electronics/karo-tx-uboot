@@ -45,7 +45,6 @@
 
 /* Ethernet on SoC (EMAC) */
 #if defined(CONFIG_CMD_NET)
-#define CONFIG_EMAC_BASE		SOCFPGA_EMAC1_ADDRESS
 
 /* PHY */
 #define CONFIG_PHY_MICREL
