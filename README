@@ -702,6 +702,7 @@ The following options need to be configured:
 		do have ability to provide rudimentary version and machine
 		specific checks, but expect no product checks.
 		CONFIG_ARM_ERRATA_798870
+		CONFIG_ARM_ERRATA_801819
 
 - Tegra SoC options:
 		CONFIG_TEGRA_SUPPORT_NON_SECURE
