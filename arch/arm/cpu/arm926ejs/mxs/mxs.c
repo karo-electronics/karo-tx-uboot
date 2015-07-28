@@ -24,7 +24,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Lowlevel init isn't used on i.MX28, so just have a dummy here */
-inline void lowlevel_init(void) {}
+void lowlevel_init(void) {}
 
 #define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
 				RTC_PERSISTENT0_ALARM_WAKE |		\
