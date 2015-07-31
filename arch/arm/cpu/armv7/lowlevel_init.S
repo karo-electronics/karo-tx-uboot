@@ -25,7 +25,7 @@ ENTRY(lowlevel_init)
 	ldr	sp, =CONFIG_SPL_STACK
 #endif
 	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
-#ifdef CONFIG_DM
+#ifdef CONFIG_SPL_DM
 	mov	r9, #0
 #else
 	/*
