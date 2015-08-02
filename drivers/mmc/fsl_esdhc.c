@@ -287,7 +287,6 @@ static int esdhc_setup_data(struct mmc *mmc, struct mmc_data *data)
 	return 0;
 }
 
-#ifndef CONFIG_SYS_FSL_ESDHC_USE_PIO
 static void check_and_invalidate_dcache_range
 	(struct mmc_cmd *cmd,
 	 struct mmc_data *data) {
@@ -310,7 +309,6 @@ static void check_and_invalidate_dcache_range
 #endif
 	invalidate_dcache_range(start, end);
 }
-#endif
 
 /*
  * Sends a command out on the bus.  Takes the mmc pointer,
