@@ -1,3 +1,16 @@
+menuconfig SYS_I2C
+	bool "I2C device support"
+
+if SYS_I2C
+
+config HARD_I2C
+	bool
+
+config SYS_I2C_MXC
+	bool "Freescale i.MX I2C controller"
+	select HARD_I2C
+	select I2C_QUIRK_REG if FSL_LSCH3 || SOC_LS102XA
+
 config DM_I2C
 	bool "Enable Driver Model for I2C drivers"
 	depends on DM
@@ -12,7 +25,7 @@ config DM_I2C
 
 config DM_I2C_COMPAT
 	bool "Enable I2C compatibility layer"
-	depends on DM
+	depends on DM_I2C
 	help
 	  Enable old-style I2C functions for compatibility with existing code.
 	  This option can be enabled as a temporary measure to avoid needing
@@ -73,17 +86,7 @@ config SYS_I2C_UNIPHIER_F
 	help
 	  Support for UniPhier FIFO-builtin I2C controller driver.
 	  This I2C controller is used on PH1-Pro4 or newer UniPhier SoCs.
-menuconfig SYS_I2C
-	bool "I2C device support"
 
-if SYS_I2C
-
-config HARD_I2C
-	bool
-
-config SYS_I2C_MXC
-	bool "Freescale i.MX I2C controller"
-	select HARD_I2C
-	select I2C_QUIRK_REG if FSL_LSCH3 || SOC_LS102XA
+source "drivers/i2c/muxes/Kconfig"
 
 endif
