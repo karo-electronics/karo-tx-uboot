@@ -155,7 +155,7 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CRC32_VERIFY
 #define CONFIG_MX_CYCLIC
-#define CONFIG_MUSB_HCD
+#define CONFIG_USB_MUSB_HCD
 #define CONFIG_USB_DAVINCI
 /*===================*/
 /* Linux Information */
@@ -193,7 +193,7 @@
 /*==========================*/
 #ifdef CONFIG_USB_DAVINCI
 #define CONFIG_CMD_USB
-#ifdef CONFIG_MUSB_HCD
+#ifdef CONFIG_USB_MUSB_HCD
 #define CONFIG_USB_STORAGE
 #define CONFIG_CMD_STORAGE
 #define CONFIG_CMD_FAT
