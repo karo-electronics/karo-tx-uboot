@@ -111,6 +111,7 @@ dcd_end:
 #define CK_TO_NS(ck)	(((ck) * 1000 + SDRAM_CLK / 2) / SDRAM_CLK)
 #define NS_TO_CK(ns)	(((ns) * SDRAM_CLK + 999) / 1000)
 #define NS_TO_CK10(ns)	DIV_ROUND_UP(NS_TO_CK(ns), 10)
+#define PS_TO_CK(ps)	DIV_ROUND_UP(NS_TO_CK(ps), 1000)
 
 	.macro		CK_VAL,	name, clks, offs, max
 	.iflt		\clks - \offs
@@ -161,7 +162,7 @@ dcd_end:
 #define ADDR_MIRROR			0
 #define DDR_TYPE			MDMISC_DDR_TYPE_DDR3
 
-/* 512/1024MiB SDRAM: NT5CB128M16FP-DII */
+/* 512/1024MiB SDRAM: NT5CB128M16FP-DII or MT41K128M16JT-125 */
 #if SDRAM_CLK > 666 && SDRAM_CLK <= 800
 #define CL_VAL	11
 #define CWL_VAL	8
@@ -184,26 +185,26 @@ dcd_end:
 /* MDCFG0 0x0c */
 NS_VAL	tRFC,	160, 1, 255		/* clks - 1 (0..255) */
 CK_MAX	tXS,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) tRFC + 10 */
-CK_MAX	tXP,	NS_TO_CK10(75), 3, 1, 7 /* clks - 1 (0..7) */ /* max(3tCK, 7.5ns) */
-CK_MAX	tXPDLL, NS_TO_CK(24), 2, 1, 15	/* clks - 1 (0..15) */
-NS_VAL	tFAW,	50, 1, 31		/* clks - 1 (0..31) */
+CK_MAX	tXP,	NS_TO_CK10(75), 3, 1, 7 /* clks - 1 (0..7) */ /* max(3tCK, 7.5ns) (MT41K128M16JT: 6ns) */
+CK_MAX	tXPDLL, NS_TO_CK(24), 10, 1, 15	/* clks - 1 (0..15) */
+NS_VAL	tFAW,	50, 1, 31		/* clks - 1 (0..31) (MT41K128M16JT: 30ns) */
 CK_VAL	tCL,	CL_VAL, 3, 8		/* clks - 3 (0..8) CAS Latency */
 
 /* MDCFG1 0x10 */
-CK_VAL	tRCD,	NS_TO_CK10(125), 1, 7	/* clks - 1 (0..7) */ /* 12.5 */
-CK_VAL	tRP,	NS_TO_CK10(125), 1, 7	/* clks - 1 (0..7) */ /* 12.5 */
-NS_VAL	tRC,	50, 1, 31		/* clks - 1 (0..31) */
-CK_VAL	tRAS,	NS_TO_CK10(375), 1, 31	/* clks - 1 (0..31) */ /* 37.5 */
+CK_VAL	tRCD,	PS_TO_CK(13750), 1, 7	/* clks - 1 (0..7) */ /* 13.75 (NT5CB128M16FP: 12.5ns) */
+CK_VAL	tRP,	PS_TO_CK(13750), 1, 7	/* clks - 1 (0..7) */ /* 13.75 (NT5CB128M16FP: 12.5ns) */
+NS_VAL	tRC,	50, 1, 31		/* clks - 1 (0..31) (MT41K128M16JT: 49ns) */
+CK_VAL	tRAS,	NS_TO_CK10(375), 1, 31	/* clks - 1 (0..31) (MT41K128M16JT: 3.5ns) */
 CK_VAL	tRPA,	1, 0, 1			/* clks     (0..1) */
 NS_VAL	tWR,	15, 1, 15		/* clks - 1 (0..15) */
 CK_VAL	tMRD,	4, 1, 15		/* clks - 1 (0..15) */
 CK_VAL	tCWL,	CWL_VAL, 2, 6		/* clks - 2 (0..6) */
 
 /* MDCFG2 0x14 */
-CK_VAL	tDLLK,	512, 1, 511		/* clks - 1 (0..511) */
+CK_VAL	tDLLK,	512, 1, 511		/* clks - 1 (0..511) */ /* (Jedec Standard) */
 CK_MAX	tRTP,	NS_TO_CK10(75), 4, 1, 7	/* clks - 1 (0..7) */ /* max(4tCK, 7.5ns) */
 CK_MAX	tWTR,	NS_TO_CK10(75), 4, 1, 7	/* clks - 1 (0..7) */ /* max(4tCK, 7.5ns) */
-CK_MAX	tRRD,	NS_TO_CK(10), 4, 1, 7	/* clks - 1 (0..7) */
+CK_MAX	tRRD,	NS_TO_CK(10), 4, 1, 7	/* clks - 1 (0..7) (MT41K128M16JT: 6ns) */
 
 /* MDOR 0x30 */
 CK_MAX	tXPR,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) max(tRFC + 10, 5CK) */
@@ -211,8 +212,8 @@ CK_MAX	tXPR,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) m
 #define tRST_CKE	(DIV_ROUND_UP(500000, MDOR_CLK_PERIOD_ns) + 2)
 
 /* MDOTC 0x08 */
-CK_VAL	tAOFPD,	NS_TO_CK10(85), 1, 7	/* clks - 1 (0..7) */ /* 8.5ns */
-CK_VAL	tAONPD,	NS_TO_CK10(85), 1, 7	/* clks - 1 (0..7) */ /* 8.5ns */
+CK_VAL	tAOFPD,	NS_TO_CK10(85), 1, 7	/* clks - 1 (0..7) */ /* 2ns .. 8.5ns */
+CK_VAL	tAONPD,	NS_TO_CK10(85), 1, 7	/* clks - 1 (0..7) */ /* 2ns .. 8.5ns */
 CK_VAL	tANPD,	tCWL + 1, 1, 15		/* clks - 1 (0..15) */
 CK_VAL	tAXPD,	tCWL + 1, 1, 15		/* clks - 1 (0..15) */
 CK_VAL	tODTLon	tCWL, 0, 7		/* clks - 1 (0..7) */ /* CWL+AL-2 */
