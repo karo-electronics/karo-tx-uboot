@@ -51,6 +51,8 @@
 #define TX6_LCD_BACKLIGHT_GPIO		IMX_GPIO_NR(1, 1)
 
 #define TX6_RESET_OUT_GPIO		IMX_GPIO_NR(7, 12)
+#define TX6_I2C1_SCL_GPIO		IMX_GPIO_NR(3, 21)
+#define TX6_I2C1_SDA_GPIO		IMX_GPIO_NR(3, 28)
 
 #ifdef CONFIG_MX6_TEMPERATURE_MIN
 #define TEMPERATURE_MIN			CONFIG_MX6_TEMPERATURE_MIN
@@ -123,7 +125,17 @@ static const iomux_v3_cfg_t const tx6qdl_fec_pads[] = {
 	MX6_PAD_ENET_TXD0__ENET_TX_DATA0,
 };
 
+static const iomux_v3_cfg_t const tx6_i2c_pads[] = {
+	/* internal I2C */
+	MX6_PAD_EIM_D28__I2C1_SDA,
+	MX6_PAD_EIM_D21__I2C1_SCL,
+};
+
 static const struct gpio const tx6qdl_gpios[] = {
+	/* These two entries are used to forcefully reinitialize the I2C bus */
+	{ TX6_I2C1_SCL_GPIO, GPIOFLAG_INPUT, "I2C1 SCL", },
+	{ TX6_I2C1_SDA_GPIO, GPIOFLAG_INPUT, "I2C1 SDA", },
+
 	{ TX6_RESET_OUT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "#RESET_OUT", },
 	{ TX6_FEC_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
 	{ TX6_FEC_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY RESET", },
@@ -243,6 +255,150 @@ static bool tx6_temp_check_enabled = true;
 #define tx6_temp_check_enabled	0
 #endif
 static int pmic_addr __data;
+
+#if defined(CONFIG_SOC_MX6Q)
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e00a4
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e00c4
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e03b8
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e03d8
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0898
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e089c
+#define I2C1_SEL_INPUT_VAL			0
+#endif
+#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e0158
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e0174
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e0528
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e0544
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0868
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e086c
+#define I2C1_SEL_INPUT_VAL			1
+#endif
+
+#define GPIO_DR 0
+#define GPIO_DIR 4
+#define GPIO_PSR 8
+
+static const struct i2c_gpio_regs {
+	const char *label;
+	u32 gpio;
+	unsigned long gpio_base;
+	unsigned long muxctl;
+	unsigned long padctl;
+	unsigned long sel_input;
+} tx6_i2c_iomux_regs[] = {
+	{
+		.label = "PMIC SCL",
+		.gpio = TX6_I2C1_SCL_GPIO,
+		.gpio_base = GPIO3_BASE_ADDR,
+		.muxctl = IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21,
+		.padctl = IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21,
+		.sel_input = IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21,
+	}, {
+		.label = "PMIC SDA",
+		.gpio = TX6_I2C1_SDA_GPIO,
+		.gpio_base = GPIO3_BASE_ADDR,
+		.muxctl = IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28,
+		.padctl = IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28,
+		.sel_input = IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28,
+	},
+};
+
+static inline u32 __tx6_readl(void *addr,
+			const char *fn, int ln)
+{
+	u32 val = readl(addr);
+	debug("%s@%d: read %08x from %p\n", fn, ln, val, addr);
+	return val;
+}
+#undef readl
+#define readl(a)	__tx6_readl((void *)(a), __func__, __LINE__)
+
+static inline void __tx6_writel(u32 val, void *addr,
+				const char *fn, int ln)
+{
+	debug("%s@%d: writing %08x to %p\n", fn, ln, val, addr);
+	writel(val, addr);
+}
+#undef writel
+#define writel(v, a)	__tx6_writel(v, (void *)(a), __func__, __LINE__)
+
+static void tx6_i2c_recover(void)
+{
+	int i;
+	int bad = 0;
+	int failed = 0;
+#define MAX_TRIES 100
+
+	debug("Clearing I2C bus\n");
+
+	for (i = 0; i < ARRAY_SIZE(tx6_i2c_iomux_regs); i++) {
+		int gpio = tx6_i2c_iomux_regs[i].gpio;
+		u32 gpio_mask = 1 << (gpio % 32);
+
+		void *gpio_base = (void *)tx6_i2c_iomux_regs[i].gpio_base;
+
+		if ((readl(gpio_base + GPIO_PSR) & gpio_mask) == 0) {
+			int retries = MAX_TRIES;
+
+			bad++;
+			printf("%s (GPIO%u_%u) is not HIGH\n",
+				tx6_i2c_iomux_regs[i].label,
+				gpio / 32 + 1, gpio % 32);
+			writel(readl(gpio_base + GPIO_DR) | gpio_mask,
+				gpio_base + GPIO_DR);
+			writel(readl(gpio_base + GPIO_DIR) | gpio_mask,
+				gpio_base + GPIO_DIR);
+			writel(0x15, tx6_i2c_iomux_regs[i].muxctl);
+			writel(0x0f079, tx6_i2c_iomux_regs[i].padctl);
+			writel(I2C1_SEL_INPUT_VAL, tx6_i2c_iomux_regs[i].sel_input);
+			if ((readl(gpio_base + GPIO_DR) & gpio_mask) == 0)
+				hang();
+			if ((readl(gpio_base + GPIO_DIR) & gpio_mask) == 0)
+				hang();
+			while ((readl(gpio_base + GPIO_PSR) & gpio_mask) == 0 &&
+				retries-- > 0) {
+				udelay(100);
+			}
+			writel(readl(gpio_base + GPIO_DIR) & ~gpio_mask,
+				gpio_base + GPIO_DIR);
+
+			if ((readl(gpio_base + GPIO_PSR) & gpio_mask) == 0) {
+				printf("Failed to force %s (GPIO%u_%u) HIGH\n",
+					tx6_i2c_iomux_regs[i].label,
+					gpio / 32 + 1, gpio % 32);
+				failed++;
+			} else if (retries < MAX_TRIES) {
+				printf("%s (GPIO%u_%u) forced HIGH after %u loops\n",
+					tx6_i2c_iomux_regs[i].label,
+					gpio / 32 + 1, gpio % 32,
+					MAX_TRIES - retries);
+			}
+		} else {
+			debug("%s (GPIO%u_%u) is HIGH\n",
+				tx6_i2c_iomux_regs[i].label,
+				gpio / 32 + 1, gpio % 32);
+		}
+	}
+	debug("Setting up I2C Pads\n");
+	imx_iomux_v3_setup_multiple_pads(tx6_i2c_pads,
+					ARRAY_SIZE(tx6_i2c_pads));
+	if (bad) {
+		if (failed)
+			printf("I2C bus recovery FAILED\n");
+		else
+			printf("I2C bus recovery succeeded\n");
+	}
+}
+
+#define pr_reg(b, n)	debug("%12s@%p=%08x\n", #n, (void *)(b) + (n), readl((b) + (n)))
+
+static inline void dump_regs(void)
+{
+	pr_reg(GPIO3_BASE_ADDR, GPIO_DR);
+	pr_reg(GPIO3_BASE_ADDR, GPIO_DIR);
+	pr_reg(GPIO3_BASE_ADDR, GPIO_PSR);
+}
 
 int board_init(void)
 {
@@ -1257,6 +1413,7 @@ static int tx6_pmic_probe(void)
 {
 	int i;
 
+	tx6_i2c_recover();
 	i2c_init_all();
 
 	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
