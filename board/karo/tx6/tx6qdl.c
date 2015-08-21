@@ -71,25 +71,6 @@ enum {
 };
 
 static const iomux_v3_cfg_t const tx6qdl_pads[] = {
-	MX6_PAD_GARBAGE,
-#ifdef CONFIG_TX6_NAND_
-	/* NAND flash pads */
-	MX6_PAD_NANDF_CLE__NAND_CLE,
-	MX6_PAD_NANDF_ALE__NAND_ALE,
-	MX6_PAD_NANDF_WP_B__NAND_RESETN,
-	MX6_PAD_NANDF_RB0__NAND_READY0,
-	MX6_PAD_NANDF_CS0__NAND_CE0N,
-	MX6_PAD_SD4_CMD__NAND_RDN,
-	MX6_PAD_SD4_CLK__NAND_WRN,
-	MX6_PAD_NANDF_D0__NAND_D0,
-	MX6_PAD_NANDF_D1__NAND_D1,
-	MX6_PAD_NANDF_D2__NAND_D2,
-	MX6_PAD_NANDF_D3__NAND_D3,
-	MX6_PAD_NANDF_D4__NAND_D4,
-	MX6_PAD_NANDF_D5__NAND_D5,
-	MX6_PAD_NANDF_D6__NAND_D6,
-	MX6_PAD_NANDF_D7__NAND_D7,
-#endif
 	/* RESET_OUT */
 	MX6_PAD_GPIO_17__GPIO7_IO12,
 
@@ -247,9 +228,6 @@ static void tx6qdl_print_cpuinfo(void)
 
 int board_early_init_f(void)
 {
-	gpio_request_array(tx6qdl_gpios, ARRAY_SIZE(tx6qdl_gpios));
-	imx_iomux_v3_setup_multiple_pads(tx6qdl_pads, ARRAY_SIZE(tx6qdl_pads));
-
 	return 0;
 }
 
@@ -263,6 +241,12 @@ int board_init(void)
 {
 	int ret;
 
+	ret = gpio_request_array(tx6qdl_gpios, ARRAY_SIZE(tx6qdl_gpios));
+	if (ret < 0) {
+		printf("Failed to request tx6qdl_gpios: %d\n", ret);
+	}
+	imx_iomux_v3_setup_multiple_pads(tx6qdl_pads, ARRAY_SIZE(tx6qdl_pads));
+
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
 	gd->bd->bi_arch_number = -1;
@@ -275,12 +259,12 @@ int board_init(void)
 #ifndef CONFIG_MX6_TEMPERATURE_HOT
 		tx6_temp_check_enabled = false;
 #endif
-		return 1;
+		return 0;
 	}
 
 	ret = tx6_pmic_init();
 	if (ret) {
-		printf("Failed to setup PMIC voltages\n");
+		printf("Failed to setup PMIC voltages: %d\n", ret);
 		hang();
 	}
 	return 0;
@@ -290,7 +274,7 @@ int dram_init(void)
 {
 	/* dram_init must store complete ramsize in gd->ram_size */
 	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
-				PHYS_SDRAM_1_SIZE);
+				PHYS_SDRAM_1_SIZE * CONFIG_NR_DRAM_BANKS);
 	return 0;
 }
 
@@ -306,8 +290,8 @@ void dram_init_banksize(void)
 #endif
 }
 
-#ifdef	CONFIG_CMD_MMC
-#define SD_PAD_CTRL (PAD_CTL_PUS_47K_UP |			\
+#ifdef	CONFIG_FSL_ESDHC
+#define SD_PAD_CTRL (PAD_CTL_PUS_47K_UP |		\
 	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |		\
 	PAD_CTL_SRE_FAST)
 
@@ -342,7 +326,8 @@ static const iomux_v3_cfg_t mmc3_pads[] = {
 	MX6_PAD_SD4_DAT2__SD4_DATA2 | MUX_PAD_CTRL(SD_PAD_CTRL),
 	MX6_PAD_SD4_DAT3__SD4_DATA3 | MUX_PAD_CTRL(SD_PAD_CTRL),
 	/* eMMC RESET */
-	MX6_PAD_NANDF_ALE__SD4_RESET,
+	MX6_PAD_NANDF_ALE__SD4_RESET | MUX_PAD_CTRL(PAD_CTL_PUS_47K_UP |
+						PAD_CTL_DSE_40ohm),
 };
 #endif
 
@@ -645,7 +630,6 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.upper_margin	= 2,
 		.vsync_len	= 10,
 		.lower_margin	= 2,
-		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
 	{
 		/* Emerging ET0500G0DH6 800 x 480 display.
@@ -764,9 +748,9 @@ void lcd_enable(void)
 	 */
 	lcd_is_enabled = 0;
 
-	karo_load_splashimage(1);
-
 	if (lcd_enabled) {
+		karo_load_splashimage(1);
+
 		debug("Switching LCD on\n");
 		gpio_set_value(TX6_LCD_PWR_GPIO, 1);
 		udelay(100);
@@ -1090,7 +1074,13 @@ void lcd_ctrl_init(void *lcdbase)
 
 static void stk5_board_init(void)
 {
-	gpio_request_array(stk5_gpios, ARRAY_SIZE(stk5_gpios));
+	int ret;
+
+	ret = gpio_request_array(stk5_gpios, ARRAY_SIZE(stk5_gpios));
+	if (ret < 0) {
+		printf("Failed to request stk5_gpios: %d\n", ret);
+		return;
+	}
 	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
 }
 
@@ -1101,10 +1091,17 @@ static void stk5v3_board_init(void)
 
 static void stk5v5_board_init(void)
 {
+	int ret;
+
 	stk5_board_init();
 
-	gpio_request_one(IMX_GPIO_NR(4, 21), GPIOFLAG_OUTPUT_INIT_HIGH,
+	ret = gpio_request_one(IMX_GPIO_NR(4, 21), GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
+	if (ret) {
+		printf("Failed to request Flexcan Transceiver GPIO: %d\n", ret);
+		return;
+	}
+
 	imx_iomux_v3_setup_pad(MX6_PAD_DISP0_DAT0__GPIO4_IO21);
 }
 
