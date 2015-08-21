@@ -11,6 +11,7 @@
 #include <netdev.h>
 #include <asm/errno.h>
 #include <asm/io.h>
+#include <asm/gpio.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
 
@@ -63,7 +64,7 @@ int gpio_get_value(unsigned gpio)
 	return (readl(&reg->reg) >> PAD_PIN(gpio)) & 1;
 }
 
-void gpio_set_value(unsigned gpio, int value)
+int gpio_set_value(unsigned gpio, int value)
 {
 	uint32_t bank = PAD_BANK(gpio);
 	uint32_t offset = PINCTRL_DOUT(bank);
@@ -74,6 +75,8 @@ void gpio_set_value(unsigned gpio, int value)
 		writel(1 << PAD_PIN(gpio), &reg->reg_set);
 	else
 		writel(1 << PAD_PIN(gpio), &reg->reg_clr);
+
+	return 0;
 }
 
 int gpio_direction_input(unsigned gpio)
