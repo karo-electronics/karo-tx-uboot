@@ -20,6 +20,7 @@
 
 static struct list_head mmc_devices;
 static int cur_dev_num = -1;
+static int mmc_dev_count;
 
 __weak int board_mmc_getwp(struct mmc *mmc)
 {
@@ -1549,6 +1550,7 @@ struct mmc *mmc_create(const struct mmc_config *cfg, void *priv)
 	INIT_LIST_HEAD(&mmc->link);
 
 	list_add_tail(&mmc->link, &mmc_devices);
+	mmc_dev_count++;
 
 	return mmc;
 }
@@ -1719,6 +1721,11 @@ void print_mmc_devices(char separator) { }
 int get_mmc_num(void)
 {
 	return cur_dev_num;
+}
+
+int get_mmc_dev_count(void)
+{
+	return mmc_dev_count;
 }
 
 void mmc_set_preinit(struct mmc *mmc, int preinit)
