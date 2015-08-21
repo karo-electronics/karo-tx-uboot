@@ -912,8 +912,11 @@ u-boot.ais: spl/u-boot-spl.ais u-boot.img FORCE
 
 u-boot-signed.sb: u-boot.bin spl/u-boot-spl.bin
 	$(Q)$(MAKE) $(build)=arch/arm/cpu/arm926ejs/mxs u-boot-signed.sb
-u-boot.sb: u-boot.bin spl/u-boot-spl.bin
+u-boot.sb: u-boot.bin spl/u-boot-spl.bin elftosb
 	$(Q)$(MAKE) $(build)=arch/arm/cpu/arm926ejs/mxs u-boot.sb
+
+elftosb:
+	$(MAKE) -C $(KBUILD_SRC)/tools/elftosb all
 
 # On x600 (SPEAr600) U-Boot is appended to U-Boot SPL.
 # Both images are created using mkimage (crc etc), so that the ROM

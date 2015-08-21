@@ -78,8 +78,16 @@ quiet_cmd_mkimage_mxs = MKIMAGE $@
 cmd_mkimage_mxs = $(objtree)/tools/mkimage -n $< -T mxsimage $@ \
 	$(if $(KBUILD_VERBOSE:1=), >/dev/null)
 
-u-boot.sb: $(src)/$(MKIMAGE_TARGET-y) u-boot.bin spl/u-boot-spl.bin FORCE
-	$(call if_changed,mkimage_mxs)
+#u-boot.sb: $(src)/$(MKIMAGE_TARGET-y) u-boot.bin spl/u-boot-spl.bin FORCE
+#	$(call if_changed,mkimage_mxs)
+ELFTOSB_TARGET-$(CONFIG_SOC_MX23) = imx23
+ELFTOSB_TARGET-$(CONFIG_SOC_MX28) = imx28
+
+u-boot.bd: $(KBUILD_SRC)/$(CPUDIR)/$(SOC)/u-boot-$(ELFTOSB_TARGET-y).bd
+	sed "s@OBJTREE@$(objtree)@g" $^ > $@
+
+u-boot.sb: u-boot spl/u-boot-spl $(objtree)/u-boot.bd $(KBUILD_SRC)/tools/elftosb/bld/linux/elftosb
+		$(KBUILD_SRC)/tools/elftosb/bld/linux/elftosb -V -zf $(ELFTOSB_TARGET-y) -c u-boot.bd -o u-boot.sb
 
 u-boot-signed.sb: $(src)/mxsimage-signed.cfg u-boot.ivt u-boot.sig spl/u-boot-spl.ivt spl/u-boot-spl.sig FORCE
 	$(call if_changed,mkimage_mxs)
