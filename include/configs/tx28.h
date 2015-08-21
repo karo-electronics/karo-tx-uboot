@@ -231,7 +231,6 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_MXS_MMC
 #define CONFIG_BOUNCE_BUFFER
 
 #define CONFIG_DOS_PARTITION
