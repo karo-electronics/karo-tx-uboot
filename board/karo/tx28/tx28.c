@@ -200,7 +200,7 @@ int board_mmc_init(bd_t *bis)
 #ifdef CONFIG_FEC_MXC
 #ifdef CONFIG_GET_FEC_MAC_ADDR_FROM_IIM
 
-#ifdef CONFIG_FEC_MXC_MULTI
+#ifndef CONFIG_TX28_S
 #define FEC_MAX_IDX			1
 #else
 #define FEC_MAX_IDX			0
@@ -256,6 +256,46 @@ static int fec_get_mac_addr(int index)
 	eth_setenv_enetaddr(env_name, mac);
 	return 0;
 }
+
+static inline int tx28_fec1_enabled(void)
+{
+	const char *status;
+	int off;
+
+	if (!gd->fdt_blob)
+		return 0;
+
+	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
+	if (off < 0)
+		return 0;
+
+	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
+	return status && (strcmp(status, "okay") == 0);
+}
+
+static void tx28_init_mac(void)
+{
+	int ret;
+
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return;
+	}
+#ifdef CONFIG_TX28_S
+	if (tx28_fec1_enabled()) {
+		ret = fec_get_mac_addr(1);
+		if (ret < 0) {
+			printf("Failed to read FEC1 MAC address from OCOTP\n");
+			return;
+		}
+	}
+#endif
+}
+#else
+static inline void tx28_init_mac(void)
+{
+}
 #endif /* CONFIG_GET_FEC_MAC_ADDR_FROM_IIM */
 
 static const iomux_cfg_t tx28_fec_pads[] = {
@@ -292,7 +332,7 @@ int board_eth_init(bd_t *bis)
 		return ret;
 	}
 
-#ifdef CONFIG_FEC_MXC_MULTI
+#ifndef CONFIG_TX28_S
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
 		if (ret) {
@@ -318,6 +358,10 @@ int board_eth_init(bd_t *bis)
 	}
 #endif
 	return 0;
+}
+#else
+static inline void tx28_init_mac(void)
+{
 }
 #endif /* CONFIG_FEC_MXC */
 
@@ -797,42 +841,6 @@ static void stk5v5_board_init(void)
 	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
 	mxs_iomux_setup_pad(STK5_CAN_XCVR_GPIO);
-}
-
-int tx28_fec1_enabled(void)
-{
-	const char *status;
-	int off;
-
-	if (!gd->fdt_blob)
-		return 0;
-
-	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
-	if (off < 0)
-		return 0;
-
-	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
-	return status && (strcmp(status, "okay") == 0);
-}
-
-static void tx28_init_mac(void)
-{
-	int ret;
-
-	ret = fec_get_mac_addr(0);
-	if (ret < 0) {
-		printf("Failed to read FEC0 MAC address from OCOTP\n");
-		return;
-	}
-#ifdef CONFIG_FEC_MXC_MULTI
-	if (tx28_fec1_enabled()) {
-		ret = fec_get_mac_addr(1);
-		if (ret < 0) {
-			printf("Failed to read FEC1 MAC address from OCOTP\n");
-			return;
-		}
-	}
-#endif
 }
 
 int board_late_init(void)
