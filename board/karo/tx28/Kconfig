@@ -1,4 +1,4 @@
-if TARGET_TX28_40X1
+if TARGET_TX28
 
 config SYS_BOARD
 	default "tx28"
@@ -10,118 +10,65 @@ config SYS_SOC
 	default "mxs"
 
 config SYS_CONFIG_NAME
-	default "tx28-40x1"
-
-endif
-
-if TARGET_TX28_40X1_NOENV
-
-config SYS_BOARD
 	default "tx28"
 
-config SYS_VENDOR
-	default "karo"
+config TX28
+	bool
+	default y
+	select SPL
+	select SOC_MX28
+	select APBH_DMA
+	select APBH_DMA_BURST
+	select APBH_DMA_BURST8
+	select CC_OPTIMIZE_LIBS_FOR_SPEED
+	select CMD_BMP if LCD
+	select CMD_NAND_TRIMFFS if CMD_NAND
+	select CMD_ROMUPDATE if !SPL_BUILD
+	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
+	select GET_FEC_MAC_ADDR_FROM_IIM if FEC_MXC
+	select LIB_RAND
+	select MTD_PARTITIONS if CMD_NAND
+	select MTD_DEVICE if CMD_NAND
+	select SYS_NAND_USE_FLASH_BBT if NAND
 
-config SYS_SOC
-	default "mxs"
+config TARGET_TX28_40X1_NOENV
+	bool
+	select TX28
 
-config SYS_CONFIG_NAME
-	default "tx28-40x1_noenv"
+config TARGET_TX28_40X2
+	bool
+	select TX28
 
-endif
+config TARGET_TX28_40X2_NOENV
+	bool
+	select TX28
 
-if TARGET_TX28_40X2
+config TARGET_TX28_40X3
+	bool
+	select TX28
 
-config SYS_BOARD
-	default "tx28"
+config TARGET_TX28_40X3_NOENV
+	bool
+	select TX28
 
-config SYS_VENDOR
-	default "karo"
+config TARGET_TX28_41X0
+	bool
+	select TX28
 
-config SYS_SOC
-	default "mxs"
+config TARGET_TX28_41X0_NOENV
+	bool
+	select TX28
 
-config SYS_CONFIG_NAME
-	default "tx28-40x2"
+choice
+	prompt "U-Boot image variant"
+	default TX28_UBOOT
 
-endif
+config TX28_UBOOT
+	bool "Standard U-Boot image"
 
-if TARGET_TX28_40X2_NOENV
+config TX28_UBOOT_NOENV
+	bool "U-Boot using only built-in environment"
 
-config SYS_BOARD
-	default "tx28"
-
-config SYS_VENDOR
-	default "karo"
-
-config SYS_SOC
-	default "mxs"
-
-config SYS_CONFIG_NAME
-	default "tx28-40x2_noenv"
-
-endif
-
-if TARGET_TX28_40X3
-
-config SYS_BOARD
-	default "tx28"
-
-config SYS_VENDOR
-	default "karo"
-
-config SYS_SOC
-	default "mxs"
-
-config SYS_CONFIG_NAME
-	default "tx28-40x3"
-
-endif
-
-if TARGET_TX28_40X3_NOENV
-
-config SYS_BOARD
-	default "tx28"
-
-config SYS_VENDOR
-	default "karo"
-
-config SYS_SOC
-	default "mxs"
-
-config SYS_CONFIG_NAME
-	default "tx28-40x3_noenv"
-
-endif
-
-if TARGET_TX28_41X0
-
-config SYS_BOARD
-	default "tx28"
-
-config SYS_VENDOR
-	default "karo"
-
-config SYS_SOC
-	default "mxs"
-
-config SYS_CONFIG_NAME
-	default "tx28-41x0"
-
-endif
-
-if TARGET_TX28_41X0_NOENV
-
-config SYS_BOARD
-	default "tx28"
-
-config SYS_VENDOR
-	default "karo"
-
-config SYS_SOC
-	default "mxs"
-
-config SYS_CONFIG_NAME
-	default "tx28-41x0_noenv"
+endchoice
 
 endif

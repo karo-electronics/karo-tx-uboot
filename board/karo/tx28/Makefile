@@ -6,6 +6,4 @@
 
 obj-y				+= tx28.o
 obj-$(CONFIG_SPL_BUILD)		+= spl_boot.o
-ifneq ($(CONFIG_SPL_BUILD),y)
-	obj-$(CONFIG_CMD_ROMUPDATE) += flash.o
-endif
+obj-$(CONFIG_CMD_ROMUPDATE)	+= flash.o
