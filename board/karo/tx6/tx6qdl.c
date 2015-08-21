@@ -31,6 +31,7 @@
 #include <asm/gpio.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/hab.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/sys_proto.h>
@@ -69,6 +70,11 @@ DECLARE_GLOBAL_DATA_PTR;
 enum {
 	MX6_PAD_DECL(GARBAGE, 0, 0, 0, 0, 0, 0)
 };
+
+char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
+#ifdef CONFIG_SECURE_BOOT
+char __csf_data[0] __attribute__((section(".__csf_data")));
+#endif
 
 static const iomux_v3_cfg_t const tx6qdl_pads[] = {
 	/* RESET_OUT */
@@ -1131,6 +1137,13 @@ int board_late_init(void)
 {
 	int ret = 0;
 	const char *baseboard;
+#if 1
+	/* override secure_boot fuse */
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank0_regs *fuse = (void *)ocotp->bank[0].fuse_regs;
+
+	writel(0x12, &fuse->cfg5);
+#endif
 
 	env_cleanup();
 
@@ -1276,6 +1289,8 @@ int checkboard(void)
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
 		is_lvds(), tx6_get_mod_rev(pmic_id),
 		tx6_mem_suffix());
+
+	get_hab_status();
 
 	return 0;
 }

@@ -1,5 +1,7 @@
 #include <config.h>
+#include <asm-offsets.h>
 #include <configs/tx6.h>
+#include <linux/linkage.h>
 #include <asm/arch/imx-regs.h>
 #include <generated/asm-offsets.h>
 
@@ -87,6 +89,8 @@ dcd_start:
 	.error	"DCD too large!"
 	.endif
 dcd_end:
+	.section ".pad"
+	.section ".text"
 	.endm
 
 #define MXC_DCD_CMD_WRT(type, flags)					\
@@ -329,6 +333,7 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 				(tODTLon << 12) |	\
 				(tODTLoff << 4))
 
+	.section ".ivt"
 ivt_header:
 	.word	CPU_2_BE_32((0xd1 << 24) | (32 << 8) | 0x40)
 app_start_addr:
@@ -341,12 +346,16 @@ boot_data_ptr:
 self_ptr:
 	.word	ivt_header
 app_code_csf:
+#ifdef CONFIG_SECURE_BOOT
+	.word	__csf_data
+#else
 	.word	0x0
+#endif
 	.word	0x0
 boot_data:
-	.long	_start
+	.long	CONFIG_SYS_TEXT_BASE
 image_len:
-	.long	CONFIG_U_BOOT_IMG_SIZE
+	.long	__uboot_img_len
 plugin:
 	.word	0
 ivt_end:

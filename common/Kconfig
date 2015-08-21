@@ -440,6 +440,11 @@ config CMD_TIME
 	help
 	  Run commands and summarize execution time.
 
+config CMD_FUSE
+	bool "fuse read/write"
+	help
+	  eFuse reading and programming support
+
 # TODO: rename to CMD_SLEEP
 config CMD_MISC
 	bool "sleep"

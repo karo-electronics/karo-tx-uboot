@@ -60,7 +60,7 @@ static int prepare_access(struct ocotp_regs **regs, u32 bank, u32 word,
 	*regs = (struct ocotp_regs *)OCOTP_BASE_ADDR;
 
 	if (bank >= ARRAY_SIZE((*regs)->bank) ||
-			word >= ARRAY_SIZE((*regs)->bank[0].fuse_regs) >> 2 ||
+			word >= ARRAY_SIZE((*regs)->bank[0].fuse_regs) ||
 			!assert) {
 		printf("mxc_ocotp %s(): Invalid argument\n", caller);
 		return -EINVAL;
