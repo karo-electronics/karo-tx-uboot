@@ -7,6 +7,7 @@ __HAVE_ARCH_GENERIC_BOARD := y
 LOGO_BMP = logos/karo.bmp
 
 PLATFORM_CPPFLAGS += -Werror
+PLATFORM_CPPFLAGS += -DCONFIG_SPL_TEXT_BASE=$(CONFIG_SPL_TEXT_BASE)
 ifneq ($(CONFIG_SPL_BUILD),y)
 	ALL-y += $(obj)/u-boot.sb
 endif
