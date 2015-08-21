@@ -236,6 +236,7 @@ static bool tx6_temp_check_enabled = true;
 #else
 #define tx6_temp_check_enabled	0
 #endif
+static int pmic_addr __data;
 
 int board_init(void)
 {
@@ -262,7 +263,7 @@ int board_init(void)
 		return 0;
 	}
 
-	ret = tx6_pmic_init();
+	ret = tx6_pmic_init(pmic_addr);
 	if (ret) {
 		printf("Failed to setup PMIC voltages: %d\n", ret);
 		hang();
@@ -1231,35 +1232,49 @@ static struct {
 	{ 0x33, 3, },
 };
 
-static int tx6_get_mod_rev(void)
+static int tx6_get_mod_rev(unsigned int pmic_id)
+{
+	if (pmic_id < ARRAY_SIZE(tx6_mod_revs))
+		return tx6_mod_revs[pmic_id].rev;
+
+	return 0;
+}
+
+static int tx6_pmic_probe(void)
 {
 	int i;
 
+	i2c_init_all();
+
 	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
-		int ret = i2c_probe(tx6_mod_revs[i].addr);
+		u8 i2c_addr = tx6_mod_revs[i].addr;
+		int ret = i2c_probe(i2c_addr);
+
 		if (ret == 0) {
-			debug("I2C probe succeeded for addr %02x\n", tx6_mod_revs[i].addr);
-			return tx6_mod_revs[i].rev;
+			debug("I2C probe succeeded for addr 0x%02x\n", i2c_addr);
+			return i;
 		}
-		debug("I2C probe returned %d for addr %02x\n", ret,
-			tx6_mod_revs[i].addr);
+		debug("I2C probe returned %d for addr 0x%02x\n", ret, i2c_addr);
 	}
-	return 0;
+	return -EINVAL;
 }
 
 int checkboard(void)
 {
 	u32 cpurev = get_cpu_rev();
 	int cpu_variant = (cpurev >> 12) & 0xff;
+	int pmic_id;
 
 	tx6qdl_print_cpuinfo();
 
-	i2c_init(CONFIG_SYS_I2C_SPEED, 0 /* unused */);
+	pmic_id = tx6_pmic_probe();
+	if (pmic_id >= 0)
+		pmic_addr = tx6_mod_revs[pmic_id].addr;
 
 	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
 		tx6_mod_suffix,
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), tx6_get_mod_rev(),
+		is_lvds(), tx6_get_mod_rev(pmic_id),
 		tx6_mem_suffix());
 
 	return 0;

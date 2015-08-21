@@ -14,7 +14,6 @@
  * GNU General Public License for more details.
  *
  */
-
 #include <common.h>
 #include <errno.h>
 #include <i2c.h>
@@ -36,15 +35,23 @@ static struct {
 #endif
 };
 
-int tx6_pmic_init(void)
+int tx6_pmic_init(int addr)
 {
 	int ret = -ENODEV;
 	int i;
 
+	debug("Probing for I2C dev 0x%02x\n", addr);
 	for (i = 0; i < ARRAY_SIZE(i2c_addrs); i++) {
-		ret = i2c_probe(i2c_addrs[i].addr);
+		u8 i2c_addr = i2c_addrs[i].addr;
+
+		if (i2c_addr != addr)
+			continue;
+
+		debug("Probing for I2C dev 0x%02x\n", i2c_addr);
+		ret = i2c_probe(i2c_addr);
 		if (ret == 0) {
-			i2c_addrs[i].init(i2c_addrs[i].addr);
+			debug("Initializing PMIC at I2C addr 0x%02x\n", i2c_addr);
+			ret = i2c_addrs[i].init(i2c_addr);
 			break;
 		}
 	}

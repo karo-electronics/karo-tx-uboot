@@ -19,4 +19,4 @@ int ltc3676_pmic_setup(uchar addr);
 int rn5t618_pmic_setup(uchar addr);
 int rn5t567_pmic_setup(uchar addr);
 
-int tx6_pmic_init(void);
+int tx6_pmic_init(int addr);
