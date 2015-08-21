@@ -1,27 +1,5 @@
 if TARGET_TX6
 
-config MX6
-	bool
-	default y
-
-config MX6Q
-	bool
-
-config MX6DL
-	bool
-
-config MX6QDL
-	bool
-
-config MX6S
-	bool
-
-config MX6SL
-	bool
-
-config MX6SX
-	bool
-
 config SYS_BOARD
 	default "tx6"
 
@@ -34,25 +12,25 @@ config SYS_SOC
 config SYS_CONFIG_NAME
 	default "tx6"
 
-config CMD_ROMUPDATE
-	bool
-
 config TX6
 	bool
 	default y
-	select MX6
 	select CMD_BMP if LCD
 	select CMD_BOOTCE
 	select CMD_BOOTZ
 	select CMD_CACHE
 	select CMD_I2C if I2C
 	select CMD_MEMTEST
+	select CMD_MMC
 	select CMD_TIME
 	select DM
 	select DM_GPIO
+	select LIB_RAND
+	select PHYLIB
 	select SYS_I2C
 	select SYS_I2C_MXC
 	select GET_FEC_MAC_ADDR_FROM_IIM
+	select OF_BOARD_SETUP
 	select OF_LIBFDT
 
 config TX6_NAND
@@ -64,8 +42,10 @@ config TX6_NAND
 	select CMD_ROMUPDATE
 	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
 	select MTD_PARTITIONS
-	select NAND_MXS_NO_BBM_SWAP if NAND_MXS
-	select SYS_NAND_USE_FLASH_BBT if NAND_MXS
+	select NAND
+	select NAND_MXS
+	select NAND_MXS_NO_BBM_SWAP
+	select SYS_NAND_USE_FLASH_BBT
 	select APBH_DMA
 	select APBH_DMA_BURST
 	select APBH_DMA_BURST8
@@ -93,62 +73,57 @@ choice
 
 config TARGET_TX6Q_10X0
 	bool "TX6Q-1010 and TX6Q-1030"
-	select MX6Q
+	select SOC_MX6Q
 
 config TARGET_TX6Q_1020
 	bool "TX6Q-1020"
-	select MX6Q
+	select SOC_MX6Q
 	select TX6_EMMC
-	select TX6_REV_2
 
 config TARGET_TX6Q_11X0
 	bool "TX6Q-1110 and TX6Q-1130"
-	select MX6Q
+	select SOC_MX6Q
 	select SYS_LVDS_IF
 	
 config TARGET_TX6S_8034
 	bool "TX6S-8034"
-	select MX6S
+	select SOC_MX6S
 	select SYS_SDRAM_BUS_WIDTH_16
 
 config TARGET_TX6S_8035
 	bool "TX6S-8035"
-	select MX6S
+	select SOC_MX6S
 	select TX6_EMMC
 	select SYS_SDRAM_BUS_WIDTH_32
 
-config TARGET_TX6U_8010
+config TARGET_TX6U_80X0
 	bool "TX6U-8010 and TX6U-8030"
-	select MX6DL
+	select SOC_MX6DL
 
 config TARGET_TX6U_8011
 	bool "TX6U-8011"
-	select MX6DL
+	select SOC_MX6DL
 	select SYS_SDRAM_BUS_WIDTH_32
-	select TX6_REV_1
 
 config TARGET_TX6U_8012
 	bool "TX6U-8012"
-	select MX6DL
-	select TX6_REV_1
+	select SOC_MX6DL
 
 config TARGET_TX6U_81X0
 	bool "TX6U-8110 and TX6U-8130"
-	select MX6DL
+	select SOC_MX6DL
 	select SYS_LVDS_IF
 
 config TARGET_TX6U_8111
 	bool "TX6U-8111"
-	select MX6DL
+	select SOC_MX6DL
 	select SYS_SDRAM_BUS_WIDTH_32
 	select SYS_LVDS_IF
-	select TX6_REV_1
 
 config TARGET_TX6U_8033
 	bool "TX6U-8033"
-	select MX6DL
+	select SOC_MX6DL
 	select TX6_EMMC
-	select TX6_REV_3
 
 endchoice
 

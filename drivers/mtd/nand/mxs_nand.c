@@ -1304,12 +1304,11 @@ int board_nand_init(struct nand_chip *nand)
 	struct mxs_nand_info *nand_info;
 	int err;
 
-	nand_info = malloc(sizeof(struct mxs_nand_info));
+	nand_info = calloc(1, sizeof(struct mxs_nand_info));
 	if (!nand_info) {
 		printf("MXS NAND: Failed to allocate private data\n");
 		return -ENOMEM;
 	}
-	memset(nand_info, 0, sizeof(struct mxs_nand_info));
 
 	err = mxs_nand_alloc_buffers(nand_info);
 	if (err)

@@ -591,7 +591,7 @@ struct ocotp_regs {
 	reg_32(timing);
 	reg_32(data);
 	reg_32(read_ctrl);
-	reg_32(fuse_data);
+	reg_32(read_fuse_data);
 	reg_32(sticky);
 	mxs_reg_32(scs);
 	reg_32(crc_addr);

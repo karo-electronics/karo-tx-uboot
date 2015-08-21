@@ -18,6 +18,7 @@
 #include <common.h>
 #include <i2c.h>
 
+#include "../common/karo.h"
 #include "pmic.h"
 
 #define RN5T567_NOETIMSET	0x11

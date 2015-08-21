@@ -60,6 +60,7 @@
 #define CONFIG_SYS_SDRAM_CLK		400
 #endif
 #define CONFIG_STACKSIZE		SZ_128K
+#define CONFIG_SPL_STACK		(IRAM_BASE_ADDR + SZ_16K)
 #define CONFIG_SYS_MALLOC_LEN		SZ_8M
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_4M)
@@ -172,6 +173,8 @@
 	"cpu_clk=800\0"							\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
+	EMMC_BOOT_PART_STR						\
+	EMMC_BOOT_ACK_STR						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	CONFIG_SYS_FDTSAVE_CMD						\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
@@ -185,7 +188,7 @@
 #endif /*  CONFIG_TX6_UBOOT_MFG */
 
 #ifdef CONFIG_TX6_NAND
-#define CONFIG_SYS_DEFAULT_BOOT_MODE "nand"
+#define CONFIG_SYS_DEFAULT_BOOT_MODE	"nand"
 #define CONFIG_SYS_BOOT_CMD_NAND					\
 	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"
 #define CONFIG_SYS_FDTSAVE_CMD						\
@@ -195,19 +198,24 @@
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 #define MMC_ROOT_STR " root=/dev/mmcblk0p2 rootwait\0"
-#define ROOTPART_UUID_STR ""
+#define ROOTPART_UUID_STR		""
+#define EMMC_BOOT_ACK_STR		""
+#define EMMC_BOOT_PART_STR		""
 #else
-#define CONFIG_SYS_DEFAULT_BOOT_MODE "mmc"
-#define CONFIG_SYS_BOOT_CMD_NAND ""
+#define CONFIG_SYS_DEFAULT_BOOT_MODE	"mmc"
+#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION 1
+#define CONFIG_SYS_BOOT_CMD_NAND	""
 #define CONFIG_SYS_FDTSAVE_CMD						\
-	"fdtsave=mmc open 0 1;mmc write ${fdtaddr} "			\
-	xstr(CONFIG_SYS_DTB_BLKNO) " 80;mmc close 0 1\0"
-#define MMC_ROOT_STR " root=PARTUUID=${rootpart_uuid} rootwait\0"
-#define ROOTPART_UUID_STR "rootpart_uuid=0cc66cc0-02\0"
+	"fdtsave=mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} 1"	\
+	";mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80"	\
+	";mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} 0\0"
 #define MTD_NAME			""
 #define MTDIDS_DEFAULT			""
-#ifdef CONFIG_SUPPORT_EMMC_BOOT
-#endif
+#define MMC_ROOT_STR " root=PARTUUID=${rootpart_uuid} rootwait\0"
+#define ROOTPART_UUID_STR "rootpart_uuid=0cc66cc0-02\0"
+#define EMMC_BOOT_ACK_STR		"emmc_boot_ack=1\0"
+#define EMMC_BOOT_PART_STR		"emmc_boot_part="	\
+	xstr(CONFIG_SYS_MMCSD_FS_BOOT_PARTITION) "\0"
 #endif /* CONFIG_TX6_NAND */
 
 /*
@@ -299,7 +307,6 @@
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #endif
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2

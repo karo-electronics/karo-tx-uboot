@@ -1,11 +1,17 @@
 # stack is allocated below CONFIG_SYS_TEXT_BASE
-CONFIG_SYS_TEXT_BASE := 0x10100000
+#CONFIG_SYS_TEXT_BASE := 0x10100000
+#CONFIG_SYS_TEXT_BASE := 0x177ff000
+CONFIG_SYS_TEXT_BASE := 0x100ff000
 
-__HAVE_ARCH_GENERIC_BOARD := y
+OBJCOPYFLAGS += -j .pad
+
 LOGO_BMP = logos/karo.bmp
 #PLATFORM_CPPFLAGS += -DDEBUG
 #PLATFORM_CPPFLAGS += -Wno-unused-but-set-variable
 PLATFORM_CPPFLAGS += -Werror
+ifneq ($(CONFIG_SECURE_BOOT),)
+	PLATFORM_CPPFLAGS += -DCONFIG_SECURE_BOOT
+endif
 
 ifeq ($(CONFIG_TX6_NAND),y)
 # calculate U_BOOT_IMG_SIZE to be at least 3 eraseblocks larger than the maximum expected image size

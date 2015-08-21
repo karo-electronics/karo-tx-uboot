@@ -11,7 +11,7 @@
 
 static int curr_device = -1;
 #ifndef CONFIG_GENERIC_MMC
-int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mmc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int dev;
 
@@ -137,6 +137,7 @@ static void print_mmcinfo(struct mmc *mmc)
 		}
 	}
 }
+
 static struct mmc *init_mmc_device(int dev, bool force_init)
 {
 	struct mmc *mmc;
@@ -151,6 +152,7 @@ static struct mmc *init_mmc_device(int dev, bool force_init)
 		return NULL;
 	return mmc;
 }
+
 static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct mmc *mmc;
@@ -184,6 +186,7 @@ static int confirm_key_prog(void)
 	puts("Authentication key programming aborted\n");
 	return 0;
 }
+
 static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
 			  int argc, char * const argv[])
 {
@@ -202,6 +205,7 @@ static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
 	}
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
@@ -230,6 +234,7 @@ static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
 			    int argc, char * const argv[])
 {
@@ -256,6 +261,7 @@ static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_counter(cmd_tbl_t *cmdtp, int flag,
 			      int argc, char * const argv[])
 {
@@ -353,6 +359,7 @@ static int do_mmc_read(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 			int argc, char * const argv[])
 {
@@ -383,6 +390,7 @@ static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
 			int argc, char * const argv[])
 {
@@ -411,6 +419,7 @@ static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 			 int argc, char * const argv[])
 {
@@ -422,6 +431,7 @@ static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 		       int argc, char * const argv[])
 {
@@ -441,6 +451,7 @@ static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 	puts("get mmc type error!\n");
 	return CMD_RET_FAILURE;
 }
+
 static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 		      int argc, char * const argv[])
 {
@@ -482,6 +493,7 @@ static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
 		       int argc, char * const argv[])
 {
@@ -630,8 +642,7 @@ static int do_mmc_hwpartition(cmd_tbl_t *cmdtp, int flag,
 
 	if (!mmc_hwpart_config(mmc, &pconf, mode)) {
 		if (mode == MMC_HWPART_CONF_COMPLETE)
-			puts("Partitioning successful, "
-			     "power-cycle to make effective\n");
+			puts("Partitioning successful, power-cycle to make effective\n");
 		return CMD_RET_SUCCESS;
 	} else {
 		puts("Failed!\n");
@@ -646,50 +657,97 @@ static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
 	int dev;
 	struct mmc *mmc;
 	u8 width, reset, mode;
+	int ret;
+	char *end;
 
 	if (argc != 5)
 		return CMD_RET_USAGE;
-	dev = simple_strtoul(argv[1], NULL, 10);
-	width = simple_strtoul(argv[2], NULL, 10);
-	reset = simple_strtoul(argv[3], NULL, 10);
-	mode = simple_strtoul(argv[4], NULL, 10);
+
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	width = simple_strtoul(argv[2], &end, 10);
+	if (width > 2 || *end != '\0') {
+		printf("Invalid boot_bus_width parameter '%s'; expected [0..2]\n",
+			argv[2]);
+		return CMD_RET_FAILURE;
+	}
+
+	reset = simple_strtoul(argv[3], &end, 10);
+	if (reset > 1 || *end != '\0') {
+		printf("Invalid reset_boot_bus_width parameter '%s'; expected 0 or 1\n",
+			argv[3]);
+		return CMD_RET_FAILURE;
+	}
+	mode = simple_strtoul(argv[4], &end, 10);
+	if (mode > 2 || *end != '\0') {
+		printf("Invalid boot_mode parameter '%s'; expected [0..2]\n",
+			argv[4]);
+		return CMD_RET_FAILURE;
+	}
 
 	mmc = init_mmc_device(dev, false);
-	if (!mmc)
+	if (!mmc) {
+		printf("Failed to init MMC device %d\n", dev);
 		return CMD_RET_FAILURE;
+	}
 
 	if (IS_SD(mmc)) {
 		puts("BOOT_BUS_WIDTH only exists on eMMC\n");
 		return CMD_RET_FAILURE;
 	}
 
-	/* acknowledge to be sent during boot operation */
-	return mmc_set_boot_bus_width(mmc, width, reset, mode);
+	ret = mmc_set_boot_bus_width(mmc, width, reset, mode);
+	if (ret)
+		printf("Setting boot bus width failed: %d\n", ret);
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
+
 static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
 			      int argc, char * const argv[])
 {
 	int dev;
 	struct mmc *mmc;
 	u32 bootsize, rpmbsize;
+	int ret;
+	char *end;
 
 	if (argc != 4)
 		return CMD_RET_USAGE;
-	dev = simple_strtoul(argv[1], NULL, 10);
-	bootsize = simple_strtoul(argv[2], NULL, 10);
-	rpmbsize = simple_strtoul(argv[3], NULL, 10);
+
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	bootsize = simple_strtoul(argv[2], &end, 10);
+	if (bootsize > 64 || *end != '\0') {
+		return CMD_RET_FAILURE;
+	}
+
+	rpmbsize = simple_strtoul(argv[3], &end, 10);
+	if (rpmbsize > 64 || *end != '\0') {
+		return CMD_RET_FAILURE;
+	}
 
 	mmc = init_mmc_device(dev, false);
 	if (!mmc)
 		return CMD_RET_FAILURE;
 
 	if (IS_SD(mmc)) {
-		printf("It is not a EMMC device\n");
+		printf("mmc device %d is not an EMMC device\n", dev);
 		return CMD_RET_FAILURE;
 	}
 
-	if (mmc_boot_partition_size_change(mmc, bootsize, rpmbsize)) {
-		printf("EMMC boot partition Size change Failed.\n");
+	ret = mmc_boot_partition_size_change(mmc, bootsize, rpmbsize);
+	if (ret) {
+		printf("EMMC boot partition size change failed: %d\n", ret);
 		return CMD_RET_FAILURE;
 	}
 
@@ -697,20 +755,43 @@ static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
 	printf("EMMC RPMB partition Size %d MB\n", rpmbsize);
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
 	int dev;
 	struct mmc *mmc;
 	u8 ack, part_num, access;
+	char *end;
+	int ret;
 
 	if (argc != 5)
 		return CMD_RET_USAGE;
 
-	dev = simple_strtoul(argv[1], NULL, 10);
-	ack = simple_strtoul(argv[2], NULL, 10);
-	part_num = simple_strtoul(argv[3], NULL, 10);
-	access = simple_strtoul(argv[4], NULL, 10);
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	ack = simple_strtoul(argv[2], &end, 10);
+	if (ack < 0 || ack > 1 || *end != '\0') {
+		printf("Invalid boot_ack value: %s\n", argv[2]);
+		return CMD_RET_FAILURE;
+	}
+
+	part_num = simple_strtoul(argv[3], &end, 10);
+	if (part_num < 0 || (part_num > 4 && part_num != 7) || *end != '\0') {
+		printf("Invalid part_num: %s\n", argv[3]);
+		return CMD_RET_FAILURE;
+	}
+
+	access = simple_strtoul(argv[4], &end, 10);
+	if (access < 0 || access > 7 || *end != '\0') {
+		printf("Invalid access value: %s\n", argv[4]);
+		return CMD_RET_FAILURE;
+	}
 
 	mmc = init_mmc_device(dev, false);
 	if (!mmc)
@@ -722,14 +803,19 @@ static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
 	}
 
 	/* acknowledge to be sent during boot operation */
-	return mmc_set_part_conf(mmc, ack, part_num, access);
+	ret = mmc_set_part_conf(mmc, ack, part_num, access);
+	if (ret)
+		printf("partconf failed: %d\n", ret);
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
+
 static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
 	int dev;
 	struct mmc *mmc;
 	u8 enable;
+	char *end;
 
 	/*
 	 * Set the RST_n_ENABLE bit of RST_n_FUNCTION
@@ -739,8 +825,14 @@ static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
 	if (argc != 3)
 		return CMD_RET_USAGE;
 
-	dev = simple_strtoul(argv[1], NULL, 10);
-	enable = simple_strtoul(argv[2], NULL, 10);
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	enable = simple_strtoul(argv[2], &end, 10);
 
 	if (enable > 2 || enable < 0) {
 		puts("Invalid RST_n_ENABLE value\n");
@@ -759,16 +851,23 @@ static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
 	return mmc_set_rst_n_function(mmc, enable);
 }
 #endif
+
 static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
 			 int argc, char * const argv[])
 {
 	struct mmc *mmc;
 	u32 val;
+	char *end;
 	int ret;
 
 	if (argc != 2)
 		return CMD_RET_USAGE;
-	val = simple_strtoul(argv[2], NULL, 16);
+	val = simple_strtoul(argv[2], &end, 16);
+	if (val > 0xffff || *end != '\0') {
+		printf("Invalid DSR value '%s'; expected hex number [0..ffff]\n",
+			argv[2]);
+		return CMD_RET_FAILURE;
+	}
 
 	mmc = find_mmc_device(curr_device);
 	if (!mmc) {
