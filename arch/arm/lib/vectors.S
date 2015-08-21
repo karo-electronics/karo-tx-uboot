@@ -117,10 +117,10 @@ fiq:
 /* IRQ stack memory (calculated at run-time) + 8 bytes */
 .globl IRQ_STACK_START_IN
 IRQ_STACK_START_IN:
-#ifndef IRAM_BASE_ADDR
+#ifndef CONFIG_SPL_STACK
 	.word	0x0badc0de
 #else
-	.word	IRAM_BASE_ADDR + 0x20
+	.word	CONFIG_SPL_STACK
 #endif
 
 #ifdef CONFIG_USE_IRQ
