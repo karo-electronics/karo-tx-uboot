@@ -8,7 +8,7 @@ LOGO_BMP = logos/karo.bmp
 
 PLATFORM_CPPFLAGS += -Werror
 ifneq ($(CONFIG_SPL_BUILD),y)
-	ALL-y += $(obj)u-boot.sb
+	ALL-y += $(obj)/u-boot.sb
 endif
 
 CONFIG_SYS_NAND_BLOCK_SIZE := 131072
