@@ -100,7 +100,7 @@ static const iomux_cfg_t tx28_pads[] = {
 /* provide at least _some_ sort of randomness */
 #define MAX_LOOPS       100
 
-static u32 random;
+static u32 random __attribute__((section("data")));
 
 static inline void random_init(void)
 {
