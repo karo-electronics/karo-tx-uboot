@@ -16,17 +16,17 @@
 
 #ifndef __ASSEMBLY__
 struct mxs_uartapp_regs {
-	mxs_reg_32(hw_uartapp_ctrl0)
-	mxs_reg_32(hw_uartapp_ctrl1)
-	mxs_reg_32(hw_uartapp_ctrl2)
-	mxs_reg_32(hw_uartapp_linectrl)
-	mxs_reg_32(hw_uartapp_linectrl2)
-	mxs_reg_32(hw_uartapp_intr)
-	mxs_reg_32(hw_uartapp_data)
-	mxs_reg_32(hw_uartapp_stat)
-	mxs_reg_32(hw_uartapp_debug)
-	mxs_reg_32(hw_uartapp_version)
-	mxs_reg_32(hw_uartapp_autobaud)
+	mxs_reg_32(hw_uartapp_ctrl0);
+	mxs_reg_32(hw_uartapp_ctrl1);
+	mxs_reg_32(hw_uartapp_ctrl2);
+	mxs_reg_32(hw_uartapp_linectrl);
+	mxs_reg_32(hw_uartapp_linectrl2);
+	mxs_reg_32(hw_uartapp_intr);
+	mxs_reg_32(hw_uartapp_data);
+	mxs_reg_32(hw_uartapp_stat);
+	mxs_reg_32(hw_uartapp_debug);
+	mxs_reg_32(hw_uartapp_version);
+	mxs_reg_32(hw_uartapp_autobaud);
 };
 #endif
 
