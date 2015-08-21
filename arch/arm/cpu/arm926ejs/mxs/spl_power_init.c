@@ -239,16 +239,16 @@ static int mxs_is_batt_good(void)
 
 	volt = mxs_get_batt_volt();
 
-	if (volt >= 3500)
-		return 0;
-
-	if (volt >= 2400)
-		return 1;
-
 	writel(POWER_CHARGE_STOP_ILIMIT_MASK | POWER_CHARGE_BATTCHRG_I_MASK,
 		&power_regs->hw_power_charge_clr);
 	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
 
+	if (volt >= 3500) {
+		return 0;
+	}
+	if (volt >= 2400) {
+		return 1;
+	}
 	return 0;
 }
 
@@ -487,7 +487,7 @@ static void mxs_power_init_4p2_regulator(void)
 	 * We then check the brownout status. If the brownout status is false,
 	 * the voltage is already close to the target voltage of 4.2V so we
 	 * can go ahead and set the 4P2 current limit to our max target limit.
-	 * If the brownout status is true, we need to ramp us the current limit
+	 * If the brownout status is true, we need to ramp up the current limit
 	 * so that we don't cause large inrush current issues. We step up the
 	 * current limit until the brownout status is false or until we've
 	 * reached our maximum defined 4p2 current limit.
@@ -724,8 +724,8 @@ static void mxs_handle_5v_conflict(void)
 
 		if (tmp & POWER_STS_VDDIO_BO) {
 			/*
-			 * VDDIO has a brownout, then the VDD5V_GT_VDDIO becomes
-			 * unreliable
+			 * If VDDIO has a brownout, then the VDD5V_GT_VDDIO
+			 * becomes unreliable
 			 */
 			mxs_powerdown();
 			break;
@@ -778,12 +778,11 @@ static void mxs_5v_boot(void)
  * This function configures the battery input brownout threshold. The value
  * at which the battery brownout happens is configured to 3.0V in the code.
  */
-static void mxs_init_batt_bo(void)
+static void mxs_fixed_batt_boot(void)
 {
 	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
 
 	setbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_PWDN_5VBRNOUT |
 		POWER_5VCTRL_ENABLE_DCDC |
 		POWER_5VCTRL_ILIMIT_EQ_ZERO |
 		POWER_5VCTRL_PWDN_5VBRNOUT |
@@ -1023,6 +1022,8 @@ struct mxs_vddx_cfg {
 	uint32_t		bo_enirq;
 	uint32_t		bo_offset_mask;
 	uint32_t		bo_offset_offset;
+	uint16_t		bo_min_mV;
+	uint16_t		bo_max_mV;
 };
 
 #define POWER_REG(n)		&((struct mxs_power_regs *)MXS_POWER_BASE)->n
@@ -1042,6 +1043,8 @@ static const struct mxs_vddx_cfg mxs_vddio_cfg = {
 	.bo_enirq		= POWER_CTRL_ENIRQ_VDDIO_BO,
 	.bo_offset_mask		= POWER_VDDIOCTRL_BO_OFFSET_MASK,
 	.bo_offset_offset	= POWER_VDDIOCTRL_BO_OFFSET_OFFSET,
+	.bo_min_mV		= 2700,
+	.bo_max_mV		= 3475,
 };
 
 static const struct mxs_vddx_cfg mxs_vddd_cfg = {
@@ -1055,12 +1058,14 @@ static const struct mxs_vddx_cfg mxs_vddd_cfg = {
 	.bo_enirq		= POWER_CTRL_ENIRQ_VDDD_BO,
 	.bo_offset_mask		= POWER_VDDDCTRL_BO_OFFSET_MASK,
 	.bo_offset_offset	= POWER_VDDDCTRL_BO_OFFSET_OFFSET,
+	.bo_min_mV		= 800,
+	.bo_max_mV		= 1475,
 };
 
 static const struct mxs_vddx_cfg mxs_vdda_cfg = {
 	.reg			= POWER_REG(hw_power_vddactrl),
-	.step_mV		= 50,
-	.lowest_mV		= 2800,
+	.step_mV		= 25,
+	.lowest_mV		= 1800,
 	.highest_mV		= 3600,
 	.powered_by_linreg	= mxs_get_vdda_power_source_off,
 	.trg_mask		= POWER_VDDACTRL_TRG_MASK,
@@ -1068,6 +1073,8 @@ static const struct mxs_vddx_cfg mxs_vdda_cfg = {
 	.bo_enirq		= POWER_CTRL_ENIRQ_VDDA_BO,
 	.bo_offset_mask		= POWER_VDDACTRL_BO_OFFSET_MASK,
 	.bo_offset_offset	= POWER_VDDACTRL_BO_OFFSET_OFFSET,
+	.bo_min_mV		= 1400,
+	.bo_max_mV		= 2175,
 };
 
 #ifdef CONFIG_SOC_MX23
@@ -1098,19 +1105,26 @@ static const struct mxs_vddx_cfg mxs_vddmem_cfg = {
  * value is also in mV.
  */
 static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
-				uint32_t new_target, uint32_t new_brownout)
+				uint32_t new_target, uint32_t bo_offset)
 {
 	uint32_t cur_target, diff, bo_int = 0;
 	int powered_by_linreg = 0;
 	int adjust_up;
 
-	if (new_target < cfg->lowest_mV)
+	if (new_target < cfg->lowest_mV) {
 		new_target = cfg->lowest_mV;
-	if (new_target > cfg->highest_mV)
+	}
+	if (new_target > cfg->highest_mV) {
 		new_target = cfg->highest_mV;
+	}
 
-	new_brownout = DIV_ROUND_CLOSEST(new_target - new_brownout,
-					 cfg->step_mV);
+	if (new_target - bo_offset < cfg->bo_min_mV) {
+		bo_offset = new_target - cfg->bo_min_mV;
+	} else if (new_target - bo_offset > cfg->bo_max_mV) {
+		bo_offset = new_target - cfg->bo_max_mV;
+	}
+
+	bo_offset = DIV_ROUND_CLOSEST(bo_offset, cfg->step_mV);
 
 	cur_target = readl(cfg->reg);
 	cur_target &= cfg->trg_mask;
@@ -1123,8 +1137,8 @@ static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
 
 	if (adjust_up && cfg->bo_irq) {
 		if (powered_by_linreg) {
-			bo_int = readl(cfg->reg);
-			clrbits_le32(cfg->reg, cfg->bo_enirq);
+			bo_int = readl(&power_regs->hw_power_ctrl);
+			writel(cfg->bo_enirq, &power_regs->hw_power_ctrl_clr);
 		}
 		setbits_le32(cfg->reg, cfg->bo_offset_mask);
 	}
@@ -1165,11 +1179,12 @@ static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
 		if (adjust_up && powered_by_linreg) {
 			writel(cfg->bo_irq, &power_regs->hw_power_ctrl_clr);
 			if (bo_int & cfg->bo_enirq)
-				setbits_le32(cfg->reg, cfg->bo_enirq);
+				writel(cfg->bo_enirq,
+					&power_regs->hw_power_ctrl_set);
 		}
 
 		clrsetbits_le32(cfg->reg, cfg->bo_offset_mask,
-				new_brownout << cfg->bo_offset_offset);
+				bo_offset << cfg->bo_offset_offset);
 	}
 }
 
