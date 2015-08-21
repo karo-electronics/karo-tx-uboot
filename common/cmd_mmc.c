@@ -11,7 +11,7 @@
 
 static int curr_device = -1;
 #ifndef CONFIG_GENERIC_MMC
-int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mmc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int dev;
 
@@ -137,6 +137,7 @@ static void print_mmcinfo(struct mmc *mmc)
 		}
 	}
 }
+
 static struct mmc *init_mmc_device(int dev, bool force_init)
 {
 	struct mmc *mmc;
@@ -151,6 +152,7 @@ static struct mmc *init_mmc_device(int dev, bool force_init)
 		return NULL;
 	return mmc;
 }
+
 static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct mmc *mmc;
@@ -184,6 +186,7 @@ static int confirm_key_prog(void)
 	puts("Authentication key programming aborted\n");
 	return 0;
 }
+
 static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
 			  int argc, char * const argv[])
 {
@@ -202,6 +205,7 @@ static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
 	}
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
@@ -230,6 +234,7 @@ static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
 			    int argc, char * const argv[])
 {
@@ -256,6 +261,7 @@ static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_counter(cmd_tbl_t *cmdtp, int flag,
 			      int argc, char * const argv[])
 {
@@ -353,6 +359,7 @@ static int do_mmc_read(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 			int argc, char * const argv[])
 {
@@ -383,6 +390,7 @@ static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
 			int argc, char * const argv[])
 {
@@ -411,6 +419,7 @@ static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 			 int argc, char * const argv[])
 {
@@ -422,6 +431,7 @@ static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 		       int argc, char * const argv[])
 {
@@ -441,6 +451,7 @@ static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 	puts("get mmc type error!\n");
 	return CMD_RET_FAILURE;
 }
+
 static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 		      int argc, char * const argv[])
 {
@@ -482,6 +493,7 @@ static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
 		       int argc, char * const argv[])
 {
@@ -630,8 +642,7 @@ static int do_mmc_hwpartition(cmd_tbl_t *cmdtp, int flag,
 
 	if (!mmc_hwpart_config(mmc, &pconf, mode)) {
 		if (mode == MMC_HWPART_CONF_COMPLETE)
-			puts("Partitioning successful, "
-			     "power-cycle to make effective\n");
+			puts("Partitioning successful, power-cycle to make effective\n");
 		return CMD_RET_SUCCESS;
 	} else {
 		puts("Failed!\n");
@@ -649,6 +660,7 @@ static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
 
 	if (argc != 5)
 		return CMD_RET_USAGE;
+
 	dev = simple_strtoul(argv[1], NULL, 10);
 	width = simple_strtoul(argv[2], NULL, 10);
 	reset = simple_strtoul(argv[3], NULL, 10);
@@ -663,9 +675,9 @@ static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	}
 
-	/* acknowledge to be sent during boot operation */
 	return mmc_set_boot_bus_width(mmc, width, reset, mode);
 }
+
 static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
 			      int argc, char * const argv[])
 {
@@ -697,6 +709,7 @@ static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
 	printf("EMMC RPMB partition Size %d MB\n", rpmbsize);
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
@@ -724,6 +737,7 @@ static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
 	/* acknowledge to be sent during boot operation */
 	return mmc_set_part_conf(mmc, ack, part_num, access);
 }
+
 static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
@@ -759,6 +773,7 @@ static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
 	return mmc_set_rst_n_function(mmc, enable);
 }
 #endif
+
 static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
 			 int argc, char * const argv[])
 {
