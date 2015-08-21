@@ -1881,6 +1881,19 @@ int mmc_set_part_conf(struct mmc *mmc, u8 ack, u8 part_num, u8 access)
  */
 int mmc_set_rst_n_function(struct mmc *mmc, u8 enable)
 {
+	int ret;
+	ALLOC_CACHE_ALIGN_BUFFER(u8, ext_csd, MMC_MAX_BLOCK_LEN);
+
+	ret = mmc_send_ext_csd(mmc, ext_csd);
+	if (ret)
+		return ret;
+
+	if (ext_csd[EXT_CSD_RST_N_FUNCTION] != 0 &&
+		ext_csd[EXT_CSD_RST_N_FUNCTION] != enable) {
+		printf("RST_N_FUNCTION is already set to %u; cannot change to %u\n",
+			ext_csd[EXT_CSD_RST_N_FUNCTION], enable);
+		return -EINVAL;
+	}
 	return mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_RST_N_FUNCTION,
 			  enable);
 }
