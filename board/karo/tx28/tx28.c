@@ -796,7 +796,7 @@ static void stk5v5_board_init(void)
 	/* init flexcan transceiver enable GPIO */
 	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
-	SETUP_IOMUX_PAD(STK5_CAN_XCVR_GPIO);
+	mxs_iomux_setup_pad(STK5_CAN_XCVR_GPIO);
 }
 
 int tx28_fec1_enabled(void)
