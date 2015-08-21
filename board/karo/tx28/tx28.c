@@ -908,7 +908,7 @@ int checkboard(void)
 	const char *dlm = "";
 
 	printf("Board: Ka-Ro TX28-4%sx%d\n", TX28_MOD_SUFFIX,
-		CONFIG_SDRAM_SIZE / SZ_128M +
+		CONFIG_SYS_SDRAM_SIZE / SZ_128M +
 		CONFIG_SYS_NAND_BLOCKS / 2048 * 2);
 
 	printf("POWERUP Source: ");

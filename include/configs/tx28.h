@@ -16,7 +16,7 @@
  */
 #define CONFIG_MXS_GPIO					/* GPIO control */
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
-#define PHYS_SDRAM_1_SIZE		CONFIG_SDRAM_SIZE
+#define PHYS_SDRAM_1_SIZE		CONFIG_SYS_SDRAM_SIZE
 #ifdef CONFIG_TX28_S
 #define TX28_MOD_SUFFIX			"1"
 #else
