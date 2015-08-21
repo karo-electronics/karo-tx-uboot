@@ -22,6 +22,11 @@ config FSL_USDHC
 	depends on SOC_MX6
 	depends on FSL_ESDHC
 
+config MXS_MMC
+	bool "i.MXS MMC/SDHC controller"
+	depends on SOC_MXS || SOC_MX6
+	select GENERIC_MMC
+
 config SUPPORT_EMMC_BOOT
 	bool "Support boot from eMMC"
 	depends on MMC

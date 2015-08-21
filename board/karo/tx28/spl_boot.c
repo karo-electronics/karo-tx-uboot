@@ -219,9 +219,10 @@ static void tx28_stk5_led_on(void)
 	gpio_direction_output(MX28_PAD_ENET0_RXD3__GPIO_4_10, 1);
 }
 
-void board_init_ll(void)
+void board_init_ll(const uint32_t arg, const uint32_t *resptr)
 {
-	mxs_common_spl_init(tx28_stk5_pads, ARRAY_SIZE(tx28_stk5_pads));
+	mxs_common_spl_init(arg, resptr,
+			tx28_stk5_pads, ARRAY_SIZE(tx28_stk5_pads));
 	tx28_stk5_lcd_init();
 	tx28_stk5_led_on();
 }
@@ -277,7 +278,7 @@ static uint32_t tx28_dram_vals[] = {
 	/* 2d0 */ 0x06120612, 0x04420442, 0x04420442, 0x00040004,
 	/* 2e0 */ 0x00040004, 0x00000000, 0x00000000, 0x00000000,
 	/* 2f0 */ 0x00000000, 0x00000000,
-#elif CONFIG_SDRAM_SIZE == SZ_128M
+#elif CONFIG_SYS_SDRAM_SIZE == SZ_128M
 	/* TX28-40x0: MT47H64M16HR-3 */
 	/* 000 */ 0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	/* 010 */ 0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -327,7 +328,7 @@ static uint32_t tx28_dram_vals[] = {
 	/* 2d0 */ 0x06120612, 0x04420442, 0x04420442, 0x00040004,
 	/* 2e0 */ 0x00040004, 0x00000000, 0x00000000, 0x00000000,
 	/* 2f0 */ 0x00000000, 0x00000000,
-#elif CONFIG_SDRAM_SIZE == SZ_256M
+#elif CONFIG_SYS_SDRAM_SIZE == SZ_256M
 	/* TX28-40x2: MEM2G16D2DABG */
 	/* 000 */ 0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	/* 010 */ 0x00000000, 0x00000000, 0x00000000, 0x00000000,

@@ -33,6 +33,8 @@ struct gpmi_regs {
 	mxs_reg_32(hw_gpmi_stat);
 	mxs_reg_32(hw_gpmi_debug);
 	mxs_reg_32(hw_gpmi_version);
+	mxs_reg_32(hw_gpmi_debug2);
+	mxs_reg_32(hw_gpmi_debug3);
 };
 #endif
 

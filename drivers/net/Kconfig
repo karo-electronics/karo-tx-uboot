@@ -17,10 +17,6 @@ config GET_FEC_MAC_ADDR_FROM_IIM
 
 if FEC_MXC
 
-config FEC_MXC_MULTI
-	bool "Support multiple ethernet interfaces"
-	depends on MX28 || MX6
-
 config FEC_MXC_PHYADDR
 	int "FEC Ethernet PHY address"
        	default 0
