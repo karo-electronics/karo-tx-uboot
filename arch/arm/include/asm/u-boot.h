@@ -27,7 +27,6 @@
 
 #ifndef __ASSEMBLY__
 typedef struct bd_info {
-	unsigned int	bi_baudrate;	/* serial console baudrate */
     ulong	        bi_arch_number;	/* unique id for this board */
     ulong	        bi_boot_params;	/* where this board expects params */
 	unsigned long	bi_arm_freq; /* arm frequency */
@@ -44,6 +43,10 @@ typedef struct bd_info {
 #endif /* !CONFIG_SYS_GENERIC_BOARD */
 
 /* For image.h:image_check_target_arch() */
+#ifndef CONFIG_ARM64
 #define IH_ARCH_DEFAULT IH_ARCH_ARM
+#else
+#define IH_ARCH_DEFAULT IH_ARCH_ARM64
+#endif
 
 #endif	/* _U_BOOT_H_ */

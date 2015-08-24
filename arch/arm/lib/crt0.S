@@ -67,10 +67,22 @@ ENTRY(_main)
 	ldr	sp, =CONFIG_SYS_INIT_SP_ADDR
 #endif
 	bic	sp, sp, #7	/* 8-byte alignment for ABI compliance */
-	sub	sp, #GD_SIZE	/* allocate one GD above SP */
+	mov	r2, sp
+	sub	sp, sp, #GD_SIZE	/* allocate one GD above SP */
 	bic	sp, sp, #7	/* 8-byte alignment for ABI compliance */
-	mov	r8, sp		/* GD is above SP */
+	mov	r9, sp		/* GD is above SP */
+	mov	r1, sp
 	mov	r0, #0
+clr_gd:
+	cmp	r1, r2			/* while not at end of GD */
+	strlo	r0, [r1]		/* clear 32-bit GD word */
+	addlo	r1, r1, #4		/* move to next */
+	blo	clr_gd
+#if defined(CONFIG_SYS_MALLOC_F_LEN)
+	sub	sp, sp, #CONFIG_SYS_MALLOC_F_LEN
+	str	sp, [r9, #GD_MALLOC_BASE]
+#endif
+	/* mov r0, #0 not needed due to above code */
 	bl	board_init_f
 
 #if ! defined(CONFIG_SPL_BUILD)
@@ -81,17 +93,22 @@ ENTRY(_main)
  * 'here' but relocated.
  */
 
-	ldr	sp, [r8, #GD_START_ADDR_SP]	/* sp = gd->start_addr_sp */
+	ldr	sp, [r9, #GD_START_ADDR_SP]	/* sp = gd->start_addr_sp */
 	bic	sp, sp, #7	/* 8-byte alignment for ABI compliance */
-	ldr	r8, [r8, #GD_BD]		/* r8 = gd->bd */
-	sub	r8, r8, #GD_SIZE		/* new GD is below bd */
+	ldr	r9, [r9, #GD_BD]		/* r9 = gd->bd */
+	sub	r9, r9, #GD_SIZE		/* new GD is below bd */
 
 	adr	lr, here
-	ldr	r0, [r8, #GD_RELOC_OFF]		/* r0 = gd->reloc_off */
+	ldr	r0, [r9, #GD_RELOC_OFF]		/* r0 = gd->reloc_off */
 	add	lr, lr, r0
-	ldr	r0, [r8, #GD_RELOCADDR]		/* r0 = gd->relocaddr */
+	ldr	r0, [r9, #GD_RELOCADDR]		/* r0 = gd->relocaddr */
 	b	relocate_code
 here:
+/*
+ * now relocate vectors
+ */
+
+	bl	relocate_vectors
 
 /* Set up final (full) environment */
 
@@ -111,8 +128,8 @@ clbss_l:cmp	r0, r1			/* while not at end of BSS */
 	bl red_led_on
 
 	/* call board_init_r(gd_t *id, ulong dest_addr) */
-	mov	r0, r8			/* gd_t */
-	ldr	r1, [r8, #GD_RELOCADDR]	/* dest_addr */
+	mov     r0, r9                  /* gd_t */
+	ldr	r1, [r9, #GD_RELOCADDR]	/* dest_addr */
 	/* call board_init_r */
 	ldr	pc, =board_init_r	/* this is auto-relocated! */
 

@@ -28,99 +28,8 @@ static const struct musb_epinfo epinfo[3] = {
 static int rh_devnum;
 static u32 port_status;
 
-/* Device descriptor */
-static const u8 root_hub_dev_des[] = {
-	0x12,			/*  __u8  bLength; */
-	0x01,			/*  __u8  bDescriptorType; Device */
-	0x00,			/*  __u16 bcdUSB; v1.1 */
-	0x02,
-	0x09,			/*  __u8  bDeviceClass; HUB_CLASSCODE */
-	0x00,			/*  __u8  bDeviceSubClass; */
-	0x00,			/*  __u8  bDeviceProtocol; */
-	0x08,			/*  __u8  bMaxPacketSize0; 8 Bytes */
-	0x00,			/*  __u16 idVendor; */
-	0x00,
-	0x00,			/*  __u16 idProduct; */
-	0x00,
-	0x00,			/*  __u16 bcdDevice; */
-	0x00,
-	0x00,			/*  __u8  iManufacturer; */
-	0x01,			/*  __u8  iProduct; */
-	0x00,			/*  __u8  iSerialNumber; */
-	0x01			/*  __u8  bNumConfigurations; */
-};
+#include <usbroothubdes.h>
 
-/* Configuration descriptor */
-static const u8 root_hub_config_des[] = {
-	0x09,			/*  __u8  bLength; */
-	0x02,			/*  __u8  bDescriptorType; Configuration */
-	0x19,			/*  __u16 wTotalLength; */
-	0x00,
-	0x01,			/*  __u8  bNumInterfaces; */
-	0x01,			/*  __u8  bConfigurationValue; */
-	0x00,			/*  __u8  iConfiguration; */
-	0x40,			/*  __u8  bmAttributes;
-				   Bit 7: Bus-powered, 6: Self-powered, 5 Remote-wakwup, 4..0: resvd */
-	0x00,			/*  __u8  MaxPower; */
-
-	/* interface */
-	0x09,			/*  __u8  if_bLength; */
-	0x04,			/*  __u8  if_bDescriptorType; Interface */
-	0x00,			/*  __u8  if_bInterfaceNumber; */
-	0x00,			/*  __u8  if_bAlternateSetting; */
-	0x01,			/*  __u8  if_bNumEndpoints; */
-	0x09,			/*  __u8  if_bInterfaceClass; HUB_CLASSCODE */
-	0x00,			/*  __u8  if_bInterfaceSubClass; */
-	0x00,			/*  __u8  if_bInterfaceProtocol; */
-	0x00,			/*  __u8  if_iInterface; */
-
-	/* endpoint */
-	0x07,			/*  __u8  ep_bLength; */
-	0x05,			/*  __u8  ep_bDescriptorType; Endpoint */
-	0x81,			/*  __u8  ep_bEndpointAddress; IN Endpoint 1 */
-	0x03,			/*  __u8  ep_bmAttributes; Interrupt */
-	0x00,			/*  __u16 ep_wMaxPacketSize; ((MAX_ROOT_PORTS + 1) / 8 */
-	0x02,
-	0xff			/*  __u8  ep_bInterval; 255 ms */
-};
-
-static const unsigned char root_hub_str_index0[] = {
-	0x04,			/*  __u8  bLength; */
-	0x03,			/*  __u8  bDescriptorType; String-descriptor */
-	0x09,			/*  __u8  lang ID */
-	0x04,			/*  __u8  lang ID */
-};
-
-static const unsigned char root_hub_str_index1[] = {
-	0x1c,			/*  __u8  bLength; */
-	0x03,			/*  __u8  bDescriptorType; String-descriptor */
-	'M',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'U',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'S',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'B',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	' ',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'R',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'o',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'o',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	't',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	' ',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'H',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'u',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-	'b',			/*  __u8  Unicode */
-	0,			/*  __u8  Unicode */
-};
 #endif
 
 /*
@@ -267,7 +176,7 @@ static int wait_until_ep0_ready(struct usb_device *dev, u32 bit_mask)
 /*
  * waits until tx ep is ready. Returns 1 when ep is ready and 0 on error.
  */
-static u8 wait_until_txep_ready(struct usb_device *dev, u8 ep)
+static int wait_until_txep_ready(struct usb_device *dev, u8 ep)
 {
 	u16 csr;
 	int timeout = CONFIG_MUSB_TIMEOUT;
@@ -299,7 +208,7 @@ static u8 wait_until_txep_ready(struct usb_device *dev, u8 ep)
 /*
  * waits until rx ep is ready. Returns 1 when ep is ready and 0 on error.
  */
-static u8 wait_until_rxep_ready(struct usb_device *dev, u8 ep)
+static int wait_until_rxep_ready(struct usb_device *dev, u8 ep)
 {
 	u16 csr;
 	int timeout = CONFIG_MUSB_TIMEOUT;
@@ -417,8 +326,12 @@ static int ctrlreq_out_data_phase(struct usb_device *dev, u32 len, void *buffer)
 
 		/* Set TXPKTRDY bit */
 		csr = readw(&musbr->txcsr);
-		writew(csr | MUSB_CSR0_H_DIS_PING | MUSB_CSR0_TXPKTRDY,
-					&musbr->txcsr);
+			
+		csr |= MUSB_CSR0_TXPKTRDY;
+#if !defined(CONFIG_SOC_DM365)
+		csr |= MUSB_CSR0_H_DIS_PING;
+#endif
+		writew(csr, &musbr->txcsr);
 		result = wait_until_ep0_ready(dev, MUSB_CSR0_TXPKTRDY);
 		if (result < 0)
 			break;
@@ -439,8 +352,10 @@ static int ctrlreq_out_status_phase(struct usb_device *dev)
 
 	/* Set the StatusPkt bit */
 	csr = readw(&musbr->txcsr);
-	csr |= (MUSB_CSR0_H_DIS_PING | MUSB_CSR0_TXPKTRDY |
-			MUSB_CSR0_H_STATUSPKT);
+	csr |= (MUSB_CSR0_TXPKTRDY | MUSB_CSR0_H_STATUSPKT);
+#if !defined(CONFIG_SOC_DM365)
+	csr |= MUSB_CSR0_H_DIS_PING;
+#endif
 	writew(csr, &musbr->txcsr);
 
 	/* Wait until TXPKTRDY bit is cleared */
@@ -457,7 +372,10 @@ static int ctrlreq_in_status_phase(struct usb_device *dev)
 	int result;
 
 	/* Set the StatusPkt bit and ReqPkt bit */
-	csr = MUSB_CSR0_H_DIS_PING | MUSB_CSR0_H_REQPKT | MUSB_CSR0_H_STATUSPKT;
+	csr = MUSB_CSR0_H_REQPKT | MUSB_CSR0_H_STATUSPKT;
+#if !defined(CONFIG_SOC_DM365)
+	csr |= MUSB_CSR0_H_DIS_PING;
+#endif
 	writew(csr, &musbr->txcsr);
 	result = wait_until_ep0_ready(dev, MUSB_CSR0_H_REQPKT);
 
@@ -1009,7 +927,7 @@ int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 			writew(csr | MUSB_TXCSR_TXPKTRDY, &musbr->txcsr);
 
 			/* Wait until the TxPktRdy bit is cleared */
-			if (!wait_until_txep_ready(dev, MUSB_BULK_EP)) {
+			if (wait_until_txep_ready(dev, MUSB_BULK_EP) != 1) {
 				readw(&musbr->txcsr);
 				usb_settoggle(dev, ep, dir_out,
 				(csr >> MUSB_TXCSR_H_DATATOGGLE_SHIFT) & 1);
@@ -1044,7 +962,7 @@ int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 			writew(csr | MUSB_RXCSR_H_REQPKT, &musbr->rxcsr);
 
 			/* Wait until the RxPktRdy bit is set */
-			if (!wait_until_rxep_ready(dev, MUSB_BULK_EP)) {
+			if (wait_until_rxep_ready(dev, MUSB_BULK_EP) != 1) {
 				csr = readw(&musbr->rxcsr);
 				usb_settoggle(dev, ep, dir_out,
 				(csr >> MUSB_S_RXCSR_H_DATATOGGLE) & 1);
@@ -1080,7 +998,7 @@ int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 /*
  * This function initializes the usb controller module.
  */
-int usb_lowlevel_init(int index, void **controller)
+int usb_lowlevel_init(int index, enum usb_init_type init, void **controller)
 {
 	u8  power;
 	u32 timeout;
@@ -1217,7 +1135,7 @@ int submit_int_msg(struct usb_device *dev, unsigned long pipe,
 			writew(csr | MUSB_RXCSR_H_REQPKT, &musbr->rxcsr);
 
 			/* Wait until the RxPktRdy bit is set */
-			if (!wait_until_rxep_ready(dev, MUSB_INTR_EP)) {
+			if (wait_until_rxep_ready(dev, MUSB_INTR_EP) != 1) {
 				csr = readw(&musbr->rxcsr);
 				usb_settoggle(dev, ep, dir_out,
 				(csr >> MUSB_S_RXCSR_H_DATATOGGLE) & 1);

@@ -9,18 +9,24 @@
 #define _SYS_PROTO_H_
 
 #include <asm/imx-common/regs-common.h>
+#include "../arch-imx/cpu.h"
 
-#define MXC_CPU_MX51		0x51
-#define MXC_CPU_MX53		0x53
-#define MXC_CPU_MX6SL		0x60
-#define MXC_CPU_MX6DL		0x61
-#define MXC_CPU_MX6SOLO		0x62
-#define MXC_CPU_MX6Q		0x63
+#define soc_rev() (get_cpu_rev() & 0xFF)
+#define is_soc_rev(rev)        (soc_rev() - rev)
 
-#define is_soc_rev(rev)	((get_cpu_rev() & 0xFF) - rev)
+u32 get_nr_cpus(void);
 u32 get_cpu_rev(void);
+
+/* returns MXC_CPU_ value */
+#define cpu_type(rev) (((rev) >> 12)&0xff)
+
+/* both macros return/take MXC_CPU_ constants */
+#define get_cpu_type()	(cpu_type(get_cpu_rev()))
+#define is_cpu_type(cpu) (get_cpu_type() == cpu)
+
 const char *get_imx_type(u32 imxtype);
 unsigned imx_ddr_size(void);
+void set_chipselect_size(int const);
 
 
 struct mxs_register_32;

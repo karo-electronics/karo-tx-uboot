@@ -23,16 +23,11 @@
 #define OMAP54XX_L4_WKUP_BASE	0x4Ae00000
 #define OMAP54XX_L4_PER_BASE	0x48000000
 
-#define OMAP54XX_DRAM_ADDR_SPACE_START	0x80000000
-#define OMAP54XX_DRAM_ADDR_SPACE_END	0xFFFFFFFF
-#define DRAM_ADDR_SPACE_START	OMAP54XX_DRAM_ADDR_SPACE_START
-#define DRAM_ADDR_SPACE_END	OMAP54XX_DRAM_ADDR_SPACE_END
-
 /* CONTROL ID CODE */
 #define CONTROL_CORE_ID_CODE	0x4A002204
 #define CONTROL_WKUP_ID_CODE	0x4AE0C204
 
-#ifdef CONFIG_DRA7XX
+#if defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX)
 #define CONTROL_ID_CODE		CONTROL_WKUP_ID_CODE
 #else
 #define CONTROL_ID_CODE		CONTROL_CORE_ID_CODE
@@ -44,11 +39,14 @@
 #define OMAP5432_CONTROL_ID_CODE_ES1_0		0x0B99802F
 #define OMAP5432_CONTROL_ID_CODE_ES2_0          0x1B99802F
 #define DRA752_CONTROL_ID_CODE_ES1_0		0x0B99002F
+#define DRA752_CONTROL_ID_CODE_ES1_1		0x1B99002F
+#define DRA722_CONTROL_ID_CODE_ES1_0		0x0B9BC02F
 
 /* UART */
 #define UART1_BASE		(OMAP54XX_L4_PER_BASE + 0x6a000)
 #define UART2_BASE		(OMAP54XX_L4_PER_BASE + 0x6c000)
 #define UART3_BASE		(OMAP54XX_L4_PER_BASE + 0x20000)
+#define UART4_BASE		(OMAP54XX_L4_PER_BASE + 0x6e000)
 
 /* General Purpose Timers */
 #define GPT1_BASE		(OMAP54XX_L4_WKUP_BASE + 0x18000)
@@ -58,8 +56,11 @@
 /* Watchdog Timer2 - MPU watchdog */
 #define WDT2_BASE		(OMAP54XX_L4_WKUP_BASE + 0x14000)
 
-/* GPMC */
-#define OMAP54XX_GPMC_BASE	0x50000000
+/* QSPI */
+#define QSPI_BASE		0x4B300000
+
+/* SATA */
+#define DWC_AHSATA_BASE		0x4A140000
 
 /*
  * Hardware Register Details
@@ -142,9 +143,9 @@ struct s32ktimer {
 #define DDR_IO_2_VREF_CELLS_DDR3_VALUE				0x0
 
 #define DDR_IO_I_40OHM_SR_SLOWEST_WD_DQ_NO_PULL_DQS_NO_PULL_ES2 0x7C7C7C7C
-#define DDR_IO_I_40OHM_SR_FAST_WD_DQ_NO_PULL_DQS_NO_PULL_ES2 0x64656465
+#define DDR_IO_I_40OHM_SR_FAST_WD_DQ_NO_PULL_DQS_NO_PULL_ES2 0x64646464
 #define DDR_IO_0_VREF_CELLS_DDR3_VALUE_ES2 0xBAE8C631
-#define DDR_IO_1_VREF_CELLS_DDR3_VALUE_ES2 0xB46318D8
+#define DDR_IO_1_VREF_CELLS_DDR3_VALUE_ES2 0xBC6318DC
 #define DDR_IO_2_VREF_CELLS_DDR3_VALUE_ES2 0x84210000
 
 #define EFUSE_1 0x45145100
@@ -153,14 +154,23 @@ struct s32ktimer {
 #define EFUSE_4 0x45145100
 #endif /* __ASSEMBLY__ */
 
-#ifdef CONFIG_DRA7XX
+/*
+ * In all cases, the TRM defines the RAM Memory Map for the processor
+ * and indicates the area for the downloaded image.  We use all of that
+ * space for download and once up and running may use other parts of the
+ * map for our needs.  We set a scratch space that is at the end of the
+ * OMAP5 download area, but within the DRA7xx download area (as it is
+ * much larger) and do not, at this time, make use of the additional
+ * space.
+ */
+#if defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX)
 #define NON_SECURE_SRAM_START	0x40300000
 #define NON_SECURE_SRAM_END	0x40380000	/* Not inclusive */
 #else
 #define NON_SECURE_SRAM_START	0x40300000
 #define NON_SECURE_SRAM_END	0x40320000	/* Not inclusive */
 #endif
-#define SRAM_SCRATCH_SPACE_ADDR	NON_SECURE_SRAM_START
+#define SRAM_SCRATCH_SPACE_ADDR	0x4031E000
 
 /* base address for indirect vectors (internal boot mode) */
 #define SRAM_ROM_VECT_BASE	0x4031F000
@@ -189,8 +199,31 @@ struct s32ktimer {
 /* ABB efuse masks */
 #define OMAP5_ABB_FUSE_VSET_MASK		(0x1F << 24)
 #define OMAP5_ABB_FUSE_ENABLE_MASK		(0x1 << 29)
+#define DRA7_ABB_FUSE_VSET_MASK			(0x1F << 20)
+#define DRA7_ABB_FUSE_ENABLE_MASK		(0x1 << 25)
 #define OMAP5_ABB_LDOVBBMPU_MUX_CTRL_MASK	(0x1 << 10)
 #define OMAP5_ABB_LDOVBBMPU_VSET_OUT_MASK	(0x1f << 0)
+
+/* IO Delay module defines */
+#define CFG_IO_DELAY_BASE		0x4844A000
+#define CFG_IO_DELAY_LOCK		(CFG_IO_DELAY_BASE + 0x02C)
+
+/* CPSW IO Delay registers*/
+#define CFG_RGMII0_TXCTL		(CFG_IO_DELAY_BASE + 0x74C)
+#define CFG_RGMII0_TXD0			(CFG_IO_DELAY_BASE + 0x758)
+#define CFG_RGMII0_TXD1			(CFG_IO_DELAY_BASE + 0x764)
+#define CFG_RGMII0_TXD2			(CFG_IO_DELAY_BASE + 0x770)
+#define CFG_RGMII0_TXD3			(CFG_IO_DELAY_BASE + 0x77C)
+#define CFG_VIN2A_D13			(CFG_IO_DELAY_BASE + 0xA7C)
+#define CFG_VIN2A_D17			(CFG_IO_DELAY_BASE + 0xAAC)
+#define CFG_VIN2A_D16			(CFG_IO_DELAY_BASE + 0xAA0)
+#define CFG_VIN2A_D15			(CFG_IO_DELAY_BASE + 0xA94)
+#define CFG_VIN2A_D14			(CFG_IO_DELAY_BASE + 0xA88)
+
+#define CFG_IO_DELAY_UNLOCK_KEY		0x0000AAAA
+#define CFG_IO_DELAY_LOCK_KEY		0x0000AAAB
+#define CFG_IO_DELAY_ACCESS_PATTERN	0x00029000
+#define CFG_IO_DELAY_LOCK_MASK		0x400
 
 #ifndef __ASSEMBLY__
 struct srcomp_params {
@@ -206,7 +239,13 @@ struct ctrl_ioregs {
 	u32 ctrl_ddrio_1;
 	u32 ctrl_ddrio_2;
 	u32 ctrl_emif_sdram_config_ext;
+	u32 ctrl_emif_sdram_config_ext_final;
 	u32 ctrl_ddr_ctrl_ext_0;
+};
+
+struct io_delay {
+	u32 addr;
+	u32 dly;
 };
 #endif /* __ASSEMBLY__ */
 #endif

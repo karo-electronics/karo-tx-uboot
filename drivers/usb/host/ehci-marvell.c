@@ -13,7 +13,7 @@
 #include <asm/arch/cpu.h>
 
 #if defined(CONFIG_KIRKWOOD)
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #elif defined(CONFIG_ORION5X)
 #include <asm/arch/orion5x.h>
 #endif
@@ -74,7 +74,8 @@ static void usb_brg_adrdec_setup(void)
  * Create the appropriate control structures to manage
  * a new EHCI host controller.
  */
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	usb_brg_adrdec_setup();
 

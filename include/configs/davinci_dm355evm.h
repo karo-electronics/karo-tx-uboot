@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2009 David Brownell
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,11 +15,8 @@
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
 
 /* SoC Configuration */
-#define CONFIG_ARM926EJS				/* arm926ejs CPU */
 #define CONFIG_SYS_TIMERBASE		0x01c21400	/* use timer 0 */
 #define CONFIG_SYS_HZ_CLOCK		24000000	/* timer0 freq */
-#define CONFIG_SYS_HZ			1000
-#define CONFIG_SOC_DM355
 
 /* Memory Info */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -42,10 +39,10 @@
 #define DM9000_DATA			(CONFIG_DM9000_BASE + 2)
 
 /* I2C */
-#define CONFIG_HARD_I2C
-#define CONFIG_DRIVER_DAVINCI_I2C
-#define CONFIG_SYS_I2C_SPEED		400000
-#define CONFIG_SYS_I2C_SLAVE		0x10	/* SMBus host address */
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_DAVINCI
+#define CONFIG_SYS_DAVINCI_I2C_SPEED		400000
+#define CONFIG_SYS_DAVINCI_I2C_SLAVE		0x10	/* SMBus host address */
 
 /* NAND: socketed, two chipselects, normally 2 GBytes */
 #define CONFIG_NAND_DAVINCI

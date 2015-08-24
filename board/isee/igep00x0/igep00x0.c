@@ -5,10 +5,12 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <status_led.h>
+#include <dm.h>
+#include <ns16550.h>
 #include <twl4030.h>
 #include <netdev.h>
 #include <asm/gpio.h>
-#include <asm/omap_gpmc.h>
 #include <asm/io.h>
 #include <asm/arch/mem.h>
 #include <asm/arch/mmc_host_def.h>
@@ -31,6 +33,17 @@ static const u32 gpmc_lan_config[] = {
 };
 #endif
 
+static const struct ns16550_platdata igep_serial = {
+	OMAP34XX_UART3,
+	2,
+	V_NS16550_CLK
+};
+
+U_BOOT_DEVICE(igep_uart) = {
+	"serial_omap",
+	&igep_serial
+};
+
 /*
  * Routine: board_init
  * Description: Early hardware init.
@@ -41,21 +54,12 @@ int board_init(void)
 	/* boot param addr */
 	gd->bd->bi_boot_params = (OMAP34XX_SDRC_CS0 + 0x100);
 
+#if defined(CONFIG_STATUS_LED) && defined(STATUS_LED_BOOT)
+	status_led_set(STATUS_LED_BOOT, STATUS_LED_ON);
+#endif
+
 	return 0;
 }
-
-#if defined(CONFIG_SHOW_BOOT_PROGRESS) && !defined(CONFIG_SPL_BUILD)
-void show_boot_progress(int val)
-{
-	if (val < 0) {
-		/* something went wrong */
-		return;
-	}
-
-	if (!gpio_request(IGEP00X0_GPIO_LED, ""))
-		gpio_direction_output(IGEP00X0_GPIO_LED, 1);
-}
-#endif
 
 #ifdef CONFIG_SPL_BUILD
 /*
@@ -138,6 +142,25 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
+#if defined(CONFIG_GENERIC_MMC)
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
+}
+#endif
+
+void set_fdt(void)
+{
+	switch (gd->bd->bi_arch_number) {
+	case MACH_TYPE_IGEP0020:
+		setenv("dtbfile", "omap3-igep0020.dtb");
+		break;
+	case MACH_TYPE_IGEP0030:
+		setenv("dtbfile", "omap3-igep0030.dtb");
+		break;
+	}
+}
+
 /*
  * Routine: misc_init_r
  * Description: Configure board specific parts
@@ -149,6 +172,8 @@ int misc_init_r(void)
 	setup_net_chip();
 
 	dieid_num_r();
+
+	set_fdt();
 
 	return 0;
 }

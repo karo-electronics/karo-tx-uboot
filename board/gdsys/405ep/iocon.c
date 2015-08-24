@@ -17,6 +17,7 @@
 
 #include "../common/osd.h"
 #include "../common/mclink.h"
+#include "../common/phy.h"
 
 #include <i2c.h>
 #include <pca953x.h>
@@ -29,6 +30,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define LATCH0_BASE (CONFIG_SYS_LATCH_BASE)
 #define LATCH1_BASE (CONFIG_SYS_LATCH_BASE + 0x100)
 #define LATCH2_BASE (CONFIG_SYS_LATCH_BASE + 0x200)
+
+#define MAX_MUX_CHANNELS 2
 
 enum {
 	UNITTYPE_MAIN_SERVER = 0,
@@ -44,6 +47,8 @@ enum {
 	HWVER_120 = 3,
 	HWVER_200 = 4,
 	HWVER_210 = 5,
+	HWVER_220 = 6,
+	HWVER_230 = 7,
 };
 
 enum {
@@ -74,6 +79,11 @@ enum {
 };
 
 enum {
+	CARRIER_SPEED_1G = 0,
+	CARRIER_SPEED_2_5G = 1,
+};
+
+enum {
 	MCFPGA_DONE = 1 << 0,
 	MCFPGA_INIT_N = 1 << 1,
 	MCFPGA_PROGRAM_N = 1 << 2,
@@ -88,9 +98,6 @@ enum {
 
 unsigned int mclink_fpgacount;
 struct ihs_fpga *fpga_ptr[] = CONFIG_SYS_FPGA_PTR;
-
-static int setup_88e1518(const char *bus, unsigned char addr);
-static int verify_88e1518(const char *bus, unsigned char addr);
 
 int fpga_set_reg(u32 fpga, u16 *reg, off_t regoff, u16 data)
 {
@@ -156,7 +163,7 @@ int checkboard(void)
 	return 0;
 }
 
-static void print_fpga_info(unsigned int fpga)
+static void print_fpga_info(unsigned int fpga, bool rgmii2_present)
 {
 	u16 versions;
 	u16 fpga_version;
@@ -168,13 +175,15 @@ static void print_fpga_info(unsigned int fpga)
 	unsigned feature_audio;
 	unsigned feature_sysclock;
 	unsigned feature_ramconfig;
+	unsigned feature_carrier_speed;
 	unsigned feature_carriers;
 	unsigned feature_video_channels;
-	int legacy = get_fpga_state(0) & FPGA_STATE_PLATFORM;
 
-	FPGA_GET_REG(0, versions, &versions);
-	FPGA_GET_REG(0, fpga_version, &fpga_version);
-	FPGA_GET_REG(0, fpga_features, &fpga_features);
+	int legacy = get_fpga_state(fpga) & FPGA_STATE_PLATFORM;
+
+	FPGA_GET_REG(fpga, versions, &versions);
+	FPGA_GET_REG(fpga, fpga_version, &fpga_version);
+	FPGA_GET_REG(fpga, fpga_features, &fpga_features);
 
 	unit_type = (versions & 0xf000) >> 12;
 	feature_compression = (fpga_features & 0xe000) >> 13;
@@ -182,6 +191,7 @@ static void print_fpga_info(unsigned int fpga)
 	feature_audio = (fpga_features & 0x0600) >> 9;
 	feature_sysclock = (fpga_features & 0x0180) >> 7;
 	feature_ramconfig = (fpga_features & 0x0060) >> 5;
+	feature_carrier_speed = fpga_features & (1<<4);
 	feature_carriers = (fpga_features & 0x000c) >> 2;
 	feature_video_channels = fpga_features & 0x0003;
 
@@ -237,11 +247,21 @@ static void print_fpga_info(unsigned int fpga)
 			printf(" HW-Ver 2.10,");
 			break;
 
+		case HWVER_220:
+			printf(" HW-Ver 2.20,");
+			break;
+
+		case HWVER_230:
+			printf(" HW-Ver 2.30,");
+			break;
+
 		default:
 			printf(" HW-Ver %d(not supported),",
 			       hardware_version);
 			break;
 		}
+		if (rgmii2_present)
+			printf(" RGMII2,");
 	}
 
 	if (unit_type == UNITTYPE_VIDEO_USER) {
@@ -334,7 +354,8 @@ static void print_fpga_info(unsigned int fpga)
 		break;
 	}
 
-	printf(", %d carrier(s)", feature_carriers);
+	printf(", %d carrier(s) %s", feature_carriers,
+	       feature_carrier_speed ? "2.5Gbit/s" : "1Gbit/s");
 
 	printf(", %d video channel(s)\n", feature_video_channels);
 }
@@ -343,11 +364,22 @@ int last_stage_init(void)
 {
 	int slaves;
 	unsigned int k;
+	unsigned int mux_ch;
 	unsigned char mclink_controllers[] = { 0x24, 0x25, 0x26 };
 	int legacy = get_fpga_state(0) & FPGA_STATE_PLATFORM;
+	u16 fpga_features;
+	int feature_carrier_speed;
+	bool ch0_rgmii2_present = false;
 
-	print_fpga_info(0);
-	osd_probe(0);
+	FPGA_GET_REG(0, fpga_features, &fpga_features);
+	feature_carrier_speed = fpga_features & (1<<4);
+
+	if (!legacy) {
+		/* Turn on Parade DP501 */
+		pca9698_direction_output(0x20, 9, 1);
+
+		ch0_rgmii2_present = !pca9698_get_value(0x20, 30);
+	}
 
 	/* wait for FPGA done */
 	for (k = 0; k < ARRAY_SIZE(mclink_controllers); ++k) {
@@ -366,22 +398,26 @@ int last_stage_init(void)
 		}
 	}
 
-	if (!legacy) {
+	if (!legacy && (feature_carrier_speed == CARRIER_SPEED_1G)) {
 		miiphy_register(bb_miiphy_buses[0].name, bb_miiphy_read,
 				bb_miiphy_write);
-		if (!verify_88e1518(bb_miiphy_buses[0].name, 0)) {
-			printf("Fixup 88e1518 erratum on %s\n",
-			       bb_miiphy_buses[0].name);
-			setup_88e1518(bb_miiphy_buses[0].name, 0);
+		for (mux_ch = 0; mux_ch < MAX_MUX_CHANNELS; ++mux_ch) {
+			if ((mux_ch == 1) && !ch0_rgmii2_present)
+				continue;
+
+			setup_88e1518(bb_miiphy_buses[0].name, mux_ch);
 		}
 	}
 
-	/* wait for slave-PLLs to be up and running */
+	/* give slave-PLLs and Parade DP501 some time to be up and running */
 	udelay(500000);
 
 	mclink_fpgacount = CONFIG_SYS_MCLINK_MAX;
 	slaves = mclink_probe();
 	mclink_fpgacount = 0;
+
+	print_fpga_info(0, ch0_rgmii2_present);
+	osd_probe(0);
 
 	if (slaves <= 0)
 		return 0;
@@ -389,13 +425,14 @@ int last_stage_init(void)
 	mclink_fpgacount = slaves;
 
 	for (k = 1; k <= slaves; ++k) {
-		print_fpga_info(k);
+		FPGA_GET_REG(k, fpga_features, &fpga_features);
+		feature_carrier_speed = fpga_features & (1<<4);
+
+		print_fpga_info(k, false);
 		osd_probe(k);
-		miiphy_register(bb_miiphy_buses[k].name,
-				bb_miiphy_read, bb_miiphy_write);
-		if (!verify_88e1518(bb_miiphy_buses[k].name, 0)) {
-			printf("Fixup 88e1518 erratum on %s\n",
-			       bb_miiphy_buses[k].name);
+		if (feature_carrier_speed == CARRIER_SPEED_1G) {
+			miiphy_register(bb_miiphy_buses[k].name,
+					bb_miiphy_read, bb_miiphy_write);
 			setup_88e1518(bb_miiphy_buses[k].name, 0);
 		}
 	}
@@ -562,7 +599,7 @@ static int mii_delay(struct bb_miiphy_bus *bus)
 
 struct bb_miiphy_bus bb_miiphy_buses[] = {
 	{
-		.name = "trans1",
+		.name = "board0",
 		.init = mii_dummy_init,
 		.mdio_active = mii_mdio_active,
 		.mdio_tristate = mii_mdio_tristate,
@@ -573,7 +610,7 @@ struct bb_miiphy_bus bb_miiphy_buses[] = {
 		.priv = &fpga_mii[0],
 	},
 	{
-		.name = "trans2",
+		.name = "board1",
 		.init = mii_dummy_init,
 		.mdio_active = mii_mdio_active,
 		.mdio_tristate = mii_mdio_tristate,
@@ -584,7 +621,7 @@ struct bb_miiphy_bus bb_miiphy_buses[] = {
 		.priv = &fpga_mii[1],
 	},
 	{
-		.name = "trans3",
+		.name = "board2",
 		.init = mii_dummy_init,
 		.mdio_active = mii_mdio_active,
 		.mdio_tristate = mii_mdio_tristate,
@@ -595,7 +632,7 @@ struct bb_miiphy_bus bb_miiphy_buses[] = {
 		.priv = &fpga_mii[2],
 	},
 	{
-		.name = "trans4",
+		.name = "board3",
 		.init = mii_dummy_init,
 		.mdio_active = mii_mdio_active,
 		.mdio_tristate = mii_mdio_tristate,
@@ -609,57 +646,3 @@ struct bb_miiphy_bus bb_miiphy_buses[] = {
 
 int bb_miiphy_buses_num = sizeof(bb_miiphy_buses) /
 			  sizeof(bb_miiphy_buses[0]);
-
-/*
- * Workaround for erratum mentioned in 88E1518 release notes
- */
-
-static int verify_88e1518(const char *bus, unsigned char addr)
-{
-	u16 phy_id1, phy_id2;
-
-	if (miiphy_read(bus, addr, 2, &phy_id1) ||
-	    miiphy_read(bus, addr, 3, &phy_id2)) {
-		printf("Error reading from the PHY addr=%02x\n", addr);
-		return -EIO;
-	}
-
-	if ((phy_id1 != 0x0141) || ((phy_id2 & 0xfff0) != 0x0dd0))
-		return -EINVAL;
-
-	return 0;
-}
-
-struct regfix_88e1518 {
-	u8 reg;
-	u16 data;
-} regfix_88e1518[] = {
-	{ 22, 0x00ff },
-	{ 17, 0x214b },
-	{ 16, 0x2144 },
-	{ 17, 0x0c28 },
-	{ 16, 0x2146 },
-	{ 17, 0xb233 },
-	{ 16, 0x214d },
-	{ 17, 0xcc0c },
-	{ 16, 0x2159 },
-	{ 22, 0x00fb },
-	{  7, 0xc00d },
-	{ 22, 0x0000 },
-};
-
-static int setup_88e1518(const char *bus, unsigned char addr)
-{
-	unsigned int k;
-
-	for (k = 0; k < ARRAY_SIZE(regfix_88e1518); ++k) {
-		if (miiphy_write(bus, addr,
-				 regfix_88e1518[k].reg,
-				 regfix_88e1518[k].data)) {
-			printf("Error writing to the PHY addr=%02x\n", addr);
-			return -1;
-		}
-	}
-
-	return 0;
-}

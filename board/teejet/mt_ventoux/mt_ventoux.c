@@ -102,9 +102,10 @@ static struct omap_usbhs_board_data usbhs_bdata = {
 	.port_mode[2] = OMAP_USBHS_PORT_MODE_UNUSED,
 };
 
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
-	return omap_ehci_hcd_init(&usbhs_bdata, hccr, hcor);
+	return omap_ehci_hcd_init(index, &usbhs_bdata, hccr, hcor);
 }
 
 int ehci_hcd_stop(int index)
@@ -189,7 +190,7 @@ int fpga_clk_fn(int assert_clk, int flush, int cookie)
 	return assert_clk;
 }
 
-Xilinx_Spartan3_Slave_Serial_fns mt_ventoux_fpga_fns = {
+xilinx_spartan3_slave_serial_fns mt_ventoux_fpga_fns = {
 	fpga_pre_config_fn,
 	fpga_pgm_fn,
 	fpga_clk_fn,
@@ -199,7 +200,7 @@ Xilinx_Spartan3_Slave_Serial_fns mt_ventoux_fpga_fns = {
 	fpga_post_config_fn,
 };
 
-Xilinx_desc fpga = XILINX_XC6SLX4_DESC(slave_serial,
+xilinx_desc fpga = XILINX_XC6SLX4_DESC(slave_serial,
 			(void *)&mt_ventoux_fpga_fns, 0);
 
 /* Initialize the FPGA */

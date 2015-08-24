@@ -12,7 +12,6 @@
 #define __CONFIG_H
 
 /* SOC type must be included before imx-regs.h */
-#define CONFIG_MX53
 #include <asm/arch/imx-regs.h>
 
 #define CONFIG_DISPLAY_CPUINFO
@@ -111,7 +110,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 
-#define CONFIG_SYS_HZ		1000
 #define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */

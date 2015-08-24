@@ -11,7 +11,7 @@
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <asm/io.h>
 #include <miiphy.h>
@@ -305,7 +305,7 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
@@ -314,5 +314,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 #ifdef CONFIG_FSL_SGMII_RISER
 	fsl_sgmii_riser_fdt_fixup(blob);
 #endif
+
+	return 0;
 }
 #endif

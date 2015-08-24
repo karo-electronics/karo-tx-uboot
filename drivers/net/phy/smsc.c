@@ -7,7 +7,7 @@
  *   Copyright 2010-2011 Freescale Semiconductor, Inc.
  *   author Andy Fleming
  *
- * Some code get from linux kenrel
+ * Some code copied from linux kernel
  * Copyright (c) 2006 Herbert Valerio Riedel <hvr@gnu.org>
  */
 #include <miiphy.h>
@@ -17,6 +17,7 @@
 #define MII_LAN83C185_EDPWRDOWN		(1 << 13) /* EDPWRDOWN */
 #define MII_LAN83C185_ENERGYON		(1 << 1)  /* ENERGYON */
 
+/* This code does not check the partner abilities. */
 static int smsc_parse_status(struct phy_device *phydev)
 {
 	int bmcr;
@@ -182,7 +183,7 @@ static struct phy_driver lan8710_driver = {
 	.name = "SMSC LAN8710/LAN8720",
 	.uid = 0x0007c0f0,
 	.mask = 0xffff0,
-	.features = PHY_GBIT_FEATURES,
+	.features = PHY_BASIC_FEATURES,
 	.config = &smsc_config,
 	.startup = &smsc_startup,
 	.shutdown = &genphy_shutdown,

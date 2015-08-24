@@ -163,12 +163,19 @@ int karo_load_mmc_part(const char *part, void *addr, size_t len)
 		debug("Read %u (%u) byte from partition '%s' @ offset 0x"LBAF"\n",
 			ret * mmc->read_bl_len, len, part, part_info.start);
 	} else if (partnum == 0) {
-		int len_read;
+		loff_t len_read;
 
-		printf("Reading file %s from mmc partition %d\n", part, 0);
-		len_read = fs_read(part, (ulong)addr, 0, 0);
-		if (len_read < 0)
-			printf("Read from %s failed: %d\n", part, len_read);
+		debug("Reading file %s from mmc partition %d\n", part,
+			partnum);
+		ret = fs_read(part, (ulong)addr, 0, len, &len_read);
+		if (ret < 0) {
+			printf("Failed to read %u byte from mmc partition %d\n",
+				len, partnum);
+			goto out;
+		}
+		if (len_read < len) {
+			printf("Read only %llu of %u bytes\n", (u64)len_read, len);
+		}
 	} else {
 		ret = partnum;
 		goto out;

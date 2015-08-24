@@ -35,6 +35,7 @@ struct bch_regs {
 	mxs_reg_32(hw_bch_flash2layout1);
 	mxs_reg_32(hw_bch_flash3layout0);
 	mxs_reg_32(hw_bch_flash3layout1);
+	mxs_reg_32(hw_bch_debug0);
 	mxs_reg_32(hw_bch_dbgkesread);
 	mxs_reg_32(hw_bch_dbgcsferead);
 	mxs_reg_32(hw_bch_dbgsyndegread);
@@ -125,7 +126,7 @@ struct bch_regs {
 #define	BCH_FLASHLAYOUT0_NBLOCKS_OFFSET			24
 #define	BCH_FLASHLAYOUT0_META_SIZE_MASK			(0xff << 16)
 #define	BCH_FLASHLAYOUT0_META_SIZE_OFFSET		16
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 #define	BCH_FLASHLAYOUT0_ECC0_MASK			(0x1f << 11)
 #define	BCH_FLASHLAYOUT0_ECC0_OFFSET			11
 #else
@@ -155,7 +156,7 @@ struct bch_regs {
 
 #define	BCH_FLASHLAYOUT1_PAGE_SIZE_MASK			(0xffff << 16)
 #define	BCH_FLASHLAYOUT1_PAGE_SIZE_OFFSET		16
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 #define	BCH_FLASHLAYOUT1_ECCN_MASK			(0x1f << 11)
 #define	BCH_FLASHLAYOUT1_ECCN_OFFSET			11
 #else

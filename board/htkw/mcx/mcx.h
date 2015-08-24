@@ -325,8 +325,6 @@ const omap3_sysinfo sysinfo = {
 	MUX_VAL(CP(SYS_32K),		(IEN  | PTD | EN  | M4)) \
 	MUX_VAL(CP(SYS_CLKREQ),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(SYS_NIRQ),		(IEN  | PTD | EN  | M4)) \
-	MUX_VAL(CP(SYS_NRESWARM),	(IEN | PTU | DIS | M4)) \
-					/* SYS_nRESWARM */\
 	MUX_VAL(CP(SYS_BOOT0),		(IEN  | PTD | DIS | M4)) \
 	MUX_VAL(CP(SYS_BOOT1),		(IEN  | PTD | DIS | M4)) \
 	MUX_VAL(CP(SYS_BOOT2),		(IEN  | PTD | DIS | M4)) \
@@ -341,7 +339,7 @@ const omap3_sysinfo sysinfo = {
 	MUX_VAL(CP(SYS_CLKOUT1),	(IEN  | PTD | DIS | M4))\
 	MUX_VAL(CP(SYS_CLKOUT2),	(IDIS | PTU | DIS | M4))\
 	/* JTAG */\
-	MUX_VAL(CP(JTAG_nTRST),		(IEN | PTU | EN  | M4)) \
+	MUX_VAL(CP(JTAG_NTRST),		(IEN | PTU | EN  | M4)) \
 	MUX_VAL(CP(JTAG_TCK),		(IEN | PTU | EN  | M4)) \
 	MUX_VAL(CP(JTAG_TMS),		(IEN | PTU | EN  | M4)) \
 	MUX_VAL(CP(JTAG_TDI),		(IEN | PTU | EN  | M4)) \

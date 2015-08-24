@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2011 Freescale Semiconductor, Inc.
+ * Copyright 2010-2011, 2013 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -14,7 +14,7 @@
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <asm/io.h>
 #include <asm/fsl_law.h>
 #include <asm/fsl_lbc.h>
@@ -288,7 +288,7 @@ void pci_init_board(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -299,8 +299,14 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	/* invalidate existing TLB entry for flash */
-	disable_tlb(flash_esel);
+	if (flash_esel == -1) {
+		/* very unlikely unless something is messed up */
+		puts("Error: Could not find TLB for FLASH BASE\n");
+		flash_esel = 2;	/* give our best effort to continue */
+	} else {
+		/* invalidate existing TLB entry for flash */
+		disable_tlb(flash_esel);
+	}
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS, /* tlb, epn, rpn */
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,/* perms, wimge */
@@ -354,7 +360,7 @@ int board_eth_init(bd_t *bis)
 		puts("No address specified for VSC7385 microcode.\n");
 #endif
 
-	mdio_info.regs = (struct tsec_mii_mng *)CONFIG_SYS_MDIO_BASE_ADDR;
+	mdio_info.regs = TSEC_GET_MDIO_REGS_BASE(1);
 	mdio_info.name = DEFAULT_MII_NAME;
 
 	fsl_pq_mdio_init(bis, &mdio_info);
@@ -418,7 +424,7 @@ static void fdt_board_fixup_qe_pins(void *blob)
 #endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -453,17 +459,17 @@ void ft_board_setup(void *blob, bd_t *bd)
 		int off = fdt_node_offset_by_compatible(blob, -1,
 				soc_elbc_compat);
 		if (off < 0) {
-			printf("WARNING: could not find compatible node %s: %s.\n",
-			       soc_elbc_compat,
-			       fdt_strerror(off));
-				return;
+			printf("WARNING: could not find compatible node %s\n",
+			       soc_elbc_compat);
+			return off;
 		}
 		err = fdt_del_node(blob, off);
 		if (err < 0) {
-			printf("WARNING: could not remove %s: %s.\n",
-			       soc_elbc_compat, fdt_strerror(err));
+			printf("WARNING: could not remove %s\n",
+			       soc_elbc_compat);
+			return err;
 		}
-		return;
+		return 0;
 	}
 #endif
 
@@ -471,24 +477,23 @@ void ft_board_setup(void *blob, bd_t *bd)
 	usb1_off = fdt_node_offset_by_compatible(blob, -1,
 		soc_usb_compat);
 	if (usb1_off < 0) {
-		printf("WARNING: could not find compatible node %s: %s.\n",
-		       soc_usb_compat,
-		       fdt_strerror(usb1_off));
-		return;
+		printf("WARNING: could not find compatible node %s\n",
+		       soc_usb_compat);
+		return usb1_off;
 	}
 	usb2_off = fdt_node_offset_by_compatible(blob, usb1_off,
 			soc_usb_compat);
 	if (usb2_off < 0) {
-		printf("WARNING: could not find compatible node %s: %s.\n",
-		       soc_usb_compat,
-		       fdt_strerror(usb2_off));
-		return;
+		printf("WARNING: could not find compatible node %s\n",
+		       soc_usb_compat);
+		return usb2_off;
 	}
 	err = fdt_del_node(blob, usb2_off);
 	if (err < 0) {
-		printf("WARNING: could not remove %s: %s.\n",
-		       soc_usb_compat, fdt_strerror(err));
+		printf("WARNING: could not remove %s\n", soc_usb_compat);
+		return err;
 	}
 
+	return 0;
 }
 #endif

@@ -23,8 +23,7 @@
 #error "SOC Name not defined"
 #endif /* CONFIG_KW88F6281 */
 
-#include <asm/arch/kirkwood.h>
-#define CONFIG_ARM926EJS	1	/* Basic Architecture */
+#include <asm/arch/soc.h>
 #define CONFIG_SYS_CACHELINE_SIZE	32
 				/* default Dcache Line length for kirkwood */
 #define CONFIG_MD5	/* get_random_hex on krikwood needs MD5 support */
@@ -38,7 +37,7 @@
  * CONFIG_SYS_KWD_CONFIG should be defined in board specific header file
  */
 #ifndef CONFIG_SYS_KWD_CONFIG
-#define	CONFIG_SYS_KWD_CONFIG	$(SRCTREE)/$(CONFIG_BOARDDIR)/kwbimage.cfg
+#define	CONFIG_SYS_KWD_CONFIG	$(CONFIG_BOARDDIR)/kwbimage.cfg
 #endif /* CONFIG_SYS_KWD_CONFIG */
 
 /* Kirkwood has 2k of Security SRAM, use it for SP */
@@ -129,7 +128,8 @@
  */
 #ifdef CONFIG_CMD_I2C
 #ifndef CONFIG_SYS_I2C_SOFT
-#define CONFIG_I2C_MVTWSI
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_MVTWSI
 #endif
 #define CONFIG_SYS_I2C_SLAVE		0x0
 #define CONFIG_SYS_I2C_SPEED		100000

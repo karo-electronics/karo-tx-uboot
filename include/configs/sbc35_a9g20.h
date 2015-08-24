@@ -12,7 +12,7 @@
 
 /* SoC type is defined in boards.cfg */
 #include <asm/hardware.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #if defined(CONFIG_SYS_USE_NANDFLASH)
 #define CONFIG_ENV_IS_IN_NAND
@@ -26,7 +26,6 @@
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	12000000	/* 12.000 MHz crystal */
-#define CONFIG_SYS_HZ		        1000
 
 #define CONFIG_ARCH_CPU_INIT
 
@@ -81,7 +80,6 @@
 #define CONFIG_SPI
 #define CONFIG_CMD_SPI
 #define CONFIG_ATMEL_SPI
-#define CONFIG_SYS_SPI_WRITE_TOUT	(5 * CONFIG_SYS_HZ)
 
 #define CONFIG_CMD_EEPROM
 #define CONFIG_SPI_M95XXX
@@ -116,9 +114,11 @@
 #define CONFIG_NET_RETRY_COUNT		20
 #define CONFIG_RESET_PHY_R
 #define CONFIG_MACB_SEARCH_PHY
+#define CONFIG_AT91_WANTS_COMMON_PHY
 
 /* USB */
 #define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW
 #define CONFIG_DOS_PARTITION
 #define CONFIG_SYS_USB_OHCI_CPU_INIT

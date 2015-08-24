@@ -8,6 +8,7 @@
 #define __ARCH_BLACKFIN_GPIO_H__
 
 #include <asm-generic/gpio.h>
+#include <asm/portmux.h>
 
 #define gpio_bank(x)	((x) >> 4)
 #define gpio_bit(x)	(1<<((x) & 0xF))
@@ -71,7 +72,7 @@
 
 #ifndef __ASSEMBLY__
 
-#ifdef CONFIG_ADI_GPIO1
+#ifndef CONFIG_ADI_GPIO2
 void set_gpio_dir(unsigned, unsigned short);
 void set_gpio_inen(unsigned, unsigned short);
 void set_gpio_polar(unsigned, unsigned short);
@@ -141,6 +142,8 @@ struct gpio_port_t {
 	unsigned short dummy16;
 	unsigned short inen;
 };
+#else
+extern struct gpio_port_t * const gpio_array[];
 #endif
 
 #ifdef ADI_SPECIAL_GPIO_BANKS
@@ -156,55 +159,6 @@ static inline int gpio_is_valid(int number)
 }
 
 #include <linux/ctype.h>
-
-static inline int name_to_gpio(const char *name)
-{
-	int port_base;
-
-	if (tolower(*name) == 'p') {
-		++name;
-
-		switch (tolower(*name)) {
-#ifdef GPIO_PA0
-		case 'a': port_base = GPIO_PA0; break;
-#endif
-#ifdef GPIO_PB0
-		case 'b': port_base = GPIO_PB0; break;
-#endif
-#ifdef GPIO_PC0
-		case 'c': port_base = GPIO_PC0; break;
-#endif
-#ifdef GPIO_PD0
-		case 'd': port_base = GPIO_PD0; break;
-#endif
-#ifdef GPIO_PE0
-		case 'e': port_base = GPIO_PE0; break;
-#endif
-#ifdef GPIO_PF0
-		case 'f': port_base = GPIO_PF0; break;
-#endif
-#ifdef GPIO_PG0
-		case 'g': port_base = GPIO_PG0; break;
-#endif
-#ifdef GPIO_PH0
-		case 'h': port_base = GPIO_PH0; break;
-#endif
-#ifdef GPIO_PI0
-		case 'i': port_base = GPIO_PI0; break;
-#endif
-#ifdef GPIO_PJ
-		case 'j': port_base = GPIO_PJ0; break;
-#endif
-		default:  return -1;
-		}
-
-		++name;
-	} else
-		port_base = 0;
-
-	return port_base + simple_strtoul(name, NULL, 10);
-}
-#define name_to_gpio(n) name_to_gpio(n)
 
 #define gpio_status() gpio_labels()
 

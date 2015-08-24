@@ -9,7 +9,7 @@
 
 #ifndef __ASSEMBLY__
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #define ASYNC_EMIF_NUM_CS		4
 #define ASYNC_EMIF_MODE_NOR		0
@@ -154,5 +154,7 @@ int wdt_kick(void);
 #define INTC_GLB_EN			(TNETV107X_INTC_BASE + 0x10)
 #define INTC_HINT_EN			(TNETV107X_INTC_BASE + 0x1500)
 #define INTC_EN_CLR0			(TNETV107X_INTC_BASE + 0x380)
+
+#define DAVINCI_ASYNC_EMIF_CNTRL_BASE	TNETV107X_ASYNC_EMIF_CNTRL_BASE
 
 #endif /* __ASM_ARCH_HARDWARE_H */

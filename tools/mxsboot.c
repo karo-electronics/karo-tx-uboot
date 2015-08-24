@@ -28,14 +28,14 @@
  *
  * TWEAK this if you have different kind of NAND chip.
  */
-uint32_t nand_writesize = 2048;
-uint32_t nand_oobsize = 64;
-uint32_t nand_erasesize = 128 * 1024;
+static uint32_t nand_writesize = 2048;
+static uint32_t nand_oobsize = 64;
+static uint32_t nand_erasesize = 128 * 1024;
 
 /*
  * Sector on which the SigmaTel boot partition (0x53) starts.
  */
-uint32_t sd_sector = 2048;
+static uint32_t sd_sector = 2048;
 
 /*
  * Each of the U-Boot bootstreams is at maximum 1MB big.
@@ -379,7 +379,7 @@ static uint8_t *mx28_nand_fcb_block(struct mx28_nand_fcb *fcb)
 	return block;
 }
 
-static int mx28_nand_write_fcb(struct mx28_nand_fcb *fcb, char *buf)
+static int mx28_nand_write_fcb(struct mx28_nand_fcb *fcb, uint8_t *buf)
 {
 	uint32_t offset;
 	uint8_t *fcbblock;
@@ -393,13 +393,15 @@ static int mx28_nand_write_fcb(struct mx28_nand_fcb *fcb, char *buf)
 	for (i = 0; i < STRIDE_PAGES * STRIDE_COUNT; i += STRIDE_PAGES) {
 		offset = i * nand_writesize;
 		memcpy(buf + offset, fcbblock, nand_writesize + nand_oobsize);
+		/* Mark the NAND page is OK. */
+		buf[offset + nand_writesize] = 0xff;
 	}
 
 	free(fcbblock);
 	return ret;
 }
 
-static int mx28_nand_write_dbbt(struct mx28_nand_dbbt *dbbt, char *buf)
+static int mx28_nand_write_dbbt(struct mx28_nand_dbbt *dbbt, uint8_t *buf)
 {
 	uint32_t offset;
 	int i = STRIDE_PAGES * STRIDE_COUNT;
@@ -413,7 +415,7 @@ static int mx28_nand_write_dbbt(struct mx28_nand_dbbt *dbbt, char *buf)
 }
 
 static int mx28_nand_write_firmware(struct mx28_nand_fcb *fcb, int infd,
-					char *buf)
+				    uint8_t *buf)
 {
 	int ret;
 	off_t size;
@@ -434,7 +436,7 @@ static int mx28_nand_write_firmware(struct mx28_nand_fcb *fcb, int infd,
 	return 0;
 }
 
-void usage(void)
+static void usage(void)
 {
 	printf(
 		"Usage: mxsboot [ops] <type> <infile> <outfile>\n"
@@ -462,7 +464,7 @@ static int mx28_create_nand_image(int infd, int outfd)
 	struct mx28_nand_fcb *fcb;
 	struct mx28_nand_dbbt *dbbt;
 	int ret = -1;
-	char *buf;
+	uint8_t *buf;
 	int size;
 	ssize_t wr_size;
 
@@ -575,7 +577,7 @@ err0:
 	return ret;
 }
 
-int parse_ops(int argc, char **argv)
+static int parse_ops(int argc, char **argv)
 {
 	int i;
 	int tmp;

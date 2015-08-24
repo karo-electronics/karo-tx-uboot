@@ -11,38 +11,28 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 #include "../board/freescale/common/ics307_clk.h"
 
 #ifdef CONFIG_36BIT
 #define CONFIG_PHYS_64BIT	1
 #endif
 
-#ifdef CONFIG_NAND
-#define CONFIG_NAND_U_BOOT		1
-#define CONFIG_RAMBOOT_NAND		1
-#ifdef CONFIG_NAND_SPL
-#define CONFIG_SYS_TEXT_BASE_SPL 0xfff00000
-#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE_SPL /* start of monitor */
-#else
-#define CONFIG_SYS_LDSCRIPT $(TOPDIR)/$(CPUDIR)/u-boot-nand.lds
-#define CONFIG_SYS_TEXT_BASE	0xf8f82000
-#endif /* CONFIG_NAND_SPL */
-#endif
-
 #ifdef CONFIG_SDCARD
 #define CONFIG_RAMBOOT_SDCARD		1
-#define CONFIG_SYS_TEXT_BASE	0xf8f80000
+#define CONFIG_SYS_TEXT_BASE	0xf8f40000
 #define CONFIG_RESET_VECTOR_ADDRESS	0xf8fffffc
 #endif
 
 #ifdef CONFIG_SPIFLASH
 #define CONFIG_RAMBOOT_SPIFLASH		1
-#define CONFIG_SYS_TEXT_BASE	0xf8f80000
+#define CONFIG_SYS_TEXT_BASE	0xf8f40000
 #define CONFIG_RESET_VECTOR_ADDRESS	0xf8fffffc
 #endif
 
 #ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE	0xeff80000
+#define CONFIG_SYS_TEXT_BASE	0xeff40000
 #endif
 
 #ifndef	CONFIG_RESET_VECTOR_ADDRESS
@@ -56,7 +46,6 @@
 /* High Level Configuration Options */
 #define CONFIG_BOOKE		1	/* BOOKE */
 #define CONFIG_E500		1	/* BOOKE e500 family */
-#define CONFIG_MPC85xx		1	/* MPC8540/60/55/41/48 */
 #define CONFIG_MPC8536		1
 #define CONFIG_MPC8536DS	1
 
@@ -122,7 +111,7 @@
 
 /* DDR Setup */
 #define CONFIG_VERY_BIG_RAM
-#define CONFIG_FSL_DDR2
+#define CONFIG_SYS_FSL_DDR2
 #undef CONFIG_FSL_DDR_INTERACTIVE
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
@@ -221,8 +210,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
 
-#if defined(CONFIG_RAMBOOT_NAND) || defined(CONFIG_RAMBOOT_SDCARD) || \
-    defined(CONFIG_RAMBOOT_SPIFLASH)
+#if defined(CONFIG_RAMBOOT_SDCARD) || defined(CONFIG_RAMBOOT_SPIFLASH)
 #define CONFIG_SYS_RAMBOOT
 #define CONFIG_SYS_EXTRA_ENV_RELOC
 #else
@@ -327,7 +315,7 @@
 
 /* NAND boot: 4K NAND loader config */
 #define CONFIG_SYS_NAND_SPL_SIZE	0x1000
-#define CONFIG_SYS_NAND_U_BOOT_SIZE	((512 << 10) - 0x2000)
+#define CONFIG_SYS_NAND_U_BOOT_SIZE	((768 << 10) - 0x2000)
 #define CONFIG_SYS_NAND_U_BOOT_DST	(CONFIG_SYS_INIT_L2_ADDR)
 #define CONFIG_SYS_NAND_U_BOOT_START \
 		(CONFIG_SYS_INIT_L2_ADDR + CONFIG_SYS_NAND_SPL_SIZE)
@@ -351,17 +339,10 @@
 		| OR_FCM_TRLX \
 		| OR_FCM_EHTR)
 
-#ifdef CONFIG_RAMBOOT_NAND
-#define CONFIG_SYS_BR0_PRELIM  CONFIG_SYS_NAND_BR_PRELIM /* NAND Base Address */
-#define CONFIG_SYS_OR0_PRELIM  CONFIG_SYS_NAND_OR_PRELIM /* NAND Options */
-#define CONFIG_SYS_BR2_PRELIM  CONFIG_FLASH_BR_PRELIM	/* NOR Base Address */
-#define CONFIG_SYS_OR2_PRELIM  CONFIG_FLASH_OR_PRELIM	/* NOR Options */
-#else
 #define CONFIG_SYS_BR0_PRELIM  CONFIG_FLASH_BR_PRELIM	/* NOR Base Address */
 #define CONFIG_SYS_OR0_PRELIM  CONFIG_FLASH_OR_PRELIM	/* NOR Options */
 #define CONFIG_SYS_BR2_PRELIM  CONFIG_SYS_NAND_BR_PRELIM /* NAND Base Address */
 #define CONFIG_SYS_OR2_PRELIM  CONFIG_SYS_NAND_OR_PRELIM /* NAND Options */
-#endif
 
 #define CONFIG_SYS_BR4_PRELIM \
 		(BR_PHYS_ADDR(CONFIG_SYS_NAND_BASE_PHYS + 0x40000) \
@@ -624,12 +605,7 @@
  */
 
 #if defined(CONFIG_SYS_RAMBOOT)
-#if defined(CONFIG_RAMBOOT_NAND)
-#define CONFIG_ENV_IS_IN_NAND	1
-#define CONFIG_ENV_SIZE		CONFIG_SYS_NAND_BLOCK_SIZE
-#define CONFIG_ENV_OFFSET ((512 * 1024) + CONFIG_SYS_NAND_BLOCK_SIZE)
-#define CONFIG_ENV_RANGE	(3 * CONFIG_ENV_SIZE)
-#elif defined(CONFIG_RAMBOOT_SPIFLASH)
+#if defined(CONFIG_RAMBOOT_SPIFLASH)
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_SPI_BUS	0
 #define CONFIG_ENV_SPI_CS	0
@@ -650,11 +626,7 @@
 #endif
 #else
 	#define CONFIG_ENV_IS_IN_FLASH	1
-	#if CONFIG_SYS_MONITOR_BASE > 0xfff80000
-	#define CONFIG_ENV_ADDR		0xfff80000
-	#else
 	#define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SECT_SIZE)
-	#endif
 	#define CONFIG_ENV_SIZE		0x2000
 	#define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K (one sector) */
 #endif
@@ -720,7 +692,6 @@
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #else
@@ -730,7 +701,6 @@
 		+ sizeof(CONFIG_SYS_PROMPT) + 16) /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE /* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -742,7 +712,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*

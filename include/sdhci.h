@@ -12,6 +12,7 @@
 
 #include <asm/io.h>
 #include <mmc.h>
+#include <asm/gpio.h>
 
 /*
  * Controller registers
@@ -192,6 +193,8 @@
 #define   SDHCI_SPEC_200	1
 #define   SDHCI_SPEC_300	2
 
+#define SDHCI_GET_VERSION(x) (x->version & SDHCI_SPEC_VER_MASK)
+
 /*
  * End of controller registers.
  */
@@ -210,6 +213,7 @@
 #define SDHCI_QUIRK_NO_CD		(1 << 5)
 #define SDHCI_QUIRK_WAIT_SEND_CMD	(1 << 6)
 #define SDHCI_QUIRK_NO_SIMULT_VDD_AND_POWER (1 << 7)
+#define SDHCI_QUIRK_USE_WIDE8		(1 << 8)
 
 /* to make gcc happy */
 struct sdhci_host;
@@ -241,9 +245,15 @@ struct sdhci_host {
 	const struct sdhci_ops *ops;
 	int index;
 
+	int bus_width;
+	struct gpio_desc pwr_gpio;	/* Power GPIO */
+	struct gpio_desc cd_gpio;		/* Card Detect GPIO */
+
 	void (*set_control_reg)(struct sdhci_host *host);
 	void (*set_clock)(int dev_index, unsigned int div);
 	uint	voltages;
+
+	struct mmc_config cfg;
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

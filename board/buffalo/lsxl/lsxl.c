@@ -13,11 +13,12 @@
 #include <malloc.h>
 #include <netdev.h>
 #include <miiphy.h>
-#include <asm/arch/kirkwood.h>
+#include <spi.h>
+#include <spi_flash.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/gpio.h>
-#include <spi_flash.h>
 
 #include "lsxl.h"
 
@@ -51,9 +52,9 @@ int board_early_init_f(void)
 	 * There are maximum 64 gpios controlled through 2 sets of registers
 	 * the below configuration configures mainly initial LED status
 	 */
-	kw_config_gpio(LSXL_OE_VAL_LOW,
-			LSXL_OE_VAL_HIGH,
-			LSXL_OE_LOW, LSXL_OE_HIGH);
+	mvebu_config_gpio(LSXL_OE_VAL_LOW,
+			  LSXL_OE_VAL_HIGH,
+			  LSXL_OE_LOW, LSXL_OE_HIGH);
 
 	/*
 	 * Multi-Purpose Pins Functionality configuration
@@ -167,7 +168,7 @@ static void set_led(int state)
 int board_init(void)
 {
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	set_led(LED_POWER_BLINKING);
 
@@ -231,7 +232,7 @@ static void rescue_mode(void)
 	printf("Entering rescue mode..\n");
 #ifdef CONFIG_RANDOM_MACADDR
 	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
-		eth_random_enetaddr(enetaddr);
+		eth_random_addr(enetaddr);
 		if (eth_setenv_enetaddr("ethaddr", enetaddr)) {
 			printf("Failed to set ethernet address\n");
 				set_led(LED_ALARM_BLINKING);

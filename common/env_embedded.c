@@ -2,7 +2,7 @@
  * (C) Copyright 2001
  * Erik Theisen,  Wave 7 Optics, etheisen@mindspring.com.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASSEMBLY__
@@ -33,7 +33,7 @@
  * a seperate section.  Note that ENV_CRC is only defined when building
  * U-Boot itself.
  */
-#if (defined(CONFIG_SYS_USE_PPCENV) || defined(CONFIG_NAND_U_BOOT)) && \
+#if defined(CONFIG_SYS_USE_PPCENV) && \
 	defined(ENV_CRC) /* Environment embedded in U-Boot .ppcenv section */
 /* XXX - This only works with GNU C */
 #  define __PPCENV__	__attribute__ ((section(".ppcenv")))

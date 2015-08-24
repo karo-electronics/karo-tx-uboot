@@ -31,7 +31,7 @@
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		512
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT	2
 #else
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT	0
@@ -275,14 +275,22 @@ static int mxs_nand_gpmi_init(void)
 static inline uint32_t mxs_nand_get_ecc_strength(uint32_t page_data_size,
 						uint32_t page_oob_size)
 {
-	if (page_data_size == 2048)
-		return 8;
+	if (page_data_size == 2048) {
+		if (page_oob_size == 64)
+			return 8;
+
+		if (page_oob_size == 112)
+			return 14;
+	}
 
 	if (page_data_size == 4096) {
 		if (page_oob_size == 128)
 			return 8;
 
 		if (page_oob_size == 218)
+			return 16;
+
+		if (page_oob_size == 224)
 			return 16;
 	}
 
@@ -581,7 +589,7 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 		length;
 
 	mxs_dma_desc_append(channel, d);
-#ifndef CONFIG_MX6Q
+#ifndef CONFIG_SOC_MX6Q
 	/*
 	 * A DMA descriptor that waits for the command to end and the chip to
 	 * become ready.
@@ -1296,12 +1304,11 @@ int board_nand_init(struct nand_chip *nand)
 	struct mxs_nand_info *nand_info;
 	int err;
 
-	nand_info = malloc(sizeof(struct mxs_nand_info));
+	nand_info = calloc(1, sizeof(struct mxs_nand_info));
 	if (!nand_info) {
 		printf("MXS NAND: Failed to allocate private data\n");
 		return -ENOMEM;
 	}
-	memset(nand_info, 0, sizeof(struct mxs_nand_info));
 
 	err = mxs_nand_alloc_buffers(nand_info);
 	if (err)

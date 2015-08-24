@@ -13,7 +13,6 @@
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/usb.h>
 #include <asm/arch-tegra/clk_rst.h>
-#include <asm/arch/usb.h>
 #include <usb.h>
 #include <usb/ulpi.h>
 #include <libfdt.h>
@@ -70,10 +69,11 @@ struct fdt_usb {
 	unsigned enabled:1;	/* 1 to enable, 0 to disable */
 	unsigned has_legacy_mode:1; /* 1 if this port has legacy mode */
 	unsigned initialized:1; /* has this port already been initialized? */
+	enum usb_init_type init_type;
 	enum dr_mode dr_mode;	/* dual role mode */
 	enum periph_id periph_id;/* peripheral id */
-	struct fdt_gpio_state vbus_gpio;	/* GPIO for vbus enable */
-	struct fdt_gpio_state phy_reset_gpio; /* GPIO to reset ULPI phy */
+	struct gpio_desc vbus_gpio;	/* GPIO for vbus enable */
+	struct gpio_desc phy_reset_gpio; /* GPIO to reset ULPI phy */
 };
 
 static struct fdt_usb port[USB_PORTS_MAX];	/* List of valid USB ports */
@@ -238,29 +238,28 @@ int ehci_get_port_speed(struct ehci_hcor *hcor, uint32_t reg)
 		return PORTSC_PSPD(reg);
 }
 
-/* Put the port into host mode */
-static void set_host_mode(struct fdt_usb *config)
+/* Set up VBUS for host/device mode */
+static void set_up_vbus(struct fdt_usb *config, enum usb_init_type init)
 {
 	/*
-	 * If we are an OTG port, check if remote host is driving VBus and
-	 * bail out in this case.
+	 * If we are an OTG port initializing in host mode,
+	 * check if remote host is driving VBus and bail out in this case.
 	 */
-	if (config->dr_mode == DR_MODE_OTG &&
-		(readl(&config->reg->phy_vbus_sensors) & VBUS_VLD_STS))
+	if (init == USB_INIT_HOST &&
+	    config->dr_mode == DR_MODE_OTG &&
+	    (readl(&config->reg->phy_vbus_sensors) & VBUS_VLD_STS)) {
+		printf("tegrausb: VBUS input active; not enabling as host\n");
 		return;
+	}
 
-	/*
-	 * If not driving, we set the GPIO to enable VBUS. We assume
-	 * that the pinmux is set up correctly for this.
-	 */
-	if (fdt_gpio_isvalid(&config->vbus_gpio)) {
-		fdtdec_setup_gpio(&config->vbus_gpio);
-		gpio_direction_output(config->vbus_gpio.gpio,
-			(config->vbus_gpio.flags & FDT_GPIO_ACTIVE_LOW) ?
-				 0 : 1);
-		debug("set_host_mode: GPIO %d %s\n", config->vbus_gpio.gpio,
-			(config->vbus_gpio.flags & FDT_GPIO_ACTIVE_LOW) ?
-				"low" : "high");
+	if (dm_gpio_is_valid(&config->vbus_gpio)) {
+		int vbus_value;
+
+		vbus_value = (init == USB_INIT_HOST);
+		dm_gpio_set_value(&config->vbus_gpio, vbus_value);
+
+		debug("set_up_vbus: GPIO %d %d\n",
+		      gpio_get_number(&config->vbus_gpio), vbus_value);
 	}
 }
 
@@ -294,10 +293,44 @@ static const unsigned *get_pll_timing(void)
 	return timing;
 }
 
-/* set up the UTMI USB controller with the parameters provided */
-static int init_utmi_usb_controller(struct fdt_usb *config)
+/* select the PHY to use with a USB controller */
+static void init_phy_mux(struct fdt_usb *config, uint pts,
+			 enum usb_init_type init)
 {
-	u32 val;
+	struct usb_ctlr *usbctlr = config->reg;
+
+#if defined(CONFIG_TEGRA20)
+	if (config->periph_id == PERIPH_ID_USBD) {
+		clrsetbits_le32(&usbctlr->port_sc1, PTS1_MASK,
+				pts << PTS1_SHIFT);
+		clrbits_le32(&usbctlr->port_sc1, STS1);
+	} else {
+		clrsetbits_le32(&usbctlr->port_sc1, PTS_MASK,
+				pts << PTS_SHIFT);
+		clrbits_le32(&usbctlr->port_sc1, STS);
+	}
+#else
+	/* Set to Host mode (if applicable) after Controller Reset was done */
+	clrsetbits_le32(&usbctlr->usb_mode, USBMODE_CM_HC,
+			(init == USB_INIT_HOST) ? USBMODE_CM_HC : 0);
+	/*
+	 * Select PHY interface after setting host mode.
+	 * For device mode, the ordering requirement is not an issue, since
+	 * only the first USB controller supports device mode, and that USB
+	 * controller can only talk to a UTMI PHY, so the PHY selection is
+	 * already made at reset time, so this write is a no-op.
+	 */
+	clrsetbits_le32(&usbctlr->hostpc1_devlc, PTS_MASK,
+			pts << PTS_SHIFT);
+	clrbits_le32(&usbctlr->hostpc1_devlc, STS);
+#endif
+}
+
+/* set up the UTMI USB controller with the parameters provided */
+static int init_utmi_usb_controller(struct fdt_usb *config,
+				    enum usb_init_type init)
+{
+	u32 b_sess_valid_mask, val;
 	int loop_count;
 	const unsigned *timing;
 	struct usb_ctlr *usbctlr = config->reg;
@@ -315,12 +348,16 @@ static int init_utmi_usb_controller(struct fdt_usb *config)
 	/* Follow the crystal clock disable by >100ns delay */
 	udelay(1);
 
+	b_sess_valid_mask = (VBUS_B_SESS_VLD_SW_VALUE | VBUS_B_SESS_VLD_SW_EN);
+	clrsetbits_le32(&usbctlr->phy_vbus_sensors, b_sess_valid_mask,
+			(init == USB_INIT_DEVICE) ? b_sess_valid_mask : 0);
+
 	/*
 	 * To Use the A Session Valid for cable detection logic, VBUS_WAKEUP
 	 * mux must be switched to actually use a_sess_vld threshold.
 	 */
 	if (config->dr_mode == DR_MODE_OTG &&
-	    fdt_gpio_isvalid(&config->vbus_gpio))
+	    dm_gpio_is_valid(&config->vbus_gpio))
 		clrsetbits_le32(&usbctlr->usb1_legacy_ctrl,
 			VBUS_SENSE_CTL_MASK,
 			VBUS_SENSE_CTL_A_SESS_VLD << VBUS_SENSE_CTL_SHIFT);
@@ -461,6 +498,9 @@ static int init_utmi_usb_controller(struct fdt_usb *config)
 		if (config->periph_id == PERIPH_ID_USBD)
 			clrbits_le32(&clkrst->crc_utmip_pll_cfg2,
 				     UTMIP_FORCE_PD_SAMP_A_POWERDOWN);
+		if (config->periph_id == PERIPH_ID_USB2)
+			clrbits_le32(&clkrst->crc_utmip_pll_cfg2,
+				     UTMIP_FORCE_PD_SAMP_B_POWERDOWN);
 		if (config->periph_id == PERIPH_ID_USB3)
 			clrbits_le32(&clkrst->crc_utmip_pll_cfg2,
 				     UTMIP_FORCE_PD_SAMP_C_POWERDOWN);
@@ -483,9 +523,7 @@ static int init_utmi_usb_controller(struct fdt_usb *config)
 	clrbits_le32(&usbctlr->icusb_ctrl, IC_ENB1);
 
 	/* Select UTMI parallel interface */
-	clrsetbits_le32(&usbctlr->port_sc1, PTS_MASK,
-			PTS_UTMI << PTS_SHIFT);
-	clrbits_le32(&usbctlr->port_sc1, STS);
+	init_phy_mux(config, PTS_UTMI, init);
 
 	/* Deassert power down state */
 	clrbits_le32(&usbctlr->utmip_xcvr_cfg0, UTMIP_FORCE_PD_POWERDOWN |
@@ -515,7 +553,8 @@ static int init_utmi_usb_controller(struct fdt_usb *config)
 #endif
 
 /* set up the ULPI USB controller with the parameters provided */
-static int init_ulpi_usb_controller(struct fdt_usb *config)
+static int init_ulpi_usb_controller(struct fdt_usb *config,
+				    enum usb_init_type init)
 {
 	u32 val;
 	int loop_count;
@@ -527,11 +566,10 @@ static int init_ulpi_usb_controller(struct fdt_usb *config)
 	clock_set_pllout(CLOCK_ID_PERIPH, PLL_OUT4, CONFIG_ULPI_REF_CLK);
 
 	/* reset ULPI phy */
-	if (fdt_gpio_isvalid(&config->phy_reset_gpio)) {
-		fdtdec_setup_gpio(&config->phy_reset_gpio);
-		gpio_direction_output(config->phy_reset_gpio.gpio, 0);
+	if (dm_gpio_is_valid(&config->phy_reset_gpio)) {
+		dm_gpio_set_value(&config->phy_reset_gpio, 0);
 		mdelay(5);
-		gpio_set_value(config->phy_reset_gpio.gpio, 1);
+		dm_gpio_set_value(&config->phy_reset_gpio, 1);
 	}
 
 	/* Reset the usb controller */
@@ -543,7 +581,7 @@ static int init_ulpi_usb_controller(struct fdt_usb *config)
 			ULPI_CLKOUT_PINMUX_BYP | ULPI_OUTPUT_PINMUX_BYP);
 
 	/* Select ULPI parallel interface */
-	clrsetbits_le32(&usbctlr->port_sc1, PTS_MASK, PTS_ULPI << PTS_SHIFT);
+	init_phy_mux(config, PTS_ULPI, init);
 
 	/* enable ULPI transceiver */
 	setbits_le32(&usbctlr->susp_ctrl, ULPI_PHY_ENB);
@@ -592,7 +630,8 @@ static int init_ulpi_usb_controller(struct fdt_usb *config)
 	return 0;
 }
 #else
-static int init_ulpi_usb_controller(struct fdt_usb *config)
+static int init_ulpi_usb_controller(struct fdt_usb *config,
+				    enum usb_init_type init)
 {
 	printf("No code to set up ULPI controller, please enable"
 			"CONFIG_USB_ULPI and CONFIG_USB_ULPI_VIEWPORT");
@@ -642,14 +681,16 @@ static int fdt_decode_usb(const void *blob, int node, struct fdt_usb *config)
 		debug("%s: Missing/invalid peripheral ID\n", __func__);
 		return -FDT_ERR_NOTFOUND;
 	}
-	fdtdec_decode_gpio(blob, node, "nvidia,vbus-gpio", &config->vbus_gpio);
-	fdtdec_decode_gpio(blob, node, "nvidia,phy-reset-gpio",
-			&config->phy_reset_gpio);
+	gpio_request_by_name_nodev(blob, node, "nvidia,vbus-gpio", 0,
+				   &config->vbus_gpio, GPIOD_IS_OUT);
+	gpio_request_by_name_nodev(blob, node, "nvidia,phy-reset-gpio", 0,
+				   &config->phy_reset_gpio, GPIOD_IS_OUT);
 	debug("enabled=%d, legacy_mode=%d, utmi=%d, ulpi=%d, periph_id=%d, "
 		"vbus=%d, phy_reset=%d, dr_mode=%d\n",
 		config->enabled, config->has_legacy_mode, config->utmi,
-		config->ulpi, config->periph_id, config->vbus_gpio.gpio,
-		config->phy_reset_gpio.gpio, config->dr_mode);
+		config->ulpi, config->periph_id,
+		gpio_get_number(&config->vbus_gpio),
+		gpio_get_number(&config->phy_reset_gpio), config->dr_mode);
 
 	return 0;
 }
@@ -699,7 +740,7 @@ static int process_usb_nodes(const void *blob, int node_list[], int count)
 	return 0;
 }
 
-int board_usb_init(const void *blob)
+int usb_process_devicetree(const void *blob)
 {
 	int node_list[USB_PORTS_MAX];
 	int count, err = 0;
@@ -734,7 +775,8 @@ int board_usb_init(const void *blob)
  * @param hcor		returns start address of EHCI HCOR registers
  * @return 0 if ok, -1 on error (generally invalid port number)
  */
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	struct fdt_usb *config;
 	struct usb_ctlr *usbctlr;
@@ -744,42 +786,66 @@ int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 
 	config = &port[index];
 
+	switch (init) {
+	case USB_INIT_HOST:
+		switch (config->dr_mode) {
+		case DR_MODE_HOST:
+		case DR_MODE_OTG:
+			break;
+		default:
+			printf("tegrausb: Invalid dr_mode %d for host mode\n",
+			       config->dr_mode);
+			return -1;
+		}
+		break;
+	case USB_INIT_DEVICE:
+		if (config->periph_id != PERIPH_ID_USBD) {
+			printf("tegrausb: Device mode only supported on first USB controller\n");
+			return -1;
+		}
+		if (!config->utmi) {
+			printf("tegrausb: Device mode only supported with UTMI PHY\n");
+			return -1;
+		}
+		switch (config->dr_mode) {
+		case DR_MODE_DEVICE:
+		case DR_MODE_OTG:
+			break;
+		default:
+			printf("tegrausb: Invalid dr_mode %d for device mode\n",
+			       config->dr_mode);
+			return -1;
+		}
+		break;
+	default:
+		printf("tegrausb: Unknown USB_INIT_* %d\n", init);
+		return -1;
+	}
+
 	/* skip init, if the port is already initialized */
-	if (config->initialized)
+	if (config->initialized && config->init_type == init)
 		goto success;
 
-	if (config->utmi && init_utmi_usb_controller(config)) {
+	if (config->utmi && init_utmi_usb_controller(config, init)) {
 		printf("tegrausb: Cannot init port %d\n", index);
 		return -1;
 	}
 
-	if (config->ulpi && init_ulpi_usb_controller(config)) {
+	if (config->ulpi && init_ulpi_usb_controller(config, init)) {
 		printf("tegrausb: Cannot init port %d\n", index);
 		return -1;
 	}
 
-	set_host_mode(config);
+	set_up_vbus(config, init);
 
 	config->initialized = 1;
+	config->init_type = init;
 
 success:
 	usbctlr = config->reg;
 	*hccr = (struct ehci_hccr *)&usbctlr->cap_length;
 	*hcor = (struct ehci_hcor *)&usbctlr->usb_cmd;
 
-	if (controller->has_hostpc) {
-		/* Set to Host mode after Controller Reset was done */
-		clrsetbits_le32(&usbctlr->usb_mode, USBMODE_CM_HC,
-				USBMODE_CM_HC);
-		/* Select UTMI parallel interface after setting host mode */
-		if (config->utmi) {
-			clrsetbits_le32((char *)&usbctlr->usb_cmd +
-					HOSTPC1_DEVLC, PTS_MASK,
-					PTS_UTMI << PTS_SHIFT);
-			clrbits_le32((char *)&usbctlr->usb_cmd +
-				     HOSTPC1_DEVLC, STS);
-		}
-	}
 	return 0;
 }
 

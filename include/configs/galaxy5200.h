@@ -11,7 +11,7 @@
  * (C) Copyright 2009
  * Eric Millbrandt, DEKA Research and Development Corporation
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -23,8 +23,7 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_MPC5200		1	/* (more precisely an MPC5200 CPU) */
+#define CONFIG_MPC5200		1	/* This is an MPC5200 CPU */
 #define CONFIG_SYS_MPC5XXX_CLKIN 33333333	/* ... running at 33.333333MHz */
 
 /*
@@ -352,7 +351,6 @@
 #define CONFIG_SYS_MEMTEST_END 0x00f00000	/* 1 ... 15 MB in DRAM */
 
 #define CONFIG_SYS_LOAD_ADDR 0x400000		/* default load address */
-#define CONFIG_SYS_HZ 1000			/* decrementer freq: 1 ms ticks */
 
 #define CONFIG_DISPLAY_BOARDINFO 1
 
@@ -360,10 +358,9 @@
 
 #define CONFIG_CRC32_VERIFY  1
 
-#define CONFIG_BOOTP_MASK	(CONFIG_BOOTP_DEFAULT | \
-				 CONFIG_BOOTP_DNS | \
-				 CONFIG_BOOTP_DNS2 | \
-				 CONFIG_BOOTP_SEND_HOSTNAME )
+#define CONFIG_BOOTP_DNS
+#define CONFIG_BOOTP_DNS2
+#define CONFIG_BOOTP_SEND_HOSTNAME
 
 #define CONFIG_VERSION_VARIABLE 1
 

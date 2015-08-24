@@ -8,9 +8,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_MX28			/* must be defined before including regs-base.h */
-
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/arch/regs-base.h>
 
 /*
@@ -18,7 +16,7 @@
  */
 #define CONFIG_MXS_GPIO					/* GPIO control */
 #define CONFIG_SYS_HZ			1000		/* Ticks per second */
-#define PHYS_SDRAM_1_SIZE		CONFIG_SDRAM_SIZE
+#define PHYS_SDRAM_1_SIZE		CONFIG_SYS_SDRAM_SIZE
 #ifdef CONFIG_TX28_S
 #define TX28_MOD_SUFFIX			"1"
 #else
@@ -36,15 +34,15 @@
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_SYS_GENERIC_BOARD
 
 /* LCD Logo and Splash screen support */
-#define CONFIG_LCD
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
 #define CONFIG_VIDEO_MXS
 #define CONFIG_LCD_LOGO
-#define LCD_BPP				LCD_COLOR24
+#define LCD_BPP				LCD_COLOR32
 #define CONFIG_CMD_BMP
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
@@ -77,15 +75,11 @@
 #define CONFIG_CMDLINE_EDITING		/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
-#define CONFIG_SYS_NO_FLASH
 
 /*
  * Flattened Device Tree (FDT) support
 */
-#define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT
-#define CONFIG_FDT_FIXUP_PARTITIONS
-#define CONFIG_OF_BOARD_SETUP
 #endif
 
 /*
@@ -109,7 +103,7 @@
 #else
 #define CONFIG_LOADADDR			43000000
 #endif
-#define CONFIG_FDTADDR			41000000
+#define CONFIG_FDTADDR			40800000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
@@ -163,18 +157,6 @@
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
 
 /*
- * U-Boot Commands
- */
-#include <config_cmd_default.h>
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_MTDPARTS
-#define CONFIG_CMD_BOOTCE
-#define CONFIG_CMD_TIME
-#define CONFIG_CMD_MEMTEST
-
-/*
  * Serial Driver
  */
 #define CONFIG_PL011_SERIAL
@@ -190,63 +172,35 @@
 /*
  * Ethernet Driver
  */
-#define CONFIG_FEC_MXC
 #ifdef CONFIG_FEC_MXC
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 #define CONFIG_SYS_CACHELINE_SIZE	32
 
-#ifndef CONFIG_TX28_S
-#define CONFIG_FEC_MXC_MULTI
-#else
+#ifdef CONFIG_FEC_MXC_PHYADDR
 #define IMX_FEC_BASE			MXS_ENET0_BASE
-#define CONFIG_FEC_MXC_PHYADDR		0x00
 #endif
 
-#define CONFIG_PHY_SMSC
-#define CONFIG_PHYLIB
-#define CONFIG_MII
 #define CONFIG_FEC_XCV_TYPE		RMII
-#define CONFIG_GET_FEC_MAC_ADDR_FROM_IIM
-#define CONFIG_NET_MULTI
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_PING
-/* Add for working with "strict" DHCP server */
-#define CONFIG_BOOTP_SUBNETMASK
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_DNS
-#define CONFIG_BOOTP_RANDOM_ID
 #endif
 
 #ifndef CONFIG_ENV_IS_NOWHERE
 /* define one of the following options:
-#define CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_IS_IN_MMC
 */
-#define CONFIG_ENV_IS_IN_NAND
 #endif
 #define CONFIG_ENV_OVERWRITE
 
 /*
  * NAND flash driver
  */
-#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_NAND
 #define CONFIG_SYS_NAND_BLOCK_SIZE	SZ_128K
-#define CONFIG_MTD_DEVICE
-#define CONFIG_NAND_MXS
-#define CONFIG_APBH_DMA
-#define CONFIG_APBH_DMA_BURST
-#define CONFIG_APBH_DMA_BURST8
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	CONFIG_SYS_NAND_BLOCK_SIZE
-#define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_MXS_DMA_CHANNEL	4
 #define CONFIG_SYS_NAND_MAX_CHIPS	0x1
 #define CONFIG_SYS_MAX_NAND_DEVICE	0x1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
-#define CONFIG_SYS_NAND_USE_FLASH_BBT
 #define CONFIG_SYS_NAND_BASE		0x00000000
-#define CONFIG_CMD_ROMUPDATE
 #else
 #undef CONFIG_ENV_IS_IN_NAND
 #endif /* CONFIG_CMD_NAND */
@@ -273,12 +227,8 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_MXS_MMC
 #define CONFIG_BOUNCE_BUFFER
 
-#define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2
@@ -314,7 +264,6 @@
 					GENERATED_GBL_DATA_SIZE)
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_START_S_PATH		"arch/arm/cpu/arm926ejs/mxs"
 #define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
@@ -322,7 +271,8 @@
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 #define CONFIG_SYS_SPL_VDDD_VAL		1500
-#define CONFIG_SYS_SPL_BATT_BO_LEVEL	2800
+#define CONFIG_SYS_SPL_BATT_BO_LEVEL	2400
+#define CONFIG_SYS_SPL_VDDA_BO_VAL	100
 #define CONFIG_SYS_SPL_VDDMEM_VAL	0	/* VDDMEM is not utilized on TX28 */
 
 #endif /* __CONFIGS_TX28_H */

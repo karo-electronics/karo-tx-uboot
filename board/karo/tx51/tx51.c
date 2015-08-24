@@ -120,29 +120,29 @@ static iomux_v3_cfg_t tx51_pads[] = {
 
 static const struct gpio tx51_gpios[] = {
 	/* RESET_OUT */
-	{ TX51_RESET_OUT_GPIO, GPIOF_OUTPUT_INIT_LOW, "RESET_OUT", },
+	{ TX51_RESET_OUT_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "RESET_OUT", },
 
 	/* FEC PHY control GPIOs */
-	{ TX51_FEC_PWR_GPIO, GPIOF_OUTPUT_INIT_LOW, "FEC POWER", }, /* PHY POWER */
-	{ TX51_FEC_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "FEC RESET", }, /* PHY RESET */
-	{ TX51_FEC_INT_GPIO, GPIOF_INPUT, "FEC PHY INT", },	    /* PHY INT (TX_ER) */
+	{ TX51_FEC_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC POWER", }, /* PHY POWER */
+	{ TX51_FEC_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC RESET", }, /* PHY RESET */
+	{ TX51_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },	    /* PHY INT (TX_ER) */
 
 	/* FEC PHY strap pins */
-	{ IMX_GPIO_NR(3, 11), GPIOF_OUTPUT_INIT_LOW, "FEC PHY REGOFF", },  /* RX_CLK/REGOFF */
-	{ IMX_GPIO_NR(3, 31), GPIOF_OUTPUT_INIT_LOW, "FEC PHY MODE0", },   /* RXD0/Mode0 */
-	{ IMX_GPIO_NR(2, 23), GPIOF_OUTPUT_INIT_LOW, "FEC PHY MODE1", },   /* RXD1/Mode1 */
-	{ IMX_GPIO_NR(2, 27), GPIOF_OUTPUT_INIT_LOW, "FEC PHY MODE2", },   /* RXD2/Mode2 */
-	{ IMX_GPIO_NR(2, 28), GPIOF_OUTPUT_INIT_LOW, "FEC PHY nINTSEL", }, /* RXD3/nINTSEL */
-	{ IMX_GPIO_NR(3, 10), GPIOF_OUTPUT_INIT_LOW, "FEC PHY RMII", },	   /* COL/RMII/CRSDV */
-	{ IMX_GPIO_NR(2, 30), GPIOF_OUTPUT_INIT_LOW, "FEC PHY PHYAD4", },  /* CRS/PHYAD4 */
+	{ IMX_GPIO_NR(3, 11), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY REGOFF", },  /* RX_CLK/REGOFF */
+	{ IMX_GPIO_NR(3, 31), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY MODE0", },   /* RXD0/Mode0 */
+	{ IMX_GPIO_NR(2, 23), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY MODE1", },   /* RXD1/Mode1 */
+	{ IMX_GPIO_NR(2, 27), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY MODE2", },   /* RXD2/Mode2 */
+	{ IMX_GPIO_NR(2, 28), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY nINTSEL", }, /* RXD3/nINTSEL */
+	{ IMX_GPIO_NR(3, 10), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY RMII", },	   /* COL/RMII/CRSDV */
+	{ IMX_GPIO_NR(2, 30), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY PHYAD4", },  /* CRS/PHYAD4 */
 
 	/* module internal I2C bus */
-	{ IMX_GPIO_NR(4, 17), GPIOF_INPUT, "I2C1 SDA", },
-	{ IMX_GPIO_NR(4, 16), GPIOF_INPUT, "I2C1 SCL", },
+	{ IMX_GPIO_NR(4, 17), GPIOFLAG_INPUT, "I2C1 SDA", },
+	{ IMX_GPIO_NR(4, 16), GPIOFLAG_INPUT, "I2C1 SCL", },
 
 	/* Unconnected pins */
-	{ IMX_GPIO_NR(1, 0), GPIOF_OUTPUT_INIT_LOW, "N/C", },
-	{ IMX_GPIO_NR(1, 1), GPIOF_OUTPUT_INIT_LOW, "N/C", },
+	{ IMX_GPIO_NR(1, 0), GPIOFLAG_OUTPUT_INIT_LOW, "N/C", },
+	{ IMX_GPIO_NR(1, 1), GPIOFLAG_OUTPUT_INIT_LOW, "N/C", },
 };
 
 /*
@@ -394,7 +394,7 @@ int board_mmc_init(bd_t *bis)
 		cfg->cfg.sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 
 		ret = gpio_request_one(cfg->cd_gpio,
-				GPIOF_INPUT, "MMC CD");
+				GPIOFLAG_INPUT, "MMC CD");
 		if (ret) {
 			printf("Error %d requesting GPIO%d_%d\n",
 				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
@@ -451,15 +451,15 @@ static iomux_v3_cfg_t tx51_fec_pads[] = {
 #define PHYAD4 ((CONFIG_FEC_MXC_PHYADDR >> 4) & !(CONFIG_FEC_MXC_PHYADDR >> 5))
 
 static struct gpio tx51_fec_gpios[] = {
-	{ TX51_FEC_PWR_GPIO, GPIOF_OUTPUT_INIT_HIGH, "FEC PHY POWER", },
-	{ IMX_GPIO_NR(3, 31), GPIOF_OUTPUT_INIT_HIGH, "FEC PHY Mode0", },	/* RXD0/Mode0 */
-	{ IMX_GPIO_NR(2, 23), GPIOF_OUTPUT_INIT_HIGH, "FEC PHY Mode1", },	/* RXD1/Mode1 */
-	{ IMX_GPIO_NR(2, 27), GPIOF_OUTPUT_INIT_HIGH, "FEC PHY Mode2", },	/* RXD2/Mode2 */
-	{ IMX_GPIO_NR(2, 28), GPIOF_OUTPUT_INIT_HIGH, "FEC PHY nINTSEL", },	/* RXD3/nINTSEL */
+	{ TX51_FEC_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY POWER", },
+	{ IMX_GPIO_NR(3, 31), GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY Mode0", },	/* RXD0/Mode0 */
+	{ IMX_GPIO_NR(2, 23), GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY Mode1", },	/* RXD1/Mode1 */
+	{ IMX_GPIO_NR(2, 27), GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY Mode2", },	/* RXD2/Mode2 */
+	{ IMX_GPIO_NR(2, 28), GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY nINTSEL", },	/* RXD3/nINTSEL */
 #if PHYAD4
-	{ IMX_GPIO_NR(2, 30), GPIOF_OUTPUT_INIT_HIGH, "FEC PHY PHYAD4", }, /* CRS/PHYAD4 */
+	{ IMX_GPIO_NR(2, 30), GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY PHYAD4", }, /* CRS/PHYAD4 */
 #else
-	{ IMX_GPIO_NR(2, 30), GPIOF_OUTPUT_INIT_LOW, "FEC PHY PHYAD4", }, /* CRS/PHYAD4 */
+	{ IMX_GPIO_NR(2, 30), GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY PHYAD4", }, /* CRS/PHYAD4 */
 #endif
 };
 
@@ -538,13 +538,13 @@ static const iomux_v3_cfg_t stk5_pads[] = {
 };
 
 static const struct gpio stk5_gpios[] = {
-	{ TX51_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+	{ TX51_LED_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
 
-	{ IMX_GPIO_NR(1, 4), GPIOF_OUTPUT_INIT_LOW, "ULPI PHY clk enable", },
-	{ IMX_GPIO_NR(1, 6), GPIOF_INPUT, "USBOTG OC", },
-	{ IMX_GPIO_NR(1, 7), GPIOF_OUTPUT_INIT_LOW, "ULPI PHY reset", },
-	{ IMX_GPIO_NR(1, 8), GPIOF_OUTPUT_INIT_LOW, "USBH1 VBUS enable", },
-	{ IMX_GPIO_NR(1, 9), GPIOF_INPUT, "USBH1 OC", },
+	{ IMX_GPIO_NR(1, 4), GPIOFLAG_OUTPUT_INIT_LOW, "ULPI PHY clk enable", },
+	{ IMX_GPIO_NR(1, 6), GPIOFLAG_INPUT, "USBOTG OC", },
+	{ IMX_GPIO_NR(1, 7), GPIOFLAG_OUTPUT_INIT_LOW, "ULPI PHY reset", },
+	{ IMX_GPIO_NR(1, 8), GPIOFLAG_OUTPUT_INIT_LOW, "USBH1 VBUS enable", },
+	{ IMX_GPIO_NR(1, 9), GPIOFLAG_INPUT, "USBH1 OC", },
 };
 
 #ifdef CONFIG_LCD
@@ -554,7 +554,7 @@ vidinfo_t panel_info = {
 	.vl_col = 1600,
 	.vl_row = 1200,
 
-	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 	.cmap = tx51_cmap,
 };
 
@@ -777,9 +777,9 @@ static const iomux_v3_cfg_t stk5_lcd_pads[] = {
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
-	{ TX51_LCD_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
-	{ TX51_LCD_PWR_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
-	{ TX51_LCD_BACKLIGHT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+	{ TX51_LCD_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD RESET", },
+	{ TX51_LCD_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD POWER", },
+	{ TX51_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
 void lcd_ctrl_init(void *lcdbase)
@@ -929,7 +929,7 @@ void lcd_ctrl_init(void *lcdbase)
 		panel_info.vl_bpix = LCD_COLOR16;
 		break;
 	default:
-		panel_info.vl_bpix = LCD_COLOR24;
+		panel_info.vl_bpix = LCD_COLOR32;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -1118,15 +1118,16 @@ static const char *tx51_touchpanels[] = {
 	"edt,edt-ft5x06",
 };
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *video_mode = karo_get_vmode(getenv("video_mode"));
 	int ret;
 
 	ret = fdt_increase_size(blob, 4096);
-	if (ret)
+	if (ret) {
 		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
-
+		return ret;
+	}
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
@@ -1134,5 +1135,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 				ARRAY_SIZE(tx51_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_update_fb_mode(blob, video_mode);
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

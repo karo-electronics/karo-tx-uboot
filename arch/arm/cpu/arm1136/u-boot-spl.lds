@@ -22,6 +22,7 @@ SECTIONS
 	.text      :
 	{
 	__start = .;
+	  *(.vectors)
 	  arch/arm/cpu/arm1136/start.o	(.text*)
 	  *(.text*)
 	} >.sram
@@ -33,7 +34,11 @@ SECTIONS
 	.data : { *(SORT_BY_ALIGNMENT(.data*)) } >.sram
 	. = ALIGN(4);
 	__image_copy_end = .;
-	_end = .;
+
+	.end :
+	{
+		*(.__end)
+	}
 
 	.bss :
 	{

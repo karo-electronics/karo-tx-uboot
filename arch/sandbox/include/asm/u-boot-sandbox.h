@@ -23,4 +23,9 @@ int dram_init(void);
 int sandbox_early_getopt_check(void);
 int sandbox_main_loop_init(void);
 
+int cleanup_before_linux(void);
+
+/* drivers/video/sandbox_sdl.c */
+int sandbox_lcd_sdl_early_init(void);
+
 #endif	/* _U_BOOT_SANDBOX_H_ */

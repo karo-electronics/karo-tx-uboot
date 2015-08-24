@@ -3,7 +3,7 @@
  *
  * Configuration settings for the Dave/DENX QongEVB-LITE board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -12,8 +12,6 @@
 #include <asm/arch/imx-regs.h>
 
 /* High Level Configuration Options */
-#define CONFIG_ARM1136			/* This is an arm1136 CPU core */
-#define CONFIG_MX31			/* in a mx31 */
 #define CONFIG_QONG
 
 #define CONFIG_DISPLAY_CPUINFO
@@ -174,7 +172,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_PROMPT		"=> "
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
@@ -188,8 +185,6 @@
 #define CONFIG_SYS_MEMTEST_END		(PHYS_SDRAM_1 + 0xff000000)
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_HUSH_PARSER			/* Use the HUSH parser */

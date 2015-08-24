@@ -26,9 +26,6 @@
 #include <asm/arch/wdt.h>
 #include "../drivers/mmc/arm_pl180_mmci.h"
 
-static ulong timestamp;
-static ulong lastdec;
-
 static struct systimer *systimer_base = (struct systimer *)V2M_TIMER01;
 static struct sysctrl *sysctrl_base = (struct sysctrl *)SCTL_BASE;
 
@@ -122,11 +119,6 @@ void dram_init_banksize(void)
 			get_ram_size((long *)PHYS_SDRAM_2, PHYS_SDRAM_2_SIZE);
 }
 
-int timer_init(void)
-{
-	return 0;
-}
-
 /*
  * Start timer:
  *    Setup a 32 bit timer, running at 1KHz
@@ -152,8 +144,6 @@ static void vexpress_timer_init(void)
 	writel(SYSTIMER_EN | SYSTIMER_32BIT |
 	       readl(&systimer_base->timer0control),
 	       &systimer_base->timer0control);
-
-	reset_timer_masked();
 }
 
 int v2m_cfg_write(u32 devfn, u32 data)
@@ -183,62 +173,6 @@ void reset_cpu(ulong addr)
 		printf("Unable to reboot\n");
 }
 
-/*
- * Delay x useconds AND perserve advance timstamp value
- *     assumes timer is ticking at 1 msec
- */
-void __udelay(ulong usec)
-{
-	ulong tmo, tmp;
-
-	tmo = usec / 1000;
-	tmp = get_timer(0);	/* get current timestamp */
-
-	/*
-	 * If setting this forward will roll time stamp	then
-	 * reset "advancing" timestamp to 0 and set lastdec value
-	 * otherwise set the advancing stamp to the wake up time
-	 */
-	if ((tmo + tmp + 1) < tmp)
-		reset_timer_masked();
-	else
-		tmo += tmp;
-
-	while (get_timer_masked() < tmo)
-		; /* loop till wakeup event */
-}
-
-ulong get_timer(ulong base)
-{
-	return get_timer_masked() - base;
-}
-
-void reset_timer_masked(void)
-{
-	lastdec = readl(&systimer_base->timer0value) / 1000;
-	timestamp = 0;
-}
-
-ulong get_timer_masked(void)
-{
-	ulong now = readl(&systimer_base->timer0value) / 1000;
-
-	if (lastdec >= now) {	/* normal mode (non roll) */
-		timestamp += lastdec - now;
-	} else {		/* count down timer overflowed */
-		/*
-		 * nts = ts + ld - now
-		 * ts = old stamp, ld = time before passing through - 1
-		 * now = amount of time after passing though - 1
-		 * nts = new "advancing time stamp"
-		 */
-		timestamp += lastdec + SYSTIMER_RELOAD - now;
-	}
-	lastdec = now;
-
-	return timestamp;
-}
-
 void lowlevel_init(void)
 {
 }
@@ -247,12 +181,17 @@ ulong get_board_rev(void){
 	return readl((u32 *)SYS_ID);
 }
 
-unsigned long long get_ticks(void)
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+/* Setting the address at which secondary cores start from.
+ * Versatile Express uses one address for all cores, so ignore corenr
+ */
+void smp_set_core_boot_addr(unsigned long addr, int corenr)
 {
-	return get_timer(0);
+	/* The SYSFLAGS register on VExpress needs to be cleared first
+	 * by writing to the next address, since any writes to the address
+	 * at offset 0 will only be ORed in
+	 */
+	writel(~0, CONFIG_SYSFLAGS_ADDR + 4);
+	writel(addr, CONFIG_SYSFLAGS_ADDR);
 }
-
-ulong get_tbclk(void)
-{
-	return (ulong)CONFIG_SYS_HZ;
-}
+#endif

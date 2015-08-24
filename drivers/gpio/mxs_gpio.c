@@ -11,10 +11,11 @@
 #include <netdev.h>
 #include <asm/errno.h>
 #include <asm/io.h>
+#include <asm/gpio.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
 
-#if	defined(CONFIG_MX23)
+#if	defined(CONFIG_SOC_MX23)
 #define	PINCTRL_BANKS		3
 #define	PINCTRL_DOUT(n)		(0x0500 + ((n) * 0x10))
 #define	PINCTRL_DIN(n)		(0x0600 + ((n) * 0x10))
@@ -22,7 +23,7 @@
 #define	PINCTRL_PIN2IRQ(n)	(0x0800 + ((n) * 0x10))
 #define	PINCTRL_IRQEN(n)	(0x0900 + ((n) * 0x10))
 #define	PINCTRL_IRQSTAT(n)	(0x0c00 + ((n) * 0x10))
-#elif	defined(CONFIG_MX28)
+#elif	defined(CONFIG_SOC_MX28)
 #define	PINCTRL_BANKS		5
 #define	PINCTRL_DOUT(n)		(0x0700 + ((n) * 0x10))
 #define	PINCTRL_DIN(n)		(0x0900 + ((n) * 0x10))
@@ -31,7 +32,7 @@
 #define	PINCTRL_IRQEN(n)	(0x1100 + ((n) * 0x10))
 #define	PINCTRL_IRQSTAT(n)	(0x1400 + ((n) * 0x10))
 #else
-#error "Please select CONFIG_MX23 or CONFIG_MX28"
+#error "Please select CONFIG_SOC_MX23 or CONFIG_SOC_MX28"
 #endif
 
 #define GPIO_INT_FALL_EDGE	0x0
@@ -63,7 +64,7 @@ int gpio_get_value(unsigned gpio)
 	return (readl(&reg->reg) >> PAD_PIN(gpio)) & 1;
 }
 
-void gpio_set_value(unsigned gpio, int value)
+int gpio_set_value(unsigned gpio, int value)
 {
 	uint32_t bank = PAD_BANK(gpio);
 	uint32_t offset = PINCTRL_DOUT(bank);
@@ -74,6 +75,8 @@ void gpio_set_value(unsigned gpio, int value)
 		writel(1 << PAD_PIN(gpio), &reg->reg_set);
 	else
 		writel(1 << PAD_PIN(gpio), &reg->reg_clr);
+
+	return 0;
 }
 
 int gpio_direction_input(unsigned gpio)
@@ -95,9 +98,9 @@ int gpio_direction_output(unsigned gpio, int value)
 	struct mxs_register_32 *reg =
 		(struct mxs_register_32 *)(MXS_PINCTRL_BASE + offset);
 
-	writel(1 << PAD_PIN(gpio), &reg->reg_set);
-
 	gpio_set_value(gpio, value);
+
+	writel(1 << PAD_PIN(gpio), &reg->reg_set);
 
 	return 0;
 }

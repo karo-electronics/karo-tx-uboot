@@ -21,6 +21,8 @@
  */
 
 #ifndef __ASSEMBLY__
+#include <linux/list.h>
+
 typedef struct global_data {
 	bd_t *bd;
 	unsigned long flags;
@@ -61,10 +63,17 @@ typedef struct global_data {
 	unsigned long start_addr_sp;	/* start_addr_stackpointer */
 	unsigned long reloc_off;
 	struct global_data *new_gd;	/* relocated global data */
+
+#ifdef CONFIG_DM
+	struct udevice	*dm_root;	/* Root instance for Driver Model */
+	struct udevice	*dm_root_f;	/* Pre-relocation root instance */
+	struct list_head uclass_root;	/* Head of core tree */
+#endif
+
 	const void *fdt_blob;	/* Our device tree, NULL if none */
 	void *new_fdt;		/* Relocated FDT */
 	unsigned long fdt_size;	/* Space reserved for relocated FDT */
-	void **jt;		/* jump table */
+	struct jt_funcs *jt;		/* jump table */
 	char env_buf[32];	/* buffer for getenv() before reloc. */
 #ifdef CONFIG_TRACE
 	void		*trace_buff;	/* The trace buffer */
@@ -72,6 +81,23 @@ typedef struct global_data {
 #if defined(CONFIG_SYS_I2C)
 	int		cur_i2c_bus;	/* current used i2c bus */
 #endif
+#ifdef CONFIG_SYS_I2C_MXC
+	void *srdata[10];
+#endif
+	unsigned long timebase_h;
+	unsigned long timebase_l;
+#ifdef CONFIG_SYS_MALLOC_F_LEN
+	unsigned long malloc_base;	/* base address of early malloc() */
+	unsigned long malloc_limit;	/* limit address */
+	unsigned long malloc_ptr;	/* current address */
+#endif
+#ifdef CONFIG_PCI
+	struct pci_controller *hose;	/* PCI hose for early use */
+#endif
+#ifdef CONFIG_PCI_BOOTDELAY
+	int pcidelay_done;
+#endif
+	struct udevice *cur_serial_dev;	/* current serial device */
 	struct arch_global_data arch;	/* architecture-specific data */
 } gd_t;
 #endif
@@ -87,5 +113,7 @@ typedef struct global_data {
 #define GD_FLG_LOGINIT		0x00020	/* Log Buffer has been initialized */
 #define GD_FLG_DISABLE_CONSOLE	0x00040	/* Disable console (in & out)	   */
 #define GD_FLG_ENV_READY	0x00080	/* Env. imported into hash table   */
+#define GD_FLG_SERIAL_READY	0x00100	/* Pre-reloc serial console ready  */
+#define GD_FLG_FULL_MALLOC_INIT	0x00200	/* Full malloc() is ready	   */
 
 #endif /* __ASM_GENERIC_GBL_DATA_H */

@@ -100,16 +100,13 @@ struct arch_global_data {
 #if defined(CONFIG_4xx)
 	u32 uart_clk;
 #endif /* CONFIG_4xx */
-#if defined(CONFIG_SYS_GT_6426x)
-	unsigned int mirror_hack[16];
-#endif
 #ifdef CONFIG_SYS_FPGA_COUNT
 	unsigned fpga_state[CONFIG_SYS_FPGA_COUNT];
 #endif
 #if defined(CONFIG_WD_MAX_RATE)
 	unsigned long long wdt_last;	/* trace watch-dog triggering rate */
 #endif
-#if defined(CONFIG_LWMON) || defined(CONFIG_LWMON5)
+#if defined(CONFIG_LWMON5)
 	unsigned long kbd_status;
 #endif
 };

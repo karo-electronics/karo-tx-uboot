@@ -7,11 +7,12 @@
  *
  * (C) Copyright 2008 Atmel Corporation
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <environment.h>
 #include <malloc.h>
+#include <spi.h>
 #include <spi_flash.h>
 #include <search.h>
 #include <errno.h>
@@ -47,8 +48,7 @@ static struct spi_flash *env_flash;
 int saveenv(void)
 {
 	env_t	env_new;
-	ssize_t	len;
-	char	*res, *saved_buffer = NULL, flag = OBSOLETE_FLAG;
+	char	*saved_buffer = NULL, flag = OBSOLETE_FLAG;
 	u32	saved_size, saved_offset, sector = 1;
 	int	ret;
 
@@ -62,13 +62,9 @@ int saveenv(void)
 		}
 	}
 
-	res = (char *)&env_new.data;
-	len = hexport_r(&env_htab, '\0', 0, &res, ENV_SIZE, 0, NULL);
-	if (len < 0) {
-		error("Cannot export environment: errno = %d\n", errno);
-		return 1;
-	}
-	env_new.crc	= crc32(0, env_new.data, ENV_SIZE);
+	ret = env_export(&env_new);
+	if (ret)
+		return ret;
 	env_new.flags	= ACTIVE_FLAG;
 
 	if (gd->env_valid == 1) {
@@ -225,10 +221,9 @@ out:
 int saveenv(void)
 {
 	u32	saved_size, saved_offset, sector = 1;
-	char	*res, *saved_buffer = NULL;
+	char	*saved_buffer = NULL;
 	int	ret = 1;
 	env_t	env_new;
-	ssize_t	len;
 
 	if (!env_flash) {
 		env_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS,
@@ -260,13 +255,9 @@ int saveenv(void)
 			sector++;
 	}
 
-	res = (char *)&env_new.data;
-	len = hexport_r(&env_htab, '\0', 0, &res, ENV_SIZE, 0, NULL);
-	if (len < 0) {
-		error("Cannot export environment: errno = %d\n", errno);
+	ret = env_export(&env_new);
+	if (ret)
 		goto done;
-	}
-	env_new.crc = crc32(0, env_new.data, ENV_SIZE);
 
 	puts("Erasing SPI flash...");
 	ret = spi_flash_erase(env_flash, CONFIG_ENV_OFFSET,
@@ -299,13 +290,16 @@ int saveenv(void)
 
 void env_relocate_spec(void)
 {
-	char buf[CONFIG_ENV_SIZE];
 	int ret;
+	char *buf = NULL;
 
+	buf = (char *)malloc(CONFIG_ENV_SIZE);
 	env_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
 			CONFIG_ENV_SPI_MAX_HZ, CONFIG_ENV_SPI_MODE);
 	if (!env_flash) {
 		set_default_env("!spi_flash_probe() failed");
+		if (buf)
+			free(buf);
 		return;
 	}
 
@@ -321,6 +315,8 @@ void env_relocate_spec(void)
 		gd->env_valid = 1;
 out:
 	spi_flash_free(env_flash);
+	if (buf)
+		free(buf);
 	env_flash = NULL;
 }
 #endif

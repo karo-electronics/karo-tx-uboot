@@ -7,7 +7,7 @@
  * (C) Copyright 2007
  * Daniel Hellstrom, Gaisler Research, daniel@gaisler.com.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H__
@@ -24,8 +24,6 @@
  *
  */
 
-#define CONFIG_LEON3			/* This is an LEON3 CPU */
-#define CONFIG_LEON		1	/* This is an LEON CPU */
 #define CONFIG_GRSIM		0	/* ... not running on GRSIM */
 #define CONFIG_TSIM		1	/* ... running on TSIM */
 
@@ -55,6 +53,7 @@
 #define CONFIG_CMD_DIAG
 #define CONFIG_CMD_ECHO		/* echo arguments		*/
 #define CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
+#define CONFIG_CMD_FPGA_LOADMK
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_ITEST	/* Integer (and string) test	*/
 #define CONFIG_CMD_LOADB	/* loadb			*/
@@ -264,7 +263,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory     */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt   */
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size  */
 #else
@@ -278,8 +276,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x00f00000	/* 1 ... 15 MB in DRAM  */
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address */
-
-#define CONFIG_SYS_HZ			1000	/* decrementer freq: 1 ms ticks */
 
 /***** Gaisler GRLIB IP-Cores Config ********/
 

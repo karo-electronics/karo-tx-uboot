@@ -2,14 +2,13 @@
  * (C) Copyright 2010
  * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
 #define CONFIG_405EP		1	/* this is a PPC405 CPU */
-#define CONFIG_4xx		1	/*  member of PPC4xx family */
 #define CONFIG_DLVISION_10G	1	/*  on a DLVision-10G board */
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
@@ -18,13 +17,14 @@
  * Include common defines/options for all AMCC eval boards
  */
 #define CONFIG_HOSTNAME		dlvsion-10g
-#define CONFIG_IDENT_STRING	" dlvision-10g 0.04"
+#define CONFIG_IDENT_STRING	" dlvision-10g 0.06"
 #include "amcc-common.h"
 
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_MISC_INIT_R
 #define CONFIG_LAST_STAGE_INIT
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_CLK_FREQ	33333333 /* external frequency to pll   */
 
@@ -41,6 +41,7 @@
 /* new uImage format support */
 #define CONFIG_FIT
 #define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
+#define CONFIG_FIT_DISABLE_SHA256
 
 #define CONFIG_ENV_IS_IN_FLASH	/* use FLASH for environment vars */
 
@@ -65,9 +66,14 @@
 /*
  * Commands additional to the ones defined in amcc-common.h
  */
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DTT
+#undef CONFIG_CMD_DHCP
+#undef CONFIG_CMD_DIAG
 #undef CONFIG_CMD_EEPROM
+#undef CONFIG_CMD_ELF
+#undef CONFIG_CMD_I2C
+#undef CONFIG_CMD_IRQ
+#undef CONFIG_CMD_NFS
 
 /*
  * SDRAM configuration (please see cpu/ppc/sdram.[ch])
@@ -98,15 +104,32 @@
 /*
  * I2C stuff
  */
+#define CONFIG_SYS_I2C_PPC4XX
+#define CONFIG_SYS_I2C_PPC4XX_CH0
 #define CONFIG_SYS_I2C_PPC4XX_SPEED_0		100000
+#define CONFIG_SYS_I2C_PPC4XX_SLAVE_0		0x7F
+
+#define CONFIG_SYS_I2C_IHS
+#define CONFIG_SYS_I2C_IHS_CH0
+#define CONFIG_SYS_I2C_IHS_SPEED_0		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_0		0x7F
+#define CONFIG_SYS_I2C_IHS_CH1
+#define CONFIG_SYS_I2C_IHS_SPEED_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_1		0x7F
+
+#define CONFIG_SYS_SPD_BUS_NUM		2
 
 /* Temp sensor/hwmon/dtt */
+#define CONFIG_SYS_DTT_BUS_NUM	2
 #define CONFIG_DTT_LM63		1	/* National LM63	*/
 #define CONFIG_DTT_SENSORS	{ 0x4c, 0x4e, 0x18 } /* Sensor addresses */
 #define CONFIG_DTT_PWM_LOOKUPTABLE	\
 		{ { 46, 10 }, { 48, 14 }, { 50, 19 }, { 52, 23 },\
 		  { 54, 27 }, { 56, 31 }, { 58, 36 }, { 60, 40 } }
 #define CONFIG_DTT_TACH_LIMIT	0xa10
+
+#define CONFIG_SYS_ICS8N3QV01_I2C	{0, 1}
+#define CONFIG_SYS_SIL1178_I2C		{0, 1}
 
 /* EBC peripherals */
 
@@ -131,7 +154,7 @@
 
 #define CONFIG_SYS_LATCH0_RESET		0xffff
 #define CONFIG_SYS_LATCH0_BOOT		0xffff
-#define CONFIG_SYS_LATCH1_RESET		0xffcf
+#define CONFIG_SYS_LATCH1_RESET		0xffbf
 #define CONFIG_SYS_LATCH1_BOOT		0xffff
 
 #define CONFIG_SYS_FPGA_NO_RFL_HI
@@ -218,9 +241,8 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_DATA_ADDR /* in SDRAM */
 #define CONFIG_SYS_INIT_RAM_END	CONFIG_SYS_OCM_DATA_SIZE /* End of used area */
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128  /* size/bytes res'd for init data*/
 #define CONFIG_SYS_GBL_DATA_OFFSET \
-	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+	(CONFIG_SYS_INIT_RAM_END - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*
@@ -308,9 +330,7 @@
 /*
  * OSD Setup
  */
-#define CONFIG_SYS_ICS8N3QV01
 #define CONFIG_SYS_MPC92469AC
-#define CONFIG_SYS_SIL1178
 #define CONFIG_SYS_OSD_SCREENS		CONFIG_SYS_FPGA_COUNT
 
 #endif	/* __CONFIG_H */

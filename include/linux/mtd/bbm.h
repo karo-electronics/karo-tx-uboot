@@ -11,6 +11,7 @@
  *  Thomas Gleixner <tglx@linuxtronix.de>
  *
  * SPDX-License-Identifier:	GPL-2.0+
+ *
  */
 #ifndef __LINUX_MTD_BBM_H
 #define __LINUX_MTD_BBM_H
@@ -80,10 +81,6 @@ struct nand_bbt_descr {
  * with NAND_BBT_CREATE.
  */
 #define NAND_BBT_CREATE_EMPTY	0x00000400
-/* Search good / bad pattern through all pages of a block */
-#define NAND_BBT_SCANALLPAGES	0x00000800
-/* Scan block empty during good / bad block scan */
-#define NAND_BBT_SCANEMPTY	0x00001000
 /* Write bbt if neccecary */
 #define NAND_BBT_WRITE		0x00002000
 /* Read and write back block contents when writing bbt */

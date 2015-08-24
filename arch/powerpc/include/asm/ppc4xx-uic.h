@@ -4,7 +4,7 @@
  * (C) Copyright 2008-2009
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PPC4xx_UIC_H_
@@ -15,7 +15,7 @@
  */
 #if defined(CONFIG_440GX) || defined(CONFIG_440SPE) || \
     defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
-    defined(CONFIG_460SX) || defined(CONFIG_APM821XX)
+    defined(CONFIG_460SX)
 #define UIC_MAX		4
 #elif defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
     defined(CONFIG_405EX)
@@ -236,8 +236,7 @@
 #define VECNUM_ETH0		(32 + 28)
 #endif /* CONFIG_440SPE */
 
-#if defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
-    defined(CONFIG_APM821XX)
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
 /* UIC 0 */
 #define VECNUM_UIC2NCI		10
 #define VECNUM_UIC2CI		11

@@ -42,6 +42,12 @@ enum mxc_clock {
 	MXC_I2C_CLK,
 };
 
+enum enet_freq {
+	ENET_25MHZ,
+	ENET_50MHZ,
+	ENET_100MHZ,
+	ENET_125MHZ,
+};
 
 struct clk {
 	const char *name;
@@ -93,10 +99,23 @@ u32 imx_get_uartclk(void);
 u32 imx_get_fecclk(void);
 unsigned int mxc_get_clock(enum mxc_clock clk);
 int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk);
+void setup_gpmi_io_clk(u32 cfg);
+void hab_caam_clock_enable(unsigned char enable);
 void enable_ocotp_clk(unsigned char enable);
 void enable_usboh3_clk(unsigned char enable);
+void enable_uart_clk(unsigned char enable);
+int enable_cspi_clock(unsigned char enable, unsigned spi_num);
+int enable_usdhc_clk(unsigned char enable, unsigned bus_num);
 int enable_sata_clock(void);
+void disable_sata_clock(void);
+int enable_pcie_clock(void);
 int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
+int enable_spi_clk(unsigned char enable, unsigned spi_num);
+void enable_ipu_clock(void);
+int enable_fec_anatop_clock(enum enet_freq freq);
+void enable_enet_clk(unsigned char enable);
+void enable_qspi_clk(int qspi_num);
+void enable_thermal_clk(void);
 void ipu_clk_enable(void);
 void ipu_clk_disable(void);
 void ipu_di_clk_enable(int di);
@@ -105,5 +124,4 @@ void ldb_clk_enable(int ldb);
 void ldb_clk_disable(int ldb);
 void ocotp_clk_enable(void);
 void ocotp_clk_disable(void);
-
 #endif /* __ASM_ARCH_CLOCK_H */

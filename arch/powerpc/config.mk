@@ -5,12 +5,16 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-CROSS_COMPILE ?= ppc_8xx-
+ifeq ($(CROSS_COMPILE),)
+CROSS_COMPILE := ppc_8xx-
+endif
 
 CONFIG_STANDALONE_LOAD_ADDR ?= 0x40000
 LDFLAGS_FINAL += --gc-sections
-PLATFORM_RELFLAGS += -fpic -mrelocatable -ffunction-sections -fdata-sections
-PLATFORM_CPPFLAGS += -DCONFIG_PPC -D__powerpc__
+LDFLAGS_FINAL += --bss-plt
+PLATFORM_RELFLAGS += -fpic -mrelocatable -ffunction-sections -fdata-sections \
+								-meabi
+PLATFORM_CPPFLAGS += -D__powerpc__ -ffixed-r2
 PLATFORM_LDFLAGS  += -n
 
 # Support generic board on PPC
@@ -32,5 +36,14 @@ endif
 
 # Only test once
 ifneq ($(CONFIG_SPL_BUILD),y)
-ALL-y += checkgcc4
+archprepare: checkgcc4
+
+# GCC 3.x is reported to have problems generating the type of relocation
+# that U-Boot wants.
+# See http://lists.denx.de/pipermail/u-boot/2012-September/135156.html
+checkgcc4:
+	@if test $(call cc-version) -lt 0400; then \
+		echo -n '*** Your GCC is too old, please upgrade to GCC 4.x or newer'; \
+		false; \
+	fi
 endif

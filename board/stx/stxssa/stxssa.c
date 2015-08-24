@@ -9,7 +9,7 @@
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
@@ -19,7 +19,7 @@
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <ioports.h>
 #include <asm/io.h>
 #include <spd_sdram.h>
@@ -233,9 +233,11 @@ reset_phy(void)
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup (blob, bd);
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */
 

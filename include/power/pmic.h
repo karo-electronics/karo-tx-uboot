@@ -8,7 +8,6 @@
 #ifndef __CORE_PMIC_H_
 #define __CORE_PMIC_H_
 
-#include <common.h>
 #include <linux/list.h>
 #include <i2c.h>
 #include <power/power_chrg.h>
@@ -17,6 +16,11 @@ enum { PMIC_I2C, PMIC_SPI, PMIC_NONE};
 enum { I2C_PMIC, I2C_NUM, };
 enum { PMIC_READ, PMIC_WRITE, };
 enum { PMIC_SENSOR_BYTE_ORDER_LITTLE, PMIC_SENSOR_BYTE_ORDER_BIG, };
+
+enum {
+	PMIC_CHARGER_DISABLE,
+	PMIC_CHARGER_ENABLE,
+};
 
 struct p_i2c {
 	unsigned char addr;
@@ -75,6 +79,7 @@ struct pmic {
 };
 
 int pmic_init(unsigned char bus);
+int power_init_board(void);
 int pmic_dialog_init(unsigned char bus);
 int check_reg(struct pmic *p, u32 reg);
 struct pmic *pmic_alloc(void);

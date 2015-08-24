@@ -26,7 +26,7 @@
 #error CONFIG_PARTITION_UUIDS must be enabled for CONFIG_CMD_PART to be enabled
 #endif
 
-int do_part_uuid(int argc, char * const argv[])
+static int do_part_uuid(int argc, char * const argv[])
 {
 	int part;
 	block_dev_desc_t *dev_desc;
@@ -49,24 +49,42 @@ int do_part_uuid(int argc, char * const argv[])
 	return 0;
 }
 
-int do_part_list(int argc, char * const argv[])
+static int do_part_list(int argc, char * const argv[])
 {
 	int ret;
 	block_dev_desc_t *desc;
 
-	if (argc != 2)
+	if (argc < 2 || argc > 3)
 		return CMD_RET_USAGE;
 
 	ret = get_device(argv[0], argv[1], &desc);
 	if (ret < 0)
 		return 1;
 
+	if (argc == 3) {
+		int p;
+		char str[512] = { 0, };
+	  disk_partition_t info;
+
+		for (p = 1; p < 128; p++) {
+			int r = get_partition_info(desc, p, &info);
+
+			if (r == 0) {
+				char t[5];
+				sprintf(t, "%s%d", str[0] ? " " : "", p);
+				strcat(str, t);
+			}
+		}
+		setenv(argv[2], str);
+		return 0;
+	}
+
 	print_part(desc);
 
 	return 0;
 }
 
-int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	if (argc < 2)
 		return CMD_RET_USAGE;
@@ -82,10 +100,12 @@ int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 U_BOOT_CMD(
 	part,	5,	1,	do_part,
 	"disk partition related commands",
-	"uuid <interface> <dev>:<part>\n"
+	"part uuid <interface> <dev>:<part>\n"
 	"    - print partition UUID\n"
 	"part uuid <interface> <dev>:<part> <varname>\n"
 	"    - set environment variable to partition UUID\n"
 	"part list <interface> <dev>\n"
-	"    - print a device's partition table"
+	"    - print a device's partition table\n"
+	"part list <interface> <dev> <varname>\n"
+	"    - set environment variable to the list of partitions"
 );

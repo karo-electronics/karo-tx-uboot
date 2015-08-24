@@ -10,14 +10,11 @@
 
 #include <asm/arch/hardware.h>
 
-#define CONFIG_AVR32
 #define CONFIG_AT32AP
 #define CONFIG_AT32AP7000
 #define CONFIG_MIMC200
 
 #define CONFIG_MIMC200_EXT_FLASH
-
-#define CONFIG_SYS_HZ				1000
 
 /*
  * Set up the PLL to run at 140 MHz, the CPU to run at the PLL

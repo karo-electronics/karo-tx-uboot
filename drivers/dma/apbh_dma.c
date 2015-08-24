@@ -210,10 +210,10 @@ static int mxs_dma_disable(int channel)
 static int mxs_dma_reset(int channel)
 {
 	int ret;
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	uint32_t *setreg = &apbh_regs->hw_apbh_ctrl0_set;
 	uint32_t offset = APBH_CTRL0_RESET_CHANNEL_OFFSET;
-#elif (defined(CONFIG_MX28) || defined(CONFIG_MX6))
+#elif (defined(CONFIG_SOC_MX28) || defined(CONFIG_SOC_MX6))
 	uint32_t *setreg = &apbh_regs->hw_apbh_channel_ctrl_set;
 	uint32_t offset = APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET;
 #endif
@@ -582,6 +582,28 @@ int mxs_dma_go(int chan)
 	mxs_dma_disable(chan);
 
 	return ret;
+}
+
+/*
+ * Execute a continuously running circular DMA descriptor.
+ * NOTE: This is not intended for general use, but rather
+ *	 for the LCD driver in Smart-LCD mode. It allows
+ *	 continuous triggering of the RUN bit there.
+ */
+void mxs_dma_circ_start(int chan, struct mxs_dma_desc *pdesc)
+{
+	struct mxs_apbh_regs *apbh_regs =
+		(struct mxs_apbh_regs *)MXS_APBH_BASE;
+
+	mxs_dma_flush_desc(pdesc);
+
+	mxs_dma_enable_irq(chan, 1);
+
+	writel(mxs_dma_cmd_address(pdesc),
+		&apbh_regs->ch[chan].hw_apbh_ch_nxtcmdar);
+	writel(1, &apbh_regs->ch[chan].hw_apbh_ch_sema);
+	writel(1 << (chan + APBH_CTRL0_CLKGATE_CHANNEL_OFFSET),
+		&apbh_regs->hw_apbh_ctrl0_clr);
 }
 
 /*

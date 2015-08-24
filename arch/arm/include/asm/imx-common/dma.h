@@ -27,7 +27,7 @@
 /*
  * MXS DMA channels
  */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 enum {
 	MXS_DMA_CHANNEL_AHB_APBH_LCDIF = 0,
 	MXS_DMA_CHANNEL_AHB_APBH_SSP0,
@@ -39,7 +39,7 @@ enum {
 	MXS_DMA_CHANNEL_AHB_APBH_GPMI3,
 	MXS_MAX_DMA_CHANNELS,
 };
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 enum {
 	MXS_DMA_CHANNEL_AHB_APBH_SSP0 = 0,
 	MXS_DMA_CHANNEL_AHB_APBH_SSP1,
@@ -59,7 +59,7 @@ enum {
 	MXS_DMA_CHANNEL_AHB_APBH_RESERVED1,
 	MXS_MAX_DMA_CHANNELS,
 };
-#elif defined(CONFIG_MX6)
+#elif defined(CONFIG_SOC_MX6)
 enum {
 	MXS_DMA_CHANNEL_AHB_APBH_GPMI0 = 0,
 	MXS_DMA_CHANNEL_AHB_APBH_GPMI1,
@@ -163,5 +163,7 @@ int mxs_dma_go(int chan);
 void mxs_dma_init(void);
 int mxs_dma_init_channel(int chan);
 int mxs_dma_release(int chan);
+
+void mxs_dma_circ_start(int chan, struct mxs_dma_desc *pdesc);
 
 #endif	/* __DMA_H__ */

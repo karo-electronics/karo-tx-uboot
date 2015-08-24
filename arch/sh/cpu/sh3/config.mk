@@ -12,4 +12,3 @@
 #
 #
 PLATFORM_CPPFLAGS += -m3
-PLATFORM_RELFLAGS += -ffixed-r13

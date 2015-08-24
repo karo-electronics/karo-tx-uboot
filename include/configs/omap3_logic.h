@@ -5,7 +5,7 @@
  * Configuration settings for the Logic OMAP35x/DM37x SOM LV/Torpedo
  * reference boards.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,9 +15,9 @@
  * High Level Configuration Options
  */
 #define CONFIG_OMAP			/* in a TI OMAP core */
-#define CONFIG_OMAP34XX			/* which is a 34XX */
 #define CONFIG_OMAP3_LOGIC		/* working with Logic OMAP boards */
 #define CONFIG_OMAP_GPIO
+#define CONFIG_OMAP_COMMON
 
 #define CONFIG_SYS_TEXT_BASE	0x80400000
 
@@ -117,12 +117,10 @@
 /*
  * I2C
  */
-#define CONFIG_HARD_I2C
-#define CONFIG_DRIVER_OMAP34XX_I2C
-
-#define CONFIG_SYS_I2C_SPEED		100000
-#define CONFIG_SYS_I2C_SLAVE		1
-#define CONFIG_I2C_MULTI_BUS
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
+#define CONFIG_SYS_I2C_OMAP34XX
 
 /*
  * TWL4030
@@ -142,6 +140,7 @@
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1		/* Max number of */
 							/* NAND devices */
+#define CONFIG_SYS_NAND_BUSWIDTH_16BIT	16
 #define CONFIG_JFFS2_NAND
 /* nand device jffs2 lives on */
 #define CONFIG_JFFS2_DEV		"nand0"
@@ -264,7 +263,6 @@
  */
 #define CONFIG_SYS_TIMERBASE		(OMAP34XX_GPT2)
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
-#define CONFIG_SYS_HZ			1000
 
 /*
  * Physical Memory Map
@@ -278,16 +276,12 @@
  */
 
 /* **** PISMO SUPPORT *** */
-
-/* Configure the PISMO */
-#define PISMO1_NAND_SIZE		GPMC_SIZE_128M
-
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 2 sectors */
 
 #if defined(CONFIG_CMD_NAND)
-#define CONFIG_SYS_FLASH_BASE		PISMO1_NAND_BASE
+#define CONFIG_SYS_FLASH_BASE		NAND_BASE
 #elif defined(CONFIG_CMD_ONENAND)
-#define CONFIG_SYS_FLASH_BASE		PISMO1_ONEN_BASE
+#define CONFIG_SYS_FLASH_BASE		ONENAND_MAP
 #endif
 
 /* Monitor at start of flash */
@@ -297,7 +291,6 @@
 
 #if defined(CONFIG_CMD_NAND)
 #define CONFIG_NAND_OMAP_GPMC
-#define GPMC_NAND_ECC_LP_x16_LAYOUT	1
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
 #endif

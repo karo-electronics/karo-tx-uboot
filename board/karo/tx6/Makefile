@@ -1,34 +1,14 @@
 #
-# (C) Copyright 2009 DENX Software Engineering
-# Author: John Rigby <jcrigby@gmail.com>
+# (C) Copyright 2015 Lothar Waßmann <LW@KARO-electronics.de>
 #
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
+LDSCRIPT := $(BOARDDIR)/u-boot.lds
 
-LIB	= $(obj)lib$(BOARD).o
+obj-y				+= lowlevel_init.o pmic.o tx6qdl.o
+obj-$(CONFIG_LTC3676)		+= ltc3676.o
+obj-$(CONFIG_RN5T567)		+= rn5t567.o
+obj-$(CONFIG_RN5T618)		+= rn5t618.o
 
-COBJS-y	:= tx6qdl.o
-COBJS-$(CONFIG_LTC3676)	+= ltc3676.o
-COBJS-$(CONFIG_RN5T567)	+= rn5t567.o
-COBJS-$(CONFIG_RN5T618)	+= rn5t618.o
-COBJS-y += pmic.o
-COBJS-$(CONFIG_CMD_ROMUPDATE) += flash.o
-
-SOBJS-y	:= lowlevel_init.o
-
-SRCS	:= $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS-y))
-SOBJS	:= $(addprefix $(obj),$(SOBJS-y))
-
-$(LIB):	$(obj).depend $(OBJS) $(SOBJS)
-	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
-
-#########################################################################
-
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-$(CONFIG_CMD_ROMUPDATE) 	+= flash.o

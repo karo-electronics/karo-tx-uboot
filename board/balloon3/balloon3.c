@@ -13,6 +13,7 @@
 #include <asm/io.h>
 #include <spartan3.h>
 #include <command.h>
+#include <usb.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -59,7 +60,7 @@ void dram_init_banksize(void)
 }
 
 #ifdef	CONFIG_CMD_USB
-int usb_board_init(void)
+int board_usb_init(int index, enum usb_init_type init)
 {
 	writel((readl(UHCHR) | UHCHR_PCPL | UHCHR_PSPL) &
 		~(UHCHR_SSEP0 | UHCHR_SSEP1 | UHCHR_SSEP2 | UHCHR_SSE),
@@ -90,9 +91,9 @@ int usb_board_init(void)
 	return 0;
 }
 
-void usb_board_init_fail(void)
+int board_usb_cleanup(int index, enum usb_init_type init)
 {
-	return;
+	return 0;
 }
 
 void usb_board_stop(void)
@@ -190,7 +191,7 @@ int fpga_cs_fn(int assert_clk, int flush, int cookie)
 	return assert_clk;
 }
 
-Xilinx_Spartan3_Slave_Parallel_fns balloon3_fpga_fns = {
+xilinx_spartan3_slave_parallel_fns balloon3_fpga_fns = {
 	fpga_pre_config_fn,
 	fpga_pgm_fn,
 	fpga_init_fn,
@@ -206,7 +207,7 @@ Xilinx_Spartan3_Slave_Parallel_fns balloon3_fpga_fns = {
 	fpga_post_config_fn,
 };
 
-Xilinx_desc fpga = XILINX_XC3S1000_DESC(slave_parallel,
+xilinx_desc fpga = XILINX_XC3S1000_DESC(slave_parallel,
 			(void *)&balloon3_fpga_fns, 0);
 
 /* Initialize the FPGA */

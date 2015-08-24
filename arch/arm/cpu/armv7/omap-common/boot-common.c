@@ -9,11 +9,14 @@
  */
 
 #include <common.h>
+#include <ahci.h>
 #include <spl.h>
 #include <asm/omap_common.h>
 #include <asm/arch/omap.h>
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/sys_proto.h>
+#include <watchdog.h>
+#include <scsi.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -32,15 +35,27 @@ void save_omap_boot_params(void)
 	 * used. But it not correct to assume that romcode structure
 	 * encoding would be same as u-boot. So use the defined offsets.
 	 */
-	gd->arch.omap_boot_params.omap_bootdevice = boot_device =
-				   *((u8 *)(rom_params + BOOT_DEVICE_OFFSET));
+	boot_device = *((u8 *)(rom_params + BOOT_DEVICE_OFFSET));
+
+#if defined(BOOT_DEVICE_NAND_I2C)
+	/*
+	 * Re-map NAND&I2C boot-device to the "normal" NAND boot-device.
+	 * Otherwise the SPL boot IF can't handle this device correctly.
+	 * Somehow booting with Hynix 4GBit NAND H27U4G8 on Siemens
+	 * Draco leads to this boot-device passed to SPL from the BootROM.
+	 */
+	if (boot_device == BOOT_DEVICE_NAND_I2C)
+		boot_device = BOOT_DEVICE_NAND;
+#endif
+	gd->arch.omap_boot_params.omap_bootdevice = boot_device;
 
 	gd->arch.omap_boot_params.ch_flags =
 				*((u8 *)(rom_params + CH_FLAGS_OFFSET));
 
 	if ((boot_device >= MMC_BOOT_DEVICES_START) &&
 	    (boot_device <= MMC_BOOT_DEVICES_END)) {
-#if !defined(CONFIG_AM33XX) && !defined(CONFIG_TI81XX)
+#if !defined(CONFIG_AM33XX) && !defined(CONFIG_TI81XX) && \
+	!defined(CONFIG_AM43XX)
 		if ((omap_hw_init_context() ==
 				      OMAP_INIT_CONTEXT_UBOOT_AFTER_SPL)) {
 			gd->arch.omap_boot_params.omap_bootmode =
@@ -54,6 +69,17 @@ void save_omap_boot_params(void)
 					*((u32 *)(dev_data + BOOT_MODE_OFFSET));
 		}
 	}
+
+#if defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX)
+	/*
+	 * We get different values for QSPI_1 and QSPI_4 being used, but
+	 * don't actually care about this difference.  Rather than
+	 * mangle the later code, if we're coming in as QSPI_4 just
+	 * change to the QSPI_1 value.
+	 */
+	if (gd->arch.omap_boot_params.omap_bootdevice == 11)
+		gd->arch.omap_boot_params.omap_bootdevice = BOOT_DEVICE_SPI;
+#endif
 }
 
 #ifdef CONFIG_SPL_BUILD
@@ -64,16 +90,43 @@ u32 spl_boot_device(void)
 
 u32 spl_boot_mode(void)
 {
-	return gd->arch.omap_boot_params.omap_bootmode;
+	u32 val = gd->arch.omap_boot_params.omap_bootmode;
+
+	if (val == MMCSD_MODE_RAW)
+		return MMCSD_MODE_RAW;
+	else if (val == MMCSD_MODE_FS)
+		return MMCSD_MODE_FS;
+	else
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+		return MMCSD_MODE_EMMCBOOT;
+#else
+		return MMCSD_MODE_UNDEFINED;
+#endif
 }
 
 void spl_board_init(void)
 {
+	/*
+	 * Save the boot parameters passed from romcode.
+	 * We cannot delay the saving further than this,
+	 * to prevent overwrites.
+	 */
+	save_omap_boot_params();
+
+	/* Prepare console output */
+	preloader_console_init();
+
 #ifdef CONFIG_SPL_NAND_SUPPORT
 	gpmc_init();
 #endif
 #if defined(CONFIG_AM33XX) && defined(CONFIG_SPL_MUSB_NEW_SUPPORT)
 	arch_misc_init();
+#endif
+#if defined(CONFIG_HW_WATCHDOG)
+	hw_watchdog_init();
+#endif
+#ifdef CONFIG_AM33XX
+	am33xx_spl_board_init();
 #endif
 }
 
@@ -100,5 +153,12 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 	debug("image entry point: 0x%X\n", spl_image->entry_point);
 	/* Pass the saved boot_params from rom code */
 	image_entry((u32 *)&gd->arch.omap_boot_params);
+}
+#endif
+
+#ifdef CONFIG_SCSI_AHCI_PLAT
+void arch_preboot_os(void)
+{
+	ahci_reset(DWC_AHSATA_BASE);
 }
 #endif

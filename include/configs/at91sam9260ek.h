@@ -28,7 +28,6 @@
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000	/* main clock xtal */
-#define CONFIG_SYS_HZ			1000
 
 /* Define actual evaluation board type from used processor type */
 #ifdef CONFIG_AT91SAM9G20
@@ -48,6 +47,8 @@
 
 #define CONFIG_CMD_BOOTZ
 #define CONFIG_OF_LIBFDT
+
+#define CONFIG_SYS_GENERIC_BOARD
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
@@ -136,7 +137,6 @@
 #ifndef CONFIG_AT91SAM9G20EK_2MMC
 #define CONFIG_ATMEL_DATAFLASH_SPI
 #define CONFIG_HAS_DATAFLASH		1
-#define CONFIG_SYS_SPI_WRITE_TOUT		(5*CONFIG_SYS_HZ)
 #define CONFIG_SYS_MAX_DATAFLASH_BANKS		2
 #define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* CS0 */
 #define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS1	0xD0000000	/* CS1 */
@@ -182,9 +182,11 @@
 #define CONFIG_RMII			1
 #define CONFIG_NET_RETRY_COUNT		20
 #define CONFIG_RESET_PHY_R		1
+#define CONFIG_AT91_WANTS_COMMON_PHY
 
 /* USB */
 #define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW		1
 #define CONFIG_SYS_USB_OHCI_CPU_INIT		1
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		0x00500000	/* AT91SAM9260_UHP_BASE */

@@ -15,14 +15,6 @@
 #define CONFIG_SYS_NAND_U_BOOT_OFFS  16384
 #define CONFIG_SYS_NAND_U_BOOT_RELOC 0x00010000
 
-#ifdef CONFIG_NAND_U_BOOT
-#define CONFIG_SYS_TEXT_BASE	0x00100000 /* CONFIG_SYS_NAND_U_BOOT_DST */
-#define CONFIG_SYS_TEXT_BASE_SPL 0xfff00000
-#ifdef CONFIG_NAND_SPL
-#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE_SPL /* start of monitor */
-#endif /* CONFIG_NAND_SPL */
-#endif /* CONFIG_NAND_U_BOOT */
-
 #ifndef CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_TEXT_BASE	0xFE000000
 #endif
@@ -35,7 +27,6 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC83xx		1 /* MPC83xx family */
 #define CONFIG_MPC831x		1 /* MPC831x CPU family */
 #define CONFIG_MPC8315		1 /* MPC8315 CPU specific */
 #define CONFIG_MPC8315ERDB	1 /* MPC8315ERDB board specific */
@@ -93,10 +84,6 @@
  * IMMR new address
  */
 #define CONFIG_SYS_IMMR		0xE0000000
-
-#if defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
-#define CONFIG_DEFAULT_IMMR	CONFIG_SYS_IMMR
-#endif
 
 /*
  * Arbiter Setup
@@ -282,17 +269,10 @@
 				| OR_FCM_EHTR)
 				/* 0xFFFF8396 */
 
-#ifdef CONFIG_NAND_U_BOOT
-#define CONFIG_SYS_BR0_PRELIM CONFIG_SYS_NAND_BR_PRELIM
-#define CONFIG_SYS_OR0_PRELIM CONFIG_SYS_NAND_OR_PRELIM
-#define CONFIG_SYS_BR1_PRELIM CONFIG_SYS_NOR_BR_PRELIM
-#define CONFIG_SYS_OR1_PRELIM CONFIG_SYS_NOR_OR_PRELIM
-#else
 #define CONFIG_SYS_BR0_PRELIM CONFIG_SYS_NOR_BR_PRELIM
 #define CONFIG_SYS_OR0_PRELIM CONFIG_SYS_NOR_OR_PRELIM
 #define CONFIG_SYS_BR1_PRELIM CONFIG_SYS_NAND_BR_PRELIM
 #define CONFIG_SYS_OR1_PRELIM CONFIG_SYS_NAND_OR_PRELIM
-#endif
 
 #define CONFIG_SYS_LBLAWBAR1_PRELIM	CONFIG_SYS_NAND_BASE
 #define CONFIG_SYS_LBLAWAR1_PRELIM	(LBLAWAR_EN | LBLAWAR_32KB)
@@ -460,16 +440,7 @@
 /*
  * Environment
  */
-#if defined(CONFIG_NAND_U_BOOT)
-	#define CONFIG_ENV_IS_IN_NAND	1
-	#define CONFIG_ENV_OFFSET		(512 * 1024)
-	#define CONFIG_ENV_SECT_SIZE	CONFIG_SYS_NAND_BLOCK_SIZE
-	#define CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
-	#define CONFIG_ENV_SIZE_REDUND	CONFIG_ENV_SIZE
-	#define CONFIG_ENV_RANGE	(CONFIG_ENV_SECT_SIZE * 4)
-	#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + \
-						 CONFIG_ENV_RANGE)
-#elif !defined(CONFIG_SYS_RAMBOOT)
+#if !defined(CONFIG_SYS_RAMBOOT)
 	#define CONFIG_ENV_IS_IN_FLASH	1
 	#define CONFIG_ENV_ADDR		\
 			(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
@@ -504,7 +475,7 @@
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_PCI
 
-#if defined(CONFIG_SYS_RAMBOOT) && !defined(CONFIG_NAND_U_BOOT)
+#if defined(CONFIG_SYS_RAMBOOT)
     #undef CONFIG_CMD_SAVEENV
     #undef CONFIG_CMD_LOADS
 #endif
@@ -519,7 +490,6 @@
  */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR		0x2000000 /* default load address */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt */
 
 #if defined(CONFIG_CMD_KGDB)
 	#define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
@@ -532,7 +502,6 @@
 #define CONFIG_SYS_MAXARGS	16	/* max number of command args */
 				/* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_HZ		1000	/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -636,7 +605,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed of kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*

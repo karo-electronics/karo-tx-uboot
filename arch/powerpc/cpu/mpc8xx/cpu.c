@@ -97,14 +97,8 @@ static int check_CPU (long clock, uint pvr, uint immr)
 		pre = 'M'; m = 1;
 		if (id_str == NULL)
 			id_str =
-# if defined(CONFIG_MPC852T)
-		"PC852T";
-# elif defined(CONFIG_MPC859T)
+# if defined(CONFIG_MPC859T)
 		"PC859T";
-# elif defined(CONFIG_MPC859DSL)
-		"PC859DSL";
-# elif defined(CONFIG_MPC866T)
-		"PC866T";
 # else
 		"PC866x"; /* Unknown chip from MPC866 family */
 # endif
@@ -136,10 +130,8 @@ static int check_CPU (long clock, uint pvr, uint immr)
 #else
 	printf (" at %s MHz: ", strmhz (buf, clock));
 #endif
-	printf ("%u kB I-Cache %u kB D-Cache",
-		checkicache () >> 10,
-		checkdcache () >> 10
-	);
+	print_size(checkicache(), " I-Cache ");
+	print_size(checkdcache(), " D-Cache");
 
 	/* do we have a FEC (860T/P or 852/859/866/885)? */
 
@@ -204,10 +196,10 @@ static int check_CPU (long clock, uint pvr, uint immr)
 		printf ("unknown MPC857 (0x%08x)", k);
 #endif
 
-	printf (" at %s MHz:", strmhz (buf, clock));
+	printf(" at %s MHz: ", strmhz(buf, clock));
 
-	printf (" %u kB I-Cache", checkicache () >> 10);
-	printf (" %u kB D-Cache", checkdcache () >> 10);
+	print_size(checkicache(), " I-Cache ");
+	print_size(checkdcache(), " D-Cache");
 
 	/* lets check and see if we're running on a 862T (or P?) */
 
@@ -265,10 +257,10 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	if (suf)
 		printf ("PPC823ZTnn%s", suf);
 
-	printf (" at %s MHz:", strmhz (buf, clock));
+	printf(" at %s MHz: ", strmhz(buf, clock));
 
-	printf (" %u kB I-Cache", checkicache () >> 10);
-	printf (" %u kB D-Cache", checkdcache () >> 10);
+	print_size(checkicache(), " I-Cache ");
+	print_size(checkdcache(), " D-Cache");
 
 	/* lets check and see if we're running on a 860T (or P?) */
 
@@ -321,10 +313,10 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	default:
 		printf ("unknown MPC850 (0x%08x)", k);
 	}
-	printf (" at %s MHz:", strmhz (buf, clock));
+	printf(" at %s MHz: ", strmhz(buf, clock));
 
-	printf (" %u kB I-Cache", checkicache () >> 10);
-	printf (" %u kB D-Cache", checkdcache () >> 10);
+	print_size(checkicache(), " I-Cache ");
+	print_size(checkdcache(), " D-Cache");
 
 	/* lets check and see if we're running on a 850T (or P?) */
 
@@ -465,8 +457,6 @@ void upmconfig (uint upm, uint * table, uint size)
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef CONFIG_LWMON
-
 int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	ulong msr, addr;
@@ -500,32 +490,6 @@ int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	((void (*)(void)) addr) ();
 	return 1;
 }
-
-#else	/* CONFIG_LWMON */
-
-/*
- * On the LWMON board, the MCLR reset input of the PIC's on the board
- * uses a 47K/1n RC combination which has a 47us time  constant.  The
- * low  signal on the HRESET pin of the CPU is only 512 clocks = 8 us
- * and thus too short to reset the external hardware. So we  use  the
- * watchdog to reset the board.
- */
-int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-	/* prevent triggering the watchdog */
-	disable_interrupts ();
-
-	/* make sure the watchdog is running */
-	reset_8xx_watchdog ((immap_t *) CONFIG_SYS_IMMR);
-
-	/* wait for watchdog reset */
-	while (1) {};
-
-	/* NOTREACHED */
-	return 1;
-}
-
-#endif	/* CONFIG_LWMON */
 
 /* ------------------------------------------------------------------------- */
 
@@ -588,42 +552,15 @@ void watchdog_reset (void)
 }
 #endif /* CONFIG_WATCHDOG */
 
-#if defined(CONFIG_WATCHDOG) || defined(CONFIG_LWMON)
+#if defined(CONFIG_WATCHDOG)
 
 void reset_8xx_watchdog (volatile immap_t * immr)
 {
-# if defined(CONFIG_LWMON)
-	/*
-	 * The LWMON board uses a MAX6301 Watchdog
-	 * with the trigger pin connected to port PA.7
-	 *
-	 * (The old board version used a MAX706TESA Watchdog, which
-	 * had to be handled exactly the same.)
-	 */
-# define WATCHDOG_BIT	0x0100
-	immr->im_ioport.iop_papar &= ~(WATCHDOG_BIT);	/* GPIO     */
-	immr->im_ioport.iop_padir |= WATCHDOG_BIT;	/* Output   */
-	immr->im_ioport.iop_paodr &= ~(WATCHDOG_BIT);	/* active output */
-
-	immr->im_ioport.iop_padat ^= WATCHDOG_BIT;	/* Toggle WDI   */
-# elif defined(CONFIG_KUP4K) || defined(CONFIG_KUP4X)
-	/*
-	 * The KUP4 boards uses a TPS3705 Watchdog
-	 * with the trigger pin connected to port PA.5
-	 */
-# define WATCHDOG_BIT	0x0400
-	immr->im_ioport.iop_papar &= ~(WATCHDOG_BIT);	/* GPIO     */
-	immr->im_ioport.iop_padir |= WATCHDOG_BIT;	/* Output   */
-	immr->im_ioport.iop_paodr &= ~(WATCHDOG_BIT);	/* active output */
-
-	immr->im_ioport.iop_padat ^= WATCHDOG_BIT;	/* Toggle WDI   */
-# else
 	/*
 	 * All other boards use the MPC8xx Internal Watchdog
 	 */
 	immr->im_siu_conf.sc_swsr = 0x556c;	/* write magic1 */
 	immr->im_siu_conf.sc_swsr = 0xaa39;	/* write magic2 */
-# endif /* CONFIG_LWMON */
 }
 #endif /* CONFIG_WATCHDOG */
 

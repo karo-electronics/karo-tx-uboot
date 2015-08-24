@@ -56,8 +56,8 @@ int karo_load_nand_part(const char *part, void *addr, size_t len)
 
 		return ret;
 	}
-	debug("Found partition '%s': offset=%08x size=%08x\n",
-		part, part_info->offset, part_info->size);
+	debug("Found partition '%s': offset=%08llx size=%08llx\n",
+		part, (u64)part_info->offset, (u64)part_info->size);
 
 	if (part_info->size < len)
 		len = part_info->size;
@@ -70,8 +70,8 @@ int karo_load_nand_part(const char *part, void *addr, size_t len)
 		return ret;
 	}
 
-	debug("Read %u byte from partition '%s' @ offset %08x\n",
-		len, part, part_info->offset);
+	debug("Read %u byte from partition '%s' @ offset %08llx\n",
+		len, part, (u64)part_info->offset);
 	return 0;
 }
 

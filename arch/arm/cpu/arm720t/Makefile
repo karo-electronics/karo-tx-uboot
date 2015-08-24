@@ -5,27 +5,11 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
+extra-y	= start.o
+obj-y	= interrupts.o cpu.o
 
-LIB	= $(obj)lib$(CPU).o
-
-START	= start.o
-COBJS	= interrupts.o cpu.o
-
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS) $(SOBJS))
-START	:= $(addprefix $(obj),$(START))
-
-all:	$(obj).depend $(START) $(LIB)
-
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-$(CONFIG_TEGRA) += tegra-common/
+obj-$(CONFIG_TEGRA20) += tegra20/
+obj-$(CONFIG_TEGRA30) += tegra30/
+obj-$(CONFIG_TEGRA114) += tegra114/
+obj-$(CONFIG_TEGRA124) += tegra124/

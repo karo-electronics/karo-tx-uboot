@@ -15,7 +15,37 @@
 
 #include <common.h>
 #include <cros_ec.h>
+#include <dm.h>
+#include <errno.h>
 #include <spi.h>
+
+DECLARE_GLOBAL_DATA_PTR;
+
+int cros_ec_spi_packet(struct udevice *udev, int out_bytes, int in_bytes)
+{
+	struct cros_ec_dev *dev = udev->uclass_priv;
+	struct spi_slave *slave = dev_get_parentdata(dev->dev);
+	int rv;
+
+	/* Do the transfer */
+	if (spi_claim_bus(slave)) {
+		debug("%s: Cannot claim SPI bus\n", __func__);
+		return -1;
+	}
+
+	rv = spi_xfer(slave, max(out_bytes, in_bytes) * 8,
+		      dev->dout, dev->din,
+		      SPI_XFER_BEGIN | SPI_XFER_END);
+
+	spi_release_bus(slave);
+
+	if (rv) {
+		debug("%s: Cannot complete SPI transfer\n", __func__);
+		return -1;
+	}
+
+	return in_bytes;
+}
 
 /**
  * Send a command to a LPC CROS_EC device and return the reply.
@@ -32,15 +62,23 @@
  * @param din_len	Maximum size of response in bytes
  * @return number of bytes in response, or -1 on error
  */
-int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
+int cros_ec_spi_command(struct udevice *udev, uint8_t cmd, int cmd_version,
 		     const uint8_t *dout, int dout_len,
 		     uint8_t **dinp, int din_len)
 {
+	struct cros_ec_dev *dev = udev->uclass_priv;
+	struct spi_slave *slave = dev_get_parentdata(dev->dev);
 	int in_bytes = din_len + 4;	/* status, length, checksum, trailer */
 	uint8_t *out;
 	uint8_t *p;
 	int csum, len;
 	int rv;
+
+	if (dev->protocol_version != 2) {
+		debug("%s: Unsupported EC protcol version %d\n",
+		      __func__, dev->protocol_version);
+		return -1;
+	}
 
 	/*
 	 * Sanity-check input size to make sure it plus transaction overhead
@@ -62,13 +100,13 @@ int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	 */
 	memset(dev->din, '\0', in_bytes);
 
-	if (spi_claim_bus(dev->spi)) {
+	if (spi_claim_bus(slave)) {
 		debug("%s: Cannot claim SPI bus\n", __func__);
 		return -1;
 	}
 
 	out = dev->dout;
-	out[0] = cmd_version;
+	out[0] = EC_CMD_VERSION0 + cmd_version;
 	out[1] = cmd;
 	out[2] = (uint8_t)dout_len;
 	memcpy(out + 3, dout, dout_len);
@@ -83,17 +121,17 @@ int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	p = dev->din + sizeof(int64_t) - 2;
 	len = dout_len + 4;
 	cros_ec_dump_data("out", cmd, out, len);
-	rv = spi_xfer(dev->spi, max(len, in_bytes) * 8, out, p,
+	rv = spi_xfer(slave, max(len, in_bytes) * 8, out, p,
 		      SPI_XFER_BEGIN | SPI_XFER_END);
 
-	spi_release_bus(dev->spi);
+	spi_release_bus(slave);
 
 	if (rv) {
 		debug("%s: Cannot complete SPI transfer\n", __func__);
 		return -1;
 	}
 
-	len = min(p[1], din_len);
+	len = min((int)p[1], din_len);
 	cros_ec_dump_data("in", -1, p, len + 3);
 
 	/* Response code is first byte of message */
@@ -116,31 +154,25 @@ int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	return len;
 }
 
-int cros_ec_spi_decode_fdt(struct cros_ec_dev *dev, const void *blob)
+static int cros_ec_probe(struct udevice *dev)
 {
-	/* Decode interface-specific FDT params */
-	dev->max_frequency = fdtdec_get_int(blob, dev->node,
-					    "spi-max-frequency", 500000);
-	dev->cs = fdtdec_get_int(blob, dev->node, "reg", 0);
-
-	return 0;
+	return cros_ec_register(dev);
 }
 
-/**
- * Initialize SPI protocol.
- *
- * @param dev		CROS_EC device
- * @param blob		Device tree blob
- * @return 0 if ok, -1 on error
- */
-int cros_ec_spi_init(struct cros_ec_dev *dev, const void *blob)
-{
-	dev->spi = spi_setup_slave_fdt(blob, dev->parent_node,
-				       dev->cs, dev->max_frequency, 0);
-	if (!dev->spi) {
-		debug("%s: Could not setup SPI slave\n", __func__);
-		return -1;
-	}
+static struct dm_cros_ec_ops cros_ec_ops = {
+	.packet = cros_ec_spi_packet,
+	.command = cros_ec_spi_command,
+};
 
-	return 0;
-}
+static const struct udevice_id cros_ec_ids[] = {
+	{ .compatible = "google,cros-ec" },
+	{ }
+};
+
+U_BOOT_DRIVER(cros_ec_spi) = {
+	.name		= "cros_ec",
+	.id		= UCLASS_CROS_EC,
+	.of_match	= cros_ec_ids,
+	.probe		= cros_ec_probe,
+	.ops		= &cros_ec_ops,
+};

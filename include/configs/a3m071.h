@@ -13,8 +13,9 @@
  */
 
 #define CONFIG_MPC5200
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_A3M071			/* ... on A3M071 board */
+#define CONFIG_A3M071			/* A3M071 board */
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define	CONFIG_SYS_TEXT_BASE	0x01000000	/* boot low for 32 MiB boards */
 
@@ -30,6 +31,8 @@
 #else
 #define CONFIG_HOSTNAME		a3m071
 #endif
+
+#define CONFIG_BOOTCOUNT_LIMIT
 
 /*
  * Serial console configuration
@@ -57,6 +60,7 @@
 #define CONFIG_BOOTP_SERVERIP
 #define CONFIG_NET_RETRY_COUNT 3
 #define CONFIG_CMD_LINK_LOCAL
+#define CONFIG_LIB_RAND
 #define CONFIG_NETCONSOLE
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV
 #define CONFIG_CMD_PING
@@ -65,7 +69,8 @@
 #define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT          "nor0=fc000000.flash"
 #define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:512k(u-boot),"	\
-						"256k(env),"	\
+						"128k(env1),"	\
+						"128k(env2),"	\
 						"128k(hwinfo),"	\
 						"1M(nvramsim),"	\
 						"128k(dtb),"	\
@@ -73,7 +78,9 @@
 						"128k(sysinfo),"	\
 						"7552k(root),"	\
 						"4M(app),"	\
-						"13568k(data)"
+						"5376k(data),"	\
+						"8M(install)"
+
 #define CONFIG_LZO			/* needed for UBI */
 #define CONFIG_RBTREE			/* needed for UBI */
 #define CONFIG_CMD_MTDPARTS
@@ -240,7 +247,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"=> "
 
 #define CONFIG_CMDLINE_EDITING
 #define	CONFIG_SYS_HUSH_PARSER
@@ -260,7 +266,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x00100000
 
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_LOOPW
 #define CONFIG_SYS_CONSOLE_INFO_QUIET	/* don't print console @ startup*/
 
@@ -367,7 +372,7 @@
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
 	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
-	"mtdargs=setenv bootargs root=/dev/mtdblock7 "			\
+	"mtdargs=setenv bootargs root=/dev/mtdblock8 "			\
 		"rootfstype=squashfs,jffs2\0"				\
 	"addhost=setenv bootargs ${bootargs} "				\
 		"hostname=${hostname}\0"				\
@@ -376,22 +381,32 @@
 		":${hostname}:${netdev}:off panic=1\0"			\
 	"addtty=setenv bootargs ${bootargs} "				\
 		"console=${consoledev},${baudrate}\0"			\
-	"flash_nfs=run nfsargs addip addtty addhost;"			\
+	"flash_nfs=run nfsargs addip addtty addmtd addhost;"		\
 		"bootm ${kernel_addr} - ${fdt_addr}\0"			\
-	"flash_mtd=run mtdargs addip addtty addhost;"			\
+	"flash_mtd=run mtdargs addip addtty addmtd addhost;"		\
 		"bootm ${kernel_addr} - ${fdt_addr}\0"			\
-	"flash_self=run ramargs addip addtty addhost;"			\
+	"flash_self=run ramargs addip addtty addmtd addhost;"		\
 		"bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
 	"net_nfs=tftp ${kernel_addr_r} ${bootfile};"			\
 		"tftp ${fdt_addr_r} ${fdtfile};"			\
-		"run nfsargs addip addtty addhost;"			\
+		"run nfsargs addip addtty addmtd addhost;"		\
 		"bootm ${kernel_addr_r} - ${fdt_addr_r}\0"		\
 	"load=tftp ${loadaddr} " __stringify(CONFIG_HOSTNAME)		\
 		"/u-boot-img.bin\0"					\
-	"update=protect off fc000000 fc07ffff; "			\
+	"update=protect off fc000000 fc07ffff;"				\
 		"era fc000000 fc07ffff;"				\
 		"cp.b ${loadaddr} fc000000 ${filesize}\0"		\
 	"upd=run load;run update\0"					\
+	"upd_fdt=tftp 1800000 a3m071/a3m071.dtb;"			\
+		"run mtdargs addip addtty addmtd addhost;"		\
+		"fdt addr 1800000;fdt boardsetup;fdt chosen;"		\
+		"erase fc1e0000 fc1fffff;cp.b 1800000 fc1e0000 20000"	\
+	"upd_kernel=tftp 1000000 a3m071/uImage-uncompressed;"		\
+		"erase fc200000 fc6fffff;"				\
+		"cp.b 1000000 fc200000 ${filesize}"			\
+	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"		\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	""
 
 #define CONFIG_BOOTCOMMAND	"run flash_mtd"
@@ -399,13 +414,10 @@
 /*
  * SPL related defines
  */
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_NOR_SUPPORT
 #define CONFIG_SPL_TEXT_BASE	0xfc000000
-#define	CONFIG_SPL_START_S_PATH	"arch/powerpc/cpu/mpc5xxx"
-#define CONFIG_SPL_LDSCRIPT	"arch/powerpc/cpu/mpc5xxx/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT	/* image.c */
 #define CONFIG_SPL_LIBGENERIC_SUPPORT	/* string.c */
 #define CONFIG_SPL_SERIAL_SUPPORT

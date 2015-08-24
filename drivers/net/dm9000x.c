@@ -17,7 +17,7 @@ V0.11	06/20/2001	REG_0A bit3=1, default enable BP with DA match
 		R17 = (R17 & 0xfff0) | NF
 
 v1.00			modify by simon 2001.9.5
-	                change for kernel 2.4.x
+			change for kernel 2.4.x
 
 v1.1   11/09/2001	fix force mode bug
 
@@ -342,6 +342,15 @@ static int dm9000_init(struct eth_device *dev, bd_t *bd)
 	DM9000_iow(DM9000_ISR, ISR_ROOS | ISR_ROS | ISR_PTS | ISR_PRS);
 
 	printf("MAC: %pM\n", dev->enetaddr);
+	if (!is_valid_ether_addr(dev->enetaddr)) {
+#ifdef CONFIG_RANDOM_MACADDR
+		printf("Bad MAC address (uninitialized EEPROM?), randomizing\n");
+		eth_random_addr(dev->enetaddr);
+		printf("MAC: %pM\n", dev->enetaddr);
+#else
+		printf("WARNING: Bad MAC address (uninitialized EEPROM?)\n");
+#endif
+	}
 
 	/* fill device MAC address registers */
 	for (i = 0, oft = DM9000_PAR; i < 6; i++, oft++)

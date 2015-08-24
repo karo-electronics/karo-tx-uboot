@@ -5,7 +5,7 @@
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
@@ -14,7 +14,7 @@
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <ioports.h>
 #include <spd_sdram.h>
 #include <miiphy.h>
@@ -273,7 +273,7 @@ local_bus_init(void)
 
 	get_sys_info(&sysinfo);
 	clkdiv = lbc->lcrr & LCRR_CLKDIV;
-	lbc_hz = sysinfo.freqSystemBus / 1000000 / clkdiv;
+	lbc_hz = sysinfo.freq_systembus / 1000000 / clkdiv;
 
 	if (lbc_hz < 66) {
 		lbc->lcrr = CONFIG_SYS_LBC_LCRR | LCRR_DBYP;	/* DLL Bypass */
@@ -373,7 +373,7 @@ void lbc_sdram_init(void)
 phys_size_t fixed_sdram(void)
 {
   #ifndef CONFIG_SYS_RAMBOOT
-	volatile ccsr_ddr_t *ddr= (void *)(CONFIG_SYS_MPC8xxx_DDR_ADDR);
+	volatile ccsr_ddr_t *ddr = (void *)(CONFIG_SYS_FSL_DDR_ADDR);
 
 	ddr->cs0_bnds = CONFIG_SYS_DDR_CS0_BNDS;
 	ddr->cs0_config = CONFIG_SYS_DDR_CS0_CONFIG;
@@ -438,8 +438,7 @@ pci_init_board(void)
 
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void
-ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	int node, tmp[2];
 	const char *path;
@@ -457,5 +456,7 @@ ft_board_setup(void *blob, bd_t *bd)
 		}
 #endif
 	}
+
+	return 0;
 }
 #endif

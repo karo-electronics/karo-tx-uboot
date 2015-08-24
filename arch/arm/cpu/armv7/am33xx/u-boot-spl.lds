@@ -22,6 +22,7 @@ SECTIONS
 	.text      :
 	{
 		__start = .;
+		*(.vectors)
 		arch/arm/cpu/armv7/start.o	(.text)
 		*(.text*)
 	} >.sram
@@ -38,7 +39,11 @@ SECTIONS
 
 	. = ALIGN(4);
 	__image_copy_end = .;
-	_end = .;
+
+	.end :
+	{
+		*(.__end)
+	} >.sram
 
 	.bss :
 	{

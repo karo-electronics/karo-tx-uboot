@@ -94,6 +94,9 @@ class Series(dict):
             cmd: The git command we would have run
             process_tags: Process tags as if they were aliases
         """
+        to_set = set(gitutil.BuildEmailList(self.to));
+        cc_set = set(gitutil.BuildEmailList(self.cc));
+
         col = terminal.Color()
         print 'Dry run, so not doing much. But I would do this:'
         print
@@ -106,24 +109,16 @@ class Series(dict):
             commit = self.commits[upto]
             print col.Color(col.GREEN, '   %s' % args[upto])
             cc_list = list(self._generated_cc[commit.patch])
-
-            # Skip items in To list
-            if 'to' in self:
-                try:
-                    map(cc_list.remove, gitutil.BuildEmailList(self.to))
-                except ValueError:
-                    pass
-
-            for email in cc_list:
+            for email in set(cc_list) - to_set - cc_set:
                 if email == None:
                     email = col.Color(col.YELLOW, "<alias '%s' not found>"
                             % tag)
                 if email:
                     print '      Cc: ',email
         print
-        for item in gitutil.BuildEmailList(self.get('to', '<none>')):
+        for item in to_set:
             print 'To:\t ', item
-        for item in gitutil.BuildEmailList(self.cc):
+        for item in cc_set - to_set:
             print 'Cc:\t ', item
         print 'Version: ', self.get('version')
         print 'Prefix:\t ', self.get('prefix')
@@ -131,7 +126,7 @@ class Series(dict):
             print 'Cover: %d lines' % len(self.cover)
             cover_cc = gitutil.BuildEmailList(self.get('cover_cc', ''))
             all_ccs = itertools.chain(cover_cc, *self._generated_cc.values())
-            for email in set(all_ccs):
+            for email in set(all_ccs) - to_set - cc_set:
                     print '      Cc: ',email
         if cmd:
             print 'Git command: %s' % cmd
@@ -201,7 +196,8 @@ class Series(dict):
             str = 'Change log exists, but no version is set'
             print col.Color(col.RED, str)
 
-    def MakeCcFile(self, process_tags, cover_fname, raise_on_error):
+    def MakeCcFile(self, process_tags, cover_fname, raise_on_error,
+                   add_maintainers):
         """Make a cc file for us to use for per-commit Cc automation
 
         Also stores in self._generated_cc to make ShowActions() faster.
@@ -211,6 +207,7 @@ class Series(dict):
             cover_fname: If non-None the name of the cover letter.
             raise_on_error: True to raise an error when an alias fails to match,
                 False to just print a message.
+            add_maintainers: Call the get_maintainers to CC maintainers
         Return:
             Filename of temp file created
         """
@@ -225,9 +222,10 @@ class Series(dict):
                                                raise_on_error=raise_on_error)
             list += gitutil.BuildEmailList(commit.cc_list,
                                            raise_on_error=raise_on_error)
-            list += get_maintainer.GetMaintainer(commit.patch)
+	    if add_maintainers:
+                list += get_maintainer.GetMaintainer(commit.patch)
             all_ccs += list
-            print >>fd, commit.patch, ', '.join(list)
+            print >>fd, commit.patch, ', '.join(set(list))
             self._generated_cc[commit.patch] = list
 
         if cover_fname:

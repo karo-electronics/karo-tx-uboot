@@ -63,6 +63,8 @@ typedef u64 iomux_v3_cfg_t;
 #define MUX_SEL_INPUT_SHIFT	59
 #define MUX_SEL_INPUT_MASK	((iomux_v3_cfg_t)0xf << MUX_SEL_INPUT_SHIFT)
 
+#define MUX_MODE_SION		((iomux_v3_cfg_t)IOMUX_CONFIG_SION << \
+	MUX_MODE_SHIFT)
 #define __MUX_PAD_CTRL(x)	((x) | __PAD_CTRL_VALID)
 #define MUX_PAD_CTRL(x)		(((iomux_v3_cfg_t)__MUX_PAD_CTRL(x) << \
 						MUX_PAD_CTRL_SHIFT))
@@ -90,7 +92,7 @@ typedef u64 iomux_v3_cfg_t;
 #define __PAD_CTRL_VALID	(1 << 17)
 #define PAD_CTRL_VALID		((iomux_v3_cfg_t)__PAD_CTRL_VALID << MUX_PAD_CTRL_SHIFT)
 
-#ifdef CONFIG_MX6
+#ifdef CONFIG_SOC_MX6
 
 #define PAD_CTL_HYS		__MUX_PAD_CTRL(1 << 16)
 
@@ -116,23 +118,36 @@ typedef u64 iomux_v3_cfg_t;
 #define PAD_CTL_DSE_40ohm	__MUX_PAD_CTRL(6 << 3)
 #define PAD_CTL_DSE_34ohm	__MUX_PAD_CTRL(7 << 3)
 
-#elif defined(CONFIG_VF610)
+#if defined CONFIG_SOC_MX6SL
+#define PAD_CTL_LVE		__MUX_PAD_CTRL(1 << 1)
+#define PAD_CTL_LVE_BIT		__MUX_PAD_CTRL(1 << 22)
+#endif
+
+#elif defined(CONFIG_SOC_VF610)
 
 #define PAD_MUX_MODE_SHIFT	20
+
+#define PAD_CTL_INPUT_DIFFERENTIAL __MUX_PAD_CTRL(1 << 16)
 
 #define PAD_CTL_SPEED_MED	__MUX_PAD_CTRL(1 << 12)
 #define PAD_CTL_SPEED_HIGH	__MUX_PAD_CTRL(3 << 12)
 
+#define PAD_CTL_SRE		__MUX_PAD_CTRL(1 << 11)
+
+#define PAD_CTL_DSE_150ohm	__MUX_PAD_CTRL(1 << 6)
 #define PAD_CTL_DSE_50ohm	__MUX_PAD_CTRL(3 << 6)
 #define PAD_CTL_DSE_25ohm	__MUX_PAD_CTRL(6 << 6)
 #define PAD_CTL_DSE_20ohm	__MUX_PAD_CTRL(7 << 6)
 
 #define PAD_CTL_PUS_47K_UP	__MUX_PAD_CTRL(1 << 4 | PAD_CTL_PUE)
 #define PAD_CTL_PUS_100K_UP	__MUX_PAD_CTRL(2 << 4 | PAD_CTL_PUE)
+#define PAD_CTL_PUS_22K_UP	__MUX_PAD_CTRL(3 << 4 | PAD_CTL_PUE)
 #define PAD_CTL_PKE		__MUX_PAD_CTRL(1 << 3)
 #define PAD_CTL_PUE		__MUX_PAD_CTRL(1 << 2 | PAD_CTL_PKE)
 
 #define PAD_CTL_OBE_IBE_ENABLE	__MUX_PAD_CTRL(3 << 0)
+#define PAD_CTL_OBE_ENABLE	__MUX_PAD_CTRL(1 << 1)
+#define PAD_CTL_IBE_ENABLE	__MUX_PAD_CTRL(1 << 0)
 
 #else
 
@@ -171,8 +186,38 @@ typedef u64 iomux_v3_cfg_t;
 #define GPIO_PORTE		(4 << GPIO_PORT_SHIFT)
 #define GPIO_PORTF		(5 << GPIO_PORT_SHIFT)
 
-void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad);
+void imx_iomux_v3_setup_pad(const iomux_v3_cfg_t const pad);
 void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 				     unsigned count);
+/*
+* Set bits for general purpose registers
+*/
+void imx_iomux_set_gpr_register(int group, int start_bit,
+					 int num_bits, int value);
+
+/* macros for declaring and using pinmux array */
+#if defined(CONFIG_SOC_MX6QDL)
+#define IOMUX_PADS(x) (MX6Q_##x), (MX6DL_##x)
+#define SETUP_IOMUX_PAD(def)					\
+if (is_cpu_type(MXC_CPU_MX6Q)) {				\
+	imx_iomux_v3_setup_pad(MX6Q_##def);			\
+} else {							\
+	imx_iomux_v3_setup_pad(MX6DL_##def);			\
+}
+#define SETUP_IOMUX_PADS(x)					\
+	imx_iomux_v3_setup_multiple_pads(x, ARRAY_SIZE(x)/2)
+#elif defined(CONFIG_SOC_MX6Q) || defined(CONFIG_SOC_MX6D)
+#define IOMUX_PADS(x) MX6Q_##x
+#define SETUP_IOMUX_PAD(def)					\
+	imx_iomux_v3_setup_pad(MX6Q_##def);
+#define SETUP_IOMUX_PADS(x)					\
+	imx_iomux_v3_setup_multiple_pads(x, ARRAY_SIZE(x))
+#else
+#define IOMUX_PADS(x) MX6DL_##x
+#define SETUP_IOMUX_PAD(def)					\
+	imx_iomux_v3_setup_pad(MX6DL_##def);
+#define SETUP_IOMUX_PADS(x)					\
+	imx_iomux_v3_setup_multiple_pads(x, ARRAY_SIZE(x))
+#endif
 
 #endif	/* __ASM_ARCH_IOMUX_V3_H__*/

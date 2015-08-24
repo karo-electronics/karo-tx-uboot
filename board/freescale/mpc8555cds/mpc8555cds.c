@@ -1,7 +1,7 @@
 /*
  * Copyright 2004, 2011 Freescale Semiconductor.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -9,7 +9,7 @@
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <ioports.h>
 #include <spd_sdram.h>
 #include <libfdt.h>
@@ -248,7 +248,7 @@ local_bus_init(void)
 
 	get_sys_info(&sysinfo);
 	clkdiv = lbc->lcrr & LCRR_CLKDIV;
-	lbc_hz = sysinfo.freqSystemBus / 1000000 / clkdiv;
+	lbc_hz = sysinfo.freq_systembus / 1000000 / clkdiv;
 
 	if (lbc_hz < 66) {
 		lbc->lcrr |= LCRR_DBYP;	/* DLL Bypass */

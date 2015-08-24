@@ -2,7 +2,7 @@
  * (C) Copyright 2007-2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -28,6 +28,9 @@
 #else
 #error ("Board unsupported")
 #endif
+
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define	CONFIG_SYS_TEXT_BASE	0xFE000000
 
@@ -204,9 +207,6 @@
 	""
 
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE
-#if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
-#define CONFIG_SYS_RAMBOOT
-#endif
 
 #define CONFIG_SYS_MONITOR_LEN		(768 << 10)
 
@@ -227,6 +227,7 @@
 /* enable I2C and select the hardware/software driver */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_SOFT		/* I2C bit-banged */
+#define CONFIG_SYS_I2C_INIT_BOARD
 #define CONFIG_SYS_NUM_I2C_BUSES	3
 #define CONFIG_SYS_I2C_MAX_HOPS		1
 #define CONFIG_SYS_I2C_SOFT_SPEED	50000
@@ -237,6 +238,7 @@
 			{0, {{I2C_MUX_PCA9542, 0x70, 1} } } }
 
 #define CONFIG_KM_IVM_BUS		1	/* I2C2 (Mux-Port 1)*/
+#define CONFIG_KM_I2C_ABORT
 
 /*
  * Software (bit-bang) I2C driver configuration
@@ -271,7 +273,6 @@ int get_scl(void);
 #define CONFIG_DTT_LM75			/* ON Semi's LM75		*/
 #define CONFIG_DTT_SENSORS	{0}	/* Sensor addresses		*/
 #define CONFIG_SYS_DTT_MAX_TEMP	70
-#define CONFIG_SYS_DTT_LOW_TEMP	-30
 #define CONFIG_SYS_DTT_HYSTERESIS	3
 #define CONFIG_SYS_DTT_BUS_NUM		2
 

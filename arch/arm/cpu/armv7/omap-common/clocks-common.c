@@ -196,6 +196,18 @@ static const struct dpll_params *get_ddr_dpll_params
 	return &dpll_data->ddr[sysclk_ind];
 }
 
+#ifdef CONFIG_DRIVER_TI_CPSW
+static const struct dpll_params *get_gmac_dpll_params
+			(struct dplls const *dpll_data)
+{
+	u32 sysclk_ind = get_sys_clk_index();
+
+	if (!dpll_data->gmac)
+		return NULL;
+	return &dpll_data->gmac[sysclk_ind];
+}
+#endif
+
 static void do_setup_dpll(u32 const base, const struct dpll_params *params,
 				u8 lock, char *dpll)
 {
@@ -327,7 +339,7 @@ void configure_mpu_dpll(void)
 	debug("MPU DPLL locked\n");
 }
 
-#ifdef CONFIG_USB_EHCI_OMAP
+#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP)
 static void setup_usb_dpll(void)
 {
 	const struct dpll_params *params;
@@ -392,62 +404,19 @@ static void setup_dplls(void)
 	/* MPU dpll */
 	configure_mpu_dpll();
 
-#ifdef CONFIG_USB_EHCI_OMAP
+#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP)
 	setup_usb_dpll();
 #endif
 	params = get_ddr_dpll_params(*dplls_data);
 	do_setup_dpll((*prcm)->cm_clkmode_dpll_ddrphy,
 		      params, DPLL_LOCK, "ddr");
-}
 
-#ifdef CONFIG_SYS_CLOCKS_ENABLE_ALL
-static void setup_non_essential_dplls(void)
-{
-	u32 abe_ref_clk;
-	const struct dpll_params *params;
-
-	/* IVA */
-	clrsetbits_le32((*prcm)->cm_bypclk_dpll_iva,
-		CM_BYPCLK_DPLL_IVA_CLKSEL_MASK, DPLL_IVA_CLKSEL_CORE_X2_DIV_2);
-
-	params = get_iva_dpll_params(*dplls_data);
-	do_setup_dpll((*prcm)->cm_clkmode_dpll_iva, params, DPLL_LOCK, "iva");
-
-	/* Configure ABE dpll */
-	params = get_abe_dpll_params(*dplls_data);
-#ifdef CONFIG_SYS_OMAP_ABE_SYSCK
-	abe_ref_clk = CM_ABE_PLL_REF_CLKSEL_CLKSEL_SYSCLK;
-
-	if (omap_revision() == DRA752_ES1_0)
-		/* Select the sys clk for dpll_abe */
-		clrsetbits_le32((*prcm)->cm_abe_pll_sys_clksel,
-				CM_CLKSEL_ABE_PLL_SYS_CLKSEL_MASK,
-				CM_ABE_PLL_SYS_CLKSEL_SYSCLK2);
-#else
-	abe_ref_clk = CM_ABE_PLL_REF_CLKSEL_CLKSEL_32KCLK;
-	/*
-	 * We need to enable some additional options to achieve
-	 * 196.608MHz from 32768 Hz
-	 */
-	setbits_le32((*prcm)->cm_clkmode_dpll_abe,
-			CM_CLKMODE_DPLL_DRIFTGUARD_EN_MASK|
-			CM_CLKMODE_DPLL_RELOCK_RAMP_EN_MASK|
-			CM_CLKMODE_DPLL_LPMODE_EN_MASK|
-			CM_CLKMODE_DPLL_REGM4XEN_MASK);
-	/* Spend 4 REFCLK cycles at each stage */
-	clrsetbits_le32((*prcm)->cm_clkmode_dpll_abe,
-			CM_CLKMODE_DPLL_RAMP_RATE_MASK,
-			1 << CM_CLKMODE_DPLL_RAMP_RATE_SHIFT);
+#ifdef CONFIG_DRIVER_TI_CPSW
+	params = get_gmac_dpll_params(*dplls_data);
+	do_setup_dpll((*prcm)->cm_clkmode_dpll_gmac, params,
+		      DPLL_LOCK, "gmac");
 #endif
-
-	/* Select the right reference clk */
-	clrsetbits_le32((*prcm)->cm_abe_pll_ref_clksel,
-			CM_ABE_PLL_REF_CLKSEL_CLKSEL_MASK,
-			abe_ref_clk << CM_ABE_PLL_REF_CLKSEL_CLKSEL_SHIFT);
-	/* Lock the dpll */
-	do_setup_dpll((*prcm)->cm_clkmode_dpll_abe, params, DPLL_LOCK, "abe");
 }
-#endif
 
 u32 get_offset_code(u32 volt_offset, struct pmic_data *pmic)
 {
@@ -468,12 +437,15 @@ void do_scale_vcore(u32 vcore_reg, u32 volt_mv, struct pmic_data *pmic)
 {
 	u32 offset_code;
 	u32 offset = volt_mv;
+#ifndef	CONFIG_DRA7XX
 	int ret = 0;
+#endif
 
 	if (!volt_mv)
 		return;
 
 	pmic->pmic_bus_init();
+#ifndef	CONFIG_DRA7XX
 	/* See if we can first get the GPIO if needed */
 	if (pmic->gpio_en)
 		ret = gpio_request(pmic->gpio, "PMIC_GPIO");
@@ -487,7 +459,7 @@ void do_scale_vcore(u32 vcore_reg, u32 volt_mv, struct pmic_data *pmic)
 	/* Pull the GPIO low to select SET0 register, while we program SET1 */
 	if (pmic->gpio_en)
 		gpio_direction_output(pmic->gpio, 0);
-
+#endif
 	/* convert to uV for better accuracy in the calculations */
 	offset *= 1000;
 
@@ -498,9 +470,10 @@ void do_scale_vcore(u32 vcore_reg, u32 volt_mv, struct pmic_data *pmic)
 
 	if (pmic->pmic_write(pmic->i2c_slave_addr, vcore_reg, offset_code))
 		printf("Scaling voltage failed for 0x%x\n", vcore_reg);
-
+#ifndef	CONFIG_DRA7XX
 	if (pmic->gpio_en)
 		gpio_direction_output(pmic->gpio, 1);
+#endif
 }
 
 static u32 optimize_vcore_voltage(struct volts const *v)
@@ -536,13 +509,79 @@ static u32 optimize_vcore_voltage(struct volts const *v)
 }
 
 /*
- * Setup the voltages for vdd_mpu, vdd_core, and vdd_iva
- * We set the maximum voltages allowed here because Smart-Reflex is not
- * enabled in bootloader. Voltage initialization in the kernel will set
- * these to the nominal values after enabling Smart-Reflex
+ * Setup the voltages for the main SoC core power domains.
+ * We start with the maximum voltages allowed here, as set in the corresponding
+ * vcores_data struct, and then scale (usually down) to the fused values that
+ * are retrieved from the SoC. The scaling happens only if the efuse.reg fields
+ * are initialised.
+ * Rail grouping is supported for the DRA7xx SoCs only, therefore the code is
+ * compiled conditionally. Note that the new code writes the scaled (or zeroed)
+ * values back to the vcores_data struct for eventual reuse. Zero values mean
+ * that the corresponding rails are not controlled separately, and are not sent
+ * to the PMIC.
  */
 void scale_vcores(struct vcores_data const *vcores)
 {
+#if defined(CONFIG_DRA7XX)
+	int i;
+	struct volts *pv = (struct volts *)vcores;
+	struct volts *px;
+
+	for (i=0; i<(sizeof(struct vcores_data)/sizeof(struct volts)); i++) {
+		debug("%d -> ", pv->value);
+		if (pv->value) {
+			/* Handle non-empty members only */
+			pv->value = optimize_vcore_voltage(pv);
+     			px = (struct volts *)vcores;
+			while (px < pv) {
+				/*
+				 * Scan already handled non-empty members to see
+				 * if we have a group and find the max voltage,
+				 * which is set to the first occurance of the
+				 * particular SMPS; the other group voltages are
+				 * zeroed.
+				 */
+				if (px->value) {
+					if ((pv->pmic->i2c_slave_addr ==
+					     px->pmic->i2c_slave_addr) &&
+					    (pv->addr == px->addr)) {
+					    	/* Same PMIC, same SMPS */
+						if (pv->value > px->value)
+							px->value = pv->value;
+
+						pv->value = 0;
+					}
+		     		}
+				px++;
+			}
+		}
+	     	debug("%d\n", pv->value);
+		pv++;
+	}
+
+	debug("cor: %d\n", vcores->core.value);
+	do_scale_vcore(vcores->core.addr, vcores->core.value, vcores->core.pmic);
+	debug("mpu: %d\n", vcores->mpu.value);
+	do_scale_vcore(vcores->mpu.addr, vcores->mpu.value, vcores->mpu.pmic);
+	/* Configure MPU ABB LDO after scale */
+	abb_setup((*ctrl)->control_std_fuse_opp_vdd_mpu_2,
+		  (*ctrl)->control_wkup_ldovbb_mpu_voltage_ctrl,
+		  (*prcm)->prm_abbldo_mpu_setup,
+		  (*prcm)->prm_abbldo_mpu_ctrl,
+		  (*prcm)->prm_irqstatus_mpu_2,
+		  OMAP_ABB_MPU_TXDONE_MASK,
+		  OMAP_ABB_FAST_OPP);
+
+	/* The .mm member is not used for the DRA7xx */
+
+	debug("gpu: %d\n", vcores->gpu.value);
+	do_scale_vcore(vcores->gpu.addr, vcores->gpu.value, vcores->gpu.pmic);
+	debug("eve: %d\n", vcores->eve.value);
+	do_scale_vcore(vcores->eve.addr, vcores->eve.value, vcores->eve.pmic);
+	debug("iva: %d\n", vcores->iva.value);
+	do_scale_vcore(vcores->iva.addr, vcores->iva.value, vcores->iva.pmic);
+	/* Might need udelay(1000) here if debug is enabled to see all prints */
+#else
 	u32 val;
 
 	val = optimize_vcore_voltage(&vcores->core);
@@ -571,13 +610,7 @@ void scale_vcores(struct vcores_data const *vcores)
 
 	val = optimize_vcore_voltage(&vcores->iva);
 	do_scale_vcore(vcores->iva.addr, val, vcores->iva.pmic);
-
-	 if (emif_sdram_type() == EMIF_SDRAM_TYPE_DDR3) {
-		/* Configure LDO SRAM "magic" bits */
-		writel(2, (*prcm)->prm_sldo_core_setup);
-		writel(2, (*prcm)->prm_sldo_mpu_setup);
-		writel(2, (*prcm)->prm_sldo_mm_setup);
-	}
+#endif
 }
 
 static inline void enable_clock_domain(u32 const clkctrl_reg, u32 enable_mode)
@@ -749,10 +782,6 @@ void prcm_init(void)
 		timer_init();
 		scale_vcores(*omap_vcores);
 		setup_dplls();
-#ifdef CONFIG_SYS_CLOCKS_ENABLE_ALL
-		setup_non_essential_dplls();
-		enable_non_essential_clocks();
-#endif
 		setup_warmreset_time();
 		break;
 	default:
@@ -768,7 +797,8 @@ void gpi2c_init(void)
 	static int gpi2c = 1;
 
 	if (gpi2c) {
-		i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+		i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED,
+			 CONFIG_SYS_OMAP24_I2C_SLAVE);
 		gpi2c = 0;
 	}
 }

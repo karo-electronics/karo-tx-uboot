@@ -4,7 +4,7 @@
  * (C) Copyright 2001-2002
  * Wolfgang Denk, DENX Software Engineering -- wd@denx.de
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************/
@@ -377,21 +377,6 @@ lcd_setcolreg (ushort regno, ushort red, ushort green, ushort blue)
 		palette[regno]);
 }
 #endif /* LCD_COLOR8 */
-
-/*----------------------------------------------------------------------*/
-#if LCD_BPP == LCD_MONOCHROME
-void lcd_initcolregs (void)
-{
-	struct pxafb_info *fbi = &panel_info.pxa;
-	cmap = (ushort *)fbi->palette;
-	ushort regno;
-
-	for (regno = 0; regno < 16; regno++) {
-		cmap[regno * 2] = 0;
-		cmap[(regno * 2) + 1] = regno & 0x0f;
-	}
-}
-#endif /* LCD_MONOCHROME */
 
 /*----------------------------------------------------------------------*/
 __weak void lcd_enable(void)

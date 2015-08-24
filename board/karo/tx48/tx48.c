@@ -337,9 +337,9 @@ static const struct pin_mux tx48_i2c_pads[] = {
 };
 
 static const struct gpio tx48_gpios[] = {
-	{ AM33XX_GPIO_NR(3, 5), GPIOF_INPUT, "I2C1_SDA", },
-	{ AM33XX_GPIO_NR(3, 6), GPIOF_INPUT, "I2C1_SCL", },
-	{ AM33XX_GPIO_NR(3, 8), GPIOF_OUTPUT_INIT_LOW, "ETH_PHY_RESET", },
+	{ AM33XX_GPIO_NR(3, 5), GPIOFLAG_INPUT, "I2C1_SDA", },
+	{ AM33XX_GPIO_NR(3, 6), GPIOFLAG_INPUT, "I2C1_SCL", },
+	{ AM33XX_GPIO_NR(3, 8), GPIOFLAG_OUTPUT_INIT_LOW, "ETH_PHY_RESET", },
 };
 
 static const struct pin_mux stk5_pads[] = {
@@ -356,8 +356,8 @@ static const struct pin_mux stk5_pads[] = {
 };
 
 static const struct gpio stk5_gpios[] = {
-	{ TX48_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
-	{ TX48_MMC_CD_GPIO, GPIOF_INPUT, "MMC0 CD", },
+	{ TX48_LED_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+	{ TX48_MMC_CD_GPIO, GPIOFLAG_INPUT, "MMC0 CD", },
 };
 
 static const struct pin_mux stk5_lcd_pads[] = {
@@ -386,9 +386,9 @@ static const struct pin_mux stk5_lcd_pads[] = {
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
-	{ AM33XX_GPIO_NR(1, 19), GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
-	{ AM33XX_GPIO_NR(1, 22), GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
-	{ AM33XX_GPIO_NR(3, 14), GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+	{ AM33XX_GPIO_NR(1, 19), GPIOFLAG_OUTPUT_INIT_LOW, "LCD RESET", },
+	{ AM33XX_GPIO_NR(1, 22), GPIOFLAG_OUTPUT_INIT_LOW, "LCD POWER", },
+	{ AM33XX_GPIO_NR(3, 14), GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
 static const struct pin_mux stk5v5_pads[] = {
@@ -397,7 +397,7 @@ static const struct pin_mux stk5v5_pads[] = {
 };
 
 static const struct gpio stk5v5_gpios[] = {
-	{ AM33XX_GPIO_NR(0, 22), GPIOF_OUTPUT_INIT_HIGH, "CAN XCVR", },
+	{ AM33XX_GPIO_NR(0, 22), GPIOFLAG_OUTPUT_INIT_HIGH, "CAN XCVR", },
 };
 
 #ifdef CONFIG_LCD
@@ -407,7 +407,7 @@ vidinfo_t panel_info = {
 	.vl_col = 1366,
 	.vl_row = 768,
 
-	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 	.cmap = tx48_cmap,
 };
 
@@ -773,7 +773,7 @@ void lcd_ctrl_init(void *lcdbase)
 		panel_info.vl_bpix = LCD_COLOR16;
 		break;
 	default:
-		panel_info.vl_bpix = LCD_COLOR24;
+		panel_info.vl_bpix = LCD_COLOR32;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -1136,7 +1136,7 @@ static const char *tx48_touchpanels[] = {
 	"ti,am3359-tscadc",
 };
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
@@ -1144,9 +1144,10 @@ void ft_board_setup(void *blob, bd_t *bd)
 	int ret;
 
 	ret = fdt_increase_size(blob, 4096);
-	if (ret)
+	if (ret) {
 		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
-
+		return ret;
+	}
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 	fdt_fixup_ethernet(blob);
 
@@ -1164,5 +1165,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 		karo_fdt_del_prop(blob, "lltc,ltc3589-2", 0x34,
 				"interrupt-parent");
 	}
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

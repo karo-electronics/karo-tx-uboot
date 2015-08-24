@@ -7,26 +7,13 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
-
-LIB	= $(obj)libcputegra-common.o
-
-SOBJS += lowlevel_init.o
-COBJS-y	+= ap.o board.o sys_info.o timer.o clock.o cache.o
-
-SRCS	:= $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS-y))
-
-all:	$(obj).depend $(LIB)
-
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-y += ap.o
+obj-y += board.o
+obj-y += cache.o
+obj-y += clock.o
+obj-y += lowlevel_init.o
+obj-y += pinmux-common.o
+obj-y += powergate.o
+obj-y += xusb-padctl.o
+obj-$(CONFIG_DISPLAY_CPUINFO) += sys_info.o
+obj-$(CONFIG_TEGRA124) += vpr.o

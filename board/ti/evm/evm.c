@@ -20,6 +20,7 @@
 #include <asm/arch/mmc_host_def.h>
 #include <asm/gpio.h>
 #include <i2c.h>
+#include <twl4030.h>
 #include <asm/mach-types.h>
 #include <linux/mtd/nand.h>
 #include "evm.h"
@@ -146,8 +147,8 @@ void get_board_mem_timings(struct board_sdrc_timings *timings)
 int misc_init_r(void)
 {
 
-#ifdef CONFIG_DRIVER_OMAP34XX_I2C
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+#ifdef CONFIG_SYS_I2C_OMAP34XX
+	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE);
 #endif
 
 #if defined(CONFIG_CMD_NET)
@@ -262,5 +263,12 @@ int board_eth_init(bd_t *bis)
 int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);
+}
+#endif
+
+#if defined(CONFIG_GENERIC_MMC)
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
 }
 #endif

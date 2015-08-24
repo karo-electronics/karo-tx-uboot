@@ -14,7 +14,7 @@
 #include <asm/arch/hardware.h>
 #include <asm/arch/davinci_misc.h>
 #include <asm/arch/ddr2_defs.h>
-#include <asm/arch/emif_defs.h>
+#include <asm/ti-common/davinci_nand.h>
 #include <asm/arch/pll_defs.h>
 
 void davinci_enable_uart0(void)
@@ -26,7 +26,7 @@ void davinci_enable_uart0(void)
 }
 
 #if defined(CONFIG_SYS_DA850_PLL_INIT)
-void da850_waitloop(unsigned long loopcnt)
+static void da850_waitloop(unsigned long loopcnt)
 {
 	unsigned long	i;
 
@@ -34,7 +34,7 @@ void da850_waitloop(unsigned long loopcnt)
 		asm("   NOP");
 }
 
-int da850_pll_init(struct davinci_pllc_regs *reg, unsigned long pllmult)
+static int da850_pll_init(struct davinci_pllc_regs *reg, unsigned long pllmult)
 {
 	if (reg == davinci_pllc0_regs)
 		/* Unlock PLL registers. */
@@ -160,7 +160,7 @@ int da850_pll_init(struct davinci_pllc_regs *reg, unsigned long pllmult)
 #endif /* CONFIG_SYS_DA850_PLL_INIT */
 
 #if defined(CONFIG_SYS_DA850_DDR_INIT)
-int da850_ddr_setup(void)
+static int da850_ddr_setup(void)
 {
 	unsigned long	tmp;
 
@@ -299,7 +299,11 @@ int arch_cpu_init(void)
 	 */
 	writel((DAVINCI_UART_PWREMU_MGMT_FREE | DAVINCI_UART_PWREMU_MGMT_URRST |
 		DAVINCI_UART_PWREMU_MGMT_UTRST),
+#if (CONFIG_SYS_NS16550_COM1 == DAVINCI_UART0_BASE)
+	       &davinci_uart0_ctrl_regs->pwremu_mgmt);
+#else
 	       &davinci_uart2_ctrl_regs->pwremu_mgmt);
+#endif
 
 #if defined(CONFIG_SYS_DA850_DDR_INIT)
 	da850_ddr_setup();

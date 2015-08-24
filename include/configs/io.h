@@ -2,14 +2,13 @@
  * (C) Copyright 2010
  * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
 #define CONFIG_405EP		1	/* this is a PPC405 CPU */
-#define CONFIG_4xx		1	/*  member of PPC4xx family */
 #define CONFIG_IO	        1	/*  on a Io board */
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
@@ -25,6 +24,7 @@
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_MISC_INIT_R
 #define CONFIG_LAST_STAGE_INIT
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_CLK_FREQ	33333333 /* external frequency to pll   */
 
@@ -41,6 +41,7 @@
 /* new uImage format support */
 #define CONFIG_FIT
 #define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
+#define CONFIG_FIT_DISABLE_SHA256
 
 #define CONFIG_ENV_IS_IN_FLASH	/* use FLASH for environment vars */
 
@@ -65,9 +66,14 @@
 /*
  * Commands additional to the ones defined in amcc-common.h
  */
-#define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DTT
+#undef CONFIG_CMD_DHCP
+#undef CONFIG_CMD_DIAG
 #undef CONFIG_CMD_EEPROM
+#undef CONFIG_CMD_ELF
+#undef CONFIG_CMD_I2C
+#undef CONFIG_CMD_IRQ
+#undef CONFIG_CMD_NFS
 
 /*
  * SDRAM configuration (please see cpu/ppc/sdram.[ch])
@@ -199,9 +205,8 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_OCM_DATA_ADDR /* in SDRAM */
 #define CONFIG_SYS_INIT_RAM_END	CONFIG_SYS_OCM_DATA_SIZE /* End of used area */
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128  /* size/bytes res'd for init data*/
 #define CONFIG_SYS_GBL_DATA_OFFSET \
-	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+	(CONFIG_SYS_INIT_RAM_END - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*

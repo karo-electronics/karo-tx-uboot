@@ -5,7 +5,7 @@
  * (C) Copyright 2005-2007
  * Beijing UD Technology Co., Ltd., taihusupport@amcc.com
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -13,7 +13,6 @@
 
 
 #define CONFIG_405EP		1	/* this is a PPC405 CPU */
-#define CONFIG_4xx		1	/*  member of PPC4xx family */
 #define CONFIG_TAIHU	        1	/*  on a taihu board */
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000

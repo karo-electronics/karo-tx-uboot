@@ -2,7 +2,7 @@
  * (C) Copyright 2009 DENX Software Engineering
  * Author: John Rigby <jrigby@gmail.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -13,13 +13,13 @@
 /*
  * KARO TX25 board - SoC Configuration
  */
-#define CONFIG_MX25
 #define CONFIG_MX25_CLK32		32000	/* OSC32K frequency */
-#define CONFIG_SYS_HZ			1000
+#define CONFIG_SYS_TIMER_RATE		CONFIG_MX25_CLK32
+#define CONFIG_SYS_TIMER_COUNTER	\
+	(&((struct gpt_regs *)IMX_GPT1_BASE)->counter)
 
 #define	CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* 256 kB for U-Boot */
 
-#define CONFIG_SPL
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
 #define CONFIG_SPL_LDSCRIPT		"arch/$(ARCH)/cpu/u-boot-spl.lds"
 #define CONFIG_SPL_MAX_SIZE		2048
@@ -94,14 +94,12 @@
  * Flash & Environment
  */
 /* No NOR flash present */
-#define CONFIG_SYS_NO_FLASH
 #define	CONFIG_ENV_IS_IN_NAND
 #define	CONFIG_ENV_OFFSET	CONFIG_SYS_MONITOR_LEN
 #define CONFIG_ENV_SIZE		(128 * 1024)	/* 128 kB NAND block size */
 #define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
 
 /* NAND */
-#define CONFIG_NAND_MXC
 #define CONFIG_MXC_NAND_REGS_BASE	(0xBB000000)
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		(0xBB000000)
@@ -110,7 +108,6 @@
 #define CONFIG_SYS_NAND_LARGEPAGE
 
 /* U-Boot general configuration */
-#define CONFIG_SYS_PROMPT	"=> "	/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size  */
 /* Print buffer sz */
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE + \
@@ -123,16 +120,10 @@
 
 /* U-Boot commands */
 #include <config_cmd_default.h>
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_CACHE
 
 /*
  * Ethernet
  */
-#define CONFIG_FEC_MXC
-#define CONFIG_FEC_MXC_PHYADDR		0x1f
-#define CONFIG_MII
-#define CONFIG_CMD_NET
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_ENV_OVERWRITE
 

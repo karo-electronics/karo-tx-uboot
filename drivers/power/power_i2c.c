@@ -14,7 +14,7 @@
 #include <linux/types.h>
 #include <power/pmic.h>
 #include <i2c.h>
-#include <compiler.h>
+#include <linux/compiler.h>
 
 int pmic_reg_write(struct pmic *p, u32 reg, u32 val)
 {
@@ -22,6 +22,8 @@ int pmic_reg_write(struct pmic *p, u32 reg, u32 val)
 
 	if (check_reg(p, reg))
 		return -1;
+
+	I2C_SET_BUS(p->bus);
 
 	switch (pmic_i2c_tx_num) {
 	case 3:
@@ -66,6 +68,8 @@ int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 	if (check_reg(p, reg))
 		return -1;
 
+	I2C_SET_BUS(p->bus);
+
 	if (i2c_read(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num))
 		return -1;
 
@@ -98,7 +102,7 @@ int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 
 int pmic_probe(struct pmic *p)
 {
-	I2C_SET_BUS(p->bus);
+	i2c_set_bus_num(p->bus);
 	debug("Bus: %d PMIC:%s probed!\n", p->bus, p->name);
 	if (i2c_probe(pmic_i2c_addr)) {
 		printf("Can't find PMIC:%s\n", p->name);

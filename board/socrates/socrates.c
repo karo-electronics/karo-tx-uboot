@@ -143,7 +143,7 @@ void local_bus_init (void)
 
 	get_sys_info (&sysinfo);
 	clkdiv = lbc->lcrr & LCRR_CLKDIV;
-	lbc_mhz = sysinfo.freqSystemBus / 1000000 / clkdiv;
+	lbc_mhz = sysinfo.freq_systembus / 1000000 / clkdiv;
 
 	/* Disable PLL bypass for Local Bus Clock >= 66 MHz */
 	if (lbc_mhz >= 66)
@@ -218,8 +218,7 @@ int board_early_init_r (void)
 #endif /* CONFIG_BOARD_EARLY_INIT_R */
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-void
-ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	u32 val[12];
 	int rc, i = 0;
@@ -251,6 +250,8 @@ ft_board_setup(void *blob, bd_t *bd)
 	if (rc)
 		printf("Unable to update localbus ranges, err=%s\n",
 		       fdt_strerror(rc));
+
+	return 0;
 }
 #endif /* defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP) */
 

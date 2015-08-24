@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <cli.h>
 #include <malloc.h>
 #include <errno.h>
 #include <linux/list.h>
@@ -104,12 +105,9 @@ static inline void *menu_item_destroy(struct menu *m,
 	return NULL;
 }
 
-void __menu_display_statusline(struct menu *m)
+__weak void menu_display_statusline(struct menu *m)
 {
-	return;
 }
-void menu_display_statusline(struct menu *m)
-	__attribute__ ((weak, alias("__menu_display_statusline")));
 
 /*
  * Display a menu so the user can make a choice of an item. First display its
@@ -196,8 +194,9 @@ static inline int menu_interactive_choice(struct menu *m, void **choice)
 		menu_display(m);
 
 		if (!m->item_choice) {
-			readret = readline_into_buffer("Enter choice: ", cbuf,
-					m->timeout / 10);
+			readret = cli_readline_into_buffer("Enter choice: ",
+							   cbuf,
+							   m->timeout / 10);
 
 			if (readret >= 0) {
 				choice_item = menu_item_by_key(m, cbuf);

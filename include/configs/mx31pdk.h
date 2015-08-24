@@ -8,7 +8,7 @@
  *
  * Configuration settings for the Freescale i.MX31 PDK board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -17,8 +17,8 @@
 #include <asm/arch/imx-regs.h>
 
 /* High Level Configuration Options */
-#define CONFIG_ARM1136			/* This is an arm1136 CPU core */
-#define CONFIG_MX31			/* in a mx31 */
+
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -29,7 +29,6 @@
 
 #define CONFIG_MACH_TYPE	MACH_TYPE_MX31_3DS
 
-#define CONFIG_SPL
 #define CONFIG_SPL_TARGET	"u-boot-with-spl.bin"
 #define CONFIG_SPL_LDSCRIPT	"arch/$(ARCH)/cpu/u-boot-spl.lds"
 #define CONFIG_SPL_MAX_SIZE	2048
@@ -120,7 +119,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define CONFIG_SYS_PROMPT	"MX31PDK U-Boot > "
 #define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE + \
@@ -136,8 +134,6 @@
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		0x81000000
-
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_CMDLINE_EDITING
 

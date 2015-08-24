@@ -18,6 +18,8 @@
  */
 #include <asm/hardware.h>
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /* ARM asynchronous clock */
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -27,8 +29,6 @@
 #define MAIN_PLL_DIV		2	/* 2 or 4 */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
-
-#define CONFIG_SYS_HZ		1000
 
 #define CONFIG_SYS_AT91_CPU_NAME	"AT91SAM9263"
 #define CONFIG_PM9263		1	/* on a Ronetix PM9263 Board	*/
@@ -181,8 +181,8 @@
 
 /* LED */
 #define CONFIG_AT91_LED
-#define	CONFIG_RED_LED		AT91_PIO_PORTB, 7	/* this is the power led */
-#define	CONFIG_GREEN_LED	AT91_PIO_PORTB, 8	/* this is the user1 led */
+#define CONFIG_RED_LED		GPIO_PIN_PB(7) /* this is the power led */
+#define CONFIG_GREEN_LED	GPIO_PIN_PB(8) /* this is the user1 led */
 
 #define CONFIG_BOOTDELAY	3
 
@@ -218,7 +218,6 @@
 /* DataFlash */
 #define CONFIG_ATMEL_DATAFLASH_SPI
 #define CONFIG_HAS_DATAFLASH			1
-#define CONFIG_SYS_SPI_WRITE_TOUT		(5 * CONFIG_SYS_HZ)
 #define CONFIG_SYS_MAX_DATAFLASH_BANKS		1
 #define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* CS0 */
 #define AT91_SPI_CLK				15000000
@@ -243,8 +242,8 @@
 #define CONFIG_SYS_NAND_MASK_ALE	(1 << 21)
 /* our CLE is AD22 */
 #define CONFIG_SYS_NAND_MASK_CLE	(1 << 22)
-#define CONFIG_SYS_NAND_ENABLE_PIN	AT91_PIO_PORTD, 15
-#define CONFIG_SYS_NAND_READY_PIN	AT91_PIO_PORTB, 30
+#define CONFIG_SYS_NAND_ENABLE_PIN	GPIO_PIN_PD(15)
+#define CONFIG_SYS_NAND_READY_PIN	GPIO_PIN_PB(30)
 
 #endif
 
@@ -272,6 +271,7 @@
 
 /* USB */
 #define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW			1
 #define CONFIG_DOS_PARTITION			1
 #define CONFIG_SYS_USB_OHCI_CPU_INIT		1

@@ -13,8 +13,7 @@
  * (easy to change)
  */
 
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_MPC5200		1	/* especially an MPC5200 */
+#define CONFIG_MPC5200		1	/* This is an MPC5200 CPU */
 #define CONFIG_JUPITER		1	/* ... on Jupiter board */
 
 /*
@@ -243,7 +242,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	    */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt   */
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
 #define CONFIG_SYS_HUSH_PARSER		1	/* Use the HUSH parser		*/
@@ -261,8 +259,6 @@
 #define CONFIG_SYS_ALT_MEMTEST		1
 
 #define CONFIG_SYS_LOAD_ADDR		0x200000	/* default load address */
-
-#define CONFIG_SYS_HZ			1000	/* decrementer freq: 1 ms ticks */
 
 #define CONFIG_SYS_CACHELINE_SIZE	32	/* For MPC5xxx CPUs */
 #if defined(CONFIG_CMD_KGDB)

@@ -11,7 +11,6 @@
 #include <common.h>
 #include <malloc.h>
 #include <command.h>
-#include <mmc.h>
 #include <part_efi.h>
 #include <exports.h>
 #include <linux/ctype.h>
@@ -30,30 +29,53 @@
  *
  * @return - zero on successful expand and env is set
  */
-static char extract_env(const char *str, char **env)
+static int extract_env(const char *str, char **env)
 {
+	int ret = -1;
 	char *e, *s;
+#ifdef CONFIG_RANDOM_UUID
+	char uuid_str[UUID_STR_LEN + 1];
+#endif
 
 	if (!str || strlen(str) < 4)
 		return -1;
 
-	if ((strncmp(str, "${", 2) == 0) && (str[strlen(str) - 1] == '}')) {
-		s = strdup(str);
-		if (s == NULL)
-			return -1;
-		memset(s + strlen(s) - 1, '\0', 1);
-		memmove(s, s + 2, strlen(s) - 1);
+	if (!((strncmp(str, "${", 2) == 0) && (str[strlen(str) - 1] == '}')))
+		return -1;
+
+	s = strdup(str);
+	if (s == NULL)
+		return -1;
+
+	memset(s + strlen(s) - 1, '\0', 1);
+	memmove(s, s + 2, strlen(s) - 1);
+
+	e = getenv(s);
+	if (e == NULL) {
+#ifdef CONFIG_RANDOM_UUID
+		debug("%s unset. ", str);
+		gen_rand_uuid_str(uuid_str, UUID_STR_FORMAT_STD);
+		setenv(s, uuid_str);
+
 		e = getenv(s);
-		free(s);
-		if (e == NULL) {
-			printf("Environmental '%s' not set\n", str);
-			return -1; /* env not set */
+		if (e) {
+			debug("Set to random.\n");
+			ret = 0;
+		} else {
+			debug("Can't get random UUID.\n");
 		}
-		*env = e;
-		return 0;
+#else
+		debug("%s unset.\n", str);
+#endif
+	} else {
+		debug("%s get from environment.\n", str);
+		ret = 0;
 	}
 
-	return -1;
+	*env = e;
+	free(s);
+
+	return ret;
 }
 
 /**
@@ -123,7 +145,7 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	int errno = 0;
 	uint64_t size_ll, start_ll;
 
-	debug("%s: MMC lba num: 0x%x %d\n", __func__,
+	debug("%s:  lba num: 0x%x %d\n", __func__,
 	      (unsigned int)dev_desc->lba, (unsigned int)dev_desc->lba);
 
 	if (str_part == NULL)
@@ -166,7 +188,7 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	/* allocate memory for partitions */
 	parts = calloc(sizeof(disk_partition_t), p_count);
 
-	/* retrive partions data from string */
+	/* retrieve partitions data from string */
 	for (i = 0; i < p_count; i++) {
 		tok = strsep(&s, ";");
 
@@ -247,25 +269,18 @@ free_str:
 	return errno;
 }
 
-static int gpt_mmc_default(int dev, const char *str_part)
+static int gpt_default(block_dev_desc_t *blk_dev_desc, const char *str_part)
 {
 	int ret;
 	char *str_disk_guid;
 	u8 part_count = 0;
 	disk_partition_t *partitions = NULL;
 
-	struct mmc *mmc = find_mmc_device(dev);
-
-	if (mmc == NULL) {
-		printf("%s: mmc dev %d NOT available\n", __func__, dev);
-		return CMD_RET_FAILURE;
-	}
-
 	if (!str_part)
 		return -1;
 
 	/* fill partitions */
-	ret = set_gpt_info(&mmc->block_dev, str_part,
+	ret = set_gpt_info(blk_dev_desc, str_part,
 			&str_disk_guid, &partitions, &part_count);
 	if (ret) {
 		if (ret == -1)
@@ -278,7 +293,7 @@ static int gpt_mmc_default(int dev, const char *str_part)
 	}
 
 	/* save partitions layout to disk */
-	gpt_restore(&mmc->block_dev, str_disk_guid, partitions, part_count);
+	gpt_restore(blk_dev_desc, str_disk_guid, partitions, part_count);
 	free(str_disk_guid);
 	free(partitions);
 
@@ -299,26 +314,35 @@ static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int ret = CMD_RET_SUCCESS;
 	int dev = 0;
-	char *pstr;
+	char *ep;
+	block_dev_desc_t *blk_dev_desc;
 
 	if (argc < 5)
 		return CMD_RET_USAGE;
 
 	/* command: 'write' */
 	if ((strcmp(argv[1], "write") == 0) && (argc == 5)) {
-		/* device: 'mmc' */
-		if (strcmp(argv[2], "mmc") == 0) {
-			/* check if 'dev' is a number */
-			for (pstr = argv[3]; *pstr != '\0'; pstr++)
-				if (!isdigit(*pstr)) {
-					printf("'%s' is not a number\n",
-						argv[3]);
-					return CMD_RET_USAGE;
-				}
-			dev = (int)simple_strtoul(argv[3], NULL, 10);
-			/* write to mmc */
-			if (gpt_mmc_default(dev, argv[4]))
-				return CMD_RET_FAILURE;
+		dev = (int)simple_strtoul(argv[3], &ep, 10);
+		if (!ep || ep[0] != '\0') {
+			printf("'%s' is not a number\n", argv[3]);
+			return CMD_RET_USAGE;
+		}
+		blk_dev_desc = get_dev(argv[2], dev);
+		if (!blk_dev_desc) {
+			printf("%s: %s dev %d NOT available\n",
+			       __func__, argv[2], dev);
+			return CMD_RET_FAILURE;
+		}
+
+		puts("Writing GPT: ");
+
+		ret = gpt_default(blk_dev_desc, argv[4]);
+		if (!ret) {
+			puts("success!\n");
+			return CMD_RET_SUCCESS;
+		} else {
+			puts("error!\n");
+			return CMD_RET_FAILURE;
 		}
 	} else {
 		return CMD_RET_USAGE;
@@ -328,7 +352,7 @@ static int do_gpt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(gpt, CONFIG_SYS_MAXARGS, 1, do_gpt,
 	"GUID Partition Table",
-	"<command> <interface> <dev> <partions_list>\n"
+	"<command> <interface> <dev> <partitions_list>\n"
 	" - GUID partition table restoration\n"
 	" Restore GPT information on a device connected\n"
 	" to interface\n"

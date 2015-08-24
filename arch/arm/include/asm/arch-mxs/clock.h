@@ -20,7 +20,7 @@ enum mxc_clock {
 	MXC_IO1_CLK,
 	MXC_XTAL_CLK,
 	MXC_SSP0_CLK,
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 	MXC_SSP1_CLK,
 	MXC_SSP2_CLK,
 	MXC_SSP3_CLK,
@@ -35,7 +35,7 @@ enum mxs_ioclock {
 
 enum mxs_sspclock {
 	MXC_SSPCLK0 = 0,
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 	MXC_SSPCLK1,
 	MXC_SSPCLK2,
 	MXC_SSPCLK3,

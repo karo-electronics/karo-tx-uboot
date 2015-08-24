@@ -16,13 +16,14 @@
  */
 #define CONFIG_BOOKE		1	/* BOOKE */
 #define CONFIG_E500		1	/* BOOKE e500 family */
-#define CONFIG_MPC85xx		1	/* MPC8540/60/55/41/48 */
 #define CONFIG_P2020		1
 #define CONFIG_XPEDITE550X	1
 #define CONFIG_SYS_BOARD_NAME	"XPedite5500"
 #define CONFIG_SYS_FORM_PMC_XMC	1
 #define CONFIG_PRPMC_PCI_ALIAS	"pci0"	/* Processor PMC interface on pci0 */
 #define CONFIG_BOARD_EARLY_INIT_R	/* Call board_pre_init */
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #ifndef CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_TEXT_BASE	0xfff80000
@@ -49,7 +50,7 @@
 /*
  * DDR config
  */
-#define CONFIG_FSL_DDR3
+#define CONFIG_SYS_FSL_DDR3
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
 #define CONFIG_MEM_INIT_VALUE		0xdeadbeef
@@ -396,12 +397,10 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks */
 #define CONFIG_CMDLINE_EDITING	1		/* add command line history	*/
 #define CONFIG_AUTO_COMPLETE	1		/* add autocompletion support */
 #define CONFIG_LOADADDR		0x1000000	/* default location for tftp and bootm */

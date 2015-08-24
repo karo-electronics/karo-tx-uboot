@@ -11,7 +11,6 @@
 #ifndef __COMMAND_H
 #define __COMMAND_H
 
-#include <config.h>
 #include <linker_lists.h>
 
 #ifndef NULL
@@ -63,6 +62,15 @@ extern int cmd_usage(const cmd_tbl_t *cmdtp);
 extern int var_complete(int argc, char * const argv[], char last_char, int maxv, char *cmdv[]);
 extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp);
 #endif
+
+/**
+ * cmd_process_error() - report and process a possible error
+ *
+ * @cmdtp: Command which caused the error
+ * @err: Error code (0 if none, -ve for error, like -EIO)
+ * @return 0 if there is not error, 1 (CMD_RET_FAILURE) if an error is found
+ */
+int cmd_process_error(cmd_tbl_t *cmdtp, int err);
 
 /*
  * Monitor Command
@@ -139,6 +147,7 @@ int cmd_process(int flag, int argc, char * const argv[],
  */
 #define CMD_FLAG_REPEAT		0x0001	/* repeat last command		*/
 #define CMD_FLAG_BOOTD		0x0002	/* command is from bootd	*/
+#define CMD_FLAG_ENV		0x0004	/* command is from the environment */
 
 #ifdef CONFIG_AUTO_COMPLETE
 # define _CMD_COMPLETE(x) x,

@@ -14,8 +14,9 @@
  * High Level Configuration Options
  */
 #define CONFIG_OMAP		/* in a TI OMAP core */
-#define CONFIG_OMAP34XX		/* which is a 34XX */
 #define CONFIG_OMAP_GPIO
+#define CONFIG_OMAP_COMMON
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_TEXT_BASE 0x80008000
 
@@ -116,14 +117,13 @@
 #undef CONFIG_CMD_IMLS
 
 #define CONFIG_SYS_NO_FLASH
-#define CONFIG_HARD_I2C
-#define CONFIG_SYS_I2C_SPEED		400000
-#define CONFIG_SYS_I2C_SLAVE		1
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	400000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
+#define CONFIG_SYS_I2C_OMAP34XX
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50		/* base address */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	1		/* bytes of address */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW	0x07
-#define CONFIG_DRIVER_OMAP34XX_I2C
-
 
 /*
  * Board NAND Info.
@@ -168,7 +168,6 @@
  */
 #define CONFIG_SYS_TIMERBASE		OMAP34XX_GPT2
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
-#define CONFIG_SYS_HZ			1000
 
 /*
  * Physical Memory Map
@@ -182,12 +181,8 @@
  */
 
 /* **** PISMO SUPPORT *** */
-
-/* Configure the PISMO */
-#define PISMO1_NAND_SIZE		GPMC_SIZE_128M
-
+#define CONFIG_NAND
 #define CONFIG_NAND_OMAP_GPMC
-#define GPMC_NAND_ECC_LP_x16_LAYOUT
 #define CONFIG_ENV_IS_IN_NAND
 #define SMNAND_ENV_OFFSET		0x180000 /* environment starts here */
 
@@ -214,14 +209,12 @@
 #define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_MII
 #define CONFIG_EMAC_MDIO_PHY_NUM	0
-#define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT 10
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_CONSOLE
@@ -252,6 +245,7 @@
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 
 /* NAND boot config */
+#define CONFIG_SYS_NAND_BUSWIDTH_16BIT	16
 #define CONFIG_SYS_NAND_PAGE_COUNT	64
 #define CONFIG_SYS_NAND_PAGE_SIZE	2048
 #define CONFIG_SYS_NAND_OOBSIZE		64
@@ -263,6 +257,7 @@
 					 56, 57, 58, 59, 60, 61, 62, 63}
 #define CONFIG_SYS_NAND_ECCSIZE		256
 #define CONFIG_SYS_NAND_ECCBYTES	3
+#define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_HAM1_CODE_SW
 
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 
@@ -370,7 +365,7 @@ struct tam3517_module_info {
 
 #define TAM3517_READ_EEPROM(info, ret) \
 do {								\
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);	\
+	i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED, CONFIG_SYS_OMAP24_I2C_SLAVE); \
 	if (eeprom_read(CONFIG_SYS_I2C_EEPROM_ADDR, 0,		\
 		(void *)info, sizeof(*info)))			\
 		ret = 1;					\

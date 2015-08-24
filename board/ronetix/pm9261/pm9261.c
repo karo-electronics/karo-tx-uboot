@@ -9,8 +9,9 @@
  */
 
 #include <common.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/io.h>
+#include <asm/gpio.h>
 #include <asm/arch/at91sam9_smc.h>
 #include <asm/arch/at91_common.h>
 #include <asm/arch/at91_pmc.h>
@@ -73,10 +74,10 @@ static void pm9261_nand_hw_init(void)
 		&pmc->pcer);
 
 	/* Configure RDY/BSY */
-	at91_set_pio_input(CONFIG_SYS_NAND_READY_PIN, 1);
+	gpio_direction_input(CONFIG_SYS_NAND_READY_PIN);
 
 	/* Enable NandFlash */
-	at91_set_pio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
+	gpio_direction_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
 
 	at91_set_a_periph(AT91_PIO_PORTC, 0, 0);	/* NANDOE */
 	at91_set_a_periph(AT91_PIO_PORTC, 1, 0);	/* NANDWE */
@@ -116,20 +117,20 @@ static void pm9261_dm9000_hw_init(void)
 
 #ifdef CONFIG_LCD
 vidinfo_t panel_info = {
-	vl_col:		240,
-	vl_row:		320,
-	vl_clk:		4965000,
-	vl_sync:	ATMEL_LCDC_INVLINE_INVERTED |
-			ATMEL_LCDC_INVFRAME_INVERTED,
-	vl_bpix:	3,
-	vl_tft:		1,
-	vl_hsync_len:	5,
-	vl_left_margin:	1,
-	vl_right_margin:33,
-	vl_vsync_len:	1,
-	vl_upper_margin:1,
-	vl_lower_margin:0,
-	mmio:		ATMEL_BASE_LCDC,
+	.vl_col =		240,
+	.vl_row =		320,
+	.vl_clk =		4965000,
+	.vl_sync =		ATMEL_LCDC_INVLINE_INVERTED |
+				ATMEL_LCDC_INVFRAME_INVERTED,
+	.vl_bpix =		3,
+	.vl_tft =		1,
+	.vl_hsync_len =		5,
+	.vl_left_margin =	1,
+	.vl_right_margin =	33,
+	.vl_vsync_len =		1,
+	.vl_upper_margin =	1,
+	.vl_lower_margin =	0,
+	.mmio =			ATMEL_BASE_LCDC,
 };
 
 void lcd_enable(void)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2011-2015 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -103,7 +103,7 @@ static struct mx53_fcb *create_fcb(void *buf, int fw1_start_block,
 	fcb = buf;
 
 	memset(fcb, 0x00, sizeof(*fcb));
-	memset(fcb + 1, 0xff, mtd->erasesize - sizeof(*fcb));
+	memset(fcb + 1, 0xff, SZ_1K - sizeof(*fcb));
 
 	strncpy((char *)&fcb->fingerprint, "FCB ", 4);
 	fcb->version = 1;
@@ -172,7 +172,8 @@ static int write_fcb(void *buf, int block)
 		(u64)block * mtd->erasesize);
 	if (doit) {
 		chip->select_chip(mtd, 0);
-		ret = chip->write_page(mtd, chip, buf, 1, page, 0, 1);
+		ret = chip->write_page(mtd, chip, 0, mtd->writesize,
+				buf, 1, page, 0, 0);
 		if (ret) {
 			printf("Failed to write FCB to block %u: %d\n", block, ret);
 		}
@@ -211,9 +212,9 @@ static int tx53_prog_uboot(void *addr, int start_block, int skip,
 	nand_erase_options_t erase_opts = { 0, };
 	size_t actual;
 	size_t prg_length = max_len - skip * mtd->erasesize;
-	int prg_start = start_block * mtd->erasesize;
+	int prg_start = (start_block + skip) * mtd->erasesize;
 
-	erase_opts.offset = (start_block - skip) * mtd->erasesize;
+	erase_opts.offset = start_block * mtd->erasesize;
 	erase_opts.length = max_len;
 	erase_opts.quiet = 1;
 
@@ -258,8 +259,8 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	int ret;
 	const unsigned long fcb_start_block = 0, fcb_end_block = 0;
 	int erase_size = mtd->erasesize;
-	int page_size = mtd->writesize;
 	void *buf;
+	size_t buf_size;
 	char *load_addr;
 	char *file_size;
 	size_t size = 0;
@@ -404,14 +405,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		}
 		fw1_start_block = part_info->offset / mtd->erasesize;
 		max_len1 = part_info->size;
-		/*
-		 * Skip one block, if the U-Boot image resides in the
-		 * same partition as the FCB
-		 */
-		if (fw1_start_block == fcb_start_block) {
-			fw1_start_block++;
-			max_len1 -= mtd->erasesize;
-		}
 		if (size == 0)
 			fw_num_blocks = max_len1 / mtd->erasesize;
 	} else {
@@ -497,7 +490,6 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	fail_if_overlap(fcb, env, "FCB", "Environment");
 	fail_if_overlap(fw1, env, "FW1", "Environment");
 #endif
-	fail_if_overlap(fw1, fcb, "FW1", "FCB");
 	if (fw2_set) {
 		fail_if_overlap(fw2, fcb, "FW2", "FCB");
 #ifdef CONFIG_ENV_IS_IN_NAND
@@ -508,43 +500,57 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	fw1_start_block += fw1_skip;
 	fw2_start_block += fw2_skip;
 
-	buf = malloc(erase_size);
+	buf_size = fw_num_blocks * erase_size;
+	buf = memalign(erase_size, buf_size);
 	if (buf == NULL) {
 		printf("Failed to allocate buffer\n");
 		return -ENOMEM;
 	}
 
+	/* copy U-Boot image to buffer */
+	memcpy(buf, addr, size);
+	memset(buf + size, 0xff, buf_size - size);
+
 	fcb = create_fcb(buf, fw1_start_block,
 			fw2_start_block, fw_num_blocks);
 	if (IS_ERR(fcb)) {
 		printf("Failed to initialize FCB: %ld\n", PTR_ERR(fcb));
-		free(buf);
-		return PTR_ERR(fcb);
+		ret = PTR_ERR(fcb);
+		goto out;
 	}
 
-	ret = write_fcb(buf, fcb_start_block);
-	free(buf);
-	if (ret) {
-		printf("Failed to write FCB to block %lu\n", fcb_start_block);
-		return ret;
-	}
+	if (fw1_start_block == fcb_start_block) {
+		printf("Programming FCB + U-Boot image from %p to block %lu @ %08llx\n",
+			buf, fw1_start_block, (u64)fw1_start_block * mtd->erasesize);
+		ret = tx53_prog_uboot(buf, fw1_start_block, fw1_skip, size,
+				max_len1);
+	} else {
+		printf("Programming U-Boot image from %p to block %lu @ %08llx\n",
+			buf, fw1_start_block, (u64)fw1_start_block * mtd->erasesize);
+		ret = tx53_prog_uboot(buf, fw1_start_block, fw1_skip, size,
+				max_len1);
+		if (ret)
+			goto out;
 
-	if (size & (page_size - 1)) {
-		memset(addr + size, 0xff, size & (page_size - 1));
-		size = ALIGN(size, page_size);
-	}
+		memset(buf + sizeof(*fcb), 0xff,
+			mtd->writesize - sizeof(*fcb));
 
-	printf("Programming U-Boot image from %p to block %lu @ %08llx\n",
-		addr, fw1_start_block, (u64)fw1_start_block * mtd->erasesize);
-	ret = tx53_prog_uboot(addr, fw1_start_block, fw1_skip, size,
-			max_len1);
+		ret = write_fcb(buf, fcb_start_block);
+		if (ret) {
+			printf("Failed to write FCB to block %lu\n", fcb_start_block);
+			return ret;
+		}
+		memset(buf, 0xff, SZ_1K);
+	}
 	if (ret || fw2_start_block == 0)
-		return ret;
+		goto out;
 
 	printf("Programming redundant U-Boot image to block %lu @ %08llx\n",
 		fw2_start_block, (u64)fw2_start_block * mtd->erasesize);
-	ret = tx53_prog_uboot(addr, fw2_start_block, fw2_skip, size,
+	ret = tx53_prog_uboot(buf, fw2_start_block, fw2_skip, size,
 			max_len2);
+out:
+	free(buf);
 	return ret;
 }
 

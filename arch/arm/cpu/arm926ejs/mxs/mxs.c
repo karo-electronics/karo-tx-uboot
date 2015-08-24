@@ -108,11 +108,11 @@ void enable_caches(void)
  */
 void mx28_fixup_vt(uint32_t start_addr)
 {
-	/* ldr pc, [pc, #0x18] */
 	/* Jumptable location is 0x0 */
 	uint32_t *vt = (uint32_t *)0x20;
 	uint32_t cr = get_cr();
 
+	/* cppcheck-suppress nullPointer */
 	memcpy(vt, (void *)start_addr + 0x20, 32);
 	set_cr(cr & ~CR_V);
 }
@@ -246,7 +246,7 @@ int do_mx28_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 /*
  * Initializes on-chip ethernet controllers.
  */
-#if defined(CONFIG_MX28) && defined(CONFIG_CMD_NET)
+#if defined(CONFIG_SOC_MX28) && defined(CONFIG_CMD_NET)
 int cpu_eth_init(bd_t *bis)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =

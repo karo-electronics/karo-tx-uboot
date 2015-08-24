@@ -11,6 +11,8 @@
 
 #include <usb_defs.h>
 #include <linux/usb/ch9.h>
+#include <asm/cache.h>
+#include <part.h>
 
 /*
  * The EHCI spec says that we must align to at least 32 bytes.  However,
@@ -118,6 +120,7 @@ struct usb_device {
 	 * Each instance needs its own set of data structures.
 	 */
 	unsigned long status;
+	unsigned long int_pending;	/* 1 bit per ep, used by int_queue */
 	int act_len;			/* transfered bytes */
 	int maxchild;			/* Number of ports if hub */
 	int portnr;
@@ -125,6 +128,20 @@ struct usb_device {
 	struct usb_device *children[USB_MAXCHILDREN];
 
 	void *controller;		/* hardware controller private data */
+	/* slot_id - for xHCI enabled devices */
+	unsigned int slot_id;
+};
+
+struct int_queue;
+
+/*
+ * You can initialize platform's USB host or device
+ * ports by passing this enum as an argument to
+ * board_usb_init().
+ */
+enum usb_init_type {
+	USB_INIT_HOST,
+	USB_INIT_DEVICE
 };
 
 /**********************************************************************
@@ -138,10 +155,16 @@ struct usb_device {
 	defined(CONFIG_USB_OMAP3) || defined(CONFIG_USB_DA8XX) || \
 	defined(CONFIG_USB_BLACKFIN) || defined(CONFIG_USB_AM35X) || \
 	defined(CONFIG_USB_MUSB_DSPS) || defined(CONFIG_USB_MUSB_AM35X) || \
-	defined(CONFIG_USB_MUSB_OMAP2PLUS)
+	defined(CONFIG_USB_MUSB_OMAP2PLUS) || defined(CONFIG_USB_MUSB_SUNXI) || \
+	defined(CONFIG_USB_XHCI) || defined(CONFIG_USB_DWC2)
 
-int usb_lowlevel_init(int index, void **controller);
+int usb_lowlevel_init(int index, enum usb_init_type init, void **controller);
 int usb_lowlevel_stop(int index);
+#ifdef CONFIG_MUSB_HOST
+void usb_reset_root_port(void);
+#else
+#define usb_reset_root_port()
+#endif
 
 int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 			void *buffer, int transfer_len);
@@ -149,6 +172,13 @@ int submit_control_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 			int transfer_len, struct devrequest *setup);
 int submit_int_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 			int transfer_len, int interval);
+
+#if defined CONFIG_USB_EHCI || defined CONFIG_MUSB_HOST
+struct int_queue *create_int_queue(struct usb_device *dev, unsigned long pipe,
+	int queuesize, int elementsize, void *buffer, int interval);
+int destroy_int_queue(struct usb_device *dev, struct int_queue *queue);
+void *poll_int_queue(struct usb_device *dev, struct int_queue *queue);
+#endif
 
 /* Defines */
 #define USB_UHCI_VEND_ID	0x8086
@@ -165,9 +195,25 @@ int submit_int_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 
 extern void udc_disconnect(void);
 
-#else
-#error USB Lowlevel not defined
 #endif
+
+/*
+ * board-specific hardware initialization, called by
+ * usb drivers and u-boot commands
+ *
+ * @param index USB controller number
+ * @param init initializes controller as USB host or device
+ */
+int board_usb_init(int index, enum usb_init_type init);
+
+/*
+ * can be used to clean up after failed USB initialization attempt
+ * vide: board_usb_init()
+ *
+ * @param index USB controller number for selective cleanup
+ * @param init usb_init_type passed to board_usb_init()
+ */
+int board_usb_cleanup(int index, enum usb_init_type init);
 
 #ifdef CONFIG_USB_STORAGE
 
@@ -188,7 +234,7 @@ int usb_host_eth_scan(int mode);
 #ifdef CONFIG_USB_KEYBOARD
 
 int drv_usb_kbd_init(void);
-int usb_kbd_deregister(void);
+int usb_kbd_deregister(int force);
 
 #endif
 /* routines */
@@ -338,6 +384,10 @@ int usb_set_interface(struct usb_device *dev, int interface, int alternate);
 #define usb_pipecontrol(pipe)	(usb_pipetype((pipe)) == PIPE_CONTROL)
 #define usb_pipebulk(pipe)	(usb_pipetype((pipe)) == PIPE_BULK)
 
+#define usb_pipe_ep_index(pipe)	\
+		usb_pipecontrol(pipe) ? (usb_pipeendpoint(pipe) * 2) : \
+				((usb_pipeendpoint(pipe) * 2) - \
+				 (usb_pipein(pipe) ? 0 : 1))
 
 /*************************************************************************
  * Hub Stuff
@@ -382,5 +432,6 @@ struct usb_device *usb_alloc_new_device(void *controller);
 
 int usb_new_device(struct usb_device *dev);
 void usb_free_device(void);
+int usb_alloc_device(struct usb_device *dev);
 
 #endif /*_USB_H_ */

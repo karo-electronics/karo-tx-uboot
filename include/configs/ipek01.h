@@ -5,7 +5,7 @@
  * (C) Copyright 2009
  * Wolfgang Grandegger, DENX Software Engineering, wg@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -16,9 +16,8 @@
  */
 
 #define CONFIG_MPC5200
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_MPX5200		1	/* ... on MPX5200 board */
-#define CONFIG_MPC5200_DDR	1	/* ... use DDR RAM */
+#define CONFIG_MPX5200		1	/* MPX5200 board */
+#define CONFIG_MPC5200_DDR	1	/* use DDR RAM */
 #define CONFIG_IPEK01           	/* Motherboard is ipek01 */
 
 #define	CONFIG_SYS_TEXT_BASE	0xfc000000
@@ -278,7 +277,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt */
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size */
 #else
@@ -297,7 +295,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000 /* default load address */
 
-#define CONFIG_SYS_HZ			1000 /* decrementer freq: 1 ms ticks */
 #define CONFIG_LOOPW
 
 /*

@@ -3,12 +3,13 @@
  *
  * Author: Donghwa Lee <dh09.lee@samsung.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
 #include <common.h>
 #include <malloc.h>
+#include <linux/compat.h>
 #include <linux/err.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/cpu.h>

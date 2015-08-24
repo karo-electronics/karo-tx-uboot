@@ -6,7 +6,7 @@
  * Configuration for Versatile Express. Parts were derived from other ARM
  *   configurations.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __VEXPRESS_COMMON_H
@@ -117,13 +117,12 @@
 
 #define CONFIG_SYS_MEMTEST_START	V2M_BASE
 #define CONFIG_SYS_MEMTEST_END		0x20000000
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
 #define CONFIG_SYS_L2CACHE_OFF		1
 #define CONFIG_INITRD_TAG		1
-
+#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_OF_LIBFDT		1
 
 /* Size of malloc() pool */
@@ -131,6 +130,10 @@
 
 #define SCTL_BASE			V2M_SYSCTL
 #define VEXPRESS_FLASHPROG_FLVPPEN	(1 << 0)
+
+#define CONFIG_SYS_TIMER_RATE		1000000
+#define CONFIG_SYS_TIMER_COUNTER	(V2M_TIMER01 + 0x4)
+#define CONFIG_SYS_TIMER_COUNTS_DOWN
 
 /* SMSC9115 Ethernet from SMSC9118 family */
 #define CONFIG_SMC911X			1

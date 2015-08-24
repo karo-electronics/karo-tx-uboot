@@ -4,7 +4,7 @@
  * Copyright (C) 2004-2008 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -133,7 +133,6 @@
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Arg Buf Sz */
 #define CONFIG_SYS_LOAD_ADDR	0x40010000
 
-#define CONFIG_SYS_HZ		1000
 #define CONFIG_SYS_CLK		80000000
 #define CONFIG_SYS_CPU_CLK	CONFIG_SYS_CLK * 3
 

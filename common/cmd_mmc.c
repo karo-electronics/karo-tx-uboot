@@ -11,7 +11,7 @@
 
 static int curr_device = -1;
 #ifndef CONFIG_GENERIC_MMC
-int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mmc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int dev;
 
@@ -71,15 +71,11 @@ U_BOOT_CMD(
 );
 #else /* !CONFIG_GENERIC_MMC */
 
-enum mmc_state {
-	MMC_INVALID,
-	MMC_READ,
-	MMC_WRITE,
-	MMC_ERASE,
-};
 static void print_mmcinfo(struct mmc *mmc)
 {
-	printf("Device: %s\n", mmc->name);
+	int i;
+
+	printf("Device: %s\n", mmc->cfg->name);
 	printf("Manufacturer ID: %x\n", mmc->cid[0] >> 24);
 	printf("OEM: %x\n", (mmc->cid[0] >> 8) & 0xffff);
 	printf("Name: %c%c%c%c%c \n", mmc->cid[0] & 0xff,
@@ -96,7 +92,65 @@ static void print_mmcinfo(struct mmc *mmc)
 	puts("Capacity: ");
 	print_size(mmc->capacity, "\n");
 
-	printf("Bus Width: %d-bit\n", mmc->bus_width);
+	printf("Bus Width: %d-bit%s\n", mmc->bus_width,
+			mmc->ddr_mode ? " DDR" : "");
+
+	puts("Erase Group Size: ");
+	print_size(((u64)mmc->erase_grp_size) << 9, "\n");
+
+	if (!IS_SD(mmc) && mmc->version >= MMC_VERSION_4_41) {
+		bool has_enh = (mmc->part_support & ENHNCD_SUPPORT) != 0;
+		bool usr_enh = has_enh && (mmc->part_attr & EXT_CSD_ENH_USR);
+
+		puts("HC WP Group Size: ");
+		print_size(((u64)mmc->hc_wp_grp_size) << 9, "\n");
+
+		puts("User Capacity: ");
+		print_size(mmc->capacity_user, usr_enh ? " ENH" : "");
+		if (mmc->wr_rel_set & EXT_CSD_WR_DATA_REL_USR)
+			puts(" WRREL\n");
+		else
+			putc('\n');
+		if (usr_enh) {
+			puts("User Enhanced Start: ");
+			print_size(mmc->enh_user_start, "\n");
+			puts("User Enhanced Size: ");
+			print_size(mmc->enh_user_size, "\n");
+		}
+		puts("Boot Capacity: ");
+		print_size(mmc->capacity_boot, has_enh ? " ENH\n" : "\n");
+		puts("RPMB Capacity: ");
+		print_size(mmc->capacity_rpmb, has_enh ? " ENH\n" : "\n");
+
+		for (i = 0; i < ARRAY_SIZE(mmc->capacity_gp); i++) {
+			bool is_enh = has_enh &&
+				(mmc->part_attr & EXT_CSD_ENH_GP(i));
+			if (mmc->capacity_gp[i]) {
+				printf("GP%i Capacity: ", i+1);
+				print_size(mmc->capacity_gp[i],
+					   is_enh ? " ENH" : "");
+				if (mmc->wr_rel_set & EXT_CSD_WR_DATA_REL_GP(i))
+					puts(" WRREL\n");
+				else
+					putc('\n');
+			}
+		}
+	}
+}
+
+static struct mmc *init_mmc_device(int dev, bool force_init)
+{
+	struct mmc *mmc;
+	mmc = find_mmc_device(dev);
+	if (!mmc) {
+		printf("no mmc device at slot %x\n", dev);
+		return NULL;
+	}
+	if (force_init)
+		mmc->has_init = 0;
+	if (mmc_init(mmc))
+		return NULL;
+	return mmc;
 }
 
 static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -112,315 +166,817 @@ static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 	}
 
-	mmc = find_mmc_device(curr_device);
-
-	if (mmc) {
-		mmc_init(mmc);
-
-		print_mmcinfo(mmc);
-		return CMD_RET_SUCCESS;
-	} else {
-		printf("no mmc device at slot %x\n", curr_device);
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
 		return CMD_RET_FAILURE;
-	}
+
+	print_mmcinfo(mmc);
+	return CMD_RET_SUCCESS;
 }
 
-U_BOOT_CMD(
-	mmcinfo, 1, 0, do_mmcinfo,
-	"display MMC info",
-	"- display info of the current MMC device"
-);
-
-#ifdef CONFIG_SUPPORT_EMMC_BOOT
-static int boot_part_access(struct mmc *mmc, u8 ack, u8 part_num, u8 access)
+#ifdef CONFIG_SUPPORT_EMMC_RPMB
+static int confirm_key_prog(void)
 {
-	int err;
-	err = mmc_boot_part_access(mmc, ack, part_num, access);
+	puts("Warning: Programming authentication key can be done only once !\n"
+	     "         Use this command only if you are sure of what you are doing,\n"
+	     "Really perform the key programming? <y/N> ");
+	if (confirm_yesno())
+		return 1;
 
-	if ((err == 0) && (access != 0)) {
-		printf("Notice!\n");
+	puts("Authentication key programming aborted\n");
+	return 0;
+}
 
-		printf("You must close EMMC boot Partition after all images are written\n");
-		printf("EMMC boot partition has continuity at image writing time.\n");
-		printf("So, do not close the boot partition before all images are written.\n");
-		return CMD_RET_SUCCESS;
-	} else if ((err == 0) && (access == 0))
-		return CMD_RET_SUCCESS;
-	else if ((err != 0) && (access != 0)) {
-		printf("EMMC boot partition-%d OPEN Failed.\n", part_num);
+static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
+			  int argc, char * const argv[])
+{
+	void *key_addr;
+	struct mmc *mmc = find_mmc_device(curr_device);
+
+	if (argc != 2)
+		return CMD_RET_USAGE;
+
+	key_addr = (void *)simple_strtoul(argv[1], NULL, 16);
+	if (!confirm_key_prog())
 		return CMD_RET_FAILURE;
-	} else {
-		printf("EMMC boot partition-%d CLOSE Failed.\n", part_num);
+	if (mmc_rpmb_set_key(mmc, key_addr)) {
+		printf("ERROR - Key already programmed ?\n");
 		return CMD_RET_FAILURE;
 	}
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
+			   int argc, char * const argv[])
+{
+	u16 blk, cnt;
+	void *addr;
+	int n;
+	void *key_addr = NULL;
+	struct mmc *mmc = find_mmc_device(curr_device);
+
+	if (argc < 4)
+		return CMD_RET_USAGE;
+
+	addr = (void *)simple_strtoul(argv[1], NULL, 16);
+	blk = simple_strtoul(argv[2], NULL, 16);
+	cnt = simple_strtoul(argv[3], NULL, 16);
+
+	if (argc == 5)
+		key_addr = (void *)simple_strtoul(argv[4], NULL, 16);
+
+	printf("\nMMC RPMB read: dev # %d, block # %d, count %d ... ",
+	       curr_device, blk, cnt);
+	n =  mmc_rpmb_read(mmc, addr, blk, cnt, key_addr);
+
+	printf("%d RPMB blocks read: %s\n", n, (n == cnt) ? "OK" : "ERROR");
+	if (n != cnt)
+		return CMD_RET_FAILURE;
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
+			    int argc, char * const argv[])
+{
+	u16 blk, cnt;
+	void *addr;
+	int n;
+	void *key_addr;
+	struct mmc *mmc = find_mmc_device(curr_device);
+
+	if (argc != 5)
+		return CMD_RET_USAGE;
+
+	addr = (void *)simple_strtoul(argv[1], NULL, 16);
+	blk = simple_strtoul(argv[2], NULL, 16);
+	cnt = simple_strtoul(argv[3], NULL, 16);
+	key_addr = (void *)simple_strtoul(argv[4], NULL, 16);
+
+	printf("\nMMC RPMB write: dev # %d, block # %d, count %d ... ",
+	       curr_device, blk, cnt);
+	n =  mmc_rpmb_write(mmc, addr, blk, cnt, key_addr);
+
+	printf("%d RPMB blocks written: %s\n", n, (n == cnt) ? "OK" : "ERROR");
+	if (n != cnt)
+		return CMD_RET_FAILURE;
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmcrpmb_counter(cmd_tbl_t *cmdtp, int flag,
+			      int argc, char * const argv[])
+{
+	unsigned long counter;
+	struct mmc *mmc = find_mmc_device(curr_device);
+
+	if (mmc_rpmb_get_counter(mmc, &counter))
+		return CMD_RET_FAILURE;
+	printf("RPMB Write counter= %lx\n", counter);
+	return CMD_RET_SUCCESS;
+}
+
+static cmd_tbl_t cmd_rpmb[] = {
+	U_BOOT_CMD_MKENT(key, 2, 0, do_mmcrpmb_key, "", ""),
+	U_BOOT_CMD_MKENT(read, 5, 1, do_mmcrpmb_read, "", ""),
+	U_BOOT_CMD_MKENT(write, 5, 0, do_mmcrpmb_write, "", ""),
+	U_BOOT_CMD_MKENT(counter, 1, 1, do_mmcrpmb_counter, "", ""),
+};
+
+static int do_mmcrpmb(cmd_tbl_t *cmdtp, int flag,
+		      int argc, char * const argv[])
+{
+	cmd_tbl_t *cp;
+	struct mmc *mmc;
+	char original_part;
+	int ret;
+
+	cp = find_cmd_tbl(argv[1], cmd_rpmb, ARRAY_SIZE(cmd_rpmb));
+
+	/* Drop the rpmb subcommand */
+	argc--;
+	argv++;
+
+	if (cp == NULL || argc > cp->maxargs)
+		return CMD_RET_USAGE;
+	if (flag == CMD_FLAG_REPEAT && !cp->repeatable)
+		return CMD_RET_SUCCESS;
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	if (!(mmc->version & MMC_VERSION_MMC)) {
+		printf("It is not a EMMC device\n");
+		return CMD_RET_FAILURE;
+	}
+	if (mmc->version < MMC_VERSION_4_41) {
+		printf("RPMB not supported before version 4.41\n");
+		return CMD_RET_FAILURE;
+	}
+	/* Switch to the RPMB partition */
+	original_part = mmc->part_num;
+	if (mmc->part_num != MMC_PART_RPMB) {
+		if (mmc_switch_part(curr_device, MMC_PART_RPMB) != 0)
+			return CMD_RET_FAILURE;
+		mmc->part_num = MMC_PART_RPMB;
+	}
+	ret = cp->cmd(cmdtp, flag, argc, argv);
+
+	/* Return to original partition */
+	if (mmc->part_num != original_part) {
+		if (mmc_switch_part(curr_device, original_part) != 0)
+			return CMD_RET_FAILURE;
+		mmc->part_num = original_part;
+	}
+	return ret;
 }
 #endif
 
-static int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_mmc_read(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
 {
-	enum mmc_state state;
+	struct mmc *mmc;
+	u32 blk, cnt, n;
+	void *addr;
 
-	if (argc < 2)
+	if (argc != 4)
 		return CMD_RET_USAGE;
 
-	if (curr_device < 0) {
-		if (get_mmc_num() > 0)
-			curr_device = 0;
-		else {
-			puts("No MMC device available\n");
+	addr = (void *)simple_strtoul(argv[1], NULL, 16);
+	blk = simple_strtoul(argv[2], NULL, 16);
+	cnt = simple_strtoul(argv[3], NULL, 16);
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC read: dev # %d, block # %d, count %d ... ",
+	       curr_device, blk, cnt);
+
+	n = mmc->block_dev.block_read(curr_device, blk, cnt, addr);
+	/* flush cache after read */
+	flush_cache((ulong)addr, cnt * 512); /* FIXME */
+	printf("%d blocks read: %s\n", n, (n == cnt) ? "OK" : "ERROR");
+
+	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
+}
+
+static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
+			int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	u32 blk, cnt, n;
+	void *addr;
+
+	if (argc != 4)
+		return CMD_RET_USAGE;
+
+	addr = (void *)simple_strtoul(argv[1], NULL, 16);
+	blk = simple_strtoul(argv[2], NULL, 16);
+	cnt = simple_strtoul(argv[3], NULL, 16);
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC write: dev # %d, block # %d, count %d ... ",
+	       curr_device, blk, cnt);
+
+	if (mmc_getwp(mmc) == 1) {
+		printf("Error: card is write protected!\n");
+		return CMD_RET_FAILURE;
+	}
+	n = mmc->block_dev.block_write(curr_device, blk, cnt, addr);
+	printf("%d blocks written: %s\n", n, (n == cnt) ? "OK" : "ERROR");
+
+	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
+}
+
+static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
+			int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	u32 blk, cnt, n;
+
+	if (argc != 3)
+		return CMD_RET_USAGE;
+
+	blk = simple_strtoul(argv[1], NULL, 16);
+	cnt = simple_strtoul(argv[2], NULL, 16);
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC erase: dev # %d, block # %d, count %d ... ",
+	       curr_device, blk, cnt);
+
+	if (mmc_getwp(mmc) == 1) {
+		printf("Error: card is write protected!\n");
+		return CMD_RET_FAILURE;
+	}
+	n = mmc->block_dev.block_erase(curr_device, blk, cnt);
+	printf("%d blocks erased: %s\n", n, (n == cnt) ? "OK" : "ERROR");
+
+	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
+}
+
+static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
+			 int argc, char * const argv[])
+{
+	struct mmc *mmc;
+
+	mmc = init_mmc_device(curr_device, true);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	block_dev_desc_t *mmc_dev;
+	struct mmc *mmc;
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	mmc_dev = mmc_get_dev(curr_device);
+	if (mmc_dev != NULL && mmc_dev->type != DEV_TYPE_UNKNOWN) {
+		print_part(mmc_dev);
+		return CMD_RET_SUCCESS;
+	}
+
+	puts("get mmc type error!\n");
+	return CMD_RET_FAILURE;
+}
+
+static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
+		      int argc, char * const argv[])
+{
+	int dev, part = 0, ret;
+	struct mmc *mmc;
+
+	if (argc == 1) {
+		dev = curr_device;
+	} else if (argc == 2) {
+		dev = simple_strtoul(argv[1], NULL, 10);
+	} else if (argc == 3) {
+		dev = (int)simple_strtoul(argv[1], NULL, 10);
+		part = (int)simple_strtoul(argv[2], NULL, 10);
+		if (part > PART_ACCESS_MASK) {
+			printf("#part_num shouldn't be larger than %d\n",
+			       PART_ACCESS_MASK);
 			return CMD_RET_FAILURE;
+		}
+	} else {
+		return CMD_RET_USAGE;
+	}
+
+	mmc = init_mmc_device(dev, true);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	ret = mmc_select_hwpart(dev, part);
+	printf("switch to partitions #%d, %s\n",
+	       part, (!ret) ? "OK" : "ERROR");
+	if (ret)
+		return 1;
+
+	curr_device = dev;
+	if (mmc->part_config == MMCPART_NOAVAILABLE)
+		printf("mmc%d is current device\n", curr_device);
+	else
+		printf("mmc%d(part %d) is current device\n",
+		       curr_device, mmc->part_num);
+
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	print_mmc_devices('\n');
+	return CMD_RET_SUCCESS;
+}
+
+static int parse_hwpart_user(struct mmc_hwpart_conf *pconf,
+			     int argc, char * const argv[])
+{
+	int i = 0;
+
+	memset(&pconf->user, 0, sizeof(pconf->user));
+
+	while (i < argc) {
+		if (!strcmp(argv[i], "enh")) {
+			if (i + 2 >= argc)
+				return -1;
+			pconf->user.enh_start =
+				simple_strtoul(argv[i+1], NULL, 10);
+			pconf->user.enh_size =
+				simple_strtoul(argv[i+2], NULL, 10);
+			i += 3;
+		} else if (!strcmp(argv[i], "wrrel")) {
+			if (i + 1 >= argc)
+				return -1;
+			pconf->user.wr_rel_change = 1;
+			if (!strcmp(argv[i+1], "on"))
+				pconf->user.wr_rel_set = 1;
+			else if (!strcmp(argv[i+1], "off"))
+				pconf->user.wr_rel_set = 0;
+			else
+				return -1;
+			i += 2;
+		} else {
+			break;
+		}
+	}
+	return i;
+}
+
+static int parse_hwpart_gp(struct mmc_hwpart_conf *pconf, int pidx,
+			   int argc, char * const argv[])
+{
+	int i;
+
+	memset(&pconf->gp_part[pidx], 0, sizeof(pconf->gp_part[pidx]));
+
+	if (1 >= argc)
+		return -1;
+	pconf->gp_part[pidx].size = simple_strtoul(argv[0], NULL, 10);
+
+	i = 1;
+	while (i < argc) {
+		if (!strcmp(argv[i], "enh")) {
+			pconf->gp_part[pidx].enhanced = 1;
+			i += 1;
+		} else if (!strcmp(argv[i], "wrrel")) {
+			if (i + 1 >= argc)
+				return -1;
+			pconf->gp_part[pidx].wr_rel_change = 1;
+			if (!strcmp(argv[i+1], "on"))
+				pconf->gp_part[pidx].wr_rel_set = 1;
+			else if (!strcmp(argv[i+1], "off"))
+				pconf->gp_part[pidx].wr_rel_set = 0;
+			else
+				return -1;
+			i += 2;
+		} else {
+			break;
+		}
+	}
+	return i;
+}
+
+static int do_mmc_hwpartition(cmd_tbl_t *cmdtp, int flag,
+			      int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	struct mmc_hwpart_conf pconf = { };
+	enum mmc_hwpart_conf_mode mode = MMC_HWPART_CONF_CHECK;
+	int i, r, pidx;
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	if (argc < 1)
+		return CMD_RET_USAGE;
+	i = 1;
+	while (i < argc) {
+		if (!strcmp(argv[i], "user")) {
+			i++;
+			r = parse_hwpart_user(&pconf, argc-i, &argv[i]);
+			if (r < 0)
+				return CMD_RET_USAGE;
+			i += r;
+		} else if (!strncmp(argv[i], "gp", 2) &&
+			   strlen(argv[i]) == 3 &&
+			   argv[i][2] >= '1' && argv[i][2] <= '4') {
+			pidx = argv[i][2] - '1';
+			i++;
+			r = parse_hwpart_gp(&pconf, pidx, argc-i, &argv[i]);
+			if (r < 0)
+				return CMD_RET_USAGE;
+			i += r;
+		} else if (!strcmp(argv[i], "check")) {
+			mode = MMC_HWPART_CONF_CHECK;
+			i++;
+		} else if (!strcmp(argv[i], "set")) {
+			mode = MMC_HWPART_CONF_SET;
+			i++;
+		} else if (!strcmp(argv[i], "complete")) {
+			mode = MMC_HWPART_CONF_COMPLETE;
+			i++;
+		} else {
+			return CMD_RET_USAGE;
 		}
 	}
 
-	if (strcmp(argv[1], "rescan") == 0) {
-		struct mmc *mmc;
-
-		if (argc != 2)
-			return CMD_RET_USAGE;
-
-		mmc = find_mmc_device(curr_device);
-		if (!mmc) {
-			printf("no mmc device at slot %x\n", curr_device);
-			return CMD_RET_FAILURE;
+	puts("Partition configuration:\n");
+	if (pconf.user.enh_size) {
+		puts("\tUser Enhanced Start: ");
+		print_size(((u64)pconf.user.enh_start) << 9, "\n");
+		puts("\tUser Enhanced Size: ");
+		print_size(((u64)pconf.user.enh_size) << 9, "\n");
+	} else {
+		puts("\tNo enhanced user data area\n");
+	}
+	if (pconf.user.wr_rel_change)
+		printf("\tUser partition write reliability: %s\n",
+		       pconf.user.wr_rel_set ? "on" : "off");
+	for (pidx = 0; pidx < 4; pidx++) {
+		if (pconf.gp_part[pidx].size) {
+			printf("\tGP%i Capacity: ", pidx+1);
+			print_size(((u64)pconf.gp_part[pidx].size) << 9,
+				   pconf.gp_part[pidx].enhanced ?
+				   " ENH\n" : "\n");
+		} else {
+			printf("\tNo GP%i partition\n", pidx+1);
 		}
+		if (pconf.gp_part[pidx].wr_rel_change)
+			printf("\tGP%i write reliability: %s\n", pidx+1,
+			       pconf.gp_part[pidx].wr_rel_set ? "on" : "off");
+	}
 
+	if (!mmc_hwpart_config(mmc, &pconf, mode)) {
+		if (mode == MMC_HWPART_CONF_COMPLETE)
+			puts("Partitioning successful, power-cycle to make effective\n");
+		return CMD_RET_SUCCESS;
+	} else {
+		puts("Failed!\n");
+		return CMD_RET_FAILURE;
+	}
+}
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
+			  int argc, char * const argv[])
+{
+	int dev;
+	struct mmc *mmc;
+	u8 width, reset, mode;
+	int ret;
+	char *end;
+
+	if (argc != 5)
+		return CMD_RET_USAGE;
+
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	width = simple_strtoul(argv[2], &end, 10);
+	if (width > 2 || *end != '\0') {
+		printf("Invalid boot_bus_width parameter '%s'; expected [0..2]\n",
+			argv[2]);
+		return CMD_RET_FAILURE;
+	}
+
+	reset = simple_strtoul(argv[3], &end, 10);
+	if (reset > 1 || *end != '\0') {
+		printf("Invalid reset_boot_bus_width parameter '%s'; expected 0 or 1\n",
+			argv[3]);
+		return CMD_RET_FAILURE;
+	}
+	mode = simple_strtoul(argv[4], &end, 10);
+	if (mode > 2 || *end != '\0') {
+		printf("Invalid boot_mode parameter '%s'; expected [0..2]\n",
+			argv[4]);
+		return CMD_RET_FAILURE;
+	}
+
+	mmc = init_mmc_device(dev, false);
+	if (!mmc) {
+		printf("Failed to init MMC device %d\n", dev);
+		return CMD_RET_FAILURE;
+	}
+
+	if (IS_SD(mmc)) {
+		puts("BOOT_BUS_WIDTH only exists on eMMC\n");
+		return CMD_RET_FAILURE;
+	}
+
+	ret = mmc_set_boot_bus_width(mmc, width, reset, mode);
+	if (ret)
+		printf("Setting boot bus width failed: %d\n", ret);
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
+}
+
+static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
+			      int argc, char * const argv[])
+{
+	int dev;
+	struct mmc *mmc;
+	u32 bootsize, rpmbsize;
+	int ret;
+	char *end;
+
+	if (argc != 4)
+		return CMD_RET_USAGE;
+
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	bootsize = simple_strtoul(argv[2], &end, 10);
+	if (bootsize > 64 || *end != '\0') {
+		return CMD_RET_FAILURE;
+	}
+
+	rpmbsize = simple_strtoul(argv[3], &end, 10);
+	if (rpmbsize > 64 || *end != '\0') {
+		return CMD_RET_FAILURE;
+	}
+
+	mmc = init_mmc_device(dev, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	if (IS_SD(mmc)) {
+		printf("mmc device %d is not an EMMC device\n", dev);
+		return CMD_RET_FAILURE;
+	}
+
+	ret = mmc_boot_partition_size_change(mmc, bootsize, rpmbsize);
+	if (ret) {
+		printf("EMMC boot partition size change failed: %d\n", ret);
+		return CMD_RET_FAILURE;
+	}
+
+	printf("EMMC boot partition Size %d MB\n", bootsize);
+	printf("EMMC RPMB partition Size %d MB\n", rpmbsize);
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
+			   int argc, char * const argv[])
+{
+	int dev;
+	struct mmc *mmc;
+	u8 ack, part_num, access;
+	char *end;
+	int ret;
+
+	if (argc != 5)
+		return CMD_RET_USAGE;
+
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	ack = simple_strtoul(argv[2], &end, 10);
+	if (ack < 0 || ack > 1 || *end != '\0') {
+		printf("Invalid boot_ack value: %s\n", argv[2]);
+		return CMD_RET_FAILURE;
+	}
+
+	part_num = simple_strtoul(argv[3], &end, 10);
+	if (part_num < 0 || (part_num > 4 && part_num != 7) || *end != '\0') {
+		printf("Invalid part_num: %s\n", argv[3]);
+		return CMD_RET_FAILURE;
+	}
+
+	access = simple_strtoul(argv[4], &end, 10);
+	if (access < 0 || access > 7 || *end != '\0') {
+		printf("Invalid access value: %s\n", argv[4]);
+		return CMD_RET_FAILURE;
+	}
+
+	mmc = init_mmc_device(dev, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	if (IS_SD(mmc)) {
+		puts("PARTITION_CONFIG only exists on eMMC\n");
+		return CMD_RET_FAILURE;
+	}
+
+	/* acknowledge to be sent during boot operation */
+	ret = mmc_set_part_conf(mmc, ack, part_num, access);
+	if (ret)
+		printf("partconf failed: %d\n", ret);
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
+}
+
+static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
+			   int argc, char * const argv[])
+{
+	int dev;
+	struct mmc *mmc;
+	u8 enable;
+	char *end;
+
+	/*
+	 * Set the RST_n_ENABLE bit of RST_n_FUNCTION
+	 * The only valid values are 0x0, 0x1 and 0x2 and writing
+	 * a value of 0x1 or 0x2 sets the value permanently.
+	 */
+	if (argc != 3)
+		return CMD_RET_USAGE;
+
+	dev = simple_strtoul(argv[1], &end, 10);
+	if (dev < 0 || dev >= get_mmc_dev_count() || *end != '\0') {
+		printf("Invalid mmc device '%s'; should be [0..%u]\n",
+			argv[1], get_mmc_dev_count() - 1);
+		return CMD_RET_FAILURE;
+	}
+
+	enable = simple_strtoul(argv[2], &end, 10);
+
+	if (enable > 2 || enable < 0) {
+		puts("Invalid RST_n_ENABLE value\n");
+		return CMD_RET_USAGE;
+	}
+
+	mmc = init_mmc_device(dev, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	if (IS_SD(mmc)) {
+		puts("RST_n_FUNCTION only exists on eMMC\n");
+		return CMD_RET_FAILURE;
+	}
+
+	return mmc_set_rst_n_function(mmc, enable);
+}
+#endif
+
+static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
+			 int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	u32 val;
+	char *end;
+	int ret;
+
+	if (argc != 2)
+		return CMD_RET_USAGE;
+	val = simple_strtoul(argv[2], &end, 16);
+	if (val > 0xffff || *end != '\0') {
+		printf("Invalid DSR value '%s'; expected hex number [0..ffff]\n",
+			argv[2]);
+		return CMD_RET_FAILURE;
+	}
+
+	mmc = find_mmc_device(curr_device);
+	if (!mmc) {
+		printf("no mmc device at slot %x\n", curr_device);
+		return CMD_RET_FAILURE;
+	}
+	ret = mmc_set_dsr(mmc, val);
+	printf("set dsr %s\n", (!ret) ? "OK, force rescan" : "ERROR");
+	if (!ret) {
 		mmc->has_init = 0;
-
 		if (mmc_init(mmc))
 			return CMD_RET_FAILURE;
 		else
 			return CMD_RET_SUCCESS;
-	} else if (strncmp(argv[1], "part", 4) == 0) {
-		block_dev_desc_t *mmc_dev;
-		struct mmc *mmc;
+	}
+	return ret;
+}
 
-		if (argc != 2)
-			return CMD_RET_USAGE;
-
-		mmc = find_mmc_device(curr_device);
-		if (!mmc) {
-			printf("no mmc device at slot %x\n", curr_device);
-			return CMD_RET_FAILURE;
-		}
-		mmc_init(mmc);
-		mmc_dev = mmc_get_dev(curr_device);
-		if (mmc_dev != NULL &&
-				mmc_dev->type != DEV_TYPE_UNKNOWN) {
-			print_part(mmc_dev);
-			return CMD_RET_SUCCESS;
-		}
-
-		puts("get mmc type error!\n");
-		return CMD_RET_FAILURE;
-	} else if (strcmp(argv[1], "list") == 0) {
-		if (argc != 2)
-			return CMD_RET_USAGE;
-		print_mmc_devices('\n');
-		return CMD_RET_SUCCESS;
-	} else if (strcmp(argv[1], "dev") == 0) {
-		int dev, part = -1;
-		struct mmc *mmc;
-
-		if (argc == 2)
-			dev = curr_device;
-		else if (argc == 3)
-			dev = simple_strtoul(argv[2], NULL, 10);
-		else if (argc == 4) {
-			dev = (int)simple_strtoul(argv[2], NULL, 10);
-			part = (int)simple_strtoul(argv[3], NULL, 10);
-			if (part > PART_ACCESS_MASK) {
-				printf("#part_num shouldn't be larger"
-					" than %d\n", PART_ACCESS_MASK);
-				return CMD_RET_FAILURE;
-			}
-		} else
-			return CMD_RET_USAGE;
-
-		mmc = find_mmc_device(dev);
-		if (!mmc) {
-			printf("no mmc device at slot %x\n", dev);
-			return CMD_RET_FAILURE;
-		}
-
-		mmc_init(mmc);
-		if (part != -1) {
-			int ret;
-			if (mmc->part_config == MMCPART_NOAVAILABLE) {
-				printf("Card doesn't support part_switch\n");
-				return CMD_RET_FAILURE;
-			}
-
-			if (part != mmc->part_num) {
-				ret = mmc_switch_part(dev, part);
-				if (!ret)
-					mmc->part_num = part;
-
-				printf("switch to partions #%d, %s\n",
-						part, (!ret) ? "OK" : "ERROR");
-			}
-		}
-		curr_device = dev;
-		if (mmc->part_config == MMCPART_NOAVAILABLE)
-			printf("mmc%d is current device\n", curr_device);
-		else
-			printf("mmc%d(part %d) is current device\n",
-				curr_device, mmc->part_num);
-
-		return CMD_RET_SUCCESS;
+static cmd_tbl_t cmd_mmc[] = {
+	U_BOOT_CMD_MKENT(info, 1, 0, do_mmcinfo, "", ""),
+	U_BOOT_CMD_MKENT(read, 4, 1, do_mmc_read, "", ""),
+	U_BOOT_CMD_MKENT(write, 4, 0, do_mmc_write, "", ""),
+	U_BOOT_CMD_MKENT(erase, 3, 0, do_mmc_erase, "", ""),
+	U_BOOT_CMD_MKENT(rescan, 1, 1, do_mmc_rescan, "", ""),
+	U_BOOT_CMD_MKENT(part, 1, 1, do_mmc_part, "", ""),
+	U_BOOT_CMD_MKENT(dev, 3, 0, do_mmc_dev, "", ""),
+	U_BOOT_CMD_MKENT(list, 1, 1, do_mmc_list, "", ""),
+	U_BOOT_CMD_MKENT(hwpartition, 28, 0, do_mmc_hwpartition, "", ""),
 #ifdef CONFIG_SUPPORT_EMMC_BOOT
-	} else if ((strcmp(argv[1], "open") == 0) ||
-			(strcmp(argv[1], "close") == 0)) {
-		int dev;
-		struct mmc *mmc;
-		u8 part_num, access = 0;
+	U_BOOT_CMD_MKENT(bootbus, 5, 0, do_mmc_bootbus, "", ""),
+	U_BOOT_CMD_MKENT(bootpart-resize, 4, 0, do_mmc_boot_resize, "", ""),
+	U_BOOT_CMD_MKENT(partconf, 5, 0, do_mmc_partconf, "", ""),
+	U_BOOT_CMD_MKENT(rst-function, 3, 0, do_mmc_rst_func, "", ""),
+#endif
+#ifdef CONFIG_SUPPORT_EMMC_RPMB
+	U_BOOT_CMD_MKENT(rpmb, CONFIG_SYS_MAXARGS, 1, do_mmcrpmb, "", ""),
+#endif
+	U_BOOT_CMD_MKENT(setdsr, 2, 0, do_mmc_setdsr, "", ""),
+};
 
-		if (argc == 4) {
-			dev = simple_strtoul(argv[2], NULL, 10);
-			part_num = simple_strtoul(argv[3], NULL, 10);
+static int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	cmd_tbl_t *cp;
+
+	cp = find_cmd_tbl(argv[1], cmd_mmc, ARRAY_SIZE(cmd_mmc));
+
+	/* Drop the mmc command */
+	argc--;
+	argv++;
+
+	if (cp == NULL || argc > cp->maxargs)
+		return CMD_RET_USAGE;
+	if (flag == CMD_FLAG_REPEAT && !cp->repeatable)
+		return CMD_RET_SUCCESS;
+
+	if (curr_device < 0) {
+		if (get_mmc_num() > 0) {
+			curr_device = 0;
 		} else {
-			return CMD_RET_USAGE;
-		}
-
-		mmc = find_mmc_device(dev);
-		if (!mmc) {
-			printf("no mmc device at slot %x\n", dev);
+			puts("No MMC device available\n");
 			return CMD_RET_FAILURE;
 		}
-
-		if (IS_SD(mmc)) {
-			printf("SD device cannot be opened/closed\n");
-			return CMD_RET_FAILURE;
-		}
-
-		if ((part_num <= 0) || (part_num > MMC_NUM_BOOT_PARTITION)) {
-			printf("Invalid boot partition number:\n");
-			printf("Boot partition number cannot be <= 0\n");
-			printf("EMMC44 supports only 2 boot partitions\n");
-			return CMD_RET_FAILURE;
-		}
-
-		if (strcmp(argv[1], "open") == 0)
-			access = part_num; /* enable R/W access to boot part*/
-		else
-			access = 0; /* No access to boot partition */
-
-		/* acknowledge to be sent during boot operation */
-		return boot_part_access(mmc, 1, part_num, access);
-
-	} else if (strcmp(argv[1], "bootpart") == 0) {
-		int dev;
-
-		if (argc != 5)
-			return CMD_RET_USAGE;
-
-		dev = simple_strtoul(argv[2], NULL, 10);
-
-		u32 bootsize = simple_strtoul(argv[3], NULL, 10);
-		u32 rpmbsize = simple_strtoul(argv[4], NULL, 10);
-		struct mmc *mmc = find_mmc_device(dev);
-		if (!mmc) {
-			printf("no mmc device at slot %x\n", dev);
-			return CMD_RET_FAILURE;
-		}
-
-		if (IS_SD(mmc)) {
-			printf("It is not a EMMC device\n");
-			return CMD_RET_FAILURE;
-		}
-
-		if (0 == mmc_boot_partition_size_change(mmc,
-							bootsize, rpmbsize)) {
-			printf("EMMC boot partition Size %d MB\n", bootsize);
-			printf("EMMC RPMB partition Size %d MB\n", rpmbsize);
-			return CMD_RET_SUCCESS;
-		} else {
-			printf("EMMC boot partition Size change Failed.\n");
-			return CMD_RET_FAILURE;
-		}
-#endif /* CONFIG_SUPPORT_EMMC_BOOT */
 	}
-	state = MMC_INVALID;
-	if (argc == 5 && strcmp(argv[1], "read") == 0)
-		state = MMC_READ;
-	else if (argc == 5 && strcmp(argv[1], "write") == 0)
-		state = MMC_WRITE;
-	else if (argc == 4 && strcmp(argv[1], "erase") == 0)
-		state = MMC_ERASE;
-
-	if (state != MMC_INVALID) {
-		struct mmc *mmc = find_mmc_device(curr_device);
-		int idx = 2;
-		u32 blk, cnt, n;
-		void *addr;
-
-		if (state != MMC_ERASE) {
-			addr = (void *)simple_strtoul(argv[idx], NULL, 16);
-			++idx;
-		} else
-			addr = NULL;
-		blk = simple_strtoul(argv[idx], NULL, 16);
-		cnt = simple_strtoul(argv[idx + 1], NULL, 16);
-
-		if (!mmc) {
-			printf("no mmc device at slot %x\n", curr_device);
-			return CMD_RET_FAILURE;
-		}
-
-		printf("\nMMC %s: dev # %d, block # %d, count %d ... ",
-				argv[1], curr_device, blk, cnt);
-
-		mmc_init(mmc);
-
-		if ((state == MMC_WRITE || state == MMC_ERASE)) {
-			if (mmc_getwp(mmc) == 1) {
-				printf("Error: card is write protected!\n");
-				return CMD_RET_FAILURE;
-			}
-		}
-
-		switch (state) {
-		case MMC_READ:
-			n = mmc->block_dev.block_read(curr_device, blk,
-						      cnt, addr);
-			/* flush cache after read */
-			flush_cache((ulong)addr, cnt * 512); /* FIXME */
-			break;
-		case MMC_WRITE:
-			n = mmc->block_dev.block_write(curr_device, blk,
-						      cnt, addr);
-			break;
-		case MMC_ERASE:
-			n = mmc->block_dev.block_erase(curr_device, blk, cnt);
-			break;
-		default:
-			BUG();
-		}
-
-		printf("%d blocks %s: %s\n",
-				n, argv[1], (n == cnt) ? "OK" : "ERROR");
-		return (n == cnt) ? 0 : 1;
-	}
-
-	return CMD_RET_USAGE;
+	return cp->cmd(cmdtp, flag, argc, argv);
 }
 
 U_BOOT_CMD(
-	mmc, 6, 1, do_mmcops,
+	mmc, 29, 1, do_mmcops,
 	"MMC sub system",
-	"read addr blk# cnt\n"
+	"info - display info of the current MMC device\n"
+	"mmc read addr blk# cnt\n"
 	"mmc write addr blk# cnt\n"
 	"mmc erase blk# cnt\n"
 	"mmc rescan\n"
 	"mmc part - lists available partition on current mmc device\n"
 	"mmc dev [dev] [part] - show or set current mmc device [partition]\n"
 	"mmc list - lists available devices\n"
+	"mmc hwpartition [args...] - does hardware partitioning\n"
+	"  arguments (sizes in 512-byte blocks):\n"
+	"    [user [enh start cnt] [wrrel {on|off}]] - sets user data area attributes\n"
+	"    [gp1|gp2|gp3|gp4 cnt [enh] [wrrel {on|off}]] - general purpose partition\n"
+	"    [check|set|complete] - mode, complete set partitioning completed\n"
+	"  WARNING: Partitioning is a write-once setting once it is set to complete.\n"
+	"  Power cycling is required to initialize partitions after set to complete.\n"
 #ifdef CONFIG_SUPPORT_EMMC_BOOT
-	"mmc open <dev> <boot_partition>\n"
-	" - Enable boot_part for booting and enable R/W access of boot_part\n"
-	"mmc close <dev> <boot_partition>\n"
-	" - Enable boot_part for booting and disable access to boot_part\n"
-	"mmc bootpart <device num> <boot part size MB> <RPMB part size MB>\n"
-	" - change sizes of boot and RPMB partions of specified device\n"
+	"mmc bootbus dev boot_bus_width reset_boot_bus_width boot_mode\n"
+	" - Set the BOOT_BUS_WIDTH field of the specified device\n"
+	"mmc bootpart-resize <dev> <boot part size MB> <RPMB part size MB>\n"
+	" - Change sizes of boot and RPMB partitions of specified device\n"
+	"mmc partconf dev boot_ack boot_partition partition_access\n"
+	" - Change the bits of the PARTITION_CONFIG field of the specified device\n"
+	"mmc rst-function dev value\n"
+	" - Change the RST_n_FUNCTION field of the specified device\n"
+	"   WARNING: This is a write-once field and 0 / 1 / 2 are the only valid values.\n"
 #endif
+#ifdef CONFIG_SUPPORT_EMMC_RPMB
+	"mmc rpmb read addr blk# cnt [address of auth-key] - block size is 256 bytes\n"
+	"mmc rpmb write addr blk# cnt <address of auth-key> - block size is 256 bytes\n"
+	"mmc rpmb key <address of auth-key> - program the RPMB authentication key.\n"
+	"mmc rpmb counter - read the value of the write counter\n"
+#endif
+	"mmc setdsr <value> - set DSR register value\n"
 	);
+
+/* Old command kept for compatibility. Same as 'mmc info' */
+U_BOOT_CMD(
+	mmcinfo, 1, 0, do_mmcinfo,
+	"display MMC info",
+	"- display info of the current MMC device"
+);
+
 #endif /* !CONFIG_GENERIC_MMC */

@@ -116,12 +116,14 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif
 #else /* CONFIG_SPL_BUILD */
@@ -129,12 +131,12 @@ void board_init_f(ulong bootflag)
 {
 	board_early_init_f();
 	NS16550_init((NS16550_t)(CONFIG_SYS_IMMR + 0x4500),
-	             CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
+		     CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
 	puts("NAND boot... ");
 	init_timebase();
 	initdram(0);
 	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC_SP, (gd_t *)gd,
-	              CONFIG_SYS_NAND_U_BOOT_RELOC);
+		      CONFIG_SYS_NAND_U_BOOT_RELOC);
 }
 
 void board_init_r(gd_t *gd, ulong dest_addr)

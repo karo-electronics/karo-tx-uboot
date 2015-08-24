@@ -354,9 +354,9 @@ static void setup_buttons(void)
 
 int setup_sata(void)
 {
-	struct iomuxc_base_regs *const iomuxc_regs
-		= (struct iomuxc_base_regs *) IOMUXC_BASE_ADDR;
+	struct iomuxc *const iomuxc_regs = (void *)IOMUXC_BASE_ADDR;
 	int ret = enable_sata_clock();
+
 	if (ret)
 		return ret;
 

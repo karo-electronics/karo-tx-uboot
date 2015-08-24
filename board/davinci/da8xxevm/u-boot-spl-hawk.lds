@@ -18,9 +18,10 @@ SECTIONS
 	. = ALIGN(4);
 	.text      :
 	{
+	  *(.vectors)
 	  arch/arm/cpu/arm926ejs/start.o		(.text*)
-	  arch/arm/cpu/arm926ejs/davinci/libdavinci.o	(.text*)
-	  drivers/mtd/nand/libnand.o			(.text*)
+	  arch/arm/cpu/arm926ejs/built-in.o		(.text*)
+	  drivers/mtd/nand/built-in.o			(.text*)
 
 	  *(.text*)
 	}
@@ -61,5 +62,8 @@ SECTIONS
 		__bss_end = .;
 	}
 
-	_end = .;
+	.end :
+	{
+		*(.__end)
+	}
 }

@@ -17,10 +17,13 @@
 #include <tsec.h>
 #include <mmc.h>
 #include <netdev.h>
-#include <asm/fsl_ifc.h>
+#include <fsl_ifc.h>
 #include <hwconfig.h>
 #include <i2c.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
+#include <jffs2/load_kernel.h>
+#include <mtd_node.h>
+#include <flash.h>
 
 #ifdef CONFIG_PCI
 #include <pci.h>
@@ -125,11 +128,32 @@ void board_config_serdes_mux(void)
 	}
 }
 
+/* Configure DSP DDR controller */
+void dsp_ddr_configure(void)
+{
+	/*
+	 *There are separate DDR-controllers for DSP and PowerPC side DDR.
+	 *copy the ddr controller settings from PowerPC side DDR controller
+	 *to the DSP DDR controller as connected DDR memories are similar.
+	 */
+	struct ccsr_ddr __iomem *pa_ddr =
+			(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_ddr temp_ddr;
+	struct ccsr_ddr __iomem *dsp_ddr =
+			(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DSP_CCSR_DDR_ADDR;
+
+	memcpy(&temp_ddr, pa_ddr, sizeof(struct ccsr_ddr));
+	temp_ddr.cs0_bnds = CONFIG_SYS_DDR1_CS0_BNDS;
+	temp_ddr.sdram_cfg &= ~SDRAM_CFG_MEM_EN;
+	memcpy(dsp_ddr, &temp_ddr, sizeof(struct ccsr_ddr));
+	dsp_ddr->sdram_cfg |= SDRAM_CFG_MEM_EN;
+}
+
 int board_early_init_r(void)
 {
 #ifndef CONFIG_SYS_NO_FLASH
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -140,8 +164,14 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	/* invalidate existing TLB entry for flash */
-	disable_tlb(flash_esel);
+	if (flash_esel == -1) {
+		/* very unlikely unless something is messed up */
+		puts("Error: Could not find TLB for FLASH BASE\n");
+		flash_esel = 2;	/* give our best effort to continue */
+	} else {
+		/* invalidate existing TLB entry for flash */
+		disable_tlb(flash_esel);
+	}
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
@@ -153,6 +183,7 @@ int board_early_init_r(void)
 			0, flash_esel+1, BOOKE_PAGESZ_64M, 1);
 #endif
 	board_config_serdes_mux();
+	dsp_ddr_configure();
 	return 0;
 }
 
@@ -326,7 +357,13 @@ void fdt_del_node_compat(void *blob, const char *compatible)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+struct node_info nodes[] = {
+	{ "cfi-flash",			MTD_DEV_TYPE_NOR,  },
+	{ "fsl,ifc-nand",		MTD_DEV_TYPE_NAND, },
+};
+#endif
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
@@ -341,6 +378,9 @@ void ft_board_setup(void *blob, bd_t *bd)
 	#endif
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+#endif
 
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	u32 porbmsr = in_be32(&gur->porbmsr);
@@ -383,5 +423,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 			printf("\nRemove sim from hwconfig and reset\n");
 		}
 	}
+
+	return 0;
 }
 #endif

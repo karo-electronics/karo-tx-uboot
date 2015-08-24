@@ -17,17 +17,9 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #include "tegra114-common.h"
-
-/* Must be off for Dalmore to boot !?!? FIXME */
-#define CONFIG_SYS_DCACHE_OFF
-
-/* Enable fdt support for Dalmore. Flash the image in u-boot-dtb.bin */
-#define CONFIG_DEFAULT_DEVICE_TREE	tegra114-dalmore
-#define CONFIG_OF_CONTROL
-#define CONFIG_OF_SEPARATE
 
 /* High-level configuration options */
 #define V_PROMPT		"Tegra114 (Dalmore) # "
@@ -44,12 +36,7 @@
 
 /* I2C */
 #define CONFIG_SYS_I2C_TEGRA
-#define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_MAX_I2C_BUS		TEGRA_I2C_NUM_CONTROLLERS
-#define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_CMD_I2C
-#define CONFIG_SYS_I2C
 
 /* SD/MMC */
 #define CONFIG_MMC

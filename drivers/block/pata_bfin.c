@@ -12,6 +12,7 @@
 #include <command.h>
 #include <config.h>
 #include <asm/byteorder.h>
+#include <asm/clock.h>
 #include <asm/io.h>
 #include <asm/errno.h>
 #include <asm/portmux.h>
@@ -1006,6 +1007,11 @@ int init_sata(int dev)
 
 	res = 0;
 	return res;
+}
+
+int reset_sata(int dev)
+{
+	return 0;
 }
 
 /* Read up to 255 sectors

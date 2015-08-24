@@ -20,7 +20,14 @@
 #include <libfdt.h>
 #include <fdt_support.h>
 #include <asm/bootm.h>
+#include <asm/secure.h>
 #include <linux/compiler.h>
+#include <bootm.h>
+#include <vxworks.h>
+
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+#include <asm/armv7.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -67,8 +74,7 @@ static void announce_and_cleanup(int fake)
 		"(fake run for tracing)" : "");
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 #ifdef CONFIG_BOOTSTAGE_FDT
-	if (flag == BOOTM_STATE_OS_FAKE_GO)
-		bootstage_fdt_add_report();
+	bootstage_fdt_add_report();
 #endif
 #ifdef CONFIG_BOOTSTAGE_REPORT
 	bootstage_report();
@@ -181,6 +187,18 @@ static void setup_end_tag(bd_t *bd)
 
 __weak void setup_board_tags(struct tag **in_params) {}
 
+#ifdef CONFIG_ARM64
+static void do_nonsec_virt_switch(void)
+{
+	smp_kick_all_cpus();
+	flush_dcache_all();	/* flush cache before swtiching to EL2 */
+	armv8_switch_to_el2();
+#ifdef CONFIG_ARMV8_SWITCH_TO_EL1
+	armv8_switch_to_el1();
+#endif
+}
+#endif
+
 /* Subcommand: PREP */
 static void boot_prep_linux(bootm_headers_t *images)
 {
@@ -219,9 +237,48 @@ static void boot_prep_linux(bootm_headers_t *images)
 	}
 }
 
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+bool armv7_boot_nonsec(void)
+{
+	char *s = getenv("bootm_boot_mode");
+#ifdef CONFIG_ARMV7_BOOT_SEC_DEFAULT
+	bool nonsec = false;
+#else
+	bool nonsec = true;
+#endif
+
+	if (s && !strcmp(s, "sec"))
+		nonsec = false;
+
+	if (s && !strcmp(s, "nonsec"))
+		nonsec = true;
+
+	return nonsec;
+}
+#endif
+
 /* Subcommand: GO */
 static void boot_jump_linux(bootm_headers_t *images, int flag)
 {
+#ifdef CONFIG_ARM64
+	void (*kernel_entry)(void *fdt_addr, void *res0, void *res1,
+			void *res2);
+	int fake = (flag & BOOTM_STATE_OS_FAKE_GO);
+
+	kernel_entry = (void (*)(void *fdt_addr, void *res0, void *res1,
+				void *res2))images->ep;
+
+	debug("## Transferring control to Linux (at address %lx)...\n",
+		(ulong) kernel_entry);
+	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
+
+	announce_and_cleanup(fake);
+
+	if (!fake) {
+		do_nonsec_virt_switch();
+		kernel_entry(images->ft_addr, NULL, NULL, NULL);
+	}
+#else
 	unsigned long machid = gd->bd->bi_arch_number;
 	char *s;
 	void (*kernel_entry)(int zero, int arch, uint params);
@@ -246,8 +303,17 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	else
 		r2 = gd->bd->bi_boot_params;
 
-	if (!fake)
-		kernel_entry(0, machid, r2);
+	if (!fake) {
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+		if (armv7_boot_nonsec()) {
+			armv7_init_nonsec();
+			secure_ram_addr(_do_nonsec_entry)(kernel_entry,
+							  0, machid, r2);
+		} else
+#endif
+			kernel_entry(0, machid, r2);
+	}
+#endif
 }
 
 /* Main Entry point for arm bootm implementation
@@ -256,7 +322,8 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
  * DIFFERENCE: Instead of calling prep and go at the end
  * they are called if subcommand is equal 0.
  */
-int do_bootm_linux(int flag, int argc, char *argv[], bootm_headers_t *images)
+int do_bootm_linux(int flag, int argc, char * const argv[],
+		   bootm_headers_t *images)
 {
 	/* No need for those on ARM */
 	if (flag & BOOTM_STATE_OS_BD_T || flag & BOOTM_STATE_OS_CMDLINE)
@@ -308,3 +375,26 @@ int bootz_setup(ulong image, ulong *start, ulong *end)
 }
 
 #endif	/* CONFIG_CMD_BOOTZ */
+
+#if defined(CONFIG_BOOTM_VXWORKS)
+void boot_prep_vxworks(bootm_headers_t *images)
+{
+#if defined(CONFIG_OF_LIBFDT)
+	int off;
+
+	if (images->ft_addr) {
+		off = fdt_path_offset(images->ft_addr, "/memory");
+		if (off < 0) {
+			if (arch_fixup_fdt(images->ft_addr))
+				puts("## WARNING: fixup memory failed!\n");
+		}
+	}
+#endif
+	cleanup_before_linux();
+}
+void boot_jump_vxworks(bootm_headers_t *images)
+{
+	/* ARM VxWorks requires device tree physical address to be passed */
+	((void (*)(void *))images->ep)(images->ft_addr);
+}
+#endif

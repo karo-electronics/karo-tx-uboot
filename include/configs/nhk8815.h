@@ -4,7 +4,7 @@
  * Configuration settings for the "Nomadik Hardware Kit" NHK-8815,
  * the evaluation board for the Nomadik 8815 System on Chip.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -12,10 +12,7 @@
 
 #include <nomadik.h>
 
-#define CONFIG_ARM926EJS
-#define CONFIG_NOMADIK
 #define CONFIG_NOMADIK_8815	/* cpu variant */
-#define CONFIG_NOMADIK_NHK8815	/* board variant */
 
 #define CONFIG_SKIP_LOWLEVEL_INIT /* we have already been loaded to RAM */
 
@@ -76,7 +73,6 @@
 #define CONFIG_BOARD_LATE_INIT	/* call board_late_init during start up */
 
 /* timing informazion */
-#define CONFIG_SYS_HZ		1000 /* Mandatory... */
 #define CONFIG_SYS_TIMERBASE	0x101E2000
 
 /* serial port (PL011) configuration */

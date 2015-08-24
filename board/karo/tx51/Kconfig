@@ -1,0 +1,31 @@
+if TARGET_TX51_8XX0
+
+config SYS_BOARD
+	default "tx51"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mx5"
+
+config SYS_CONFIG_NAME
+	default "tx51-8xx0"
+
+endif
+
+if TARGET_TX51_8XX1_2
+
+config SYS_BOARD
+	default "tx51"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "mx5"
+
+config SYS_CONFIG_NAME
+	default "tx51-8xx1_2"
+
+endif

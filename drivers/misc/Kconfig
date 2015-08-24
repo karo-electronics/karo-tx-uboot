@@ -1,0 +1,7 @@
+config MXC_OCOTP
+	bool "Freescale OCOTP support"
+	depends on SOC_MX5 || SOC_MX6
+
+config MXS_OCOTP
+	bool "Freescale OCOTP support"
+	depends on SOC_MXS

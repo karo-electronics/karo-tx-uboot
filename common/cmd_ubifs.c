@@ -21,16 +21,8 @@
 static int ubifs_initialized;
 static int ubifs_mounted;
 
-extern struct super_block *ubifs_sb;
-
-/* Prototypes */
-int ubifs_init(void);
-int ubifs_mount(char *vol_name);
-void ubifs_umount(struct ubifs_info *c);
-int ubifs_ls(char *dir_name);
-int ubifs_load(char *filename, u32 addr, u32 size);
-
-int do_ubifs_mount(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_ubifs_mount(cmd_tbl_t *cmdtp, int flag, int argc,
+				char * const argv[])
 {
 	char *vol_name;
 	int ret;
@@ -46,7 +38,7 @@ int do_ubifs_mount(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		ubifs_initialized = 1;
 	}
 
-	ret = ubifs_mount(vol_name);
+	ret = uboot_ubifs_mount(vol_name);
 	if (ret)
 		return -1;
 
@@ -74,7 +66,8 @@ void cmd_ubifs_umount(void)
 	ubifs_initialized = 0;
 }
 
-int do_ubifs_umount(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_ubifs_umount(cmd_tbl_t *cmdtp, int flag, int argc,
+				char * const argv[])
 {
 	if (argc != 1)
 		return CMD_RET_USAGE;
@@ -89,7 +82,8 @@ int do_ubifs_umount(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-int do_ubifs_ls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_ubifs_ls(cmd_tbl_t *cmdtp, int flag, int argc,
+			char * const argv[])
 {
 	char *filename = "/";
 	int ret;
@@ -104,13 +98,16 @@ int do_ubifs_ls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	debug("Using filename %s\n", filename);
 
 	ret = ubifs_ls(filename);
-	if (ret)
-		printf("%s not found!\n", filename);
+	if (ret) {
+		printf("** File not found %s **\n", filename);
+		ret = CMD_RET_FAILURE;
+	}
 
 	return ret;
 }
 
-int do_ubifs_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_ubifs_load(cmd_tbl_t *cmdtp, int flag, int argc,
+				char * const argv[])
 {
 	char *filename;
 	char *endp;
@@ -140,8 +137,10 @@ int do_ubifs_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	debug("Loading file '%s' to address 0x%08x (size %d)\n", filename, addr, size);
 
 	ret = ubifs_load(filename, addr, size);
-	if (ret)
-		printf("%s not found!\n", filename);
+	if (ret) {
+		printf("** File not found %s **\n", filename);
+		ret = CMD_RET_FAILURE;
+	}
 
 	return ret;
 }

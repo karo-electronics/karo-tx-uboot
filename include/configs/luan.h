@@ -3,7 +3,7 @@
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  * John Otken, jotken@softadvances.com
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************
@@ -17,7 +17,6 @@
  *----------------------------------------------------------------------*/
 #define CONFIG_LUAN		1	/* Board is Luan		*/
 #define CONFIG_440SP		1	/* Specific PPC440SP support    */
-#define CONFIG_4xx		1	/* PPC4xx family	        */
 #define CONFIG_440		1
 #define CONFIG_SYS_CLK_FREQ	33333333 /* external freq to pll	*/
 

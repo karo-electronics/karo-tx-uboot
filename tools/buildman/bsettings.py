@@ -5,6 +5,7 @@
 
 import ConfigParser
 import os
+import StringIO
 
 
 def Setup(fname=''):
@@ -17,11 +18,15 @@ def Setup(fname=''):
     global config_fname
 
     settings = ConfigParser.SafeConfigParser()
-    config_fname = fname
-    if config_fname == '':
-        config_fname = '%s/.buildman' % os.getenv('HOME')
-    if config_fname:
-        settings.read(config_fname)
+    if fname is not None:
+        config_fname = fname
+        if config_fname == '':
+            config_fname = '%s/.buildman' % os.getenv('HOME')
+        if config_fname:
+            settings.read(config_fname)
+
+def AddFile(data):
+    settings.readfp(StringIO.StringIO(data))
 
 def GetItems(section):
     """Get the items from a section of the config.
@@ -35,10 +40,16 @@ def GetItems(section):
     try:
         return settings.items(section)
     except ConfigParser.NoSectionError as e:
-        print e
-        print ("Warning: No tool chains - please add a [toolchain] section "
-                "to your buildman config file %s. See README for details" %
-                config_fname)
         return []
     except:
         raise
+
+def SetItem(section, tag, value):
+    """Set an item and write it back to the settings file"""
+    global settings
+    global config_fname
+
+    settings.set(section, tag, value)
+    if config_fname is not None:
+        with open(config_fname, 'w') as fd:
+            settings.write(fd)

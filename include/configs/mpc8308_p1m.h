@@ -13,7 +13,6 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC83xx		1 /* MPC83xx family */
 #define CONFIG_MPC830x		1 /* MPC830x family */
 #define CONFIG_MPC8308		1 /* MPC8308 CPU specific */
 #define CONFIG_MPC8308_P1M	1 /* mpc8308_p1m board specific */
@@ -412,7 +411,6 @@
  */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR		0x2000000 /* default load address */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt */
 
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
 
@@ -421,7 +419,6 @@
 #define CONFIG_SYS_MAXARGS	16	/* max number of command args */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_HZ		1000	/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data

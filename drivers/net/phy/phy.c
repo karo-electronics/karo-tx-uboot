@@ -18,6 +18,7 @@
 #include <phy.h>
 #include <errno.h>
 #include <linux/err.h>
+#include <linux/compiler.h>
 
 /* Generic PHY support and helper functions */
 
@@ -43,7 +44,6 @@ static int genphy_config_advert(struct phy_device *phydev)
 
 	/* Setup standard advertisement */
 	oldadv = adv = phy_read(phydev, MDIO_DEVAD_NONE, MII_ADVERTISE);
-
 	if (adv < 0)
 		return adv;
 
@@ -78,7 +78,6 @@ static int genphy_config_advert(struct phy_device *phydev)
 	if (phydev->supported & (SUPPORTED_1000baseT_Half |
 				SUPPORTED_1000baseT_Full)) {
 		oldadv = adv = phy_read(phydev, MDIO_DEVAD_NONE, MII_CTRL1000);
-
 		if (adv < 0)
 			return adv;
 
@@ -136,7 +135,6 @@ int genphy_restart_aneg(struct phy_device *phydev)
 	int ctl;
 
 	ctl = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-
 	if (ctl < 0)
 		return ctl;
 
@@ -287,20 +285,23 @@ int genphy_parse_link(struct phy_device *phydev)
 		return mii_reg;
 
 	/* We're using autonegotiation */
-	if (mii_reg & BMSR_ANEGCAPABLE) {
+	if (phydev->supported & SUPPORTED_Autoneg) {
 		int ret;
-		u16 lpa;
-		u16 gblpa = 0;
-		int estatus = 0;
+		u32 lpa = 0;
+		u32 gblpa = 0;
+		u32 estatus = 0;
 
 		/* Check for gigabit capability */
-		if (mii_reg & BMSR_ERCAP) {
+		if (phydev->supported & (SUPPORTED_1000baseT_Full |
+					SUPPORTED_1000baseT_Half)) {
 			/* We want a list of states supported by
 			 * both PHYs in the link
 			 */
 			ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_STAT1000);
-			if (ret < 0)
-				return ret;
+			if (ret < 0) {
+				debug("Could not read MII_STAT1000. Ignoring gigabit capability\n");
+				ret = 0;
+			}
 			gblpa = ret;
 
 			ret = phy_read(phydev, MDIO_DEVAD_NONE, MII_CTRL1000);
@@ -400,7 +401,6 @@ int genphy_config(struct phy_device *phydev)
 
 	/* Do we support autonegotiation? */
 	val = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMSR);
-
 	if (val < 0)
 		return val;
 
@@ -467,20 +467,23 @@ static LIST_HEAD(phy_drivers);
 
 int phy_init(void)
 {
+#ifdef CONFIG_PHY_AQUANTIA
+	phy_aquantia_init();
+#endif
 #ifdef CONFIG_PHY_ATHEROS
 	phy_atheros_init();
 #endif
 #ifdef CONFIG_PHY_BROADCOM
 	phy_broadcom_init();
 #endif
+#ifdef CONFIG_PHY_CORTINA
+	phy_cortina_init();
+#endif
 #ifdef CONFIG_PHY_DAVICOM
 	phy_davicom_init();
 #endif
 #ifdef CONFIG_PHY_ET1011C
 	phy_et1011c_init();
-#endif
-#ifdef CONFIG_PHY_ICPLUS
-	phy_icplus_init();
 #endif
 #ifdef CONFIG_PHY_LXT
 	phy_lxt_init();
@@ -726,10 +729,8 @@ static struct phy_device *create_phy_by_mask(struct mii_dev *bus,
 	while (phy_mask) {
 		int addr = ffs(phy_mask) - 1;
 		int r = get_phy_id(bus, addr, devad, &phy_id);
-		if (r < 0)
-			return ERR_PTR(r);
 		/* If the PHY ID is mostly f's, we didn't find anything */
-		if ((phy_id & 0x1fffffff) != 0x1fffffff)
+		if (r == 0 && (phy_id & 0x1fffffff) != 0x1fffffff)
 			return phy_device_create(bus, addr, phy_id, interface);
 		phy_mask &= ~(1 << addr);
 	}
@@ -770,7 +771,7 @@ static struct phy_device *get_phy_device_by_mask(struct mii_dev *bus,
 		if (phydev)
 			return phydev;
 	}
-	printf("Phy not found\n");
+	printf("Phy %d not found\n", ffs(phy_mask) - 1);
 	return phy_device_create(bus, ffs(phy_mask) - 1, 0xffffffff, interface);
 }
 
@@ -909,15 +910,12 @@ int phy_startup(struct phy_device *phydev)
 	return 0;
 }
 
-static int __board_phy_config(struct phy_device *phydev)
+__weak int board_phy_config(struct phy_device *phydev)
 {
 	if (phydev->drv->config)
 		return phydev->drv->config(phydev);
 	return 0;
 }
-
-int board_phy_config(struct phy_device *phydev)
-	__attribute__((weak, alias("__board_phy_config")));
 
 int phy_config(struct phy_device *phydev)
 {

@@ -17,7 +17,7 @@
 
 #ifndef	__ASSEMBLY__
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 struct mxs_apbh_regs {
 	mxs_reg_32(hw_apbh_ctrl0);
 	mxs_reg_32(hw_apbh_ctrl1);
@@ -96,7 +96,7 @@ struct mxs_apbh_regs {
 	mxs_reg_32(hw_apbh_version);
 };
 
-#elif (defined(CONFIG_MX28) || defined(CONFIG_MX6))
+#elif (defined(CONFIG_SOC_MX28) || defined(CONFIG_SOC_MX6))
 struct mxs_apbh_regs {
 	mxs_reg_32(hw_apbh_ctrl0);				/* 0x000 */
 	mxs_reg_32(hw_apbh_ctrl1);				/* 0x010 */
@@ -243,7 +243,7 @@ struct mxs_apbh_regs {
 #define	APBH_CTRL0_CLKGATE				(1 << 30)
 #define	APBH_CTRL0_AHB_BURST8_EN			(1 << 29)
 #define	APBH_CTRL0_APB_BURST_EN				(1 << 28)
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define	APBH_CTRL0_RSVD0_MASK				(0xf << 24)
 #define	APBH_CTRL0_RSVD0_OFFSET				24
 #define	APBH_CTRL0_RESET_CHANNEL_MASK			(0xff << 16)
@@ -256,7 +256,7 @@ struct mxs_apbh_regs {
 #define	APBH_CTRL0_CLKGATE_CHANNEL_NAND1		0x20
 #define	APBH_CTRL0_CLKGATE_CHANNEL_NAND2		0x40
 #define	APBH_CTRL0_CLKGATE_CHANNEL_NAND3		0x80
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define	APBH_CTRL0_RSVD0_MASK				(0xfff << 16)
 #define	APBH_CTRL0_RSVD0_OFFSET				16
 #define	APBH_CTRL0_CLKGATE_CHANNEL_MASK			0xffff
@@ -275,7 +275,7 @@ struct mxs_apbh_regs {
 #define	APBH_CTRL0_CLKGATE_CHANNEL_NAND7		0x0800
 #define	APBH_CTRL0_CLKGATE_CHANNEL_HSADC		0x1000
 #define	APBH_CTRL0_CLKGATE_CHANNEL_LCDIF		0x2000
-#elif defined(CONFIG_MX6)
+#elif defined(CONFIG_SOC_MX6)
 #define	APBH_CTRL0_CLKGATE_CHANNEL_OFFSET		0
 #define	APBH_CTRL0_CLKGATE_CHANNEL_NAND0		0x0001
 #define	APBH_CTRL0_CLKGATE_CHANNEL_NAND1		0x0002
@@ -356,7 +356,7 @@ struct mxs_apbh_regs {
 #define	APBH_CTRL2_CH1_ERROR_IRQ			(1 << 1)
 #define	APBH_CTRL2_CH0_ERROR_IRQ			(1 << 0)
 
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 #define	APBH_CHANNEL_CTRL_RESET_CHANNEL_MASK		(0xffff << 16)
 #define	APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET		16
 #define	APBH_CHANNEL_CTRL_RESET_CHANNEL_SSP0		(0x0001 << 16)
@@ -391,11 +391,11 @@ struct mxs_apbh_regs {
 #define	APBH_CHANNEL_CTRL_FREEZE_CHANNEL_LCDIF		0x2000
 #endif
 
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 #define	APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET		16
 #endif
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define	APBH_DEVSEL_CH7_MASK				(0xf << 28)
 #define	APBH_DEVSEL_CH7_OFFSET				28
 #define	APBH_DEVSEL_CH6_MASK				(0xf << 24)
@@ -412,7 +412,7 @@ struct mxs_apbh_regs {
 #define	APBH_DEVSEL_CH1_OFFSET				4
 #define	APBH_DEVSEL_CH0_MASK				(0xf << 0)
 #define	APBH_DEVSEL_CH0_OFFSET				0
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define	APBH_DEVSEL_CH15_MASK				(0x3 << 30)
 #define	APBH_DEVSEL_CH15_OFFSET				30
 #define	APBH_DEVSEL_CH14_MASK				(0x3 << 28)
@@ -447,7 +447,7 @@ struct mxs_apbh_regs {
 #define	APBH_DEVSEL_CH0_OFFSET				0
 #endif
 
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 #define	APBH_DMA_BURST_SIZE_CH15_MASK			(0x3 << 30)
 #define	APBH_DMA_BURST_SIZE_CH15_OFFSET			30
 #define	APBH_DMA_BURST_SIZE_CH14_MASK			(0x3 << 28)

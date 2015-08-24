@@ -74,6 +74,13 @@ static const int fixed_batt_supply;
 
 static struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
 
+/**
+ * mxs_power_clock2xtal() - Switch CPU core clock source to 24MHz XTAL
+ *
+ * This function switches the CPU core clock from PLL to 24MHz XTAL
+ * oscilator. This is necessary if the PLL is being reconfigured to
+ * prevent crash of the CPU core.
+ */
 static void mxs_power_clock2xtal(void)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =
@@ -84,6 +91,13 @@ static void mxs_power_clock2xtal(void)
 		&clkctrl_regs->hw_clkctrl_clkseq_set);
 }
 
+/**
+ * mxs_power_clock2pll() - Switch CPU core clock source to PLL
+ *
+ * This function switches the CPU core clock from 24MHz XTAL oscilator
+ * to PLL. This can only be called once the PLL has re-locked and once
+ * the PLL is stable after reconfiguration.
+ */
 static void mxs_power_clock2pll(void)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =
@@ -110,16 +124,22 @@ static int mxs_power_wait_rtc_stat(u32 mask)
 	return !!(readl(&rtc_regs->hw_rtc_stat) & mask);
 }
 
+/**
+ * mxs_power_set_auto_restart() - Set the auto-restart bit
+ *
+ * This function ungates the RTC block and sets the AUTO_RESTART
+ * bit to work around a design bug on MX28EVK Rev. A .
+ */
 static int mxs_power_set_auto_restart(int on)
 {
 	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
 
-	/*
-	 * Due to the hardware design bug of mx28 EVK-A
-	 * we need to set the AUTO_RESTART bit.
-	 */
 	if (mxs_power_wait_rtc_stat(RTC_STAT_STALE_REGS_PERSISTENT0))
 		return 1;
+
+	/* Do nothing if flag already set */
+	if (readl(&rtc_regs->hw_rtc_persistent0) & RTC_PERSISTENT0_AUTO_RESTART)
+		return 0;
 
 	if ((!(readl(&rtc_regs->hw_rtc_persistent0) &
 				RTC_PERSISTENT0_AUTO_RESTART) ^ !on) == 0)
@@ -137,6 +157,14 @@ static int mxs_power_set_auto_restart(int on)
 	return 0;
 }
 
+/**
+ * mxs_power_set_linreg() - Set linear regulators 25mV below DC-DC converter
+ *
+ * This function configures the VDDIO, VDDA and VDDD linear regulators output
+ * to be 25mV below the VDDIO, VDDA and VDDD output from the DC-DC switching
+ * converter. This is the recommended setting for the case where we use both
+ * linear regulators and DC-DC converter to power the VDDIO rail.
+ */
 static void mxs_power_set_linreg(void)
 {
 	/* Set linear regulator 25mV below switching converter */
@@ -153,6 +181,11 @@ static void mxs_power_set_linreg(void)
 			POWER_VDDIOCTRL_LINREG_OFFSET_1STEPS_BELOW);
 }
 
+/**
+ * mxs_get_batt_volt() - Measure battery input voltage
+ *
+ * This function retrieves the battery input voltage and returns it.
+ */
 static int mxs_get_batt_volt(void)
 {
 	uint32_t volt = readl(&power_regs->hw_power_battmonitor);
@@ -163,11 +196,24 @@ static int mxs_get_batt_volt(void)
 	return volt;
 }
 
+/**
+ * mxs_is_batt_ready() - Test if the battery provides enough voltage to boot
+ *
+ * This function checks if the battery input voltage is higher than 3.6V and
+ * therefore allows the system to successfully boot using this power source.
+ */
 static int mxs_is_batt_ready(void)
 {
 	return (mxs_get_batt_volt() >= 3600);
 }
 
+/**
+ * mxs_is_batt_good() - Test if battery is operational at all
+ *
+ * This function starts recharging the battery and tests if the input current
+ * provided by the 5V input recharging the battery is also sufficient to power
+ * the DC-DC converter.
+ */
 static int mxs_is_batt_good(void)
 {
 	uint32_t volt = mxs_get_batt_volt();
@@ -193,19 +239,28 @@ static int mxs_is_batt_good(void)
 
 	volt = mxs_get_batt_volt();
 
-	if (volt >= 3500)
-		return 0;
-
-	if (volt >= 2400)
-		return 1;
-
 	writel(POWER_CHARGE_STOP_ILIMIT_MASK | POWER_CHARGE_BATTCHRG_I_MASK,
 		&power_regs->hw_power_charge_clr);
 	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
 
+	if (volt >= 3500) {
+		return 0;
+	}
+	if (volt >= 2400) {
+		return 1;
+	}
 	return 0;
 }
 
+/**
+ * mxs_power_setup_5v_detect() - Start the 5V input detection comparator
+ *
+ * This function enables the 5V detection comparator and sets the 5V valid
+ * threshold to 4.4V . We use 4.4V threshold here to make sure that even
+ * under high load, the voltage drop on the 5V input won't be so critical
+ * to cause undervolt on the 4P2 linear regulator supplying the DC-DC
+ * converter and thus making the system crash.
+ */
 static void mxs_power_setup_5v_detect(void)
 {
 	/* Start 5V detection */
@@ -215,6 +270,12 @@ static void mxs_power_setup_5v_detect(void)
 			POWER_5VCTRL_PWRUP_VBUS_CMPS);
 }
 
+/**
+ * mxs_src_power_init() - Preconfigure the power block
+ *
+ * This function configures reasonable values for the DC-DC control loop
+ * and battery monitor.
+ */
 static void mxs_src_power_init(void)
 {
 	/* Improve efficieny and reduce transient ripple */
@@ -251,6 +312,12 @@ static void mxs_src_power_init(void)
 	}
 }
 
+/**
+ * mxs_power_init_4p2_params() - Configure the parameters of the 4P2 regulator
+ *
+ * This function configures the necessary parameters for the 4P2 linear
+ * regulator to supply the DC-DC converter from 5V input.
+ */
 static void mxs_power_init_4p2_params(void)
 {
 	/* Setup 4P2 parameters */
@@ -272,6 +339,12 @@ static void mxs_power_init_4p2_params(void)
 		0x3f << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
 }
 
+/**
+ * mxs_enable_4p2_dcdc_input() - Enable or disable the DCDC input from 4P2
+ * @xfer:	Select if the input shall be enabled or disabled
+ *
+ * This function enables or disables the 4P2 input into the DC-DC converter.
+ */
 static void mxs_enable_4p2_dcdc_input(int xfer)
 {
 	uint32_t tmp, vbus_thresh, vbus_5vdetect, pwd_bo;
@@ -366,6 +439,12 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 				POWER_CTRL_ENIRQ_VDD5V_DROOP);
 }
 
+/**
+ * mxs_power_init_4p2_regulator() - Start the 4P2 regulator
+ *
+ * This function enables the 4P2 regulator and switches the DC-DC converter
+ * to use the 4P2 input.
+ */
 static void mxs_power_init_4p2_regulator(void)
 {
 	uint32_t tmp, tmp2;
@@ -408,7 +487,7 @@ static void mxs_power_init_4p2_regulator(void)
 	 * We then check the brownout status. If the brownout status is false,
 	 * the voltage is already close to the target voltage of 4.2V so we
 	 * can go ahead and set the 4P2 current limit to our max target limit.
-	 * If the brownout status is true, we need to ramp us the current limit
+	 * If the brownout status is true, we need to ramp up the current limit
 	 * so that we don't cause large inrush current issues. We step up the
 	 * current limit until the brownout status is false or until we've
 	 * reached our maximum defined 4p2 current limit.
@@ -448,6 +527,12 @@ static void mxs_power_init_4p2_regulator(void)
 	writel(POWER_CTRL_DCDC4P2_BO_IRQ, &power_regs->hw_power_ctrl_clr);
 }
 
+/**
+ * mxs_power_init_dcdc_4p2_source() - Switch DC-DC converter to 4P2 source
+ *
+ * This function configures the DC-DC converter to be supplied from the 4P2
+ * linear regulator.
+ */
 static void mxs_power_init_dcdc_4p2_source(void)
 {
 	if (!(readl(&power_regs->hw_power_dcdc4p2) &
@@ -467,6 +552,12 @@ static void mxs_power_init_dcdc_4p2_source(void)
 	}
 }
 
+/**
+ * mxs_power_enable_4p2() - Power up the 4P2 regulator
+ *
+ * This function drives the process of powering up the 4P2 linear regulator
+ * and switching the DC-DC converter input over to the 4P2 linear regulator.
+ */
 static void mxs_power_enable_4p2(void)
 {
 	uint32_t vdddctrl, vddactrl, vddioctrl;
@@ -524,6 +615,14 @@ static void mxs_power_enable_4p2(void)
 			&power_regs->hw_power_charge_clr);
 }
 
+/**
+ * mxs_boot_valid_5v() - Boot from 5V supply
+ *
+ * This function configures the power block to boot from valid 5V input.
+ * This is called only if the 5V is reliable and can properly supply the
+ * CPU. This function proceeds to configure the 4P2 converter to be supplied
+ * from the 5V input.
+ */
 static void mxs_boot_valid_5v(void)
 {
 	/*
@@ -544,6 +643,11 @@ static void mxs_boot_valid_5v(void)
 	mxs_power_enable_4p2();
 }
 
+/**
+ * mxs_powerdown() - Shut down the system
+ *
+ * This function powers down the CPU completely.
+ */
 static void mxs_powerdown(void)
 {
 	writel(POWER_RESET_UNLOCK_KEY, &power_regs->hw_power_reset);
@@ -551,6 +655,12 @@ static void mxs_powerdown(void)
 		&power_regs->hw_power_reset);
 }
 
+/**
+ * mxs_batt_boot() - Configure the power block to boot from battery input
+ *
+ * This function configures the power block to boot from the battery voltage
+ * supply.
+ */
 static void mxs_batt_boot(void)
 {
 	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_PWDN_5VBRNOUT);
@@ -590,8 +700,18 @@ static void mxs_batt_boot(void)
 	clrsetbits_le32(&power_regs->hw_power_5vctrl,
 		POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK,
 		0x8 << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
+
+	mxs_power_enable_4p2();
 }
 
+/**
+ * mxs_handle_5v_conflict() - Test if the 5V input is reliable
+ *
+ * This function tests if the 5V input can reliably supply the system. If it
+ * can, then proceed to configuring the system to boot from 5V source, otherwise
+ * try booting from battery supply. If we can not boot from battery supply
+ * either, shut down the system.
+ */
 static void mxs_handle_5v_conflict(void)
 {
 	uint32_t tmp;
@@ -604,8 +724,8 @@ static void mxs_handle_5v_conflict(void)
 
 		if (tmp & POWER_STS_VDDIO_BO) {
 			/*
-			 * VDDIO has a brownout, then the VDD5V_GT_VDDIO becomes
-			 * unreliable
+			 * If VDDIO has a brownout, then the VDD5V_GT_VDDIO
+			 * becomes unreliable
 			 */
 			mxs_powerdown();
 			break;
@@ -626,6 +746,12 @@ static void mxs_handle_5v_conflict(void)
 	}
 }
 
+/**
+ * mxs_5v_boot() - Configure the power block to boot from 5V input
+ *
+ * This function handles configuration of the power block when supplied by
+ * a 5V input.
+ */
 static void mxs_5v_boot(void)
 {
 	/*
@@ -646,12 +772,17 @@ static void mxs_5v_boot(void)
 	mxs_handle_5v_conflict();
 }
 
+/**
+ * mxs_init_batt_bo() - Configure battery brownout threshold
+ *
+ * This function configures the battery input brownout threshold. The value
+ * at which the battery brownout happens is configured to 3.0V in the code.
+ */
 static void mxs_fixed_batt_boot(void)
 {
 	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
 
 	setbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_PWDN_5VBRNOUT |
 		POWER_5VCTRL_ENABLE_DCDC |
 		POWER_5VCTRL_ILIMIT_EQ_ZERO |
 		POWER_5VCTRL_PWDN_5VBRNOUT |
@@ -687,6 +818,12 @@ static void mxs_init_batt_bo(void)
 	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
 }
 
+/**
+ * mxs_switch_vddd_to_dcdc_source() - Switch VDDD rail to DC-DC converter
+ *
+ * This function turns off the VDDD linear regulator and therefore makes
+ * the VDDD rail be supplied only by the DC-DC converter.
+ */
 static void mxs_switch_vddd_to_dcdc_source(void)
 {
 	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
@@ -698,6 +835,15 @@ static void mxs_switch_vddd_to_dcdc_source(void)
 		POWER_VDDDCTRL_DISABLE_STEPPING);
 }
 
+/**
+ * mxs_power_configure_power_source() - Configure power block source
+ *
+ * This function is the core of the power configuration logic. The function
+ * selects the power block input source and configures the whole power block
+ * accordingly. After the configuration is complete and the system is stable
+ * again, the function switches the CPU clock source back to PLL. Finally,
+ * the function switches the voltage rails to DC-DC converter.
+ */
 static void mxs_power_configure_power_source(void)
 {
 	struct mxs_lradc_regs *lradc_regs =
@@ -734,13 +880,22 @@ static void mxs_power_configure_power_source(void)
 
 	mxs_switch_vddd_to_dcdc_source();
 
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 	/* Fire up the VDDMEM LinReg now that we're all set. */
 	writel(POWER_VDDMEMCTRL_ENABLE_LINREG | POWER_VDDMEMCTRL_ENABLE_ILIMIT,
 		&power_regs->hw_power_vddmemctrl);
 #endif
 }
 
+/**
+ * mxs_enable_output_rail_protection() - Enable power rail protection
+ *
+ * This function enables overload protection on the power rails. This is
+ * triggered if the power rails' voltage drops rapidly due to overload and
+ * in such case, the supply to the powerrail is cut-off, protecting the
+ * CPU from damage. Note that under such condition, the system will likely
+ * crash or misbehave.
+ */
 static void mxs_enable_output_rail_protection(void)
 {
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
@@ -756,6 +911,13 @@ static void mxs_enable_output_rail_protection(void)
 			POWER_VDDIOCTRL_PWDN_BRNOUT);
 }
 
+/**
+ * mxs_get_vddio_power_source_off() - Get VDDIO rail power source
+ *
+ * This function tests if the VDDIO rail is supplied by linear regulator
+ * or by the DC-DC converter. Returns 1 if powered by linear regulator,
+ * returns 0 if powered by the DC-DC converter.
+ */
 static int mxs_get_vddio_power_source_off(void)
 {
 	uint32_t tmp;
@@ -784,6 +946,13 @@ static int mxs_get_vddio_power_source_off(void)
 	return 0;
 }
 
+/**
+ * mxs_get_vddd_power_source_off() - Get VDDD rail power source
+ *
+ * This function tests if the VDDD rail is supplied by linear regulator
+ * or by the DC-DC converter. Returns 1 if powered by linear regulator,
+ * returns 0 if powered by the DC-DC converter.
+ */
 static int mxs_get_vddd_power_source_off(void)
 {
 	uint32_t tmp;
@@ -853,13 +1022,15 @@ struct mxs_vddx_cfg {
 	uint32_t		bo_enirq;
 	uint32_t		bo_offset_mask;
 	uint32_t		bo_offset_offset;
+	uint16_t		bo_min_mV;
+	uint16_t		bo_max_mV;
 };
 
 #define POWER_REG(n)		&((struct mxs_power_regs *)MXS_POWER_BASE)->n
 
 static const struct mxs_vddx_cfg mxs_vddio_cfg = {
 	.reg			= POWER_REG(hw_power_vddioctrl),
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	.step_mV		= 25,
 #else
 	.step_mV		= 50,
@@ -872,6 +1043,8 @@ static const struct mxs_vddx_cfg mxs_vddio_cfg = {
 	.bo_enirq		= POWER_CTRL_ENIRQ_VDDIO_BO,
 	.bo_offset_mask		= POWER_VDDIOCTRL_BO_OFFSET_MASK,
 	.bo_offset_offset	= POWER_VDDIOCTRL_BO_OFFSET_OFFSET,
+	.bo_min_mV		= 2700,
+	.bo_max_mV		= 3475,
 };
 
 static const struct mxs_vddx_cfg mxs_vddd_cfg = {
@@ -885,12 +1058,14 @@ static const struct mxs_vddx_cfg mxs_vddd_cfg = {
 	.bo_enirq		= POWER_CTRL_ENIRQ_VDDD_BO,
 	.bo_offset_mask		= POWER_VDDDCTRL_BO_OFFSET_MASK,
 	.bo_offset_offset	= POWER_VDDDCTRL_BO_OFFSET_OFFSET,
+	.bo_min_mV		= 800,
+	.bo_max_mV		= 1475,
 };
 
 static const struct mxs_vddx_cfg mxs_vdda_cfg = {
 	.reg			= POWER_REG(hw_power_vddactrl),
-	.step_mV		= 50,
-	.lowest_mV		= 2800,
+	.step_mV		= 25,
+	.lowest_mV		= 1800,
 	.highest_mV		= 3600,
 	.powered_by_linreg	= mxs_get_vdda_power_source_off,
 	.trg_mask		= POWER_VDDACTRL_TRG_MASK,
@@ -898,9 +1073,11 @@ static const struct mxs_vddx_cfg mxs_vdda_cfg = {
 	.bo_enirq		= POWER_CTRL_ENIRQ_VDDA_BO,
 	.bo_offset_mask		= POWER_VDDACTRL_BO_OFFSET_MASK,
 	.bo_offset_offset	= POWER_VDDACTRL_BO_OFFSET_OFFSET,
+	.bo_min_mV		= 1400,
+	.bo_max_mV		= 2175,
 };
 
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 static const struct mxs_vddx_cfg mxs_vddmem_cfg = {
 	.reg			= POWER_REG(hw_power_vddmemctrl),
 	.step_mV		= 50,
@@ -915,19 +1092,39 @@ static const struct mxs_vddx_cfg mxs_vddmem_cfg = {
 };
 #endif
 
+/**
+ * mxs_power_set_vddx() - Configure voltage on DC-DC converter rail
+ * @cfg:		Configuration data of the DC-DC converter rail
+ * @new_target:		New target voltage of the DC-DC converter rail
+ * @new_brownout:	New brownout trigger voltage
+ *
+ * This function configures the output voltage on the DC-DC converter rail.
+ * The rail is selected by the @cfg argument. The new voltage target is
+ * selected by the @new_target and the voltage is specified in mV. The
+ * new brownout value is selected by the @new_brownout argument and the
+ * value is also in mV.
+ */
 static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
-				uint32_t new_target, uint32_t new_brownout)
+				uint32_t new_target, uint32_t bo_offset)
 {
 	uint32_t cur_target, diff, bo_int = 0;
 	int powered_by_linreg = 0;
 	int adjust_up;
 
-	if (new_target < cfg->lowest_mV)
+	if (new_target < cfg->lowest_mV) {
 		new_target = cfg->lowest_mV;
-	if (new_target > cfg->highest_mV)
+	}
+	if (new_target > cfg->highest_mV) {
 		new_target = cfg->highest_mV;
+	}
 
-	new_brownout = DIV_ROUND(new_target - new_brownout, cfg->step_mV);
+	if (new_target - bo_offset < cfg->bo_min_mV) {
+		bo_offset = new_target - cfg->bo_min_mV;
+	} else if (new_target - bo_offset > cfg->bo_max_mV) {
+		bo_offset = new_target - cfg->bo_max_mV;
+	}
+
+	bo_offset = DIV_ROUND_CLOSEST(bo_offset, cfg->step_mV);
 
 	cur_target = readl(cfg->reg);
 	cur_target &= cfg->trg_mask;
@@ -940,8 +1137,8 @@ static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
 
 	if (adjust_up && cfg->bo_irq) {
 		if (powered_by_linreg) {
-			bo_int = readl(cfg->reg);
-			clrbits_le32(cfg->reg, cfg->bo_enirq);
+			bo_int = readl(&power_regs->hw_power_ctrl);
+			writel(cfg->bo_enirq, &power_regs->hw_power_ctrl_clr);
 		}
 		setbits_le32(cfg->reg, cfg->bo_offset_mask);
 	}
@@ -982,14 +1179,23 @@ static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
 		if (adjust_up && powered_by_linreg) {
 			writel(cfg->bo_irq, &power_regs->hw_power_ctrl_clr);
 			if (bo_int & cfg->bo_enirq)
-				setbits_le32(cfg->reg, cfg->bo_enirq);
+				writel(cfg->bo_enirq,
+					&power_regs->hw_power_ctrl_set);
 		}
 
 		clrsetbits_le32(cfg->reg, cfg->bo_offset_mask,
-				new_brownout << cfg->bo_offset_offset);
+				bo_offset << cfg->bo_offset_offset);
 	}
 }
 
+/**
+ * mxs_setup_batt_detect() - Start the battery voltage measurement logic
+ *
+ * This function starts and configures the LRADC block. This allows the
+ * power initialization code to measure battery voltage and based on this
+ * knowledge, decide whether to boot at all, boot from battery or boot
+ * from 5V input.
+ */
 static void mxs_setup_batt_detect(void)
 {
 	mxs_lradc_init();
@@ -997,9 +1203,17 @@ static void mxs_setup_batt_detect(void)
 	early_delay(10);
 }
 
+/**
+ * mxs_ungate_power() - Ungate the POWER block
+ *
+ * This function ungates clock to the power block. In case the power block
+ * was still gated at this point, it will not be possible to configure the
+ * block and therefore the power initialization would fail. This function
+ * is only needed on i.MX233, on i.MX28 the power block is always ungated.
+ */
 static void mxs_ungate_power(void)
 {
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 	writel(POWER_CTRL_CLKGATE, &power_regs->hw_power_ctrl_clr);
 #endif
 }
@@ -1010,6 +1224,12 @@ static void mxs_ungate_power(void)
 #define auto_restart 0
 #endif
 
+/**
+ * mxs_power_init() - The power block init main function
+ *
+ * This function calls all the power block initialization functions in
+ * proper sequence to start the power block.
+ */
 void mxs_power_init(void)
 {
 	mxs_ungate_power();
@@ -1031,7 +1251,7 @@ void mxs_power_init(void)
 	mxs_power_set_vddx(&mxs_vddio_cfg, VDDIO_VAL, VDDIO_BO_VAL);
 	mxs_power_set_vddx(&mxs_vddd_cfg, VDDD_VAL, VDDD_BO_VAL);
 	mxs_power_set_vddx(&mxs_vdda_cfg, VDDA_VAL, VDDA_BO_VAL);
-#ifdef CONFIG_MX23
+#ifdef CONFIG_SOC_MX23
 	mxs_power_set_vddx(&mxs_vddmem_cfg, VDDMEM_VAL, VDDMEM_BO_VAL);
 
 	setbits_le32(&power_regs->hw_power_vddmemctrl,
@@ -1053,6 +1273,12 @@ void mxs_power_init(void)
 }
 
 #ifdef	CONFIG_SPL_MXS_PSWITCH_WAIT
+/**
+ * mxs_power_wait_pswitch() - Wait for power switch to be pressed
+ *
+ * This function waits until the power-switch was pressed to start booting
+ * the board.
+ */
 void mxs_power_wait_pswitch(void)
 {
 	while (!(readl(&power_regs->hw_power_sts) & POWER_STS_PSWITCH_MASK))

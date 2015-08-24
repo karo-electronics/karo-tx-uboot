@@ -5,7 +5,7 @@
  * (C) Copyright 2007-2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************
@@ -19,7 +19,6 @@
  * High Level Configuration Options
  *----------------------------------------------------------------------*/
 #define CONFIG_MAKALU		1		/* Board is Makalu	*/
-#define CONFIG_4xx		1		/* ... PPC4xx family	*/
 #define CONFIG_405EX		1		/* Specifc 405EX support*/
 #define CONFIG_SYS_CLK_FREQ	33330000	/* ext frequency to pll	*/
 

@@ -53,6 +53,7 @@ SECTIONS
 
 	. = ALIGN(4);
 	__image_copy_end = .;
+	__init_end = .;
 
 	.rel.dyn : {
 		__rel_dyn_start = .;
@@ -60,7 +61,7 @@ SECTIONS
 		__rel_dyn_end = .;
 	}
 
-	.deadcode : {
+	.padding : {
 		/*
 		 * Workaround for a binutils feature (or bug?).
 		 *
@@ -75,12 +76,10 @@ SECTIONS
 		 *
 		 * Create a small section here to avoid that.
 		 */
-		LONG(0xffffffff);
+		LONG(0xFFFFFFFF)
 	}
 
-	.dynsym : {
-		*(.dynsym)
-	}
+	_end = .;
 
 	.bss __rel_dyn_start (OVERLAY) : {
 		__bss_start = .;
@@ -91,15 +90,39 @@ SECTIONS
 		__bss_end = .;
 	}
 
-	/DISCARD/ : {
+	.dynsym _end : {
+		*(.dynsym)
+	}
+
+	.dynbss : {
 		*(.dynbss)
+	}
+
+	.dynstr : {
 		*(.dynstr)
+	}
+
+	.dynamic : {
 		*(.dynamic)
-		*(.interp)
-		*(.hash)
-		*(.gnu.*)
+	}
+
+	.plt : {
 		*(.plt)
-		*(.got.plt)
-		*(.rel.plt)
+	}
+
+	.interp : {
+		*(.interp)
+	}
+
+	.gnu : {
+		*(.gnu*)
+	}
+
+	.MIPS.stubs : {
+		*(.MIPS.stubs)
+	}
+
+	.hash : {
+		*(.hash)
 	}
 }

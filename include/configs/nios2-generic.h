@@ -3,7 +3,7 @@
  * Scott McNutt <smcnutt@psyent.com>
  * (C) Copyright 2010, Thomas Chou <thomas@wytron.com.tw>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,12 +15,14 @@
 #include "../board/altera/nios2-generic/custom_fpga.h" /* fpga parameters */
 #define CONFIG_BOARD_NAME "nios2-generic" /* custom board name */
 #define CONFIG_BOARD_EARLY_INIT_F	/* enable early board-spec. init */
+#define CONFIG_DISPLAY_CPUINFO
+#define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_SYS_NIOS_SYSID_BASE	CONFIG_SYS_SYSID_BASE
 
 /*
  * SERIAL
  */
-#define CONFIG_ALTERA_UART
+#define CONFIG_ALTERA_JTAG_UART
 #if defined(CONFIG_ALTERA_JTAG_UART)
 # define CONFIG_SYS_NIOS_CONSOLE	CONFIG_SYS_JTAG_UART_BASE
 #else
@@ -39,7 +41,6 @@
 #define CONFIG_SYS_LOW_RES_TIMER
 #define CONFIG_SYS_NIOS_TMRBASE	CONFIG_SYS_TIMER_BASE
 #define CONFIG_SYS_NIOS_TMRIRQ		CONFIG_SYS_TIMER_IRQ
-#define CONFIG_SYS_HZ			1000	/* Always 1000 */
 #define CONFIG_SYS_NIOS_TMRMS		10	/* Desired period (msec)*/
 #define CONFIG_SYS_NIOS_TMRCNT \
 	(CONFIG_SYS_NIOS_TMRMS * (CONFIG_SYS_TIMER_FREQ / 1000) - 1)
@@ -55,6 +56,9 @@
 #define CONFIG_BOARD_SPECIFIC_LED
 #define CONFIG_GPIO_LED		/* Enable GPIO LED driver */
 #define CONFIG_GPIO			/* Enable GPIO driver */
+#define LED_PIO_BASE			USER_LED_PIO_8OUT_BASE
+#define LED_PIO_WIDTH			8
+#define LED_PIO_RSTVAL			0xff
 
 #define STATUS_LED_BIT			0	/* Bit-0 on GPIO */
 #define STATUS_LED_STATE		1	/* Blinking */
@@ -85,6 +89,10 @@
 # define CONFIG_CMD_PING
 #endif
 
+#define CONFIG_OF_LIBFDT
+#define CONFIG_OF_BOARD_SETUP
+#define CONFIG_LMB
+
 /*
  * ENVIRONMENT -- Put environment in sector CONFIG_SYS_MONITOR_LEN above
  * CONFIG_SYS_RESET_ADDR, since we assume the monitor is stored at the
@@ -94,7 +102,7 @@
  */
 #define CONFIG_ENV_IS_IN_FLASH
 
-#define CONFIG_ENV_SIZE		0x10000	/* 64k, 1 sector */
+#define CONFIG_ENV_SIZE		0x20000	/* 128k, 1 sector */
 #define CONFIG_ENV_OVERWRITE		/* Serial change Ok	*/
 #define CONFIG_ENV_ADDR		((CONFIG_SYS_RESET_ADDR + \
 					  CONFIG_SYS_MONITOR_LEN) | \
@@ -120,7 +128,6 @@
  * MISC
  */
 #define CONFIG_SYS_LONGHELP		/* Provide extended help */
-#define CONFIG_SYS_PROMPT		"==> "	/* Command prompt	*/
 #define CONFIG_SYS_CBSIZE		256	/* Console I/O buf size */
 #define CONFIG_SYS_MAXARGS		16	/* Max command args	*/
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE /* Bootarg buf size */

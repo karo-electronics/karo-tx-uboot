@@ -27,8 +27,6 @@
 #define ICK_DSS_ON	0x00000001
 #define FCK_CAM_ON	0x00000001
 #define ICK_CAM_ON	0x00000001
-#define FCK_PER_ON	0x0003ffff
-#define ICK_PER_ON	0x0003ffff
 
 /* Used to index into DPLL parameter tables */
 typedef struct {
@@ -61,7 +59,6 @@ extern dpll_param *get_36x_mpu_dpll_param(void);
 extern dpll_param *get_36x_iva_dpll_param(void);
 extern dpll_param *get_36x_core_dpll_param(void);
 extern dpll_param *get_36x_per_dpll_param(void);
-
-extern void *_end_vect, *_start;
+extern dpll_param *get_36x_per2_dpll_param(void);
 
 #endif

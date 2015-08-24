@@ -2,7 +2,7 @@
  * (C) Copyright 2003
  * Tait Electronics Limited, Christchurch, New Zealand
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -63,7 +63,7 @@ static long evalexp(char *s, int w)
 		l = simple_strtoul(s, NULL, 16);
 	}
 
-	return (l & ((1 << (w * 8)) - 1));
+	return l & ((1UL << (w * 8)) - 1);
 }
 
 static char * evalstr(char *s)
@@ -71,6 +71,19 @@ static char * evalstr(char *s)
 	/* if the parameter starts with a * then assume a string pointer else its a literal */
 	if (s[0] == '*') {
 		return (char *)simple_strtoul(&s[1], NULL, 16);
+	} else if (s[0] == '$') {
+		int i = 2;
+
+		if (s[1] != '{')
+			return NULL;
+
+		while (s[i] != '}') {
+			if (s[i] == 0)
+				return NULL;
+			i++;
+		}
+		s[i] = 0;
+		return  getenv((const char *)&s[2]);
 	} else {
 		return s;
 	}

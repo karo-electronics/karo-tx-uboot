@@ -7,21 +7,26 @@
  */
 
 /*
- * The Matrix Keyboard Protocol driver handles talking to the keyboard
- * controller chip. Mostly this is for keyboard functions, but some other
- * things have slipped in, so we provide generic services to talk to the
- * KBC.
+ * This is the interface to the Chrome OS EC. It provides keyboard functions,
+ * power control and battery management. Quite a few other functions are
+ * provided to enable the EC software to be updated, talk to the EC's I2C bus
+ * and store a small amount of data in a memory which persists while the EC
+ * is not reset.
  */
 
 #include <common.h>
 #include <command.h>
+#include <dm.h>
 #include <i2c.h>
 #include <cros_ec.h>
 #include <fdtdec.h>
 #include <malloc.h>
 #include <spi.h>
+#include <asm/errno.h>
 #include <asm/io.h>
 #include <asm-generic/gpio.h>
+#include <dm/device-internal.h>
+#include <dm/uclass-internal.h>
 
 #ifdef DEBUG_TRACE
 #define debug_trace(fmt, b...)	debug(fmt, #b)
@@ -36,7 +41,9 @@ enum {
 	CROS_EC_CMD_HASH_TIMEOUT_MS = 2000,
 };
 
+#ifndef CONFIG_DM_CROS_EC
 static struct cros_ec_dev static_dev, *last_dev;
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -73,12 +80,203 @@ int cros_ec_calc_checksum(const uint8_t *data, int size)
 	return csum & 0xff;
 }
 
+/**
+ * Create a request packet for protocol version 3.
+ *
+ * The packet is stored in the device's internal output buffer.
+ *
+ * @param dev		CROS-EC device
+ * @param cmd		Command to send (EC_CMD_...)
+ * @param cmd_version	Version of command to send (EC_VER_...)
+ * @param dout          Output data (may be NULL If dout_len=0)
+ * @param dout_len      Size of output data in bytes
+ * @return packet size in bytes, or <0 if error.
+ */
+static int create_proto3_request(struct cros_ec_dev *dev,
+				 int cmd, int cmd_version,
+				 const void *dout, int dout_len)
+{
+	struct ec_host_request *rq = (struct ec_host_request *)dev->dout;
+	int out_bytes = dout_len + sizeof(*rq);
+
+	/* Fail if output size is too big */
+	if (out_bytes > (int)sizeof(dev->dout)) {
+		debug("%s: Cannot send %d bytes\n", __func__, dout_len);
+		return -EC_RES_REQUEST_TRUNCATED;
+	}
+
+	/* Fill in request packet */
+	rq->struct_version = EC_HOST_REQUEST_VERSION;
+	rq->checksum = 0;
+	rq->command = cmd;
+	rq->command_version = cmd_version;
+	rq->reserved = 0;
+	rq->data_len = dout_len;
+
+	/* Copy data after header */
+	memcpy(rq + 1, dout, dout_len);
+
+	/* Write checksum field so the entire packet sums to 0 */
+	rq->checksum = (uint8_t)(-cros_ec_calc_checksum(dev->dout, out_bytes));
+
+	cros_ec_dump_data("out", cmd, dev->dout, out_bytes);
+
+	/* Return size of request packet */
+	return out_bytes;
+}
+
+/**
+ * Prepare the device to receive a protocol version 3 response.
+ *
+ * @param dev		CROS-EC device
+ * @param din_len       Maximum size of response in bytes
+ * @return maximum expected number of bytes in response, or <0 if error.
+ */
+static int prepare_proto3_response_buffer(struct cros_ec_dev *dev, int din_len)
+{
+	int in_bytes = din_len + sizeof(struct ec_host_response);
+
+	/* Fail if input size is too big */
+	if (in_bytes > (int)sizeof(dev->din)) {
+		debug("%s: Cannot receive %d bytes\n", __func__, din_len);
+		return -EC_RES_RESPONSE_TOO_BIG;
+	}
+
+	/* Return expected size of response packet */
+	return in_bytes;
+}
+
+/**
+ * Handle a protocol version 3 response packet.
+ *
+ * The packet must already be stored in the device's internal input buffer.
+ *
+ * @param dev		CROS-EC device
+ * @param dinp          Returns pointer to response data
+ * @param din_len       Maximum size of response in bytes
+ * @return number of bytes of response data, or <0 if error. Note that error
+ * codes can be from errno.h or -ve EC_RES_INVALID_CHECKSUM values (and they
+ * overlap!)
+ */
+static int handle_proto3_response(struct cros_ec_dev *dev,
+				  uint8_t **dinp, int din_len)
+{
+	struct ec_host_response *rs = (struct ec_host_response *)dev->din;
+	int in_bytes;
+	int csum;
+
+	cros_ec_dump_data("in-header", -1, dev->din, sizeof(*rs));
+
+	/* Check input data */
+	if (rs->struct_version != EC_HOST_RESPONSE_VERSION) {
+		debug("%s: EC response version mismatch\n", __func__);
+		return -EC_RES_INVALID_RESPONSE;
+	}
+
+	if (rs->reserved) {
+		debug("%s: EC response reserved != 0\n", __func__);
+		return -EC_RES_INVALID_RESPONSE;
+	}
+
+	if (rs->data_len > din_len) {
+		debug("%s: EC returned too much data\n", __func__);
+		return -EC_RES_RESPONSE_TOO_BIG;
+	}
+
+	cros_ec_dump_data("in-data", -1, dev->din + sizeof(*rs), rs->data_len);
+
+	/* Update in_bytes to actual data size */
+	in_bytes = sizeof(*rs) + rs->data_len;
+
+	/* Verify checksum */
+	csum = cros_ec_calc_checksum(dev->din, in_bytes);
+	if (csum) {
+		debug("%s: EC response checksum invalid: 0x%02x\n", __func__,
+		      csum);
+		return -EC_RES_INVALID_CHECKSUM;
+	}
+
+	/* Return error result, if any */
+	if (rs->result)
+		return -(int)rs->result;
+
+	/* If we're still here, set response data pointer and return length */
+	*dinp = (uint8_t *)(rs + 1);
+
+	return rs->data_len;
+}
+
+static int send_command_proto3(struct cros_ec_dev *dev,
+			       int cmd, int cmd_version,
+			       const void *dout, int dout_len,
+			       uint8_t **dinp, int din_len)
+{
+#ifdef CONFIG_DM_CROS_EC
+	struct dm_cros_ec_ops *ops;
+#endif
+	int out_bytes, in_bytes;
+	int rv;
+
+	/* Create request packet */
+	out_bytes = create_proto3_request(dev, cmd, cmd_version,
+					  dout, dout_len);
+	if (out_bytes < 0)
+		return out_bytes;
+
+	/* Prepare response buffer */
+	in_bytes = prepare_proto3_response_buffer(dev, din_len);
+	if (in_bytes < 0)
+		return in_bytes;
+
+#ifdef CONFIG_DM_CROS_EC
+	ops = dm_cros_ec_get_ops(dev->dev);
+	rv = ops->packet ? ops->packet(dev->dev, out_bytes, in_bytes) : -ENOSYS;
+#else
+	switch (dev->interface) {
+#ifdef CONFIG_CROS_EC_SPI
+	case CROS_EC_IF_SPI:
+		rv = cros_ec_spi_packet(dev, out_bytes, in_bytes);
+		break;
+#endif
+#ifdef CONFIG_CROS_EC_SANDBOX
+	case CROS_EC_IF_SANDBOX:
+		rv = cros_ec_sandbox_packet(dev, out_bytes, in_bytes);
+		break;
+#endif
+	case CROS_EC_IF_NONE:
+	/* TODO: support protocol 3 for LPC, I2C; for now fall through */
+	default:
+		debug("%s: Unsupported interface\n", __func__);
+		rv = -1;
+	}
+#endif
+	if (rv < 0)
+		return rv;
+
+	/* Process the response */
+	return handle_proto3_response(dev, dinp, din_len);
+}
+
 static int send_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 			const void *dout, int dout_len,
 			uint8_t **dinp, int din_len)
 {
-	int ret;
+#ifdef CONFIG_DM_CROS_EC
+	struct dm_cros_ec_ops *ops;
+#endif
+	int ret = -1;
 
+	/* Handle protocol version 3 support */
+	if (dev->protocol_version == 3) {
+		return send_command_proto3(dev, cmd, cmd_version,
+					   dout, dout_len, dinp, din_len);
+	}
+
+#ifdef CONFIG_DM_CROS_EC
+	ops = dm_cros_ec_get_ops(dev->dev);
+	ret = ops->command(dev->dev, cmd, cmd_version,
+			   (const uint8_t *)dout, dout_len, dinp, din_len);
+#else
 	switch (dev->interface) {
 #ifdef CONFIG_CROS_EC_SPI
 	case CROS_EC_IF_SPI:
@@ -105,6 +303,7 @@ static int send_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	default:
 		ret = -1;
 	}
+#endif
 
 	return ret;
 }
@@ -123,25 +322,21 @@ static int send_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
  *			If not NULL, it will be updated to point to the data
  *			and will always be double word aligned (64-bits)
  * @param din_len       Maximum size of response in bytes
- * @return number of bytes in response, or -1 on error
+ * @return number of bytes in response, or -ve on error
  */
 static int ec_command_inptr(struct cros_ec_dev *dev, uint8_t cmd,
 		int cmd_version, const void *dout, int dout_len, uint8_t **dinp,
 		int din_len)
 {
-	uint8_t *din;
+	uint8_t *din = NULL;
 	int len;
 
-	if (cmd_version != 0 && !dev->cmd_version_is_supported) {
-		debug("%s: Command version >0 unsupported\n", __func__);
-		return -1;
-	}
 	len = send_command(dev, cmd, cmd_version, dout, dout_len,
 				&din, din_len);
 
 	/* If the command doesn't complete, wait a while */
 	if (len == -EC_RES_IN_PROGRESS) {
-		struct ec_response_get_comms_status *resp;
+		struct ec_response_get_comms_status *resp = NULL;
 		ulong start;
 
 		/* Wait for command to complete */
@@ -169,7 +364,8 @@ static int ec_command_inptr(struct cros_ec_dev *dev, uint8_t cmd,
 				NULL, 0, &din, din_len);
 	}
 
-	debug("%s: len=%d, dinp=%p, *dinp=%p\n", __func__, len, dinp, *dinp);
+	debug("%s: len=%d, dinp=%p, *dinp=%p\n", __func__, len, dinp,
+	      dinp ? *dinp : NULL);
 	if (dinp) {
 		/* If we have any data to return, it must be 64bit-aligned */
 		assert(len <= 0 || !((uintptr_t)din & 7));
@@ -193,7 +389,7 @@ static int ec_command_inptr(struct cros_ec_dev *dev, uint8_t cmd,
  *			It not NULL, it is a place for ec_command() to copy the
  *      data to.
  * @param din_len       Maximum size of response in bytes
- * @return number of bytes in response, or -1 on error
+ * @return number of bytes in response, or -ve on error
  */
 static int ec_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 		      const void *dout, int dout_len,
@@ -220,8 +416,8 @@ static int ec_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 
 int cros_ec_scan_keyboard(struct cros_ec_dev *dev, struct mbkp_keyscan *scan)
 {
-	if (ec_command(dev, EC_CMD_CROS_EC_STATE, 0, NULL, 0, scan,
-		       sizeof(scan->data)) < sizeof(scan->data))
+	if (ec_command(dev, EC_CMD_MKBP_STATE, 0, NULL, 0, scan,
+		       sizeof(scan->data)) != sizeof(scan->data))
 		return -1;
 
 	return 0;
@@ -232,10 +428,10 @@ int cros_ec_read_id(struct cros_ec_dev *dev, char *id, int maxlen)
 	struct ec_response_get_version *r;
 
 	if (ec_command_inptr(dev, EC_CMD_GET_VERSION, 0, NULL, 0,
-			(uint8_t **)&r, sizeof(*r)) < sizeof(*r))
+			(uint8_t **)&r, sizeof(*r)) != sizeof(*r))
 		return -1;
 
-	if (maxlen > sizeof(r->version_string_ro))
+	if (maxlen > (int)sizeof(r->version_string_ro))
 		maxlen = sizeof(r->version_string_ro);
 
 	switch (r->current_image) {
@@ -258,7 +454,7 @@ int cros_ec_read_version(struct cros_ec_dev *dev,
 {
 	if (ec_command_inptr(dev, EC_CMD_GET_VERSION, 0, NULL, 0,
 			(uint8_t **)versionp, sizeof(**versionp))
-			< sizeof(**versionp))
+			!= sizeof(**versionp))
 		return -1;
 
 	return 0;
@@ -267,7 +463,7 @@ int cros_ec_read_version(struct cros_ec_dev *dev,
 int cros_ec_read_build_info(struct cros_ec_dev *dev, char **strp)
 {
 	if (ec_command_inptr(dev, EC_CMD_GET_BUILD_INFO, 0, NULL, 0,
-			(uint8_t **)strp, EC_HOST_PARAM_SIZE) < 0)
+			(uint8_t **)strp, EC_PROTO2_MAX_PARAM_SIZE) < 0)
 		return -1;
 
 	return 0;
@@ -279,7 +475,7 @@ int cros_ec_read_current_image(struct cros_ec_dev *dev,
 	struct ec_response_get_version *r;
 
 	if (ec_command_inptr(dev, EC_CMD_GET_VERSION, 0, NULL, 0,
-			(uint8_t **)&r, sizeof(*r)) < sizeof(*r))
+			(uint8_t **)&r, sizeof(*r)) != sizeof(*r))
 		return -1;
 
 	*image = r->current_image;
@@ -336,7 +532,7 @@ int cros_ec_read_hash(struct cros_ec_dev *dev,
 	debug("%s: No valid hash (status=%d size=%d). Compute one...\n",
 	      __func__, hash->status, hash->size);
 
-	p.cmd = EC_VBOOT_HASH_RECALC;
+	p.cmd = EC_VBOOT_HASH_START;
 	p.hash_type = EC_VBOOT_HASH_TYPE_SHA256;
 	p.nonce_size = 0;
 	p.offset = EC_VBOOT_HASH_OFFSET_RW;
@@ -412,16 +608,16 @@ int cros_ec_reboot(struct cros_ec_dev *dev, enum ec_reboot_cmd cmd,
 int cros_ec_interrupt_pending(struct cros_ec_dev *dev)
 {
 	/* no interrupt support : always poll */
-	if (!fdt_gpio_isvalid(&dev->ec_int))
-		return 1;
+	if (!dm_gpio_is_valid(&dev->ec_int))
+		return -ENOENT;
 
-	return !gpio_get_value(dev->ec_int.gpio);
+	return dm_gpio_get_value(&dev->ec_int);
 }
 
-int cros_ec_info(struct cros_ec_dev *dev, struct ec_response_cros_ec_info *info)
+int cros_ec_info(struct cros_ec_dev *dev, struct ec_response_mkbp_info *info)
 {
-	if (ec_command(dev, EC_CMD_CROS_EC_INFO, 0, NULL, 0, info,
-			sizeof(*info)) < sizeof(*info))
+	if (ec_command(dev, EC_CMD_MKBP_INFO, 0, NULL, 0, info,
+		       sizeof(*info)) != sizeof(*info))
 		return -1;
 
 	return 0;
@@ -436,7 +632,7 @@ int cros_ec_get_host_events(struct cros_ec_dev *dev, uint32_t *events_ptr)
 	 * used by ACPI/SMI.
 	 */
 	if (ec_command_inptr(dev, EC_CMD_HOST_EVENT_GET_B, 0, NULL, 0,
-		       (uint8_t **)&resp, sizeof(*resp)) < sizeof(*resp))
+		       (uint8_t **)&resp, sizeof(*resp)) < (int)sizeof(*resp))
 		return -1;
 
 	if (resp->mask & EC_HOST_EVENT_MASK(EC_HOST_EVENT_INVALID))
@@ -474,7 +670,7 @@ int cros_ec_flash_protect(struct cros_ec_dev *dev,
 
 	if (ec_command(dev, EC_CMD_FLASH_PROTECT, EC_VER_FLASH_PROTECT,
 		       &params, sizeof(params),
-		       resp, sizeof(*resp)) < sizeof(*resp))
+		       resp, sizeof(*resp)) != sizeof(*resp))
 		return -1;
 
 	return 0;
@@ -504,23 +700,31 @@ static int cros_ec_check_version(struct cros_ec_dev *dev)
 	 *
 	 * So for now, just read all the data anyway.
 	 */
-	dev->cmd_version_is_supported = 1;
+
+	/* Try sending a version 3 packet */
+	dev->protocol_version = 3;
+	req.in_data = 0;
 	if (ec_command_inptr(dev, EC_CMD_HELLO, 0, &req, sizeof(req),
-		       (uint8_t **)&resp, sizeof(*resp)) > 0) {
-		/* It appears to understand new version commands */
-		dev->cmd_version_is_supported = 1;
-	} else {
-		dev->cmd_version_is_supported = 0;
-		if (ec_command_inptr(dev, EC_CMD_HELLO, 0, &req,
-			      sizeof(req), (uint8_t **)&resp,
-			      sizeof(*resp)) < 0) {
-			debug("%s: Failed both old and new command style\n",
-				__func__);
-			return -1;
-		}
+			     (uint8_t **)&resp, sizeof(*resp)) > 0) {
+		return 0;
 	}
 
-	return 0;
+	/* Try sending a version 2 packet */
+	dev->protocol_version = 2;
+	if (ec_command_inptr(dev, EC_CMD_HELLO, 0, &req, sizeof(req),
+		       (uint8_t **)&resp, sizeof(*resp)) > 0) {
+		return 0;
+	}
+
+	/*
+	 * Fail if we're still here, since the EC doesn't understand any
+	 * protcol version we speak.  Version 1 interface without command
+	 * version is no longer supported, and we don't know about any new
+	 * protocol versions.
+	 */
+	dev->protocol_version = 0;
+	printf("%s: ERROR: old EC interface not supported\n", __func__);
+	return -1;
 }
 
 int cros_ec_test(struct cros_ec_dev *dev)
@@ -599,8 +803,8 @@ static int cros_ec_flash_write_block(struct cros_ec_dev *dev,
 
 	p.offset = offset;
 	p.size = size;
-	assert(data && p.size <= sizeof(p.data));
-	memcpy(p.data, data, p.size);
+	assert(data && p.size <= EC_FLASH_WRITE_VER0_SIZE);
+	memcpy(&p + 1, data, p.size);
 
 	return ec_command_inptr(dev, EC_CMD_FLASH_WRITE, 0,
 			  &p, sizeof(p), NULL, 0) >= 0 ? 0 : -1;
@@ -611,8 +815,7 @@ static int cros_ec_flash_write_block(struct cros_ec_dev *dev,
  */
 static int cros_ec_flash_write_burst_size(struct cros_ec_dev *dev)
 {
-	struct ec_params_flash_write p;
-	return sizeof(p.data);
+	return EC_FLASH_WRITE_VER0_SIZE;
 }
 
 /**
@@ -718,7 +921,7 @@ int cros_ec_flash_update_rw(struct cros_ec_dev *dev,
 
 	if (cros_ec_flash_offset(dev, EC_FLASH_REGION_RW, &rw_offset, &rw_size))
 		return -1;
-	if (image_size > rw_size)
+	if (image_size > (int)rw_size)
 		return -1;
 
 	/* Invalidate the existing hash, just in case the AP reboots
@@ -804,7 +1007,7 @@ int cros_ec_get_ldo(struct cros_ec_dev *dev, uint8_t index, uint8_t *state)
 
 	if (ec_command_inptr(dev, EC_CMD_LDO_GET, 0,
 		       &params, sizeof(params),
-		       (uint8_t **)&resp, sizeof(*resp)) < sizeof(*resp))
+		       (uint8_t **)&resp, sizeof(*resp)) != sizeof(*resp))
 		return -1;
 
 	*state = resp->state;
@@ -812,8 +1015,10 @@ int cros_ec_get_ldo(struct cros_ec_dev *dev, uint8_t index, uint8_t *state)
 	return 0;
 }
 
+#ifndef CONFIG_DM_CROS_EC
 /**
- * Decode MBKP details from the device tree and allocate a suitable device.
+ * Decode EC interface details from the device tree and allocate a suitable
+ * device.
  *
  * @param blob		Device tree blob
  * @param node		Node to decode from
@@ -859,23 +1064,73 @@ static int cros_ec_decode_fdt(const void *blob, int node,
 		dev->interface = CROS_EC_IF_LPC;
 		break;
 #endif
+#ifdef CONFIG_CROS_EC_SANDBOX
+	case COMPAT_SANDBOX_HOST_EMULATION:
+		dev->interface = CROS_EC_IF_SANDBOX;
+		break;
+#endif
 	default:
 		debug("%s: Unknown compat id %d\n", __func__, compat);
 		return -1;
 	}
 
-	fdtdec_decode_gpio(blob, node, "ec-interrupt", &dev->ec_int);
+	gpio_request_by_name_nodev(blob, node, "ec-interrupt", 0, &dev->ec_int,
+				   GPIOD_IS_IN);
 	dev->optimise_flash_write = fdtdec_get_bool(blob, node,
 						    "optimise-flash-write");
 	*devp = dev;
 
 	return 0;
 }
+#endif
 
+#ifdef CONFIG_DM_CROS_EC
+int cros_ec_register(struct udevice *dev)
+{
+	struct cros_ec_dev *cdev = dev->uclass_priv;
+	const void *blob = gd->fdt_blob;
+	int node = dev->of_offset;
+	char id[MSG_BYTES];
+
+	cdev->dev = dev;
+	gpio_request_by_name(dev, "ec-interrupt", 0, &cdev->ec_int,
+			     GPIOD_IS_IN);
+	cdev->optimise_flash_write = fdtdec_get_bool(blob, node,
+						     "optimise-flash-write");
+
+	if (cros_ec_check_version(cdev)) {
+		debug("%s: Could not detect CROS-EC version\n", __func__);
+		return -CROS_EC_ERR_CHECK_VERSION;
+	}
+
+	if (cros_ec_read_id(cdev, id, sizeof(id))) {
+		debug("%s: Could not read KBC ID\n", __func__);
+		return -CROS_EC_ERR_READ_ID;
+	}
+
+	/* Remember this device for use by the cros_ec command */
+	debug("Google Chrome EC CROS-EC driver ready, id '%s'\n", id);
+
+	return 0;
+}
+#else
 int cros_ec_init(const void *blob, struct cros_ec_dev **cros_ecp)
 {
-	char id[MSG_BYTES];
 	struct cros_ec_dev *dev;
+	char id[MSG_BYTES];
+#ifdef CONFIG_DM_CROS_EC
+	struct udevice *udev;
+	int ret;
+
+	ret = uclass_find_device(UCLASS_CROS_EC, 0, &udev);
+	if (!ret)
+		device_remove(udev);
+	ret = uclass_get_device(UCLASS_CROS_EC, 0, &udev);
+	if (ret)
+		return ret;
+	dev = udev->uclass_priv;
+	return 0;
+#else
 	int node = 0;
 
 	*cros_ecp = NULL;
@@ -914,15 +1169,17 @@ int cros_ec_init(const void *blob, struct cros_ec_dev **cros_ecp)
 			return -CROS_EC_ERR_DEV_INIT;
 		break;
 #endif
+#ifdef CONFIG_CROS_EC_SANDBOX
+	case CROS_EC_IF_SANDBOX:
+		if (cros_ec_sandbox_init(dev, blob))
+			return -CROS_EC_ERR_DEV_INIT;
+		break;
+#endif
 	case CROS_EC_IF_NONE:
 	default:
 		return 0;
 	}
-
-	/* we will poll the EC interrupt line */
-	fdtdec_setup_gpio(&dev->ec_int);
-	if (fdt_gpio_isvalid(&dev->ec_int))
-		gpio_direction_input(dev->ec_int.gpio);
+#endif
 
 	if (cros_ec_check_version(dev)) {
 		debug("%s: Could not detect CROS-EC version\n", __func__);
@@ -935,13 +1192,16 @@ int cros_ec_init(const void *blob, struct cros_ec_dev **cros_ecp)
 	}
 
 	/* Remember this device for use by the cros_ec command */
-	last_dev = *cros_ecp = dev;
+	*cros_ecp = dev;
+#ifndef CONFIG_DM_CROS_EC
+	last_dev = dev;
+#endif
 	debug("Google Chrome EC CROS-EC driver ready, id '%s'\n", id);
 
 	return 0;
 }
+#endif
 
-#ifdef CONFIG_CMD_CROS_EC
 int cros_ec_decode_region(int argc, char * const argv[])
 {
 	if (argc > 0) {
@@ -957,6 +1217,134 @@ int cros_ec_decode_region(int argc, char * const argv[])
 
 	return -1;
 }
+
+int cros_ec_decode_ec_flash(const void *blob, int node,
+			    struct fdt_cros_ec *config)
+{
+	int flash_node;
+
+	flash_node = fdt_subnode_offset(blob, node, "flash");
+	if (flash_node < 0) {
+		debug("Failed to find flash node\n");
+		return -1;
+	}
+
+	if (fdtdec_read_fmap_entry(blob, flash_node, "flash",
+				   &config->flash)) {
+		debug("Failed to decode flash node in chrome-ec'\n");
+		return -1;
+	}
+
+	config->flash_erase_value = fdtdec_get_int(blob, flash_node,
+						    "erase-value", -1);
+	for (node = fdt_first_subnode(blob, flash_node); node >= 0;
+	     node = fdt_next_subnode(blob, node)) {
+		const char *name = fdt_get_name(blob, node, NULL);
+		enum ec_flash_region region;
+
+		if (0 == strcmp(name, "ro")) {
+			region = EC_FLASH_REGION_RO;
+		} else if (0 == strcmp(name, "rw")) {
+			region = EC_FLASH_REGION_RW;
+		} else if (0 == strcmp(name, "wp-ro")) {
+			region = EC_FLASH_REGION_WP_RO;
+		} else {
+			debug("Unknown EC flash region name '%s'\n", name);
+			return -1;
+		}
+
+		if (fdtdec_read_fmap_entry(blob, node, "reg",
+					   &config->region[region])) {
+			debug("Failed to decode flash region in chrome-ec'\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int cros_ec_i2c_xfer(struct cros_ec_dev *dev, uchar chip, uint addr,
+		     int alen, uchar *buffer, int len, int is_read)
+{
+	union {
+		struct ec_params_i2c_passthru p;
+		uint8_t outbuf[EC_PROTO2_MAX_PARAM_SIZE];
+	} params;
+	union {
+		struct ec_response_i2c_passthru r;
+		uint8_t inbuf[EC_PROTO2_MAX_PARAM_SIZE];
+	} response;
+	struct ec_params_i2c_passthru *p = &params.p;
+	struct ec_response_i2c_passthru *r = &response.r;
+	struct ec_params_i2c_passthru_msg *msg = p->msg;
+	uint8_t *pdata;
+	int read_len, write_len;
+	int size;
+	int rv;
+
+	p->port = 0;
+
+	if (alen != 1) {
+		printf("Unsupported address length %d\n", alen);
+		return -1;
+	}
+	if (is_read) {
+		read_len = len;
+		write_len = alen;
+		p->num_msgs = 2;
+	} else {
+		read_len = 0;
+		write_len = alen + len;
+		p->num_msgs = 1;
+	}
+
+	size = sizeof(*p) + p->num_msgs * sizeof(*msg);
+	if (size + write_len > sizeof(params)) {
+		puts("Params too large for buffer\n");
+		return -1;
+	}
+	if (sizeof(*r) + read_len > sizeof(response)) {
+		puts("Read length too big for buffer\n");
+		return -1;
+	}
+
+	/* Create a message to write the register address and optional data */
+	pdata = (uint8_t *)p + size;
+	msg->addr_flags = chip;
+	msg->len = write_len;
+	pdata[0] = addr;
+	if (!is_read)
+		memcpy(pdata + 1, buffer, len);
+	msg++;
+
+	if (read_len) {
+		msg->addr_flags = chip | EC_I2C_FLAG_READ;
+		msg->len = read_len;
+	}
+
+	rv = ec_command(dev, EC_CMD_I2C_PASSTHRU, 0, p, size + write_len,
+			r, sizeof(*r) + read_len);
+	if (rv < 0)
+		return rv;
+
+	/* Parse response */
+	if (r->i2c_status & EC_I2C_STATUS_ERROR) {
+		printf("Transfer failed with status=0x%x\n", r->i2c_status);
+		return -1;
+	}
+
+	if (rv < sizeof(*r) + read_len) {
+		puts("Truncated read response\n");
+		return -1;
+	}
+
+	if (read_len)
+		memcpy(buffer, r->data, read_len);
+
+	return 0;
+}
+
+#ifdef CONFIG_CMD_CROS_EC
 
 /**
  * Perform a flash read or write command
@@ -1011,9 +1399,193 @@ static int do_read_write(struct cros_ec_dev *dev, int is_write, int argc,
 	return 0;
 }
 
+/**
+ * get_alen() - Small parser helper function to get address length
+ *
+ * Returns the address length.
+ */
+static uint get_alen(char *arg)
+{
+	int	j;
+	int	alen;
+
+	alen = 1;
+	for (j = 0; j < 8; j++) {
+		if (arg[j] == '.') {
+			alen = arg[j+1] - '0';
+			break;
+		} else if (arg[j] == '\0') {
+			break;
+		}
+	}
+	return alen;
+}
+
+#define DISP_LINE_LEN	16
+
+/*
+ * TODO(sjg@chromium.org): This code copied almost verbatim from cmd_i2c.c
+ * so we can remove it later.
+ */
+static int cros_ec_i2c_md(struct cros_ec_dev *dev, int flag, int argc,
+			  char * const argv[])
+{
+	u_char	chip;
+	uint	addr, alen, length = 0x10;
+	int	j, nbytes, linebytes;
+
+	if (argc < 2)
+		return CMD_RET_USAGE;
+
+	if (1 || (flag & CMD_FLAG_REPEAT) == 0) {
+		/*
+		 * New command specified.
+		 */
+
+		/*
+		 * I2C chip address
+		 */
+		chip = simple_strtoul(argv[0], NULL, 16);
+
+		/*
+		 * I2C data address within the chip.  This can be 1 or
+		 * 2 bytes long.  Some day it might be 3 bytes long :-).
+		 */
+		addr = simple_strtoul(argv[1], NULL, 16);
+		alen = get_alen(argv[1]);
+		if (alen > 3)
+			return CMD_RET_USAGE;
+
+		/*
+		 * If another parameter, it is the length to display.
+		 * Length is the number of objects, not number of bytes.
+		 */
+		if (argc > 2)
+			length = simple_strtoul(argv[2], NULL, 16);
+	}
+
+	/*
+	 * Print the lines.
+	 *
+	 * We buffer all read data, so we can make sure data is read only
+	 * once.
+	 */
+	nbytes = length;
+	do {
+		unsigned char	linebuf[DISP_LINE_LEN];
+		unsigned char	*cp;
+
+		linebytes = (nbytes > DISP_LINE_LEN) ? DISP_LINE_LEN : nbytes;
+
+		if (cros_ec_i2c_xfer(dev, chip, addr, alen, linebuf, linebytes,
+				     1))
+			puts("Error reading the chip.\n");
+		else {
+			printf("%04x:", addr);
+			cp = linebuf;
+			for (j = 0; j < linebytes; j++) {
+				printf(" %02x", *cp++);
+				addr++;
+			}
+			puts("    ");
+			cp = linebuf;
+			for (j = 0; j < linebytes; j++) {
+				if ((*cp < 0x20) || (*cp > 0x7e))
+					puts(".");
+				else
+					printf("%c", *cp);
+				cp++;
+			}
+			putc('\n');
+		}
+		nbytes -= linebytes;
+	} while (nbytes > 0);
+
+	return 0;
+}
+
+static int cros_ec_i2c_mw(struct cros_ec_dev *dev, int flag, int argc,
+			  char * const argv[])
+{
+	uchar	chip;
+	ulong	addr;
+	uint	alen;
+	uchar	byte;
+	int	count;
+
+	if ((argc < 3) || (argc > 4))
+		return CMD_RET_USAGE;
+
+	/*
+	 * Chip is always specified.
+	 */
+	chip = simple_strtoul(argv[0], NULL, 16);
+
+	/*
+	 * Address is always specified.
+	 */
+	addr = simple_strtoul(argv[1], NULL, 16);
+	alen = get_alen(argv[1]);
+	if (alen > 3)
+		return CMD_RET_USAGE;
+
+	/*
+	 * Value to write is always specified.
+	 */
+	byte = simple_strtoul(argv[2], NULL, 16);
+
+	/*
+	 * Optional count
+	 */
+	if (argc == 4)
+		count = simple_strtoul(argv[3], NULL, 16);
+	else
+		count = 1;
+
+	while (count-- > 0) {
+		if (cros_ec_i2c_xfer(dev, chip, addr++, alen, &byte, 1, 0))
+			puts("Error writing the chip.\n");
+		/*
+		 * Wait for the write to complete.  The write can take
+		 * up to 10mSec (we allow a little more time).
+		 */
+/*
+ * No write delay with FRAM devices.
+ */
+#if !defined(CONFIG_SYS_I2C_FRAM)
+		udelay(11000);
+#endif
+	}
+
+	return 0;
+}
+
+/* Temporary code until we have driver model and can use the i2c command */
+static int cros_ec_i2c_passthrough(struct cros_ec_dev *dev, int flag,
+				   int argc, char * const argv[])
+{
+	const char *cmd;
+
+	if (argc < 1)
+		return CMD_RET_USAGE;
+	cmd = *argv++;
+	argc--;
+	if (0 == strcmp("md", cmd))
+		cros_ec_i2c_md(dev, flag, argc, argv);
+	else if (0 == strcmp("mw", cmd))
+		cros_ec_i2c_mw(dev, flag, argc, argv);
+	else
+		return CMD_RET_USAGE;
+
+	return 0;
+}
+
 static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	struct cros_ec_dev *dev = last_dev;
+	struct cros_ec_dev *dev;
+#ifdef CONFIG_DM_CROS_EC
+	struct udevice *udev;
+#endif
 	const char *cmd;
 	int ret = 0;
 
@@ -1022,19 +1594,31 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	cmd = argv[1];
 	if (0 == strcmp("init", cmd)) {
+#ifndef CONFIG_DM_CROS_EC
 		ret = cros_ec_init(gd->fdt_blob, &dev);
 		if (ret) {
 			printf("Could not init cros_ec device (err %d)\n", ret);
 			return 1;
 		}
+#endif
 		return 0;
 	}
 
+#ifdef CONFIG_DM_CROS_EC
+	ret = uclass_get_device(UCLASS_CROS_EC, 0, &udev);
+	if (ret) {
+		printf("Cannot get cros-ec device (err=%d)\n", ret);
+		return 1;
+	}
+	dev = udev->uclass_priv;
+#else
 	/* Just use the last allocated device; there should be only one */
 	if (!last_dev) {
 		printf("No CROS-EC device available\n");
 		return 1;
 	}
+	dev = last_dev;
+#endif
 	if (0 == strcmp("id", cmd)) {
 		char id[MSG_BYTES];
 
@@ -1044,7 +1628,7 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 		printf("%s\n", id);
 	} else if (0 == strcmp("info", cmd)) {
-		struct ec_response_cros_ec_info info;
+		struct ec_response_mkbp_info info;
 
 		if (cros_ec_info(dev, &info)) {
 			debug("%s: Could not read KBC info\n", __func__);
@@ -1213,10 +1797,10 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (!ret) {
 			/* Print versions */
 			printf("RO version:    %1.*s\n",
-			       sizeof(p->version_string_ro),
+			       (int)sizeof(p->version_string_ro),
 			       p->version_string_ro);
 			printf("RW version:    %1.*s\n",
-			       sizeof(p->version_string_rw),
+			       (int)sizeof(p->version_string_rw),
 			       p->version_string_rw);
 			printf("Firmware copy: %s\n",
 				(p->current_image <
@@ -1254,6 +1838,8 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			debug("%s: Could not access LDO%d\n", __func__, index);
 			return ret;
 		}
+	} else if (0 == strcmp("i2c", cmd)) {
+		ret = cros_ec_i2c_passthrough(dev, flag, argc - 2, argv + 2);
 	} else {
 		return CMD_RET_USAGE;
 	}
@@ -1267,7 +1853,7 @@ static int do_cros_ec(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(
-	crosec,	5,	1,	do_cros_ec,
+	crosec,	6,	1,	do_cros_ec,
 	"CROS-EC utility command",
 	"init                Re-init CROS-EC (done on startup automatically)\n"
 	"crosec id                  Read CROS-EC ID\n"
@@ -1284,6 +1870,16 @@ U_BOOT_CMD(
 	"crosec vbnvcontext [hexstring]        Read [write] VbNvContext from EC\n"
 	"crosec ldo <idx> [<state>] Switch/Read LDO state\n"
 	"crosec test                run tests on cros_ec\n"
-	"crosec version             Read CROS-EC version"
+	"crosec version             Read CROS-EC version\n"
+	"crosec i2c md chip address[.0, .1, .2] [# of objects] - read from I2C passthru\n"
+	"crosec i2c mw chip address[.0, .1, .2] value [count] - write to I2C passthru (fill)"
 );
+#endif
+
+#ifdef CONFIG_DM_CROS_EC
+UCLASS_DRIVER(cros_ec) = {
+	.id		= UCLASS_CROS_EC,
+	.name		= "cros_ec",
+	.per_device_auto_alloc_size = sizeof(struct cros_ec_dev),
+};
 #endif

@@ -24,7 +24,7 @@
 #include <asm/arch/cpu.h>
 
 #if defined(CONFIG_KIRKWOOD)
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #elif defined(CONFIG_ORION5X)
 #include <asm/arch/orion5x.h>
 #elif defined(CONFIG_DOVE)
@@ -34,6 +34,10 @@
 #include "mvgbe.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#ifndef CONFIG_MVGBE_PORTS
+# define CONFIG_MVGBE_PORTS {0, 0}
+#endif
 
 #define MV_PHY_ADR_REQUEST 0xee
 #define MVGBE_SMI_REG (((struct mvgbe_registers *)MVGBE0_BASE)->smi)
@@ -420,8 +424,9 @@ static int mvgbe_init(struct eth_device *dev)
 {
 	struct mvgbe_device *dmvgbe = to_mvgbe(dev);
 	struct mvgbe_registers *regs = dmvgbe->regs;
-#if (defined (CONFIG_MII) || defined (CONFIG_CMD_MII)) \
-	 && defined (CONFIG_SYS_FAULT_ECHO_LINK_DOWN)
+#if (defined(CONFIG_MII) || defined(CONFIG_CMD_MII)) &&  \
+	!defined(CONFIG_PHYLIB) &&			 \
+	defined(CONFIG_SYS_FAULT_ECHO_LINK_DOWN)
 	int i;
 #endif
 	/* setup RX rings */

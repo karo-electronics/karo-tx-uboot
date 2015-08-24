@@ -10,13 +10,9 @@
 #define _LPC32XX_CONFIG_H
 
 /* Basic CPU architecture */
-#define CONFIG_ARM926EJS
 #define CONFIG_ARCH_CPU_INIT
 
 #define CONFIG_NR_DRAM_BANKS_MAX	2
-
-/* 1KHz clock tick */
-#define CONFIG_SYS_HZ			1000
 
 /* UART configuration */
 #if (CONFIG_SYS_LPC32XX_UART >= 3) && (CONFIG_SYS_LPC32XX_UART <= 6)

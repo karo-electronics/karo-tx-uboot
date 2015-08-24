@@ -18,10 +18,14 @@
 #define SR_RX_FIFO_VALID_DATA	0x01 /* data in receive FIFO */
 #define SR_RX_FIFO_FULL		0x02 /* receive FIFO full */
 
+#define ULITE_CONTROL_RST_TX	0x01
+#define ULITE_CONTROL_RST_RX	0x02
+
 struct uartlite {
 	unsigned int rx_fifo;
 	unsigned int tx_fifo;
 	unsigned int status;
+	unsigned int control;
 };
 
 static struct uartlite *userial_ports[4] = {
@@ -39,7 +43,7 @@ static struct uartlite *userial_ports[4] = {
 #endif
 };
 
-void uartlite_serial_putc(const char c, const int port)
+static void uartlite_serial_putc(const char c, const int port)
 {
 	struct uartlite *regs = userial_ports[port];
 
@@ -51,13 +55,13 @@ void uartlite_serial_putc(const char c, const int port)
 	out_be32(&regs->tx_fifo, c & 0xff);
 }
 
-void uartlite_serial_puts(const char *s, const int port)
+static void uartlite_serial_puts(const char *s, const int port)
 {
 	while (*s)
 		uartlite_serial_putc(*s++, port);
 }
 
-int uartlite_serial_getc(const int port)
+static int uartlite_serial_getc(const int port)
 {
 	struct uartlite *regs = userial_ports[port];
 
@@ -66,7 +70,7 @@ int uartlite_serial_getc(const int port)
 	return in_be32(&regs->rx_fifo) & 0xff;
 }
 
-int uartlite_serial_tstc(const int port)
+static int uartlite_serial_tstc(const int port)
 {
 	struct uartlite *regs = userial_ports[port];
 
@@ -75,23 +79,31 @@ int uartlite_serial_tstc(const int port)
 
 static int uartlite_serial_init(const int port)
 {
-	if (userial_ports[port])
+	struct uartlite *regs = userial_ports[port];
+
+	if (regs) {
+		out_be32(&regs->control, 0);
+		out_be32(&regs->control,
+			 ULITE_CONTROL_RST_RX | ULITE_CONTROL_RST_TX);
+		in_be32(&regs->control);
 		return 0;
+	}
+
 	return -1;
 }
 
 /* Multi serial device functions */
 #define DECLARE_ESERIAL_FUNCTIONS(port) \
-	int userial##port##_init(void) \
+	static int userial##port##_init(void) \
 				{ return uartlite_serial_init(port); } \
-	void userial##port##_setbrg(void) {} \
-	int userial##port##_getc(void) \
+	static void userial##port##_setbrg(void) {} \
+	static int userial##port##_getc(void) \
 				{ return uartlite_serial_getc(port); } \
-	int userial##port##_tstc(void) \
+	static int userial##port##_tstc(void) \
 				{ return uartlite_serial_tstc(port); } \
-	void userial##port##_putc(const char c) \
+	static void userial##port##_putc(const char c) \
 				{ uartlite_serial_putc(c, port); } \
-	void userial##port##_puts(const char *s) \
+	static void userial##port##_puts(const char *s) \
 				{ uartlite_serial_puts(s, port); }
 
 /* Serial device descriptor */

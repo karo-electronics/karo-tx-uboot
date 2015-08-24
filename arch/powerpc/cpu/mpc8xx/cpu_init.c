@@ -29,12 +29,10 @@ void cpm_load_patch (volatile immap_t * immr);
  */
 void cpu_init_f (volatile immap_t * immr)
 {
-#ifndef CONFIG_MBX
 	volatile memctl8xx_t *memctl = &immr->im_memctl;
 # ifdef CONFIG_SYS_PLPRCR
 	ulong mfmask;
 # endif
-#endif
 	ulong reg;
 
 	/* SYPCR - contains watchdog control (11-9) */
@@ -46,11 +44,7 @@ void cpu_init_f (volatile immap_t * immr)
 #endif /* CONFIG_WATCHDOG */
 
 	/* SIUMCR - contains debug pin configuration (11-6) */
-#ifndef CONFIG_SVM_SC8xx
 	immr->im_siu_conf.sc_siumcr |= CONFIG_SYS_SIUMCR;
-#else
-	immr->im_siu_conf.sc_siumcr = CONFIG_SYS_SIUMCR;
-#endif
 	/* initialize timebase status and control register (11-26) */
 	/* unlock TBSCRK */
 
@@ -73,8 +67,6 @@ void cpu_init_f (volatile immap_t * immr)
 	/* PLL (CPU clock) settings (15-30) */
 
 	immr->im_clkrstk.cark_plprcrk = KAPWR_KEY;
-
-#ifndef CONFIG_MBX		/* MBX board does things different */
 
 	/* If CONFIG_SYS_PLPRCR (set in the various *_config.h files) tries to
 	 * set the MF field, then just copy CONFIG_SYS_PLPRCR over car_plprcr,
@@ -133,23 +125,6 @@ void cpu_init_f (volatile immap_t * immr)
 	 *  I owe him a free beer. - wd]
 	 */
 
-#if defined(CONFIG_HERMES)	|| \
-    defined(CONFIG_ICU862)	|| \
-    defined(CONFIG_IP860)	|| \
-    defined(CONFIG_IVML24)	|| \
-    defined(CONFIG_IVMS8)	|| \
-    defined(CONFIG_LWMON)	|| \
-    defined(CONFIG_MHPC)	|| \
-    defined(CONFIG_R360MPI)	|| \
-    defined(CONFIG_RMU)		|| \
-    defined(CONFIG_RPXCLASSIC)	|| \
-    defined(CONFIG_RPXLITE)	|| \
-    defined(CONFIG_SPC1920)	|| \
-    defined(CONFIG_SPD823TS)
-
-	memctl->memc_br0 = CONFIG_SYS_BR0_PRELIM;
-#endif
-
 #if defined(CONFIG_SYS_OR0_REMAP)
 	memctl->memc_or0 = CONFIG_SYS_OR0_REMAP;
 #endif
@@ -167,10 +142,6 @@ void cpu_init_f (volatile immap_t * immr)
 #if (defined(CONFIG_SYS_OR1_PRELIM) && defined(CONFIG_SYS_BR1_PRELIM))
 	memctl->memc_or1 = CONFIG_SYS_OR1_PRELIM;
 	memctl->memc_br1 = CONFIG_SYS_BR1_PRELIM;
-#endif
-
-#if defined(CONFIG_IP860) /* disable CS0 now that Flash is mapped on CS1 */
-	memctl->memc_br0 = 0;
 #endif
 
 #if defined(CONFIG_SYS_OR2_PRELIM) && defined(CONFIG_SYS_BR2_PRELIM)
@@ -203,8 +174,6 @@ void cpu_init_f (volatile immap_t * immr)
 	memctl->memc_br7 = CONFIG_SYS_BR7_PRELIM;
 #endif
 
-#endif /* ! CONFIG_MBX */
-
 	/*
 	 * Reset CPM
 	 */
@@ -212,24 +181,6 @@ void cpu_init_f (volatile immap_t * immr)
 	do {			/* Spin until command processed     */
 		__asm__ ("eieio");
 	} while (immr->im_cpm.cp_cpcr & CPM_CR_FLG);
-
-#ifdef CONFIG_MBX
-	/*
-	 * on the MBX, things are a little bit different:
-	 * - we need to read the VPD to get board information
-	 * - the plprcr is set up dynamically
-	 * - the memory controller is set up dynamically
-	 */
-	mbx_init ();
-#endif /* CONFIG_MBX */
-
-#ifdef CONFIG_RPXCLASSIC
-	rpxclassic_init ();
-#endif
-
-#if defined(CONFIG_RPXLITE) && defined(CONFIG_ENV_IS_IN_NVRAM)
-	rpxlite_init ();
-#endif
 
 #ifdef CONFIG_SYS_RCCR			/* must be done before cpm_load_patch() */
 	/* write config value */

@@ -97,18 +97,19 @@ unsigned int mxc_get_clock(enum mxc_clock clk);
 int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk);
 int adjust_core_voltage(u32 freq);
 void set_usb_phy_clk(void);
-void enable_usb_phy1_clk(unsigned char enable);
-void enable_usb_phy2_clk(unsigned char enable);
+void enable_usb_phy1_clk(bool enable);
+void enable_usb_phy2_clk(bool enable);
 void set_usboh3_clk(void);
-void enable_usboh3_clk(unsigned char enable);
+void enable_usboh3_clk(bool enable);
 void mxc_set_sata_internal_clock(void);
 int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
 void enable_nfc_clk(unsigned char enable);
+void enable_efuse_prog_supply(bool enable);
 void ipu_clk_enable(void);
 void ipu_clk_disable(void);
 void ipu_di_clk_enable(int di);
 void ipu_di_clk_disable(int di);
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 void ldb_clk_enable(int ldb);
 void ldb_clk_disable(int ldb);
 #else
@@ -118,6 +119,6 @@ static inline void ldb_clk_enable(int ldb)
 static inline void ldb_clk_disable(int ldb)
 {
 }
-#endif /* CONFIG_MX53 */
+#endif /* CONFIG_SOC_MX53 */
 
 #endif /* __ASM_ARCH_CLOCK_H */

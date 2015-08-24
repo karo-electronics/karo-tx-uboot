@@ -11,10 +11,12 @@
 #include <linux/compiler.h>
 #include <asm/spl.h>
 
+
 /* Boot type */
 #define MMCSD_MODE_UNDEFINED	0
 #define MMCSD_MODE_RAW		1
-#define MMCSD_MODE_FAT		2
+#define MMCSD_MODE_FS		2
+#define MMCSD_MODE_EMMCBOOT	3
 
 struct spl_image_info {
 	const char *name;
@@ -33,6 +35,7 @@ extern struct spl_image_info spl_image;
 void preloader_console_init(void);
 u32 spl_boot_device(void);
 u32 spl_boot_mode(void);
+void spl_set_header_raw_uboot(void);
 void spl_parse_image_header(const struct image_header *header);
 void spl_board_prepare_for_linux(void);
 void __noreturn jump_to_image_linux(void *arg);
@@ -59,6 +62,22 @@ void spl_spi_load_image(void);
 
 /* Ethernet SPL functions */
 void spl_net_load_image(const char *device);
+
+/* USB SPL functions */
+void spl_usb_load_image(void);
+
+/* SATA SPL functions */
+void spl_sata_load_image(void);
+
+/* SPL FAT image functions */
+int spl_load_image_fat(block_dev_desc_t *block_dev, int partition, const char *filename);
+int spl_load_image_fat_os(block_dev_desc_t *block_dev, int partition);
+
+void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image);
+
+/* SPL EXT image functions */
+int spl_load_image_ext(block_dev_desc_t *block_dev, int partition, const char *filename);
+int spl_load_image_ext_os(block_dev_desc_t *block_dev, int partition);
 
 #ifdef CONFIG_SPL_BOARD_INIT
 void spl_board_init(void);

@@ -11,6 +11,9 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
+#if !defined(CONFIG_SOC_MX25) && !defined(CONFIG_SOC_VF610)
+#include <asm/arch/sys_proto.h>
+#endif
 #include <asm/imx-common/iomux-v3.h>
 
 static void *base = (void *)IOMUXC_BASE_ADDR;
@@ -30,6 +33,19 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 		(pad & MUX_PAD_CTRL_OFS_MASK) >> MUX_PAD_CTRL_OFS_SHIFT;
 	u32 pad_ctrl = (pad & MUX_PAD_CTRL_MASK) >> MUX_PAD_CTRL_SHIFT;
 
+#if defined CONFIG_SOC_MX6SL
+	/* Check whether LVE bit needs to be set */
+	if (pad_ctrl & PAD_CTL_LVE) {
+		pad_ctrl &= ~PAD_CTL_LVE;
+		pad_ctrl |= PAD_CTL_LVE_BIT;
+	}
+#endif
+#ifdef DEBUG
+	printf("PAD[%2d]=%016llx mux[%03x]=%02x pad[%03x]=%05x%c inp[%03x]=%d\n",
+		i, pad, mux_ctrl_ofs, mux_mode, pad_ctrl_ofs, pad_ctrl,
+		pad & PAD_CTRL_VALID ? ' ' : '!', sel_input_ofs, sel_input);
+#endif
+
 	if (mux_ctrl_ofs)
 		__raw_writel(mux_mode, base + mux_ctrl_ofs);
 
@@ -46,28 +62,33 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 #endif
 }
 
+/* configures a list of pads within declared with IOMUX_PADS macro */
 void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 				      unsigned count)
 {
 	iomux_v3_cfg_t const *p = pad_list;
+	int stride;
 	int i;
 
-	for (i = 0; i < count; i++) {
-#ifdef DEBUG
-		u32 mux_ctrl_ofs = (*p & MUX_CTRL_OFS_MASK) >> MUX_CTRL_OFS_SHIFT;
-		u32 mux_mode = (*p & MUX_MODE_MASK) >> MUX_MODE_SHIFT;
-		u32 sel_input_ofs =
-			(*p & MUX_SEL_INPUT_OFS_MASK) >> MUX_SEL_INPUT_OFS_SHIFT;
-		u32 sel_input =
-			(*p & MUX_SEL_INPUT_MASK) >> MUX_SEL_INPUT_SHIFT;
-		u32 pad_ctrl_ofs =
-			(*p & MUX_PAD_CTRL_OFS_MASK) >> MUX_PAD_CTRL_OFS_SHIFT;
-		u32 pad_ctrl = (*p & MUX_PAD_CTRL_MASK) >> MUX_PAD_CTRL_SHIFT;
-
-		printf("PAD[%2d]=%016llx mux[%03x]=%02x pad[%03x]=%05x%c inp[%03x]=%d\n",
-			i, *p, mux_ctrl_ofs, mux_mode, pad_ctrl_ofs, pad_ctrl,
-			*p & PAD_CTRL_VALID ? ' ' : '!', sel_input_ofs, sel_input);
+#if defined(CONFIG_SOC_MX6QDL)
+	stride = 2;
+	if (!is_cpu_type(MXC_CPU_MX6Q) && !is_cpu_type(MXC_CPU_MX6D))
+		p += 1;
+#else
+	stride = 1;
 #endif
-		imx_iomux_v3_setup_pad(*p++);
+	for (i = 0; i < count; i++) {
+		imx_iomux_v3_setup_pad(*p);
+		p += stride;
 	}
+}
+
+void imx_iomux_set_gpr_register(int group, int start_bit,
+				int num_bits, int value)
+{
+	u32 reg = readl(base + group * 4);
+
+	reg &= ~(((1 << num_bits) - 1) << start_bit);
+	reg |= value << start_bit;
+	writel(reg, base + group * 4);
 }

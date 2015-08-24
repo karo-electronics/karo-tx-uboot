@@ -3,13 +3,12 @@
  *
  * Configuration settings for the MX53-EVK Freescale board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_MX53
 
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -22,6 +21,8 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
+
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_OF_LIBFDT
 
@@ -37,17 +38,15 @@
 
 /* I2C Configs */
 #define CONFIG_CMD_I2C
-#define CONFIG_HARD_I2C
-#define CONFIG_I2C_MXC
-#define CONFIG_SYS_I2C_BASE		I2C2_BASE_ADDR
-#define CONFIG_SYS_I2C_SPEED            100000
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_MXC
 
 /* PMIC Configs */
 #define CONFIG_POWER
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_FSL
 #define CONFIG_SYS_FSL_PMIC_I2C_ADDR    8
-#define CONFIG_PMIC_FSL_MC13892
+#define CONFIG_POWER_FSL_MC13892
 #define CONFIG_RTC_MC13XXX
 
 /* MMC Configs */
@@ -136,7 +135,6 @@
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_HUSH_PARSER		/* use "hush" command parser */
-#define CONFIG_SYS_PROMPT		"MX53EVK U-Boot > "
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
 
@@ -150,7 +148,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 
-#define CONFIG_SYS_HZ		1000
 #define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */

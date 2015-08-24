@@ -27,67 +27,6 @@
 /*
  *************************************************************************
  *
- * Jump vector table as in table 3.1 in [1]
- *
- *************************************************************************
- */
-
-
-.globl _start
-_start:
-	b	reset
-	ldr	pc, _undefined_instruction
-	ldr	pc, _software_interrupt
-	ldr	pc, _prefetch_abort
-	ldr	pc, _data_abort
-	ldr	pc, _not_used
-	ldr	pc, _irq
-	ldr	pc, _fiq
-
-#ifdef CONFIG_SPL_BUILD
-_undefined_instruction:
-	.word	_undefined_instruction
-_software_interrupt:
-	.word	_software_interrupt
-_prefetch_abort:
-	.word	_prefetch_abort
-_data_abort:
-	.word	_data_abort
-_not_used:
-	.word	_not_used
-_irq:
-	.word	_irq
-_fiq:
-	.word	_fiq
-#else
-/*
- * Vector table, located at address 0x20.
- * This table allows the code running AFTER SPL, the U-Boot, to install it's
- * interrupt handlers here. The problem is that the U-Boot is loaded into RAM,
- * including it's interrupt vectoring table and the table at 0x0 is still the
- * SPLs. So if interrupt happens in U-Boot, the SPLs interrupt vectoring table
- * is still used.
- */
-_undefined_instruction:
-	.word	undefined_instruction
-_software_interrupt:
-	.word	software_interrupt
-_prefetch_abort:
-	.word	prefetch_abort
-_data_abort:
-	.word	data_abort
-_not_used:
-	.word	not_used
-_irq:
-	.word	irq
-_fiq:
-	.word	fiq
-#endif /* CONFIG_SPL_BUILD */
-	.balignl 16, 0xdeadbeef
-
-/*
- *************************************************************************
- *
  * Startup Code (reset vector)
  *
  * do important init only if we don't start from memory!
@@ -98,93 +37,61 @@ _fiq:
  *************************************************************************
  */
 
-.globl _TEXT_BASE
-_TEXT_BASE:
-#ifdef CONFIG_SPL_TEXT_BASE
-	.word	CONFIG_SPL_TEXT_BASE
-#else
-	.word	CONFIG_SYS_TEXT_BASE
-#endif
-
-/*
- * These are defined in the board-specific linker script.
- * Subtracting _start from them lets the linker put their
- * relative position in the executable instead of leaving
- * them null.
- */
-.globl _bss_start_ofs
-_bss_start_ofs:
-	.word __bss_start - _start
-
-.globl _bss_end_ofs
-_bss_end_ofs:
-	.word __bss_end - _start
-
-.globl _end_ofs
-_end_ofs:
-	.word _end - _start
-
-#ifdef CONFIG_USE_IRQ
-/* IRQ stack memory (calculated at run-time) */
-.globl IRQ_STACK_START
-IRQ_STACK_START:
-	.word	0x0badc0de
-
-/* IRQ stack memory (calculated at run-time) */
-.globl FIQ_STACK_START
-FIQ_STACK_START:
-	.word 0x0badc0de
-#endif
-
-/* IRQ stack memory (calculated at run-time) + 8 bytes */
-.globl IRQ_STACK_START_IN
-IRQ_STACK_START_IN:
-#ifdef IRAM_BASE_ADDR
-	.word	IRAM_BASE_ADDR + 0x20
-#else
-	.word	0x0badc0de
-#endif
-
-/*
- * the actual reset code
- */
-
+	.globl	reset
 reset:
+	/*
+	 * If the CPU is configured in "Wait JTAG connection mode", the stack
+	 * pointer is not configured and is zero. This will cause crash when
+	 * trying to push data onto stack right below here. Load the SP and make
+	 * it point to the end of OCRAM if the SP is zero.
+	 */
+	cmp	sp, #0x00000000
+	ldreq	sp, =CONFIG_SYS_INIT_SP_ADDR
+
 	/*
 	 * Store all registers on old stack pointer, this will allow us later to
 	 * return to the BootROM and let the BootROM load U-Boot into RAM.
+	 *
+	 * WARNING: Register r0 and r1 are used by the BootROM to pass data
+	 *          to the called code. Register r0 will contain arbitrary
+	 *          data that are set in the BootStream. In case this code
+	 *          was started with CALL instruction, register r1 will contain
+	 *          pointer to the return value this function can then set.
+	 *          The code below MUST NOT CHANGE register r0 and r1 !
 	 */
 	push	{r0-r12,r14}
 
-	/* save control register c1 */
-	mrc	p15, 0, r0, c1, c0, 0
-	push	{r0}
+	/* Save control register c1 */
+	mrc	p15, 0, r2, c1, c0, 0
+	push	{r2}
 
-	/*
-	 * set the cpu to SVC32 mode and store old CPSR register content
-	 */
-	mrs	r0,cpsr
-	push	{r0}
-	bic	r0,r0,#0x1f
-	orr	r0,r0,#0xd3
-	msr	cpsr,r0
+	/* Set the cpu to SVC32 mode and store old CPSR register content. */
+	mrs	r2, cpsr
+	push	{r2}
+	bic	r2, r2, #0x1f
+	orr	r2, r2, #0xd3
+	msr	cpsr, r2
 
 	bl	board_init_ll
 
-	/*
-	 * restore bootrom's cpu mode (especially FIQ)
-	 */
-	pop	{r0}
-	msr	cpsr,r0
+	/* Restore BootROM's CPU mode (especially FIQ). */
+	pop	{r2}
+	msr	cpsr,r2
 
 	/*
-	 * restore c1 register
-	 * (especially set exception vector location back to
-	 * bootrom space which is required by bootrom for USB boot)
+	 * Restore c1 register. Especially set exception vector location
+	 * back to BootROM space which is required by bootrom for USB boot.
 	 */
-	pop	{r0}
-	mcr	p15, 0, r0, c1, c0, 0
+	pop	{r2}
+	mcr	p15, 0, r2, c1, c0, 0
 
 	pop	{r0-r12,r14}
-	bx	lr
 
+	/*
+	 * In case this code was started by the CALL instruction, the register
+	 * r0 is examined by the BootROM after this code returns. The value in
+	 * r0 must be set to 0 to indicate successful return.
+	 */
+	mov r0, #0
+
+	bx	lr

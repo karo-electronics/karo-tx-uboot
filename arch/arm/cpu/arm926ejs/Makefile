@@ -5,33 +5,26 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
-
-LIB	= $(obj)lib$(CPU).o
-
-START	= start.o
-COBJS	= cpu.o cache.o
+extra-y	= start.o
+obj-y	= cpu.o cache.o
 
 ifdef	CONFIG_SPL_BUILD
 ifdef	CONFIG_SPL_NO_CPU_SUPPORT_CODE
-START	:=
+extra-y	:=
 endif
 endif
 
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS) $(SOBJS))
-START	:= $(addprefix $(obj),$(START))
-
-all:	$(obj).depend $(START) $(LIB)
-
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-$(CONFIG_ARMADA100) += armada100/
+obj-$(CONFIG_AT91FAMILY) += at91/
+obj-$(CONFIG_ARCH_DAVINCI) += davinci/
+obj-$(CONFIG_KIRKWOOD) += kirkwood/
+obj-$(if $(filter lpc32xx,$(SOC)),y) += lpc32xx/
+obj-$(CONFIG_MB86R0x) += mb86r0x/
+obj-$(CONFIG_SOC_MX25) += mx25/
+obj-$(CONFIG_SOC_MX27) += mx27/
+obj-$(if $(filter mxs,$(SOC)),y) += mxs/
+obj-$(CONFIG_ARCH_NOMADIK) += nomadik/
+obj-$(CONFIG_ORION5X) += orion5x/
+obj-$(CONFIG_PANTHEON) += pantheon/
+obj-$(if $(filter spear,$(SOC)),y) += spear/
+obj-$(CONFIG_ARCH_VERSATILE) += versatile/

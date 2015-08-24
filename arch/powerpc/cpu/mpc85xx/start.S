@@ -2,7 +2,7 @@
  * Copyright 2004, 2007-2012 Freescale Semiconductor, Inc.
  * Copyright (C) 2003  Motorola,Inc.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* U-Boot Startup Code for Motorola 85xx PowerPC based Embedded Boards
@@ -17,8 +17,6 @@
 #include <mpc85xx.h>
 #include <version.h>
 
-#define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file	*/
-
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
 
@@ -28,12 +26,15 @@
 #undef	MSR_KERNEL
 #define MSR_KERNEL ( MSR_ME )	/* Machine Check */
 
+#define LAW_EN		0x80000000
+
 #if defined(CONFIG_NAND_SPL) || \
 	(defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_INIT_MINIMAL))
 #define MINIMAL_SPL
 #endif
 
-#if !defined(CONFIG_SPL) && !defined(CONFIG_SYS_RAMBOOT) && !defined(CONFIG_SECURE_BOOT)
+#if !defined(CONFIG_SPL) && !defined(CONFIG_SYS_RAMBOOT) && \
+	!defined(CONFIG_SECURE_BOOT) && !defined(CONFIG_SRIO_PCIE_BOOT_SLAVE)
 #define NOR_BOOT
 #endif
 
@@ -79,6 +80,13 @@ _start_e500:
 	li	r1,MSR_DE
 	mtmsr 	r1
 
+	/*
+	 * If we got an ePAPR device tree pointer passed in as r3, we need that
+	 * later in cpu_init_early_f(). Save it to a safe register before we
+	 * clobber it so that we can fetch it from there later.
+	 */
+	mr	r24, r3
+
 #ifdef CONFIG_SYS_FSL_ERRATUM_A004510
 	mfspr	r3,SPRN_SVR
 	rlwinm	r3,r3,0,0xff
@@ -107,8 +115,17 @@ _start_e500:
 	isync
 2:
 #endif
+#ifdef CONFIG_SYS_FSL_ERRATUM_A005125
+	msync
+	isync
+	mfspr	r3, SPRN_HDBCR0
+	oris	r3, r3, 0x0080
+	mtspr	SPRN_HDBCR0, r3
+#endif
 
-#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_E500MC)
+
+#if defined(CONFIG_SECURE_BOOT) && defined(CONFIG_E500MC) && \
+	!defined(CONFIG_E6500)
 	/* ISBC uses L2 as stack.
 	 * Disable L2 cache here so that u-boot can enable it later
 	 * as part of it's normal flow
@@ -297,7 +314,7 @@ l2_disabled:
 #endif
 	mtspr	HID0,r0
 
-#ifndef CONFIG_E500MC
+#if !defined(CONFIG_E500MC) && !defined(CONFIG_QEMU_E500)
 	li	r0,(HID1_ASTME|HID1_ABE)@l	/* Addr streaming & broadcast */
 	mfspr	r3,PVR
 	andi.	r3,r3, 0xff
@@ -453,7 +470,8 @@ nexti:	mflr	r1		/* R1 = our PC */
 2:	cmpw	r3, r4
 	blt	1b
 
-#if defined(CONFIG_SYS_PPC_E500_DEBUG_TLB) && !defined(MINIMAL_SPL)
+#if defined(CONFIG_SYS_PPC_E500_DEBUG_TLB) && !defined(MINIMAL_SPL) && \
+	!defined(CONFIG_SECURE_BOOT)
 /*
  * TLB entry for debuggging in AS1
  * Create temporary TLB entry in AS0 to handle debug exception
@@ -474,12 +492,6 @@ nexti:	mflr	r1		/* R1 = our PC */
 		0xffc00000, MAS3_SX|MAS3_SW|MAS3_SR, \
 		0, r6
 
-#elif !defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SECURE_BOOT)
-	create_tlb1_entry CONFIG_SYS_PPC_E500_DEBUG_TLB, \
-		0, BOOKE_PAGESZ_1M, \
-		CONFIG_SYS_MONITOR_BASE, MAS2_I|MAS2_G, \
-		CONFIG_SYS_PBI_FLASH_WINDOW, MAS3_SX|MAS3_SW|MAS3_SR, \
-		0, r6
 #else
 /*
  * TLB entry is created for IVPR + IVOR15 to map on valid OP code address
@@ -567,7 +579,6 @@ infinite_debug_loop:
 #ifdef CONFIG_FSL_CORENET
 
 #define CCSR_LAWBARH0	(CONFIG_SYS_CCSRBAR + 0x1000)
-#define LAW_EN		0x80000000
 #define LAW_SIZE_4K	0xb
 #define CCSRBAR_LAWAR	(LAW_EN | (0x1e << 20) | LAW_SIZE_4K)
 #define CCSRAR_C	0x80000000	/* Commit */
@@ -690,7 +701,7 @@ delete_temp_tlbs:
 
 #endif /* #if (CONFIG_SYS_CCSRBAR_DEFAULT != CONFIG_SYS_CCSRBAR_PHYS) */
 
-#ifdef CONFIG_SYS_FSL_QORIQ_CHASSIS2
+#if defined(CONFIG_SYS_FSL_QORIQ_CHASSIS2) && defined(CONFIG_E6500)
 create_ccsr_l2_tlb:
 	/*
 	 * Create a TLB for the MMR location of CCSR
@@ -877,7 +888,11 @@ delete_ccsr_l2_tlb:
 	erratum_set_dcsr 0xb0008 0x00900000
 	erratum_set_dcsr 0xb0e40 0xe00a0000
 	erratum_set_ccsr 0x18600 CONFIG_SYS_FSL_CORENET_SNOOPVEC_COREONLY
+#ifdef  CONFIG_RAMBOOT_PBL
+	erratum_set_ccsr 0x10f00 0x495e5000
+#else
 	erratum_set_ccsr 0x10f00 0x415e5000
+#endif
 	erratum_set_ccsr 0x11f00 0x415e5000
 
 	/* Make temp mapping uncacheable again, if it was initially */
@@ -1131,6 +1146,10 @@ _start_cont:
 	mr	r1,r3		/* Transfer to SP(r1) */
 
 	GET_GOT
+
+	/* Pass our potential ePAPR device tree pointer to cpu_init_early_f */
+	mr	r3, r24
+
 	bl	cpu_init_early_f
 
 	/* switch back to AS = 0 */
@@ -1139,7 +1158,7 @@ _start_cont:
 	mtmsr	r3
 	isync
 
-	bl	cpu_init_f
+	bl	cpu_init_f	/* return boot_flag for calling board_init_f */
 	bl	board_init_f
 	isync
 
@@ -1633,6 +1652,7 @@ relocate_code:
 	mr	r10,r5		/* Save copy of Destination Address	*/
 
 	GET_GOT
+#ifndef CONFIG_SPL_SKIP_RELOCATE
 	mr	r3,r5				/* Destination Address	*/
 	lis	r4,CONFIG_SYS_MONITOR_BASE@h		/* Source      Address	*/
 	ori	r4,r4,CONFIG_SYS_MONITOR_BASE@l
@@ -1723,6 +1743,7 @@ relocate_code:
 
 	mtlr	r0
 	blr				/* NEVER RETURNS! */
+#endif
 	.globl	in_ram
 in_ram:
 
@@ -1953,11 +1974,5 @@ flush_dcache:
 	mtspr	SPRN_HID0,r8
 	isync
 
-	blr
-
-.globl setup_ivors
-setup_ivors:
-
-#include "fixed_ivor.S"
 	blr
 #endif /* !MINIMAL_SPL */

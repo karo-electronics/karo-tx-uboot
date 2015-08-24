@@ -5,10 +5,8 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-CROSS_COMPILE ?= arm-linux-
-
 ifndef CONFIG_STANDALONE_LOAD_ADDR
-ifneq ($(CONFIG_AM33XX)$(CONFIG_OMAP34XX)$(CONFIG_OMAP44XX)$(CONFIG_OMAP54XX)$(CONFIG_TI814X),)
+ifneq ($(CONFIG_OMAP_COMMON),)
 CONFIG_STANDALONE_LOAD_ADDR = 0x80300000
 else
 CONFIG_STANDALONE_LOAD_ADDR = 0xc100000
@@ -16,16 +14,21 @@ endif
 endif
 
 LDFLAGS_FINAL += --gc-sections
-PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections
+PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections \
+		     -fno-common -ffixed-r9
+PLATFORM_RELFLAGS += $(call cc-option, -msoft-float) \
+      $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
 
 # Support generic board on ARM
 __HAVE_ARCH_GENERIC_BOARD := y
 
-PLATFORM_CPPFLAGS += -DCONFIG_ARM -D__ARM__
+PLATFORM_CPPFLAGS += -D__ARM__
 
 # Choose between ARM/Thumb instruction sets
 ifeq ($(CONFIG_SYS_THUMB_BUILD),y)
-PF_CPPFLAGS_ARM := $(call cc-option, -mthumb -mthumb-interwork,\
+AFLAGS_IMPLICIT_IT	:= $(call as-option,-Wa$(comma)-mimplicit-it=always)
+PF_CPPFLAGS_ARM		:= $(AFLAGS_IMPLICIT_IT) \
+			$(call cc-option, -mthumb -mthumb-interwork,\
 			$(call cc-option,-marm,)\
 			$(call cc-option,-mno-thumb-interwork,)\
 		)
@@ -36,7 +39,17 @@ endif
 
 # Only test once
 ifneq ($(CONFIG_SPL_BUILD),y)
-ALL-$(CONFIG_SYS_THUMB_BUILD)	+= checkthumb
+ifeq ($(CONFIG_SYS_THUMB_BUILD),y)
+archprepare: checkthumb
+
+checkthumb:
+	@if test "$(call cc-version)" -lt "0404"; then \
+		echo -n '*** Your GCC does not produce working '; \
+		echo 'binaries in THUMB mode.'; \
+		echo '*** Your board is configured for THUMB mode.'; \
+		false; \
+	fi
+endif
 endif
 
 # Try if EABI is supported, else fall back to old ABI,
@@ -64,13 +77,8 @@ ifneq (,$(findstring -mabi=aapcs-linux,$(PLATFORM_CPPFLAGS)))
 # times. Also, the prefix needs to be different based on whether
 # CONFIG_SPL_BUILD is defined or not. 'filter-out' the existing entry
 # before adding the correct one.
-ifdef CONFIG_SPL_BUILD
-PLATFORM_LIBS := $(SPLTREE)/arch/arm/lib/eabi_compat.o \
-	$(filter-out %/arch/arm/lib/eabi_compat.o, $(PLATFORM_LIBS))
-else
-PLATFORM_LIBS := $(OBJTREE)/arch/arm/lib/eabi_compat.o \
-	$(filter-out %/arch/arm/lib/eabi_compat.o, $(PLATFORM_LIBS))
-endif
+PLATFORM_LIBS := arch/arm/lib/eabi_compat.o \
+	$(filter-out arch/arm/lib/eabi_compat.o, $(PLATFORM_LIBS))
 endif
 
 # needed for relocation
@@ -94,7 +102,36 @@ PLATFORM_RELFLAGS += -fno-optimize-sibling-calls
 endif
 endif
 
-# check that only R_ARM_RELATIVE relocations are generated
 ifneq ($(CONFIG_SPL_BUILD),y)
-ALL-y	+= checkarmreloc
+# Check that only R_ARM_RELATIVE relocations are generated.
+ALL-y += checkarmreloc
+# The movt / movw can hardcode 16 bit parts of the addresses in the
+# instruction. Relocation is not supported for that case, so disable
+# such usage by requiring word relocations.
+PLATFORM_CPPFLAGS += $(call cc-option, -mword-relocations)
+endif
+
+# limit ourselves to the sections we want in the .bin.
+ifdef CONFIG_ARM64
+OBJCOPYFLAGS += -j .text -j .rodata -j .data -j .u_boot_list -j .rela.dyn
+else
+OBJCOPYFLAGS += -j .text -j .secure_text -j .rodata -j .hash -j .data -j .got.plt -j .u_boot_list -j .rel.dyn
+endif
+
+ifdef CONFIG_OF_EMBED
+OBJCOPYFLAGS += -j .dtb.init.rodata
+endif
+
+ifneq ($(CONFIG_IMX_CONFIG),)
+ifdef CONFIG_SPL
+ifndef CONFIG_SPL_BUILD
+ALL-y += SPL
+endif
+else
+ifeq ($(CONFIG_OF_SEPARATE),y)
+ALL-y += u-boot-dtb.imx
+else
+ALL-y += u-boot.imx
+endif
+endif
 endif

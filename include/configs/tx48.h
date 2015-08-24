@@ -15,7 +15,7 @@
 
 #define CONFIG_AM33XX			/* must be set before including omap.h */
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/arch/omap.h>
 
 /*
@@ -31,16 +31,17 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
+#define CONFIG_SYS_GENERIC_BOARD
 
 /* LCD Logo and Splash screen support */
-#define CONFIG_LCD
 #ifdef CONFIG_LCD
+#define CONFIG_VIDEO_DA8XX
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
-#define CONFIG_VIDEO_DA8XX
+#define CONFIG_AM335X_LCD
 #define DAVINCI_LCD_CNTL_BASE		0x4830e000
 #define CONFIG_LCD_LOGO
-#define LCD_BPP				LCD_COLOR24
+#define LCD_BPP				LCD_COLOR32
 #define CONFIG_CMD_BMP
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
@@ -83,13 +84,10 @@
 #define CONFIG_CMDLINE_EDITING			/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
-#define CONFIG_SYS_NO_FLASH
 
 /*
  * Flattened Device Tree (FDT) support
 */
-#define CONFIG_OF_LIBFDT
-#define CONFIG_OF_BOARD_SETUP
 
 /*
  * Boot Linux
@@ -112,7 +110,6 @@
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
-#define CONFIG_HW_WATCHDOG
 
 /*
  * Extra Environment Settings
@@ -156,19 +153,6 @@
 
 #define MTD_NAME			"omap2-nand.0"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
-#define CONFIG_FDT_FIXUP_PARTITIONS
-
-/*
- * U-Boot Commands
- */
-#include <config_cmd_default.h>
-#define CONFIG_CMD_CACHE
-#define CONFIG_CMD_MMC
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_MTDPARTS
-#define CONFIG_CMD_BOOTCE
-#define CONFIG_CMD_TIME
-#define CONFIG_CMD_MEMTEST
 
 /*
  * Serial Driver
@@ -195,27 +179,13 @@
  */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_DRIVER_TI_CPSW
-#define CONFIG_NET_MULTI
 #define CONFIG_PHY_GIGE
-#define CONFIG_PHY_SMSC
-#define CONFIG_PHYLIB
-#define CONFIG_MII
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_PING
-/* Add for working with "strict" DHCP server */
-#define CONFIG_BOOTP_SUBNETMASK
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_DNS
-#define CONFIG_BOOTP_DNS2
 #endif
 
 /*
  * NAND flash driver
  */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_MTD_DEVICE
-#define CONFIG_ENV_IS_IN_NAND
+#ifdef CONFIG_NAND
 #define CONFIG_NAND_OMAP_GPMC
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SYS_GPMC_PREFETCH_ENABLE
@@ -227,12 +197,10 @@
 #define CONFIG_SYS_NAND_OOBSIZE		64
 #define CONFIG_SYS_NAND_ECCSIZE		512
 #define CONFIG_SYS_NAND_ECCBYTES	14
-#define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_NAND_MAX_CHIPS	0x1
 #define CONFIG_SYS_NAND_MAXBAD		20 /* Max. number of bad blocks guaranteed by manufacturer */
 #define CONFIG_SYS_MAX_NAND_DEVICE	0x1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
-#define CONFIG_SYS_NAND_USE_FLASH_BBT
 #ifdef CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
@@ -248,15 +216,9 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#ifndef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_IS_IN_MMC
-#endif
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
 #define CONFIG_OMAP_HSMMC
 #define CONFIG_OMAP_MMC_DEV_1
 
-#define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2
@@ -273,6 +235,10 @@
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
 #endif /* CONFIG_CMD_MMC */
+
+#ifdef CONFIG_ENV_IS_NOWHERE
+#define CONFIG_ENV_SIZE			SZ_4K
+#endif
 
 #ifdef CONFIG_ENV_OFFSET_REDUND
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
@@ -301,7 +267,6 @@
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - CONFIG_SPL_TEXT_BASE)
 #define CONFIG_SPL_GPIO_SUPPORT

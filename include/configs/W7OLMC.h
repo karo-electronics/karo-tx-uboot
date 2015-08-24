@@ -2,7 +2,7 @@
  * (C) Copyright 2001
  * Erik Theisen, Wave 7 Optics, etheisen@mindspring.com
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,7 +18,6 @@
  */
 
 #define CONFIG_405GP		1		/* This is a PPC405GP CPU	*/
-#define CONFIG_4xx		1		/* ...member of PPC405 family	*/
 #define CONFIG_W7O		1		/* ...on a Wave 7 Optics board	*/
 #define CONFIG_W7OLMC		1		/* ...specifically an LMC	*/
 
@@ -125,8 +124,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address		*/
 #define CONFIG_SYS_EXTBDINFO		1		/* use extended board_info (bd_t) */
-
-#define CONFIG_SYS_HZ			1000		/* decrementer freq: 1 ms ticks */
 
 /*-----------------------------------------------------------------------
  * PCI stuff
@@ -303,7 +300,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400		/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2		/* which serial port to use	*/
 #endif
 
 /*

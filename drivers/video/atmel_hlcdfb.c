@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2012 Atmel Corporation
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -31,10 +31,10 @@
  */
 void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
 {
-	lcdc_writel(((red << LCDC_BASECLUT_RCLUT_Pos) & LCDC_BASECLUT_RCLUT_Msk)
-		| ((green << LCDC_BASECLUT_GCLUT_Pos) & LCDC_BASECLUT_GCLUT_Msk)
-		| ((blue << LCDC_BASECLUT_BCLUT_Pos) & LCDC_BASECLUT_BCLUT_Msk),
-		panel_info.mmio + ATMEL_LCDC_LUT(regno));
+	lcdc_writel(panel_info.mmio + ATMEL_LCDC_LUT(regno),
+		((red << LCDC_BASECLUT_RCLUT_Pos) & LCDC_BASECLUT_RCLUT_Msk) |
+		((green << LCDC_BASECLUT_GCLUT_Pos) & LCDC_BASECLUT_GCLUT_Msk) |
+		((blue << LCDC_BASECLUT_BCLUT_Pos) & LCDC_BASECLUT_BCLUT_Msk));
 }
 
 void lcd_ctrl_init(void *lcdbase)
@@ -42,11 +42,13 @@ void lcd_ctrl_init(void *lcdbase)
 	unsigned long value;
 	struct lcd_dma_desc *desc;
 	struct atmel_hlcd_regs *regs;
+	u32 clk_pol;
 
 	if (!has_lcdc())
 		return;     /* No lcdc */
 
-	regs = (struct atmel_hlcd_regs *)panel_info.mmio;
+	regs = panel_info.mmio;
+	clk_pol = panel_info.vl_clk_pol ? LCDC_LCDCFG0_CLKPOL : 0;
 
 	/* Disable DISP signal */
 	lcdc_writel(&regs->lcdc_lcddis, LCDC_LCDDIS_DISPDIS);
@@ -78,8 +80,8 @@ void lcd_ctrl_init(void *lcdbase)
 					| LCDC_LCDCFG0_CGDISHEO
 					| LCDC_LCDCFG0_CGDISOVR1
 					| LCDC_LCDCFG0_CGDISBASE
-					| panel_info.vl_clk_pol
-					| LCDC_LCDCFG0_CLKSEL);
+					| LCDC_LCDCFG0_CLKSEL
+					| clk_pol);
 
 	} else {
 		lcdc_writel(&regs->lcdc_lcdcfg0,
@@ -88,7 +90,7 @@ void lcd_ctrl_init(void *lcdbase)
 				| LCDC_LCDCFG0_CGDISHEO
 				| LCDC_LCDCFG0_CGDISOVR1
 				| LCDC_LCDCFG0_CGDISBASE
-				| panel_info.vl_clk_pol);
+				| clk_pol);
 	}
 
 	/* Initialize control register 5 */
@@ -128,12 +130,12 @@ void lcd_ctrl_init(void *lcdbase)
 	value |= LCDC_LCDCFG1_HSPW(panel_info.vl_hsync_len - 1);
 	lcdc_writel(&regs->lcdc_lcdcfg1, value);
 
-	value = LCDC_LCDCFG2_VBPW(panel_info.vl_lower_margin);
-	value |= LCDC_LCDCFG2_VFPW(panel_info.vl_upper_margin - 1);
+	value = LCDC_LCDCFG2_VBPW(panel_info.vl_upper_margin);
+	value |= LCDC_LCDCFG2_VFPW(panel_info.vl_lower_margin - 1);
 	lcdc_writel(&regs->lcdc_lcdcfg2, value);
 
-	value = LCDC_LCDCFG3_HBPW(panel_info.vl_right_margin - 1);
-	value |= LCDC_LCDCFG3_HFPW(panel_info.vl_left_margin - 1);
+	value = LCDC_LCDCFG3_HBPW(panel_info.vl_left_margin - 1);
+	value |= LCDC_LCDCFG3_HFPW(panel_info.vl_right_margin - 1);
 	lcdc_writel(&regs->lcdc_lcdcfg3, value);
 
 	/* Display size */
@@ -171,6 +173,9 @@ void lcd_ctrl_init(void *lcdbase)
 			| LCDC_BASECTRL_DMAIEN | LCDC_BASECTRL_DFETCH;
 	desc->next = (u32)desc;
 
+	/* Flush the DMA descriptor if we enabled dcache */
+	flush_dcache_range((u32)desc, (u32)desc + sizeof(*desc));
+
 	lcdc_writel(&regs->lcdc_baseaddr, desc->address);
 	lcdc_writel(&regs->lcdc_basectrl, desc->control);
 	lcdc_writel(&regs->lcdc_basenext, desc->next);
@@ -194,4 +199,7 @@ void lcd_ctrl_init(void *lcdbase)
 	lcdc_writel(&regs->lcdc_lcden, value | LCDC_LCDEN_PWMEN);
 	while (!(lcdc_readl(&regs->lcdc_lcdsr) & LCDC_LCDSR_PWMSTS))
 		udelay(1);
+
+	/* Enable flushing if we enabled dcache */
+	lcd_set_flush_dcache(1);
 }

@@ -4,5 +4,8 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 ifndef CONFIG_SPL_BUILD
-ALL-y	+= $(obj)u-boot.img
+ALL-y	+= u-boot.img
 endif
+
+# Added for handoff support
+PLATFORM_RELFLAGS += -Iboard/$(VENDOR)/$(BOARD)

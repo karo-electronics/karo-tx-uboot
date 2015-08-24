@@ -2,7 +2,7 @@
  * (C) Copyright 2000-2005
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,7 +18,6 @@
  */
 
 #define CONFIG_405GP		1	/* This is a PPC405 CPU		*/
-#define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 #define CONFIG_WALNUT		1	/* ...on a WALNUT board		*/
 					/* ...or on a SYCAMORE board	*/
 

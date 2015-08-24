@@ -15,6 +15,8 @@
 #ifndef _CONFIG_GOFLEXHOME_H
 #define _CONFIG_GOFLEXHOME_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /*
  * Version number information
  */
@@ -24,7 +26,6 @@
  * High Level Configuration Options (easy to change)
  */
 #define CONFIG_FEROCEON_88FR131	1	/* CPU Core subversion */
-#define CONFIG_KIRKWOOD		1	/* SOC Family Name */
 #define CONFIG_KW88F6281	1	/* SOC Name */
 #define CONFIG_MACH_GOFLEXHOME		/* Machine type */
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */

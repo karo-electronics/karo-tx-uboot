@@ -22,6 +22,7 @@
 #include <common.h>
 #include <ext_common.h>
 #include <ext4fs.h>
+#include <inttypes.h>
 #include <malloc.h>
 #include <stddef.h>
 #include <linux/stat.h>
@@ -73,7 +74,7 @@ void put_ext4(uint64_t off, void *buf, uint32_t size)
 	if ((startblock + (size >> log2blksz)) >
 	    (part_offset + fs->total_sect)) {
 		printf("part_offset is " LBAFU "\n", part_offset);
-		printf("total_sector is %llu\n", fs->total_sect);
+		printf("total_sector is %" PRIu64 "\n", fs->total_sect);
 		printf("error: overflow occurs\n");
 		return;
 	}
@@ -445,9 +446,9 @@ restart:
 					goto fail;
 				}
 				put_ext4(((uint64_t)
-					  (g_parent_inode->b.
+					  ((uint64_t)g_parent_inode->b.
 					   blocks.dir_blocks[direct_blk_idx] *
-					   fs->blksz)), zero_buffer, fs->blksz);
+					   (uint64_t)fs->blksz)), zero_buffer, fs->blksz);
 				g_parent_inode->size =
 				    g_parent_inode->size + fs->blksz;
 				g_parent_inode->blockcnt =
@@ -864,8 +865,8 @@ long int ext4fs_get_new_blk_no(void)
 		for (i = 0; i < fs->no_blkgrp; i++) {
 			if (bgd[i].free_blocks) {
 				if (bgd[i].bg_flags & EXT4_BG_BLOCK_UNINIT) {
-					put_ext4(((uint64_t) (bgd[i].block_id *
-							      fs->blksz)),
+					put_ext4(((uint64_t) ((uint64_t)bgd[i].block_id *
+							      (uint64_t)fs->blksz)),
 						 zero_buffer, fs->blksz);
 					bgd[i].bg_flags =
 					    bgd[i].
@@ -904,10 +905,8 @@ long int ext4fs_get_new_blk_no(void)
 restart:
 		fs->curr_blkno++;
 		/* get the blockbitmap index respective to blockno */
-		if (fs->blksz != 1024) {
-			bg_idx = fs->curr_blkno / blk_per_grp;
-		} else {
-			bg_idx = fs->curr_blkno / blk_per_grp;
+		bg_idx = fs->curr_blkno / blk_per_grp;
+		if (fs->blksz == 1024) {
 			remainder = fs->curr_blkno % blk_per_grp;
 			if (!remainder)
 				bg_idx--;
@@ -929,8 +928,8 @@ restart:
 
 		if (bgd[bg_idx].bg_flags & EXT4_BG_BLOCK_UNINIT) {
 			memset(zero_buffer, '\0', fs->blksz);
-			put_ext4(((uint64_t) (bgd[bg_idx].block_id *
-					fs->blksz)), zero_buffer, fs->blksz);
+			put_ext4(((uint64_t) ((uint64_t)bgd[bg_idx].block_id *
+					(uint64_t)fs->blksz)), zero_buffer, fs->blksz);
 			memcpy(fs->blk_bmaps[bg_idx], zero_buffer, fs->blksz);
 			bgd[bg_idx].bg_flags = bgd[bg_idx].bg_flags &
 						~EXT4_BG_BLOCK_UNINIT;
@@ -996,8 +995,8 @@ int ext4fs_get_new_inode_no(void)
 						bgd[i].free_inodes;
 				if (bgd[i].bg_flags & EXT4_BG_INODE_UNINIT) {
 					put_ext4(((uint64_t)
-						  (bgd[i].inode_id *
-							fs->blksz)),
+						  ((uint64_t)bgd[i].inode_id *
+							(uint64_t)fs->blksz)),
 						 zero_buffer, fs->blksz);
 					bgd[i].bg_flags = bgd[i].bg_flags &
 							~EXT4_BG_INODE_UNINIT;
@@ -1037,8 +1036,8 @@ restart:
 		ibmap_idx = fs->curr_inode_no / inodes_per_grp;
 		if (bgd[ibmap_idx].bg_flags & EXT4_BG_INODE_UNINIT) {
 			memset(zero_buffer, '\0', fs->blksz);
-			put_ext4(((uint64_t) (bgd[ibmap_idx].inode_id *
-					      fs->blksz)), zero_buffer,
+			put_ext4(((uint64_t) ((uint64_t)bgd[ibmap_idx].inode_id *
+					      (uint64_t)fs->blksz)), zero_buffer,
 				 fs->blksz);
 			bgd[ibmap_idx].bg_flags =
 			    bgd[ibmap_idx].bg_flags & ~EXT4_BG_INODE_UNINIT;
@@ -1143,7 +1142,7 @@ static void alloc_single_indirect_block(struct ext2_inode *file_inode,
 		}
 
 		/* write the block to disk */
-		put_ext4(((uint64_t) (si_blockno * fs->blksz)),
+		put_ext4(((uint64_t) ((uint64_t)si_blockno * (uint64_t)fs->blksz)),
 			 si_start_addr, fs->blksz);
 		file_inode->b.blocks.indir_block = si_blockno;
 	}
@@ -1242,7 +1241,7 @@ static void alloc_double_indirect_block(struct ext2_inode *file_inode,
 					break;
 			}
 			/* write the block  table */
-			put_ext4(((uint64_t) (di_blockno_child * fs->blksz)),
+			put_ext4(((uint64_t) ((uint64_t)di_blockno_child * (uint64_t)fs->blksz)),
 				 di_child_buff_start, fs->blksz);
 			free(di_child_buff_start);
 			di_child_buff_start = NULL;
@@ -1250,7 +1249,7 @@ static void alloc_double_indirect_block(struct ext2_inode *file_inode,
 			if (*total_remaining_blocks == 0)
 				break;
 		}
-		put_ext4(((uint64_t) (di_blockno_parent * fs->blksz)),
+		put_ext4(((uint64_t) ((uint64_t)di_blockno_parent * (uint64_t)fs->blksz)),
 			 di_block_start_addr, fs->blksz);
 		file_inode->b.blocks.double_indir_block = di_blockno_parent;
 	}
@@ -1348,8 +1347,8 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 						break;
 				}
 				/* write the child block */
-				put_ext4(((uint64_t) (ti_child_blockno *
-						      fs->blksz)),
+				put_ext4(((uint64_t) ((uint64_t)ti_child_blockno *
+						      (uint64_t)fs->blksz)),
 					 ti_cbuff_start_addr, fs->blksz);
 				free(ti_cbuff_start_addr);
 
@@ -1357,7 +1356,7 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 					break;
 			}
 			/* write the parent block */
-			put_ext4(((uint64_t) (ti_parent_blockno * fs->blksz)),
+			put_ext4(((uint64_t) ((uint64_t)ti_parent_blockno * (uint64_t)fs->blksz)),
 				 ti_pbuff_start_addr, fs->blksz);
 			free(ti_pbuff_start_addr);
 
@@ -1365,7 +1364,7 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 				break;
 		}
 		/* write the grand parent block */
-		put_ext4(((uint64_t) (ti_gp_blockno * fs->blksz)),
+		put_ext4(((uint64_t) ((uint64_t)ti_gp_blockno * (uint64_t)fs->blksz)),
 			 ti_gp_buff_start_addr, fs->blksz);
 		file_inode->b.blocks.triple_indir_block = ti_gp_blockno;
 	}
@@ -1382,7 +1381,7 @@ void ext4fs_allocate_blocks(struct ext2_inode *file_inode,
 	unsigned int no_blks_reqd = 0;
 
 	/* allocation of direct blocks */
-	for (i = 0; i < INDIRECT_BLOCKS; i++) {
+	for (i = 0; total_remaining_blocks && i < INDIRECT_BLOCKS; i++) {
 		direct_blockno = ext4fs_get_new_blk_no();
 		if (direct_blockno == -1) {
 			printf("no block left to assign\n");
@@ -1392,8 +1391,6 @@ void ext4fs_allocate_blocks(struct ext2_inode *file_inode,
 		debug("DB %ld: %u\n", direct_blockno, total_remaining_blocks);
 
 		total_remaining_blocks--;
-		if (total_remaining_blocks == 0)
-			break;
 	}
 
 	alloc_single_indirect_block(file_inode, &total_remaining_blocks,
@@ -1414,7 +1411,7 @@ static struct ext4_extent_header *ext4fs_get_extent_block
 {
 	struct ext4_extent_idx *index;
 	unsigned long long block;
-	struct ext_filesystem *fs = get_fs();
+	int blksz = EXT2_BLOCK_SIZE(data);
 	int i;
 
 	while (1) {
@@ -1430,7 +1427,7 @@ static struct ext4_extent_header *ext4fs_get_extent_block
 			i++;
 			if (i >= le16_to_cpu(ext_block->eh_entries))
 				break;
-		} while (fileblock > le32_to_cpu(index[i].ei_block));
+		} while (fileblock >= le32_to_cpu(index[i].ei_block));
 
 		if (--i < 0)
 			return 0;
@@ -1438,7 +1435,7 @@ static struct ext4_extent_header *ext4fs_get_extent_block
 		block = le16_to_cpu(index[i].ei_leaf_hi);
 		block = (block << 32) + le32_to_cpu(index[i].ei_leaf_lo);
 
-		if (ext4fs_devread((lbaint_t)block << log2_blksz, 0, fs->blksz,
+		if (ext4fs_devread((lbaint_t)block << log2_blksz, 0, blksz,
 				   buf))
 			ext_block = (struct ext4_extent_header *)buf;
 		else
@@ -1843,16 +1840,20 @@ long int read_allocated_block(struct ext2_inode *inode, int fileblock)
 	return blknr;
 }
 
-void ext4fs_close(void)
+/**
+ * ext4fs_reinit_global() - Reinitialize values of ext4 write implementation's
+ *			    global pointers
+ *
+ * This function assures that for a file with the same name but different size
+ * the sequential store on the ext4 filesystem will be correct.
+ *
+ * In this function the global data, responsible for internal representation
+ * of the ext4 data are initialized to the reset state. Without this, during
+ * replacement of the smaller file with the bigger truncation of new file was
+ * performed.
+ */
+void ext4fs_reinit_global(void)
 {
-	if ((ext4fs_file != NULL) && (ext4fs_root != NULL)) {
-		ext4fs_free_node(ext4fs_file, &ext4fs_root->diropen);
-		ext4fs_file = NULL;
-	}
-	if (ext4fs_root != NULL) {
-		free(ext4fs_root);
-		ext4fs_root = NULL;
-	}
 	if (ext4fs_indir1_block != NULL) {
 		free(ext4fs_indir1_block);
 		ext4fs_indir1_block = NULL;
@@ -1872,12 +1873,26 @@ void ext4fs_close(void)
 		ext4fs_indir3_blkno = -1;
 	}
 }
+void ext4fs_close(void)
+{
+	if ((ext4fs_file != NULL) && (ext4fs_root != NULL)) {
+		ext4fs_free_node(ext4fs_file, &ext4fs_root->diropen);
+		ext4fs_file = NULL;
+	}
+	if (ext4fs_root != NULL) {
+		free(ext4fs_root);
+		ext4fs_root = NULL;
+	}
+
+	ext4fs_reinit_global();
+}
 
 int ext4fs_iterate_dir(struct ext2fs_node *dir, char *name,
 				struct ext2fs_node **fnode, int *ftype)
 {
 	unsigned int fpos = 0;
 	int status;
+	loff_t actread;
 	struct ext2fs_node *diro = (struct ext2fs_node *) dir;
 
 #ifdef DEBUG
@@ -1895,8 +1910,8 @@ int ext4fs_iterate_dir(struct ext2fs_node *dir, char *name,
 
 		status = ext4fs_read_file(diro, fpos,
 					   sizeof(struct ext2_dirent),
-					   (char *) &dirent);
-		if (status < 1)
+					   (char *)&dirent, &actread);
+		if (status < 0)
 			return 0;
 
 		if (dirent.namelen != 0) {
@@ -1907,8 +1922,9 @@ int ext4fs_iterate_dir(struct ext2fs_node *dir, char *name,
 			status = ext4fs_read_file(diro,
 						  fpos +
 						  sizeof(struct ext2_dirent),
-						  dirent.namelen, filename);
-			if (status < 1)
+						  dirent.namelen, filename,
+						  &actread);
+			if (status < 0)
 				return 0;
 
 			fdiro = zalloc(sizeof(struct ext2fs_node));
@@ -1990,8 +2006,8 @@ int ext4fs_iterate_dir(struct ext2fs_node *dir, char *name,
 					printf("< ? > ");
 					break;
 				}
-				printf("%10d %s\n",
-					__le32_to_cpu(fdiro->inode.size),
+				printf("%10u %s\n",
+				       __le32_to_cpu(fdiro->inode.size),
 					filename);
 			}
 			free(fdiro);
@@ -2006,6 +2022,7 @@ static char *ext4fs_read_symlink(struct ext2fs_node *node)
 	char *symlink;
 	struct ext2fs_node *diro = node;
 	int status;
+	loff_t actread;
 
 	if (!diro->inode_read) {
 		status = ext4fs_read_inode(diro->data, diro->ino, &diro->inode);
@@ -2022,7 +2039,7 @@ static char *ext4fs_read_symlink(struct ext2fs_node *node)
 	} else {
 		status = ext4fs_read_file(diro, 0,
 					   __le32_to_cpu(diro->inode.size),
-					   symlink);
+					   symlink, &actread);
 		if (status == 0) {
 			free(symlink);
 			return 0;
@@ -2156,11 +2173,10 @@ int ext4fs_find_file(const char *path, struct ext2fs_node *rootnode,
 	return 1;
 }
 
-int ext4fs_open(const char *filename)
+int ext4fs_open(const char *filename, loff_t *len)
 {
 	struct ext2fs_node *fdiro = NULL;
 	int status;
-	int len;
 
 	if (ext4fs_root == NULL)
 		return -1;
@@ -2177,10 +2193,10 @@ int ext4fs_open(const char *filename)
 		if (status == 0)
 			goto fail;
 	}
-	len = __le32_to_cpu(fdiro->inode.size);
+	*len = __le32_to_cpu(fdiro->inode.size);
 	ext4fs_file = fdiro;
 
-	return len;
+	return 0;
 fail:
 	ext4fs_free_node(fdiro, &ext4fs_root->diropen);
 

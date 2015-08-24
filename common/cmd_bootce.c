@@ -913,8 +913,6 @@ static inline int ce_init_download_link(ce_net *net, ce_bin *bin, int verbose)
 	return 0;
 }
 
-#define UINT_MAX ~0UL
-
 static inline int ce_download_file(ce_net *net, ulong timeout)
 {
 	ulong start = get_timer_masked();
@@ -981,7 +979,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 				timeout = simple_strtoul(argv[i],
 							NULL, 0);
 				if (timeout >= UINT_MAX / CONFIG_SYS_HZ) {
-					printf("Timeout value %lu out of range (max.: %lu)\n",
+					printf("Timeout value %lu out of range (max.: %u)\n",
 						timeout, UINT_MAX / CONFIG_SYS_HZ - 1);
 					return CMD_RET_USAGE;
 				}

@@ -19,7 +19,7 @@
 #include <errno.h>
 #include <asm/io.h>
 #include <asm/bitops.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/gpio.h>
 

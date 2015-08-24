@@ -19,13 +19,9 @@
 #include <mpc5xx.h>
 #include <version.h>
 
-#define CONFIG_5xx 1		/* needed for Linux kernel header files */
-#define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file	*/
-
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
 
-#include <linux/config.h>
 #include <asm/processor.h>
 #include <asm/u-boot.h>
 

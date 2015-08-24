@@ -56,8 +56,6 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 				  unsigned int max_hz, unsigned int mode)
 {
 	struct mxs_spi_slave *mxs_slave;
-	struct mxs_ssp_regs *ssp_regs;
-	int reg;
 
 	if (!spi_cs_is_valid(bus, cs)) {
 		printf("mxs_spi: invalid bus %d / chip select %d\n", bus, cs);
@@ -74,13 +72,7 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	mxs_slave->max_khz = max_hz / 1000;
 	mxs_slave->mode = mode;
 	mxs_slave->regs = mxs_ssp_regs_by_bus(bus);
-	ssp_regs = mxs_slave->regs;
 
-	reg = readl(&ssp_regs->hw_ssp_ctrl0);
-	reg &= ~(MXS_SSP_CHIPSELECT_MASK);
-	reg |= cs << MXS_SSP_CHIPSELECT_SHIFT;
-
-	writel(reg, &ssp_regs->hw_ssp_ctrl0);
 	return &mxs_slave->slave;
 
 err_init:
@@ -102,7 +94,9 @@ int spi_claim_bus(struct spi_slave *slave)
 
 	mxs_reset_block(&ssp_regs->hw_ssp_ctrl0_reg);
 
-	writel(SSP_CTRL0_BUS_WIDTH_ONE_BIT, &ssp_regs->hw_ssp_ctrl0);
+	writel((slave->cs << MXS_SSP_CHIPSELECT_SHIFT) |
+	       SSP_CTRL0_BUS_WIDTH_ONE_BIT,
+	       &ssp_regs->hw_ssp_ctrl0);
 
 	reg = SSP_CTRL1_SSP_MODE_SPI | SSP_CTRL1_WORD_LENGTH_EIGHT_BITS;
 	reg |= (mxs_slave->mode & SPI_CPOL) ? SSP_CTRL1_POLARITY : 0;
@@ -142,10 +136,10 @@ static int mxs_spi_xfer_pio(struct mxs_spi_slave *slave,
 
 	while (length--) {
 		/* We transfer 1 byte */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 		writel(SSP_CTRL0_XFER_COUNT_MASK, &ssp_regs->hw_ssp_ctrl0_clr);
 		writel(1, &ssp_regs->hw_ssp_ctrl0_set);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 		writel(1, &ssp_regs->hw_ssp_xfer_size);
 #endif
 
@@ -205,9 +199,9 @@ static int mxs_spi_xfer_dma(struct mxs_spi_slave *slave,
 	int tl;
 	int ret = 0;
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	const int mxs_spi_pio_words = 1;
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	const int mxs_spi_pio_words = 4;
 #endif
 
@@ -291,7 +285,7 @@ static int mxs_spi_xfer_dma(struct mxs_spi_slave *slave,
 		 * descriptor!
 		 */
 		dp->cmd.pio_words[0] = ctrl0;
-#ifdef CONFIG_MX28
+#ifdef CONFIG_SOC_MX28
 		dp->cmd.pio_words[1] = 0;
 		dp->cmd.pio_words[2] = 0;
 		dp->cmd.pio_words[3] = tl;

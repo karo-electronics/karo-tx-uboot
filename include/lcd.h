@@ -9,11 +9,12 @@
  * (C) Copyright 2001
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LCD_H_
 #define _LCD_H_
+#include <lcd_console.h>
 
 extern char lcd_is_enabled;
 
@@ -27,8 +28,6 @@ void lcd_enable(void);
 /* setcolreg used in 8bpp/16bpp; initcolregs used in monochrome */
 void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue);
 void lcd_initcolregs(void);
-
-int lcd_getfgcolor(void);
 
 /* gunzip_bmp used if CONFIG_VIDEO_BMP_GZIP */
 struct bmp_image *gunzip_bmp(unsigned long addr, unsigned long *lenp,
@@ -168,7 +167,7 @@ typedef struct vidinfo {
 	u_long vl_upper_margin;	/* Time from sync to picture */
 	u_long vl_lower_margin;	/* Time from picture to sync */
 
-	u_long	mmio;		/* Memory mapped registers */
+	void *mmio;		/* Memory mapped registers */
 } vidinfo_t;
 
 #elif defined(CONFIG_EXYNOS_FB)
@@ -225,6 +224,8 @@ typedef struct vidinfo {
 	unsigned int logo_on;
 	unsigned int logo_width;
 	unsigned int logo_height;
+	int logo_x_offset;
+	int logo_y_offset;
 	unsigned long logo_addr;
 	unsigned int rgb_mode;
 	unsigned int resolution;
@@ -252,7 +253,7 @@ typedef struct vidinfo {
 	void	*priv;		/* Pointer to driver-specific data */
 } vidinfo_t;
 
-#endif /* CONFIG_MPC823, CONFIG_CPU_PXA25X, CONFIG_MCC200, CONFIG_ATMEL_LCD */
+#endif /* CONFIG_MPC823, CONFIG_CPU_PXA25X, CONFIG_ATMEL_LCD */
 
 extern vidinfo_t panel_info;
 
@@ -296,6 +297,20 @@ int lcd_get_screen_rows(void);
 int lcd_get_screen_columns(void);
 
 /**
+ * Get the background color of the LCD
+ *
+ * @return background color value
+ */
+int lcd_getbgcolor(void);
+
+/**
+ * Get the foreground color of the LCD
+ *
+ * @return foreground color value
+ */
+int lcd_getfgcolor(void);
+
+/**
  * Set the position of the text cursor
  *
  * @param col	Column to place cursor (0 = left side)
@@ -311,6 +326,9 @@ int lcd_get_size(int *line_length);
 
 int lcd_dt_simplefb_add_node(void *blob);
 int lcd_dt_simplefb_enable_existing_node(void *blob);
+
+/* Update the LCD / flush the cache */
+void lcd_sync(void);
 
 /************************************************************************/
 /* ** BITMAP DISPLAY SUPPORT						*/
@@ -333,8 +351,7 @@ int lcd_dt_simplefb_enable_existing_node(void *blob);
 #define LCD_COLOR4	2
 #define LCD_COLOR8	3
 #define LCD_COLOR16	4
-#define LCD_COLOR24	5
-
+#define LCD_COLOR32	5
 /*----------------------------------------------------------------------*/
 #if defined(CONFIG_LCD_INFO_BELOW_LOGO)
 # define LCD_INFO_X		0
@@ -362,15 +379,7 @@ int lcd_dt_simplefb_enable_existing_node(void *blob);
 /************************************************************************/
 /* ** CONSOLE CONSTANTS							*/
 /************************************************************************/
-#if LCD_BPP == LCD_MONOCHROME
-
-/*
- * Simple black/white definitions
- */
-# define CONSOLE_COLOR_BLACK	0
-# define CONSOLE_COLOR_WHITE	1	/* Must remain last / highest	*/
-
-#elif LCD_BPP == LCD_COLOR8
+#if LCD_BPP == LCD_COLOR8
 
 /*
  * 8bpp color definitions
@@ -384,6 +393,21 @@ int lcd_dt_simplefb_enable_existing_node(void *blob);
 # define CONSOLE_COLOR_CYAN	6
 # define CONSOLE_COLOR_GREY	14
 # define CONSOLE_COLOR_WHITE	15	/* Must remain last / highest	*/
+
+#elif LCD_BPP == LCD_COLOR32
+/*
+ * 32bpp color definitions
+ */
+# define CONSOLE_COLOR_RED	0x00ff0000
+# define CONSOLE_COLOR_GREEN	0x0000ff00
+# define CONSOLE_COLOR_YELLOW	0x00ffff00
+# define CONSOLE_COLOR_BLUE	0x000000ff
+# define CONSOLE_COLOR_MAGENTA	0x00ff00ff
+# define CONSOLE_COLOR_CYAN	0x0000ffff
+# define CONSOLE_COLOR_GREY	0x00aaaaaa
+# define CONSOLE_COLOR_BLACK	0x00000000
+# define CONSOLE_COLOR_WHITE	0x00ffffff	/* Must remain last / highest*/
+# define NBYTES(bit_code)	(NBITS(bit_code) >> 3)
 
 #elif LCD_BPP == LCD_COLOR16
 
@@ -400,19 +424,6 @@ int lcd_dt_simplefb_enable_existing_node(void *blob);
 # define CONSOLE_COLOR_GREY	0xcccc
 # define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
 
-#elif LCD_BPP == LCD_COLOR24
-/*
- * 16bpp color definitions
- */
-# define CONSOLE_COLOR_BLACK	0x00000000
-# define CONSOLE_COLOR_RED	0x00ff0000
-# define CONSOLE_COLOR_GREEN	0x0000ff00
-# define CONSOLE_COLOR_YELLOW	0x00ffff00
-# define CONSOLE_COLOR_BLUE	0x000000ff
-# define CONSOLE_COLOR_MAGENTA	0x00ff00ff
-# define CONSOLE_COLOR_CYAN	0x0000ffff
-# define CONSOLE_COLOR_GREY	0x00cccccc
-# define CONSOLE_COLOR_WHITE	0x00ffffff	/* Must remain last / highest	*/
 #else
 #error Invalid LCD_BPP setting
 #endif /* color definitions */

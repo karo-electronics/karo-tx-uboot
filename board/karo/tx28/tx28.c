@@ -54,11 +54,11 @@ DECLARE_GLOBAL_DATA_PTR;
 #define STK5_CAN_XCVR_GPIO	MX28_PAD_LCD_D00__GPIO_1_0
 
 static const struct gpio tx28_gpios[] = {
-	{ TX28_USBH_VBUSEN_GPIO, GPIOF_OUTPUT_INIT_LOW, "USBH VBUSEN", },
-	{ TX28_USBH_OC_GPIO, GPIOF_INPUT, "USBH OC", },
-	{ TX28_USBOTG_VBUSEN_GPIO, GPIOF_OUTPUT_INIT_LOW, "USBOTG VBUSEN", },
-	{ TX28_USBOTG_OC_GPIO, GPIOF_INPUT, "USBOTG OC", },
-	{ TX28_USBOTG_ID_GPIO, GPIOF_INPUT, "USBOTG ID", },
+	{ TX28_USBH_VBUSEN_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "USBH VBUSEN", },
+	{ TX28_USBH_OC_GPIO, GPIOFLAG_INPUT, "USBH OC", },
+	{ TX28_USBOTG_VBUSEN_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "USBOTG VBUSEN", },
+	{ TX28_USBOTG_OC_GPIO, GPIOFLAG_INPUT, "USBOTG OC", },
+	{ TX28_USBOTG_ID_GPIO, GPIOFLAG_INPUT, "USBOTG ID", },
 };
 
 static const iomux_cfg_t tx28_pads[] = {
@@ -100,7 +100,7 @@ static const iomux_cfg_t tx28_pads[] = {
 /* provide at least _some_ sort of randomness */
 #define MAX_LOOPS       100
 
-static u32 random;
+static u32 random __attribute__((section("data")));
 
 static inline void random_init(void)
 {
@@ -200,7 +200,7 @@ int board_mmc_init(bd_t *bis)
 #ifdef CONFIG_FEC_MXC
 #ifdef CONFIG_GET_FEC_MAC_ADDR_FROM_IIM
 
-#ifdef CONFIG_FEC_MXC_MULTI
+#ifndef CONFIG_TX28_S
 #define FEC_MAX_IDX			1
 #else
 #define FEC_MAX_IDX			0
@@ -256,6 +256,46 @@ static int fec_get_mac_addr(int index)
 	eth_setenv_enetaddr(env_name, mac);
 	return 0;
 }
+
+static inline int tx28_fec1_enabled(void)
+{
+	const char *status;
+	int off;
+
+	if (!gd->fdt_blob)
+		return 0;
+
+	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
+	if (off < 0)
+		return 0;
+
+	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
+	return status && (strcmp(status, "okay") == 0);
+}
+
+static void tx28_init_mac(void)
+{
+	int ret;
+
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return;
+	}
+#ifdef CONFIG_TX28_S
+	if (tx28_fec1_enabled()) {
+		ret = fec_get_mac_addr(1);
+		if (ret < 0) {
+			printf("Failed to read FEC1 MAC address from OCOTP\n");
+			return;
+		}
+	}
+#endif
+}
+#else
+static inline void tx28_init_mac(void)
+{
+}
 #endif /* CONFIG_GET_FEC_MAC_ADDR_FROM_IIM */
 
 static const iomux_cfg_t tx28_fec_pads[] = {
@@ -292,7 +332,7 @@ int board_eth_init(bd_t *bis)
 		return ret;
 	}
 
-#ifdef CONFIG_FEC_MXC_MULTI
+#ifndef CONFIG_TX28_S
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
 		if (ret) {
@@ -318,6 +358,10 @@ int board_eth_init(bd_t *bis)
 	}
 #endif
 	return 0;
+}
+#else
+static inline void tx28_init_mac(void)
+{
 }
 #endif /* CONFIG_FEC_MXC */
 
@@ -364,7 +408,7 @@ vidinfo_t panel_info = {
 	.vl_col = 1600,
 	.vl_row = 1200,
 
-	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 	.cmap = tx28_cmap,
 };
 
@@ -578,9 +622,9 @@ static const iomux_cfg_t stk5_lcd_pads[] = {
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
-	{ TX28_LCD_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
-	{ TX28_LCD_PWR_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
-	{ TX28_LCD_BACKLIGHT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+	{ TX28_LCD_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD RESET", },
+	{ TX28_LCD_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD POWER", },
+	{ TX28_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
 extern void video_hw_init(void *lcdbase);
@@ -728,7 +772,7 @@ void lcd_ctrl_init(void *lcdbase)
 		panel_info.vl_bpix = LCD_COLOR16;
 		break;
 	default:
-		panel_info.vl_bpix = LCD_COLOR24;
+		panel_info.vl_bpix = LCD_COLOR32;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -794,45 +838,9 @@ static void stk5v5_board_init(void)
 	stk5_board_init();
 
 	/* init flexcan transceiver enable GPIO */
-	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOF_OUTPUT_INIT_HIGH,
+	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
 	mxs_iomux_setup_pad(STK5_CAN_XCVR_GPIO);
-}
-
-int tx28_fec1_enabled(void)
-{
-	const char *status;
-	int off;
-
-	if (!gd->fdt_blob)
-		return 0;
-
-	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
-	if (off < 0)
-		return 0;
-
-	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
-	return status && (strcmp(status, "okay") == 0);
-}
-
-static void tx28_init_mac(void)
-{
-	int ret;
-
-	ret = fec_get_mac_addr(0);
-	if (ret < 0) {
-		printf("Failed to read FEC0 MAC address from OCOTP\n");
-		return;
-	}
-#ifdef CONFIG_FEC_MXC_MULTI
-	if (tx28_fec1_enabled()) {
-		ret = fec_get_mac_addr(1);
-		if (ret < 0) {
-			printf("Failed to read FEC1 MAC address from OCOTP\n");
-			return;
-		}
-	}
-#endif
 }
 
 int board_late_init(void)
@@ -908,7 +916,7 @@ int checkboard(void)
 	const char *dlm = "";
 
 	printf("Board: Ka-Ro TX28-4%sx%d\n", TX28_MOD_SUFFIX,
-		CONFIG_SDRAM_SIZE / SZ_128M +
+		CONFIG_SYS_SDRAM_SIZE / SZ_128M +
 		CONFIG_SYS_NAND_BLOCKS / 2048 * 2);
 
 	printf("POWERUP Source: ");
@@ -982,7 +990,7 @@ static const char *tx28_touchpanels[] = {
 	"fsl,imx28-lradc",
 };
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
@@ -990,9 +998,10 @@ void ft_board_setup(void *blob, bd_t *bd)
 	int ret;
 
 	ret = fdt_increase_size(blob, 4096);
-	if (ret)
+	if (ret) {
 		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
-
+		return ret;
+	}
 #ifdef CONFIG_TX28_S
 	/* TX28-41xx (aka TX28S) has no external RTC
 	 * and no I2C GPIO extender
@@ -1011,5 +1020,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	karo_fdt_update_fb_mode(blob, video_mode);
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

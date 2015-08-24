@@ -50,6 +50,7 @@ static const struct dpll_params mpu_dpll_params_1400mhz[NUM_SYS_CLKS] = {
 /*
  * dpll locked at 1600 MHz - MPU clk at 800 MHz(OPP Turbo 4430)
  * OMAP4430 OPP_TURBO frequency
+ * OMAP4470 OPP_NOM frequency
  */
 static const struct dpll_params mpu_dpll_params_1600mhz[NUM_SYS_CLKS] = {
 	{200, 2, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1},	/* 12 MHz   */
@@ -76,6 +77,7 @@ static const struct dpll_params mpu_dpll_params_1200mhz[NUM_SYS_CLKS] = {
 };
 
 /* OMAP4460 OPP_NOM frequency */
+/* OMAP4470 OPP_NOM (Low Power) frequency */
 static const struct dpll_params core_dpll_params_1600mhz[NUM_SYS_CLKS] = {
 	{200, 2, 1, 5, 8, 4, 6, 5, -1, -1, -1, -1},	/* 12 MHz   */
 	{800, 12, 1, 5, 8, 4, 6, 5, -1, -1, -1, -1},	/* 13 MHz   */
@@ -170,6 +172,20 @@ struct dplls omap4430_dplls_es1 = {
 	.ddr = NULL
 };
 
+struct dplls omap4430_dplls_es20 = {
+	.mpu = mpu_dpll_params_1200mhz,
+	.core = core_dpll_params_es2_1600mhz_ddr200mhz,
+	.per = per_dpll_params_1536mhz,
+	.iva = iva_dpll_params_1862mhz,
+#ifdef CONFIG_SYS_OMAP_ABE_SYSCK
+	.abe = abe_dpll_params_sysclk_196608khz,
+#else
+	.abe = &abe_dpll_params_32k_196608khz,
+#endif
+	.usb = usb_dpll_params_1920mhz,
+	.ddr = NULL
+};
+
 struct dplls omap4430_dplls = {
 	.mpu = mpu_dpll_params_1200mhz,
 	.core = core_dpll_params_1600mhz,
@@ -198,6 +214,20 @@ struct dplls omap4460_dplls = {
 	.ddr = NULL
 };
 
+struct dplls omap4470_dplls = {
+	.mpu = mpu_dpll_params_1600mhz,
+	.core = core_dpll_params_1600mhz,
+	.per = per_dpll_params_1536mhz,
+	.iva = iva_dpll_params_1862mhz,
+#ifdef CONFIG_SYS_OMAP_ABE_SYSCK
+	.abe = abe_dpll_params_sysclk_196608khz,
+#else
+	.abe = &abe_dpll_params_32k_196608khz,
+#endif
+	.usb = usb_dpll_params_1920mhz,
+	.ddr = NULL
+};
+
 struct pmic_data twl6030_4430es1 = {
 	.base_offset = PHOENIX_SMPS_BASE_VOLT_STD_MODE_UV,
 	.step = 12660, /* 12.66 mV represented in uV */
@@ -208,6 +238,7 @@ struct pmic_data twl6030_4430es1 = {
 	.pmic_write	= omap_vc_bypass_send_value,
 };
 
+/* twl6030 struct is used for TWL6030 and TWL6032 PMIC */
 struct pmic_data twl6030 = {
 	.base_offset = PHOENIX_SMPS_BASE_VOLT_STD_MODE_WITH_OFFSET_UV,
 	.step = 12660, /* 12.66 mV represented in uV */
@@ -268,6 +299,24 @@ struct vcores_data omap4460_volts = {
 
 	.mm.value = 1200,
 	.mm.addr = SMPS_REG_ADDR_VCORE2,
+	.mm.pmic = &twl6030,
+};
+
+/*
+ * Take closest integer part of the mV value corresponding to a TWL6032 SMPS
+ * voltage selection code. Aligned with OMAP4470 ES1.0 OCA V.0.7.
+ */
+struct vcores_data omap4470_volts = {
+	.mpu.value = 1202,
+	.mpu.addr = SMPS_REG_ADDR_SMPS1,
+	.mpu.pmic = &twl6030,
+
+	.core.value = 1126,
+	.core.addr = SMPS_REG_ADDR_SMPS2,
+	.core.pmic = &twl6030,
+
+	.mm.value = 1139,
+	.mm.addr = SMPS_REG_ADDR_SMPS5,
 	.mm.pmic = &twl6030,
 };
 
@@ -364,91 +413,6 @@ void enable_basic_uboot_clocks(void)
 			 1);
 }
 
-/*
- * Enable non-essential clock domains, modules and
- * do some additional special settings needed
- */
-void enable_non_essential_clocks(void)
-{
-	u32 const clk_domains_non_essential[] = {
-		(*prcm)->cm_mpu_m3_clkstctrl,
-		(*prcm)->cm_ivahd_clkstctrl,
-		(*prcm)->cm_dsp_clkstctrl,
-		(*prcm)->cm_dss_clkstctrl,
-		(*prcm)->cm_sgx_clkstctrl,
-		(*prcm)->cm1_abe_clkstctrl,
-		(*prcm)->cm_c2c_clkstctrl,
-		(*prcm)->cm_cam_clkstctrl,
-		(*prcm)->cm_dss_clkstctrl,
-		(*prcm)->cm_sdma_clkstctrl,
-		0
-	};
-
-	u32 const clk_modules_hw_auto_non_essential[] = {
-		(*prcm)->cm_l3instr_l3_3_clkctrl,
-		(*prcm)->cm_l3instr_l3_instr_clkctrl,
-		(*prcm)->cm_l3instr_intrconn_wp1_clkctrl,
-		(*prcm)->cm_l3init_hsi_clkctrl,
-		0
-	};
-
-	u32 const clk_modules_explicit_en_non_essential[] = {
-		(*prcm)->cm1_abe_aess_clkctrl,
-		(*prcm)->cm1_abe_pdm_clkctrl,
-		(*prcm)->cm1_abe_dmic_clkctrl,
-		(*prcm)->cm1_abe_mcasp_clkctrl,
-		(*prcm)->cm1_abe_mcbsp1_clkctrl,
-		(*prcm)->cm1_abe_mcbsp2_clkctrl,
-		(*prcm)->cm1_abe_mcbsp3_clkctrl,
-		(*prcm)->cm1_abe_slimbus_clkctrl,
-		(*prcm)->cm1_abe_timer5_clkctrl,
-		(*prcm)->cm1_abe_timer6_clkctrl,
-		(*prcm)->cm1_abe_timer7_clkctrl,
-		(*prcm)->cm1_abe_timer8_clkctrl,
-		(*prcm)->cm1_abe_wdt3_clkctrl,
-		(*prcm)->cm_l4per_gptimer9_clkctrl,
-		(*prcm)->cm_l4per_gptimer10_clkctrl,
-		(*prcm)->cm_l4per_gptimer11_clkctrl,
-		(*prcm)->cm_l4per_gptimer3_clkctrl,
-		(*prcm)->cm_l4per_gptimer4_clkctrl,
-		(*prcm)->cm_l4per_hdq1w_clkctrl,
-		(*prcm)->cm_l4per_mcbsp4_clkctrl,
-		(*prcm)->cm_l4per_mcspi2_clkctrl,
-		(*prcm)->cm_l4per_mcspi3_clkctrl,
-		(*prcm)->cm_l4per_mcspi4_clkctrl,
-		(*prcm)->cm_l4per_mmcsd3_clkctrl,
-		(*prcm)->cm_l4per_mmcsd4_clkctrl,
-		(*prcm)->cm_l4per_mmcsd5_clkctrl,
-		(*prcm)->cm_l4per_uart1_clkctrl,
-		(*prcm)->cm_l4per_uart2_clkctrl,
-		(*prcm)->cm_l4per_uart4_clkctrl,
-		(*prcm)->cm_wkup_keyboard_clkctrl,
-		(*prcm)->cm_wkup_wdtimer2_clkctrl,
-		(*prcm)->cm_cam_iss_clkctrl,
-		(*prcm)->cm_cam_fdif_clkctrl,
-		(*prcm)->cm_dss_dss_clkctrl,
-		(*prcm)->cm_sgx_sgx_clkctrl,
-		0
-	};
-
-	/* Enable optional functional clock for ISS */
-	setbits_le32((*prcm)->cm_cam_iss_clkctrl, ISS_CLKCTRL_OPTFCLKEN_MASK);
-
-	/* Enable all optional functional clocks of DSS */
-	setbits_le32((*prcm)->cm_dss_dss_clkctrl, DSS_CLKCTRL_OPTFCLKEN_MASK);
-
-	do_enable_clocks(clk_domains_non_essential,
-			 clk_modules_hw_auto_non_essential,
-			 clk_modules_explicit_en_non_essential,
-			 0);
-
-	/* Put camera module in no sleep mode */
-	clrsetbits_le32((*prcm)->cm_cam_clkstctrl,
-			MODULE_CLKCTRL_MODULEMODE_MASK,
-			CD_CLKCTRL_CLKTRCTRL_NO_SLEEP <<
-			MODULE_CLKCTRL_MODULEMODE_SHIFT);
-}
-
 void hw_data_init(void)
 {
 	u32 omap_rev = omap_revision();
@@ -463,6 +427,10 @@ void hw_data_init(void)
 	break;
 
 	case OMAP4430_ES2_0:
+	*dplls_data = &omap4430_dplls_es20;
+	*omap_vcores = &omap4430_volts;
+	break;
+
 	case OMAP4430_ES2_1:
 	case OMAP4430_ES2_2:
 	case OMAP4430_ES2_3:
@@ -474,6 +442,11 @@ void hw_data_init(void)
 	case OMAP4460_ES1_1:
 	*dplls_data = &omap4460_dplls;
 	*omap_vcores = &omap4460_volts;
+	break;
+
+	case OMAP4470_ES1_0:
+	*dplls_data = &omap4470_dplls;
+	*omap_vcores = &omap4470_volts;
 	break;
 
 	default:

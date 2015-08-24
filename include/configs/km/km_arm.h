@@ -20,6 +20,8 @@
 #ifndef _CONFIG_KM_ARM_H
 #define _CONFIG_KM_ARM_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /* We got removed from Linux mach-types.h */
 #define MACH_TYPE_KM_KIRKWOOD          2255
 
@@ -28,7 +30,6 @@
  */
 #define CONFIG_MARVELL
 #define CONFIG_FEROCEON_88FR131		/* CPU Core subversion */
-#define CONFIG_KIRKWOOD			/* SOC Family Name */
 #define CONFIG_KW88F6281		/* SOC Name */
 #define CONFIG_MACH_KM_KIRKWOOD		/* Machine type */
 
@@ -54,6 +55,9 @@
 #define CONFIG_ENV_SPI_MODE		SPI_MODE_3
 #endif
 
+/* Reserve 4 MB for malloc */
+#define CONFIG_SYS_MALLOC_LEN		(4 * 1024 * 1024)
+
 #include "asm/arch/config.h"
 
 #define CONFIG_SYS_TEXT_BASE	0x07d00000	/* code address before reloc */
@@ -67,7 +71,8 @@
 #define CONFIG_KM_PHRAM		0x17F000
 
 #define CONFIG_KM_CRAMFS_ADDR	0x2400000
-#define CONFIG_KM_KERNEL_ADDR	0x2000000	/* 4096KBytes */
+#define CONFIG_KM_KERNEL_ADDR	0x2000000	/* 3098KBytes */
+#define CONFIG_KM_FDT_ADDR	0x23E0000	/*  128KBytes */
 
 /* architecture specific default bootargs */
 #define CONFIG_KM_DEF_BOOT_ARGS_CPU					\
@@ -75,14 +80,16 @@
 		" boardid=0x${IVM_BoardId} hwkey=0x${IVM_HWKey}"
 
 #define CONFIG_KM_DEF_ENV_CPU						\
-	"boot=bootm ${load_addr_r} - -\0"				\
-	"cramfsloadfdt=true\0"						\
 	"u-boot="__stringify(CONFIG_HOSTNAME) "/u-boot.kwb\0"		\
 	CONFIG_KM_UPDATE_UBOOT						\
+	"set_fdthigh=setenv fdt_high ${kernelmem}\0"			\
 	""
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 #define CONFIG_MISC_INIT_R
+
+/* Pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT
 
 /*
  * NS16550 Configuration
@@ -161,6 +168,7 @@
 #define CONFIG_MVGBE_PORTS	{1, 0}	/* enable port 0 only */
 #define CONFIG_PHY_BASE_ADR	0
 #define CONFIG_ENV_OVERWRITE	/* ethaddr can be reprogrammed */
+#define CONFIG_KM_COMMON_ETH_INIT /* standard km ethernet_present for piggy */
 
 /*
  * UBI related stuff
@@ -173,10 +181,9 @@
 #undef CONFIG_I2C_MVTWSI
 #define CONFIG_SYS_I2C
 #define	CONFIG_SYS_I2C_SOFT	/* I2C bit-banged	*/
+#define CONFIG_SYS_I2C_INIT_BOARD
 
 #define	CONFIG_KIRKWOOD_GPIO		/* Enable GPIO Support */
-#if defined(CONFIG_SYS_I2C_SOFT)
-
 #define CONFIG_SYS_NUM_I2C_BUSES	6
 #define CONFIG_SYS_I2C_MAX_HOPS		1
 #define CONFIG_SYS_I2C_BUSES	{	{0, {I2C_NULL_HOP} }, \
@@ -211,7 +218,6 @@ int get_scl(void);
 
 #define	CONFIG_SYS_I2C_SOFT_SLAVE	0x0
 #define	CONFIG_SYS_I2C_SOFT_SPEED	100000
-#endif
 
 /* EEprom support 24C128, 24C256 valid for environment eeprom */
 #define CONFIG_SYS_I2C_MULTI_EEPROMS
@@ -287,10 +293,15 @@ int get_scl(void);
 		" ${addr} " __stringify(CONFIG_ENV_OFFSET_REDUND) " 4\0"
 #endif
 
+#ifndef CONFIG_KM_BOARD_EXTRA_ENV
+#define CONFIG_KM_BOARD_EXTRA_ENV       ""
+#endif
+
 /*
  * Default environment variables
  */
 #define CONFIG_EXTRA_ENV_SETTINGS					\
+	CONFIG_KM_BOARD_EXTRA_ENV					\
 	CONFIG_KM_DEF_ENV						\
 	CONFIG_KM_NEW_ENV						\
 	"arch=arm\0"							\

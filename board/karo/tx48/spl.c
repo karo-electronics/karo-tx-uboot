@@ -342,7 +342,7 @@ static struct pin_mux tx48_pins[] = {
 
 static struct gpio tx48_gpios[] = {
 	/* configure this pin early to prevent flicker of the LCD */
-	{ TX48_LCD_BACKLIGHT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+	{ TX48_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
 static struct pin_mux tx48_mmc_pins[] = {

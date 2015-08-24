@@ -10,7 +10,6 @@
 #define _LINUX_LINKAGE_H
 
 #include <asm/linkage.h>
-#include <linux/config.h>
 
 #ifdef __cplusplus
 #define CPP_ASMLINKAGE		extern "C"
@@ -18,7 +17,9 @@
 #define CPP_ASMLINKAGE
 #endif
 
+#ifndef asmlinkage
 #define asmlinkage CPP_ASMLINKAGE
+#endif
 
 #define SYMBOL_NAME_STR(X)	#X
 #define SYMBOL_NAME(X)		X
@@ -47,6 +48,10 @@
 
 #define ENTRY(name) \
 	.globl SYMBOL_NAME(name); \
+	LENTRY(name)
+
+#define WEAK(name) \
+	.weak SYMBOL_NAME(name); \
 	LENTRY(name)
 
 #ifndef END

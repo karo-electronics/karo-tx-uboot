@@ -14,6 +14,7 @@
 #include <linux/compiler.h>
 #include <version.h>
 #include <environment.h>
+#include <dm.h>
 #include <fdtdec.h>
 #include <fs.h>
 #if defined(CONFIG_CMD_IDE)
@@ -33,17 +34,18 @@
 #ifdef CONFIG_MPC5xxx
 #include <mpc5xxx.h>
 #endif
+#if defined(CONFIG_MP) && (defined(CONFIG_MPC86xx) || defined(CONFIG_E500))
+#include <asm/mp.h>
+#endif
 
 #include <os.h>
 #include <post.h>
 #include <spi.h>
+#include <status_led.h>
 #include <trace.h>
 #include <watchdog.h>
 #include <asm/errno.h>
 #include <asm/io.h>
-#ifdef CONFIG_MP
-#include <asm/mp.h>
-#endif
 #include <asm/sections.h>
 #ifdef CONFIG_X86
 #include <asm/init_helpers.h>
@@ -52,6 +54,7 @@
 #ifdef CONFIG_SANDBOX
 #include <asm/state.h>
 #endif
+#include <dm/root.h>
 #include <linux/compiler.h>
 
 /*
@@ -78,25 +81,15 @@ DECLARE_GLOBAL_DATA_PTR;
  ************************************************************************
  * May be supplied by boards if desired
  */
-inline void __coloured_LED_init(void) {}
-void coloured_LED_init(void)
-	__attribute__((weak, alias("__coloured_LED_init")));
-inline void __red_led_on(void) {}
-void red_led_on(void) __attribute__((weak, alias("__red_led_on")));
-inline void __red_led_off(void) {}
-void red_led_off(void) __attribute__((weak, alias("__red_led_off")));
-inline void __green_led_on(void) {}
-void green_led_on(void) __attribute__((weak, alias("__green_led_on")));
-inline void __green_led_off(void) {}
-void green_led_off(void) __attribute__((weak, alias("__green_led_off")));
-inline void __yellow_led_on(void) {}
-void yellow_led_on(void) __attribute__((weak, alias("__yellow_led_on")));
-inline void __yellow_led_off(void) {}
-void yellow_led_off(void) __attribute__((weak, alias("__yellow_led_off")));
-inline void __blue_led_on(void) {}
-void blue_led_on(void) __attribute__((weak, alias("__blue_led_on")));
-inline void __blue_led_off(void) {}
-void blue_led_off(void) __attribute__((weak, alias("__blue_led_off")));
+__weak void coloured_LED_init(void) {}
+__weak void red_led_on(void) {}
+__weak void red_led_off(void) {}
+__weak void green_led_on(void) {}
+__weak void green_led_off(void) {}
+__weak void yellow_led_on(void) {}
+__weak void yellow_led_off(void) {}
+__weak void blue_led_on(void) {}
+__weak void blue_led_off(void) {}
 
 /*
  * Why is gd allocated a register? Prior to reloc it might be better to
@@ -113,9 +106,14 @@ void blue_led_off(void) __attribute__((weak, alias("__blue_led_off")));
  * Could the CONFIG_SPL_BUILD infection become a flag in gd?
  */
 
-#if defined(CONFIG_WATCHDOG)
+#if defined(CONFIG_WATCHDOG) || defined(CONFIG_HW_WATCHDOG)
 static int init_func_watchdog_init(void)
 {
+# if defined(CONFIG_HW_WATCHDOG) && (defined(CONFIG_BLACKFIN) || \
+	defined(CONFIG_M68K) || defined(CONFIG_MICROBLAZE) || \
+	defined(CONFIG_SH))
+	hw_watchdog_init();
+# endif
 	puts("       Watchdog enabled\n");
 	WATCHDOG_RESET();
 
@@ -130,13 +128,10 @@ int init_func_watchdog_reset(void)
 }
 #endif /* CONFIG_WATCHDOG */
 
-void __board_add_ram_info(int use_default)
+__weak void board_add_ram_info(int use_default)
 {
 	/* please define platform specific board_add_ram_info() */
 }
-
-void board_add_ram_info(int)
-	__attribute__ ((weak, alias("__board_add_ram_info")));
 
 static int init_baud_rate(void)
 {
@@ -147,17 +142,19 @@ static int init_baud_rate(void)
 static int display_text_info(void)
 {
 #ifndef CONFIG_SANDBOX
-	ulong bss_start, bss_end;
+	ulong bss_start, bss_end, text_base;
 
-#ifdef CONFIG_SYS_SYM_OFFSETS
-	bss_start = _bss_start_ofs + _TEXT_BASE;
-	bss_end = _bss_end_ofs + _TEXT_BASE;
-#else
 	bss_start = (ulong)&__bss_start;
 	bss_end = (ulong)&__bss_end;
+
+#ifdef CONFIG_SYS_TEXT_BASE
+	text_base = CONFIG_SYS_TEXT_BASE;
+#else
+	text_base = CONFIG_SYS_MONITOR_BASE;
 #endif
-	debug("U-Boot code: %08X -> %08lX  BSS: -> %08lX\n",
-	      CONFIG_SYS_TEXT_BASE, bss_start, bss_end);
+
+	debug("U-Boot code: %08lX -> %08lX  BSS: -> %08lX\n",
+		text_base, bss_start, bss_end);
 #endif
 
 #ifdef CONFIG_MODEM_SUPPORT
@@ -177,7 +174,7 @@ static int announce_dram_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_PPC
+#if defined(CONFIG_MIPS) || defined(CONFIG_PPC)
 static int init_func_ram(void)
 {
 #ifdef	CONFIG_BOARD_TYPES
@@ -198,7 +195,7 @@ static int init_func_ram(void)
 
 static int show_dram_config(void)
 {
-	ulong size;
+	unsigned long long size;
 
 #ifdef CONFIG_NR_DRAM_BANKS
 	int i;
@@ -223,18 +220,7 @@ static int show_dram_config(void)
 	return 0;
 }
 
-ulong get_effective_memsize(void)
-{
-#ifndef	CONFIG_VERY_BIG_RAM
-	return gd->ram_size;
-#else
-	/* limit stack to what we can reasonable map */
-	return ((gd->ram_size > CONFIG_MAX_MEM_MAPPED) ?
-		CONFIG_MAX_MEM_MAPPED : gd->ram_size);
-#endif
-}
-
-void __dram_init_banksize(void)
+__weak void dram_init_banksize(void)
 {
 #if defined(CONFIG_NR_DRAM_BANKS) && defined(CONFIG_SYS_SDRAM_BASE)
 	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
@@ -242,14 +228,15 @@ void __dram_init_banksize(void)
 #endif
 }
 
-void dram_init_banksize(void)
-	__attribute__((weak, alias("__dram_init_banksize")));
-
 #if defined(CONFIG_HARD_I2C) || defined(CONFIG_SYS_I2C)
 static int init_func_i2c(void)
 {
 	puts("I2C:   ");
+#ifdef CONFIG_SYS_I2C
+	i2c_init_all();
+#else
 	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+#endif
 	puts("ready\n");
 	return 0;
 }
@@ -275,10 +262,12 @@ static int zero_global_data(void)
 
 static int setup_mon_len(void)
 {
-#ifdef CONFIG_SYS_SYM_OFFSETS
-	gd->mon_len = _bss_end_ofs;
+#ifdef __ARM__
+	gd->mon_len = (ulong)&__bss_end - (ulong)_start;
 #elif defined(CONFIG_SANDBOX)
 	gd->mon_len = (ulong)&_end - (ulong)_init;
+#elif defined(CONFIG_BLACKFIN) || defined(CONFIG_NIOS2)
+	gd->mon_len = CONFIG_SYS_MONITOR_LEN;
 #else
 	/* TODO: use (ulong)&__bss_end - (ulong)&__text_start; ? */
 	gd->mon_len = (ulong)&__bss_end - CONFIG_SYS_MONITOR_BASE;
@@ -291,47 +280,46 @@ __weak int arch_cpu_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_OF_HOSTFILE
-
-#define CHECK(x)		err = (x); if (err) goto failed;
-
-/* Create an empty device tree blob */
-static int make_empty_fdt(void *fdt)
+__weak unsigned long get_timer_masked(void)
 {
-	int err;
-
-	CHECK(fdt_create(fdt, 256));
-	CHECK(fdt_finish_reservemap(fdt));
-	CHECK(fdt_begin_node(fdt, ""));
-	CHECK(fdt_end_node(fdt));
-	CHECK(fdt_finish(fdt));
-
-	return 0;
-failed:
-	printf("Unable to create empty FDT: %s\n", fdt_strerror(err));
-	return -EACCES;
+	return get_timer(0);
 }
+
+#ifdef CONFIG_OF_HOSTFILE
 
 static int read_fdt_from_file(void)
 {
 	struct sandbox_state *state = state_get_current();
+	const char *fname = state->fdt_fname;
 	void *blob;
-	int size;
+	loff_t size;
 	int err;
+	int fd;
 
 	blob = map_sysmem(CONFIG_SYS_FDT_LOAD_ADDR, 0);
 	if (!state->fdt_fname) {
-		err = make_empty_fdt(blob);
+		err = fdt_create_empty_tree(blob, 256);
 		if (!err)
 			goto done;
+		printf("Unable to create empty FDT: %s\n", fdt_strerror(err));
+		return -EINVAL;
+	}
+
+	err = os_get_filesize(fname, &size);
+	if (err < 0) {
+		printf("Failed to file FDT file '%s'\n", fname);
 		return err;
 	}
-	err = fs_set_blk_dev("host", NULL, FS_TYPE_SANDBOX);
-	if (err)
-		return err;
-	size = fs_read(state->fdt_fname, CONFIG_SYS_FDT_LOAD_ADDR, 0, 0);
-	if (size < 0)
+	fd = os_open(fname, OS_O_RDONLY);
+	if (fd < 0) {
+		printf("Failed to open FDT file '%s'\n", fname);
+		return -EACCES;
+	}
+	if (os_read(fd, blob, size) != size) {
+		os_close(fd);
 		return -EIO;
+	}
+	os_close(fd);
 
 done:
 	gd->fdt_blob = blob;
@@ -343,9 +331,10 @@ done:
 #ifdef CONFIG_SANDBOX
 static int setup_ram_buf(void)
 {
-	gd->arch.ram_buf = os_malloc(CONFIG_SYS_SDRAM_SIZE);
-	assert(gd->arch.ram_buf);
-	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+	struct sandbox_state *state = state_get_current();
+
+	gd->arch.ram_buf = state->ram_buf;
+	gd->ram_size = state->ram_size;
 
 	return 0;
 }
@@ -353,25 +342,23 @@ static int setup_ram_buf(void)
 
 static int setup_fdt(void)
 {
-#ifdef CONFIG_OF_EMBED
+#ifdef CONFIG_OF_CONTROL
+# ifdef CONFIG_OF_EMBED
 	/* Get a pointer to the FDT */
-	gd->fdt_blob = _binary_dt_dtb_start;
-#elif defined CONFIG_OF_SEPARATE
+	gd->fdt_blob = __dtb_dt_begin;
+# elif defined CONFIG_OF_SEPARATE
 	/* FDT is at end of image */
-# ifdef CONFIG_SYS_SYM_OFFSETS
-	gd->fdt_blob = (void *)(_end_ofs + CONFIG_SYS_TEXT_BASE);
-# else
 	gd->fdt_blob = (ulong *)&_end;
-# endif
-#elif defined(CONFIG_OF_HOSTFILE)
+# elif defined(CONFIG_OF_HOSTFILE)
 	if (read_fdt_from_file()) {
 		puts("Failed to read control FDT\n");
 		return -1;
 	}
-#endif
+# endif
 	/* Allow the early environment to override the fdt address */
 	gd->fdt_blob = (void *)getenv_ulong("fdtcontroladdr", 16,
 						(uintptr_t)gd->fdt_blob);
+#endif
 	return 0;
 }
 
@@ -458,7 +445,7 @@ static int reserve_round_4k(void)
 static int reserve_mmu(void)
 {
 	/* reserve TLB table */
-	gd->arch.tlb_size = 4096 * 4;
+	gd->arch.tlb_size = PGTABLE_SIZE;
 	gd->relocaddr -= gd->arch.tlb_size;
 
 	/* round down to next 64 kB limit */
@@ -497,8 +484,9 @@ static int reserve_trace(void)
 	return 0;
 }
 
-#if defined(CONFIG_VIDEO) && (!defined(CONFIG_PPC) || defined(CONFIG_8xx)) \
-		&& !defined(CONFIG_ARM) && !defined(CONFIG_X86)
+#if defined(CONFIG_VIDEO) && (!defined(CONFIG_PPC) || defined(CONFIG_8xx)) && \
+		!defined(CONFIG_ARM) && !defined(CONFIG_X86) && \
+		!defined(CONFIG_BLACKFIN)
 static int reserve_video(void)
 {
 	/* reserve memory for video display (always full pages) */
@@ -543,11 +531,13 @@ static int reserve_malloc(void)
 /* (permanently) allocate a Board Info struct */
 static int reserve_board(void)
 {
-	gd->start_addr_sp -= sizeof(bd_t);
-	gd->bd = (bd_t *)map_sysmem(gd->start_addr_sp, sizeof(bd_t));
-	memset(gd->bd, '\0', sizeof(bd_t));
-	debug("Reserving %zu Bytes for Board Info at: %08lx\n",
-			sizeof(bd_t), gd->start_addr_sp);
+	if (!gd->bd) {
+		gd->start_addr_sp -= sizeof(bd_t);
+		gd->bd = (bd_t *)map_sysmem(gd->start_addr_sp, sizeof(bd_t));
+		memset(gd->bd, '\0', sizeof(bd_t));
+		debug("Reserving %zu Bytes for Board Info at: %08lx\n",
+		      sizeof(bd_t), gd->start_addr_sp);
+	}
 	return 0;
 }
 #endif
@@ -610,7 +600,7 @@ static int reserve_stacks(void)
 	 * TODO(sjg@chromium.org): Perhaps create arch_reserve_stack()
 	 * to handle this and put in arch/xxx/lib/stack.c
 	 */
-# ifdef CONFIG_ARM
+# if defined(CONFIG_ARM) && !defined(CONFIG_ARM64)
 #  ifdef CONFIG_USE_IRQ
 	gd->start_addr_sp -= (CONFIG_STACKSIZE_IRQ + CONFIG_STACKSIZE_FIQ);
 	debug("Reserving %zu Bytes for IRQ stack at: %08lx\n",
@@ -656,7 +646,7 @@ static int setup_board_part1(void)
 	bd->bi_sramsize = CONFIG_SYS_SRAM_SIZE;		/* size  of SRAM */
 #endif
 
-#if defined(CONFIG_8xx) || defined(CONFIG_8260) || defined(CONFIG_5xx) || \
+#if defined(CONFIG_8xx) || defined(CONFIG_MPC8260) || defined(CONFIG_5xx) || \
 		defined(CONFIG_E500) || defined(CONFIG_MPC86xx)
 	bd->bi_immr_base = CONFIG_SYS_IMMR;	/* base  of IMMR register     */
 #endif
@@ -728,14 +718,6 @@ static int init_post(void)
 }
 #endif
 
-static int setup_baud_rate(void)
-{
-	/* Ick, can we get rid of this line? */
-	gd->bd->bi_baudrate = gd->baudrate;
-
-	return 0;
-}
-
 static int setup_dram_config(void)
 {
 	/* Ram is board specific, so move it to board code ... */
@@ -756,7 +738,13 @@ static int reloc_fdt(void)
 
 static int setup_reloc(void)
 {
+#ifdef CONFIG_SYS_TEXT_BASE
+#ifndef CONFIG_ARM
 	gd->reloc_off = gd->relocaddr - CONFIG_SYS_TEXT_BASE;
+#else
+	gd->reloc_off = gd->relocaddr - (unsigned long)__image_copy_start;
+#endif
+#endif
 	memcpy(gd->new_gd, (char *)gd, sizeof(gd_t));
 
 	debug("Relocation Offset is: %08lx\n", gd->reloc_off);
@@ -768,7 +756,7 @@ static int setup_reloc(void)
 }
 
 /* ARM calls relocate_code from its crt0.S */
-#if !defined(CONFIG_ARM)
+#if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX)
 
 static int jump_to_copy(void)
 {
@@ -788,8 +776,6 @@ static int jump_to_copy(void)
 	 * (CPU cache)
 	 */
 	board_init_f_r_trampoline(gd->start_addr_sp);
-#elif defined(CONFIG_SANDBOX)
-	board_init_r(gd->new_gd, 0);
 #else
 	relocate_code(gd->start_addr_sp, gd->new_gd, gd->relocaddr);
 #endif
@@ -806,33 +792,56 @@ static int mark_bootstage(void)
 	return 0;
 }
 
-static init_fnc_t init_sequence_f[] = {
-#if !defined(CONFIG_CPM2) && !defined(CONFIG_MPC512X) && \
-		!defined(CONFIG_MPC83xx) && !defined(CONFIG_MPC85xx) && \
-		!defined(CONFIG_MPC86xx) && !defined(CONFIG_X86)
-	zero_global_data,
+static int initf_malloc(void)
+{
+#ifdef CONFIG_SYS_MALLOC_F_LEN
+	assert(gd->malloc_base);	/* Set up by crt0.S */
+	gd->malloc_limit = gd->malloc_base + CONFIG_SYS_MALLOC_F_LEN;
+	gd->malloc_ptr = 0;
 #endif
+
+	return 0;
+}
+
+static int initf_dm(void)
+{
+#if defined(CONFIG_DM) && defined(CONFIG_SYS_MALLOC_F_LEN)
+	int ret;
+
+	ret = dm_init_and_scan(true);
+	if (ret)
+		return ret;
+#endif
+
+	return 0;
+}
+
+/* Architecture-specific memory reservation */
+__weak int reserve_arch(void)
+{
+	return 0;
+}
+
+static init_fnc_t init_sequence_f[] = {
 #ifdef CONFIG_SANDBOX
 	setup_ram_buf,
 #endif
 	setup_mon_len,
 	setup_fdt,
+#ifdef CONFIG_TRACE
 	trace_early_init,
+#endif
+	initf_malloc,
 #if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
 	/* TODO: can this go into arch_cpu_init()? */
 	probecpu,
 #endif
 	arch_cpu_init,		/* basic arch cpu dependent setup */
-#ifdef CONFIG_X86
-	cpu_init_f,		/* TODO(sjg@chromium.org): remove */
-# ifdef CONFIG_OF_CONTROL
-	find_fdt,		/* TODO(sjg@chromium.org): remove */
-# endif
-#endif
 	mark_bootstage,
 #ifdef CONFIG_OF_CONTROL
 	fdtdec_check_fdt,
 #endif
+	initf_dm,
 #if defined(CONFIG_BOARD_EARLY_INIT_F)
 	board_early_init_f,
 #endif
@@ -846,7 +855,7 @@ static init_fnc_t init_sequence_f[] = {
 	/* TODO: can we rename this to timer_init()? */
 	init_timebase,
 #endif
-#ifdef CONFIG_ARM
+#if defined(CONFIG_ARM) || defined(CONFIG_MIPS) || defined(CONFIG_BLACKFIN)
 	timer_init,		/* initialize timer */
 #endif
 #ifdef CONFIG_SYS_ALLOC_DPRAM
@@ -879,24 +888,22 @@ static init_fnc_t init_sequence_f[] = {
 #endif
 	display_options,	/* say that we are here */
 	display_text_info,	/* show debugging info if required */
-#if defined(CONFIG_8260)
+#if defined(CONFIG_MPC8260)
 	prt_8260_rsr,
 	prt_8260_clks,
-#endif /* CONFIG_8260 */
+#endif /* CONFIG_MPC8260 */
 #if defined(CONFIG_MPC83xx)
 	prt_83xx_rsr,
 #endif
 #ifdef CONFIG_PPC
 	checkcpu,
 #endif
-#if defined(CONFIG_DISPLAY_CPUINFO)
 	print_cpuinfo,		/* display cpu info (and speed) */
-#endif
 #if defined(CONFIG_MPC5xxx)
 	prt_mpc5xxx_clks,
 #endif /* CONFIG_MPC5xxx */
 #if defined(CONFIG_DISPLAY_BOARDINFO)
-	checkboard,		/* display board info */
+	show_board_info,
 #endif
 	INIT_FUNC_WATCHDOG_INIT
 #if defined(CONFIG_MISC_INIT_F)
@@ -909,16 +916,12 @@ static init_fnc_t init_sequence_f[] = {
 #if defined(CONFIG_HARD_SPI)
 	init_func_spi,
 #endif
-#ifdef CONFIG_X86
-	dram_init_f,		/* configure available RAM banks */
-	calculate_relocation_address,
-#endif
 	announce_dram_init,
 	/* TODO: unify all these dram functions? */
-#ifdef CONFIG_ARM
+#if defined(CONFIG_ARM) || defined(CONFIG_X86)
 	dram_init,		/* configure available RAM banks */
 #endif
-#ifdef CONFIG_PPC
+#if defined(CONFIG_MIPS) || defined(CONFIG_PPC)
 	init_func_ram,
 #endif
 #ifdef CONFIG_POST
@@ -947,6 +950,10 @@ static init_fnc_t init_sequence_f[] = {
 	 *  - board info struct
 	 */
 	setup_dest_addr,
+#if defined(CONFIG_BLACKFIN) || defined(CONFIG_NIOS2)
+	/* Blackfin u-boot monitor should be on top of the ram */
+	reserve_uboot,
+#endif
 #if defined(CONFIG_LOGBUFFER) && !defined(CONFIG_ALT_LB_ADDR)
 	reserve_logbuffer,
 #endif
@@ -963,11 +970,14 @@ static init_fnc_t init_sequence_f[] = {
 #endif
 	reserve_trace,
 	/* TODO: Why the dependency on CONFIG_8xx? */
-#if defined(CONFIG_VIDEO) && (!defined(CONFIG_PPC) || defined(CONFIG_8xx)) \
-		&& !defined(CONFIG_ARM) && !defined(CONFIG_X86)
+#if defined(CONFIG_VIDEO) && (!defined(CONFIG_PPC) || defined(CONFIG_8xx)) && \
+		!defined(CONFIG_ARM) && !defined(CONFIG_X86) && \
+		!defined(CONFIG_BLACKFIN)
 	reserve_video,
 #endif
+#if !defined(CONFIG_BLACKFIN) && !defined(CONFIG_NIOS2)
 	reserve_uboot,
+#endif
 #ifndef CONFIG_SPL_BUILD
 	reserve_malloc,
 	reserve_board,
@@ -975,6 +985,7 @@ static init_fnc_t init_sequence_f[] = {
 	setup_machine,
 	reserve_global_data,
 	reserve_fdt,
+	reserve_arch,
 	reserve_stacks,
 	setup_dram_config,
 	show_dram_config,
@@ -983,7 +994,6 @@ static init_fnc_t init_sequence_f[] = {
 	INIT_FUNC_WATCHDOG_RESET
 	setup_board_part2,
 #endif
-	setup_baud_rate,
 	display_new_sp,
 #ifdef CONFIG_SYS_EXTBDINFO
 	setup_board_extra,
@@ -991,7 +1001,12 @@ static init_fnc_t init_sequence_f[] = {
 	INIT_FUNC_WATCHDOG_RESET
 	reloc_fdt,
 	setup_reloc,
-#ifndef CONFIG_ARM
+#ifdef CONFIG_X86
+	copy_uboot_to_ram,
+	clear_bss,
+	do_elf_reloc_fixups,
+#endif
+#if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX)
 	jump_to_copy,
 #endif
 	NULL,
@@ -999,18 +1014,32 @@ static init_fnc_t init_sequence_f[] = {
 
 void board_init_f(ulong boot_flags)
 {
-#ifndef CONFIG_X86
+#ifdef CONFIG_SYS_GENERIC_GLOBAL_DATA
+	/*
+	 * For some archtectures, global data is initialized and used before
+	 * calling this function. The data should be preserved. For others,
+	 * CONFIG_SYS_GENERIC_GLOBAL_DATA should be defined and use the stack
+	 * here to host global data until relocation.
+	 */
 	gd_t data;
 
 	gd = &data;
+
+	/*
+	 * Clear global data before it is accessed at debug print
+	 * in initcall_run_list. Otherwise the debug print probably
+	 * get the wrong vaule of gd->have_console.
+	 */
+	zero_global_data();
 #endif
 
 	gd->flags = boot_flags;
+	gd->have_console = 0;
 
 	if (initcall_run_list(init_sequence_f))
 		hang();
 
-#ifndef CONFIG_ARM
+#if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX)
 	/* NOTREACHED - jump_to_copy() does not return */
 	hang();
 #endif
@@ -1036,9 +1065,6 @@ void board_init_f(ulong boot_flags)
  */
 static init_fnc_t init_sequence_f_r[] = {
 	init_cache_f_r,
-	copy_uboot_to_ram,
-	clear_bss,
-	do_elf_reloc_fixups,
 
 	NULL,
 };

@@ -5,7 +5,7 @@
  * (C) Copyright 2010
  * Sergei Poselenov, Emcraft Systems, sposelenov@emcraft.com.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -16,10 +16,11 @@
  * (easy to change)
  */
 
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_MPC5200		1	/* (more precisely a MPC5200 CPU) */
+#define CONFIG_MPC5200		1	/* This is a MPC5200 CPU */
 #define CONFIG_A4M072		1	/* ... on A4M072 board */
 #define CONFIG_MPC5200_DDR	1	/* ... use DDR RAM */
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_TEXT_BASE	0xFE000000
 
@@ -271,7 +272,6 @@
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_CMDLINE_EDITING	1
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	    */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt   */
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size  */
 #else
@@ -285,8 +285,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x00f00000	/* 1 ... 15 MB in DRAM	*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address */
-
-#define CONFIG_SYS_HZ			1000	/* decrementer freq: 1 ms ticks */
 
 #define CONFIG_SYS_CACHELINE_SIZE	32	/* For MPC5xxx CPUs */
 #if defined(CONFIG_CMD_KGDB)

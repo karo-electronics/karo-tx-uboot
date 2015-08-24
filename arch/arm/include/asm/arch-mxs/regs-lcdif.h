@@ -19,14 +19,14 @@
 struct mxs_lcdif_regs {
 	mxs_reg_32(hw_lcdif_ctrl);		/* 0x00 */
 	mxs_reg_32(hw_lcdif_ctrl1);		/* 0x10 */
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 	mxs_reg_32(hw_lcdif_ctrl2)		/* 0x20 */
 #endif						/* MX23/MX28 */
 	mxs_reg_32(hw_lcdif_transfer_count);	/* 0x20/0x30 */
 	mxs_reg_32(hw_lcdif_cur_buf);		/* 0x30/0x40 */
 	mxs_reg_32(hw_lcdif_next_buf);		/* 0x40/0x50 */
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	reg_32(reserved1);			/* 0x50 */
 #endif
 
@@ -49,12 +49,12 @@ struct mxs_lcdif_regs {
 	mxs_reg_32(hw_lcdif_csc_offset);	/* 0x160 */
 	mxs_reg_32(hw_lcdif_csc_limit);		/* 0x170 */
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	reg_32(reserved2[3]);			/* 0x180-0x1a0 */
 #endif						/*  MX23/MX28 */
 	mxs_reg_32(hw_lcdif_data)		/* 0x1b0/0x180 */
 	mxs_reg_32(hw_lcdif_bm_error_stat)	/* 0x1c0/0x190 */
-#if defined(CONFIG_MX28)
+#if defined(CONFIG_SOC_MX28)
 	mxs_reg_32(hw_lcdif_crc_stat)		/*       0x1a0 */
 #endif
 	mxs_reg_32(hw_lcdif_lcdif_stat);	/* 0x1d0/0x1b0 */
@@ -201,10 +201,10 @@ struct mxs_lcdif_regs {
 #define	LCDIF_VDCTRL1_VSYNC_PERIOD(n)				(((n) << LCDIF_VDCTRL1_VSYNC_PERIOD_OFFSET) & \
 						LCDIF_VDCTRL1_VSYNC_PERIOD_MASK)
 
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_MASK			(0xff << 24)
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET			24
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_MASK			(0x3fff << 18)
 #define	LCDIF_VDCTRL2_HSYNC_PULSE_WIDTH_OFFSET			18
 #endif

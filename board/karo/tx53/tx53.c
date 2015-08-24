@@ -33,6 +33,7 @@
 #include <asm/gpio.h>
 #include <asm/arch/iomux-mx53.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/hab.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/sys_proto.h>
@@ -59,6 +60,7 @@ DECLARE_GLOBAL_DATA_PTR;
 				PAD_CTL_SRE_FAST | PAD_CTL_PUS_47K_UP)
 
 char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
+char __csf_data[0] __attribute__((section(".__csf_data")));
 
 static iomux_v3_cfg_t tx53_pads[] = {
 	/* NAND flash pads are set up in lowlevel_init.S */
@@ -105,10 +107,10 @@ static iomux_v3_cfg_t tx53_pads[] = {
 };
 
 static const struct gpio tx53_gpios[] = {
-	{ TX53_RESET_OUT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "#RESET_OUT", },
-	{ TX53_FEC_PWR_GPIO, GPIOF_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
-	{ TX53_FEC_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "FEC PHY RESET", },
-	{ TX53_FEC_INT_GPIO, GPIOF_INPUT, "FEC PHY INT", },
+	{ TX53_RESET_OUT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "#RESET_OUT", },
+	{ TX53_FEC_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
+	{ TX53_FEC_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY RESET", },
+	{ TX53_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },
 };
 
 /*
@@ -444,9 +446,6 @@ int board_early_init_f(void)
 {
 	struct mxc_ccm_reg *ccm_regs = (void *)CCM_BASE_ADDR;
 
-	gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
-	imx_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
-
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x00);
 	writel(0x77777777, AIPS1_BASE_ADDR + 0x04);
 
@@ -475,12 +474,19 @@ int board_early_init_f(void)
 	writel(0xfff00000, &ccm_regs->CCGR7);
 	writel(0x00000000, &ccm_regs->cmeor);
 
+	imx_iomux_v3_setup_multiple_pads(tx53_pads, ARRAY_SIZE(tx53_pads));
+
 	return 0;
 }
 
 int board_init(void)
 {
 	int ret;
+
+	ret = gpio_request_array(tx53_gpios, ARRAY_SIZE(tx53_gpios));
+	if (ret < 0) {
+		printf("Failed to request tx53_gpios: %d\n", ret);
+	}
 
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
@@ -628,7 +634,7 @@ int board_mmc_init(bd_t *bis)
 		cfg->cfg.sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 
 		ret = gpio_request_one(cfg->cd_gpio,
-				GPIOF_INPUT, "MMC CD");
+				GPIOFLAG_INPUT, "MMC CD");
 		if (ret) {
 			printf("Error %d requesting GPIO%d_%d\n",
 				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
@@ -747,12 +753,12 @@ static const iomux_v3_cfg_t stk5_pads[] = {
 };
 
 static const struct gpio stk5_gpios[] = {
-	{ TX53_LED_GPIO, GPIOF_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
+	{ TX53_LED_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
 
-	{ IMX_GPIO_NR(1, 8), GPIOF_INPUT, "USBOTG OC", },
-	{ IMX_GPIO_NR(1, 7), GPIOF_OUTPUT_INIT_LOW, "USBOTG VBUS enable", },
-	{ IMX_GPIO_NR(3, 30), GPIOF_INPUT, "USBH1 OC", },
-	{ IMX_GPIO_NR(3, 31), GPIOF_OUTPUT_INIT_LOW, "USBH1 VBUS enable", },
+	{ IMX_GPIO_NR(1, 8), GPIOFLAG_INPUT, "USBOTG OC", },
+	{ IMX_GPIO_NR(1, 7), GPIOFLAG_OUTPUT_INIT_LOW, "USBOTG VBUS enable", },
+	{ IMX_GPIO_NR(3, 30), GPIOFLAG_INPUT, "USBH1 OC", },
+	{ IMX_GPIO_NR(3, 31), GPIOFLAG_OUTPUT_INIT_LOW, "USBH1 VBUS enable", },
 };
 
 #ifdef CONFIG_LCD
@@ -762,7 +768,7 @@ vidinfo_t panel_info = {
 	.vl_col = 1600,
 	.vl_row = 1200,
 
-	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 	.cmap = tx53_cmap,
 };
 
@@ -833,7 +839,6 @@ static struct fb_videomode tx53_fb_modes[] = {
 		.upper_margin	= 2,
 		.vsync_len	= 10,
 		.lower_margin	= 2,
-		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
 	{
 		/* Emerging ET0500G0DH6 800 x 480 display.
@@ -1022,9 +1027,9 @@ static const iomux_v3_cfg_t stk5_lcd_pads[] = {
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
-	{ TX53_LCD_RST_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD RESET", },
-	{ TX53_LCD_PWR_GPIO, GPIOF_OUTPUT_INIT_LOW, "LCD POWER", },
-	{ TX53_LCD_BACKLIGHT_GPIO, GPIOF_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+	{ TX53_LCD_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD RESET", },
+	{ TX53_LCD_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD POWER", },
+	{ TX53_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
 void lcd_ctrl_init(void *lcdbase)
@@ -1055,13 +1060,14 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 
 	karo_fdt_move_fdt();
-	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 
 	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+
+	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 	vm = video_mode;
 	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
 		p = &fb_mode;
@@ -1183,7 +1189,7 @@ void lcd_ctrl_init(void *lcdbase)
 		panel_info.vl_bpix = LCD_COLOR16;
 		break;
 	default:
-		panel_info.vl_bpix = LCD_COLOR24;
+		panel_info.vl_bpix = LCD_COLOR32;
 	}
 
 	p->pixclock = KHZ2PICOS(refresh *
@@ -1283,7 +1289,7 @@ static void stk5v5_board_init(void)
 {
 	stk5_board_init();
 
-	gpio_request_one(IMX_GPIO_NR(4, 21), GPIOF_OUTPUT_INIT_HIGH,
+	gpio_request_one(IMX_GPIO_NR(4, 21), GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
 	imx_iomux_v3_setup_pad(MX53_PAD_DISP0_DAT0__GPIO4_21);
 }
@@ -1374,6 +1380,9 @@ exit:
 
 	gpio_set_value(TX53_RESET_OUT_GPIO, 1);
 	clear_ctrlc();
+
+	get_hab_status();
+
 	return ret;
 }
 
@@ -1422,7 +1431,7 @@ static const char *tx53_touchpanels[] = {
 	"eeti,egalax_ts",
 };
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
 	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
@@ -1430,9 +1439,10 @@ void ft_board_setup(void *blob, bd_t *bd)
 	int ret;
 
 	ret = fdt_increase_size(blob, 4096);
-	if (ret)
+	if (ret) {
 		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
-
+		return ret;
+	}
 	if (stk5_v5)
 		karo_fdt_enable_node(blob, "stk5led", 0);
 
@@ -1445,5 +1455,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 	tx53_fixup_rtc(blob);
 	karo_fdt_update_fb_mode(blob, video_mode);
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

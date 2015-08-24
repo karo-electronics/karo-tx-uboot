@@ -2,7 +2,7 @@
  * (C) Copyright 2001-2004
  * Stefan Roese, esd gmbh germany, stefan.roese@esd-electronics.com
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,12 +18,13 @@
  */
 
 #define CONFIG_405GP		1	/* This is a PPC405 CPU		*/
-#define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 #define CONFIG_CPCI405		1	/* ...on a CPCI405 board	*/
 #define CONFIG_CPCI405_VER2	1	/* ...version 2			*/
 #undef  CONFIG_CPCI405_6U               /* enable this for 6U boards    */
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
 #define CONFIG_MISC_INIT_R	 1	/* call misc_init_r()		*/
@@ -94,7 +95,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt	*/
 
 #undef	CONFIG_SYS_HUSH_PARSER			/* use "hush" command parser	*/
 
@@ -132,8 +132,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR	0x100000	/* default load address */
 #define CONFIG_SYS_EXTBDINFO	1		/* To use extended board_into (bd_t) */
-
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1 ms ticks */
 
 #define CONFIG_CMDLINE_EDITING		/* add command line history	*/
 

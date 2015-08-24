@@ -20,6 +20,7 @@
 #include <bzlib.h>
 #endif
 #include <asm/byteorder.h>
+#include <asm/io.h>
 
 #ifndef CONFIG_SYS_XIMG_LEN
 /* use 8MByte as default max gunzip size */
@@ -31,10 +32,13 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
 	ulong		addr = load_addr;
 	ulong		dest = 0;
-	ulong		data, len, count;
+	ulong		data, len;
 	int		verify;
 	int		part = 0;
-	image_header_t	*hdr;
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
+	ulong		count;
+	image_header_t	*hdr = NULL;
+#endif
 #if defined(CONFIG_FIT)
 	const char	*uname = NULL;
 	const void*	fit_hdr;
@@ -63,6 +67,7 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	switch (genimg_get_format((void *)addr)) {
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	case IMAGE_FORMAT_LEGACY:
 
 		printf("## Copying part %d from legacy image "
@@ -113,6 +118,7 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		image_multi_getimg(hdr, part, &data, &len);
 		break;
+#endif
 #if defined(CONFIG_FIT)
 	case IMAGE_FORMAT_FIT:
 		if (uname == NULL) {
@@ -210,7 +216,7 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			}
 			break;
 #endif
-#if defined(CONFIG_BZIP2)
+#if defined(CONFIG_BZIP2) && defined(CONFIG_IMAGE_FORMAT_LEGACY)
 		case IH_COMP_BZIP2:
 			{
 				int i;
@@ -222,7 +228,7 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 				 * which requires at most 2300 KB of memory.
 				 */
 				i = BZ2_bzBuffToBuffDecompress(
-					(char *)ntohl(hdr->ih_load),
+					map_sysmem(ntohl(hdr->ih_load), 0),
 					&unc_len, (char *)data, len,
 					CONFIG_SYS_MALLOC_LEN < (4096 * 1024),
 					0);
@@ -240,6 +246,8 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		}
 		puts("OK\n");
 	}
+
+	flush_cache(dest, len);
 
 	setenv_hex("fileaddr", data);
 	setenv_hex("filesize", len);

@@ -2,7 +2,7 @@
  * (C) Copyright 2005
  * Matthias Fuchs, esd gmbh germany, matthias.fuchs@esd-electronics.com
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -18,9 +18,10 @@
  */
 
 #define CONFIG_405GP		1	/* This is a PPC405 CPU		*/
-#define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
 
@@ -72,7 +73,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt	*/
 
 #undef	CONFIG_SYS_HUSH_PARSER			/* use "hush" command parser	*/
 
@@ -110,8 +110,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR	0x100000	/* default load address */
 #define CONFIG_SYS_EXTBDINFO	1		/* To use extended board_into (bd_t) */
-
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1 ms ticks */
 
 #define CONFIG_LOOPW            1       /* enable loopw command         */
 

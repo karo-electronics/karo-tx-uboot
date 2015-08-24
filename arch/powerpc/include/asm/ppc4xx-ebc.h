@@ -2,7 +2,7 @@
  * (C) Copyright 2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _PPC4xx_EBC_H_
@@ -14,12 +14,12 @@
  * Within this group there is a slight variation concerning the bit field
  * position of the EMPL and EMPH fields:
  */
-#if defined(CONFIG_405CR) || defined(CONFIG_405GP) || \
+#if defined(CONFIG_405GP) || \
     defined(CONFIG_405EP) || \
     defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 #define CONFIG_EBC_PPC4xx_IBM_VER1
-#if defined(CONFIG_405CR) || defined(CONFIG_405GP) || \
+#if defined(CONFIG_405GP) || \
     defined(CONFIG_405EP)
 #define EBC_CFG_EMPH_POS	8
 #define EBC_CFG_EMPL_POS	6
@@ -32,7 +32,7 @@
 /*
  * Define the max number of EBC banks (chip selects)
  */
-#if defined(CONFIG_405CR) || defined(CONFIG_405GP) || \
+#if defined(CONFIG_405GP) || \
     defined(CONFIG_405EZ) || \
     defined(CONFIG_440GP) || defined(CONFIG_440GX)
 #define EBC_NUM_BANKS	8
@@ -53,8 +53,7 @@
 #define EBC_NUM_BANKS	6
 #endif
 
-#if defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
-    defined(CONFIG_APM821XX)
+#if defined(CONFIG_440SP) || defined(CONFIG_440SPE)
 #define EBC_NUM_BANKS	3
 #endif
 

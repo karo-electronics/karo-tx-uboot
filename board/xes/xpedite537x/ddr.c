@@ -2,14 +2,14 @@
  * Copyright 2008 Extreme Engineering Solutions, Inc.
  * Copyright 2008 Freescale Semiconductor, Inc.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <i2c.h>
 
-#include <asm/fsl_ddr_sdram.h>
-#include <asm/fsl_ddr_dimm_params.h>
+#include <fsl_ddr_sdram.h>
+#include <fsl_ddr_dimm_params.h>
 
 void get_spd(ddr2_spd_eeprom_t *spd, u8 i2c_address)
 {
@@ -210,7 +210,7 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 	unsigned int datarate;
 
 	get_sys_info(&sysinfo);
-	datarate = sysinfo.freqDDRBus / 1000 / 1000;
+	datarate = sysinfo.freq_ddrbus / 1000 / 1000;
 
 	for (i = 0; i < ARRAY_SIZE(bopts_ctrl[ctrl_num]); i++) {
 		if ((bopts[i].datarate_mhz_low <= datarate) &&

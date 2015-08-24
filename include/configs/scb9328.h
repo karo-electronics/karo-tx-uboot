@@ -10,8 +10,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_ARM920T		1     /* this is an ARM920T CPU	    */
-#define CONFIG_IMX		1     /* in a Motorola MC9328MXL Chip */
+#define CONFIG_IMX		1     /* This is a Motorola MC9328MXL Chip */
 #define CONFIG_SCB9328		1     /* on a scb9328tronix board */
 
 #define CONFIG_IMX_SERIAL
@@ -69,7 +68,6 @@
 #define CONFIG_SYS_MEMTEST_START	0x08100000	      /* memtest test area   */
 #define CONFIG_SYS_MEMTEST_END		0x08F00000
 
-#define CONFIG_SYS_HZ			3686400	     /* incrementer freq: 3.6864 MHz */
 #define CONFIG_SYS_CPUSPEED		0x141	     /* core clock - register value  */
 
 #define CONFIG_BAUDRATE 115200
@@ -143,8 +141,8 @@
    now.*/
 #undef	CONFIG_SYS_FLASH_CFI
 
-#define CONFIG_SYS_FLASH_ERASE_TOUT	(2*CONFIG_SYS_HZ)    /* timeout for Erase operation */
-#define CONFIG_SYS_FLASH_WRITE_TOUT	(2*CONFIG_SYS_HZ)    /* timeout for Write operation */
+#define CONFIG_SYS_FLASH_ERASE_TOUT	240000    /* timeout for Erase operation */
+#define CONFIG_SYS_FLASH_WRITE_TOUT	240000    /* timeout for Write operation */
 
 #define CONFIG_SYS_FLASH_BASE		SCB9328_FLASH_BASE
 

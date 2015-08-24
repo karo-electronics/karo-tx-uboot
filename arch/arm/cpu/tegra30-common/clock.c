@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -17,6 +17,7 @@
 /* Tegra30 Clock control functions */
 
 #include <common.h>
+#include <errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/tegra.h>
@@ -58,12 +59,6 @@ enum clock_type_id {
 
 enum {
 	CLOCK_MAX_MUX   = 8     /* number of source options for each clock */
-};
-
-enum {
-	MASK_BITS_31_30 = 2,    /* num of bits used to specify clock source */
-	MASK_BITS_31_29,
-	MASK_BITS_29_28,
 };
 
 /*
@@ -108,7 +103,7 @@ static enum clock_id clock_source[CLOCK_TYPE_COUNT][CLOCK_MAX_MUX+1] = {
 		MASK_BITS_31_29},
 	{ CLK(PERIPH),  CLK(CGENERAL),  CLK(SFROM32KHZ), CLK(OSC),
 		CLK(NONE),      CLK(NONE),      CLK(NONE),      CLK(NONE),
-		MASK_BITS_29_28}
+		MASK_BITS_31_28}
 };
 
 /*
@@ -569,6 +564,7 @@ enum periph_id clk_id_to_periph_id(int clk_id)
 	case PERIPH_ID_RESERVED43:
 	case PERIPH_ID_RESERVED45:
 	case PERIPH_ID_RESERVED56:
+	case PERIPH_ID_PCIEXCLK:
 	case PERIPH_ID_RESERVED76:
 	case PERIPH_ID_RESERVED77:
 	case PERIPH_ID_RESERVED78:
@@ -587,36 +583,162 @@ enum periph_id clk_id_to_periph_id(int clk_id)
 
 void clock_early_init(void)
 {
-	/*
-	 * PLLP output frequency set to 408Mhz
-	 * PLLC output frequency set to 228Mhz
-	 */
-	switch (clock_get_osc_freq()) {
-	case CLOCK_OSC_FREQ_12_0: /* OSC is 12Mhz */
-		clock_set_rate(CLOCK_ID_PERIPH, 408, 12, 0, 8);
-		clock_set_rate(CLOCK_ID_CGENERAL, 456, 12, 1, 8);
-		break;
-
-	case CLOCK_OSC_FREQ_26_0: /* OSC is 26Mhz */
-		clock_set_rate(CLOCK_ID_PERIPH, 408, 26, 0, 8);
-		clock_set_rate(CLOCK_ID_CGENERAL, 600, 26, 0, 8);
-		break;
-
-	case CLOCK_OSC_FREQ_13_0: /* OSC is 13Mhz */
-		clock_set_rate(CLOCK_ID_PERIPH, 408, 13, 0, 8);
-		clock_set_rate(CLOCK_ID_CGENERAL, 600, 13, 0, 8);
-		break;
-	case CLOCK_OSC_FREQ_19_2:
-	default:
-		/*
-		 * These are not supported. It is too early to print a
-		 * message and the UART likely won't work anyway due to the
-		 * oscillator being wrong.
-		 */
-		break;
-	}
+	tegra30_set_up_pllp();
 }
 
 void arch_timer_init(void)
 {
+}
+
+#define PMC_SATA_PWRGT 0x1ac
+#define  PMC_SATA_PWRGT_PLLE_IDDQ_OVERRIDE (1 << 5)
+#define  PMC_SATA_PWRGT_PLLE_IDDQ_SWCTL (1 << 4)
+
+#define PLLE_SS_CNTL 0x68
+#define  PLLE_SS_CNTL_SSCINCINTRV(x) (((x) & 0x3f) << 24)
+#define  PLLE_SS_CNTL_SSCINC(x) (((x) & 0xff) << 16)
+#define  PLLE_SS_CNTL_SSCBYP (1 << 12)
+#define  PLLE_SS_CNTL_INTERP_RESET (1 << 11)
+#define  PLLE_SS_CNTL_BYPASS_SS (1 << 10)
+#define  PLLE_SS_CNTL_SSCMAX(x) (((x) & 0x1ff) << 0)
+
+#define PLLE_BASE 0x0e8
+#define  PLLE_BASE_ENABLE_CML (1 << 31)
+#define  PLLE_BASE_ENABLE (1 << 30)
+#define  PLLE_BASE_PLDIV_CML(x) (((x) & 0xf) << 24)
+#define  PLLE_BASE_PLDIV(x) (((x) & 0x3f) << 16)
+#define  PLLE_BASE_NDIV(x) (((x) & 0xff) << 8)
+#define  PLLE_BASE_MDIV(x) (((x) & 0xff) << 0)
+
+#define PLLE_MISC 0x0ec
+#define  PLLE_MISC_SETUP_BASE(x) (((x) & 0xffff) << 16)
+#define  PLLE_MISC_PLL_READY (1 << 15)
+#define  PLLE_MISC_LOCK (1 << 11)
+#define  PLLE_MISC_LOCK_ENABLE (1 << 9)
+#define  PLLE_MISC_SETUP_EXT(x) (((x) & 0x3) << 2)
+
+static int tegra_plle_train(void)
+{
+	unsigned int timeout = 2000;
+	unsigned long value;
+
+	value = readl(NV_PA_PMC_BASE + PMC_SATA_PWRGT);
+	value |= PMC_SATA_PWRGT_PLLE_IDDQ_OVERRIDE;
+	writel(value, NV_PA_PMC_BASE + PMC_SATA_PWRGT);
+
+	value = readl(NV_PA_PMC_BASE + PMC_SATA_PWRGT);
+	value |= PMC_SATA_PWRGT_PLLE_IDDQ_SWCTL;
+	writel(value, NV_PA_PMC_BASE + PMC_SATA_PWRGT);
+
+	value = readl(NV_PA_PMC_BASE + PMC_SATA_PWRGT);
+	value &= ~PMC_SATA_PWRGT_PLLE_IDDQ_OVERRIDE;
+	writel(value, NV_PA_PMC_BASE + PMC_SATA_PWRGT);
+
+	do {
+		value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+		if (value & PLLE_MISC_PLL_READY)
+			break;
+
+		udelay(100);
+	} while (--timeout);
+
+	if (timeout == 0) {
+		error("timeout waiting for PLLE to become ready");
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
+int tegra_plle_enable(void)
+{
+	unsigned int cpcon = 11, p = 18, n = 150, m = 1, timeout = 1000;
+	u32 value;
+	int err;
+
+	/* disable PLLE clock */
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_BASE);
+	value &= ~PLLE_BASE_ENABLE_CML;
+	value &= ~PLLE_BASE_ENABLE;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_BASE);
+
+	/* clear lock enable and setup field */
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+	value &= ~PLLE_MISC_LOCK_ENABLE;
+	value &= ~PLLE_MISC_SETUP_BASE(0xffff);
+	value &= ~PLLE_MISC_SETUP_EXT(0x3);
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_MISC);
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+	if ((value & PLLE_MISC_PLL_READY) == 0) {
+		err = tegra_plle_train();
+		if (err < 0) {
+			error("failed to train PLLE: %d", err);
+			return err;
+		}
+	}
+
+	/* configure PLLE */
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_BASE);
+
+	value &= ~PLLE_BASE_PLDIV_CML(0x0f);
+	value |= PLLE_BASE_PLDIV_CML(cpcon);
+
+	value &= ~PLLE_BASE_PLDIV(0x3f);
+	value |= PLLE_BASE_PLDIV(p);
+
+	value &= ~PLLE_BASE_NDIV(0xff);
+	value |= PLLE_BASE_NDIV(n);
+
+	value &= ~PLLE_BASE_MDIV(0xff);
+	value |= PLLE_BASE_MDIV(m);
+
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_BASE);
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+	value |= PLLE_MISC_SETUP_BASE(0x7);
+	value |= PLLE_MISC_LOCK_ENABLE;
+	value |= PLLE_MISC_SETUP_EXT(0);
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_MISC);
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+	value |= PLLE_SS_CNTL_SSCBYP | PLLE_SS_CNTL_INTERP_RESET |
+		 PLLE_SS_CNTL_BYPASS_SS;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_BASE);
+	value |= PLLE_BASE_ENABLE_CML | PLLE_BASE_ENABLE;
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_BASE);
+
+	do {
+		value = readl(NV_PA_CLK_RST_BASE + PLLE_MISC);
+		if (value & PLLE_MISC_LOCK)
+			break;
+
+		udelay(2);
+	} while (--timeout);
+
+	if (timeout == 0) {
+		error("timeout waiting for PLLE to lock");
+		return -ETIMEDOUT;
+	}
+
+	udelay(50);
+
+	value = readl(NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+	value &= ~PLLE_SS_CNTL_SSCINCINTRV(0x3f);
+	value |= PLLE_SS_CNTL_SSCINCINTRV(0x18);
+
+	value &= ~PLLE_SS_CNTL_SSCINC(0xff);
+	value |= PLLE_SS_CNTL_SSCINC(0x01);
+
+	value &= ~PLLE_SS_CNTL_SSCBYP;
+	value &= ~PLLE_SS_CNTL_INTERP_RESET;
+	value &= ~PLLE_SS_CNTL_BYPASS_SS;
+
+	value &= ~PLLE_SS_CNTL_SSCMAX(0x1ff);
+	value |= PLLE_SS_CNTL_SSCMAX(0x24);
+	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
+
+	return 0;
 }

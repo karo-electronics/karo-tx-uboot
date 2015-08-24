@@ -10,7 +10,7 @@
 #define __CONFIG_DEVKIT3250_H__
 
 /* SoC and board defines */
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/arch/cpu.h>
 
 /*
@@ -29,7 +29,6 @@
  */
 #define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_MALLOC_LEN		SZ_1M
-#define CONFIG_SYS_GBL_DATA_SIZE	128
 #define CONFIG_SYS_SDRAM_BASE		EMC_DYCS0_BASE
 #define CONFIG_SYS_SDRAM_SIZE		SZ_64M
 #define CONFIG_SYS_TEXT_BASE		0x83FA0000
@@ -61,7 +60,6 @@
  * U-Boot General Configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"=> "
 #define CONFIG_SYS_CBSIZE		1024
 #define CONFIG_SYS_PBSIZE		\
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)

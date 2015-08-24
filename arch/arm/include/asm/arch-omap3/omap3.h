@@ -55,6 +55,7 @@ struct control_prog_io {
 #define OMAP34XX_UART1			(OMAP34XX_L4_IO_BASE + 0x6a000)
 #define OMAP34XX_UART2			(OMAP34XX_L4_IO_BASE + 0x6c000)
 #define OMAP34XX_UART3			(OMAP34XX_L4_PER + 0x20000)
+#define OMAP34XX_UART4			(OMAP34XX_L4_PER + 0x42000)
 
 /* General Purpose Timers */
 #define OMAP34XX_GPT1			0x48318000
@@ -139,13 +140,13 @@ struct gpio {
 					 SRAM_OFFSET2)
 #define SRAM_CLK_CODE			(SRAM_VECT_CODE + 64)
 
-#define OMAP3_PUBLIC_SRAM_BASE		0x40208000 /* Works for GP & EMU */
-#define OMAP3_PUBLIC_SRAM_END		0x40210000
+#define NON_SECURE_SRAM_START		0x40208000 /* Works for GP & EMU */
+#define NON_SECURE_SRAM_END		0x40210000
 
 #define LOW_LEVEL_SRAM_STACK		0x4020FFFC
 
 /* scratch area - accessible on both EMU and GP */
-#define OMAP3_PUBLIC_SRAM_SCRATCH_AREA	OMAP3_PUBLIC_SRAM_BASE
+#define OMAP3_PUBLIC_SRAM_SCRATCH_AREA	NON_SECURE_SRAM_START
 
 #define DEBUG_LED1			149	/* gpio */
 #define DEBUG_LED2			150	/* gpio */

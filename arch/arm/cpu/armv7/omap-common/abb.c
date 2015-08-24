@@ -11,6 +11,7 @@
 
 #include <common.h>
 #include <asm/omap_common.h>
+#include <asm/arch/clock.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 
@@ -47,9 +48,9 @@ static void abb_setup_timings(u32 setup)
 	 */
 
 	/* calculate SR2_WTCNT_VALUE */
-	sys_rate = DIV_ROUND(V_OSCK, 1000000);
-	clk_cycles = DIV_ROUND(OMAP_ABB_CLOCK_CYCLES * 10, sys_rate);
-	sr2_cnt = DIV_ROUND(OMAP_ABB_SETTLING_TIME * 10, clk_cycles);
+	sys_rate = DIV_ROUND_CLOSEST(V_OSCK, 1000000);
+	clk_cycles = DIV_ROUND_CLOSEST(OMAP_ABB_CLOCK_CYCLES * 10, sys_rate);
+	sr2_cnt = DIV_ROUND_CLOSEST(OMAP_ABB_SETTLING_TIME * 10, clk_cycles);
 
 	setbits_le32(setup,
 		     sr2_cnt << (ffs(OMAP_ABB_SETUP_SR2_WTCNT_VALUE_MASK) - 1));

@@ -9,6 +9,8 @@
 #ifndef _CONFIG_IB62x0_H
 #define _CONFIG_IB62x0_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /*
  * Version number information
  */
@@ -18,7 +20,6 @@
  * High level configuration options
  */
 #define CONFIG_FEROCEON_88FR131		/* CPU Core subversion */
-#define CONFIG_KIRKWOOD			/* SOC Family Name */
 #define CONFIG_KW88F6281		/* SOC Name */
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 
@@ -26,6 +27,11 @@
  * Machine type
  */
 #define CONFIG_MACH_TYPE	MACH_TYPE_NAS6210
+
+/*
+ * Enable device tree support
+ */
+#define CONFIG_OF_LIBFDT
 
 /*
  * Compression configuration
@@ -41,6 +47,7 @@
 #define CONFIG_SYS_MVFS
 #include <config_cmd_default.h>
 #define CONFIG_CMD_ENV
+#define CONFIG_CMD_BOOTZ
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_NAND
@@ -66,7 +73,7 @@
 #define CONFIG_ENV_IS_NOWHERE
 #endif
 #define CONFIG_ENV_SIZE		0x20000
-#define CONFIG_ENV_OFFSET	0x80000
+#define CONFIG_ENV_OFFSET	0xe0000
 
 /*
  * Default environment variables
@@ -74,24 +81,26 @@
 #define CONFIG_BOOTCOMMAND \
 	"setenv bootargs ${console} ${mtdparts} ${bootargs_root}; "	\
 	"ubi part root; "						\
-	"ubifsmount ubi:root; "						\
+	"ubifsmount ubi:rootfs; "					\
 	"ubifsload 0x800000 ${kernel}; "				\
-	"ubifsload 0x1100000 ${initrd}; "				\
-	"bootm 0x800000 0x1100000"
+	"ubifsload 0x700000 ${fdt}; "					\
+	"ubifsumount; "							\
+	"fdt addr 0x700000; fdt resize; fdt chosen; "			\
+	"bootz 0x800000 - 0x700000"
 
-#define CONFIG_MTDPARTS				\
-	"mtdparts=orion_nand:"			\
-	"0x80000@0x0(uboot),"			\
-	"0x20000@0x80000(uboot_env),"		\
-	"-@0xa0000(root)\0"
+#define CONFIG_MTDPARTS \
+	"mtdparts=orion_nand:"						\
+	"0xe0000@0x0(uboot),"						\
+	"0x20000@0xe0000(uboot_env),"					\
+	"-@0x100000(root)\0"
 
-#define CONFIG_EXTRA_ENV_SETTINGS					\
+#define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=console=ttyS0,115200\0"				\
 	"mtdids=nand0=orion_nand\0"					\
 	"mtdparts="CONFIG_MTDPARTS					\
-	"kernel=/boot/uImage\0"						\
-	"initrd=/boot/uInitrd\0"					\
-	"bootargs_root=ubi.mtd=2 root=ubi0:root rootfstype=ubifs\0"
+	"kernel=/boot/zImage\0"						\
+	"fdt=/boot/ib62x0.dtb\0"					\
+	"bootargs_root=ubi.mtd=2 root=ubi0:rootfs rootfstype=ubifs rw\0"
 
 /*
  * Ethernet driver configuration

@@ -7,7 +7,7 @@
  * (C) Copyright 2002,2003 Motorola,Inc.
  * Xianghua Xiao <X.Xiao@motorola.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -25,9 +25,7 @@
 /* High Level Configuration Options */
 #define CONFIG_BOOKE		1	/* BOOKE			*/
 #define CONFIG_E500		1	/* BOOKE e500 family		*/
-#define CONFIG_MPC85xx		1	/* MPC8540/60/55/41		*/
 #define CONFIG_MPC8544		1
-#define CONFIG_SOCRATES		1
 
 #define	CONFIG_SYS_TEXT_BASE	0xfff80000
 
@@ -80,7 +78,7 @@
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_CCSRBAR
 
 /* DDR Setup */
-#define CONFIG_FSL_DDR2
+#define CONFIG_SYS_FSL_DDR2
 #undef CONFIG_FSL_DDR_INTERACTIVE
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
@@ -343,7 +341,6 @@
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address		*/
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt	*/
 
 #if defined(CONFIG_CMD_KGDB)
     #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size	*/
@@ -354,7 +351,6 @@
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buf Size	*/
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args	*/
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size	*/
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks	*/
 
 /*
  * For booting Linux, the board info and command line data
@@ -365,7 +361,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port*/
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use	*/
 #endif
 
 

@@ -19,12 +19,7 @@
 #include <jffs2/load_kernel.h>
 #include <nand.h>
 
-enum dfu_nand_op {
-	DFU_OP_READ = 1,
-	DFU_OP_WRITE,
-};
-
-static int nand_block_op(enum dfu_nand_op op, struct dfu_entity *dfu,
+static int nand_block_op(enum dfu_op op, struct dfu_entity *dfu,
 			u64 offset, void *buf, long *len)
 {
 	loff_t start, lim;
@@ -119,6 +114,11 @@ static int dfu_write_medium_nand(struct dfu_entity *dfu,
 	return ret;
 }
 
+long dfu_get_medium_size_nand(struct dfu_entity *dfu)
+{
+	return dfu->data.nand.size;
+}
+
 static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 		long *len)
 {
@@ -136,11 +136,55 @@ static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 	return ret;
 }
 
-int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
+static int dfu_flush_medium_nand(struct dfu_entity *dfu)
+{
+	int ret = 0;
+
+	/* in case of ubi partition, erase rest of the partition */
+	if (dfu->data.nand.ubi) {
+		nand_info_t *nand;
+		nand_erase_options_t opts;
+
+		if (nand_curr_device < 0 ||
+		    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
+		    !nand_info[nand_curr_device].name) {
+			printf("%s: invalid nand device\n", __func__);
+			return -1;
+		}
+
+		nand = &nand_info[nand_curr_device];
+
+		memset(&opts, 0, sizeof(opts));
+		opts.offset = dfu->data.nand.start + dfu->offset +
+				dfu->bad_skip;
+		opts.length = dfu->data.nand.start +
+				dfu->data.nand.size - opts.offset;
+		ret = nand_erase_opts(nand, &opts);
+		if (ret != 0)
+			printf("Failure erase: %d\n", ret);
+	}
+
+	return ret;
+}
+
+unsigned int dfu_polltimeout_nand(struct dfu_entity *dfu)
+{
+	/*
+	 * Currently, Poll Timeout != 0 is only needed on nand
+	 * ubi partition, as the not used sectors need an erase
+	 */
+	if (dfu->data.nand.ubi)
+		return DFU_MANIFEST_POLL_TIMEOUT;
+
+	return DFU_DEFAULT_POLL_TIMEOUT;
+}
+
+int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr, char *s)
 {
 	char *st;
 	int ret, dev, part;
 
+	dfu->data.nand.ubi = 0;
 	dfu->dev_type = DFU_DEV_NAND;
 	st = strsep(&s, " ");
 	if (!strcmp(st, "raw")) {
@@ -148,7 +192,7 @@ int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
 		dfu->data.nand.start = simple_strtoul(s, &s, 16);
 		s++;
 		dfu->data.nand.size = simple_strtoul(s, &s, 16);
-	} else if (!strcmp(st, "part")) {
+	} else if ((!strcmp(st, "part")) || (!strcmp(st, "partubi"))) {
 		char mtd_id[32];
 		struct mtd_device *mtd_dev;
 		u8 part_num;
@@ -173,14 +217,18 @@ int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
 
 		dfu->data.nand.start = pi->offset;
 		dfu->data.nand.size = pi->size;
-
+		if (!strcmp(st, "partubi"))
+			dfu->data.nand.ubi = 1;
 	} else {
 		printf("%s: Memory layout (%s) not supported!\n", __func__, st);
 		return -1;
 	}
 
+	dfu->get_medium_size = dfu_get_medium_size_nand;
 	dfu->read_medium = dfu_read_medium_nand;
 	dfu->write_medium = dfu_write_medium_nand;
+	dfu->flush_medium = dfu_flush_medium_nand;
+	dfu->poll_timeout = dfu_polltimeout_nand;
 
 	/* initial state */
 	dfu->inited = 0;

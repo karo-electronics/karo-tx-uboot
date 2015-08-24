@@ -33,7 +33,7 @@
 #include <linux/ctype.h>
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
-
+#include <errno.h>
 #include <usb.h>
 #ifdef CONFIG_4xx
 #include <asm/4xx_pci.h>
@@ -59,6 +59,8 @@ int usb_init(void)
 	void *ctrl;
 	struct usb_device *dev;
 	int i, start_index = 0;
+	int controllers_initialized = 0;
+	int ret;
 
 	dev_index = 0;
 	asynch_allowed = 1;
@@ -74,7 +76,14 @@ int usb_init(void)
 	for (i = 0; i < CONFIG_USB_MAX_CONTROLLER_COUNT; i++) {
 		/* init low_level USB */
 		printf("USB%d:   ", i);
-		if (usb_lowlevel_init(i, &ctrl)) {
+		ret = usb_lowlevel_init(i, USB_INIT_HOST, &ctrl);
+		if (ret == -ENODEV) {	/* No such device. */
+			puts("Port not available.\n");
+			controllers_initialized++;
+			continue;
+		}
+
+		if (ret) {		/* Other error. */
 			puts("lowlevel init failed\n");
 			continue;
 		}
@@ -82,6 +91,7 @@ int usb_init(void)
 		 * lowlevel init is OK, now scan the bus for devices
 		 * i.e. search HUBs and configure them
 		 */
+		controllers_initialized++;
 		start_index = dev_index;
 		printf("scanning bus %d for devices... ", i);
 		dev = usb_alloc_new_device(ctrl);
@@ -103,12 +113,10 @@ int usb_init(void)
 
 	debug("scan end\n");
 	/* if we were not able to find at least one working bus, bail out */
-	if (!usb_started) {
+	if (controllers_initialized == 0)
 		puts("USB error: all controllers failed lowlevel init\n");
-		return -1;
-	}
 
-	return 0;
+	return usb_started ? 0 : -1;
 }
 
 /******************************************************************************
@@ -323,6 +331,7 @@ static int usb_set_maxpacket(struct usb_device *dev)
 /*******************************************************************************
  * Parse the config, located in buffer, and fills the dev->config structure.
  * Note that all little/big endian swapping are done automatically.
+ * (wTotalLength has already been swapped and sanitized when it was read.)
  */
 static int usb_parse_config(struct usb_device *dev,
 			unsigned char *buffer, int cfgno)
@@ -343,24 +352,43 @@ static int usb_parse_config(struct usb_device *dev,
 			head->bDescriptorType);
 		return -1;
 	}
-	memcpy(&dev->config, buffer, buffer[0]);
-	le16_to_cpus(&(dev->config.desc.wTotalLength));
+	if (head->bLength != USB_DT_CONFIG_SIZE) {
+		printf("ERROR: Invalid USB CFG length (%d)\n", head->bLength);
+		return -1;
+	}
+	memcpy(&dev->config, head, USB_DT_CONFIG_SIZE);
 	dev->config.no_of_if = 0;
 
 	index = dev->config.desc.bLength;
 	/* Ok the first entry must be a configuration entry,
 	 * now process the others */
 	head = (struct usb_descriptor_header *) &buffer[index];
-	while (index + 1 < dev->config.desc.wTotalLength) {
+	while (index + 1 < dev->config.desc.wTotalLength && head->bLength) {
 		switch (head->bDescriptorType) {
 		case USB_DT_INTERFACE:
+			if (head->bLength != USB_DT_INTERFACE_SIZE) {
+				printf("ERROR: Invalid USB IF length (%d)\n",
+					head->bLength);
+				break;
+			}
+			if (index + USB_DT_INTERFACE_SIZE >
+			    dev->config.desc.wTotalLength) {
+				puts("USB IF descriptor overflowed buffer!\n");
+				break;
+			}
 			if (((struct usb_interface_descriptor *) \
-			     &buffer[index])->bInterfaceNumber != curr_if_num) {
+			     head)->bInterfaceNumber != curr_if_num) {
 				/* this is a new interface, copy new desc */
 				ifno = dev->config.no_of_if;
+				if (ifno >= USB_MAXINTERFACES) {
+					puts("Too many USB interfaces!\n");
+					/* try to go on with what we have */
+					return 1;
+				}
 				if_desc = &dev->config.if_desc[ifno];
 				dev->config.no_of_if++;
-				memcpy(if_desc,	&buffer[index], buffer[index]);
+				memcpy(if_desc, head,
+					USB_DT_INTERFACE_SIZE);
 				if_desc->no_of_ep = 0;
 				if_desc->num_altsetting = 1;
 				curr_if_num =
@@ -374,12 +402,31 @@ static int usb_parse_config(struct usb_device *dev,
 			}
 			break;
 		case USB_DT_ENDPOINT:
+			if (head->bLength != USB_DT_ENDPOINT_SIZE) {
+				printf("ERROR: Invalid USB EP length (%d)\n",
+					head->bLength);
+				break;
+			}
+			if (index + USB_DT_ENDPOINT_SIZE >
+			    dev->config.desc.wTotalLength) {
+				puts("USB EP descriptor overflowed buffer!\n");
+				break;
+			}
+			if (ifno < 0) {
+				puts("Endpoint descriptor out of order!\n");
+				break;
+			}
 			epno = dev->config.if_desc[ifno].no_of_ep;
 			if_desc = &dev->config.if_desc[ifno];
+			if (epno > USB_MAXENDPOINTS) {
+				printf("Interface %d has too many endpoints!\n",
+					if_desc->desc.bInterfaceNumber);
+				return 1;
+			}
 			/* found an endpoint */
 			if_desc->no_of_ep++;
-			memcpy(&if_desc->ep_desc[epno],
-				&buffer[index], buffer[index]);
+			memcpy(&if_desc->ep_desc[epno], head,
+				USB_DT_ENDPOINT_SIZE);
 			ep_wMaxPacketSize = get_unaligned(&dev->config.\
 							if_desc[ifno].\
 							ep_desc[epno].\
@@ -392,9 +439,23 @@ static int usb_parse_config(struct usb_device *dev,
 			debug("if %d, ep %d\n", ifno, epno);
 			break;
 		case USB_DT_SS_ENDPOINT_COMP:
+			if (head->bLength != USB_DT_SS_EP_COMP_SIZE) {
+				printf("ERROR: Invalid USB EPC length (%d)\n",
+					head->bLength);
+				break;
+			}
+			if (index + USB_DT_SS_EP_COMP_SIZE >
+			    dev->config.desc.wTotalLength) {
+				puts("USB EPC descriptor overflowed buffer!\n");
+				break;
+			}
+			if (ifno < 0 || epno < 0) {
+				puts("EPC descriptor out of order!\n");
+				break;
+			}
 			if_desc = &dev->config.if_desc[ifno];
-			memcpy(&if_desc->ss_ep_comp_desc[epno],
-				&buffer[index], buffer[index]);
+			memcpy(&if_desc->ss_ep_comp_desc[epno], head,
+				USB_DT_SS_EP_COMP_SIZE);
 			break;
 		default:
 			if (head->bLength == 0)
@@ -473,7 +534,7 @@ int usb_get_configuration_no(struct usb_device *dev,
 			     unsigned char *buffer, int cfgno)
 {
 	int result;
-	unsigned int tmp;
+	unsigned int length;
 	struct usb_config_descriptor *config;
 
 	config = (struct usb_config_descriptor *)&buffer[0];
@@ -487,16 +548,18 @@ int usb_get_configuration_no(struct usb_device *dev,
 				"(expected %i, got %i)\n", 9, result);
 		return -1;
 	}
-	tmp = le16_to_cpu(config->wTotalLength);
+	length = le16_to_cpu(config->wTotalLength);
 
-	if (tmp > USB_BUFSIZ) {
-		printf("usb_get_configuration_no: failed to get " \
-		       "descriptor - too long: %d\n", tmp);
+	if (length > USB_BUFSIZ) {
+		printf("%s: failed to get descriptor - too long: %d\n",
+			__func__, length);
 		return -1;
 	}
 
-	result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno, buffer, tmp);
-	debug("get_conf_no %d Result %d, wLength %d\n", cfgno, result, tmp);
+	result = usb_get_descriptor(dev, USB_DT_CONFIG, cfgno, buffer, length);
+	debug("get_conf_no %d Result %d, wLength %d\n", cfgno, result, length);
+	config->wTotalLength = length; /* validated, with CPU byte order */
+
 	return result;
 }
 
@@ -800,6 +863,16 @@ void usb_free_device(void)
 }
 
 /*
+ * XHCI issues Enable Slot command and thereafter
+ * allocates device contexts. Provide a weak alias
+ * function for the purpose, so that XHCI overrides it
+ * and EHCI/OHCI just work out of the box.
+ */
+__weak int usb_alloc_device(struct usb_device *udev)
+{
+	return 0;
+}
+/*
  * By the time we get here, the device has gotten a new device ID
  * and is in the default state. We need to identify the thing and
  * get the ball rolling..
@@ -811,6 +884,17 @@ int usb_new_device(struct usb_device *dev)
 	int addr, err;
 	int tmp;
 	ALLOC_CACHE_ALIGN_BUFFER(unsigned char, tmpbuf, USB_BUFSIZ);
+
+	/*
+	 * Allocate usb 3.0 device context.
+	 * USB 3.0 (xHCI) protocol tries to allocate device slot
+	 * and related data structures first. This call does that.
+	 * Refer to sec 4.3.2 in xHCI spec rev1.0
+	 */
+	if (usb_alloc_device(dev)) {
+		printf("Cannot allocate device context to get SLOT_ID\n");
+		return -1;
+	}
 
 	/* We still haven't set the Address yet */
 	addr = dev->devnum;
@@ -842,8 +926,7 @@ int usb_new_device(struct usb_device *dev)
 	 * http://sourceforge.net/mailarchive/forum.php?
 	 * thread_id=5729457&forum_id=5398
 	 */
-	struct usb_device_descriptor *desc;
-	int port = -1;
+	__maybe_unused struct usb_device_descriptor *desc;
 	struct usb_device *parent = dev->parent;
 	unsigned short portstatus;
 
@@ -859,6 +942,13 @@ int usb_new_device(struct usb_device *dev)
 	dev->epmaxpacketin[0] = 64;
 	dev->epmaxpacketout[0] = 64;
 
+	/*
+	 * XHCI needs to issue a Address device command to setup
+	 * proper device context structures, before it can interact
+	 * with the device. So a get_descriptor will fail before any
+	 * of that is done for XHCI unlike EHCI.
+	 */
+#ifndef CONFIG_USB_XHCI
 	err = usb_get_descriptor(dev, USB_DT_DEVICE, 0, desc, 64);
 	if (err < 0) {
 		debug("usb_new_device: usb_get_descriptor() failed\n");
@@ -871,28 +961,17 @@ int usb_new_device(struct usb_device *dev)
 	 * to differentiate between HUB and DEVICE.
 	 */
 	dev->descriptor.bDeviceClass = desc->bDeviceClass;
+#endif
 
-	/* find the port number we're at */
 	if (parent) {
-		int j;
-
-		for (j = 0; j < parent->maxchild; j++) {
-			if (parent->children[j] == dev) {
-				port = j;
-				break;
-			}
-		}
-		if (port < 0) {
-			printf("usb_new_device:cannot locate device's port.\n");
-			return 1;
-		}
-
 		/* reset the port for the second time */
-		err = hub_port_reset(dev->parent, port, &portstatus);
+		err = hub_port_reset(dev->parent, dev->portnr - 1, &portstatus);
 		if (err < 0) {
-			printf("\n     Couldn't reset port %i\n", port);
+			printf("\n     Couldn't reset port %i\n", dev->portnr);
 			return 1;
 		}
+	} else {
+		usb_reset_root_port();
 	}
 #endif
 
@@ -982,4 +1061,9 @@ int usb_new_device(struct usb_device *dev)
 	return 0;
 }
 
+__weak
+int board_usb_init(int index, enum usb_init_type init)
+{
+	return 0;
+}
 /* EOF */

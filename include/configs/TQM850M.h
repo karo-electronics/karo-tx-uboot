@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2000-2008
+ * (C) Copyright 2000-2014
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * SPDX-License-Identifier:	GPL-2.0+
@@ -19,6 +19,8 @@
 
 #define CONFIG_MPC850		1	/* This is a MPC850 CPU		*/
 #define CONFIG_TQM850M		1	/* ...on a TQM8xxM module	*/
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define	CONFIG_SYS_TEXT_BASE	0x40000000
 
@@ -112,7 +114,6 @@
  * Miscellaneous configurable options
  */
 #define	CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define	CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt	*/
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
 #define CONFIG_SYS_HUSH_PARSER		1	/* Use the HUSH parser		*/
@@ -130,8 +131,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 4 ... 12 MB in DRAM	*/
 
 #define	CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address	*/
-
-#define	CONFIG_SYS_HZ			1000	/* decrementer freq: 1 ms ticks	*/
 
 /*
  * Low Level Configuration Settings

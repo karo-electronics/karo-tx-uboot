@@ -23,11 +23,9 @@
  * (easy to change)
  */
 #define CONFIG_U8500
-#define CONFIG_L2_OFF
 
 #define CONFIG_SYS_MEMTEST_START	0x00000000
 #define CONFIG_SYS_MEMTEST_END	0x1FFFFFFF
-#define CONFIG_SYS_HZ		1000		/* must be 1000 */
 
 /*-----------------------------------------------------------------------
  * Size of environment and malloc() pool
@@ -42,8 +40,6 @@
  */
 #define CONFIG_ENV_SIZE		(8*1024)
 #define CONFIG_SYS_MALLOC_LEN	(CONFIG_ENV_SIZE + 256*1024)
-
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* for initial data */
 
 #define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_CMD_ENV

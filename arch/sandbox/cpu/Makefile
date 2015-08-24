@@ -7,29 +7,16 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
-
-LIB	= $(obj)lib$(CPU).o
-
-COBJS	:= cpu.o os.o start.o state.o
-
-SRCS	:= $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS))
-
-all:	$(obj).depend $(LIB)
-
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
+obj-y	:= cpu.o os.o start.o state.o
+obj-$(CONFIG_SANDBOX_SDL)	+= sdl.o
 
 # os.c is build in the system environment, so needs standard includes
-$(obj)os.o: ALL_CFLAGS := $(filter-out -nostdinc,$(ALL_CFLAGS))
-$(obj).depend.os: CPPFLAGS := $(filter-out -nostdinc,$(CPPFLAGS))
+# CFLAGS_REMOVE_os.o cannot be used to drop header include path
+quiet_cmd_cc_os.o = CC $(quiet_modtag)  $@
+cmd_cc_os.o = $(CC) $(filter-out -nostdinc, \
+	$(patsubst -I%,-idirafter%,$(c_flags))) -c -o $@ $<
 
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+$(obj)/os.o: $(src)/os.c FORCE
+	$(call if_changed_dep,cc_os.o)
+$(obj)/sdl.o: $(src)/sdl.c FORCE
+	$(call if_changed_dep,cc_os.o)

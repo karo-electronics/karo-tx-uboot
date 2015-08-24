@@ -9,34 +9,27 @@
 #define __USB_MASS_STORAGE_H__
 
 #define SECTOR_SIZE		0x200
+#include <part.h>
+#include <linux/usb/composite.h>
 
-#include <mmc.h>
+/* Wait at maximum 60 seconds for cable connection */
+#define UMS_CABLE_READY_TIMEOUT	60
 
-struct ums_device {
-	struct mmc *mmc;
-	int dev_num;
-	int offset;
-	int part_size;
-};
-
-struct ums_board_info {
-	int (*read_sector)(struct ums_device *ums_dev,
+struct ums {
+	int (*read_sector)(struct ums *ums_dev,
 			   ulong start, lbaint_t blkcnt, void *buf);
-	int (*write_sector)(struct ums_device *ums_dev,
+	int (*write_sector)(struct ums *ums_dev,
 			    ulong start, lbaint_t blkcnt, const void *buf);
-	void (*get_capacity)(struct ums_device *ums_dev,
-			     long long int *capacity);
+	unsigned int start_sector;
+	unsigned int num_sectors;
 	const char *name;
-	struct ums_device ums_dev;
+	block_dev_desc_t *block_dev;
 };
 
-extern void board_usb_init(void);
+extern struct ums *ums;
 
-extern int fsg_init(struct ums_board_info *);
-extern void fsg_cleanup(void);
-extern struct ums_board_info *board_ums_init(unsigned int,
-					     unsigned int, unsigned int);
-extern int usb_gadget_handle_interrupts(void);
-extern int fsg_main_thread(void *);
-
+int fsg_init(struct ums *);
+void fsg_cleanup(void);
+int fsg_main_thread(void *);
+int fsg_add(struct usb_configuration *c);
 #endif /* __USB_MASS_STORAGE_H__ */

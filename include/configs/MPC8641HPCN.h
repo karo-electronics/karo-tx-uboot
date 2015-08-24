@@ -3,7 +3,7 @@
  *
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -16,8 +16,10 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
+
 /* High Level Configuration Options */
-#define CONFIG_MPC86xx		1	/* MPC86xx */
 #define CONFIG_MPC8641		1	/* MPC8641 specific */
 #define CONFIG_MPC8641HPCN	1	/* MPC8641HPCN board specific */
 #define CONFIG_MP		1	/* support multiple processors */
@@ -108,7 +110,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 /*
  * DDR Setup
  */
-#define CONFIG_FSL_DDR2
+#define CONFIG_SYS_FSL_DDR2
 #undef CONFIG_FSL_DDR_INTERACTIVE
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
@@ -412,6 +414,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SCSI_AHCI
 
 #ifdef CONFIG_SCSI_AHCI
+#define CONFIG_LIBATA
 #define CONFIG_SATA_ULI5288
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	4
 #define CONFIG_SYS_SCSI_MAX_LUN	1
@@ -649,7 +652,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
 #define CONFIG_CMDLINE_EDITING		/* Command-line editing */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 
 #if defined(CONFIG_CMD_KGDB)
     #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
@@ -660,7 +662,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -671,7 +672,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #if defined(CONFIG_CMD_KGDB)
     #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-    #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*

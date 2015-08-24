@@ -23,13 +23,30 @@ Contents
 2) Compiling U-Boot for a MXS based board
 3) Installation of U-Boot for a MXS based board to SD card
 4) Installation of U-Boot into NAND flash on a MX28 based board
+5) Installation of U-boot into SPI NOR flash on a MX28 based board
 
 1) Prerequisites
 ----------------
 
-To make a MXS based board bootable, some tools are necessary. The first one is
-the "elftosb" tool distributed by Freescale Semiconductor. The other one is the
-"mxsboot" tool found in U-Boot source tree.
+To make a MXS based board bootable, some tools are necessary. The only
+mandatory tool is the "mxsboot" tool found in U-Boot source tree. The
+tool is built automatically when compiling U-Boot for i.MX23 or i.MX28.
+
+The production of BootStream image is handled via "mkimage", which is
+also part of the U-Boot source tree. The "mkimage" requires OpenSSL
+development libraries to be installed. In case of Debian and derivates,
+this is installed by running:
+
+	$ sudo apt-get install libssl-dev
+
+NOTE: The "elftosb" tool distributed by Freescale Semiconductor is no
+      longer necessary for general use of U-Boot on i.MX23 and i.MX28.
+      The mkimage supports generation of BootStream images encrypted
+      with a zero key, which is the vast majority of use-cases. In
+      case you do need to produce image encrypted with non-zero key
+      or other special features, please use the "elftosb" tool,
+      otherwise continue to section 2). The installation procedure of
+      the "elftosb" is outlined below:
 
 Firstly, obtain the elftosb archive from the following location:
 
@@ -106,6 +123,18 @@ HINT: To speed-up the build process, you can add -j<N>, where N is number of
 The code produces "u-boot.sb" file. This file needs to be augmented with a
 proper header to allow successful boot from SD or NAND. Adding the header is
 discussed in the following chapters.
+
+NOTE: The process that produces u-boot.sb uses the mkimage to generate the
+      BootStream. The BootStream is encrypted with zero key. In case you need
+      some special features of the BootStream and plan on using the "elftosb"
+      tool instead, the invocation to produce a compatible BootStream with the
+      one produced by mkimage is outlined below. For further details, refer to
+      the documentation bundled with the "elftosb" package.
+
+	$ elftosb -zf imx23 -c arch/arm/cpu/arm926ejs/mxs/u-boot-imx23.bd \
+		-o u-boot.sb
+	$ elftosb -zf imx28 -c arch/arm/cpu/arm926ejs/mxs/u-boot-imx28.bd \
+		-o u-boot.sb
 
 3) Installation of U-Boot for a MXS based board to SD card
 ----------------------------------------------------------
@@ -234,3 +263,28 @@ There are two possibilities when preparing an image writable to NAND flash.
 	   In case the user needs to boot a firmware image bigger than 1Mb, the
 	   user has to adjust the "update_nand_firmware_maxsz" variable for the
 	   update scripts to work properly.
+
+5) Installation of U-Boot into SPI NOR flash on a MX28 based board
+------------------------------------------------------------------
+
+The u-boot.sb file can be directly written to SPI NOR from U-boot prompt.
+
+Load u-boot.sb into RAM, this can be done in several ways and one way is to use
+tftp:
+       => tftp u-boot.sb 0x42000000
+
+Probe the SPI NOR flash:
+       => sf probe
+
+(SPI NOR should be succesfully detected in this step)
+
+Erase the blocks where U-boot binary will be written to:
+       => sf erase 0x0 0x80000
+
+Write u-boot.sb to SPI NOR:
+       => sf write 0x42000000 0 0x80000
+
+Power off the board and set the boot mode DIP switches to boot from the SPI NOR
+according to MX28 manual section 12.2.1 (Table 12-2)
+
+Last step is to power up the board and U-boot should start from SPI NOR.

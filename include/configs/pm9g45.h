@@ -22,6 +22,8 @@
  */
 #include <asm/hardware.h>
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 #define CONFIG_PM9G45		1	/* It's an Ronetix PM9G45 */
 #define CONFIG_SYS_AT91_CPU_NAME	"AT91SAM9G45"
 
@@ -31,7 +33,6 @@
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	12000000 /* from 12 MHz crystal */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_TEXT_BASE		0x73f00000
 
 #define CONFIG_ARCH_CPU_INIT
@@ -55,8 +56,8 @@
 
 /* LED */
 #define CONFIG_AT91_LED
-#define	CONFIG_RED_LED		AT91_PIO_PORTD, 31 /* this is the user1 led */
-#define	CONFIG_GREEN_LED	AT91_PIO_PORTD, 0 /* this is the user2 led */
+#define CONFIG_RED_LED		GPIO_PIN_PD(31) /* this is the user1 led */
+#define CONFIG_GREEN_LED	GPIO_PIN_PD(0)  /* this is the user2 led */
 
 #define CONFIG_BOOTDELAY	3
 
@@ -107,8 +108,8 @@
 #define CONFIG_SYS_NAND_MASK_ALE	(1 << 21)
 /* our CLE is AD22 */
 #define CONFIG_SYS_NAND_MASK_CLE	(1 << 22)
-#define CONFIG_SYS_NAND_ENABLE_PIN	AT91_PIO_PORTC, 14
-#define CONFIG_SYS_NAND_READY_PIN	AT91_PIO_PORTD, 3
+#define CONFIG_SYS_NAND_ENABLE_PIN	GPIO_PIN_PC(14)
+#define CONFIG_SYS_NAND_READY_PIN	GPIO_PIN_PD(3)
 
 #endif
 
@@ -120,6 +121,7 @@
 
 /* USB */
 #define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_UPLL
 #define CONFIG_USB_OHCI_NEW		1
 #define CONFIG_DOS_PARTITION		1
 #define CONFIG_SYS_USB_OHCI_CPU_INIT	1

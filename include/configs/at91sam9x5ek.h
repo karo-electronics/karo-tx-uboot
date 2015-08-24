@@ -11,13 +11,13 @@
 
 #include <asm/hardware.h>
 
+#define CONFIG_SYS_TEXT_BASE		0x26f00000
+
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768
 #define CONFIG_SYS_AT91_MAIN_CLOCK	12000000	/* 12 MHz crystal */
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_AT91SAM9X5EK
-#define CONFIG_AT91FAMILY
 
 #define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS
@@ -28,6 +28,8 @@
 
 #define CONFIG_CMD_BOOTZ
 #define CONFIG_OF_LIBFDT
+
+#define CONFIG_SYS_GENERIC_BOARD
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
@@ -43,7 +45,6 @@
 #define LCD_BPP			LCD_COLOR16
 #define LCD_OUTPUT_BPP		24
 #define CONFIG_LCD_LOGO
-#undef LCD_TEST_PATTERN
 #define CONFIG_LCD_INFO
 #define CONFIG_LCD_INFO_BELOW_LOGO
 #define CONFIG_SYS_WHITE_ON_BLACK
@@ -61,14 +62,15 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 
+/* no NOR flash */
+#define CONFIG_SYS_NO_FLASH
+
 /*
  * Command line configuration.
  */
 #include <config_cmd_default.h>
 #undef CONFIG_CMD_FPGA
 #undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_IMLS
-#undef CONFIG_CMD_LOADS
 
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
@@ -100,9 +102,6 @@
 #define CONFIG_SF_DEFAULT_SPEED		30000000
 #endif
 
-/* no NOR flash */
-#define CONFIG_SYS_NO_FLASH
-
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
 #define CONFIG_NAND_ATMEL
@@ -121,7 +120,8 @@
 #define CONFIG_ATMEL_NAND_HW_PMECC	1
 #define CONFIG_PMECC_CAP		2
 #define CONFIG_PMECC_SECTOR_SIZE	512
-#define CONFIG_PMECC_INDEX_TABLE_OFFSET	0x8000
+
+#define CONFIG_CMD_NAND_TRIMFFS
 
 #define CONFIG_MTD_DEVICE
 #define CONFIG_CMD_MTDPARTS
@@ -156,13 +156,14 @@
 #define CONFIG_USB_EHCI_ATMEL
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	2
 #else
+#define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_UPLL
 #define CONFIG_USB_OHCI_NEW
 #define CONFIG_SYS_USB_OHCI_CPU_INIT
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		ATMEL_BASE_OHCI
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"at91sam9x5"
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	3
 #endif
-#define CONFIG_USB_ATMEL
 #define CONFIG_USB_STORAGE
 #endif
 
@@ -240,9 +241,5 @@
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN		(512 * 1024 + 0x1000)
-
-#ifdef CONFIG_USE_IRQ
-#error CONFIG_USE_IRQ not supported
-#endif
 
 #endif

@@ -7,7 +7,7 @@
  * (C) Copyright 2012
  * DENX Software Engineering, Anatolij Gustschin <agust@denx.de>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __O2D_CONFIG_H
@@ -16,8 +16,9 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
 #define CONFIG_MPC5200
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_MPC5XXX_CLKIN	33000000 /* running at 33.000000MHz */
 
@@ -115,9 +116,6 @@
 
 #undef	CONFIG_BOOTARGS
 
-#define xstr(s) str(s)
-#define str(s)  #s
-
 #if !defined(CONFIG_CONSOLE_DEV)
 #define CONFIG_CONSOLE_DEV	"ttyPSC1"
 #endif
@@ -159,7 +157,7 @@
 	"kernel_addr_r=600000\0"					\
 	"initrd_high=0x03e00000\0"					\
 	"memlimit=mem="CONFIG_BOARD_MEM_LIMIT"M\0"			\
-	"memtest=mtest 0x00100000 "xstr(CONFIG_SYS_MEMTEST_END)" 0 1\0"	\
+	"memtest=mtest 0x00100000 "__stringify(CONFIG_SYS_MEMTEST_END)" 0 1\0" \
 	"netdev=eth0\0"							\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
@@ -183,7 +181,7 @@
 	"unlock=yes\0"							\
 	"post=echo !!! "CONFIG_BOARD_NAME" POWER ON SELF TEST !!!;"	\
 		"setenv bootdelay 1;"					\
-		"crc32 "xstr(CONFIG_SYS_TEXT_BASE)" "			\
+		"crc32 "__stringify(CONFIG_SYS_TEXT_BASE)" "		\
 			BOARD_POST_CRC32_END";"				\
 		"setenv bootcmd "CONFIG_BOARD_BOOTCMD";saveenv;reset\0"
 
@@ -276,10 +274,8 @@
 #define CONFIG_SYS_INIT_RAM_END		MPC5XXX_SRAM_SIZE
 #endif
 
-/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_SIZE	128
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - \
-					 CONFIG_SYS_GBL_DATA_SIZE)
+					 GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
@@ -311,7 +307,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	    */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt   */
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_HUSH_PARSER
 
@@ -332,7 +327,6 @@
 #define CONFIG_SYS_LOAD_ADDR		0x100000
 
 /* decrementer freq: 1 ms ticks */
-#define CONFIG_SYS_HZ			1000
 
 /*
  * Various low-level settings

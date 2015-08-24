@@ -468,8 +468,6 @@ static int asix_send(struct eth_device *eth, void *packet, int length)
 
 	memcpy(msg, &packet_len, sizeof(packet_len));
 	memcpy(msg + sizeof(packet_len), (void *)packet, length);
-	if (length & 1)
-		length++;
 
 	err = usb_bulk_msg(dev->pusb_dev,
 				usb_sndbulkpipe(dev->pusb_dev, dev->ep_out),
@@ -567,7 +565,7 @@ struct asix_dongle {
 	int flags;
 };
 
-static const struct asix_dongle const asix_dongles[] = {
+static const struct asix_dongle asix_dongles[] = {
 	{ 0x05ac, 0x1402, FLAG_TYPE_AX88772 },	/* Apple USB Ethernet Adapter */
 	{ 0x07d1, 0x3c05, FLAG_TYPE_AX88772 },	/* D-Link DUB-E100 H/W Ver B1 */
 	{ 0x2001, 0x1a02, FLAG_TYPE_AX88772 },	/* D-Link DUB-E100 H/W Ver C1 */
@@ -582,6 +580,7 @@ static const struct asix_dongle const asix_dongles[] = {
 	{ 0x2001, 0x3c05, FLAG_TYPE_AX88772 },
 	/* ASIX 88772B */
 	{ 0x0b95, 0x772b, FLAG_TYPE_AX88772B | FLAG_EEPROM_MAC },
+	{ 0x0b95, 0x7e2b, FLAG_TYPE_AX88772B },
 	{ 0x0000, 0x0000, FLAG_NONE }	/* END - Do not remove */
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2007,2009-2011 Freescale Semiconductor, Inc.
+ * Copyright 2007,2009-2012 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -13,6 +13,16 @@
 
 #define PEX_IP_BLK_REV_2_2	0x02080202
 #define PEX_IP_BLK_REV_2_3	0x02080203
+#define PEX_IP_BLK_REV_3_0	0x02080300
+
+/* Freescale-specific PCI config registers */
+#define FSL_PCI_PBFR		0x44
+
+#define FSL_PCIE_CFG_RDY	0x4b0
+#define FSL_PROG_IF_AGENT	0x1
+
+#define PCI_LTSSM	0x404   /* PCIe Link Training, Status State Machine */
+#define  PCI_LTSSM_L0	0x16    /* L0 state */
 
 int fsl_setup_hose(struct pci_controller *hose, unsigned long addr);
 int fsl_is_pci_agent(struct pci_controller *hose);
@@ -149,7 +159,10 @@ typedef struct ccsr_pci {
 	u32	perr_cap3;	/* 0xe34 - PCIE Error Capture Register 3 */
 	char	res23[200];
 	u32	pdb_stat;	/* 0xf00 - PCIE Debug Status */
-	char	res24[252];
+	char	res24[16];
+	u32	pex_csr0;	/* 0xf14 - PEX Control/Status register 0*/
+	u32	pex_csr1;	/* 0xf18 - PEX Control/Status register 1*/
+	char	res25[228];
 } ccsr_fsl_pci_t;
 #define PCIE_CONFIG_PC	0x00020000
 #define PCIE_CONFIG_OB_CK	0x00002000

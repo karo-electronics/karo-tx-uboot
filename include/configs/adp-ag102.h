@@ -32,12 +32,6 @@
 /*
  * Timer
  */
-
-/*
- * According to the discussion in u-boot mailing list before,
- * CONFIG_SYS_HZ at 1000 is mandatory.
- */
-#define CONFIG_SYS_HZ		1000
 #define CONFIG_SYS_CLK_FREQ	(66000000 * 2)
 #define VERSION_CLOCK		CONFIG_SYS_CLK_FREQ
 
@@ -208,11 +202,6 @@
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128 * 1024)
-
-/*
- * size in bytes reserved for initial data
-*/
-#define CONFIG_SYS_GBL_DATA_SIZE	128
 
 /*
  * AHB Controller configuration

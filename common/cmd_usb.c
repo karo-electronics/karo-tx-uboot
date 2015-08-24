@@ -430,6 +430,36 @@ static int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 }
 #endif /* CONFIG_USB_STORAGE */
 
+static int do_usb_stop_keyboard(int force)
+{
+#ifdef CONFIG_USB_KEYBOARD
+	if (usb_kbd_deregister(force) != 0) {
+		printf("USB not stopped: usbkbd still using USB\n");
+		return 1;
+	}
+#endif
+	return 0;
+}
+
+static void do_usb_start(void)
+{
+	bootstage_mark_name(BOOTSTAGE_ID_USB_START, "usb_start");
+
+	if (usb_init() < 0)
+		return;
+
+#ifdef CONFIG_USB_STORAGE
+	/* try to recognize storage devices immediately */
+	usb_stor_curr_dev = usb_stor_scan(1);
+#endif
+#ifdef CONFIG_USB_HOST_ETHER
+	/* try to recognize ethernet devices immediately */
+	usb_ether_curr_dev = usb_host_eth_scan(1);
+#endif
+#ifdef CONFIG_USB_KEYBOARD
+	drv_usb_kbd_init();
+#endif
+}
 
 /******************************************************************************
  * usb command intepreter
@@ -447,40 +477,27 @@ static int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
-	if ((strncmp(argv[1], "reset", 5) == 0) ||
-		 (strncmp(argv[1], "start", 5) == 0)) {
-		bootstage_mark_name(BOOTSTAGE_ID_USB_START, "usb_start");
+	if (strncmp(argv[1], "start", 5) == 0) {
+		if (usb_started)
+			return 0; /* Already started */
+		printf("starting USB...\n");
+		do_usb_start();
+		return 0;
+	}
+
+	if (strncmp(argv[1], "reset", 5) == 0) {
+		printf("resetting USB...\n");
+		if (do_usb_stop_keyboard(1) != 0)
+			return 1;
 		usb_stop();
-		printf("(Re)start USB...\n");
-		if (usb_init() >= 0) {
-#ifdef CONFIG_USB_STORAGE
-			/* try to recognize storage devices immediately */
-			usb_stor_curr_dev = usb_stor_scan(1);
-#endif
-#ifdef CONFIG_USB_HOST_ETHER
-			/* try to recognize ethernet devices immediately */
-			usb_ether_curr_dev = usb_host_eth_scan(1);
-#endif
-#ifdef CONFIG_USB_KEYBOARD
-			drv_usb_kbd_init();
-#endif
-		}
+		do_usb_start();
 		return 0;
 	}
 	if (strncmp(argv[1], "stop", 4) == 0) {
-#ifdef CONFIG_USB_KEYBOARD
-		if (argc == 2) {
-			if (usb_kbd_deregister() != 0) {
-				printf("USB not stopped: usbkbd still"
-					" using USB\n");
-				return 1;
-			}
-		} else {
-			/* forced stop, switch console in to serial */
+		if (argc != 2)
 			console_assign(stdin, "serial");
-			usb_kbd_deregister();
-		}
-#endif
+		if (do_usb_stop_keyboard(0) != 0)
+			return 1;
 		printf("stopping USB..\n");
 		usb_stop();
 		return 0;

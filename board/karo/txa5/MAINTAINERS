@@ -1,0 +1,7 @@
+Ka-Ro TXA5 SoM
+M:	Lothar Waßmann <LW@KARO-electronics.de>
+S:	Maintained
+F:	board/karo/txa5/
+F:	include/configs/txa5.h
+F:	configs/txa5-5010_defconfig
+F:	configs/txa5-5011_defconfig

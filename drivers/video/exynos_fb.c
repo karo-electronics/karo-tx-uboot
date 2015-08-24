@@ -4,7 +4,7 @@
  * Author: InKi Dae <inki.dae@samsung.com>
  * Author: Donghwa Lee <dh09.lee@samsung.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -27,17 +27,13 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static unsigned int panel_width, panel_height;
 
-/*
- * board_init_f(arch/arm/lib/board.c) calls lcd_setmem() which needs
- * panel_info.vl_col, panel_info.vl_row and panel_info.vl_bpix to reserve
- * FB memory at a very early stage, i.e even before exynos_fimd_parse_dt()
- * is called. So, we are forced to statically assign it.
- */
 #ifdef CONFIG_OF_CONTROL
 vidinfo_t panel_info  = {
-	.vl_col = LCD_XRES,
-	.vl_row = LCD_YRES,
-	.vl_bpix = LCD_COLOR16,
+	/*
+	 * Insert a value here so that we don't end up in the BSS
+	 * Reference: drivers/video/tegra.c
+	 */
+	.vl_col = -1,
 };
 #endif
 
@@ -62,72 +58,38 @@ static void exynos_lcd_init(vidinfo_t *vid)
 	lcd_set_flush_dcache(1);
 }
 
-#ifdef CONFIG_CMD_BMP
-static void draw_logo(void)
-{
-	int x, y;
-	ulong addr;
-
-	if (panel_width >= panel_info.logo_width) {
-		x = ((panel_width - panel_info.logo_width) >> 1);
-	} else {
-		x = 0;
-		printf("Warning: image width is bigger than display width\n");
-	}
-
-	if (panel_height >= panel_info.logo_height) {
-		y = ((panel_height - panel_info.logo_height) >> 1) - 4;
-	} else {
-		y = 0;
-		printf("Warning: image height is bigger than display height\n");
-	}
-
-	addr = panel_info.logo_addr;
-	bmp_display(addr, x, y);
-}
-#endif
-
-void __exynos_cfg_lcd_gpio(void)
+__weak void exynos_cfg_lcd_gpio(void)
 {
 }
-void exynos_cfg_lcd_gpio(void)
-	__attribute__((weak, alias("__exynos_cfg_lcd_gpio")));
 
-void __exynos_backlight_on(unsigned int onoff)
+__weak void exynos_backlight_on(unsigned int onoff)
 {
 }
-void exynos_backlight_on(unsigned int onoff)
-	__attribute__((weak, alias("__exynos_cfg_lcd_gpio")));
 
-void __exynos_reset_lcd(void)
+__weak void exynos_reset_lcd(void)
 {
 }
-void exynos_reset_lcd(void)
-	__attribute__((weak, alias("__exynos_reset_lcd")));
 
-void __exynos_lcd_power_on(void)
+__weak void exynos_lcd_power_on(void)
 {
 }
-void exynos_lcd_power_on(void)
-	__attribute__((weak, alias("__exynos_lcd_power_on")));
 
-void __exynos_cfg_ldo(void)
+__weak void exynos_cfg_ldo(void)
 {
 }
-void exynos_cfg_ldo(void)
-	__attribute__((weak, alias("__exynos_cfg_ldo")));
 
-void __exynos_enable_ldo(unsigned int onoff)
+__weak void exynos_enable_ldo(unsigned int onoff)
 {
 }
-void exynos_enable_ldo(unsigned int onoff)
-	__attribute__((weak, alias("__exynos_enable_ldo")));
 
-void __exynos_backlight_reset(void)
+__weak void exynos_backlight_reset(void)
 {
 }
-void exynos_backlight_reset(void)
-	__attribute__((weak, alias("__exynos_backlight_reset")));
+
+__weak int exynos_lcd_misc_init(vidinfo_t *vid)
+{
+	return 0;
+}
 
 static void lcd_panel_on(vidinfo_t *vid)
 {
@@ -159,7 +121,7 @@ static void lcd_panel_on(vidinfo_t *vid)
 }
 
 #ifdef CONFIG_OF_CONTROL
-int exynos_fimd_parse_dt(const void *blob)
+int exynos_lcd_early_init(const void *blob)
 {
 	unsigned int node;
 	node = fdtdec_next_compatible(blob, 0, COMPAT_SAMSUNG_EXYNOS_FIMD);
@@ -304,12 +266,15 @@ void lcd_ctrl_init(void *lcdbase)
 	set_lcd_clk();
 
 #ifdef CONFIG_OF_CONTROL
-	if (exynos_fimd_parse_dt(gd->fdt_blob))
-		debug("Can't get proper panel info\n");
+#ifdef CONFIG_EXYNOS_MIPI_DSIM
+	exynos_init_dsim_platform_data(&panel_info);
+#endif
+	exynos_lcd_misc_init(&panel_info);
 #else
 	/* initialize parameters which is specific to panel. */
 	init_panel_info(&panel_info);
 #endif
+
 	panel_width = panel_info.vl_width;
 	panel_height = panel_info.vl_height;
 
@@ -323,9 +288,6 @@ void lcd_enable(void)
 	if (panel_info.logo_on) {
 		memset((void *) gd->fb_base, 0, panel_width * panel_height *
 				(NBITS(panel_info.vl_bpix) >> 3));
-#ifdef CONFIG_CMD_BMP
-		draw_logo();
-#endif
 	}
 
 	lcd_panel_on(&panel_info);

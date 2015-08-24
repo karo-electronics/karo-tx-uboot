@@ -16,23 +16,51 @@
  * (C) Copyright 2004
  * Philippe Robin, ARM Ltd. <philippe.robin@arm.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <asm/ptrace.h>
+#include <asm/proc-armv/ptrace.h>
+#include <asm/u-boot-arm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_USE_IRQ
 int interrupt_init (void)
 {
+	unsigned long cpsr;
+
 	/*
 	 * setup up stacks if necessary
 	 */
 	IRQ_STACK_START = gd->irq_sp - 4;
 	IRQ_STACK_START_IN = gd->irq_sp + 8;
 	FIQ_STACK_START = IRQ_STACK_START - CONFIG_STACKSIZE_IRQ;
+
+
+	__asm__ __volatile__("mrs %0, cpsr\n"
+			     : "=r" (cpsr)
+			     :
+			     : "memory");
+
+	__asm__ __volatile__("msr cpsr_c, %0\n"
+			     "mov sp, %1\n"
+			     :
+			     : "r" (IRQ_MODE | I_BIT | F_BIT | (cpsr & ~FIQ_MODE)),
+			       "r" (IRQ_STACK_START)
+			     : "memory");
+
+	__asm__ __volatile__("msr cpsr_c, %0\n"
+			     "mov sp, %1\n"
+			     :
+			     : "r" (FIQ_MODE | I_BIT | F_BIT | (cpsr & ~IRQ_MODE)),
+			       "r" (FIQ_STACK_START)
+			     : "memory");
+
+	__asm__ __volatile__("msr cpsr_c, %0"
+			     :
+			     : "r" (cpsr)
+			     : "memory");
 
 	return arch_interrupt_init();
 }
@@ -103,7 +131,7 @@ void show_regs (struct pt_regs *regs)
 	"UK12_26",	"UK13_26",	"UK14_26",	"UK15_26",
 	"USER_32",	"FIQ_32",	"IRQ_32",	"SVC_32",
 	"UK4_32",	"UK5_32",	"UK6_32",	"ABT_32",
-	"UK8_32",	"UK9_32",	"UK10_32",	"UND_32",
+	"UK8_32",	"UK9_32",	"HYP_32",	"UND_32",
 	"UK12_32",	"UK13_32",	"UK14_32",	"SYS_32",
 	};
 
@@ -171,14 +199,7 @@ void do_prefetch_abort (struct pt_regs *pt_regs)
 
 void do_data_abort (struct pt_regs *pt_regs)
 {
-	unsigned long fsr;
-
-	/* Read Fault Status Register */
-	asm volatile ("mrc p15, 0, %0, c5, c0, 0" : "=r"(fsr));
-
-	printf ("data abort\n\n");
-	if (fsr & 1)
-		printf ("MAYBE you should read doc/README.arm-unaligned-accesses\n\n");
+	printf ("data abort\n");
 	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();

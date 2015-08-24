@@ -9,6 +9,9 @@
 #define _TEGRA20_COMMON_H_
 #include "tegra-common.h"
 
+/* Cortex-A9 uses a cache line size of 32 bytes */
+#define CONFIG_SYS_CACHELINE_SIZE	32
+
 /*
  * Errata configuration
  */
@@ -20,11 +23,6 @@
  * NS16550 Configuration
  */
 #define V_NS16550_CLK		216000000	/* 216MHz (pllp_out0) */
-
-/*
- * High Level Configuration Options
- */
-#define CONFIG_TEGRA20				/* in a NVidia Tegra20 core */
 
 /* Environment information, boards can override if required */
 #define CONFIG_LOADADDR		0x00408000	/* def. location for kernel */
@@ -46,6 +44,9 @@
  * scriptaddr can be pretty much anywhere that doesn't conflict with something
  *   else. Put it above BOOTMAPSZ to eliminate conflicts.
  *
+ * pxefile_addr_r can be pretty much anywhere that doesn't conflict with
+ *   something else. Put it above BOOTMAPSZ to eliminate conflicts.
+ *
  * kernel_addr_r must be within the first 128M of RAM in order for the
  *   kernel's CONFIG_AUTO_ZRELADDR option to work. Since the kernel will
  *   decompress itself to 0x8000 after the start of RAM, kernel_addr_r
@@ -63,6 +64,7 @@
  */
 #define MEM_LAYOUT_ENV_SETTINGS \
 	"scriptaddr=0x10000000\0" \
+	"pxefile_addr_r=0x10100000\0" \
 	"kernel_addr_r=0x01000000\0" \
 	"fdt_addr_r=0x02000000\0" \
 	"ramdisk_addr_r=0x02100000\0"
@@ -93,9 +95,7 @@
  */
 #define CONFIG_USB_EHCI_TXFIFO_THRESH	10
 #define CONFIG_EHCI_IS_TDI
-
-/* Total I2C ports on Tegra20 */
-#define TEGRA_I2C_NUM_CONTROLLERS	4
+#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS 1
 
 #define CONFIG_SYS_NAND_SELF_INIT
 #define CONFIG_SYS_NAND_ONFI_DETECTION

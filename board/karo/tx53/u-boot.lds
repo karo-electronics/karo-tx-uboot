@@ -27,11 +27,17 @@ SECTIONS
 	. = 0x00000000;
 	.text :
 	{
-		KEEP(board/karo/tx53/lowlevel_init.o (.text*))
+		__uboot_img_start = .;
+		. = 0x400;
+		__ivt_start = .;
+		KEEP(*(.ivt*))
+		. = 0x1000;
+		__ivt_end = .;
 		*(.__image_copy_start)
+		*(.vectors)
 		CPUDIR/start.o (.text*)
 		*(.text*)
-	}
+	} = 0xadde01f0
 
 	. = ALIGN(4);
 	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
@@ -39,9 +45,9 @@ SECTIONS
 	. = ALIGN(4);
 	.data : {
 		*(.data*)
+		. = ALIGN(4);
 	}
 
-	. = ALIGN(4);
 	.u_boot_list : {
 		KEEP(*(SORT(.u_boot_list*)));
 	}
@@ -67,17 +73,30 @@ SECTIONS
 		*(.__rel_dyn_end)
 	}
 
-	/* Workaround for an apparent bug in i.MX53 ROM Code,
-	 * that skips loading the last block if it doesn't
-	 * end on a 4KiB boundary.
-	 */
-	. = ALIGN(4096);
+	.pad :
+	{
+		/* Workaround for a bug in i.MX53 ROM Code,
+		 * which skips loading the last block if it doesn't
+		 * end on a 4KiB boundary.
+		 */
+		*(.pad)
+		. = ALIGN(4096);
+	} = 0x01f0adde
+
+	_image_binary_end = . + (__ivt_end - __uboot_img_start);
+
 	.uboot_img_end :
 	{
-		*(.__uboot_img_end)
+		KEEP(*(.__uboot_img_end))
 	}
 
-	_end = .;
+	. = CONFIG_SYS_TEXT_BASE + 0x70000;
+	.csf_data :
+	{
+		*(.__csf_data)
+		. = . + 0x2000;
+	}
+	__uboot_img_len = . - __uboot_img_start;
 
 /*
  * Compiler-generated __bss_start and __bss_end, see arch/arm/lib/bss.c
@@ -97,13 +116,18 @@ SECTIONS
 	.bss_end __bss_limit (OVERLAY) : {
 		KEEP(*(.__bss_end));
 	}
- 
-	/DISCARD/ : { *(.bss*) }
+
+	.dynsym _image_binary_end : { *(.dynsym) }
+	/DISCARD/ : { *(.debug*) }
+	/DISCARD/ : { *(.note*) }
+	/DISCARD/ : { *(.comment*) }
+	/DISCARD/ : { *(.dynbss) }
 	/DISCARD/ : { *(.dynstr*) }
-	/DISCARD/ : { *(.dynsym*) }
 	/DISCARD/ : { *(.dynamic*) }
-	/DISCARD/ : { *(.hash*) }
 	/DISCARD/ : { *(.plt*) }
 	/DISCARD/ : { *(.interp*) }
+	/DISCARD/ : { *(.gnu.hash) }
 	/DISCARD/ : { *(.gnu*) }
+	/DISCARD/ : { *(.ARM.exidx*) }
+	/DISCARD/ : { *(.gnu.linkonce.armexidx.*) }
 }

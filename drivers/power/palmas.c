@@ -27,7 +27,7 @@ int palmas_mmc1_poweron_ldo(void)
 {
 	u8 val = 0;
 
-#if defined(CONFIG_DRA7XX)
+#if defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX)
 	/*
 	 * Currently valid for the dra7xx_evm board:
 	 * Set TPS659038 LDO1 to 3.0 V
@@ -124,6 +124,21 @@ int twl603x_audio_power(u8 on)
 		printf("twl603x: could not turn CLK32KGAUDIO %s: err = %d\n",
 		       c32k ? "on" : "off", err);
 	return err;
+}
+#endif
+
+#ifdef CONFIG_PALMAS_USB_SS_PWR
+/**
+ * @brief palmas_enable_ss_ldo - Configure EVM board specific configurations
+ * for the USB Super speed SMPS10 regulator.
+ *
+ * @return 0
+ */
+int palmas_enable_ss_ldo(void)
+{
+	/* Enable smps10 regulator  */
+	return palmas_i2c_write_u8(TWL603X_CHIP_P1, SMPS10_CTRL,
+				SMPS10_MODE_ACTIVE_D);
 }
 #endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 OMICRON electronics GmbH
+ * Copyright (C) 2011-2014 OMICRON electronics GmbH
  *
  * Based on da850evm.h. Original Copyrights follow:
  *
@@ -18,20 +18,17 @@
 #define CONFIG_DRIVER_TI_EMAC
 #define MACH_TYPE_CALIMAIN	3528
 #define CONFIG_MACH_TYPE	MACH_TYPE_CALIMAIN
+#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * SoC Configuration
  */
 #define CONFIG_MACH_DAVINCI_CALIMAIN
-#define CONFIG_ARM926EJS		/* arm926ejs CPU core */
-#define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
-#define CONFIG_SOC_DA850		/* TI DA850 SoC */
 #define CONFIG_SYS_EXCEPTION_VECTORS_HIGH
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		calimain_get_osc_freq()
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_TEXT_BASE		0x60000000
 #define CONFIG_DA850_LOWLEVEL
 #define CONFIG_SYS_DA850_PLL_INIT
@@ -185,7 +182,6 @@
 #ifdef CONFIG_DRIVER_TI_EMAC
 #define CONFIG_EMAC_MDIO_PHY_NUM	1
 #define CONFIG_MII
-#define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME

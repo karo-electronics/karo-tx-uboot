@@ -743,8 +743,8 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 			if (!gadget_is_dualspeed(gadget))
 				break;
 			device_qual(cdev);
-			value = min(w_length,
-				sizeof(struct usb_qualifier_descriptor));
+			value = min_t(int, w_length,
+				      sizeof(struct usb_qualifier_descriptor));
 			break;
 		case USB_DT_OTHER_SPEED_CONFIG:
 			if (!gadget_is_dualspeed(gadget))
@@ -760,6 +760,14 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 					w_index, w_value & 0xff);
 			if (value >= 0)
 				value = min(w_length, (u16) value);
+			break;
+		case USB_DT_BOS:
+			/*
+			 * The USB compliance test (USB 2.0 Command Verifier)
+			 * issues this request. We should not run into the
+			 * default path here. But return for now until
+			 * the superspeed support is added.
+			 */
 			break;
 		default:
 			goto unknown;

@@ -16,16 +16,6 @@
 
 #include <config.h>
 
-/*
- * All boards using a given driver must convert to self-init
- * at the same time, so do it here.  When all drivers are
- * converted, this will go away.
- */
-#if defined(CONFIG_NAND_FSL_ELBC) || defined(CONFIG_NAND_ATMEL)\
-	|| defined(CONFIG_NAND_FSL_IFC) || defined(CONFIG_NAND_MXC)
-#define CONFIG_SYS_NAND_SELF_INIT
-#endif
-
 extern void nand_init(void);
 
 #include <linux/compat.h>
@@ -161,3 +151,4 @@ __attribute__((noreturn)) void nand_boot(void);
 #define ENV_OFFSET_SIZE 8
 int get_nand_env_oob(nand_info_t *nand, unsigned long *result);
 #endif
+int spl_nand_erase_one(int block, int page);

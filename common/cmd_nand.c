@@ -42,6 +42,7 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	int i;
 	u_char *datbuf, *oobbuf, *p;
 	static loff_t last;
+	int ret = 0;
 
 	if (repeat)
 		off = last + nand->writesize;
@@ -49,10 +50,16 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	last = off;
 
 	datbuf = memalign(ARCH_DMA_MINALIGN, nand->writesize);
-	oobbuf = memalign(ARCH_DMA_MINALIGN, nand->oobsize);
-	if (!datbuf || !oobbuf) {
+	if (!datbuf) {
 		puts("No memory for page buffer\n");
 		return 1;
+	}
+
+	oobbuf = memalign(ARCH_DMA_MINALIGN, nand->oobsize);
+	if (!oobbuf) {
+		puts("No memory for page buffer\n");
+		ret = 1;
+		goto free_dat;
 	}
 	off &= ~(nand->writesize - 1);
 	loff_t addr = (loff_t) off;
@@ -66,23 +73,25 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 	i = mtd_read_oob(nand, addr, &ops);
 	if (i < 0) {
 		printf("Error (%d) reading page %08lx\n", i, off);
-		free(datbuf);
-		free(oobbuf);
-		return 1;
+		ret = 1;
+		goto free_all;
 	}
 	printf("Page %08lx dump:\n", off);
-	i = nand->writesize >> 4;
-	p = datbuf;
 
-	while (i--) {
-		if (!only_oob)
+	if (!only_oob) {
+		i = nand->writesize >> 4;
+		p = datbuf;
+
+		while (i--) {
 			printf("\t%02x %02x %02x %02x %02x %02x %02x %02x"
 			       "  %02x %02x %02x %02x %02x %02x %02x %02x\n",
 			       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
 			       p[8], p[9], p[10], p[11], p[12], p[13], p[14],
 			       p[15]);
-		p += 16;
+			p += 16;
+		}
 	}
+
 	puts("OOB:\n");
 	i = nand->oobsize >> 3;
 	p = oobbuf;
@@ -91,10 +100,13 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 		p += 8;
 	}
-	free(datbuf);
-	free(oobbuf);
 
-	return 0;
+free_all:
+	free(oobbuf);
+free_dat:
+	free(datbuf);
+
+	return ret;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -594,22 +606,16 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		opts.spread = spread;
 
 		if (scrub) {
-			if (!scrub_yes)
-				puts(scrub_warn);
-
-			if (scrub_yes)
+			if (scrub_yes) {
 				opts.scrub = 1;
-			else if (getc() == 'y') {
-				puts("y");
-				if (getc() == '\r')
+			} else {
+				puts(scrub_warn);
+				if (confirm_yesno()) {
 					opts.scrub = 1;
-				else {
+				} else {
 					puts("scrub aborted\n");
 					return CMD_RET_FAILURE;
 				}
-			} else {
-				puts("scrub aborted\n");
-				return CMD_RET_FAILURE;
 			}
 		}
 		ret = nand_erase_opts(nand, &opts);
@@ -642,8 +648,6 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		read = strncmp(cmd, "read", 4) == 0; /* 1 = read, 0 = write */
 		printf("\nNAND %s: ", read ? "read" : "write");
 
-		nand = &nand_info[dev];
-
 		s = strchr(cmd, '.');
 
 		if (s && !strcmp(s, ".raw")) {
@@ -651,6 +655,8 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 			if (arg_off(argv[3], &dev, &off, &size, &maxsize))
 				return 1;
+
+			nand = &nand_info[dev];
 
 			if (argc > 4 && !str2long(argv[4], &pagecount)) {
 				printf("'%s' is not a number\n", argv[4]);
@@ -673,6 +679,8 @@ static int do_nand(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				adjust_size_for_badblocks(&size, off, dev);
 			rwsize = size;
 		}
+
+		nand = &nand_info[dev];
 
 		if (!s || !strcmp(s, ".jffs2") ||
 		    !strcmp(s, ".e") || !strcmp(s, ".i")) {
@@ -893,7 +901,9 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	int r;
 	char *s;
 	size_t cnt;
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	image_header_t *hdr;
+#endif
 #if defined(CONFIG_FIT)
 	const void *fit_hdr = NULL;
 #endif
@@ -919,6 +929,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	bootstage_mark(BOOTSTAGE_ID_NAND_HDR_READ);
 
 	switch (genimg_get_format ((void *)addr)) {
+#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
 	case IMAGE_FORMAT_LEGACY:
 		hdr = (image_header_t *)addr;
 
@@ -927,6 +938,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 
 		cnt = image_get_image_size (hdr);
 		break;
+#endif
 #if defined(CONFIG_FIT)
 	case IMAGE_FORMAT_FIT:
 		fit_hdr = (const void *)addr;

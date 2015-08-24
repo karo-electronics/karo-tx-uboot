@@ -234,20 +234,6 @@ static char *bootstrap_str[] = {
 };
 static char bootstrap_char[] = { 'A', 'B', 'C', 'D', 'E', 'G', 'F', 'H' };
 #endif
-#if defined(CONFIG_APM821XX)
-#define SDR0_PINSTP_SHIFT       29
-static char *bootstrap_str[] = {
-	"RESERVED",
-	"RESERVED",
-	"RESERVED",
-	"NAND (8 bits)",
-	"NOR  (8 bits)",
-	"NOR  (8 bits) w/PLL Bypassed",
-	"I2C (Addr 0x54)",
-	"I2C (Addr 0x52)",
-};
-static char bootstrap_char[] = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' };
-#endif
 
 #if defined(SDR0_PINSTP_SHIFT)
 static int bootstrap_option(void)
@@ -320,25 +306,9 @@ int checkcpu (void)
 		puts("405GP Rev. D");
 		break;
 
-#ifdef CONFIG_405GP
-	case PVR_405GP_RE: /* 405GP rev E and 405CR rev C have same PVR */
+	case PVR_405GP_RE:
 		puts("405GP Rev. E");
 		break;
-#endif
-
-	case PVR_405CR_RA:
-		puts("405CR Rev. A");
-		break;
-
-	case PVR_405CR_RB:
-		puts("405CR Rev. B");
-		break;
-
-#ifdef CONFIG_405CR
-	case PVR_405CR_RC: /* 405GP rev E and 405CR rev C have same PVR */
-		puts("405CR Rev. C");
-		break;
-#endif
 
 	case PVR_405GPR_RB:
 		puts("405GPr Rev. B");
@@ -623,9 +593,6 @@ int checkcpu (void)
 #if defined(SDR0_PINSTP_SHIFT)
 	printf ("       Bootstrap Option %c - ", bootstrap_char[bootstrap_option()]);
 	printf ("Boot ROM Location %s", bootstrap_str[bootstrap_option()]);
-#ifdef CONFIG_NAND_U_BOOT
-	puts(", booting from NAND");
-#endif /* CONFIG_NAND_U_BOOT */
 	putc('\n');
 #endif	/* SDR0_PINSTP_SHIFT */
 
@@ -647,12 +614,12 @@ int checkcpu (void)
 #endif
 
 #if defined(CONFIG_405EP) || defined(CONFIG_405EZ) || defined(CONFIG_405EX)
-	printf ("       16 kB I-Cache 16 kB D-Cache");
+	printf("       16 KiB I-Cache 16 KiB D-Cache");
 #elif defined(CONFIG_440)
-	printf ("       32 kB I-Cache 32 kB D-Cache");
+	printf("       32 KiB I-Cache 32 KiB D-Cache");
 #else
-	printf ("       16 kB I-Cache %d kB D-Cache",
-		((pvr | 0x00000001) == PVR_405GPR_RB) ? 16 : 8);
+	printf("       16 KiB I-Cache %d KiB D-Cache",
+	       ((pvr | 0x00000001) == PVR_405GPR_RB) ? 16 : 8);
 #endif
 
 #endif /* !defined(CONFIG_405) */

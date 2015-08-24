@@ -18,7 +18,9 @@
 #include <common.h>
 #include <i2c.h>
 #include <asm/io.h>
+#include <asm/arch/imx-regs.h>
 
+#include "../common/karo.h"
 #include "pmic.h"
 
 #define LTC3676_BUCK1		0x01

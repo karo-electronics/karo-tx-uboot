@@ -25,12 +25,9 @@
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_pio.h>
-#ifdef CONFIG_AT91_LEGACY
+#ifdef CONFIG_ATMEL_LEGACY
 #include <asm/arch/gpio.h>
 #endif
-#endif
-#ifdef	CONFIG_IXP425			/* only valid for IXP425 */
-#include <asm/arch/ixp425.h>
 #endif
 #if defined(CONFIG_MPC852T) || defined(CONFIG_MPC866)
 #include <asm/io.h>

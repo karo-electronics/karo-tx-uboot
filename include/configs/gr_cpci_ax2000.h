@@ -8,7 +8,7 @@
  * (C) Copyright 2008
  * Daniel Hellstrom, Gaisler Research, daniel@gaisler.com.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H__
@@ -19,8 +19,6 @@
  * (easy to change)
  */
 
-#define CONFIG_LEON3		/* This is an LEON3 CPU */
-#define CONFIG_LEON		1	/* This is an LEON CPU */
 #define CONFIG_CPCI_AX2000	1	/* ... on GR-CPCI-AX2000 board */
 
 #define CONFIG_LEON_RAM_SRAM 1
@@ -289,7 +287,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory     */
-#define CONFIG_SYS_PROMPT		"=> "	/* Monitor Command Prompt   */
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size  */
 #else
@@ -303,8 +300,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x00f00000	/* 1 ... 15 MB in DRAM  */
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address */
-
-#define CONFIG_SYS_HZ			1000	/* decrementer freq: 1 ms ticks */
 
 /*
  * Various low-level settings

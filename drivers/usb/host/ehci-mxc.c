@@ -67,7 +67,7 @@ static int mxc_set_usbcontrol(int port, unsigned int flags)
 	unsigned int v;
 
 	v = readl(IMX_USB_BASE + USBCTRL_OTGBASE_OFFSET);
-#if defined(CONFIG_MX25)
+#if defined(CONFIG_SOC_MX25)
 	switch (port) {
 	case 0:	/* OTG port */
 		v &= ~(MX25_OTG_SIC_MASK | MX25_OTG_PM_BIT | MX25_OTG_PP_BIT |
@@ -116,7 +116,7 @@ static int mxc_set_usbcontrol(int port, unsigned int flags)
 	default:
 		return -EINVAL;
 	}
-#elif defined(CONFIG_MX31)
+#elif defined(CONFIG_SOC_MX31)
 	switch (port) {
 	case 0:	/* OTG port */
 		v &= ~(MX31_OTG_SIC_MASK | MX31_OTG_PM_BIT);
@@ -151,7 +151,7 @@ static int mxc_set_usbcontrol(int port, unsigned int flags)
 	default:
 		return -EINVAL;
 	}
-#elif defined(CONFIG_MX35)
+#elif defined(CONFIG_SOC_MX35)
 	switch (port) {
 	case 0:	/* OTG port */
 		v &= ~(MX35_OTG_SIC_MASK | MX35_OTG_PM_BIT | MX35_OTG_PP_BIT |
@@ -208,10 +208,11 @@ static int mxc_set_usbcontrol(int port, unsigned int flags)
 	return 0;
 }
 
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	struct usb_ehci *ehci;
-#ifdef CONFIG_MX31
+#ifdef CONFIG_SOC_MX31
 	struct clock_control_regs *sc_regs =
 		(struct clock_control_regs *)CCM_BASE;
 
@@ -229,7 +230,7 @@ int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 	setbits_le32(&ehci->usbmode, CM_HOST);
 	__raw_writel(CONFIG_MXC_USB_PORTSC, &ehci->portsc);
 	mxc_set_usbcontrol(CONFIG_MXC_USB_PORT, CONFIG_MXC_USB_FLAGS);
-#ifdef CONFIG_MX35
+#ifdef CONFIG_SOC_MX35
 	/* Workaround for ENGcm11601 */
 	__raw_writel(0, &ehci->sbuscfg);
 #endif

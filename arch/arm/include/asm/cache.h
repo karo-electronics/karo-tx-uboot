@@ -11,6 +11,8 @@
 
 #include <asm/system.h>
 
+#ifndef CONFIG_ARM64
+
 /*
  * Invalidate L2 Cache using co-proc instruction
  */
@@ -27,7 +29,13 @@ void l2_cache_enable(void);
 void l2_cache_disable(void);
 void set_section_dcache(int section, enum dcache_option option);
 
+void arm_init_before_mmu(void);
+void arm_init_domains(void);
+void cpu_cache_initialization(void);
 void dram_bank_mmu_setup(int bank);
+
+#endif
+
 /*
  * The current upper bound for ARM L1 data cache line sizes is 64 bytes.  We
  * use that value for aligning DMA buffers unless the board config has specified

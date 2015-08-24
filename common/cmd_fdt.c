@@ -123,7 +123,7 @@ static int do_fdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (control)
 			gd->fdt_blob = blob;
 		else
-			set_working_fdt_addr(blob);
+			set_working_fdt_addr((void *)blob);
 
 		if (argc >= 2) {
 			int  len;
@@ -566,11 +566,30 @@ static int do_fdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 #ifdef CONFIG_OF_BOARD_SETUP
 	/* Call the board-specific fixup routine */
-	else if (strncmp(argv[1], "boa", 3) == 0)
-		ft_board_setup(working_fdt, gd->bd);
+	else if (strncmp(argv[1], "boa", 3) == 0) {
+		int err = ft_board_setup(working_fdt, gd->bd);
+
+		if (err) {
+			printf("Failed to update board information in FDT: %s\n",
+			       fdt_strerror(err));
+			return CMD_RET_FAILURE;
+		}
+	}
+#endif
+#ifdef CONFIG_OF_SYSTEM_SETUP
+	/* Call the board-specific fixup routine */
+	else if (strncmp(argv[1], "sys", 3) == 0) {
+		int err = ft_system_setup(working_fdt, gd->bd);
+
+		if (err) {
+			printf("Failed to add system information to FDT: %s\n",
+			       fdt_strerror(err));
+			return CMD_RET_FAILURE;
+		}
+	}
 #endif
 	/* Create a chosen node */
-	else if (argv[1][0] == 'c') {
+	else if (strncmp(argv[1], "cho", 3) == 0) {
 		unsigned long initrd_start = 0, initrd_end = 0;
 
 		if ((argc != 2) && (argc != 4))
@@ -581,12 +600,47 @@ static int do_fdt(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			initrd_end = simple_strtoul(argv[3], NULL, 16);
 		}
 
-		fdt_chosen(working_fdt, 1);
-		fdt_initrd(working_fdt, initrd_start, initrd_end, 1);
+		fdt_chosen(working_fdt);
+		fdt_initrd(working_fdt, initrd_start, initrd_end);
+
+#if defined(CONFIG_FIT_SIGNATURE)
+	} else if (strncmp(argv[1], "che", 3) == 0) {
+		int cfg_noffset;
+		int ret;
+		unsigned long addr;
+		struct fdt_header *blob;
+
+		if (!working_fdt)
+			return CMD_RET_FAILURE;
+
+		if (argc > 2) {
+			addr = simple_strtoul(argv[2], NULL, 16);
+			blob = map_sysmem(addr, 0);
+		} else {
+			blob = (struct fdt_header *)gd->fdt_blob;
+		}
+		if (!fdt_valid(&blob))
+			return 1;
+
+		gd->fdt_blob = blob;
+		cfg_noffset = fit_conf_get_node(working_fdt, NULL);
+		if (!cfg_noffset) {
+			printf("Could not find configuration node: %s\n",
+			       fdt_strerror(cfg_noffset));
+			return CMD_RET_FAILURE;
+		}
+
+		ret = fit_config_verify(working_fdt, cfg_noffset);
+		if (ret == 0)
+			return CMD_RET_SUCCESS;
+		else
+			return CMD_RET_FAILURE;
+#endif
+
 	}
 	/* resize the fdt */
 	else if (strncmp(argv[1], "re", 2) == 0) {
-		fdt_resize(working_fdt);
+		fdt_shrink_to_minimum(working_fdt);
 	}
 	else {
 		/* Unrecognized command */
@@ -973,6 +1027,9 @@ static char fdt_help_text[] =
 #ifdef CONFIG_OF_BOARD_SETUP
 	"fdt boardsetup                      - Do board-specific set up\n"
 #endif
+#ifdef CONFIG_OF_SYSTEM_SETUP
+	"fdt systemsetup                     - Do system-specific set up\n"
+#endif
 	"fdt move   <fdt> <newaddr> <length> - Copy the fdt to <addr> and make it active\n"
 	"fdt resize                          - Resize fdt to size + padding to 4k addr\n"
 	"fdt print  <path> [<prop>]          - Recursive print starting at <path>\n"
@@ -992,7 +1049,12 @@ static char fdt_help_text[] =
 	"fdt rsvmem delete <index>           - Delete a mem reserves\n"
 	"fdt chosen [<start> <end>]          - Add/update the /chosen branch in the tree\n"
 	"                                        <start>/<end> - initrd start/end addr\n"
-	"NOTE: Dereference aliases by omitting the leading '/', "
+#if defined(CONFIG_FIT_SIGNATURE)
+	"fdt checksign [<addr>]              - check FIT signature\n"
+	"                                        <start> - addr of key blob\n"
+	"                                                  default gd->fdt_blob\n"
+#endif
+	"NOTE: Dereference aliases by omiting the leading '/', "
 		"e.g. fdt print ethernet0.";
 #endif
 

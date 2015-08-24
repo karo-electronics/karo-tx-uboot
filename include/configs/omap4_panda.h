@@ -4,9 +4,9 @@
  * Steve Sakoman  <steve@sakoman.com>
  *
  * Configuration settings for the TI OMAP4 Panda board.
- * See omap4_common.h for OMAP4 common part
+ * See ti_omap4_common.h for OMAP4 common part
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_PANDA_H
@@ -36,10 +36,7 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
 
-#define CONFIG_USB_ULPI
-#define CONFIG_USB_ULPI_VIEWPORT_OMAP
-
-#include <configs/omap4_common.h>
+#include <configs/ti_omap4_common.h>
 #define CONFIG_CMD_NET
 
 /* GPIO */
@@ -47,8 +44,6 @@
 
 /* ENV related config options */
 #define CONFIG_ENV_IS_NOWHERE
-
-#define CONFIG_SYS_PROMPT		"Panda # "
 
 #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 

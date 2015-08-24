@@ -4,7 +4,7 @@
  * Pantelis Antoniou <panto@intracom.gr>
  * Intracom S.A.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -25,7 +25,6 @@
 
 /* include the font data */
 #include <video_font.h>
-#include <video_font_data.h>
 
 #if VIDEO_FONT_WIDTH != 8 || VIDEO_FONT_HEIGHT != 16
 #error Expecting VIDEO_FONT_WIDTH == 8 && VIDEO_FONT_HEIGHT == 16

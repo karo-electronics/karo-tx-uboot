@@ -6,7 +6,50 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <asm-offsets.h>
+#include <config.h>
 #include <linux/linkage.h>
+
+/*
+ * Default/weak exception vectors relocation routine
+ *
+ * This routine covers the standard ARM cases: normal (0x00000000),
+ * high (0xffff0000) and VBAR. SoCs which do not comply with any of
+ * the standard cases must provide their own, strong, version.
+ */
+
+	.section	.text.relocate_vectors,"ax",%progbits
+	.weak		relocate_vectors
+
+ENTRY(relocate_vectors)
+
+#ifdef CONFIG_HAS_VBAR
+	/*
+	 * If the ARM processor has the security extensions,
+	 * use VBAR to relocate the exception vectors.
+	 */
+	ldr	r0, [r9, #GD_RELOCADDR]	/* r0 = gd->relocaddr */
+	mcr     p15, 0, r0, c12, c0, 0  /* Set VBAR */
+#else
+	/*
+	 * Copy the relocated exception vectors to the
+	 * correct address
+	 * CP15 c1 V bit gives us the location of the vectors:
+	 * 0x00000000 or 0xFFFF0000.
+	 */
+	ldr	r0, [r9, #GD_RELOCADDR]	/* r0 = gd->relocaddr */
+	mrc	p15, 0, r2, c1, c0, 0	/* V bit (bit[13]) in CP15 c1 */
+	ands	r2, r2, #(1 << 13)
+	ldreq	r1, =0x00000000		/* If V=0 */
+	ldrne	r1, =0xFFFF0000		/* If V=1 */
+	ldmia	r0!, {r2-r8,r10}
+	stmia	r1!, {r2-r8,r10}
+	ldmia	r0!, {r2-r8,r10}
+	stmia	r1!, {r2-r8,r10}
+#endif
+	bx	lr
+
+ENDPROC(relocate_vectors)
 
 /*
  * void relocate_code(addr_moni)
@@ -21,8 +64,8 @@
  */
 
 ENTRY(relocate_code)
-	ldr	r1, =_start	/* r1 <- SRC &__image_copy_start */
-	subs	r9, r0, r1		/* r9 <- relocation offset */
+	ldr	r1, =__image_copy_start	/* r1 <- SRC &__image_copy_start */
+	subs	r4, r0, r1		/* r4 <- relocation offset */
 	beq	relocate_done		/* skip relocation */
 	ldr	r2, =__image_copy_end	/* r2 <- SRC &__image_copy_end */
 
@@ -44,9 +87,9 @@ fixloop:
 	bne	fixnext
 
 	/* relative fix: increase location by offset */
-	add	r0, r0, r9
+	add	r0, r0, r4
 	ldr	r1, [r0]
-	add	r1, r1, r9
+	add	r1, r1, r4
 	str	r1, [r0]
 fixnext:
 	cmp	r2, r3
@@ -66,9 +109,9 @@ relocate_done:
 	/* ARMv4- don't know bx lr but the assembler fails to see that */
 
 #ifdef __ARM_ARCH_4__
-        mov        pc, lr
+	mov	pc, lr
 #else
-        bx        lr
+	bx	lr
 #endif
 
 ENDPROC(relocate_code)

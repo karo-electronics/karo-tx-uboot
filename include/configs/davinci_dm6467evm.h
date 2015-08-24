@@ -15,7 +15,6 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT
 
 /* SoC Configuration */
-#define CONFIG_ARM926EJS				/* arm926ejs CPU */
 
 /* Clock rates detection */
 #ifndef __ASSEMBLY__
@@ -27,8 +26,6 @@ extern unsigned int davinci_arm_clk_get(void);
 /* Timer Input clock freq */
 #define CONFIG_SYS_HZ_CLOCK		(CONFIG_SYS_CLK_FREQ/2)
 #define CONFIG_SYS_TIMERBASE		0x01c21400	/* use timer 0 */
-#define CONFIG_SYS_HZ			1000
-#define CONFIG_SOC_DM646X
 
 /* EEPROM definitions for EEPROM */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		2
@@ -61,15 +58,14 @@ extern unsigned int davinci_arm_clk_get(void);
 #define CONFIG_BAUDRATE			115200
 
 /* I2C Configuration */
-#define CONFIG_HARD_I2C
-#define CONFIG_DRIVER_DAVINCI_I2C
-#define CONFIG_SYS_I2C_SPEED		80000
-#define CONFIG_SYS_I2C_SLAVE		10
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_DAVINCI
+#define CONFIG_SYS_DAVINCI_I2C_SPEED		80000
+#define CONFIG_SYS_DAVINCI_I2C_SLAVE		10
 
 /* Network & Ethernet Configuration */
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_MII
-#define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
@@ -80,6 +76,8 @@ extern unsigned int davinci_arm_clk_get(void);
 #define CONFIG_SYS_NO_FLASH
 #ifdef CONFIG_SYS_USE_NAND
 #define CONFIG_NAND_DAVINCI
+#define CONFIG_SYS_NAND_MASK_CLE	0x80000
+#define CONFIG_SYS_NAND_MASK_ALE	0x40000
 #define CONFIG_SYS_NAND_CS		2
 #undef CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_IS_IN_NAND

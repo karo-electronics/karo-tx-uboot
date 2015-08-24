@@ -9,4 +9,3 @@
 #
 #
 PLATFORM_CPPFLAGS += -m4-nofpu
-PLATFORM_RELFLAGS += -ffixed-r13

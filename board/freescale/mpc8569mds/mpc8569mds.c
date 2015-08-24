@@ -3,7 +3,7 @@
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -14,7 +14,7 @@
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <asm/io.h>
 #include <spd_sdram.h>
@@ -231,7 +231,8 @@ int checkboard (void)
 #if !defined(CONFIG_SPD_EEPROM)
 phys_size_t fixed_sdram(void)
 {
-	volatile ccsr_ddr_t *ddr = (ccsr_ddr_t *)CONFIG_SYS_MPC8xxx_DDR_ADDR;
+	struct ccsr_ddr __iomem *ddr =
+		(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DDR_ADDR;
 	uint d_init;
 
 	out_be32(&ddr->cs0_bnds, CONFIG_SYS_DDR_CS0_BNDS);
@@ -513,7 +514,7 @@ void pci_init_board(void)
 #endif /* CONFIG_PCI */
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 #if defined(CONFIG_SYS_UCC_RMII_MODE)
 	int nodeoff, off, err;
@@ -578,5 +579,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_board_fixup_esdhc(blob, bd);
 	fdt_board_fixup_qe_uart(blob, bd);
 	fdt_board_fixup_qe_usb(blob, bd);
+
+	return 0;
 }
 #endif

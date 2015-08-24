@@ -13,11 +13,10 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include "mx6_common.h"
 #include <asm/arch/imx-regs.h>
 #include <asm/imx-common/gpio.h>
 
-#define CONFIG_MX6
-#define CONFIG_MX6Q
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -41,8 +40,8 @@
 
 /* I2C Configs */
 #define CONFIG_CMD_I2C
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_MXC
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_MXC
 #define CONFIG_SYS_I2C_SPEED		100000
 
 /* MMC Configs */
@@ -194,7 +193,6 @@
 #define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-#define CONFIG_SYS_HZ			1000
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS		1

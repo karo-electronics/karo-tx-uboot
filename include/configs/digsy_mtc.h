@@ -20,9 +20,10 @@
  * High Level Configuration Options
  */
 
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_MPC5200		1	/* (more precisely an MPC5200 CPU) */
+#define CONFIG_MPC5200		1	/* This is an MPC5200 CPU */
 #define CONFIG_DIGSY_MTC	1	/* ... on InterControl digsyMTC board */
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Valid values for CONFIG_SYS_TEXT_BASE are:
@@ -393,7 +394,6 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_AUTO_COMPLETE	1
 #define CONFIG_CMDLINE_EDITING	1
-#define CONFIG_SYS_PROMPT	"=> "
 #define CONFIG_SYS_HUSH_PARSER
 
 #define CONFIG_AUTOBOOT_KEYED
@@ -415,8 +415,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x019fffff
 
 #define CONFIG_SYS_LOAD_ADDR		0x00100000
-
-#define CONFIG_SYS_HZ			1000
 
 /*
  * Various low-level settings

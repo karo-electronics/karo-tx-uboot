@@ -15,7 +15,7 @@
 #include <asm/armv7.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/emif.h>
 #include <asm/arch/gpio.h>
 #include <asm/omap_common.h>
@@ -138,6 +138,9 @@ void init_omap_revision(void)
 		break;
 	case MIDR_CORTEX_A9_R2P10:
 		switch (readl(CONTROL_ID_CODE)) {
+		case OMAP4470_CONTROL_ID_CODE_ES1_0:
+			*omap_si_rev = OMAP4470_ES1_0;
+			break;
 		case OMAP4460_CONTROL_ID_CODE_ES1_1:
 			*omap_si_rev = OMAP4460_ES1_1;
 			break;

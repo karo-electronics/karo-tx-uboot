@@ -22,6 +22,7 @@ SECTIONS
 	.text      :
 	{
 	__start = .;
+	  *(.vectors)
 	  arch/arm/cpu/arm926ejs/start.o	(.text*)
 	  *(.text*)
 	} >.sram
@@ -49,5 +50,9 @@ SECTIONS
 	} >.sram
 
 	__image_copy_end = .;
-	_end = .;
+
+	.end :
+	{
+		*(.__end)
+	}
 }

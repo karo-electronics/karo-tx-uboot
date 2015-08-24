@@ -83,6 +83,5 @@ struct dfu_function_descriptor {
 	__le16				bcdDFUVersion;
 } __packed;
 
-/* configuration-specific linkup */
-int dfu_add(struct usb_configuration *c);
+#define DFU_POLL_TIMEOUT_MASK           (0xFFFFFFUL)
 #endif /* __F_DFU_H_ */

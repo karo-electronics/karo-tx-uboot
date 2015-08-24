@@ -11,12 +11,11 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/clock.h>
 
 /* Architecture, CPU, etc */
-#define CONFIG_ARM1176
 #define CONFIG_TNETV107X
 #define CONFIG_TNETV107X_EVM
 #define CONFIG_TNETV107X_WATCHDOG
@@ -30,7 +29,6 @@
 
 #define CONFIG_SYS_TIMERBASE		TNETV107X_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get_rate(TNETV107X_LPSC_TIMER0)
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_PLL_SYS_EXT_FREQ		25000000
 #define CONFIG_PLL_TDM_EXT_FREQ		19200000

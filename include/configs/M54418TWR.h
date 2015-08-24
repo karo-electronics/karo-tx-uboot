@@ -4,7 +4,7 @@
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -77,7 +77,6 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define NAND_MAX_CHIPS			CONFIG_SYS_MAX_NAND_DEVICE
 #define CONFIG_SYS_NAND_SELECT_DEVICE
-#define	CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 #endif
 
 /* Network configuration */
@@ -253,8 +252,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x10000)
 
-#define CONFIG_SYS_HZ			1000
-
 #define CONFIG_SYS_MBAR		0xFC000000
 
 /*
@@ -270,10 +267,8 @@
 /* End of used area in internal SRAM */
 #define CONFIG_SYS_INIT_RAM_SIZE	0x10000
 #define CONFIG_SYS_INIT_RAM_CTRL	0x221
-/* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_SIZE	256
 #define CONFIG_SYS_GBL_DATA_OFFSET	((CONFIG_SYS_INIT_RAM_SIZE - \
-					CONFIG_SYS_GBL_DATA_SIZE) - 32)
+					GENERATED_GBL_DATA_SIZE) - 32)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 #define CONFIG_SYS_SBFHDR_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - 32)
 

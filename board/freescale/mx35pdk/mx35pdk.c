@@ -213,7 +213,7 @@ int board_late_init(void)
 	struct pmic *p;
 	int ret;
 
-	ret = pmic_init(I2C_PMIC);
+	ret = pmic_init(I2C_0);
 	if (ret)
 		return ret;
 
@@ -251,14 +251,12 @@ int board_late_init(void)
 
 int board_eth_init(bd_t *bis)
 {
-	int rc = -ENODEV;
 #if defined(CONFIG_SMC911X)
-	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
+	int rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
+	if (rc)
+		return rc;
 #endif
-
-	cpu_eth_init(bis);
-
-	return rc;
+	return cpu_eth_init(bis);
 }
 
 #if defined(CONFIG_FSL_ESDHC)

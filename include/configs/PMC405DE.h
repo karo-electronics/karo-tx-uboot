@@ -2,17 +2,18 @@
  * (C) Copyright 2009
  * Matthias Fuchs, esd gmbh germany, matthias.fuchs@esd.eu
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
 #define CONFIG_405EP		1	/* This is a PPC405 CPU		*/
-#define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 #define CONFIG_PMC405DE		1	/* ...on a PMC405DE board	*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
 #define CONFIG_MISC_INIT_R	1	/* call misc_init_r()		*/
@@ -79,7 +80,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT	"=> "	/* Monitor Command Prompt */
 
 #define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -103,8 +103,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR	0x100000	/* default load address */
 #define CONFIG_SYS_EXTBDINFO	1	/* To use extended board_into (bd_t) */
-
-#define CONFIG_SYS_HZ		1000	/* decrementer freq: 1 ms ticks */
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history     */
 #define CONFIG_LOOPW		1	/* enable loopw command         */

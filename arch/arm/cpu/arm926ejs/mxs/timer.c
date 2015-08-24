@@ -7,7 +7,7 @@
  * Based on code from LTIB:
  * (C) Copyright 2009-2010 Freescale Semiconductor, Inc.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -16,9 +16,9 @@
 #include <asm/arch/sys_proto.h>
 
 /* Maximum fixed count */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 #define TIMER_LOAD_VAL 0xffff
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 #define TIMER_LOAD_VAL 0xffffffff
 #endif
 
@@ -63,9 +63,9 @@ int timer_init(void)
 	mxs_reset_block(&timrot_regs->hw_timrot_rotctrl_reg);
 
 	/* Set fixed_count to 0 */
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	writel(0, &timrot_regs->hw_timrot_timcount0);
-#elif defined(CONFIG_MX28)
+#elif defined(CONFIG_SOC_MX28)
 	writel(0, &timrot_regs->hw_timrot_fixed_count0);
 #endif
 
@@ -74,31 +74,36 @@ int timer_init(void)
 		TIMROT_TIMCTRLn_SELECT_1KHZ_XTAL,
 		&timrot_regs->hw_timrot_timctrl0);
 
-	/* Set fixed_count to maximum value */
-#if defined(CONFIG_MX23)
-	writel(TIMER_LOAD_VAL - 1, &timrot_regs->hw_timrot_timcount0);
-#elif defined(CONFIG_MX28)
-	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
-#endif
-
 #ifndef DEBUG_TIMER_WRAP
 	/* Set fixed_count to maximum value */
+#if defined(CONFIG_SOC_MX23)
+	writel(TIMER_LOAD_VAL - 1, &timrot_regs->hw_timrot_timcount0);
+#elif defined(CONFIG_SOC_MX28)
 	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
-#else
+#endif
+#else /* DEBUG_TIMER_WRAP */
 	/* Set fixed_count so that the counter will wrap after 20 seconds */
+#if defined(CONFIG_SOC_MX23)
+	writel(20 * MXS_INCREMENTER_HZ - 1, &timrot_regs->hw_timrot_timcount0);
+#elif defined(CONFIG_SOC_MX28)
 	writel(20 * MXS_INCREMENTER_HZ,
 		&timrot_regs->hw_timrot_fixed_count0);
+#endif
 	gd->arch.lastinc = TIMER_LOAD_VAL - 20 * MXS_INCREMENTER_HZ;
 
 	/* Make the usec counter roll over 30 seconds after startup */
 	writel(-30000000, MXS_HW_DIGCTL_MICROSECONDS);
-#endif
+#endif /* DEBUG_TIMER_WRAP */
 	writel(TIMROT_TIMCTRLn_UPDATE,
 		&timrot_regs->hw_timrot_timctrl0_clr);
 #ifdef DEBUG_TIMER_WRAP
-	/* Set fixed_count to maximal value for subsequent loads */
+	/* Set fixed_count to maximum value for subsequent loads */
+#if defined(CONFIG_SOC_MX23)
+	writel(20 * MXS_INCREMENTER_HZ - 1, &timrot_regs->hw_timrot_timcount0);
+#elif defined(CONFIG_SOC_MX28)
 	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
 #endif
+#endif /* DEBUG_TIMER_WRAP */
 	gd->arch.timer_rate_hz = MXS_INCREMENTER_HZ;
 	gd->arch.tbl = TIMER_START;
 	gd->arch.tbu = 0;
@@ -116,16 +121,18 @@ unsigned long long get_ticks(void)
 	struct mxs_timrot_regs *timrot_regs =
 		(struct mxs_timrot_regs *)MXS_TIMROT_BASE;
 	unsigned long now;
-#if defined(CONFIG_MX23)
+#if defined(CONFIG_SOC_MX23)
 	/* Upper bits are the valid ones. */
 	now = readl(&timrot_regs->hw_timrot_timcount0) >>
 		TIMROT_RUNNING_COUNTn_RUNNING_COUNT_OFFSET;
-#else
+#elif defined(CONFIG_SOC_MX28)
 	/* The timer is counting down, so subtract the register value from
 	 * the counter period length (implicitly 2^32) to get an incrementing
 	 * timestamp
 	 */
 	now = -readl(&timrot_regs->hw_timrot_running_count0);
+#else
+#error "Don't know how to read timrot_regs"
 #endif
 	ulong inc = now - gd->arch.lastinc;
 

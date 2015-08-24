@@ -3,7 +3,7 @@
  *
  * (C) Copyright 2003 Josef Baumgartner <josef.baumgartner@telex.de>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -129,7 +129,6 @@
 #define CONFIG_SYS_LOAD_ADDR		0x20000
 #define CONFIG_SYS_MEMTEST_START	0x400
 #define CONFIG_SYS_MEMTEST_END		0x380000
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_CLK			66000000
 
 /*

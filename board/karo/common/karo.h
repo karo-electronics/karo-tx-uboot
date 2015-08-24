@@ -14,6 +14,9 @@
  * GNU General Public License for more details.
  *
 */
+
+#include <errno.h>
+
 struct fb_videomode;
 
 #ifdef CONFIG_SYS_LVDS_IF
@@ -155,3 +158,5 @@ static inline int karo_load_part(const char *part, void *addr, size_t len)
 		return karo_load_mmc_part(part, addr, len);
 	return ret;
 }
+
+#define DIV_ROUND(n, d)		(((n) + (d) / 2) / (d))

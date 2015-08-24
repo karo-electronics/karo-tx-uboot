@@ -7,7 +7,7 @@
  * Based off of M5272C3 board code by Josef Baumgartner
  * <josef.baumgartner@telex.de>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -139,7 +139,6 @@
 	"save\0"				\
 	""
 
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_CLK			150000000
 
 /*

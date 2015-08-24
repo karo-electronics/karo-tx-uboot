@@ -1,7 +1,7 @@
 /*
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +12,7 @@
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <asm/io.h>
 #include <asm/fsl_serdes.h>
 #include <spd.h>
@@ -90,7 +90,7 @@ int checkboard (void)
 phys_size_t fixed_sdram (void)
 {
 	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
-	volatile ccsr_ddr_t *ddr= &immap->im_ddr;
+	struct ccsr_ddr __iomem *ddr = &immap->im_ddr;
 	uint d_init;
 
 	ddr->cs0_bnds = CONFIG_SYS_DDR_CS0_BNDS;
@@ -196,7 +196,7 @@ void pci_init_board(void)
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -207,8 +207,14 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	/* invalidate existing TLB entry for flash + promjet */
-	disable_tlb(flash_esel);
+	if (flash_esel == -1) {
+		/* very unlikely unless something is messed up */
+		puts("Error: Could not find TLB for FLASH BASE\n");
+		flash_esel = 1;	/* give our best effort to continue */
+	} else {
+		/* invalidate existing TLB entry for flash + promjet */
+		disable_tlb(flash_esel);
+	}
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,	/* tlb, epn, rpn */
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,	/* perms, wimge */
@@ -265,7 +271,7 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
@@ -279,5 +285,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_dr_usb(blob, bd);
 #endif
 
+	return 0;
 }
 #endif

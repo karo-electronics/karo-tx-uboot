@@ -5,8 +5,15 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-CROSS_COMPILE ?= sparc-elf-
+ifeq ($(CROSS_COMPILE),)
+CROSS_COMPILE := sparc-elf-
+endif
 
-CONFIG_STANDALONE_LOAD_ADDR ?= 0x00000000 -L $(gcclibdir) -T sparc.lds
+gcclibdir := $(shell dirname `$(CC) -print-libgcc-file-name`)
 
-PLATFORM_CPPFLAGS += -DCONFIG_SPARC -D__sparc__
+CONFIG_STANDALONE_LOAD_ADDR ?= 0x00000000 -L $(gcclibdir) \
+			       -T $(srctree)/examples/standalone/sparc.lds
+
+PLATFORM_CPPFLAGS += -D__sparc__
+
+PLATFORM_RELFLAGS += -fPIC

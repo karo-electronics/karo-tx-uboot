@@ -63,8 +63,6 @@
 
 #define DMASTATUS_IDLE		BIT(31)
 
-#define CPDMA_RAM_ADDR		0x4a102000
-
 /* Descriptor mode bits */
 #define CPDMA_DESC_SOP		BIT(31)
 #define CPDMA_DESC_EOP		BIT(30)
@@ -228,6 +226,8 @@ struct cpdma_chan {
 #define chan_read(chan, fld)		__raw_readl((chan)->fld)
 #define chan_read_ptr(chan, fld)	((void *)__raw_readl((chan)->fld))
 
+#define for_active_slave(slave, priv) \
+	slave = (priv)->slaves + (priv)->data.active_slave; if (slave)
 #define for_each_slave(slave, priv) \
 	for (slave = (priv)->slaves; slave != (priv)->slaves + \
 				(priv)->data->slaves; slave++)
@@ -250,7 +250,6 @@ struct cpsw_priv {
 	struct phy_device		*phydev;
 	struct mii_dev			*bus;
 
-	u32				mdio_link;
 	u32				phy_mask;
 };
 
@@ -505,7 +504,7 @@ static inline void wait_for_idle(void)
 static int cpsw_mdio_read(struct mii_dev *bus, int phy_id,
 				int dev_addr, int phy_reg)
 {
-	unsigned short data;
+	int data;
 	u32 reg;
 
 	if (phy_reg & ~PHY_REG_MASK || phy_id & ~PHY_ID_MASK)
@@ -599,7 +598,7 @@ static void cpsw_set_slave_mac(struct cpsw_slave *slave,
 static void cpsw_slave_update_link(struct cpsw_slave *slave,
 				   struct cpsw_priv *priv, int *link)
 {
-	struct phy_device *phy = priv->phydev;
+	struct phy_device *phy;
 	u32 mac_control = 0;
 	int retries = NUM_TRIES;
 
@@ -642,21 +641,10 @@ static int cpsw_update_link(struct cpsw_priv *priv)
 	int link = 0;
 	struct cpsw_slave *slave;
 
-	for_each_slave(slave, priv)
+	for_active_slave(slave, priv)
 		cpsw_slave_update_link(slave, priv, &link);
-	priv->mdio_link = readl(&mdio_regs->link);
+
 	return link;
-}
-
-static int cpsw_check_link(struct cpsw_priv *priv)
-{
-	u32 link;
-
-	link = __raw_readl(&mdio_regs->link) & priv->phy_mask;
-	if (link && (link == priv->mdio_link))
-		return 1;
-
-	return cpsw_update_link(priv);
 }
 
 static inline u32  cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
@@ -690,7 +678,7 @@ static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv)
 
 	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << slave_port);
 
-	priv->phy_mask |= 1 << slave->data->phy_id;
+	priv->phy_mask |= 1 << slave->data->phy_addr;
 }
 
 static void cpdma_desc_get(struct cpsw_desc *desc)
@@ -839,6 +827,7 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 
 	/* enable statistics collection only on the host port */
 	__raw_writel(BIT(priv->host_port), &priv->regs->stat_port_en);
+	__raw_writel(0x7, &priv->regs->stat_port_en);
 
 	cpsw_ale_port_state(priv, priv->host_port, ALE_PORT_STATE_FORWARD);
 
@@ -846,7 +835,7 @@ static int cpsw_init(struct eth_device *dev, bd_t *bis)
 			   ALE_SECURE);
 	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << priv->host_port);
 
-	for_each_slave(slave, priv)
+	for_active_slave(slave, priv)
 		cpsw_slave_init(slave, priv);
 
 	cpsw_update_link(priv);
@@ -970,10 +959,6 @@ static int cpsw_send(struct eth_device *dev, void *packet, int length)
 	void *buffer;
 	int len;
 
-	if (!priv->data->mac_control && !cpsw_check_link(priv)) {
-		printf("%s: Cannot send packet; link is down\n", __func__);
-		return -EIO;
-	}
 
 	/* first reap completed packets */
 	while (cpdma_process(priv, &priv->tx_chan, &buffer, &len) == 0)
@@ -1019,11 +1004,7 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 {
 	struct cpsw_priv *priv = (struct cpsw_priv *)dev->priv;
 	struct phy_device *phydev;
-	u32 supported = (SUPPORTED_10baseT_Half |
-			SUPPORTED_10baseT_Full |
-			SUPPORTED_100baseT_Half |
-			SUPPORTED_100baseT_Full |
-			SUPPORTED_1000baseT_Full);
+	u32 supported = PHY_GBIT_FEATURES;
 
 	if (slave->data->phy_id < 0) {
 		u32 phy_addr;
@@ -1046,6 +1027,9 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 		printf("Failed to connect to PHY\n");
 		return -EINVAL;
 	}
+
+	if (!phydev)
+		return -1;
 
 	phydev->supported &= supported;
 	phydev->advertising = phydev->supported;
@@ -1088,28 +1072,12 @@ int cpsw_register(struct cpsw_platform_data *data)
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < NUM_DESCS; i++) {
-		priv->descs[i].dma_desc = memalign(CONFIG_SYS_CACHELINE_SIZE,
-				sizeof(struct cpsw_desc) * NUM_DESCS);
-		if (!priv->descs[i].dma_desc) {
-			while (--i >= 0) {
-				free(priv->descs[i].dma_desc);
-			}
-			free(priv->slaves);
-			free(priv);
-			free(dev);
-			return -ENOMEM;
-		}
-		debug("DMA desc[%d] allocated @ %p desc_size %u\n",
-			i, priv->descs[i].dma_desc,
-			sizeof(*priv->descs[i].dma_desc));
-	}
-
 	priv->host_port		= data->host_port_num;
 	priv->regs		= regs;
 	priv->host_port_regs	= regs + data->host_port_reg_ofs;
 	priv->dma_regs		= regs + data->cpdma_reg_ofs;
 	priv->ale_regs		= regs + data->ale_reg_ofs;
+	priv->descs		= (void *)regs + data->bd_ram_ofs;
 
 	for_each_slave(slave, priv) {
 		cpsw_slave_setup(slave, idx, priv);
@@ -1128,7 +1096,7 @@ int cpsw_register(struct cpsw_platform_data *data)
 
 	cpsw_mdio_init(dev->name, data->mdio_base, data->mdio_div);
 	priv->bus = miiphy_get_dev_by_name(dev->name);
-	for_each_slave(slave, priv) {
+	for_active_slave(slave, priv) {
 		ret = cpsw_phy_init(dev, slave);
 		if (ret < 0)
 			break;

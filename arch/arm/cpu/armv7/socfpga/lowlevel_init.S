@@ -7,26 +7,6 @@
 #include <config.h>
 #include <version.h>
 
-/* Save the parameter pass in by previous boot loader */
-.global save_boot_params
-save_boot_params:
-	/* save the parameter here */
-
-	/*
-	 * Setup stack for exception, which is located
-	 * at the end of on-chip RAM. We don't expect exception prior to
-	 * relocation and if that happens, we won't worry -- it will overide
-	 * global data region as the code will goto reset. After relocation,
-	 * this region won't be used by other part of program.
-	 * Hence it is safe.
-	 */
-	ldr	r0, =(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE)
-	ldr	r1, =IRQ_STACK_START_IN
-	str	r0, [r1]
-
-	bx	lr
-
-
 /* Set up the platform, once the cpu has been initialized */
 .globl lowlevel_init
 lowlevel_init:

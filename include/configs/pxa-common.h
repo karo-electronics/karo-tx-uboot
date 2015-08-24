@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Marek Vasut <marek.vasut@gmail.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef	__CONFIG_PXA_COMMON_H__
@@ -16,7 +16,6 @@
  */
 #ifdef	CONFIG_CMD_KGDB
 #define	CONFIG_KGDB_BAUDRATE		230400
-#define	CONFIG_KGDB_SER_INDEX		2
 #endif
 
 /*

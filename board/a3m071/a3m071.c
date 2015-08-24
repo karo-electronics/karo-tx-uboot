@@ -392,9 +392,11 @@ int misc_init_r(void)
 }
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t * bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
 #endif /* defined(CONFIG_OF_FLAT_TREE) && defined(CONFIG_OF_BOARD_SETUP) */
 
@@ -412,7 +414,8 @@ int spl_start_uboot(void)
 
 	env_init();
 	getenv_f("boot_os", s, sizeof(s));
-	if ((s != NULL) && (strcmp(s, "yes") == 0))
+	if ((s != NULL) && (*s == '1' || *s == 'y' || *s == 'Y' ||
+			    *s == 't' || *s == 'T'))
 		return 0;
 
 	return 1;

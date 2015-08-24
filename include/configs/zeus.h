@@ -2,7 +2,7 @@
  * (C) Copyright 2007
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************
@@ -15,7 +15,6 @@
  * High Level Configuration Options
  *----------------------------------------------------------------------*/
 #define CONFIG_ZEUS		1		/* Board is Zeus	*/
-#define CONFIG_4xx		1		/* ... PPC4xx family	*/
 #define CONFIG_405EP		1		/* Specifc 405EP support*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
@@ -122,7 +121,6 @@
  * Miscellaneous configurable options
  *----------------------------------------------------------------------*/
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define CONFIG_SYS_PROMPT	        "=> "	/* Monitor Command Prompt	*/
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	        1024	/* Console I/O Buffer Size	*/
 #else
@@ -137,8 +135,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000  /* default load address	*/
 #define CONFIG_SYS_EXTBDINFO		1	/* To use extended board_into (bd_t) */
-
-#define CONFIG_SYS_HZ		        1000	/* decrementer freq: 1 ms ticks	*/
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
@@ -286,7 +282,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400		/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2		/* which serial port to use */
 #endif
 
 /*
@@ -322,7 +317,7 @@
 		" ramdisk_size=${ramdisk_size}\0"			\
 	"addip=setenv bootargs ${bootargs} "				\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
-	        ":${hostname}:${netdev}:off panic=1\0"			\
+		":${hostname}:${netdev}:off panic=1\0"			\
 	"addtty=setenv bootargs ${bootargs} console=ttyS0,"		\
 		"${baudrate}\0"						\
 	"net_nfs=tftp ${kernel_mem_addr} ${file_kernel};"		\
@@ -352,7 +347,7 @@
 	"file_fs=/zeus/rootfs_ba.img\0"					\
 	"tftp_fs=tftp 100000 ${file_fs}\0"				\
 	"update_fs=protect off ff300000 ff87ffff;era ff300000 ff87ffff;"\
-	        "cp.b 100000 ff300000 580000\0"				\
+		"cp.b 100000 ff300000 580000\0"				\
 	"upd_fs=run tftp_fs;run update_fs\0"				\
 	"bootcmd=chkreset;run ramargs addip addtty addmisc;"		\
 		"bootm ${kernel_fl_addr} ${ramdisk_fl_addr}\0"		\

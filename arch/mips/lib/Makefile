@@ -5,50 +5,10 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
+obj-y	+= cache.o
+obj-y	+= cache_init.o
+obj-y	+= io.o
 
-LIB	= $(obj)lib$(ARCH).o
+obj-$(CONFIG_CMD_BOOTM) += bootm.o
 
-## Build a couple of necessary functions into a private libgcc
-LIBGCC	= $(obj)libgcc.o
-GLSOBJS	+= ashldi3.o
-GLSOBJS	+= ashrdi3.o
-GLSOBJS	+= lshrdi3.o
-LGOBJS	:= $(addprefix $(obj),$(GLSOBJS))
-
-SOBJS-y	+=
-
-COBJS-y	+= board.o
-ifeq ($(CONFIG_QEMU_MIPS),y)
-COBJS-$(CONFIG_CMD_BOOTM) += bootm_qemu_mips.o
-else
-COBJS-$(CONFIG_CMD_BOOTM) += bootm.o
-endif
-
-SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
-
-# Always build libmips.o
-TARGETS	:= $(LIB)
-
-# Build private libgcc only when asked for
-ifdef USE_PRIVATE_LIBGCC
-TARGETS	+= $(LIBGCC)
-endif
-
-all:	$(TARGETS)
-
-$(LIB):	$(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-$(LIBGCC): $(obj).depend $(LGOBJS)
-	$(call cmd_link_o_target, $(LGOBJS))
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+lib-$(CONFIG_USE_PRIVATE_LIBGCC) += ashldi3.o ashrdi3.o lshrdi3.o

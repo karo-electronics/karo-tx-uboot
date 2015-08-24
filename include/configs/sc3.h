@@ -6,7 +6,7 @@
  * (C) Copyright 2003
  * Juergen Beisert, EuroDesign embedded technologies, jbeisert@eurodsn.de
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -43,7 +43,6 @@
  */
 
 #define CONFIG_SC3	1
-#define CONFIG_4xx	1
 #define CONFIG_405GP	1
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFA0000
@@ -223,8 +222,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x1000000	/* default load address */
 #define CONFIG_SYS_EXTBDINFO		1	/* To use extended board_into (bd_t) */
-
-#define	CONFIG_SYS_HZ			1000	/* decrementer freq: 1 ms ticks	*/
 
 /*-----------------------------------------------------------------------
  * IIC stuff

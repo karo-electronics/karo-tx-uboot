@@ -8,6 +8,9 @@
 #ifndef __CONFIG_KM83XX_H
 #define __CONFIG_KM83XX_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
+
 /* include common defines/options for all Keymile boards */
 #include "keymile-common.h"
 #include "km-powerpc.h"
@@ -84,7 +87,6 @@
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xE6000000 /* Initial RAM address */
 #define CONFIG_SYS_INIT_RAM_SIZE	0x1000 /* End of used area in RAM */
-#define CONFIG_SYS_GBL_DATA_SIZE	0x100 /* num bytes initial data */
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - \
 						GENERATED_GBL_DATA_SIZE)
 
@@ -223,7 +225,6 @@
 #define CONFIG_DTT_LM75		/* ON Semi's LM75 */
 #define CONFIG_DTT_SENSORS	{0, 1, 2, 3}	/* Sensor addresses */
 #define CONFIG_SYS_DTT_MAX_TEMP	70
-#define CONFIG_SYS_DTT_LOW_TEMP	-30
 #define CONFIG_SYS_DTT_HYSTERESIS	3
 #define CONFIG_SYS_DTT_BUS_NUM		1
 

@@ -7,7 +7,7 @@
  *
  * Configuration settings for the 3430 TI SDP3430 board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -16,13 +16,13 @@
 /* TODO: REMOVE THE FOLLOWING
  * Retained the following till size.h is removed in u-boot
  */
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 /*
  * High Level Configuration Options
  */
 #define CONFIG_OMAP		1	/* in a TI OMAP core */
-#define CONFIG_OMAP34XX		1	/* which is a 34XX */
 #define CONFIG_OMAP3_3430SDP	1	/* working with SDP Rev2 */
+#define CONFIG_OMAP_COMMON
 
 #define CONFIG_SDRC	/* The chip has SDRC controller */
 
@@ -113,10 +113,10 @@
 /*
  * I2C for power management setup
  */
-#define CONFIG_HARD_I2C			1
-#define CONFIG_SYS_I2C_SPEED		100000
-#define CONFIG_SYS_I2C_SLAVE		1
-#define CONFIG_DRIVER_OMAP34XX_I2C	1
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
+#define CONFIG_SYS_I2C_OMAP34XX
 
 /* OMITTED:  single 1 Gbit MT29F1G NAND flash */
 
@@ -272,7 +272,6 @@
  */
 #define CONFIG_SYS_TIMERBASE		(OMAP34XX_GPT2)
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_RAM_ADDR	0x4020f800

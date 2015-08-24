@@ -13,9 +13,10 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC83xx		1 /* MPC83xx family */
 #define CONFIG_MPC837x		1 /* MPC837x CPU specific */
 #define CONFIG_MPC837XERDB	1
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
 
 #define	CONFIG_SYS_TEXT_BASE	0xFE000000
 
@@ -538,7 +539,6 @@
  */
 #define CONFIG_SYS_LONGHELP	/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000 /* default load address */
-#define CONFIG_SYS_PROMPT	"=> "	/* Monitor Command Prompt */
 
 #if defined(CONFIG_CMD_KGDB)
 	#define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
@@ -551,7 +551,6 @@
 #define CONFIG_SYS_MAXARGS	16	/* max number of command args */
 				/* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_HZ		1000	/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -680,7 +679,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed of kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*
@@ -689,6 +687,11 @@
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_HAS_FSL_DR_USB
+#define CONFIG_CMD_USB
+#define CONFIG_USB_STORAGE
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_FSL
+#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 
 #define CONFIG_NETDEV		"eth1"
 

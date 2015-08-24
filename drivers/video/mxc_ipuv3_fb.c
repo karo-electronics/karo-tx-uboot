@@ -14,6 +14,7 @@
 /* #define DEBUG */
 #include <common.h>
 #include <asm/errno.h>
+#include <asm/global_data.h>
 #include <linux/string.h>
 #include <linux/list.h>
 #include <linux/fb.h>
@@ -410,10 +411,13 @@ static int mxcfb_map_video_memory(struct fb_info *fbi)
 		fbi->fix.smem_len = fbi->var.yres_virtual *
 				    fbi->fix.line_length;
 	}
+
+	fbi->fix.smem_len = roundup(fbi->fix.smem_len, ARCH_DMA_MINALIGN);
 	if (gd->fb_base)
 		fbi->screen_base = (void *)gd->fb_base;
 	else
-		fbi->screen_base = malloc(fbi->fix.smem_len);
+		fbi->screen_base = (char *)memalign(ARCH_DMA_MINALIGN,
+						fbi->fix.smem_len);
 	if (fbi->screen_base == NULL) {
 		puts("Unable to allocate framebuffer memory\n");
 		fbi->fix.smem_len = 0;
@@ -425,6 +429,8 @@ static int mxcfb_map_video_memory(struct fb_info *fbi)
 		(uint32_t) fbi->fix.smem_start, fbi->fix.smem_len);
 
 	fbi->screen_size = fbi->fix.smem_len;
+
+	gd->fb_base = fbi->fix.smem_start;
 
 	return 0;
 }
@@ -486,7 +492,7 @@ static struct fb_info *mxcfb_init_fbinfo(void)
 
 /*
  * Probe routine for the framebuffer driver. It is called during the
- * driver binding process.      The following functions are performed in
+ * driver binding process. The following functions are performed in
  * this routine: Framebuffer initialization, Memory allocation and
  * mapping, Framebuffer registration, IPU initialization.
  *

@@ -7,7 +7,7 @@
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -15,7 +15,7 @@
 #include <asm/processor.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <spd_sdram.h>
 #include <netdev.h>
@@ -65,8 +65,8 @@ local_bus_init(void)
 
 	get_sys_info(&sysinfo);
 
-	lbc_mhz = sysinfo.freqLocalBus / 1000000;
-	clkdiv = sysinfo.freqSystemBus / sysinfo.freqLocalBus;
+	lbc_mhz = sysinfo.freq_localbus / 1000000;
+	clkdiv = sysinfo.freq_systembus / sysinfo.freq_localbus;
 
 	debug("LCRR=0x%x, CD=%d, MHz=%d\n", lcrr, clkdiv, lbc_mhz);
 
@@ -301,12 +301,14 @@ int last_stage_init(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_FSL_PCI_INIT
 	FT_FSL_PCI_SETUP;
 #endif
+
+	return 0;
 }
 #endif

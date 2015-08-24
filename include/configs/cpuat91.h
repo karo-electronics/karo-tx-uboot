@@ -4,13 +4,13 @@
  *
  * Configuration settings for the CPUAT91 board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CONFIG_CPUAT91_H
 #define _CONFIG_CPUAT91_H
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #ifdef CONFIG_RAMBOOT
 #define CONFIG_SKIP_LOWLEVEL_INIT
@@ -25,9 +25,7 @@
 #define AT91C_MAIN_CLOCK		((AT91C_XTAL_CLOCK / 4) * 39)
 #define AT91C_MASTER_CLOCK		(AT91C_MAIN_CLOCK / 3)
 #define CONFIG_SYS_HZ_CLOCK		(AT91C_MASTER_CLOCK / 2)
-#define CONFIG_SYS_HZ			1000
 
-#define CONFIG_ARM920T
 #define CONFIG_AT91RM9200
 #define CONFIG_CPUAT91
 #define USE_920T_MMU
@@ -160,6 +158,7 @@
 
 #if defined(CONFIG_CMD_USB)
 #define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW
 #define CONFIG_USB_STORAGE
 #define CONFIG_DOS_PARTITION

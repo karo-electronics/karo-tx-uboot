@@ -1,0 +1,34 @@
+menu "MMC Host controller Support"
+
+config MMC
+	bool
+
+config GENERIC_MMC
+	bool
+	select MMC
+
+config SH_SDHI
+	bool "SuperH/Renesas ARM SoCs on-chip SDHI host controller support"
+	depends on RMOBILE
+	help
+	  Support for the on-chip SDHI host controller on SuperH/Renesas ARM SoCs platform
+
+config FSL_ESDHC
+	bool "Freescale ESDHC controller"
+	select GENERIC_MMC
+
+config FSL_USDHC
+	bool "Support USDHC"
+	depends on SOC_MX6
+	depends on FSL_ESDHC
+
+config MXS_MMC
+	bool "i.MXS MMC/SDHC controller"
+	depends on SOC_MXS || SOC_MX6
+	select GENERIC_MMC
+
+config SUPPORT_EMMC_BOOT
+	bool "Support boot from eMMC"
+	depends on MMC
+
+endmenu

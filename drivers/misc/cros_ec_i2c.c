@@ -14,6 +14,7 @@
  */
 
 #include <common.h>
+#include <dm.h>
 #include <i2c.h>
 #include <cros_ec.h>
 
@@ -23,11 +24,11 @@
 #define debug_trace(fmt, b...)
 #endif
 
-int cros_ec_i2c_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
-		     const uint8_t *dout, int dout_len,
-		     uint8_t **dinp, int din_len)
+static int cros_ec_i2c_command(struct udevice *udev, uint8_t cmd,
+			       int cmd_version, const uint8_t *dout,
+			       int dout_len, uint8_t **dinp, int din_len)
 {
-	int old_bus = 0;
+	struct cros_ec_dev *dev = udev->uclass_priv;
 	/* version8, cmd8, arglen8, out8[dout_len], csum8 */
 	int out_bytes = dout_len + 4;
 	/* response8, arglen8, in8[din_len], checksum8 */
@@ -35,9 +36,7 @@ int cros_ec_i2c_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	uint8_t *ptr;
 	/* Receive input data, so that args will be dword aligned */
 	uint8_t *in_ptr;
-	int ret;
-
-	old_bus = i2c_get_bus_num();
+	int len, csum, ret;
 
 	/*
 	 * Sanity-check I/O sizes given transaction overhead in internal
@@ -67,80 +66,62 @@ int cros_ec_i2c_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	 * will be dword aligned.
 	 */
 	in_ptr = dev->din + sizeof(int64_t);
-	if (!dev->cmd_version_is_supported) {
-		/* Send an old-style command */
-		*ptr++ = cmd;
-		out_bytes = dout_len + 1;
-		in_bytes = din_len + 2;
-		in_ptr--;	/* Expect just a status byte */
-	} else {
-		*ptr++ = EC_CMD_VERSION0 + cmd_version;
-		*ptr++ = cmd;
-		*ptr++ = dout_len;
-		in_ptr -= 2;	/* Expect status, length bytes */
-	}
-	memcpy(ptr, dout, dout_len);
-	ptr += dout_len;
 
-	if (dev->cmd_version_is_supported)
-		*ptr++ = (uint8_t)
-			 cros_ec_calc_checksum(dev->dout, dout_len + 3);
-
-	/* Set to the proper i2c bus */
-	if (i2c_set_bus_num(dev->bus_num)) {
-		debug("%s: Cannot change to I2C bus %d\n", __func__,
-			dev->bus_num);
+	if (dev->protocol_version != 2) {
+		/* Something we don't support */
+		debug("%s: Protocol version %d unsupported\n",
+		      __func__, dev->protocol_version);
 		return -1;
 	}
 
+	*ptr++ = EC_CMD_VERSION0 + cmd_version;
+	*ptr++ = cmd;
+	*ptr++ = dout_len;
+	in_ptr -= 2;	/* Expect status, length bytes */
+
+	memcpy(ptr, dout, dout_len);
+	ptr += dout_len;
+
+	*ptr++ = (uint8_t)
+		cros_ec_calc_checksum(dev->dout, dout_len + 3);
+
 	/* Send output data */
 	cros_ec_dump_data("out", -1, dev->dout, out_bytes);
-	ret = i2c_write(dev->addr, 0, 0, dev->dout, out_bytes);
+	ret = dm_i2c_write(udev, 0, dev->dout, out_bytes);
 	if (ret) {
-		debug("%s: Cannot complete I2C write to 0x%x\n",
-			__func__, dev->addr);
+		debug("%s: Cannot complete I2C write to %s\n", __func__,
+		      udev->name);
 		ret = -1;
 	}
 
 	if (!ret) {
-		ret = i2c_read(dev->addr, 0, 0, in_ptr, in_bytes);
+		ret = dm_i2c_read(udev, 0, in_ptr, in_bytes);
 		if (ret) {
-			debug("%s: Cannot complete I2C read from 0x%x\n",
-				__func__, dev->addr);
+			debug("%s: Cannot complete I2C read from %s\n",
+			      __func__, udev->name);
 			ret = -1;
 		}
 	}
-
-	/* Return to original bus number */
-	i2c_set_bus_num(old_bus);
-	if (ret)
-		return ret;
 
 	if (*in_ptr != EC_RES_SUCCESS) {
 		debug("%s: Received bad result code %d\n", __func__, *in_ptr);
 		return -(int)*in_ptr;
 	}
 
-	if (dev->cmd_version_is_supported) {
-		int len, csum;
-
-		len = in_ptr[1];
-		if (len + 3 > sizeof(dev->din)) {
-			debug("%s: Received length %#02x too large\n",
-			      __func__, len);
-			return -1;
-		}
-		csum = cros_ec_calc_checksum(in_ptr, 2 + len);
-		if (csum != in_ptr[2 + len]) {
-			debug("%s: Invalid checksum rx %#02x, calced %#02x\n",
-			      __func__, in_ptr[2 + din_len], csum);
-			return -1;
-		}
-		din_len = min(din_len, len);
-		cros_ec_dump_data("in", -1, in_ptr, din_len + 3);
-	} else {
-		cros_ec_dump_data("in (old)", -1, in_ptr, in_bytes);
+	len = in_ptr[1];
+	if (len + 3 > sizeof(dev->din)) {
+		debug("%s: Received length %#02x too large\n",
+		      __func__, len);
+		return -1;
 	}
+	csum = cros_ec_calc_checksum(in_ptr, 2 + len);
+	if (csum != in_ptr[2 + len]) {
+		debug("%s: Invalid checksum rx %#02x, calced %#02x\n",
+		      __func__, in_ptr[2 + din_len], csum);
+		return -1;
+	}
+	din_len = min(din_len, len);
+	cros_ec_dump_data("in", -1, in_ptr, din_len + 3);
 
 	/* Return pointer to dword-aligned input data, if any */
 	*dinp = dev->din + sizeof(int64_t);
@@ -148,37 +129,24 @@ int cros_ec_i2c_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	return din_len;
 }
 
-int cros_ec_i2c_decode_fdt(struct cros_ec_dev *dev, const void *blob)
+static int cros_ec_probe(struct udevice *dev)
 {
-	/* Decode interface-specific FDT params */
-	dev->max_frequency = fdtdec_get_int(blob, dev->node,
-					    "i2c-max-frequency", 100000);
-	dev->bus_num = i2c_get_bus_num_fdt(dev->parent_node);
-	if (dev->bus_num == -1) {
-		debug("%s: Failed to read bus number\n", __func__);
-		return -1;
-	}
-	dev->addr = fdtdec_get_int(blob, dev->node, "reg", -1);
-	if (dev->addr == -1) {
-		debug("%s: Failed to read device address\n", __func__);
-		return -1;
-	}
-
-	return 0;
+	return cros_ec_register(dev);
 }
 
-/**
- * Initialize I2C protocol.
- *
- * @param dev		CROS_EC device
- * @param blob		Device tree blob
- * @return 0 if ok, -1 on error
- */
-int cros_ec_i2c_init(struct cros_ec_dev *dev, const void *blob)
-{
-	i2c_init(dev->max_frequency, dev->addr);
+static struct dm_cros_ec_ops cros_ec_ops = {
+	.command = cros_ec_i2c_command,
+};
 
-	dev->cmd_version_is_supported = 0;
+static const struct udevice_id cros_ec_ids[] = {
+	{ .compatible = "google,cros-ec" },
+	{ }
+};
 
-	return 0;
-}
+U_BOOT_DRIVER(cros_ec_i2c) = {
+	.name		= "cros_ec",
+	.id		= UCLASS_CROS_EC,
+	.of_match	= cros_ec_ids,
+	.probe		= cros_ec_probe,
+	.ops		= &cros_ec_ops,
+};

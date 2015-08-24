@@ -22,7 +22,6 @@
 #define CONFIG_LWMON5		1		/* Board is lwmon5	*/
 #define CONFIG_440EPX		1		/* Specific PPC440EPx	*/
 #define CONFIG_440		1		/* ... PPC440 family	*/
-#define CONFIG_4xx		1		/* ... PPC4xx family	*/
 
 #ifdef CONFIG_LCD4_LWMON5
 #define	CONFIG_SYS_TEXT_BASE	0x01000000 /* SPL U-Boot TEXT_BASE */
@@ -463,7 +462,6 @@
 #define CONFIG_SUPPORT_VFAT
 
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define CONFIG_SYS_PROMPT	        "=> "	/* Monitor Command Prompt	*/
 
 #define CONFIG_SYS_HUSH_PARSER		1	/* Use the HUSH parser		*/
 
@@ -481,8 +479,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000  /* default load address	*/
 #define CONFIG_SYS_EXTBDINFO		1	/* To use extended board_into (bd_t) */
-
-#define CONFIG_SYS_HZ		        1000	/* decrementer freq: 1 ms ticks	*/
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
 #define CONFIG_LOOPW            1       /* enable loopw command         */
@@ -565,6 +561,7 @@
 #define CONFIG_SYS_GPIO_PHY1_RST	12
 #define CONFIG_SYS_GPIO_FLASH_WP	14
 #define CONFIG_SYS_GPIO_PHY0_RST	22
+#define CONFIG_SYS_GPIO_PERM_VOLT_FEED	49
 #define CONFIG_SYS_GPIO_DSPIC_READY	51
 #define CONFIG_SYS_GPIO_CAN_ENABLE	53
 #define CONFIG_SYS_GPIO_LSB_ENABLE	54
@@ -576,6 +573,13 @@
 #define CONFIG_SYS_GPIO_LIME_RST	60
 #define CONFIG_SYS_GPIO_SYSMON_STATUS	62
 #define CONFIG_SYS_GPIO_WATCHDOG	63
+
+/* On LCD4, GPIO49 has to be configured to 0 instead of 1 */
+#ifdef CONFIG_LCD4_LWMON5
+#define GPIO49_VAL	0
+#else
+#define GPIO49_VAL	1
+#endif
 
 /*
  * PPC440 GPIO Configuration
@@ -635,7 +639,7 @@
 {GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO46 UIC_IRQ(7)	DMA_REQ(0)	*/	\
 {GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO47 UIC_IRQ(8)	DMA_ACK(0)	*/	\
 {GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO48 UIC_IRQ(9)	DMA_EOT/TC(0)	*/	\
-{GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_1}, /* GPIO49  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO49_VAL}, /* GPIO49  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_IN,  GPIO_SEL , GPIO_OUT_0}, /* GPIO50  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO51  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO52  Unselect via TraceSelect Bit	*/	\
@@ -655,22 +659,18 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	    /* which serial port to use */
 #endif
 
 /*
  * SPL related defines
  */
 #ifdef CONFIG_LCD4_LWMON5
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_NOR_SUPPORT
 #define CONFIG_SPL_TEXT_BASE		0xffff0000 /* last 64 KiB for SPL */
 #define CONFIG_SYS_SPL_MAX_LEN		(64 << 10)
 #define CONFIG_UBOOT_PAD_TO		458752	/* decimal for 'dd' */
-#define	CONFIG_SPL_START_S_PATH	"arch/powerpc/cpu/ppc4xx"
-#define CONFIG_SPL_LDSCRIPT	"arch/powerpc/cpu/ppc4xx/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT	/* image.c */
 #define CONFIG_SPL_LIBGENERIC_SUPPORT	/* string.c */
 #define CONFIG_SPL_SERIAL_SUPPORT

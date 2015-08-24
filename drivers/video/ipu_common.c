@@ -332,7 +332,7 @@ static struct clk di_clk[] = {
 /*
  * This function resets IPU
  */
-void ipu_reset(void)
+static void ipu_reset(void)
 {
 	u32 *reg;
 	u32 value;
@@ -366,7 +366,7 @@ int ipu_probe(int di, ipu_di_clk_parent_t di_clk_parent, int di_clk_val)
 	int ret;
 	void *ipu_base;
 	unsigned long start;
-#if defined CONFIG_MX51
+#if defined CONFIG_SOC_MX51
 	u32 temp;
 	u32 *reg_hsc_mcd = (u32 *)MIPI_HSC_BASE_ADDR;
 	u32 *reg_hsc_mxt_conf = (u32 *)(MIPI_HSC_BASE_ADDR + 0x800);

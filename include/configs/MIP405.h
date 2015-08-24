@@ -2,7 +2,7 @@
  * (C) Copyright 2001, 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -17,10 +17,11 @@
  * (easy to change)
  ***********************************************************/
 #define CONFIG_405GP		1	/* This is a PPC405 CPU		*/
-#define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
 #define CONFIG_MIP405		1	/* ...on a MIP405 board		*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFF80000
+
+#define CONFIG_SYS_GENERIC_BOARD
 
 /***********************************************************
  * Note that it may also be a MIP405T board which is a subset of the
@@ -150,7 +151,6 @@
  * Miscellaneous configurable options
  **********************************************************/
 #define CONFIG_SYS_LONGHELP			/* undef to save memory		*/
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt	*/
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size	*/
 #else
@@ -179,8 +179,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR	0x400000	/* default load address */
 #define CONFIG_SYS_EXTBDINFO	1		/* To use extended board_into (bd_t) */
-
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1 ms ticks */
 
 /*-----------------------------------------------------------------------
  * PCI stuff
@@ -399,7 +397,6 @@
  ************************************************************/
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /************************************************************

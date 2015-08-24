@@ -7,9 +7,9 @@
  */
 
 #include <common.h>
+#include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/sromc.h>
-#include <asm/arch/gpio.h>
 #include <netdev.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -21,11 +21,8 @@ static void smc9115_pre_init(void)
 {
 	u32 smc_bw_conf, smc_bc_conf;
 
-	struct s5pc100_gpio *const gpio =
-		(struct s5pc100_gpio *)samsung_get_base_gpio();
-
 	/* gpio configuration GPK0CON */
-	s5p_gpio_cfg_pin(&gpio->k0, CONFIG_ENV_SROM_BANK, GPIO_FUNC(2));
+	gpio_cfg_pin(S5PC100_GPIO_K00 + CONFIG_ENV_SROM_BANK, S5P_GPIO_FUNC(2));
 
 	/* Ethernet needs bus width of 16 bits */
 	smc_bw_conf = SMC_DATA16_WIDTH(CONFIG_ENV_SROM_BANK);

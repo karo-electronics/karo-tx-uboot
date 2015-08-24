@@ -17,14 +17,12 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #include "tegra30-common.h"
 
-/* Enable fdt support for Beaver. Flash the image in u-boot-dtb.bin */
-#define CONFIG_DEFAULT_DEVICE_TREE	tegra30-beaver
-#define CONFIG_OF_CONTROL
-#define CONFIG_OF_SEPARATE
+/* VDD core PMIC */
+#define CONFIG_TEGRA_VDD_CORE_TPS62366A_SET1
 
 /* High-level configuration options */
 #define V_PROMPT		"Tegra30 (Beaver) # "
@@ -42,10 +40,7 @@
 
 /* I2C */
 #define CONFIG_SYS_I2C_TEGRA
-#define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_CMD_I2C
-#define CONFIG_SYS_I2C
 
 /* SD/MMC */
 #define CONFIG_MMC
@@ -73,6 +68,7 @@
 /* USB Host support */
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_TEGRA
+#define CONFIG_USB_MAX_CONTROLLER_COUNT	2
 #define CONFIG_USB_STORAGE
 #define CONFIG_CMD_USB
 
@@ -80,10 +76,21 @@
 #define CONFIG_USB_HOST_ETHER
 #define CONFIG_USB_ETHER_ASIX
 
+/* PCI host support */
+#define CONFIG_PCI
+#define CONFIG_PCI_TEGRA
+#define CONFIG_PCI_PNP
+#define CONFIG_CMD_PCI
+#define CONFIG_CMD_PCI_ENUM
+
+/* PCI networking support */
+#define CONFIG_RTL8169
+
 /* General networking support */
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 
+#include "tegra-common-usb-gadget.h"
 #include "tegra-common-post.h"
 
 #endif /* __CONFIG_H */

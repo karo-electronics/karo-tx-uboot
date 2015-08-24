@@ -4,7 +4,7 @@
  * Author: InKi Dae <inki.dae@samsung.com>
  * Author: Donghwa Lee <dh09.lee@samsung.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <linux/fb.h>
@@ -13,7 +13,7 @@
 #define _EXYNOS_MIPI_DSI_COMMON_H
 
 int exynos_mipi_dsi_wr_data(struct mipi_dsim_device *dsim, unsigned int data_id,
-	unsigned int data0, unsigned int data1);
+	const unsigned char *data0, unsigned int data1);
 int exynos_mipi_dsi_pll_on(struct mipi_dsim_device *dsim, unsigned int enable);
 unsigned long exynos_mipi_dsi_change_pll(struct mipi_dsim_device *dsim,
 	unsigned int pre_divider, unsigned int main_divider,

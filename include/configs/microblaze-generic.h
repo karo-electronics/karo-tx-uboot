@@ -12,13 +12,7 @@
 #include "../board/xilinx/microblaze-generic/xparameters.h"
 
 /* MicroBlaze CPU */
-#define	CONFIG_MICROBLAZE	1
 #define	MICROBLAZE_V5		1
-
-/* Open Firmware DTS */
-#define CONFIG_OF_CONTROL	1
-#define CONFIG_OF_EMBED		1
-#define CONFIG_DEFAULT_DEVICE_TREE microblaze-generic
 
 /* linear and spi flash memory */
 #ifdef XILINX_FLASH_START
@@ -71,7 +65,7 @@
 
 /* ethernet */
 #undef CONFIG_SYS_ENET
-#if defined(XILINX_EMACLITE_BASEADDR)
+#if defined(XILINX_EMACLITE_BASEADDR) || defined(CONFIG_OF_CONTROL)
 # define CONFIG_XILINX_EMACLITE	1
 # define CONFIG_SYS_ENET
 #endif
@@ -200,7 +194,8 @@
 # define CONFIG_SYS_MAX_FLASH_SECT	512
 /* hardware flash protection */
 # define CONFIG_SYS_FLASH_PROTECTION
-
+/* use buffered writes (20x faster) */
+# define	CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 # ifdef	RAMENV
 #  define CONFIG_ENV_IS_NOWHERE	1
 #  define CONFIG_ENV_SIZE	0x1000
@@ -399,7 +394,6 @@
 
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
-#define CONFIG_SYS_HZ	1000
 
 #define	CONFIG_PREBOOT	"echo U-BOOT for ${hostname};setenv preboot;echo"
 
@@ -446,5 +440,64 @@
 # undef CONFIG_CMD_MII
 # undef CONFIG_PHYLIB
 #endif
+
+/* SPL part */
+#define CONFIG_CMD_SPL
+#define CONFIG_SPL_FRAMEWORK
+#define CONFIG_SPL_LIBCOMMON_SUPPORT
+#define CONFIG_SPL_LIBGENERIC_SUPPORT
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_BOARD_INIT
+
+#define CONFIG_SPL_LDSCRIPT	"arch/microblaze/cpu/u-boot-spl.lds"
+
+#define CONFIG_SPL_RAM_DEVICE
+#define CONFIG_SPL_NOR_SUPPORT
+
+/* for booting directly linux */
+#define CONFIG_SPL_OS_BOOT
+
+#define CONFIG_SYS_OS_BASE		(CONFIG_SYS_FLASH_BASE + \
+					 0x60000)
+#define CONFIG_SYS_FDT_BASE		(CONFIG_SYS_FLASH_BASE + \
+					 0x40000)
+#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_TEXT_BASE + \
+					 0x1000000)
+
+/* SP location before relocation, must use scratch RAM */
+/* BRAM start */
+#define CONFIG_SYS_INIT_RAM_ADDR	0x0
+/* BRAM size - will be generated */
+#define CONFIG_SYS_INIT_RAM_SIZE	0x10000
+/* Stack pointer prior relocation, must situated at on-chip RAM */
+#define CONFIG_SYS_SPL_MALLOC_END	(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - \
+					 GENERATED_GBL_DATA_SIZE)
+
+#define CONFIG_SYS_SPL_MALLOC_SIZE	0x100
+
+/*
+ * The main reason to do it in this way is that MALLOC_START
+ * can't be defined - common/spl/spl.c
+ */
+#if (CONFIG_SYS_SPL_MALLOC_SIZE != 0)
+# define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SYS_SPL_MALLOC_END - \
+					 CONFIG_SYS_SPL_MALLOC_SIZE)
+# define CONFIG_SPL_STACK_ADDR		CONFIG_SYS_SPL_MALLOC_START
+#else
+# define CONFIG_SPL_STACK_ADDR		CONFIG_SYS_SPL_MALLOC_END
+#endif
+
+/* Just for sure that there is a space for stack */
+#define CONFIG_SPL_STACK_SIZE		0x100
+
+#define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_FLASH_BASE
+#define CONFIG_SYS_UBOOT_START		CONFIG_SYS_TEXT_BASE
+
+#define CONFIG_SPL_MAX_FOOTPRINT	(CONFIG_SYS_INIT_RAM_SIZE - \
+					 CONFIG_SYS_INIT_RAM_ADDR - \
+					 GENERATED_GBL_DATA_SIZE - \
+					 CONFIG_SYS_SPL_MALLOC_SIZE - \
+					 CONFIG_SPL_STACK_SIZE)
 
 #endif	/* __CONFIG_H */

@@ -6,7 +6,7 @@
  * by Stefan Roese, DENX Software Engineering, sr@denx.de.
  * and Grant Erickson <gerickson@nuovations.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************
@@ -20,7 +20,6 @@
  * High Level Configuration Options
  *----------------------------------------------------------------------*/
 #define CONFIG_IO64		1		/* Board is Io64 */
-#define CONFIG_4xx		1		/* ... PPC4xx family */
 #define CONFIG_405EX		1		/* Specifc 405EX support*/
 #define CONFIG_SYS_CLK_FREQ	33333333	/* ext frequency to pll */
 
@@ -44,6 +43,7 @@
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_MISC_INIT_R
 #define CONFIG_LAST_STAGE_INIT
+#define CONFIG_SYS_GENERIC_BOARD
 
 #undef CONFIG_ZERO_BOOTDELAY_CHECK	/* ignore keypress on bootdelay==0 */
 #define CONFIG_AUTOBOOT_KEYED		/* use key strings to stop autoboot */

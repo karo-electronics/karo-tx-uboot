@@ -8,7 +8,7 @@
  * (C) Copyright 2009
  * Jon Smirl <jonsmirl@gmail.com>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -20,8 +20,7 @@
 High Level Configuration Options
 (easy to change)
 -----------------------------------------------------------------------------*/
-#define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
-#define CONFIG_MPC5200		1	/* (more precisely an MPC5200 CPU) */
+#define CONFIG_MPC5200		1	/* This is an MPC5200 CPU */
 #define CONFIG_MPC5200_DDR	1	/* (with DDR-SDRAM) */
 #define CONFIG_PHYCORE_MPC5200B_TINY 1	/* phyCORE-MPC5200B -> */
 					/* FEC configuration and IDE */
@@ -364,7 +363,6 @@ RTC configuration
 #define CONFIG_SYS_MEMTEST_END 0x00f00000 /* 1 ... 15 MB in DRAM */
 
 #define CONFIG_SYS_LOAD_ADDR 0x400000 /* default load address */
-#define CONFIG_SYS_HZ 1000 /* decrementer freq: 1 ms ticks */
 
 #define CONFIG_DISPLAY_BOARDINFO 1
 

@@ -1,0 +1,10 @@
+config PARTITIONS
+       bool
+
+config DOS_PARTITION
+       bool "Support DOS partitions"
+       select PARTITIONS
+
+config MAC_PARTITION
+       bool "Support MAC partitions"
+       select PARTITIONS

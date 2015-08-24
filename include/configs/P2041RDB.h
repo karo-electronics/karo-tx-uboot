@@ -13,13 +13,15 @@
 
 #define CONFIG_P2041RDB
 #define CONFIG_PHYS_64BIT
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_PPC_P2041
 
 #ifdef CONFIG_RAMBOOT_PBL
 #define CONFIG_RAMBOOT_TEXT_BASE	CONFIG_SYS_TEXT_BASE
 #define CONFIG_RESET_VECTOR_ADDRESS	0xfffffffc
-#define CONFIG_PBLPBI_CONFIG $(SRCTREE)/board/freescale/corenet_ds/pbi.cfg
-#define CONFIG_PBLRCW_CONFIG $(SRCTREE)/board/freescale/corenet_ds/rcw_p2041rdb.cfg
+#define CONFIG_SYS_FSL_PBL_PBI board/freescale/corenet_ds/pbi.cfg
+#define CONFIG_SYS_FSL_PBL_RCW board/freescale/corenet_ds/rcw_p2041rdb.cfg
 #endif
 
 #ifdef CONFIG_SRIO_PCIE_BOOT_SLAVE
@@ -36,12 +38,10 @@
 #define CONFIG_E500			/* BOOKE e500 family */
 #define CONFIG_E500MC			/* BOOKE e500mc family */
 #define CONFIG_SYS_BOOK3E_HV		/* Category E.HV supported */
-#define CONFIG_MPC85xx			/* MPC85xx/PQ3 platform */
-#define CONFIG_FSL_CORENET		/* Freescale CoreNet platform */
 #define CONFIG_MP			/* support multiple processors */
 
 #ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE	0xeff80000
+#define CONFIG_SYS_TEXT_BASE	0xeff40000
 #endif
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
@@ -51,6 +51,7 @@
 #define CONFIG_SYS_FSL_CPC		/* Corenet Platform Cache */
 #define CONFIG_SYS_NUM_CPC		CONFIG_NUM_DDR_CONTROLLERS
 #define CONFIG_FSL_ELBC			/* Has Enhanced localbus controller */
+#define CONFIG_FSL_CAAM			/* Enable SEC/CAAM */
 #define CONFIG_PCI			/* Enable PCI/PCIE */
 #define CONFIG_PCIE1			/* PCIE controler 1 */
 #define CONFIG_PCIE2			/* PCIE controler 2 */
@@ -94,12 +95,12 @@
 	#define CONFIG_FSL_FIXED_MMC_LOCATION
 	#define CONFIG_SYS_MMC_ENV_DEV          0
 	#define CONFIG_ENV_SIZE			0x2000
-	#define CONFIG_ENV_OFFSET		(512 * 1097)
+	#define CONFIG_ENV_OFFSET		(512 * 1658)
 #elif defined(CONFIG_NAND)
 #define CONFIG_SYS_EXTRA_ENV_RELOC
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_SIZE			CONFIG_SYS_NAND_BLOCK_SIZE
-#define CONFIG_ENV_OFFSET		(5 * CONFIG_SYS_NAND_BLOCK_SIZE)
+#define CONFIG_ENV_OFFSET		(7 * CONFIG_SYS_NAND_BLOCK_SIZE)
 #elif defined(CONFIG_SRIO_PCIE_BOOT_SLAVE)
 #define CONFIG_ENV_IS_IN_REMOTE
 #define CONFIG_ENV_ADDR		0xffe20000
@@ -176,7 +177,7 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_CHIP_SELECTS_PER_CTRL	(4 * CONFIG_DIMM_SLOTS_PER_CTLR)
 
 #define CONFIG_DDR_SPD
-#define CONFIG_FSL_DDR3
+#define CONFIG_SYS_FSL_DDR3
 
 #define CONFIG_SYS_SPD_BUS_NUM	0
 #define SPD_EEPROM_ADDRESS	0x52
@@ -317,7 +318,7 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 					GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
+#define CONFIG_SYS_MONITOR_LEN		(768 * 1024)
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)
 
 /* Serial Port - controlled on board with jumper J8
@@ -355,10 +356,10 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_I2C_FSL
 #define CONFIG_SYS_FSL_I2C_SPEED	400000
 #define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
-#define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
+#define CONFIG_SYS_FSL_I2C_OFFSET	0x118000
 #define CONFIG_SYS_FSL_I2C2_SPEED	400000
 #define CONFIG_SYS_FSL_I2C2_SLAVE	0x7F
-#define CONFIG_SYS_FSL_I2C2_OFFSET	0x3100
+#define CONFIG_SYS_FSL_I2C2_OFFSET	0x118100
 
 /*
  * RapidIO
@@ -383,15 +384,15 @@ unsigned long get_board_sys_clk(unsigned long dummy);
  * for slave u-boot IMAGE instored in master memory space,
  * PHYS must be aligned based on the SIZE
  */
-#define CONFIG_SRIO_PCIE_BOOT_IMAGE_MEM_PHYS 0xfef080000ull
-#define CONFIG_SRIO_PCIE_BOOT_IMAGE_MEM_BUS1 0xfff80000ull
-#define CONFIG_SRIO_PCIE_BOOT_IMAGE_SIZE 0x80000	/* 512K */
-#define CONFIG_SRIO_PCIE_BOOT_IMAGE_MEM_BUS2 0x3fff80000ull
+#define CONFIG_SRIO_PCIE_BOOT_IMAGE_MEM_PHYS 0xfef200000ull
+#define CONFIG_SRIO_PCIE_BOOT_IMAGE_MEM_BUS1 0xfff00000ull
+#define CONFIG_SRIO_PCIE_BOOT_IMAGE_SIZE 0x100000	/* 1M */
+#define CONFIG_SRIO_PCIE_BOOT_IMAGE_MEM_BUS2 0x3fff00000ull
 /*
  * for slave UCODE and ENV instored in master memory space,
  * PHYS must be aligned based on the SIZE
  */
-#define CONFIG_SRIO_PCIE_BOOT_UCODE_ENV_MEM_PHYS 0xfef040000ull
+#define CONFIG_SRIO_PCIE_BOOT_UCODE_ENV_MEM_PHYS 0xfef100000ull
 #define CONFIG_SRIO_PCIE_BOOT_UCODE_ENV_MEM_BUS 0x3ffe00000ull
 #define CONFIG_SRIO_PCIE_BOOT_UCODE_ENV_SIZE 0x40000	/* 256K */
 
@@ -490,6 +491,14 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_BMAN_MEM_PHYS	CONFIG_SYS_BMAN_MEM_BASE
 #endif
 #define CONFIG_SYS_BMAN_MEM_SIZE	0x00200000
+#define CONFIG_SYS_BMAN_SP_CENA_SIZE    0x4000
+#define CONFIG_SYS_BMAN_SP_CINH_SIZE    0x1000
+#define CONFIG_SYS_BMAN_CENA_BASE       CONFIG_SYS_BMAN_MEM_BASE
+#define CONFIG_SYS_BMAN_CENA_SIZE       (CONFIG_SYS_BMAN_MEM_SIZE >> 1)
+#define CONFIG_SYS_BMAN_CINH_BASE       (CONFIG_SYS_BMAN_MEM_BASE + \
+					CONFIG_SYS_BMAN_CENA_SIZE)
+#define CONFIG_SYS_BMAN_CINH_SIZE       (CONFIG_SYS_BMAN_MEM_SIZE >> 1)
+#define CONFIG_SYS_BMAN_SWP_ISDR_REG	0xE08
 #define CONFIG_SYS_QMAN_NUM_PORTALS	10
 #define CONFIG_SYS_QMAN_MEM_BASE	0xf4200000
 #ifdef CONFIG_PHYS_64BIT
@@ -498,6 +507,14 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_QMAN_MEM_PHYS	CONFIG_SYS_QMAN_MEM_BASE
 #endif
 #define CONFIG_SYS_QMAN_MEM_SIZE	0x00200000
+#define CONFIG_SYS_QMAN_SP_CENA_SIZE    0x4000
+#define CONFIG_SYS_QMAN_SP_CINH_SIZE    0x1000
+#define CONFIG_SYS_QMAN_CENA_BASE       CONFIG_SYS_QMAN_MEM_BASE
+#define CONFIG_SYS_QMAN_CENA_SIZE       (CONFIG_SYS_QMAN_MEM_SIZE >> 1)
+#define CONFIG_SYS_QMAN_CINH_BASE       (CONFIG_SYS_QMAN_MEM_BASE + \
+					CONFIG_SYS_QMAN_CENA_SIZE)
+#define CONFIG_SYS_QMAN_CINH_SIZE       (CONFIG_SYS_QMAN_MEM_SIZE >> 1)
+#define CONFIG_SYS_QMAN_SWP_ISDR_REG	0xE08
 
 #define CONFIG_SYS_DPAA_FMAN
 #define CONFIG_SYS_DPAA_PME
@@ -508,18 +525,18 @@ unsigned long get_board_sys_clk(unsigned long dummy);
  * env, so we got 0x110000.
  */
 #define CONFIG_SYS_QE_FW_IN_SPIFLASH
-#define CONFIG_SYS_QE_FMAN_FW_ADDR	0x110000
+#define CONFIG_SYS_FMAN_FW_ADDR	0x110000
 #elif defined(CONFIG_SDCARD)
 /*
  * PBL SD boot image should stored at 0x1000(8 blocks), the size of the image is
- * about 545KB (1089 blocks), Env is stored after the image, and the env size is
- * 0x2000 (16 blocks), 8 + 1089 + 16 = 1113, enlarge it to 1130.
+ * about 825KB (1650 blocks), Env is stored after the image, and the env size is
+ * 0x2000 (16 blocks), 8 + 1650 + 16 = 1674, enlarge it to 1680.
  */
 #define CONFIG_SYS_QE_FMAN_FW_IN_MMC
-#define CONFIG_SYS_QE_FMAN_FW_ADDR	(512 * 1130)
+#define CONFIG_SYS_FMAN_FW_ADDR	(512 * 1680)
 #elif defined(CONFIG_NAND)
 #define CONFIG_SYS_QE_FMAN_FW_IN_NAND
-#define CONFIG_SYS_QE_FMAN_FW_ADDR	(6 * CONFIG_SYS_NAND_BLOCK_SIZE)
+#define CONFIG_SYS_FMAN_FW_ADDR	(8 * CONFIG_SYS_NAND_BLOCK_SIZE)
 #elif defined(CONFIG_SRIO_PCIE_BOOT_SLAVE)
 /*
  * Slave has no ucode locally, it can fetch this from remote. When implementing
@@ -529,10 +546,10 @@ unsigned long get_board_sys_clk(unsigned long dummy);
  * master LAW->the ucode address in master's memory space.
  */
 #define CONFIG_SYS_QE_FMAN_FW_IN_REMOTE
-#define CONFIG_SYS_QE_FMAN_FW_ADDR	0xFFE00000
+#define CONFIG_SYS_FMAN_FW_ADDR	0xFFE00000
 #else
 #define CONFIG_SYS_QE_FMAN_FW_IN_NOR
-#define CONFIG_SYS_QE_FMAN_FW_ADDR	0xEFF40000
+#define CONFIG_SYS_FMAN_FW_ADDR	0xEFF00000
 #endif
 #define CONFIG_SYS_QE_FMAN_FW_LENGTH	0x10000
 #define CONFIG_SYS_FDT_PAD		(0x3000 + CONFIG_SYS_QE_FMAN_FW_LENGTH)
@@ -649,6 +666,12 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_DOS_PARTITION
 #endif
 
+/* Hash command with SHA acceleration supported in hardware */
+#ifdef CONFIG_FSL_CAAM
+#define CONFIG_CMD_HASH
+#define CONFIG_SHA_HW_ACCEL
+#endif
+
 /*
  * Miscellaneous configurable options
  */
@@ -656,7 +679,6 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #else
@@ -668,7 +690,6 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_HZ		1000		/* decrementer freq 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -680,7 +701,6 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*
@@ -718,8 +738,7 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 	"ramdiskfile=p2041rdb/ramdisk.uboot\0"			\
 	"fdtaddr=c00000\0"					\
 	"fdtfile=p2041rdb/p2041rdb.dtb\0"			\
-	"bdev=sda3\0"						\
-	"c=ffe\0"
+	"bdev=sda3\0"
 
 #define CONFIG_HDBOOT					\
 	"setenv bootargs root=/dev/$bdev rw "		\
@@ -747,8 +766,10 @@ unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_BOOTCOMMAND		CONFIG_HDBOOT
 
-#ifdef CONFIG_SECURE_BOOT
 #include <asm/fsl_secure_boot.h>
+
+#ifdef CONFIG_SECURE_BOOT
+#define CONFIG_CMD_BLOB
 #endif
 
 #endif	/* __CONFIG_H */

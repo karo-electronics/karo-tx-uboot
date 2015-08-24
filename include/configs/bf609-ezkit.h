@@ -72,16 +72,17 @@
 #define CONFIG_NET_MULTI
 #define CONFIG_HOSTNAME		"bf609-ezkit"
 #define CONFIG_DESIGNWARE_ETH
+#define CONFIG_PHY_ADDR		1
 #define CONFIG_DW_PORTS		1
-#define CONFIG_DW_AUTONEG
 #define CONFIG_DW_ALTDESCRIPTOR
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_MII
 #define CONFIG_MII
+#define CONFIG_PHYLIB
 
 /* i2c Settings */
-#define CONFIG_BFIN_TWI_I2C
-#define CONFIG_HARD_I2C
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_ADI
 
 /*
  * Flash Settings

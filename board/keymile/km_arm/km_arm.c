@@ -20,7 +20,7 @@
 #include <spi.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 
 #include "../common/common.h"
@@ -46,7 +46,11 @@ static const u32 kwmpp_config[] = {
 	MPP4_NF_IO6,
 	MPP5_NF_IO7,
 	MPP6_SYSRST_OUTn,
+#if defined(KM_PCIE_RESET_MPP7)
+	MPP7_GPO,
+#else
 	MPP7_PEX_RST_OUTn,
+#endif
 #if defined(CONFIG_SYS_I2C_SOFT)
 	MPP8_GPIO,		/* SDA */
 	MPP9_GPIO,		/* SCL */
@@ -102,7 +106,7 @@ static const u32 kwmpp_config[] = {
 /*
  * Wait for startup OK from mgcoge3ne
  */
-int startup_allowed(void)
+static int startup_allowed(void)
 {
 	unsigned char buf;
 
@@ -164,7 +168,6 @@ static int initialize_unit_leds(void)
 	return 0;
 }
 
-#if defined(CONFIG_BOOTCOUNT_LIMIT)
 static void set_bootcount_addr(void)
 {
 	uchar buf[32];
@@ -173,7 +176,6 @@ static void set_bootcount_addr(void)
 	sprintf((char *)buf, "0x%x", bootcountaddr);
 	setenv("bootcountaddr", (char *)buf);
 }
-#endif
 
 int misc_init_r(void)
 {
@@ -210,9 +212,7 @@ int misc_init_r(void)
 
 	initialize_unit_leds();
 	set_km_env();
-#if defined(CONFIG_BOOTCOUNT_LIMIT)
 	set_bootcount_addr();
-#endif
 	return 0;
 }
 
@@ -222,11 +222,11 @@ int board_early_init_f(void)
 	u32 tmp;
 
 	/* set the 2 bitbang i2c pins as output gpios */
-	tmp = readl(KW_GPIO0_BASE + 4);
-	writel(tmp & (~KM_KIRKWOOD_SOFT_I2C_GPIOS) , KW_GPIO0_BASE + 4);
+	tmp = readl(MVEBU_GPIO0_BASE + 4);
+	writel(tmp & (~KM_KIRKWOOD_SOFT_I2C_GPIOS) , MVEBU_GPIO0_BASE + 4);
 #endif
 	/* adjust SDRAM size for bank 0 */
-	kw_sdram_size_adjust(0);
+	mvebu_sdram_size_adjust(0);
 	kirkwood_mpp_conf(kwmpp_config, NULL);
 	return 0;
 }
@@ -234,7 +234,7 @@ int board_early_init_f(void)
 int board_init(void)
 {
 	/* address of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	/*
 	 * The KM_FLASH_GPIO_PIN switches between using a
@@ -322,15 +322,15 @@ void reset_phy(void)
 		return;
 
 	/* RGMII clk transition on data stable */
-	if (!miiphy_read(name, CONFIG_PHY_BASE_ADR, PHY_SPEC_CTRL_REG, &reg))
+	if (miiphy_read(name, CONFIG_PHY_BASE_ADR, PHY_SPEC_CTRL_REG, &reg))
 		printf("Error reading PHY spec ctrl reg\n");
-	if (!miiphy_write(name, CONFIG_PHY_BASE_ADR, PHY_SPEC_CTRL_REG,
-		reg | PHY_RGMII_CLK_STABLE | PHY_CLSA))
+	if (miiphy_write(name, CONFIG_PHY_BASE_ADR, PHY_SPEC_CTRL_REG,
+			 reg | PHY_RGMII_CLK_STABLE | PHY_CLSA))
 		printf("Error writing PHY spec ctrl reg\n");
 
 	/* leds setup */
-	if (!miiphy_write(name, CONFIG_PHY_BASE_ADR, PHY_LED_SEL_REG,
-		PHY_LED0_LINK | PHY_LED1_ACT | PHY_LED2_INT))
+	if (miiphy_write(name, CONFIG_PHY_BASE_ADR, PHY_LED_SEL_REG,
+			 PHY_LED0_LINK | PHY_LED1_ACT | PHY_LED2_INT))
 		printf("Error writing PHY LED reg\n");
 
 	/* reset the phy */
@@ -343,7 +343,7 @@ void reset_phy(void)
 #if defined(CONFIG_KM_NUSA)
 struct mv88e_sw_reg extsw_conf[] = {
 	/*
-	 * port 0, PIGGY4, autoneg 
+	 * port 0, PIGGY4, autoneg
 	 * first the fix for the 1000Mbits Autoneg, this is from
 	 * a Marvell errata, the regs are undocumented
 	 */

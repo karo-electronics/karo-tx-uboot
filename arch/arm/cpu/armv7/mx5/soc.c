@@ -16,7 +16,7 @@
 #include <asm/io.h>
 #include <asm/imx-common/boot_mode.h>
 
-#if !(defined(CONFIG_MX51) || defined(CONFIG_MX53))
+#if !(defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53))
 #error "CPU_TYPE not defined"
 #endif
 
@@ -39,14 +39,14 @@ void hw_watchdog_reset(void)
 
 u32 get_cpu_rev(void)
 {
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 	int system_rev = 0x51000;
 #else
 	int system_rev = 0x53000;
 #endif
 	int reg = __raw_readl(ROM_SI_REV);
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 	switch (reg) {
 	case 0x02:
 		system_rev |= CHIP_REV_1_1;
@@ -106,49 +106,7 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 
 #endif
 
-void set_chipselect_size(int const cs_size)
-{
-	unsigned int reg;
-	struct iomuxc *iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
-	reg = readl(&iomuxc_regs->gpr1);
-
-	switch (cs_size) {
-	case CS0_128:
-		reg &= ~0x7;	/* CS0=128MB, CS1=0, CS2=0, CS3=0 */
-		reg |= 0x5;
-		break;
-	case CS0_64M_CS1_64M:
-		reg &= ~0x3F;	/* CS0=64MB, CS1=64MB, CS2=0, CS3=0 */
-		reg |= 0x1B;
-		break;
-	case CS0_64M_CS1_32M_CS2_32M:
-		reg &= ~0x1FF;	/* CS0=64MB, CS1=32MB, CS2=32MB, CS3=0 */
-		reg |= 0x4B;
-		break;
-	case CS0_32M_CS1_32M_CS2_32M_CS3_32M:
-		reg &= ~0xFFF;  /* CS0=32MB, CS1=32MB, CS2=32MB, CS3=32MB */
-		reg |= 0x249;
-		break;
-	default:
-		printf("Unknown chip select size: %d\n", cs_size);
-		break;
-	}
-
-	writel(reg, &iomuxc_regs->gpr1);
-}
-
-void cpu_cache_initialization(void)
-{
-	printf("Enabling L2 cache\n");
-	asm volatile(
-		"mrc 15, 0, r0, c1, c0, 1\n"
-		"orr r0, r0, #0x2\n"
-		"mcr 15, 0, r0, c1, c0, 1\n"
-		: : : "r0", "memory"
-		);
-}
-
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 void boot_mode_apply(unsigned cfg_val)
 {
 	writel(cfg_val, &((struct srtc_regs *)SRTC_BASE_ADDR)->lpgr);

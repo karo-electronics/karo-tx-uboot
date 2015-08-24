@@ -12,8 +12,8 @@
 #include <i2c.h>
 #include <spi.h>
 #include <miiphy.h>
-#ifdef CONFIG_FSL_DDR2
-#include <asm/fsl_ddr_sdram.h>
+#ifdef CONFIG_SYS_FSL_DDR2
+#include <fsl_ddr_sdram.h>
 #else
 #include <spd_sdram.h>
 #endif
@@ -57,7 +57,7 @@ phys_size_t initdram (int board_type)
 	/* DDR SDRAM - Main SODIMM */
 	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
 #if defined(CONFIG_SPD_EEPROM)
-#ifndef CONFIG_FSL_DDR2
+#ifndef CONFIG_SYS_FSL_DDR2
 	msize = spd_sdram() * 1024 * 1024;
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 	ddr_enable_ecc(msize);
@@ -273,11 +273,13 @@ void spi_cs_deactivate(struct spi_slave *slave)
 #endif /* CONFIG_HARD_SPI */
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif

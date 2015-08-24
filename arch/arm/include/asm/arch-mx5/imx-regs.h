@@ -9,7 +9,7 @@
 
 #define ARCH_MXC
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define IRAM_BASE_ADDR		0x1FFE0000	/* internal ram */
 #define IPU_SOC_BASE_ADDR	0x40000000
 #define SPBA0_BASE_ADDR		0x70000000
@@ -19,7 +19,7 @@
 #define CSD1_BASE_ADDR		0xA0000000
 #define NFC_BASE_ADDR_AXI	0xCFFF0000
 #define CS1_BASE_ADDR		0xB8000000
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 #define IPU_SOC_BASE_ADDR	0x00000000
 #define SPBA0_BASE_ADDR		0x50000000
 #define AIPS1_BASE_ADDR		0x53F00000
@@ -76,7 +76,7 @@
 #define CCM_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000D4000)
 #define GPC_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000D8000)
 
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 #define GPIO5_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000DC000)
 #define GPIO6_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000E0000)
 #define GPIO7_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000E4000)
@@ -89,7 +89,7 @@
 #define PLL1_BASE_ADDR		(AIPS2_BASE_ADDR + 0x00080000)
 #define PLL2_BASE_ADDR		(AIPS2_BASE_ADDR + 0x00084000)
 #define PLL3_BASE_ADDR		(AIPS2_BASE_ADDR + 0x00088000)
-#ifdef	CONFIG_MX53
+#ifdef	CONFIG_SOC_MX53
 #define PLL4_BASE_ADDR		(AIPS2_BASE_ADDR + 0x0008c000)
 #endif
 #define AHBMAX_BASE_ADDR	(AIPS2_BASE_ADDR + 0x00094000)
@@ -122,7 +122,7 @@
 #define VPU_BASE_ADDR		(AIPS2_BASE_ADDR + 0x000F4000)
 #define SAHARA_BASE_ADDR	(AIPS2_BASE_ADDR + 0x000F8000)
 
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 #define UART5_BASE_ADDR		(AIPS2_BASE_ADDR + 0x00090000)
 #endif
 
@@ -201,21 +201,6 @@
 #define WBED		1
 
 /*
- * WEIM WCR
- */
-#define BCM		1
-#define GBCD(x)		(((x) & 0x3) << 1)
-#define INTEN		(1 << 4)
-#define INTPOL		(1 << 5)
-#define WDOG_EN		(1 << 8)
-#define WDOG_LIMIT(x)	(((x) & 0x3) << 9)
-
-#define CS0_128					0
-#define CS0_64M_CS1_64M				1
-#define CS0_64M_CS1_32M_CS2_32M			2
-#define CS0_32M_CS1_32M_CS2_32M_CS3_32M		3
-
-/*
  * CSPI register definitions
  */
 #define MXC_ECSPI
@@ -238,9 +223,10 @@
 #define MXC_CSPICTRL_CHAN	18
 
 /* Bit position inside CON register to be associated with SS */
-#define MXC_CSPICON_POL		4
-#define MXC_CSPICON_PHA		0
-#define MXC_CSPICON_SSPOL	12
+#define MXC_CSPICON_PHA		0  /* SCLK phase control */
+#define MXC_CSPICON_POL		4  /* SCLK polarity */
+#define MXC_CSPICON_SSPOL	12 /* SS polarity */
+#define MXC_CSPICON_CTL		20 /* inactive state of SCLK */
 #define MXC_SPI_BASE_ADDRESSES \
 	CSPI1_BASE_ADDR, \
 	CSPI2_BASE_ADDR, \
@@ -367,7 +353,7 @@ struct clkctl {
 	u32	ccgr4;
 	u32	ccgr5;
 	u32	ccgr6;
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 	u32	ccgr7;
 #endif
 	u32	cmeor;
@@ -431,21 +417,18 @@ struct weim {
 	u32	ear;
 };
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 struct iomuxc {
-	u32	gpr0;
-	u32	gpr1;
+	u32	gpr[2];
 	u32	omux0;
 	u32	omux1;
 	u32	omux2;
 	u32	omux3;
 	u32	omux4;
 };
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 struct iomuxc {
-	u32	gpr0;
-	u32	gpr1;
-	u32	gpr2;
+	u32	gpr[3];
 	u32	omux0;
 	u32	omux1;
 	u32	omux2;
@@ -514,9 +497,9 @@ struct iim_regs {
 	struct fuse_bank {
 		u32	fuse_regs[0x20];
 		u32	fuse_rsvd[0xe0];
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 	} bank[4];
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 	} bank[5];
 #endif
 };
@@ -525,9 +508,9 @@ struct fuse_bank0_regs {
 	u32	fuse0_7[8];
 	u32	uid[8];
 	u32	fuse16_23[8];
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 	u32	imei[8];
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 	u32	gp[8];
 #endif
 };
@@ -538,7 +521,7 @@ struct fuse_bank1_regs {
 	u32	fuse15_31[0x11];
 };
 
-#if defined(CONFIG_MX53)
+#if defined(CONFIG_SOC_MX53)
 struct fuse_bank4_regs {
 	u32	fuse0_4[5];
 	u32	gp[3];

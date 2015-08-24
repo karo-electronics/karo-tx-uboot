@@ -33,15 +33,8 @@ static int confirm_prog(void)
 					"what you are doing!\n"
 			"\nReally perform this fuse programming? <y/N>\n");
 
-	if (getc() == 'y') {
-		int c;
-
-		putc('y');
-		c = getc();
-		putc('\n');
-		if (c == '\r')
-			return 1;
-	}
+	if (confirm_yesno())
+		return 1;
 
 	puts("Fuse programming aborted\n");
 	return 0;
@@ -70,13 +63,13 @@ static int do_fuse(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		printf("Reading bank %u:\n", bank);
 		for (i = 0; i < cnt; i++, word++) {
 			if (!(i % 4))
-				printf("\nWord 0x%.8x:", word);
+				printf("\nWord 0x%08x:", word);
 
 			ret = fuse_read(bank, word, &val);
 			if (ret)
 				goto err;
 
-			printf(" %.8x", val);
+			printf(" %08x", val);
 		}
 		putc('\n');
 	} else if (!strcmp(op, "sense")) {
@@ -88,13 +81,13 @@ static int do_fuse(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		printf("Sensing bank %u:\n", bank);
 		for (i = 0; i < cnt; i++, word++) {
 			if (!(i % 4))
-				printf("\nWord 0x%.8x:", word);
+				printf("\nWord 0x%08x:", word);
 
 			ret = fuse_sense(bank, word, &val);
 			if (ret)
 				goto err;
 
-			printf(" %.8x", val);
+			printf(" %08x", val);
 		}
 		putc('\n');
 	} else if (!strcmp(op, "prog")) {
@@ -105,7 +98,7 @@ static int do_fuse(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			if (strtou32(argv[i], 16, &val))
 				return CMD_RET_USAGE;
 
-			printf("Programming bank %u word 0x%.8x to 0x%.8x...\n",
+			printf("Programming bank %u word 0x%08x to 0x%08x...\n",
 					bank, word, val);
 			if (!confirmed && !confirm_prog())
 				return CMD_RET_FAILURE;
@@ -121,8 +114,8 @@ static int do_fuse(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			if (strtou32(argv[i], 16, &val))
 				return CMD_RET_USAGE;
 
-			printf("Overriding bank %u word 0x%.8x with "
-					"0x%.8x...\n", bank, word, val);
+			printf("Overriding bank %u word 0x%08x with 0x%08x...\n",
+				bank, word, val);
 			ret = fuse_override(bank, word, val);
 			if (ret)
 				goto err;
@@ -135,7 +128,7 @@ static int do_fuse(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 
 err:
 	puts("ERROR\n");
-	return ret;
+	return CMD_RET_FAILURE;
 }
 
 U_BOOT_CMD(

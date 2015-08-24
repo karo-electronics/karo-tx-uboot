@@ -111,7 +111,6 @@
 #define CONFIG_RTC_BFIN
 #define CONFIG_UART_CONSOLE	0
 
-
 /*
  * Pull in common ADI header for remaining command/environment setup
  */

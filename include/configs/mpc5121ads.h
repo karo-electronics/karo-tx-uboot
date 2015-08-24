@@ -1,7 +1,7 @@
 /*
  * (C) Copyright 2007-2009 DENX Software Engineering
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -12,6 +12,9 @@
 #define __CONFIG_H
 
 #define CONFIG_MPC5121ADS 1
+#define CONFIG_DISPLAY_BOARDINFO
+#define CONFIG_SYS_GENERIC_BOARD
+
 /*
  * Memory map for the MPC5121ADS board:
  *
@@ -29,7 +32,6 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1	/* E300 Family */
-#define CONFIG_MPC512X		1	/* MPC512X family */
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFF00000
 
@@ -486,7 +488,6 @@
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 
 #ifdef CONFIG_CMD_KGDB
 	#define CONFIG_SYS_CBSIZE	1024	/* Console I/O Buffer Size */
@@ -498,7 +499,6 @@
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16) /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -522,7 +522,6 @@
 
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed of kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*

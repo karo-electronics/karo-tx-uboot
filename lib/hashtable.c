@@ -564,7 +564,7 @@ static int match_entry(ENTRY *ep, int flag,
 	int arg;
 	void *priv = NULL;
 
-	for (arg = 1; arg < argc; ++arg) {
+	for (arg = 0; arg < argc; ++arg) {
 #ifdef CONFIG_REGEX
 		struct slre slre;
 
@@ -776,7 +776,7 @@ static int drop_var_from_set(const char *name, int nvars, char * vars[])
 
 int himport_r(struct hsearch_data *htab,
 		const char *env, size_t size, const char sep, int flag,
-		int nvars, char * const vars[])
+		int crlf_is_lf, int nvars, char * const vars[])
 {
 	char *data, *sp, *dp, *name, *value;
 	char *localvars[nvars];
@@ -817,7 +817,7 @@ int himport_r(struct hsearch_data *htab,
 	 * size of 8 per entry (= safety factor of ~5) should provide enough
 	 * safety margin for any existing environment definitions and still
 	 * allow for more than enough dynamic additions. Note that the
-	 * "size" argument is supposed to give the maximum enviroment size
+	 * "size" argument is supposed to give the maximum environment size
 	 * (CONFIG_ENV_SIZE).  This heuristics will result in
 	 * unreasonably large numbers (and thus memory footprint) for
 	 * big flash environments (>8,000 entries for 64 KB
@@ -841,6 +841,21 @@ int himport_r(struct hsearch_data *htab,
 		}
 	}
 
+	if(!size)
+		return 1;		/* everything OK */
+	if(crlf_is_lf) {
+		/* Remove Carriage Returns in front of Line Feeds */
+		unsigned ignored_crs = 0;
+		for(;dp < data + size && *dp; ++dp) {
+			if(*dp == '\r' &&
+			   dp < data + size - 1 && *(dp+1) == '\n')
+				++ignored_crs;
+			else
+				*(dp-ignored_crs) = *dp;
+		}
+		size -= ignored_crs;
+		dp = data;
+	}
 	/* Parse environment; allow for '\0' and 'sep' as separators */
 	do {
 		ENTRY e, *rv;

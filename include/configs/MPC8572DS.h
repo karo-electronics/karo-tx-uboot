@@ -11,26 +11,17 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
+
 #include "../board/freescale/common/ics307_clk.h"
 
 #ifdef CONFIG_36BIT
 #define CONFIG_PHYS_64BIT
 #endif
 
-#ifdef CONFIG_NAND
-#define CONFIG_NAND_U_BOOT
-#define CONFIG_RAMBOOT_NAND
-#ifdef CONFIG_NAND_SPL
-#define CONFIG_SYS_TEXT_BASE_SPL 0xfff00000
-#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE_SPL /* start of monitor */
-#else
-#define CONFIG_SYS_LDSCRIPT $(TOPDIR)/$(CPUDIR)/u-boot-nand.lds
-#define CONFIG_SYS_TEXT_BASE	0xf8f82000
-#endif /* CONFIG_NAND_SPL */
-#endif
-
 #ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE	0xeff80000
+#define CONFIG_SYS_TEXT_BASE	0xeff40000
 #endif
 
 #ifndef CONFIG_RESET_VECTOR_ADDRESS
@@ -44,7 +35,6 @@
 /* High Level Configuration Options */
 #define CONFIG_BOOKE		1	/* BOOKE */
 #define CONFIG_E500		1	/* BOOKE e500 family */
-#define CONFIG_MPC85xx		1	/* MPC8540/60/55/41/48 */
 #define CONFIG_MPC8572		1
 #define CONFIG_MPC8572DS	1
 #define CONFIG_MP		1	/* support multiple processors */
@@ -106,7 +96,7 @@
 
 /* DDR Setup */
 #define CONFIG_VERY_BIG_RAM
-#define CONFIG_FSL_DDR2
+#define CONFIG_SYS_FSL_DDR2
 #undef CONFIG_FSL_DDR_INTERACTIVE
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
@@ -206,12 +196,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000		/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500		/* Flash Write Timeout (ms) */
 
-#if defined(CONFIG_RAMBOOT_NAND)
-#define CONFIG_SYS_RAMBOOT
-#define CONFIG_SYS_EXTRA_ENV_RELOC
-#else
 #undef CONFIG_SYS_RAMBOOT
-#endif
 
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_CFI
@@ -322,6 +307,8 @@
 #define CONFIG_CMD_NAND		1
 #define CONFIG_NAND_FSL_ELBC	1
 #define CONFIG_SYS_NAND_BLOCK_SIZE    (128 * 1024)
+#define CONFIG_SYS_NAND_MAX_OOBFREE	5
+#define CONFIG_SYS_NAND_MAX_ECCPOS	56
 
 /* NAND boot: 4K NAND loader config */
 #define CONFIG_SYS_NAND_SPL_SIZE	0x1000
@@ -349,17 +336,10 @@
 			       | OR_FCM_TRLX \
 			       | OR_FCM_EHTR)
 
-#ifdef CONFIG_RAMBOOT_NAND
-#define CONFIG_SYS_BR0_PRELIM  CONFIG_SYS_NAND_BR_PRELIM /* NAND Base Address */
-#define CONFIG_SYS_OR0_PRELIM  CONFIG_SYS_NAND_OR_PRELIM /* NAND Options */
-#define CONFIG_SYS_BR2_PRELIM  CONFIG_FLASH_BR_PRELIM	/* NOR Base Address */
-#define CONFIG_SYS_OR2_PRELIM  CONFIG_FLASH_OR_PRELIM	/* NOR Options */
-#else
 #define CONFIG_SYS_BR0_PRELIM  CONFIG_FLASH_BR_PRELIM	/* NOR Base Address */
 #define CONFIG_SYS_OR0_PRELIM  CONFIG_FLASH_OR_PRELIM	/* NOR Options */
 #define CONFIG_SYS_BR2_PRELIM  CONFIG_SYS_NAND_BR_PRELIM /* NAND Base Address */
 #define CONFIG_SYS_OR2_PRELIM  CONFIG_SYS_NAND_OR_PRELIM /* NAND Options */
-#endif
 #define CONFIG_SYS_BR4_PRELIM  (BR_PHYS_ADDR(CONFIG_SYS_NAND_BASE_PHYS + 0x40000) \
 			       | (2<<BR_DECC_SHIFT)    /* Use HW ECC */ \
 			       | BR_PS_8	       /* Port Size = 8 bit */ \
@@ -539,6 +519,7 @@
 #define CONFIG_SCSI_AHCI
 
 #ifdef CONFIG_SCSI_AHCI
+#define CONFIG_LIBATA
 #define CONFIG_SATA_ULI5288
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	4
 #define CONFIG_SYS_SCSI_MAX_LUN	1
@@ -595,12 +576,6 @@
  */
 
 #if defined(CONFIG_SYS_RAMBOOT)
-#if defined(CONFIG_RAMBOOT_NAND)
-#define CONFIG_ENV_IS_IN_NAND	1
-#define CONFIG_ENV_SIZE	CONFIG_SYS_NAND_BLOCK_SIZE
-#define CONFIG_ENV_OFFSET	((512 * 1024)\
-				+ CONFIG_SYS_NAND_BLOCK_SIZE)
-#endif
 
 #else
 	#define CONFIG_ENV_IS_IN_FLASH	1
@@ -660,7 +635,6 @@
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #else
@@ -669,7 +643,6 @@
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -681,7 +654,6 @@
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
 /*

@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2005-2010 Analog Devices Inc.
  *
- * Licensed under the GPL-2 or later.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*#define DEBUG*/
@@ -13,6 +13,7 @@
 #include <spi.h>
 
 #include <asm/blackfin.h>
+#include <asm/clock.h>
 #include <asm/gpio.h>
 #include <asm/portmux.h>
 #include <asm/mach-common/bits/spi.h>
@@ -140,12 +141,12 @@ static const unsigned short cs_pins[][7] = {
 void spi_set_speed(struct spi_slave *slave, uint hz)
 {
 	struct bfin_spi_slave *bss = to_bfin_spi_slave(slave);
-	ulong sclk;
+	ulong clk;
 	u32 baud;
 
-	sclk = get_sclk();
+	clk = get_spi_clk();
 	/* baud should be rounded up */
-	baud = DIV_ROUND_UP(sclk, 2 * hz);
+	baud = DIV_ROUND_UP(clk, 2 * hz);
 	if (baud < 2)
 		baud = 2;
 	else if (baud > (u16)-1)
@@ -162,21 +163,22 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	if (!spi_cs_is_valid(bus, cs))
 		return NULL;
 
-	if (bus >= ARRAY_SIZE(pins) || pins[bus] == NULL) {
-		debug("%s: invalid bus %u\n", __func__, bus);
-		return NULL;
-	}
 	switch (bus) {
 #ifdef SPI0_CTL
-		case 0: mmr_base = SPI0_CTL; break;
+	case 0:
+		mmr_base = SPI0_CTL; break;
 #endif
 #ifdef SPI1_CTL
-		case 1: mmr_base = SPI1_CTL; break;
+	case 1:
+		mmr_base = SPI1_CTL; break;
 #endif
 #ifdef SPI2_CTL
-		case 2: mmr_base = SPI2_CTL; break;
+	case 2:
+		mmr_base = SPI2_CTL; break;
 #endif
-		default: return NULL;
+	default:
+		debug("%s: invalid bus %u\n", __func__, bus);
+		return NULL;
 	}
 
 	bss = spi_alloc_slave(struct bfin_spi_slave, bus, cs);

@@ -6,7 +6,7 @@
  *
  * Configuration settings for the LogicPD i.MX31 Litekit board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -15,8 +15,6 @@
 #include <asm/arch/imx-regs.h>
 
  /* High Level Configuration Options */
-#define CONFIG_ARM1136		1    /* This is an arm1136 CPU core */
-#define CONFIG_MX31		1    /* in a mx31 */
 #define CONFIG_MX31_CLK32	32000
 
 #define CONFIG_DISPLAY_CPUINFO
@@ -116,8 +114,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x10000
 
 #define CONFIG_SYS_LOAD_ADDR		0 /* default load address */
-
-#define CONFIG_SYS_HZ			1000
 
 #define CONFIG_CMDLINE_EDITING	1
 

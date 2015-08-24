@@ -79,7 +79,9 @@ struct qixis {
 	u8 clk_freq[6];	/* Clock Measurement Registers */
 	u8 res_c6[8];
 	u8 clk_base[2];	/* Clock Frequency Base Reg */
-	u8 res_d0[16];
+	u8 res_d0[8];
+	u8 cms[2];	/* Core Management Space Address Register, 0xD8 */
+	u8 res_c0[6];
 	u8 aux2[4];	/* Auxiliary Registers,0xE0 */
 	u8 res14[10];
 	u8 aux_ad;
@@ -98,8 +100,15 @@ u8 qixis_read_i2c(unsigned int reg);
 void qixis_write_i2c(unsigned int reg, u8 value);
 #endif
 
+#if defined(CONFIG_QIXIS_I2C_ACCESS) && defined(CONFIG_SYS_I2C_FPGA_ADDR)
+#define QIXIS_READ(reg) qixis_read_i2c(offsetof(struct qixis, reg))
+#define QIXIS_WRITE(reg, value) \
+	qixis_write_i2c(offsetof(struct qixis, reg), value)
+#else
 #define QIXIS_READ(reg) qixis_read(offsetof(struct qixis, reg))
 #define QIXIS_WRITE(reg, value) qixis_write(offsetof(struct qixis, reg), value)
+#endif
+
 #ifdef CONFIG_SYS_I2C_FPGA_ADDR
 #define QIXIS_READ_I2C(reg) qixis_read_i2c(offsetof(struct qixis, reg))
 #define QIXIS_WRITE_I2C(reg, value) \

@@ -12,6 +12,13 @@
 
 #define CLK_24MHZ		5
 
+#define PHYPWR_NORMAL_MASK_PHY0                 (0x39 << 0)
+#define PHYPWR_NORMAL_MASK_PHY1                 (0x7 << 6)
+#define PHYPWR_NORMAL_MASK_HSIC0                (0x7 << 9)
+#define PHYPWR_NORMAL_MASK_HSIC1                (0x7 << 12)
+#define RSTCON_HOSTPHY_SWRST                    (0xf << 3)
+#define RSTCON_SWRST                            (0x1 << 0)
+
 #define HOST_CTRL0_PHYSWRSTALL			(1 << 31)
 #define HOST_CTRL0_COMMONON_N			(1 << 9)
 #define HOST_CTRL0_SIDDQ			(1 << 6)
@@ -29,6 +36,20 @@
 #define EHCICTRL_ENAINCR8			(1 << 27)
 #define EHCICTRL_ENAINCR16			(1 << 26)
 
+#define HSIC_CTRL_REFCLKSEL                     (0x2)
+#define HSIC_CTRL_REFCLKSEL_MASK                (0x3)
+#define HSIC_CTRL_REFCLKSEL_SHIFT               (23)
+
+#define HSIC_CTRL_REFCLKDIV_12                  (0x24)
+#define HSIC_CTRL_REFCLKDIV_MASK                (0x7f)
+#define HSIC_CTRL_REFCLKDIV_SHIFT               (16)
+
+#define HSIC_CTRL_SIDDQ                         (0x1 << 6)
+#define HSIC_CTRL_FORCESLEEP                    (0x1 << 5)
+#define HSIC_CTRL_FORCESUSPEND                  (0x1 << 4)
+#define HSIC_CTRL_UTMISWRST                     (0x1 << 2)
+#define HSIC_CTRL_PHYSWRST                      (0x1 << 0)
+
 /* Register map for PHY control */
 struct exynos_usb_phy {
 	unsigned int usbphyctrl0;
@@ -45,6 +66,12 @@ struct exynos_usb_phy {
 	unsigned int usbotgsys;
 	unsigned int reserved4;
 	unsigned int usbotgtune;
+};
+
+struct exynos4412_usb_phy {
+	unsigned int usbphyctrl;
+	unsigned int usbphyclk;
+	unsigned int usbphyrstcon;
 };
 
 /* Switch on the VBUS power. */

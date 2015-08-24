@@ -12,6 +12,8 @@
 
 #include <asm/hardware.h>
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /* The first stage boot loader expects u-boot running at this address. */
 #define CONFIG_SYS_TEXT_BASE	0x27000000	/* 16MB available */
 
@@ -23,15 +25,12 @@
 #define CONFIG_MACH_TYPE MACH_TYPE_ETHERNUT5
 
 /* CPU information */
-#define CONFIG_ARM926EJS
-#define CONFIG_AT91FAMILY
 #define CONFIG_DISPLAY_CPUINFO		/* Display at console. */
 #define CONFIG_ARCH_CPU_INIT
 
 /* ARM asynchronous clock */
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768	/* slow clock xtal */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000 /* 18.432 MHz crystal */
-#define CONFIG_SYS_HZ			1000
 
 /* 32kB internal SRAM */
 #define CONFIG_SRAM_BASE	0x00300000 /*AT91SAM9XE_SRAM_BASE */
@@ -79,7 +78,6 @@
 
 /* SPI */
 #define CONFIG_ATMEL_SPI
-#define CONFIG_SYS_SPI_WRITE_TOUT	(5 * CONFIG_SYS_HZ)
 #define AT91_SPI_CLK			15000000
 
 /* Serial port */
@@ -150,7 +148,7 @@
 #define CONFIG_SYS_NAND_MASK_ALE	(1 << 21)
 /* our CLE is AD22 */
 #define CONFIG_SYS_NAND_MASK_CLE	(1 << 22)
-#define CONFIG_SYS_NAND_ENABLE_PIN	AT91_PIO_PORTC, 14
+#define CONFIG_SYS_NAND_ENABLE_PIN	GPIO_PIN_PC(14)
 #endif
 
 /* JFFS2 */
@@ -178,6 +176,7 @@
 /* USB */
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_ATMEL
+#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW
 #define CONFIG_SYS_USB_OHCI_CPU_INIT
 #define CONFIG_SYS_USB_OHCI_REGS_BASE	0x00500000

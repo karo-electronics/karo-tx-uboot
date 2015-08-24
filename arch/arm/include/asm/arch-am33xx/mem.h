@@ -30,6 +30,7 @@
  *
  * Currently valid part Names are (PART):
  * M_NAND - Micron NAND
+ * STNOR - STMicrolelctronics M29W128GL
  */
 #define GPMC_SIZE_256M		0x0
 #define GPMC_SIZE_128M		0x8
@@ -45,23 +46,19 @@
 #define M_NAND_GPMC_CONFIG6	0x16000f80
 #define M_NAND_GPMC_CONFIG7	0x00000008
 
+#define STNOR_GPMC_CONFIG1	0x00001200
+#define STNOR_GPMC_CONFIG2	0x00101000
+#define STNOR_GPMC_CONFIG3	0x00030301
+#define STNOR_GPMC_CONFIG4	0x10041004
+#define STNOR_GPMC_CONFIG5	0x000C1010
+#define STNOR_GPMC_CONFIG6	0x08070280
+#define STNOR_GPMC_CONFIG7	0x00000F48
+
 /* max number of GPMC Chip Selects */
 #define GPMC_MAX_CS		8
 /* max number of GPMC regs */
 #define GPMC_MAX_REG		7
 
-#define PISMO1_NOR		1
-#define PISMO1_NAND		2
-#define PISMO2_CS0		3
-#define PISMO2_CS1		4
-#define PISMO1_ONENAND		5
 #define DBG_MPDB		6
-#define PISMO2_NAND_CS0		7
-#define PISMO2_NAND_CS1		8
-
-/* make it readable for the gpmc_init */
-#define PISMO1_NOR_BASE	FLASH_BASE
-#define PISMO1_NAND_BASE	CONFIG_SYS_NAND_BASE
-#define PISMO1_NAND_SIZE	GPMC_SIZE_256M
 
 #endif /* endif _MEM_H_ */

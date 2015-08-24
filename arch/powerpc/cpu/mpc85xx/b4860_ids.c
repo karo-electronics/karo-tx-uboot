@@ -41,8 +41,8 @@ struct qportal_info qp_info[CONFIG_SYS_QMAN_NUM_PORTALS] = {
 
 #ifdef CONFIG_SYS_SRIO
 struct srio_liodn_id_table srio_liodn_tbl[] = {
-	SET_SRIO_LIODN_1(1, 307),
-	SET_SRIO_LIODN_1(2, 387),
+	SET_SRIO_LIODN_BASE(1, 307),
+	SET_SRIO_LIODN_BASE(2, 387),
 };
 int srio_liodn_tbl_sz = ARRAY_SIZE(srio_liodn_tbl);
 #endif
@@ -55,12 +55,12 @@ struct liodn_id_table liodn_tbl[] = {
 
 	SET_SDHC_LIODN(1, 552),
 
-	SET_USB_LIODN(1, "fsl-usb2-mph", 553),
+	SET_USB_LIODN(1, "fsl-usb2-dr", 553),
 
-	SET_PCI_LIODN(CONFIG_SYS_FSL_PCIE_COMPAT, 1, 148),
+	SET_PCI_LIODN_BASE(CONFIG_SYS_FSL_PCIE_COMPAT, 1, 148),
 
-	SET_DMA_LIODN(1, 147),
-	SET_DMA_LIODN(2, 227),
+	SET_DMA_LIODN(1, "fsl,elo3-dma", 147),
+	SET_DMA_LIODN(2, "fsl,elo3-dma", 227),
 
 #ifndef CONFIG_PPC_B4420
 	SET_GUTS_LIODN("fsl,rapidio-delta", 199, rio1liodnr, 0),
@@ -112,10 +112,10 @@ int sec_liodn_tbl_sz = ARRAY_SIZE(sec_liodn_tbl);
 #ifdef CONFIG_SYS_DPAA_RMAN
 struct liodn_id_table rman_liodn_tbl[] = {
 	/* Set RMan block 0-3 liodn offset */
-	SET_RMAN_LIODN(0, 678),
-	SET_RMAN_LIODN(1, 679),
-	SET_RMAN_LIODN(2, 680),
-	SET_RMAN_LIODN(3, 681),
+	SET_RMAN_LIODN(0, 6),
+	SET_RMAN_LIODN(1, 7),
+	SET_RMAN_LIODN(2, 8),
+	SET_RMAN_LIODN(3, 9),
 };
 int rman_liodn_tbl_sz = ARRAY_SIZE(rman_liodn_tbl);
 #endif

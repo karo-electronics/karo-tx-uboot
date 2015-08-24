@@ -29,6 +29,13 @@ struct srio_liodn_id_table {
 		+ CONFIG_SYS_MPC85xx_GUTS_OFFSET + CONFIG_SYS_CCSRBAR, \
 	}
 
+#define SET_SRIO_LIODN_BASE(port, id_a) \
+	{ .id = { id_a }, .num_ids = 1, .portid = port, \
+	  .reg_offset[0] = offsetof(struct ccsr_rio, liodn) \
+		+ (port - 1) * 0x200 \
+		+ CONFIG_SYS_FSL_SRIO_ADDR, \
+	}
+
 struct liodn_id_table {
 	const char * compat;
 	u32 id[2];
@@ -84,13 +91,21 @@ extern void fdt_fixup_liodn(void *blob);
 		CONFIG_SYS_MPC85xx_PCIE##pciNum##_OFFSET)
 
 /* reg nodes for DMA start @ 0x300 */
-#define SET_DMA_LIODN(dmaNum, liodn) \
-	SET_GUTS_LIODN("fsl,eloplus-dma", liodn, dma##dmaNum##liodnr,\
+#define SET_DMA_LIODN(dmaNum, compat, liodn) \
+	SET_GUTS_LIODN(compat, liodn, dma##dmaNum##liodnr,\
 		CONFIG_SYS_MPC85xx_DMA##dmaNum##_OFFSET + 0x300)
 
 #define SET_SDHC_LIODN(sdhcNum, liodn) \
 	SET_GUTS_LIODN("fsl,esdhc", liodn, sdmmc##sdhcNum##liodnr,\
 		CONFIG_SYS_MPC85xx_ESDHC_OFFSET)
+
+#define SET_QE_LIODN(liodn) \
+	SET_GUTS_LIODN("fsl,qe", liodn, qeliodnr,\
+		CONFIG_SYS_MPC85xx_QE_OFFSET)
+
+#define SET_TDM_LIODN(liodn) \
+	SET_GUTS_LIODN("fsl,tdm1.0", liodn, tdmliodnr,\
+		CONFIG_SYS_MPC85xx_TDM_OFFSET)
 
 #define SET_QMAN_LIODN(liodn) \
 	SET_LIODN_ENTRY_1("fsl,qman", liodn, offsetof(ccsr_qman_t, liodnr) + \

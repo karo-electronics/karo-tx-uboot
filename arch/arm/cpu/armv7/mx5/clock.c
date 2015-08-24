@@ -20,7 +20,7 @@ enum pll_clocks {
 	PLL1_CLOCK = 0,
 	PLL2_CLOCK,
 	PLL3_CLOCK,
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 	PLL4_CLOCK,
 #endif
 	PLL_CLOCKS,
@@ -30,7 +30,7 @@ struct mxc_pll_reg *mxc_plls[PLL_CLOCKS] = {
 	[PLL1_CLOCK] = (struct mxc_pll_reg *)PLL1_BASE_ADDR,
 	[PLL2_CLOCK] = (struct mxc_pll_reg *)PLL2_BASE_ADDR,
 	[PLL3_CLOCK] = (struct mxc_pll_reg *)PLL3_BASE_ADDR,
-#ifdef	CONFIG_MX53
+#ifdef	CONFIG_SOC_MX53
 	[PLL4_CLOCK] = (struct mxc_pll_reg *)PLL4_BASE_ADDR,
 #endif
 };
@@ -174,7 +174,7 @@ void set_usboh3_clk(void)
 			MXC_CCM_CSCDR1_USBOH3_CLK_PODF(1));
 }
 
-void enable_usboh3_clk(unsigned char enable)
+void enable_usboh3_clk(bool enable)
 {
 	unsigned int cg = enable ? MXC_CCM_CCGR_CG_ON : MXC_CCM_CCGR_CG_OFF;
 
@@ -243,7 +243,7 @@ void ipu_di_clk_disable(int di)
 	}
 }
 
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 void ldb_clk_enable(int ldb)
 {
 	switch (ldb) {
@@ -277,15 +277,15 @@ void ldb_clk_disable(int ldb)
 }
 #endif
 
-#ifdef CONFIG_I2C_MXC
+#ifdef CONFIG_SYS_I2C_MXC
 /* i2c_num can be from 0, to 1 for i.MX51 and 2 for i.MX53 */
 int enable_i2c_clk(unsigned char enable, unsigned i2c_num)
 {
 	u32 mask;
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 	if (i2c_num > 1)
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 	if (i2c_num > 2)
 #endif
 		return -EINVAL;
@@ -304,8 +304,8 @@ void set_usb_phy_clk(void)
 	clrbits_le32(&mxc_ccm->cscmr1, MXC_CCM_CSCMR1_USB_PHY_CLK_SEL);
 }
 
-#if defined(CONFIG_MX51)
-void enable_usb_phy1_clk(unsigned char enable)
+#if defined(CONFIG_SOC_MX51)
+void enable_usb_phy1_clk(bool enable)
 {
 	unsigned int cg = enable ? MXC_CCM_CCGR_CG_ON : MXC_CCM_CCGR_CG_OFF;
 
@@ -314,12 +314,12 @@ void enable_usb_phy1_clk(unsigned char enable)
 			MXC_CCM_CCGR2_USB_PHY(cg));
 }
 
-void enable_usb_phy2_clk(unsigned char enable)
+void enable_usb_phy2_clk(bool enable)
 {
 	/* i.MX51 has a single USB PHY clock, so do nothing here. */
 }
-#elif defined(CONFIG_MX53)
-void enable_usb_phy1_clk(unsigned char enable)
+#elif defined(CONFIG_SOC_MX53)
+void enable_usb_phy1_clk(bool enable)
 {
 	unsigned int cg = enable ? MXC_CCM_CCGR_CG_ON : MXC_CCM_CCGR_CG_OFF;
 
@@ -328,7 +328,7 @@ void enable_usb_phy1_clk(unsigned char enable)
 			MXC_CCM_CCGR4_USB_PHY1(cg));
 }
 
-void enable_usb_phy2_clk(unsigned char enable)
+void enable_usb_phy2_clk(bool enable)
 {
 	unsigned int cg = enable ? MXC_CCM_CCGR_CG_ON : MXC_CCM_CCGR_CG_OFF;
 
@@ -393,7 +393,7 @@ static uint32_t decode_pll(struct mxc_pll_reg *pll, uint32_t infreq)
 	return ret;
 }
 
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 /*
  * This function returns the Frequency Pre-Multiplier clock.
  */
@@ -420,9 +420,9 @@ static u32 get_lp_apm(void)
 	u32 ccsr = readl(&mxc_ccm->ccsr);
 
 	if (ccsr & MXC_CCM_CCSR_LP_APM)
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 		ret_val = get_fpm();
-#elif defined(CONFIG_MX53)
+#elif defined(CONFIG_SOC_MX53)
 		ret_val = decode_pll(mxc_plls[PLL4_CLOCK], MXC_HCLK);
 #endif
 	else
@@ -644,7 +644,7 @@ static u32 get_ddr_clk(void)
 	u32 ret_val = 0;
 	u32 cbcmr = readl(&mxc_ccm->cbcmr);
 	u32 ddr_clk_sel = MXC_CCM_CBCMR_DDR_CLK_SEL_RD(cbcmr);
-#ifdef CONFIG_MX51
+#ifdef CONFIG_SOC_MX51
 	u32 cbcdr = readl(&mxc_ccm->cbcdr);
 	if (cbcdr & MXC_CCM_CBCDR_DDR_HIFREQ_SEL) {
 		u32 ddr_clk_podf = MXC_CCM_CBCDR_DDR_PODF_RD(cbcdr);
@@ -878,7 +878,7 @@ static int config_pll_clk(enum pll_clocks index, struct pll_param *pll_param)
 		/* Switch back */
 		__raw_writel(ccsr & ~0x1, &mxc_ccm->ccsr);
 		break;
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 	case PLL4_CLOCK:
 		/* Switch to pll4 bypass clock */
 		__raw_writel(ccsr | 0x20, &mxc_ccm->ccsr);
@@ -980,6 +980,18 @@ void enable_nfc_clk(unsigned char enable)
 		MXC_CCM_CCGR5_EMI_ENFC(MXC_CCM_CCGR_CG_MASK),
 		MXC_CCM_CCGR5_EMI_ENFC(cg));
 }
+
+#ifdef CONFIG_FSL_IIM
+void enable_efuse_prog_supply(bool enable)
+{
+	if (enable)
+		setbits_le32(&mxc_ccm->cgpr,
+			     MXC_CCM_CGPR_EFUSE_PROG_SUPPLY_GATE);
+	else
+		clrbits_le32(&mxc_ccm->cgpr,
+			     MXC_CCM_CGPR_EFUSE_PROG_SUPPLY_GATE);
+}
+#endif
 
 /* Config main_bus_clock for periphs */
 static int config_periph_clk(u32 ref, u32 freq)
@@ -1107,7 +1119,7 @@ int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk)
 	return 0;
 }
 
-#ifdef CONFIG_MX53
+#ifdef CONFIG_SOC_MX53
 /*
  * The clock for the external interface can be set to use internal clock
  * if fuse bank 4, row 3, bit 2 is set.
@@ -1154,7 +1166,7 @@ static int do_mx5_showclocks(void)
 	pr_clk_val(PLL2, freq);
 	freq = decode_pll(mxc_plls[PLL3_CLOCK], MXC_HCLK);
 	pr_clk_val(PLL3, freq);
-#ifdef	CONFIG_MX53
+#ifdef	CONFIG_SOC_MX53
 	freq = decode_pll(mxc_plls[PLL4_CLOCK], MXC_HCLK);
 	pr_clk_val(PLL4, freq);
 #endif

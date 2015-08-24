@@ -14,6 +14,13 @@
 #define HPLL	3
 #define VPLL	4
 #define BPLL	5
+#define RPLL	6
+#define SPLL	7
+
+#define MASK_PRE_RATIO(x)	(0xff << ((x << 4) + 8))
+#define MASK_RATIO(x)		(0xf << (x << 4))
+#define SET_PRE_RATIO(x, y)	((y & 0xff) << ((x << 4) + 8))
+#define SET_RATIO(x, y)		((y & 0xf) << (x << 4))
 
 enum pll_src_bit {
 	EXYNOS_SRC_MPLL = 6,
@@ -31,8 +38,9 @@ void set_mmc_clk(int dev_index, unsigned int div);
 unsigned long get_lcd_clk(void);
 void set_lcd_clk(void);
 void set_mipi_clk(void);
-void set_i2s_clk_source(void);
-int set_i2s_clk_prescaler(unsigned int src_frq, unsigned int dst_frq);
+int set_i2s_clk_source(unsigned int i2s_id);
+int set_i2s_clk_prescaler(unsigned int src_frq, unsigned int dst_frq,
+				unsigned int i2s_id);
 int set_epll_clk(unsigned long rate);
 int set_spi_clk(int periph_id, unsigned int rate);
 

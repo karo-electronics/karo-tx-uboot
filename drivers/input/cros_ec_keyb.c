@@ -8,6 +8,7 @@
 
 #include <common.h>
 #include <cros_ec.h>
+#include <errno.h>
 #include <fdtdec.h>
 #include <input.h>
 #include <key_matrix.h>
@@ -17,6 +18,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 enum {
 	KBC_MAX_KEYS		= 8,	/* Maximum keys held down at once */
+	KBC_REPEAT_RATE_MS	= 30,
+	KBC_REPEAT_DELAY_MS	= 240,
 };
 
 static struct keyb {
@@ -25,8 +28,6 @@ static struct keyb {
 	struct key_matrix matrix;	/* The key matrix layer */
 	int key_rows;			/* Number of keyboard rows */
 	int key_cols;			/* Number of keyboard columns */
-	unsigned int repeat_delay_ms;	/* Time before autorepeat starts */
-	unsigned int repeat_rate_ms;	/* Autorepeat rate in ms */
 	int ghost_filter;		/* 1 to enable ghost filter, else 0 */
 	int inited;			/* 1 if keyboard is ready */
 } config;
@@ -39,20 +40,34 @@ static struct keyb {
  * @param config	Keyboard config
  * @param keys		List of keys that we have detected
  * @param max_count	Maximum number of keys to return
- * @return number of pressed keys, 0 for none
+ * @param samep		Set to true if this scan repeats the last, else false
+ * @return number of pressed keys, 0 for none, -EIO on error
  */
 static int check_for_keys(struct keyb *config,
-			   struct key_matrix_key *keys, int max_count)
+			   struct key_matrix_key *keys, int max_count,
+			   bool *samep)
 {
 	struct key_matrix_key *key;
+	static struct mbkp_keyscan last_scan;
+	static bool last_scan_valid;
 	struct mbkp_keyscan scan;
 	unsigned int row, col, bit, data;
 	int num_keys;
 
 	if (cros_ec_scan_keyboard(config->dev, &scan)) {
 		debug("%s: keyboard scan failed\n", __func__);
-		return -1;
+		return -EIO;
 	}
+	*samep = last_scan_valid && !memcmp(&last_scan, &scan, sizeof(scan));
+
+	/*
+	 * This is a bit odd. The EC has no way to tell us that it has run
+	 * out of key scans. It just returns the same scan over and over
+	 * again. So the only way to detect that we have run out is to detect
+	 * that this scan is the same as the last.
+	 */
+	last_scan_valid = true;
+	memcpy(&last_scan, &scan, sizeof(last_scan));
 
 	for (col = num_keys = bit = 0; col < config->matrix.num_cols;
 			col++) {
@@ -78,7 +93,7 @@ static int check_for_keys(struct keyb *config,
  *
  * @return 0 if no keys available, 1 if keys are available
  */
-static int kbd_tstc(void)
+static int kbd_tstc(struct stdio_dev *dev)
 {
 	/* Just get input to do this for us */
 	return config.inited ? input_tstc(&config.input) : 0;
@@ -89,7 +104,7 @@ static int kbd_tstc(void)
  *
  * @return ASCII key code, or 0 if no key, or -1 if error
  */
-static int kbd_getc(void)
+static int kbd_getc(struct stdio_dev *dev)
 {
 	/* Just get input to do this for us */
 	return config.inited ? input_getc(&config.input) : 0;
@@ -112,6 +127,7 @@ int cros_ec_kbc_check(struct input_config *input)
 	int keycodes[KBC_MAX_KEYS];
 	int num_keys, num_keycodes;
 	int irq_pending, sent;
+	bool same = false;
 
 	/*
 	 * Loop until the EC has no more keyscan records, or we have
@@ -125,7 +141,10 @@ int cros_ec_kbc_check(struct input_config *input)
 	do {
 		irq_pending = cros_ec_interrupt_pending(config.dev);
 		if (irq_pending) {
-			num_keys = check_for_keys(&config, keys, KBC_MAX_KEYS);
+			num_keys = check_for_keys(&config, keys, KBC_MAX_KEYS,
+						  &same);
+			if (num_keys < 0)
+				return 0;
 			last_num_keys = num_keys;
 			memcpy(last_keys, keys, sizeof(keys));
 		} else {
@@ -142,6 +161,13 @@ int cros_ec_kbc_check(struct input_config *input)
 		num_keycodes = key_matrix_decode(&config.matrix, keys,
 				num_keys, keycodes, KBC_MAX_KEYS);
 		sent = input_send_keycodes(input, keycodes, num_keycodes);
+
+		/*
+		 * For those ECs without an interrupt, stop scanning when we
+		 * see that the scan is the same as last time.
+		 */
+		if ((irq_pending < 0) && same)
+			break;
 	} while (irq_pending && !sent);
 
 	return 1;
@@ -162,8 +188,8 @@ static int cros_ec_keyb_decode_fdt(const void *blob, int node,
 	 * Get keyboard rows and columns - at present we are limited to
 	 * 8 columns by the protocol (one byte per row scan)
 	 */
-	config->key_rows = fdtdec_get_int(blob, node, "google,key-rows", 0);
-	config->key_cols = fdtdec_get_int(blob, node, "google,key-columns", 0);
+	config->key_rows = fdtdec_get_int(blob, node, "keypad,num-rows", 0);
+	config->key_cols = fdtdec_get_int(blob, node, "keypad,num-columns", 0);
 	if (!config->key_rows || !config->key_cols ||
 			config->key_rows * config->key_cols / 8
 				> CROS_EC_KEYSCAN_COLS) {
@@ -171,10 +197,6 @@ static int cros_ec_keyb_decode_fdt(const void *blob, int node,
 		      config->key_rows, config->key_cols);
 		return -1;
 	}
-	config->repeat_delay_ms = fdtdec_get_int(blob, node,
-						 "google,repeat-delay-ms", 0);
-	config->repeat_rate_ms = fdtdec_get_int(blob, node,
-						"google,repeat-rate-ms", 0);
 	config->ghost_filter = fdtdec_get_bool(blob, node,
 					       "google,ghost-filter");
 	return 0;
@@ -188,7 +210,7 @@ static int cros_ec_keyb_decode_fdt(const void *blob, int node,
  *
  * @return 0 if ok, -1 on error
  */
-static int cros_ec_init_keyboard(void)
+static int cros_ec_init_keyboard(struct stdio_dev *dev)
 {
 	const void *blob = gd->fdt_blob;
 	int node;
@@ -206,8 +228,8 @@ static int cros_ec_init_keyboard(void)
 	}
 	if (cros_ec_keyb_decode_fdt(blob, node, &config))
 		return -1;
-	input_set_delays(&config.input, config.repeat_delay_ms,
-			 config.repeat_rate_ms);
+	input_set_delays(&config.input, KBC_REPEAT_DELAY_MS,
+			 KBC_REPEAT_RATE_MS);
 	if (key_matrix_init(&config.matrix, config.key_rows,
 			config.key_cols, config.ghost_filter)) {
 		debug("%s: cannot init key matrix\n", __func__);

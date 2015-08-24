@@ -21,7 +21,8 @@
  */
 #define EN_UPLL_TIMEOUT	500UL
 
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	at91_pmc_t *pmc = (at91_pmc_t *)ATMEL_BASE_PMC;
 	ulong start_time, tmp_time;
@@ -39,7 +40,11 @@ int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 	}
 
 	/* Enable USB Host clock */
+#ifdef CPU_HAS_PCR
+	at91_periph_clk_enable(ATMEL_ID_UHPHS);
+#else
 	writel(1 << ATMEL_ID_UHPHS, &pmc->pcer);
+#endif
 
 	*hccr = (struct ehci_hccr *)ATMEL_BASE_EHCI;
 	*hcor = (struct ehci_hcor *)((uint32_t)*hccr +
@@ -54,7 +59,11 @@ int ehci_hcd_stop(int index)
 	ulong start_time, tmp_time;
 
 	/* Disable USB Host Clock */
+#ifdef CPU_HAS_PCR
+	at91_periph_clk_disable(ATMEL_ID_UHPHS);
+#else
 	writel(1 << ATMEL_ID_UHPHS, &pmc->pcdr);
+#endif
 
 	start_time = get_timer(0);
 	/* Disable UTMI PLL */

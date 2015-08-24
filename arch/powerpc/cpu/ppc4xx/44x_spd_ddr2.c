@@ -49,7 +49,6 @@
 		       "SDRAM_" #mnemonic, SDRAM_##mnemonic, data);	\
 	} while (0)
 
-#if !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL)
 static void update_rdcc(void)
 {
 	u32 val;
@@ -72,7 +71,6 @@ static void update_rdcc(void)
 		}
 	}
 }
-#endif
 
 #if defined(CONFIG_440)
 /*
@@ -101,7 +99,6 @@ void dcbz_area(u32 start_address, u32 num_bytes);
 
 #define MULDIV64(m1, m2, d)	(u32)(((u64)(m1) * (u64)(m2)) / (u64)(d))
 
-#if !defined(CONFIG_NAND_SPL)
 /*-----------------------------------------------------------------------------+
  * sdram_memsize
  *-----------------------------------------------------------------------------*/
@@ -217,7 +214,6 @@ void board_add_ram_info(int use_default)
 	val = (val & SDRAM_MMODE_DCL_MASK) >> 4;
 	printf(", CL%d)", val);
 }
-#endif /* !CONFIG_NAND_SPL */
 
 #if defined(CONFIG_SPD_EEPROM)
 
@@ -1665,7 +1661,7 @@ static void program_mode(unsigned long *dimm_populated,
 		for (dimm_num = 0; dimm_num < num_dimm_banks; dimm_num++) {
 			/* If a dimm is installed in a particular slot ... */
 			if (dimm_populated[dimm_num] != SDRAM_NONE)
-				t_wr_ns = max(t_wr_ns,
+				t_wr_ns = max(t_wr_ns, (unsigned long)
 					      spd_read(iic0_dimm_addr[dimm_num], 36) >> 2);
 		}
 
@@ -1842,12 +1838,18 @@ static void program_tr(unsigned long *dimm_populated,
 			else
 				sdram_ddr1 = false;
 
-			t_rcd_ns = max(t_rcd_ns, spd_read(iic0_dimm_addr[dimm_num], 29) >> 2);
-			t_rrd_ns = max(t_rrd_ns, spd_read(iic0_dimm_addr[dimm_num], 28) >> 2);
-			t_rp_ns  = max(t_rp_ns,  spd_read(iic0_dimm_addr[dimm_num], 27) >> 2);
-			t_ras_ns = max(t_ras_ns, spd_read(iic0_dimm_addr[dimm_num], 30));
-			t_rc_ns  = max(t_rc_ns,  spd_read(iic0_dimm_addr[dimm_num], 41));
-			t_rfc_ns = max(t_rfc_ns, spd_read(iic0_dimm_addr[dimm_num], 42));
+			t_rcd_ns = max(t_rcd_ns,
+				       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 29) >> 2);
+			t_rrd_ns = max(t_rrd_ns,
+				       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 28) >> 2);
+			t_rp_ns  = max(t_rp_ns,
+				       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 27) >> 2);
+			t_ras_ns = max(t_ras_ns,
+				       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 30));
+			t_rc_ns  = max(t_rc_ns,
+				       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 41));
+			t_rfc_ns = max(t_rfc_ns,
+				       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 42));
 		}
 	}
 
@@ -1920,9 +1922,12 @@ static void program_tr(unsigned long *dimm_populated,
 		for (dimm_num = 0; dimm_num < num_dimm_banks; dimm_num++) {
 			/* If a dimm is installed in a particular slot ... */
 			if (dimm_populated[dimm_num] != SDRAM_NONE) {
-				t_wpc_ns = max(t_wtr_ns, spd_read(iic0_dimm_addr[dimm_num], 36) >> 2);
-				t_wtr_ns = max(t_wtr_ns, spd_read(iic0_dimm_addr[dimm_num], 37) >> 2);
-				t_rpc_ns = max(t_rpc_ns, spd_read(iic0_dimm_addr[dimm_num], 38) >> 2);
+				t_wpc_ns = max(t_wtr_ns,
+					       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 36) >> 2);
+				t_wtr_ns = max(t_wtr_ns,
+					       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 37) >> 2);
+				t_rpc_ns = max(t_rpc_ns,
+					       (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 38) >> 2);
 			}
 		}
 
@@ -2318,7 +2323,8 @@ static void program_ecc(unsigned long *dimm_populated,
 	for (dimm_num = 0; dimm_num < MAXDIMMS; dimm_num++) {
 		/* If a dimm is installed in a particular slot ... */
 		if (dimm_populated[dimm_num] != SDRAM_NONE)
-			ecc = max(ecc, spd_read(iic0_dimm_addr[dimm_num], 11));
+			ecc = max(ecc,
+				  (unsigned long)spd_read(iic0_dimm_addr[dimm_num], 11));
 	}
 	if (ecc == 0)
 		return;
@@ -2843,16 +2849,6 @@ static void test(void)
  *---------------------------------------------------------------------------*/
 phys_size_t initdram(int board_type)
 {
-	/*
-	 * Only run this SDRAM init code once. For NAND booting
-	 * targets like Kilauea, we call initdram() early from the
-	 * 4k NAND booting image (CONFIG_NAND_SPL) from nand_boot().
-	 * Later on the NAND U-Boot image runs (CONFIG_NAND_U_BOOT)
-	 * which calls initdram() again. This time the controller
-	 * mustn't be reconfigured again since we're already running
-	 * from SDRAM.
-	 */
-#if !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL)
 	unsigned long val;
 
 #if defined(CONFIG_440)
@@ -2969,12 +2965,10 @@ phys_size_t initdram(int board_type)
 #endif
 
 #if defined(CONFIG_PPC4xx_DDR_AUTOCALIBRATION)
-#if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
 	/*------------------------------------------------------------------
 	 | DQS calibration.
 	 +-----------------------------------------------------------------*/
 	DQS_autocalibration();
-#endif /* !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL) */
 #endif /* CONFIG_PPC4xx_DDR_AUTOCALIBRATION */
 
 	/*
@@ -3009,13 +3003,10 @@ phys_size_t initdram(int board_type)
 	set_mcsr(get_mcsr());
 #endif /* CONFIG_PPC4xx_DDR_AUTOCALIBRATION */
 
-#endif /* !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL) */
-
 	return (CONFIG_SYS_MBYTES_SDRAM << 20);
 }
 #endif /* CONFIG_SPD_EEPROM */
 
-#if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
 #if defined(CONFIG_440)
 u32 mfdcr_any(u32 dcr)
 {
@@ -3062,7 +3053,6 @@ void mtdcr_any(u32 dcr, u32 val)
 	}
 }
 #endif /* defined(CONFIG_440) */
-#endif /* !defined(CONFIG_NAND_U_BOOT) &&  !defined(CONFIG_NAND_SPL) */
 
 inline void ppc4xx_ibm_ddr2_register_dump(void)
 {

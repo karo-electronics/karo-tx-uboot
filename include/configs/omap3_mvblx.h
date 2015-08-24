@@ -9,7 +9,7 @@
  *
  * Configuration settings for the TI OMAP3530 Beagle board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -18,12 +18,11 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_ARMV7		1	/* This is an ARM V7 CPU core */
 #define CONFIG_OMAP		1	/* in a TI OMAP core */
-#define CONFIG_OMAP34XX		1	/* which is a 34XX */
 #define CONFIG_MVBLX		1	/* working with mvBlueLYNX-X */
 #define CONFIG_MACH_TYPE	MACH_TYPE_MVBLX
 #define CONFIG_OMAP_GPIO
+#define CONFIG_OMAP_COMMON
 
 #define CONFIG_SDRC	/* The chip has SDRC controller */
 
@@ -126,12 +125,12 @@
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_FPGA
+#define CONFIG_CMD_FPGA_LOADMK
 
-#define CONFIG_HARD_I2C			1
-#define CONFIG_SYS_I2C_SPEED		100000
-#define CONFIG_SYS_I2C_SLAVE		0
-#define CONFIG_DRIVER_OMAP34XX_I2C	1
-#define CONFIG_I2C_MULTI_BUS		1
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_OMAP24_I2C_SPEED	100000
+#define CONFIG_SYS_OMAP24_I2C_SLAVE	1
+#define CONFIG_SYS_I2C_OMAP34XX
 
 /*
  * TWL4030
@@ -235,7 +234,6 @@
  */
 #define CONFIG_SYS_TIMERBASE		(OMAP34XX_GPT2)
 #define CONFIG_SYS_PTV			2       /* Divisor: 2^(PTV+1) => 8 */
-#define CONFIG_SYS_HZ			1000
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map

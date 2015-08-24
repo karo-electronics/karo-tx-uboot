@@ -15,9 +15,12 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <dm.h>
+#include <ns16550.h>
 #include <netdev.h>
 #include <twl4030.h>
 #include <asm/io.h>
+#include <asm/arch/mem.h>
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
@@ -26,6 +29,31 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+/* gpmc_cfg is initialized by gpmc_init and we use it here */
+extern struct gpmc *gpmc_cfg;
+
+/* GPMC definitions for Ethenet Controller LAN9211 */
+static const u32 gpmc_lab_enet[] = {
+	ZOOM1_ENET_GPMC_CONF1,
+	ZOOM1_ENET_GPMC_CONF2,
+	ZOOM1_ENET_GPMC_CONF3,
+	ZOOM1_ENET_GPMC_CONF4,
+	ZOOM1_ENET_GPMC_CONF5,
+	ZOOM1_ENET_GPMC_CONF6,
+	/*CONF7- computed as params */
+};
+
+static const struct ns16550_platdata zoom1_serial = {
+	OMAP34XX_UART3,
+	2,
+	V_NS16550_CLK
+};
+
+U_BOOT_DEVICE(zoom1_uart) = {
+	"serial_omap",
+	&zoom1_serial
+};
+
 /*
  * Routine: board_init
  * Description: Early hardware init.
@@ -33,6 +61,9 @@ DECLARE_GLOBAL_DATA_PTR;
 int board_init(void)
 {
 	gpmc_init(); /* in SRAM or SDRAM, finish GPMC */
+	/* CS1 is Ethernet LAN9211 */
+	enable_gpmc_cs_config(gpmc_lab_enet, &gpmc_cfg->cs[1],
+			      DEBUG_BASE, GPMC_SIZE_16M);
 	/* board id for Linux */
 	gd->bd->bi_arch_number = MACH_TYPE_OMAP_LDP;
 	/* boot param addr */
@@ -78,15 +109,36 @@ int board_mmc_init(bd_t *bis)
 {
 	return omap_mmc_init(0, 0, 0, -1, -1);
 }
+
+void board_mmc_power_init(void)
+{
+	twl4030_power_mmc_init(0);
+}
 #endif
 
 #ifdef CONFIG_CMD_NET
 int board_eth_init(bd_t *bis)
 {
 	int rc = 0;
-#ifdef CONFIG_LAN91C96
-	rc = lan91c96_initialize(0, CONFIG_LAN91C96_BASE);
+
+#ifdef CONFIG_SMC911X
+#define STR_ENV_ETHADDR	"ethaddr"
+
+	struct eth_device *dev;
+	uchar eth_addr[6];
+
+	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
+	if (!eth_getenv_enetaddr(STR_ENV_ETHADDR, eth_addr)) {
+		dev = eth_get_dev_by_index(0);
+		if (dev) {
+			eth_setenv_enetaddr(STR_ENV_ETHADDR, dev->enetaddr);
+		} else {
+			printf("zoom1: Couldn't get eth device\n");
+			rc = -1;
+		}
+	}
 #endif
+
 	return rc;
 }
 #endif

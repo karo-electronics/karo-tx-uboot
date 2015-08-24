@@ -16,7 +16,6 @@
 /*
  * defines to be used in other places
  */
-#define CONFIG_ARMV7		/* ARM A5 Core */
 #define CONFIG_AT91FAMILY	/* it's a member of AT91 */
 
 /*
@@ -79,6 +78,7 @@
 #define ARCH_EXID_SAMA5D33	0x00414300
 #define ARCH_EXID_SAMA5D34	0x00414301
 #define ARCH_EXID_SAMA5D35	0x00584300
+#define ARCH_EXID_SAMA5D36	0x00004301
 
 #define cpu_is_sama5d3()	(get_chip_id() == ARCH_ID_SAMA5D3)
 #define cpu_is_sama5d31()	(cpu_is_sama5d3() && \
@@ -89,6 +89,8 @@
 		(get_extension_chip_id() == ARCH_EXID_SAMA5D34))
 #define cpu_is_sama5d35()	(cpu_is_sama5d3() && \
 		(get_extension_chip_id() == ARCH_EXID_SAMA5D35))
+#define cpu_is_sama5d36()	(cpu_is_sama5d3() && \
+		(get_extension_chip_id() == ARCH_EXID_SAMA5D36))
 
 /*
  * User Peripherals physical base addresses.
@@ -120,7 +122,7 @@
 #define ATMEL_BASE_USART3	0xf8024000
 #define ATMEL_BASE_UART1	0xf8028000
 #define ATMEL_BASE_EMAC		0xf802c000
-#define ATMEL_BASE_UDHPS	0xf8030000
+#define ATMEL_BASE_UDPHS	0xf8030000
 #define ATMEL_BASE_SHA		0xf8034000
 #define ATMEL_BASE_AES		0xf8038000
 #define ATMEL_BASE_TDES		0xf803c000
@@ -185,14 +187,13 @@
 #define ATMEL_PIO_PORTS		5
 #define CPU_HAS_PIO3
 #define PIO_SCDR_DIV		0x3fff
+#define CPU_HAS_PCR
 
 /*
  * PMECC table in ROM
  */
 #define ATMEL_PMECC_INDEX_OFFSET_512	0x10000
 #define ATMEL_PMECC_INDEX_OFFSET_1024	0x18000
-#define ATMEL_PMECC_ALPHA_OFFSET_512	0x10000
-#define ATMEL_PMECC_ALPHA_OFFSET_1024	0x18000
 
 /*
  * SAMA5D3 specific prototypes

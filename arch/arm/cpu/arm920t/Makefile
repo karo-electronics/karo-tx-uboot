@@ -5,29 +5,14 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
+extra-y	= start.o
 
-LIB	= $(obj)lib$(CPU).o
+obj-y	+= cpu.o
+obj-$(CONFIG_USE_IRQ)	+= interrupts.o
 
-START	= start.o
-
-COBJS-y	+= cpu.o
-COBJS-$(CONFIG_USE_IRQ)	+= interrupts.o
-
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS-y) $(SOBJS))
-START	:= $(addprefix $(obj),$(START))
-
-all:	$(obj).depend $(START) $(LIB)
-
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-$(if $(filter a320,$(SOC)),y) += a320/
+obj-$(CONFIG_AT91FAMILY) += at91/
+obj-$(CONFIG_EP93XX) += ep93xx/
+obj-$(CONFIG_IMX) += imx/
+obj-$(CONFIG_KS8695) += ks8695/
+obj-$(CONFIG_S3C24X0) += s3c24x0/

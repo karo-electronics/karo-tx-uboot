@@ -3,7 +3,7 @@
  *
  * (C) Copyright 2003 Josef Baumgartner <josef.baumgartner@telex.de>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* ---
@@ -37,11 +37,9 @@
 /* ---
  * Defines processor clock - important for correct timings concerning serial
  * interface etc.
- * CONFIG_SYS_HZ gives unit: 1000 -> 1 Hz ^= 1000 ms
  * ---
  */
 
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_CLK			66000000
 #define CONFIG_SYS_SDRAM_SIZE		16		/* SDRAM size in MB */
 

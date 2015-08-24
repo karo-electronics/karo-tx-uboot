@@ -8,28 +8,15 @@
 # SPDX-License-Identifier:	GPL-2.0+
 #
 
-include $(TOPDIR)/config.mk
+extra-y	= start.o
+obj-$(CONFIG_X86_RESET_VECTOR) += resetvec.o start16.o
+obj-y	+= interrupts.o cpu.o call64.o
 
-LIB	= $(obj)lib$(CPU).o
-
-START-y	= start.o
-START-$(CONFIG_X86_RESET_VECTOR) += resetvec.o start16.o
-COBJS	= interrupts.o cpu.o
-
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
-START	:= $(addprefix $(obj),$(START-y))
-
-all:	$(obj).depend $(START) $(LIB)
-
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-$(CONFIG_SYS_COREBOOT) += coreboot/
+obj-$(CONFIG_NORTHBRIDGE_INTEL_SANDYBRIDGE) += ivybridge/
+obj-$(CONFIG_NORTHBRIDGE_INTEL_IVYBRIDGE) += ivybridge/
+obj-$(CONFIG_INTEL_QUEENSBAY) += queensbay/
+obj-y += lapic.o
+obj-y += mtrr.o
+obj-$(CONFIG_PCI) += pci.o
+obj-y += turbo.o

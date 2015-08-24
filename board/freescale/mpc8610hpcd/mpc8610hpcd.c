@@ -1,7 +1,7 @@
 /*
  * Copyright 2007,2009-2011 Freescale Semiconductor, Inc.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,7 +10,7 @@
 #include <asm/processor.h>
 #include <asm/immap_86xx.h>
 #include <asm/fsl_pci.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <i2c.h>
 #include <asm/io.h>
@@ -143,7 +143,7 @@ phys_size_t fixed_sdram(void)
 {
 #if !defined(CONFIG_SYS_RAMBOOT)
 	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
-	volatile ccsr_ddr_t *ddr = &immap->im_ddr1;
+	struct ccsr_ddr __iomem *ddr = &immap->im_ddr1;
 	uint d_init;
 
 	ddr->cs0_bnds = 0x0000001f;
@@ -258,12 +258,13 @@ void pci_init_board(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void
-ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 	FT_FSL_PCI_SETUP;
+
+	return 0;
 }
 #endif
 

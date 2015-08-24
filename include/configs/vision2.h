@@ -5,14 +5,13 @@
  *
  * Configuration settings for the MX51-3Stack Freescale board.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
 
-#define CONFIG_MX51	/* in a mx51 */
 #define CONFIG_SYS_TEXT_BASE	0x97800000
 
 #include <asm/arch/imx-regs.h>
@@ -57,11 +56,11 @@
  * Use gpio 4 pin 25 as chip select for SPI flash
  * This corresponds to gpio 121
  */
-#define CONFIG_SF_DEFAULT_CS	(1 | (121 << 8))
+#define CONFIG_SF_DEFAULT_CS	 1
 #define CONFIG_SF_DEFAULT_MODE   SPI_MODE_0
 #define CONFIG_SF_DEFAULT_SPEED  25000000
 
-#define CONFIG_ENV_SPI_CS	(1 | (121 << 8))
+#define CONFIG_ENV_SPI_CS	CONFIG_SF_DEFAULT_CS
 #define CONFIG_ENV_SPI_BUS      0
 #define CONFIG_ENV_SPI_MAX_HZ	25000000
 #define CONFIG_ENV_SPI_MODE	SPI_MODE_0
@@ -157,7 +156,6 @@
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 
-#define CONFIG_SYS_HZ			1000
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_HUSH_PARSER
 

@@ -4,7 +4,7 @@
  * Copyright (C) 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -14,11 +14,8 @@
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
 
 /* SoC Configuration */
-#define CONFIG_ARM926EJS				/* arm926ejs CPU */
 #define CONFIG_SYS_TIMERBASE		0x01c21400	/* use timer 0 */
 #define CONFIG_SYS_HZ_CLOCK		24000000	/* timer0 freq */
-#define CONFIG_SYS_HZ			1000
-#define CONFIG_SOC_DM365
 
 #define CONFIG_MACH_TYPE	MACH_TYPE_DAVINCI_DM365_EVM
 
@@ -49,7 +46,6 @@
 #define CONFIG_EMAC_MDIO_PHY_NUM	0
 #define	CONFIG_SYS_EMAC_TI_CLKDIV	0xa9	/* 1MHz */
 #define CONFIG_MII
-#define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
@@ -59,10 +55,10 @@
 #define CONFIG_RESET_PHY_R
 
 /* I2C */
-#define CONFIG_HARD_I2C
-#define CONFIG_DRIVER_DAVINCI_I2C
-#define CONFIG_SYS_I2C_SPEED		400000
-#define CONFIG_SYS_I2C_SLAVE		0x10	/* SMBus host address */
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_DAVINCI
+#define CONFIG_SYS_DAVINCI_I2C_SPEED		400000
+#define CONFIG_SYS_DAVINCI_I2C_SLAVE		0x10	/* SMBus host address */
 
 /* NAND: socketed, two chipselects, normally 2 GBytes */
 #define CONFIG_NAND_DAVINCI
@@ -201,7 +197,6 @@
 #define CONFIG_SYS_NAND_BLOCK_SIZE	0x20000
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
@@ -217,6 +212,8 @@
 #define CONFIG_SPL_STACK		(0x00010000 + 0x7f00)
 
 #define CONFIG_SPL_TEXT_BASE		0x00000020 /*CONFIG_SYS_SRAM_START*/
+/* Provide at least 16MB spacing between us and the Linux Kernel image */
+#define CONFIG_SPL_PAD_TO		12320
 #define CONFIG_SPL_MAX_FOOTPRINT	12288
 
 #ifndef CONFIG_SPL_BUILD
@@ -236,6 +233,8 @@
 #define CONFIG_SYS_NAND_BAD_BLOCK_POS	0
 #define CONFIG_SYS_NAND_ECCSIZE		0x200
 #define CONFIG_SYS_NAND_ECCBYTES	10
+#define CONFIG_SYS_NAND_MAX_OOBFREE	2
+#define CONFIG_SYS_NAND_MAX_ECCPOS	56
 #define CONFIG_SYS_NAND_OOBSIZE		64
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 

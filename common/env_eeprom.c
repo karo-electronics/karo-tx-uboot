@@ -5,7 +5,7 @@
  * (C) Copyright 2001 Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Andreas Heppel <aheppel@sysgo.de>
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -24,7 +24,6 @@ DECLARE_GLOBAL_DATA_PTR;
 env_t *env_ptr;
 
 char *env_name_spec = "EEPROM";
-int env_eeprom_bus = -1;
 
 static int eeprom_bus_read(unsigned dev_addr, unsigned offset,
 			   uchar *buffer, unsigned cnt)
@@ -40,8 +39,7 @@ static int eeprom_bus_read(unsigned dev_addr, unsigned offset,
 	rcode = eeprom_read(dev_addr, offset, buffer, cnt);
 
 #if defined(CONFIG_I2C_ENV_EEPROM_BUS)
-	if (old_bus != env_eeprom_bus)
-		i2c_set_bus_num(old_bus);
+	i2c_set_bus_num(old_bus);
 #endif
 
 	return rcode;
@@ -63,6 +61,7 @@ static int eeprom_bus_write(unsigned dev_addr, unsigned offset,
 #if defined(CONFIG_I2C_ENV_EEPROM_BUS)
 	i2c_set_bus_num(old_bus);
 #endif
+
 	return rcode;
 }
 
@@ -99,8 +98,6 @@ void env_relocate_spec(void)
 int saveenv(void)
 {
 	env_t	env_new;
-	ssize_t	len;
-	char	*res;
 	int	rc;
 	unsigned int off	= CONFIG_ENV_OFFSET;
 #ifdef CONFIG_ENV_OFFSET_REDUND
@@ -110,13 +107,9 @@ int saveenv(void)
 
 	BUG_ON(env_ptr != NULL);
 
-	res = (char *)&env_new.data;
-	len = hexport_r(&env_htab, '\0', 0, &res, ENV_SIZE, 0, NULL);
-	if (len < 0) {
-		error("Cannot export environment: errno = %d\n", errno);
-		return 1;
-	}
-	env_new.crc = crc32(0, env_new.data, ENV_SIZE);
+	rc = env_export(&env_new);
+	if (rc)
+		return rc;
 
 #ifdef CONFIG_ENV_OFFSET_REDUND
 	if (gd->env_valid == 1) {
@@ -154,6 +147,7 @@ int saveenv(void)
 #ifdef CONFIG_ENV_OFFSET_REDUND
 int env_init(void)
 {
+#ifdef ENV_IS_EMBEDDED
 	ulong len, crc[2], crc_tmp;
 	unsigned int off, off_env[2];
 	uchar buf[64], flags[2];
@@ -219,12 +213,16 @@ int env_init(void)
 		gd->env_addr = off_env[1] + offsetof(env_t, data);
 	else if (gd->env_valid == 1)
 		gd->env_addr = off_env[0] + offsetof(env_t, data);
-
+#else
+	gd->env_addr = (ulong)&default_environment[0];
+	gd->env_valid = 1;
+#endif
 	return 0;
 }
 #else
 int env_init(void)
 {
+#ifdef ENV_IS_EMBEDDED
 	ulong crc, len, new;
 	unsigned off;
 	uchar buf[64];
@@ -257,7 +255,10 @@ int env_init(void)
 		gd->env_addr	= 0;
 		gd->env_valid	= 0;
 	}
-
+#else
+	gd->env_addr = (ulong)&default_environment[0];
+	gd->env_valid = 1;
+#endif
 	return 0;
 }
 #endif

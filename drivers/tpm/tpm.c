@@ -34,7 +34,7 @@
 
 #include <config.h>
 #include <common.h>
-#include <compiler.h>
+#include <linux/compiler.h>
 #include <fdtdec.h>
 #include <i2c.h>
 #include <tpm.h>
@@ -411,7 +411,7 @@ static ssize_t tpm_transmit(const unsigned char *buf, size_t bufsiz)
 			goto out_recv;
 		}
 
-		if ((status == chip->vendor.req_canceled)) {
+		if (status == chip->vendor.req_canceled) {
 			error("Operation Canceled\n");
 			rc = -ECANCELED;
 			goto out;

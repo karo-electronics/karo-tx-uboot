@@ -14,7 +14,6 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_MPC86xx		1	/* MPC86xx */
 #define CONFIG_MPC8641		1	/* MPC8641 specific */
 #define CONFIG_XPEDITE5140	1	/* MPC8641HPCN board specific */
 #define CONFIG_SYS_BOARD_NAME	"XPedite5170"
@@ -24,6 +23,8 @@
 #define CONFIG_BAT_RW		1	/* Use common BAT rw code */
 #define CONFIG_HIGH_BATS	1	/* High BATs supported and enabled */
 #define CONFIG_ALTIVEC		1
+#define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_DISPLAY_BOARDINFO
 
 #define	CONFIG_SYS_TEXT_BASE	0xfff00000
 
@@ -40,7 +41,7 @@
 /*
  * DDR config
  */
-#define CONFIG_FSL_DDR2
+#define CONFIG_SYS_FSL_DDR2
 #define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
 #define CONFIG_DDR_SPD
 #define CONFIG_MEM_INIT_VALUE		0xdeadbeef
@@ -556,12 +557,10 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
-#define CONFIG_SYS_HZ		1000		/* decrementer freq: 1ms ticks */
 #define CONFIG_CMDLINE_EDITING	1		/* Command-line editing */
 #define CONFIG_LOADADDR		0x1000000	/* default location for tftp and bootm */
 #define CONFIG_BOOTDELAY	3		/* -1 disables auto-boot */

@@ -4,7 +4,7 @@
  * (C) Copyright 2004
  * Stefan Roese, esd gmbh germany, stefan.roese@esd-electronics.com
  *
- * SPDX-License-Identifier:	GPL-2.0+ 
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -46,7 +46,6 @@
 #define CONFIG_CMD_CACHE
 #undef CONFIG_CMD_NET
 
-#define CONFIG_SYS_PROMPT		"=> "
 #define CONFIG_SYS_LONGHELP				/* undef to save memory		*/
 
 #if defined(CONFIG_CMD_KGDB)
@@ -68,8 +67,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0x400
 #define CONFIG_SYS_MEMTEST_END		0x380000
-
-#define CONFIG_SYS_HZ			1000
 
 /*
  * Clock configuration: enable only one of the following options

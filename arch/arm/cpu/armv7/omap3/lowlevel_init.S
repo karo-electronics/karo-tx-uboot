@@ -17,9 +17,6 @@
 #include <asm/arch/clocks_omap3.h>
 #include <linux/linkage.h>
 
-_TEXT_BASE:
-	.word	CONFIG_SYS_TEXT_BASE	/* sdram load addr from config.mk */
-
 #ifdef CONFIG_SPL_BUILD
 ENTRY(save_boot_params)
 	ldr	r4, =omap3_boot_device
@@ -69,15 +66,13 @@ ENDPROC(do_omap3_emu_romcode_call)
  *************************************************************************/
 ENTRY(cpy_clk_code)
 	/* Copy DPLL code into SRAM */
-	adr	r0, go_to_speed		/* get addr of clock setting code */
-	mov	r2, #384		/* r2 size to copy (div by 32 bytes) */
-	mov	r1, r1			/* r1 <- dest address (passed in) */
-	add	r2, r2, r0		/* r2 <- source end address */
+	adr	r0, go_to_speed		/* copy from start of go_to_speed... */
+	adr	r2, lowlevel_init	/* ... up to start of low_level_init */
 next2:
 	ldmia	r0!, {r3 - r10}		/* copy from source address [r0] */
 	stmia	r1!, {r3 - r10}		/* copy to   target address [r1] */
 	cmp	r0, r2			/* until source end address [r2] */
-	bne	next2
+	blo	next2
 	mov	pc, lr			/* back to caller */
 ENDPROC(cpy_clk_code)
 
@@ -464,6 +459,19 @@ per_36x_dpll_param:
 .word 26000,    432,   12,     9,      16,     9,     4,      3,      1
 .word 38400,    360,   15,     9,      16,     5,     4,      3,      1
 
+per2_36x_dpll_param:
+/* 12MHz */
+.word PER2_36XX_M_12, PER2_36XX_N_12, 0, PER2_36XX_M2_12
+/* 13MHz */
+.word PER2_36XX_M_13, PER2_36XX_N_13, 0, PER2_36XX_M2_13
+/* 19.2MHz */
+.word PER2_36XX_M_19P2, PER2_36XX_N_19P2, 0, PER2_36XX_M2_19P2
+/* 26MHz */
+.word PER2_36XX_M_26, PER2_36XX_N_26, 0, PER2_36XX_M2_26
+/* 38.4MHz */
+.word PER2_36XX_M_38P4, PER2_36XX_N_38P4, 0, PER2_36XX_M2_38P4
+
+
 ENTRY(get_36x_mpu_dpll_param)
 	adr	r0, mpu_36x_dpll_param
 	mov	pc, lr
@@ -483,3 +491,8 @@ ENTRY(get_36x_per_dpll_param)
 	adr	r0, per_36x_dpll_param
 	mov	pc, lr
 ENDPROC(get_36x_per_dpll_param)
+
+ENTRY(get_36x_per2_dpll_param)
+	adr	r0, per2_36x_dpll_param
+	mov	pc, lr
+ENDPROC(get_36x_per2_dpll_param)
