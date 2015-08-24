@@ -206,7 +206,7 @@
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION 1
 #define CONFIG_SYS_BOOT_CMD_NAND	""
 #define CONFIG_SYS_FDTSAVE_CMD						\
-	"fdtsave=mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} 1"	\
+	"fdtsave=mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} ${emmc_boot_part}" \
 	";mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80"	\
 	";mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} 0\0"
 #define MTD_NAME			""
