@@ -118,9 +118,9 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define DEFAULT_BOOTCMD			"run bootcmd_${boot_mode} bootm_cmd"
-#ifndef CONFIG_TX6_UBOOT_MFG
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"init=/linuxrc console=ttymxc0,115200 ro debug panic=1"
+#ifndef CONFIG_TX6_UBOOT_MFG
 #define CONFIG_BOOTCOMMAND		DEFAULT_BOOTCMD
 #else
 #define CONFIG_BOOTCOMMAND		"set bootcmd '" DEFAULT_BOOTCMD "';" \
@@ -141,8 +141,7 @@
 /*
  * Extra Environments
  */
-#ifndef CONFIG_TX6_UBOOT_MFG
-#ifdef CONFIG_ENV_IS_NOWHERE
+#ifdef CONFIG_TX6_UBOOT_NOENV
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"autoload=no\0"							\
@@ -187,7 +186,6 @@
 	"touchpanel=tsc2007\0"						\
 	"video_mode=" DEFAULT_VIDEO_MODE "\0"
 #endif /*  CONFIG_ENV_IS_NOWHERE */
-#endif /*  CONFIG_TX6_UBOOT_MFG */
 
 #ifdef CONFIG_TX6_NAND
 #define CONFIG_SYS_DEFAULT_BOOT_MODE	"nand"
