@@ -711,9 +711,11 @@ static int fdt_del_subnodes(const void *blob, int parent_offset)
 	for (ndepth = 0, off = fdt_next_node(blob, parent_offset, &ndepth);
 	     (off >= 0) && (ndepth > 0);
 	     off = fdt_next_node(blob, off, &ndepth)) {
-		if (ndepth != 1)
+		if (ndepth < 0)
+			break;
+		else if (ndepth != 1)
 			continue;
-		if (fdt_getprop(blob, off, "compatible", NULL))
+		else if (fdt_getprop(blob, off, "compatible", NULL))
 			continue;
 		debug("delete %s: offset: %x\n",
 			fdt_get_name(blob, off, 0), off);
@@ -738,9 +740,11 @@ int fdt_del_partitions(void *blob, int parent_offset)
 	int ret;
 
 	while ((off = fdt_next_node(blob, off, &ndepth)) > 0) {
-		if (ndepth != 1)
+		if (ndepth < 0)
+			break;
+		else if (ndepth != 1)
 			continue;
-		if (fdt_getprop(blob, off, "compatible", NULL))
+		else if (fdt_getprop(blob, off, "compatible", NULL))
 			continue;
 		prop = fdt_getprop(blob, off, "label", NULL);
 		if (prop == NULL) {
@@ -780,9 +784,11 @@ int fdt_node_set_part_info(void *blob, int parent_offset,
 	 * the offset in this case
 	 */
 	while ((off = fdt_next_node(blob, off, &ndepth)) > 0) {
-		if (ndepth != 1)
+		if (ndepth < 0)
+			break;
+		else if (ndepth != 1)
 			continue;
-		if (fdt_getprop(blob, off, "compatible", NULL))
+		else if (fdt_getprop(blob, off, "compatible", NULL))
 			continue;
 		parent_offset = off;
 		break;
