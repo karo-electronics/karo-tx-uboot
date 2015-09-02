@@ -355,15 +355,15 @@ static const struct mxc_gpio_plat mxc_plat[] = {
 	{ 0, (struct gpio_regs *)GPIO1_BASE_ADDR },
 	{ 1, (struct gpio_regs *)GPIO2_BASE_ADDR },
 	{ 2, (struct gpio_regs *)GPIO3_BASE_ADDR },
-#if defined(CONFIG_MX25) || defined(CONFIG_MX27) || defined(CONFIG_MX51) || \
-		defined(CONFIG_MX53) || defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX27) || defined(CONFIG_SOC_MX51) || \
+		defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
 	{ 3, (struct gpio_regs *)GPIO4_BASE_ADDR },
 #endif
-#if defined(CONFIG_MX27) || defined(CONFIG_MX53) || defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX27) || defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
 	{ 4, (struct gpio_regs *)GPIO5_BASE_ADDR },
 	{ 5, (struct gpio_regs *)GPIO6_BASE_ADDR },
 #endif
-#if defined(CONFIG_MX53) || defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
 	{ 6, (struct gpio_regs *)GPIO7_BASE_ADDR },
 #endif
 };
