@@ -1,6 +1,9 @@
+config SPI
+	bool "Enable SPI bus support"
+
 config DM_SPI
 	bool "Enable Driver Model for SPI drivers"
-	depends on DM
+	depends on DM && SPI
 	help
 	  Enable driver model for SPI. The SPI slave interface
 	  (spi_setup_slave(), spi_xfer(), etc.) is then implemented by
