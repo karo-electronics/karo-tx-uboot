@@ -47,6 +47,7 @@ int fdt_find_and_setprop(void *fdt, const char *node, const char *prop,
 			 const void *val, int len, int create);
 void fdt_fixup_qe_firmware(void *fdt);
 
+#if defined(__UBOOT__)
 /**
  * Update native-mode property of display-timings node to the phandle
  * of the timings matching a display by name (case insensitive).
