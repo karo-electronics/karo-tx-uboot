@@ -87,7 +87,7 @@ config TX53_UBOOT
 
 config TX53_UBOOT_NOENV
 	bool "U-Boot using only built-in environment"
-	select ENV_IS_NOWHERE
+	select UBOOT_IGNORE_ENV
 
 endchoice
 

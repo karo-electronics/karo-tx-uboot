@@ -74,8 +74,6 @@ SECTIONS
 		*(.__rel_dyn_end)
 	}
 
-	_end = .;
-
 /*
  * Compiler-generated __bss_start and __bss_end, see arch/arm/lib/bss.c
  * __bss_base and __bss_limit are for linker only (overlay ordering)

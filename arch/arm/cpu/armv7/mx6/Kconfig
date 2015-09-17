@@ -1,31 +1,31 @@
 if ARCH_MX6
 
-config MX6
+config SOC_MX6
 	bool
 	default y
 
-config MX6D
+config SOC_MX6D
 	bool
 
-config MX6DL
+config SOC_MX6DL
 	bool
 
-config MX6Q
+config SOC_MX6Q
 	bool
 
-config MX6QDL
+config SOC_MX6QDL
 	bool
 
-config MX6S
+config SOC_MX6S
 	bool
 
-config MX6SL
+config SOC_MX6SL
 	bool
 
-config MX6SX
+config SOC_MX6SX
 	bool
 
-config MX6UL
+config SOC_MX6UL
 	select SYS_L2CACHE_OFF
 	bool
 

@@ -134,8 +134,8 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 		"Triton%02X", eth_get_dev()->enetaddr[5]);
 
 	net_copy_ip(&std_drv_glb->kitl.ipAddress, &net_ip);
-	std_drv_glb->kitl.ipMask = getenv_ip("netmask");
-	std_drv_glb->kitl.ipRoute = getenv_ip("gatewayip");
+	std_drv_glb->kitl.ipMask = getenv_ip("netmask").s_addr;
+	std_drv_glb->kitl.ipRoute = getenv_ip("gatewayip").s_addr;
 
 	if (mtdparts) {
 		strncpy(std_drv_glb->mtdparts, mtdparts, max_len);

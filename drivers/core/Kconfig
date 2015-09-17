@@ -1,5 +1,8 @@
 menu "Generic Driver Options"
 
+config BOUNCE_BUFFER
+	bool
+
 config DM
 	bool "Enable Driver Model"
 	help

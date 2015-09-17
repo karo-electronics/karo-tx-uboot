@@ -43,7 +43,7 @@ config TXA5_NAND
 	select CMD_NAND
 	select CMD_NAND_TRIMFFS
 	select CMD_ROMUPDATE
-	select ENV_IS_IN_NAND if !TXA5_UBOOT_NOENV
+	select ENV_IS_IN_NAND
 	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
 	select MTD_PARTITIONS
 	select MTD_DEVICE
@@ -55,7 +55,7 @@ config TXA5_EMMC
 	bool
 	select TXA5
 	select SUPPORT_EMMC_BOOT
-	select ENV_IS_IN_MMC if !TXA5_UBOOT_NOENV
+	select ENV_IS_IN_MMC
 
 choice
 	prompt "TXA5 module variant"
@@ -86,7 +86,7 @@ config TXA5_UBOOT
 
 config TXA5_UBOOT_NOENV
 	bool "U-Boot using only built-in environment"
-	select ENV_IS_NOWHERE
+	select UBOOT_IGNORE_ENV
 
 endchoice
 

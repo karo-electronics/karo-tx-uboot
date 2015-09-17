@@ -16,6 +16,7 @@
 #include <asm/arch/imx-regs.h>
 
  /* High Level Configuration Options */
+#define CONFIG_MX35
 
 #define CONFIG_SYS_DCACHE_OFF
 #define CONFIG_SYS_CACHELINE_SIZE	32

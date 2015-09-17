@@ -1,11 +1,10 @@
-menu "MMC Host controller Support"
+menuconfig MMC
+	bool "MMC Host controller Support"
 
-config MMC
-	bool
+if MMC
 
 config GENERIC_MMC
 	bool
-	select MMC
 
 config DM_MMC
 	bool "Enable MMC controllers using Driver Model"
@@ -29,16 +28,19 @@ config FSL_ESDHC
 
 config FSL_USDHC
 	bool "Support USDHC"
-	depends on SOC_MX6
-	depends on FSL_ESDHC
+	depends on FSL_ESDHC && SOC_MX6
 
 config MXS_MMC
 	bool "i.MXS MMC/SDHC controller"
 	depends on SOC_MXS || SOC_MX6
 	select GENERIC_MMC
+	select BOUNCE_BUFFER
+
+config OMAP_HSMMC
+	bool "OMAP HSMMC controller"
+	select GENERIC_MMC
 
 config SUPPORT_EMMC_BOOT
 	bool "Support boot from eMMC"
-	depends on MMC
 
-endmenu
+endif

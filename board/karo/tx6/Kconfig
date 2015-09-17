@@ -15,44 +15,41 @@ config SYS_CONFIG_NAME
 config TX6
 	bool
 	default y
-	select CMD_BMP if LCD
-	select CMD_BOOTCE
-	select CMD_BOOTZ
-	select CMD_CACHE
-	select CMD_I2C if I2C
-	select CMD_MEMTEST
-	select CMD_MMC
-	select CMD_TIME
+	select APBH_DMA
+	select APBH_DMA_BURST
+	select APBH_DMA_BURST8
+	select CC_OPTIMIZE_LIBS_FOR_SPEED
 	select DM
 	select DM_GPIO
+	select DM_THERMAL
+	select FSL_ESDHC if MMC
+	select FSL_USDHC if MMC
 	select LIB_RAND
 	select PHYLIB
 	select SYS_I2C
 	select SYS_I2C_MXC
-	select GET_FEC_MAC_ADDR_FROM_IIM
+	select GET_FEC_MAC_ADDR_FROM_IIM if FEC_MXC
+	select MXC_OCOTP if CMD_FUSE
 	select OF_BOARD_SETUP
 	select OF_LIBFDT
 
 config TX6_NAND
 	bool
 	default ! TX6_EMMC
-	select CMD_NAND
-	select CMD_NAND_TRIMFFS
-	select CMD_MTDPARTS
+	select CMD_NAND_TRIMFFS if CMD_NAND
 	select CMD_ROMUPDATE
-	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
+	select FDT_FIXUP_PARTITIONS
+	select MTD_DEVICE
 	select MTD_PARTITIONS
 	select NAND
 	select NAND_MXS
 	select NAND_MXS_NO_BBM_SWAP
 	select SYS_NAND_USE_FLASH_BBT
-	select APBH_DMA
-	select APBH_DMA_BURST
-	select APBH_DMA_BURST8
-	select MTD_DEVICE
 
 config TX6_EMMC
 	bool
+	select CMD_MMC
+	select MMC
 	select SUPPORT_EMMC_BOOT
 
 #
@@ -71,14 +68,19 @@ config SYS_SDRAM_BUS_WIDTH_32
 choice
 	prompt "TX6 module variant"
 
-config TARGET_TX6Q_10X0
-	bool "TX6Q-1010 and TX6Q-1030"
-	select SOC_MX6Q
-
 config TARGET_TX6Q_1020
 	bool "TX6Q-1020"
 	select SOC_MX6Q
 	select TX6_EMMC
+
+config TARGET_TX6Q_1033
+	bool "TX6Q-1033"
+	select SOC_MX6Q
+	select TX6_EMMC
+
+config TARGET_TX6Q_10X0
+	bool "TX6Q-1010 and TX6Q-1030"
+	select SOC_MX6Q
 
 config TARGET_TX6Q_11X0
 	bool "TX6Q-1110 and TX6Q-1130"
@@ -96,10 +98,6 @@ config TARGET_TX6S_8035
 	select TX6_EMMC
 	select SYS_SDRAM_BUS_WIDTH_32
 
-config TARGET_TX6U_80X0
-	bool "TX6U-8010 and TX6U-8030"
-	select SOC_MX6DL
-
 config TARGET_TX6U_8011
 	bool "TX6U-8011"
 	select SOC_MX6DL
@@ -109,10 +107,14 @@ config TARGET_TX6U_8012
 	bool "TX6U-8012"
 	select SOC_MX6DL
 
-config TARGET_TX6U_81X0
-	bool "TX6U-8110 and TX6U-8130"
+config TARGET_TX6U_8033
+	bool "TX6U-8033"
 	select SOC_MX6DL
-	select SYS_LVDS_IF
+	select TX6_EMMC
+
+config TARGET_TX6U_80X0
+	bool "TX6U-8010 and TX6U-8030"
+	select SOC_MX6DL
 
 config TARGET_TX6U_8111
 	bool "TX6U-8111"
@@ -120,10 +122,10 @@ config TARGET_TX6U_8111
 	select SYS_SDRAM_BUS_WIDTH_32
 	select SYS_LVDS_IF
 
-config TARGET_TX6U_8033
-	bool "TX6U-8033"
+config TARGET_TX6U_81X0
+	bool "TX6U-8110 and TX6U-8130"
 	select SOC_MX6DL
-	select TX6_EMMC
+	select SYS_LVDS_IF
 
 endchoice
 
@@ -139,6 +141,7 @@ config TX6_UBOOT_MFG
 
 config TX6_UBOOT_NOENV
 	bool "U-Boot using only built-in environment"
+	select UBOOT_IGNORE_ENV
 
 endchoice
 

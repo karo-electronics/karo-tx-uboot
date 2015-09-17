@@ -15,7 +15,7 @@
 #include <common.h>
 #include <errno.h>
 #include <miiphy.h>
-#include <netdev.h>
+#include <cpsw.h>
 #include <serial.h>
 #include <libfdt.h>
 #include <fdt_support.h>
@@ -25,284 +25,48 @@
 #include <linux/mtd/nand.h>
 #include <asm/gpio.h>
 #include <asm/cache.h>
-#include <asm/omap_common.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/mmc_host_def.h>
+#include <asm/arch/mux.h>
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/clocks_am33xx.h>
 #include <asm/arch/mem.h>
 #include <video_fb.h>
 #include <asm/arch/da8xx-fb.h>
 
 #include "flash.h"
 
-#define TX48_LED_GPIO		AM33XX_GPIO_NR(1, 26)
-#define TX48_ETH_PHY_RST_GPIO	AM33XX_GPIO_NR(3, 8)
-#define TX48_LCD_RST_GPIO	AM33XX_GPIO_NR(1, 19)
-#define TX48_LCD_PWR_GPIO	AM33XX_GPIO_NR(1, 22)
+DECLARE_GLOBAL_DATA_PTR;
+
 #define TX48_LCD_BACKLIGHT_GPIO	AM33XX_GPIO_NR(3, 14)
 
-#define GMII_SEL		(CTRL_BASE + 0x650)
-
-/* UART Defines */
-#define UART_SYSCFG_OFFSET	0x54
-#define UART_SYSSTS_OFFSET	0x58
-
-#define UART_RESET		(0x1 << 1)
 #define UART_RESETDONE		(1 << 0)
 #define UART_IDLE_MODE(m)	(((m) << 3) & UART_IDLE_MODE_MASK)
 #define UART_IDLE_MODE_MASK	(0x3 << 3)
-
-/* Timer Defines */
-#define TSICR_REG		0x54
-#define TIOCP_CFG_REG		0x10
-#define TCLR_REG		0x38
-
-/* RGMII mode define */
-#define RGMII_MODE_ENABLE	0xA
-#define RMII_MODE_ENABLE	0x5
-#define MII_MODE_ENABLE		0x0
-
-#define NO_OF_MAC_ADDR		1
-#define ETH_ALEN		6
-
-/* PAD Control Fields */
-#define SLEWCTRL	(0x1 << 6)
-#define	RXACTIVE	(0x1 << 5)
-#define	PULLUP_EN	(0x1 << 4) /* Pull UP Selection */
-#define PULLUDEN	(0x0 << 3) /* Pull up enabled */
-#define PULLUDDIS	(0x1 << 3) /* Pull up disabled */
-#define MODE(val)	(val)
-
-DECLARE_GLOBAL_DATA_PTR;
-
-/*
- * PAD CONTROL OFFSETS
- * Field names corresponds to the pad signal name
- */
-struct pad_signals {
-	int gpmc_ad0;
-	int gpmc_ad1;
-	int gpmc_ad2;
-	int gpmc_ad3;
-	int gpmc_ad4;
-	int gpmc_ad5;
-	int gpmc_ad6;
-	int gpmc_ad7;
-	int gpmc_ad8;
-	int gpmc_ad9;
-	int gpmc_ad10;
-	int gpmc_ad11;
-	int gpmc_ad12;
-	int gpmc_ad13;
-	int gpmc_ad14;
-	int gpmc_ad15;
-	int gpmc_a0;
-	int gpmc_a1;
-	int gpmc_a2;
-	int gpmc_a3;
-	int gpmc_a4;
-	int gpmc_a5;
-	int gpmc_a6;
-	int gpmc_a7;
-	int gpmc_a8;
-	int gpmc_a9;
-	int gpmc_a10;
-	int gpmc_a11;
-	int gpmc_wait0;
-	int gpmc_wpn;
-	int gpmc_be1n;
-	int gpmc_csn0;
-	int gpmc_csn1;
-	int gpmc_csn2;
-	int gpmc_csn3;
-	int gpmc_clk;
-	int gpmc_advn_ale;
-	int gpmc_oen_ren;
-	int gpmc_wen;
-	int gpmc_be0n_cle;
-	int lcd_data0;
-	int lcd_data1;
-	int lcd_data2;
-	int lcd_data3;
-	int lcd_data4;
-	int lcd_data5;
-	int lcd_data6;
-	int lcd_data7;
-	int lcd_data8;
-	int lcd_data9;
-	int lcd_data10;
-	int lcd_data11;
-	int lcd_data12;
-	int lcd_data13;
-	int lcd_data14;
-	int lcd_data15;
-	int lcd_vsync;
-	int lcd_hsync;
-	int lcd_pclk;
-	int lcd_ac_bias_en;
-	int mmc0_dat3;
-	int mmc0_dat2;
-	int mmc0_dat1;
-	int mmc0_dat0;
-	int mmc0_clk;
-	int mmc0_cmd;
-	int mii1_col;
-	int mii1_crs;
-	int mii1_rxerr;
-	int mii1_txen;
-	int mii1_rxdv;
-	int mii1_txd3;
-	int mii1_txd2;
-	int mii1_txd1;
-	int mii1_txd0;
-	int mii1_txclk;
-	int mii1_rxclk;
-	int mii1_rxd3;
-	int mii1_rxd2;
-	int mii1_rxd1;
-	int mii1_rxd0;
-	int rmii1_refclk;
-	int mdio_data;
-	int mdio_clk;
-	int spi0_sclk;
-	int spi0_d0;
-	int spi0_d1;
-	int spi0_cs0;
-	int spi0_cs1;
-	int ecap0_in_pwm0_out;
-	int uart0_ctsn;
-	int uart0_rtsn;
-	int uart0_rxd;
-	int uart0_txd;
-	int uart1_ctsn;
-	int uart1_rtsn;
-	int uart1_rxd;
-	int uart1_txd;
-	int i2c0_sda;
-	int i2c0_scl;
-	int mcasp0_aclkx;
-	int mcasp0_fsx;
-	int mcasp0_axr0;
-	int mcasp0_ahclkr;
-	int mcasp0_aclkr;
-	int mcasp0_fsr;
-	int mcasp0_axr1;
-	int mcasp0_ahclkx;
-	int xdma_event_intr0;
-	int xdma_event_intr1;
-	int nresetin_out;
-	int porz;
-	int nnmi;
-	int osc0_in;
-	int osc0_out;
-	int rsvd1;
-	int tms;
-	int tdi;
-	int tdo;
-	int tck;
-	int ntrst;
-	int emu0;
-	int emu1;
-	int osc1_in;
-	int osc1_out;
-	int pmic_power_en;
-	int rtc_porz;
-	int rsvd2;
-	int ext_wakeup;
-	int enz_kaldo_1p8v;
-	int usb0_dm;
-	int usb0_dp;
-	int usb0_ce;
-	int usb0_id;
-	int usb0_vbus;
-	int usb0_drvvbus;
-	int usb1_dm;
-	int usb1_dp;
-	int usb1_ce;
-	int usb1_id;
-	int usb1_vbus;
-	int usb1_drvvbus;
-	int ddr_resetn;
-	int ddr_csn0;
-	int ddr_cke;
-	int ddr_ck;
-	int ddr_nck;
-	int ddr_casn;
-	int ddr_rasn;
-	int ddr_wen;
-	int ddr_ba0;
-	int ddr_ba1;
-	int ddr_ba2;
-	int ddr_a0;
-	int ddr_a1;
-	int ddr_a2;
-	int ddr_a3;
-	int ddr_a4;
-	int ddr_a5;
-	int ddr_a6;
-	int ddr_a7;
-	int ddr_a8;
-	int ddr_a9;
-	int ddr_a10;
-	int ddr_a11;
-	int ddr_a12;
-	int ddr_a13;
-	int ddr_a14;
-	int ddr_a15;
-	int ddr_odt;
-	int ddr_d0;
-	int ddr_d1;
-	int ddr_d2;
-	int ddr_d3;
-	int ddr_d4;
-	int ddr_d5;
-	int ddr_d6;
-	int ddr_d7;
-	int ddr_d8;
-	int ddr_d9;
-	int ddr_d10;
-	int ddr_d11;
-	int ddr_d12;
-	int ddr_d13;
-	int ddr_d14;
-	int ddr_d15;
-	int ddr_dqm0;
-	int ddr_dqm1;
-	int ddr_dqs0;
-	int ddr_dqsn0;
-	int ddr_dqs1;
-	int ddr_dqsn1;
-	int ddr_vref;
-	int ddr_vtp;
-	int ddr_strben0;
-	int ddr_strben1;
-	int ain7;
-	int ain6;
-	int ain5;
-	int ain4;
-	int ain3;
-	int ain2;
-	int ain1;
-	int ain0;
-	int vrefp;
-	int vrefn;
-};
 
 struct pin_mux {
 	short reg_offset;
 	uint8_t val;
 };
 
-#define PAD_CTRL_BASE	0x800
-#define OFFSET(x)	(unsigned int) (&((struct pad_signals *) \
-				(PAD_CTRL_BASE))->x)
+/*
+ * Configure the pin mux for the module
+ */
+static inline void tx48_set_pin_mux(const struct pin_mux *pin_mux,
+			int num_pins)
+{
+	int i;
+
+	for (i = 0; i < num_pins; i++)
+		writel(pin_mux[i].val, CTRL_BASE + pin_mux[i].reg_offset);
+}
 
 static struct pin_mux tx48_pins[] = {
-#ifdef CONFIG_CMD_NAND
+#ifdef CONFIG_NAND
 	{ OFFSET(gpmc_ad0), MODE(0) | PULLUP_EN | RXACTIVE, },	/* NAND AD0 */
 	{ OFFSET(gpmc_ad1), MODE(0) | PULLUP_EN | RXACTIVE, },	/* NAND AD1 */
 	{ OFFSET(gpmc_ad2), MODE(0) | PULLUP_EN | RXACTIVE, },	/* NAND AD2 */
@@ -338,14 +102,6 @@ static struct pin_mux tx48_pins[] = {
 	{ OFFSET(emu0), MODE(7) | RXACTIVE},	     /* nINT */
 	{ OFFSET(emu1), MODE(7), },		     /* nRST */
 #endif
-};
-
-static struct gpio tx48_gpios[] = {
-	/* configure this pin early to prevent flicker of the LCD */
-	{ TX48_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
-};
-
-static struct pin_mux tx48_mmc_pins[] = {
 #ifdef CONFIG_OMAP_HSMMC
 	/* MMC1 */
 	{ OFFSET(mii1_rxd2), MODE(4) | RXACTIVE | PULLUP_EN, },	/* MMC1_DAT3 */
@@ -358,19 +114,18 @@ static struct pin_mux tx48_mmc_pins[] = {
 #endif
 };
 
-/*
- * Configure the pin mux for the module
- */
-static inline void tx48_set_pin_mux(const struct pin_mux *pin_mux,
-			int num_pins)
-{
-	int i;
+static struct gpio tx48_gpios[] = {
+	/* configure this pin early to prevent flicker of the LCD */
+	{ TX48_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
+};
 
-	for (i = 0; i < num_pins; i++)
-		writel(pin_mux[i].val, CTRL_BASE + pin_mux[i].reg_offset);
+void set_mux_conf_regs(void)
+{
+	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
+	tx48_set_pin_mux(tx48_pins, ARRAY_SIZE(tx48_pins));
 }
 
-static struct pin_mux tx48_uart0_pins[] = {
+static struct pin_mux tx48_uart_pins[] = {
 #ifdef CONFIG_SYS_NS16550_COM1
 	/* UART0 for early boot messages */
 	{ OFFSET(uart0_rxd), MODE(0) | PULLUP_EN | RXACTIVE, },	/* UART0_RXD */
@@ -397,14 +152,9 @@ static struct pin_mux tx48_uart0_pins[] = {
 /*
  * early system init of muxing and clocks.
  */
-static void enable_uart0_pin_mux(void)
+void set_uart_mux_conf(void)
 {
-	tx48_set_pin_mux(tx48_uart0_pins, ARRAY_SIZE(tx48_uart0_pins));
-}
-
-static void enable_mmc0_pin_mux(void)
-{
-	tx48_set_pin_mux(tx48_mmc_pins, ARRAY_SIZE(tx48_mmc_pins));
+	tx48_set_pin_mux(tx48_uart_pins, ARRAY_SIZE(tx48_uart_pins));
 }
 
 static const u32 gpmc_nand_cfg[GPMC_MAX_REG] = {
@@ -582,23 +332,20 @@ static inline int cl(u32 sdram_clk)
 		(80 << 0) /* refr periods between ZQCS commands */ |	\
 		0)
 
+#if 1
 static struct ddr_data tx48_ddr3_data = {
 	/* reset defaults */
 	.datardsratio0 = 0x04010040,
 	.datawdsratio0 = 0x0,
 	.datafwsratio0 = 0x0,
 	.datawrsratio0 = 0x04010040,
-	.datadldiff0 = 0x4,
 };
 
 static struct cmd_control tx48_ddr3_cmd_ctrl_data = {
 	/* reset defaults */
 	.cmd0csratio = 0x80,
-	.cmd0dldiff = 0x04,
 	.cmd1csratio = 0x80,
-	.cmd1dldiff = 0x04,
 	.cmd2csratio = 0x80,
-	.cmd2dldiff = 0x04,
 };
 
 static void ddr3_calib_start(void)
@@ -638,7 +385,7 @@ static void ddr3_calib_start(void)
 	debug("DDR3 calibration done\n");
 }
 
-static void tx48_ddr_init(void)
+void sdram_init(void)
 {
 	struct emif_regs r = {0};
 
@@ -652,14 +399,15 @@ static void tx48_ddr_init(void)
 	r.zq_config = ZQ_CONFIG_VAL;
 	r.emif_ddr_phy_ctlr_1 = 0x0000030b;
 
-	config_ddr(SDRAM_CLK, 0x04, &tx48_ddr3_data,
+	config_ddr(SDRAM_CLK, NULL, &tx48_ddr3_data,
 		&tx48_ddr3_cmd_ctrl_data, &r, 0);
 
 	ddr3_calib_start();
 
 	debug("%s: config_ddr done\n", __func__);
 }
-
+#endif
+#if 0
 #ifdef CONFIG_HW_WATCHDOG
 static inline void tx48_wdog_disable(void)
 {
@@ -680,58 +428,22 @@ static inline void tx48_wdog_disable(void)
 		;
 }
 #endif
+#endif
 
-void s_init(void)
+#define OSC     (V_OSCK/1000000)
+static const struct dpll_params tx48_ddr_params = {
+	266, OSC-1, 1, -1, -1, -1, -1,
+};
+
+const struct dpll_params *get_dpll_ddr_params(void)
 {
-	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
+	return &tx48_ddr_params;
+}
+
+void am33xx_spl_board_init(void)
+{
 	struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
-	int timeout = 1000;
 
-	gd = &gdata;
-
-	/*
-         * Save the boot parameters passed from romcode.
-         * We cannot delay the saving further than this,
-         * to prevent overwrites.
-         */
-	save_omap_boot_params();
-
-	/* Setup the PLLs and the clocks for the peripherals */
-	pll_init();
-
-	tx48_wdog_disable();
-
-	enable_uart0_pin_mux();
-
-	/* UART softreset */
-	writel(readl(&uart_base->uartsyscfg) | UART_RESET,
-		&uart_base->uartsyscfg);
-	while (!(readl(&uart_base->uartsyssts) & UART_RESETDONE)) {
-		udelay(1);
-		if (timeout-- <= 0)
-			break;
-	}
-
-	/* Disable smart idle */
-	writel((readl(&uart_base->uartsyscfg) & ~UART_IDLE_MODE_MASK) |
-		UART_IDLE_MODE(1), &uart_base->uartsyscfg);
-
-	preloader_console_init();
-
-	if (timeout <= 0)
-		printf("Timeout waiting for UART RESET\n");
-
-	timer_init();
-
-	tx48_ddr_init();
-
-	gpmc_init();
 	enable_gpmc_cs_config(gpmc_nand_cfg, &gpmc_cfg->cs[0],
 			CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_SIZE);
-
-	/* Enable MMC0 */
-	enable_mmc0_pin_mux();
-
-	gpio_request_array(tx48_gpios, ARRAY_SIZE(tx48_gpios));
-	tx48_set_pin_mux(tx48_pins, ARRAY_SIZE(tx48_pins));
 }

@@ -11,7 +11,7 @@
 
 #define CONFIG_SYS_CACHELINE_SIZE 64
 
-#if defined(CONFIG_MX51)
+#if defined(CONFIG_SOC_MX51)
 #define IRAM_BASE_ADDR		0x1FFE0000	/* internal ram */
 #define IPU_SOC_BASE_ADDR	0x40000000
 #define SPBA0_BASE_ADDR		0x70000000

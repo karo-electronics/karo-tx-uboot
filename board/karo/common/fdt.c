@@ -123,7 +123,7 @@ void karo_fdt_move_fdt(void)
 			fdt_addr, fdt_addr + fdt_totalsize(fdt) - 1);
 		memmove((void *)fdt_addr, fdt, fdt_totalsize(fdt));
 	}
-	set_working_fdt_addr((void *)fdt_addr);
+	set_working_fdt_addr(fdt_addr);
 	gd->fdt_blob = fdt;
 	karo_set_fdtsize(fdt);
 }

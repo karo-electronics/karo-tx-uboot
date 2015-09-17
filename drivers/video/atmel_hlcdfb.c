@@ -50,15 +50,6 @@ ushort *configuration_get_cmap(void)
 #endif
 }
 
-ushort *configuration_get_cmap(void)
-{
-#if defined(CONFIG_LCD_LOGO)
-	return bmp_logo_palette;
-#else
-	return NULL;
-#endif
-}
-
 void lcd_ctrl_init(void *lcdbase)
 {
 	unsigned long value;

@@ -1,7 +1,7 @@
-menu "SPI Support"
+menuconfig SPI
+	bool "SPI support"
 
-config SPI
-	bool "Enable SPI support"
+if SPI
 
 config DM_SPI
 	bool "Enable Driver Model for SPI drivers"
@@ -141,4 +141,4 @@ config TI_QSPI
 	  Enable the TI Quad-SPI (QSPI) driver for DRA7xx and AM43xx evms.
 	  This driver support spi flash single, quad and memory reads.
 
-endmenu # menu "SPI Support"
+endif

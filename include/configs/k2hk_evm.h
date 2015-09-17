@@ -11,6 +11,7 @@
 #define __CONFIG_K2HK_EVM_H
 
 /* Platform type */
+#define CONFIG_SOC_K2HK
 #define CONFIG_K2HK_EVM
 
 /* U-Boot general configuration */

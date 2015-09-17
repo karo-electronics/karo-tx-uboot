@@ -236,6 +236,12 @@ config CMD_ENV_EXISTS
 	  Check if a variable is defined in the environment for use in
 	  shell scripting.
 
+config UBOOT_IGNORE_ENV
+	bool
+	help
+	  Ignore non-volatile environment settings and use default
+	  environment only.
+
 endmenu
 
 menu "Memory commands"

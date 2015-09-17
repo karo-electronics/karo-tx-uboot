@@ -56,7 +56,7 @@
 #define UCMD_RUN_STOP           (1 << 0) /* controller run/stop */
 #define UCMD_RESET		(1 << 1) /* controller reset */
 
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 static const unsigned phy_bases[] = {
 	USB_PHY0_BASE_ADDR,
 	USB_PHY1_BASE_ADDR,
@@ -211,7 +211,7 @@ struct usbnc_regs {
 	u32	otg_phy_ctrl_0;
 	u32	uh1_phy_ctrl_0;
 };
-#elif defined(CONFIG_MX7)
+#elif defined(CONFIG_SOC_MX7)
 struct usbnc_regs {
 	u32 ctrl1;
 	u32 ctrl2;
@@ -253,11 +253,11 @@ int usb_phy_mode(int port)
 
 static void usb_oc_config(int index)
 {
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 	struct usbnc_regs *usbnc = (struct usbnc_regs *)(USB_BASE_ADDR +
 			USB_OTHERREGS_OFFSET);
 	void __iomem *ctrl = (void __iomem *)(&usbnc->ctrl[index]);
-#elif defined(CONFIG_MX7)
+#elif defined(CONFIG_SOC_MX7)
 	struct usbnc_regs *usbnc = (struct usbnc_regs *)(USB_BASE_ADDR +
 			(0x10000 * index) + USBNC_OFFSET);
 	void __iomem *ctrl = (void __iomem *)(&usbnc->ctrl1);
@@ -270,9 +270,9 @@ static void usb_oc_config(int index)
 	setbits_le32(ctrl, UCTRL_OVER_CUR_POL);
 #endif
 
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 	setbits_le32(ctrl, UCTRL_OVER_CUR_DIS);
-#elif defined(CONFIG_MX7)
+#elif defined(CONFIG_SOC_MX7)
 	setbits_le32(ctrl, UCTRL_OVER_CUR_DIS | UCTRL_PM);
 #endif
 }
@@ -327,9 +327,9 @@ int ehci_hcd_init(int index, enum usb_init_type init,
 		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	enum usb_init_type type;
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 	u32 controller_spacing = 0x200;
-#elif defined(CONFIG_MX7)
+#elif defined(CONFIG_SOC_MX7)
 	u32 controller_spacing = 0x10000;
 #endif
 	struct usb_ehci *ehci = (struct usb_ehci *)(USB_BASE_ADDR +
@@ -346,7 +346,7 @@ int ehci_hcd_init(int index, enum usb_init_type init,
 	usb_power_config(index);
 	usb_oc_config(index);
 
-#if defined(CONFIG_MX6)
+#if defined(CONFIG_SOC_MX6)
 	usb_internal_phy_clock_gate(index, 1);
 	usb_phy_enable(index, ehci);
 #endif

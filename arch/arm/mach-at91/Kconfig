@@ -134,6 +134,10 @@ config TARGET_SMARTWEB
 	select CPU_ARM926EJS
 	select SUPPORT_SPL
 
+config TARGET_TXA5
+	bool "Support txA5"
+	select SOC_SAMA5D4
+
 endchoice
 
 config SYS_SOC

@@ -16,6 +16,7 @@
 /* SoC Configuration */
 #define CONFIG_SYS_TIMERBASE		0x01c21400	/* use timer 0 */
 #define CONFIG_SYS_HZ_CLOCK		24000000	/* timer0 freq */
+#define CONFIG_SOC_DM355				/* DM355 based board */
 
 /* Memory Info */
 #define CONFIG_NR_DRAM_BANKS		1

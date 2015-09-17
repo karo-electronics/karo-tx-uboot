@@ -12,4 +12,10 @@ config SYS_SOC
 config SYS_CONFIG_NAME
 	default "tx48"
 
+config TX48
+	bool
+	default y
+	select PHYLIB
+	select SPL
+
 endif

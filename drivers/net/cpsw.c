@@ -15,6 +15,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <cpsw.h>
 #include <net.h>
 #include <miiphy.h>
 #include <malloc.h>
@@ -227,7 +228,7 @@ struct cpdma_chan {
 #define chan_read_ptr(chan, fld)	((void *)__raw_readl((chan)->fld))
 
 #define for_active_slave(slave, priv) \
-	slave = (priv)->slaves + (priv)->data.active_slave; if (slave)
+	slave = (priv)->slaves + (priv)->data->active_slave; if (slave)
 #define for_each_slave(slave, priv) \
 	for (slave = (priv)->slaves; slave != (priv)->slaves + \
 				(priv)->data->slaves; slave++)
@@ -599,7 +600,7 @@ static void cpsw_set_slave_mac(struct cpsw_slave *slave,
 static void cpsw_slave_update_link(struct cpsw_slave *slave,
 				   struct cpsw_priv *priv, int *link)
 {
-	struct phy_device *phy;
+	struct phy_device *phy = priv->phydev;
 	u32 mac_control = 0;
 	int retries = NUM_TRIES;
 
@@ -1007,7 +1008,7 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 	struct phy_device *phydev;
 	u32 supported = PHY_GBIT_FEATURES;
 
-	if (slave->data->phy_id < 0) {
+	if (slave->data->phy_addr < 0) {
 		u32 phy_addr;
 
 		for (phy_addr = 0; phy_addr < 32; phy_addr++) {
@@ -1020,7 +1021,7 @@ static int cpsw_phy_init(struct eth_device *dev, struct cpsw_slave *slave)
 		}
 	} else {
 		phydev = phy_connect(priv->bus,
-				slave->data->phy_id,
+				slave->data->phy_addr,
 				dev,
 				slave->data->phy_if);
 	}
@@ -1048,7 +1049,6 @@ int cpsw_register(struct cpsw_platform_data *data)
 	struct cpsw_slave	*slave;
 	void			*regs = (void *)data->cpsw_base;
 	struct eth_device	*dev;
-	int i;
 	int idx = 0;
 
 	debug("%s@%d\n", __func__, __LINE__);
@@ -1078,7 +1078,6 @@ int cpsw_register(struct cpsw_platform_data *data)
 	priv->host_port_regs	= regs + data->host_port_reg_ofs;
 	priv->dma_regs		= regs + data->cpdma_reg_ofs;
 	priv->ale_regs		= regs + data->ale_reg_ofs;
-	priv->descs		= (void *)regs + data->bd_ram_ofs;
 
 	for_each_slave(slave, priv) {
 		cpsw_slave_setup(slave, idx, priv);
@@ -1097,10 +1096,8 @@ int cpsw_register(struct cpsw_platform_data *data)
 
 	cpsw_mdio_init(dev->name, data->mdio_base, data->mdio_div);
 	priv->bus = miiphy_get_dev_by_name(dev->name);
-	for_active_slave(slave, priv) {
+	for_active_slave(slave, priv)
 		ret = cpsw_phy_init(dev, slave);
-		if (ret < 0)
-			break;
-	}
+
 	return ret;
 }

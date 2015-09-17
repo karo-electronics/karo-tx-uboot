@@ -91,7 +91,4 @@ struct gpmc {
 	struct bch_res_4_6 bch_result_4_6[GPMC_MAX_SECTORS]; /* 0x300,0x310, */
 };
 
-/* Used for board specific gpmc initialization */
-extern struct gpmc *gpmc_cfg;
-
 #endif /* __ASM_OMAP_GPMC_H */

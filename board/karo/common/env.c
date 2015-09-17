@@ -19,11 +19,18 @@
 #include <errno.h>
 #include <libfdt.h>
 #include <fdt_support.h>
+#include <environment.h>
 
 #include "karo.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_UBOOT_IGNORE_ENV
+void env_cleanup(void)
+{
+	set_default_env(NULL);
+}
+#else
 static const char const *cleanup_vars[] = {
 	"bootargs",
 	"fileaddr",
@@ -40,3 +47,4 @@ void env_cleanup(void)
 		setenv(cleanup_vars[i], NULL);
 	}
 }
+#endif

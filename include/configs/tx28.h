@@ -8,6 +8,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/kconfig.h>
 #include <linux/sizes.h>
 #include <asm/arch/regs-base.h>
 
@@ -62,7 +63,6 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"TX28 U-Boot > "
 #define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -111,36 +111,41 @@
 /*
  * Extra Environment Settings
  */
-#ifdef CONFIG_ENV_IS_NOWHERE
+#ifdef CONFIG_TX28_UBOOT_NOENV
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"autoload=no\0"							\
 	"bootdelay=-1\0"						\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"
 #else
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
-	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_jffs2=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
-	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
-	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
-	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_ubifs=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
-	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	"bootcmd_jffs2=setenv autostart no;run bootargs_jffs2"		\
 	";nboot linux\0"						\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	"bootcmd_mmc=setenv autostart no;run bootargs_mmc"		\
 	";fatload mmc 0 ${loadaddr} uImage\0"				\
-	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"\
-	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	"bootcmd_nand=setenv autostart no;run bootargs_ubifs"		\
+	";nboot linux\0"						\
+	"bootcmd_net=setenv autoload y;setenv autostart n"		\
+	";run bootargs_nfs"						\
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"boot_mode=nand\0"						\
-	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
+	"default_bootargs=setenv bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
@@ -184,12 +189,6 @@
 #define CONFIG_FEC_XCV_TYPE		RMII
 #endif
 
-#ifndef CONFIG_ENV_IS_NOWHERE
-/* define one of the following options:
-*/
-#endif
-#define CONFIG_ENV_OVERWRITE
-
 /*
  * NAND flash driver
  */
@@ -201,8 +200,6 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	0x1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_BASE		0x00000000
-#else
-#undef CONFIG_ENV_IS_IN_NAND
 #endif /* CONFIG_CMD_NAND */
 
 #ifdef CONFIG_ENV_IS_IN_NAND
@@ -226,31 +223,25 @@
 /*
  * MMC Driver
  */
+#ifdef CONFIG_MXS_MMC
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_BOUNCE_BUFFER
-
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2
+#endif
 
 /*
  * Environments on MMC
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		0
+#define CONFIG_ENV_OVERWRITE
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
 #define CONFIG_ENV_SIZE			(SZ_128K - CONFIG_ENV_OFFSET)
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
-#else
-#undef CONFIG_ENV_IS_IN_MMC
-#endif /* CONFIG_CMD_MMC */
-
-#ifdef CONFIG_ENV_IS_NOWHERE
-#undef CONFIG_ENV_SIZE
-#define CONFIG_ENV_SIZE			SZ_4K
-#endif
+#endif /* CONFIG_MXS_MMC */
 
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
 	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
@@ -275,4 +266,4 @@
 #define CONFIG_SYS_SPL_VDDA_BO_VAL	100
 #define CONFIG_SYS_SPL_VDDMEM_VAL	0	/* VDDMEM is not utilized on TX28 */
 
-#endif /* __CONFIGS_TX28_H */
+#endif /* __CONFIG_H */

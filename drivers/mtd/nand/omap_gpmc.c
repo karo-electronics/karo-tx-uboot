@@ -8,6 +8,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/errno.h>
+#include <asm/arch/hardware.h>
 #include <asm/arch/mem.h>
 #include <linux/mtd/omap_gpmc.h>
 #include <linux/mtd/nand_ecc.h>
@@ -94,147 +95,6 @@ static struct nand_bbt_descr bbt_mirror_descr = {
 
 #define PRINT_REG(x) debug("+++ %.15s (0x%08x)=0x%08x\n", #x, &gpmc_cfg->x, readl(&gpmc_cfg->x))
 
-#ifdef CONFIG_SYS_GPMC_PREFETCH_ENABLE
-/**
- * gpmc_prefetch_enable - configures and starts prefetch transfer
- * @cs: cs (chip select) number
- * @fifo_th: fifo threshold to be used for read/ write
- * @count: number of bytes to be transferred
- * @is_write: prefetch read(0) or write post(1) mode
- */
-static inline void gpmc_prefetch_enable(int cs, int fifo_th,
-					unsigned int count, int is_write)
-{
-	writel(count, &gpmc_cfg->pref_config2);
-
-	/* Set the prefetch read / post write and enable the engine.
-	 * Set which cs is has requested for.
-	 */
-	uint32_t val = (cs << CS_NUM_SHIFT) |
-		PREFETCH_ENABLEOPTIMIZEDACCESS |
-		PREFETCH_FIFOTHRESHOLD(fifo_th) |
-		ENABLE_PREFETCH |
-		!!is_write;
-	writel(val, &gpmc_cfg->pref_config1);
-
-	/*  Start the prefetch engine */
-	writel(0x1, &gpmc_cfg->pref_control);
-}
-
-/**
- * gpmc_prefetch_reset - disables and stops the prefetch engine
- */
-static inline void gpmc_prefetch_reset(void)
-{
-	/* Stop the PFPW engine */
-	writel(0x0, &gpmc_cfg->pref_control);
-
-	/* Reset/disable the PFPW engine */
-	writel(0x0, &gpmc_cfg->pref_config1);
-}
-
-//#define FIFO_IOADDR		(nand->IO_ADDR_R)
-#define FIFO_IOADDR		PISMO1_NAND_BASE
-
-/**
- * read_buf_pref - read data from NAND controller into buffer
- * @mtd: MTD device structure
- * @buf: buffer to store date
- * @len: number of bytes to read
- */
-static void read_buf_pref(struct mtd_info *mtd, u_char *buf, int len)
-{
-	gpmc_prefetch_enable(cs, PREFETCH_FIFOTHRESHOLD_MAX, len, 0);
-	do {
-		// Get number of bytes waiting in the FIFO
-		uint32_t read_bytes = GPMC_PREFETCH_STATUS_FIFO_CNT(readl(&gpmc_cfg->pref_status));
-
-		if (read_bytes == 0)
-			continue;
-		// Alignment of Destination Buffer
-		while (read_bytes && ((unsigned int)buf & 3)) {
-			*buf++ = readb(FIFO_IOADDR);
-			read_bytes--;
-			len--;
-		}
-		// Use maximum word size (32bit) inside this loop, because speed is limited by
-		// GPMC bus arbitration with a maximum transfer rate of 3.000.000/sec.
-		len -= read_bytes & ~3;
-		while (read_bytes >= 4) {
-			*((uint32_t*)buf) = readl(FIFO_IOADDR);
-			buf += 4;
-			read_bytes -= 4;
-		}
-		// Transfer the last (non-aligned) bytes only at the last iteration,
-		// to maintain full speed up to the end of the transfer.
-		if (read_bytes == len) {
-			while (read_bytes) {
-				*buf++ = readb(FIFO_IOADDR);
-				read_bytes--;
-			}
-			len = 0;
-		}
-	} while (len > 0);
-	gpmc_prefetch_reset();
-}
-
-/*
- * write_buf_pref - write buffer to NAND controller
- * @mtd: MTD device structure
- * @buf: data buffer
- * @len: number of bytes to write
- */
-static void write_buf_pref(struct mtd_info *mtd, const u_char *buf, int len)
-{
-	/*  configure and start prefetch transfer */
-	gpmc_prefetch_enable(cs, PREFETCH_FIFOTHRESHOLD_MAX, len, 1);
-
-	while (len) {
-		// Get number of free bytes in the FIFO
-		uint32_t write_bytes = GPMC_PREFETCH_STATUS_FIFO_CNT(readl(&gpmc_cfg->pref_status));
-
-		// don't write more bytes than requested
-		if (write_bytes > len)
-			write_bytes = len;
-
-		// Alignment of Source Buffer
-		while (write_bytes && ((unsigned int)buf & 3)) {
-			writeb(*buf++, FIFO_IOADDR);
-			write_bytes--;
-			len--;
-		}
-
-		// Use maximum word size (32bit) inside this loop, because speed is limited by
-		// GPMC bus arbitration with a maximum transfer rate of 3.000.000/sec.
-		len -= write_bytes & ~3;
-		while (write_bytes >= 4) {
-			writel(*((uint32_t*)buf), FIFO_IOADDR);
-			buf += 4;
-			write_bytes -= 4;
-		}
-
-		// Transfer the last (non-aligned) bytes only at the last iteration,
-		// to maintain full speed up to the end of the transfer.
-		if (write_bytes == len) {
-			while (write_bytes) {
-				writeb(*buf++, FIFO_IOADDR);
-				write_bytes--;
-			}
-			len = 0;
-		}
-	}
-
-	/* wait for data to be flushed out before resetting the prefetch */
-	while ((len = GPMC_PREFETCH_STATUS_COUNT(readl(&gpmc_cfg->pref_status)))) {
-		debug("%u bytes still in FIFO\n", PREFETCH_FIFOTHRESHOLD_MAX - len);
-		ndelay(1);
-	}
-
-	/* disable and stop the PFPW engine */
-	gpmc_prefetch_reset();
-}
-#endif /* CONFIG_SYS_GPMC_PREFETCH_ENABLE */
-
 /*
  * omap_nand_hwcontrol - Set the address pointers corretly for the
  *			following address/data/command operation
@@ -269,6 +129,8 @@ static void omap_nand_hwcontrol(struct mtd_info *mtd, int32_t cmd,
 /* Check wait pin as dev ready indicator */
 static int omap_dev_ready(struct mtd_info *mtd)
 {
+	struct nand_chip *this = mtd->priv;
+	struct omap_nand_info *info = this->priv;
 	return !!(readl(&gpmc_cfg->status) & (1 << (8 + info->ws)));
 }
 

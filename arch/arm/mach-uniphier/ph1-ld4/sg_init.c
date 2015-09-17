@@ -11,14 +11,6 @@ void sg_init(void)
 {
 	u32 tmp;
 
-	/* Set DDR size */
-	tmp = sg_memconf_val_ch0(CONFIG_SDRAM0_SIZE, CONFIG_DDR_NUM_CH0);
-	tmp |= sg_memconf_val_ch1(CONFIG_SDRAM1_SIZE, CONFIG_DDR_NUM_CH1);
-#if CONFIG_SDRAM0_BASE + CONFIG_SDRAM0_SIZE < CONFIG_SDRAM1_BASE
-	tmp |= SG_MEMCONF_SPARSEMEM;
-#endif
-	writel(tmp, SG_MEMCONF);
-
 	/* Input ports must be enabled before deasserting reset of cores */
 	tmp = readl(SG_IECTRL);
 	tmp |= 0x1;

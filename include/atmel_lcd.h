@@ -33,7 +33,7 @@ typedef struct vidinfo {
 	u_long vl_upper_margin;	/* Time from sync to picture */
 	u_long vl_lower_margin;	/* Time from picture to sync */
 
-	u_long	mmio;		/* Memory mapped registers */
+	void __iomem *mmio;	/* Memory mapped registers */
 } vidinfo_t;
 
 #endif

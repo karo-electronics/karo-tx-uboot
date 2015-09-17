@@ -98,8 +98,8 @@ public:
 	};
 	
 	enum {
-		ROM_IMAGE_HEADER_SIGNATURE = 'STMP',	//!< Signature in #elftosb::EncoreBootImage::boot_image_header_t::m_signature.
-		ROM_IMAGE_HEADER_SIGNATURE2 = 'sgtl',	//!< Value for #elftosb::EncoreBootImage::boot_image_header_t::m_signature2;
+		ROM_IMAGE_HEADER_SIGNATURE = 0x504d5453, // 'STMP' Signature in #elftosb::EncoreBootImage::boot_image_header_t::m_signature.
+		ROM_IMAGE_HEADER_SIGNATURE2 = 0x6c746773, // 'sgtl' Value for #elftosb::EncoreBootImage::boot_image_header_t::m_signature2;
 		ROM_BOOT_IMAGE_MAJOR_VERSION = 1,		//!< Current boot image major version.
 		ROM_BOOT_IMAGE_MINOR_VERSION = 1		//!< Current boot image minor version.
 	};

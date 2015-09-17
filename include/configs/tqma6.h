@@ -24,7 +24,7 @@
 /* #endif */
 
 /* place code in last 4 MiB of RAM */
-#if defined(CONFIG_MX6DL) || defined(CONFIG_MX6S)
+#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
 #define CONFIG_SYS_TEXT_BASE		0x2fc00000
 #elif defined(CONFIG_MX6Q) || defined(CONFIG_MX6D)
 #define CONFIG_SYS_TEXT_BASE		0x4fc00000
@@ -32,7 +32,9 @@
 
 #include "mx6_common.h"
 
+#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
 #define PHYS_SDRAM_SIZE			(512u * SZ_1M)
+#elif defined(CONFIG_SOC_MX6Q) || defined(CONFIG_SOC_MX6D)
 #define PHYS_SDRAM_SIZE			(1024u * SZ_1M)
 #endif
 

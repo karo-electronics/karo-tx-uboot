@@ -42,6 +42,9 @@ config CPU_PXA
 config CPU_SA1100
         bool
 
+config OMAP_COMMON
+	bool
+
 config SYS_CPU
         default "arm720t" if CPU_ARM720T
         default "arm920t" if CPU_ARM920T
@@ -215,10 +218,6 @@ config TARGET_TX53
 config TARGET_TX6
 	bool "Support tx6"
 	select SOC_MX6
-
-config TARGET_TXA5
-	bool "Support txA5"
-	select SOC_SAMA5D4
 
 config TARGET_ZMX25
 	bool "Support zmx25"
@@ -930,11 +929,11 @@ source "arch/arm/mach-keystone/Kconfig"
 
 source "arch/arm/mach-kirkwood/Kconfig"
 
-source "arch/arm/mach-nomadik/Kconfig"
+source "arch/arm/cpu/armv7/mx6/Kconfig"
 
 source "arch/arm/cpu/armv7/mx5/Kconfig"
 
-source "arch/arm/cpu/armv7/mx6/Kconfig"
+source "arch/arm/mach-nomadik/Kconfig"
 
 source "arch/arm/cpu/armv7/omap3/Kconfig"
 

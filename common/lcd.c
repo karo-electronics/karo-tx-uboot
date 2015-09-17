@@ -26,7 +26,7 @@
 #ifdef CONFIG_LCD_LOGO
 #include <bmp_logo.h>
 #include <bmp_logo_data.h>
-#if (CONSOLE_COLOR_WHITE >= BMP_LOGO_OFFSET) && (LCD_BPP != LCD_COLOR16)
+#if (CONSOLE_COLOR_WHITE >= BMP_LOGO_OFFSET) && (LCD_BPP < LCD_COLOR16)
 #error Default Color Map overlaps with Logo Color Map
 #endif
 #endif
@@ -706,8 +706,6 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 					*(uint16_t *)fb = val;
 					bmap++;
 					fb += sizeof(uint16_t) / sizeof(*fb);
-				} else {
-					FB_PUT_BYTE(fb, bmap);
 				}
 			}
 			if (bpix > 8) {

@@ -129,7 +129,7 @@ exec_always:
 	@echo "SRC_DIR = ${SRC_DIR}"
 	@echo "OBJ_FILES = ${OBJ_FILES_ELFTOSB2}"
 	@echo "LIBS = ${LIBS}"
-	@echo "EXEC_FILE = ${EXEC_FILE}"
+	@echo "EXEC_FILE_ELFTOSB2 = ${EXEC_FILE_ELFTOSB2}"
 	@echo "BUILD_DIR = ${BUILD_DIR}"
 
 clean:
@@ -147,15 +147,14 @@ keygen: ${OBJ_FILES_KEYGEN}
 
 
 #ifeq ("${UNAMES}", "Linux")
-#ifeq ("${UNAMES}", "Linux")
 # Use default rules for creating all the .o files from the .c files.  Only
 # for linux
-.SUFFIXES : .c .cpp
+.SUFFIXES : .c .cpp .o .h
 
-.c.o :
+.c.o:
 	gcc ${CFLAGS} -c $<
 
-.cpp.o :
+.cpp.o:
 	gcc ${CFLAGS} -c $<
 
 #endif

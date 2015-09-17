@@ -24,6 +24,7 @@
 
 #include <config.h>
 #include <common.h>
+#include <errno.h>
 #include <malloc.h>
 #include <mmc.h>
 #include <part.h>
@@ -672,11 +673,11 @@ int omap_mmc_init(int dev_index, uint host_caps_mask, uint f_max, int cd_gpio,
 
 	switch (dev_index) {
 	case 0:
-		base_addr = OMAP_HSMMC1_BASE;
+		priv_data->base_addr = (void *)OMAP_HSMMC1_BASE;
 		break;
 #ifdef OMAP_HSMMC2_BASE
 	case 1:
-		priv_data->base_addr = (struct hsmmc *)OMAP_HSMMC2_BASE;
+		priv_data->base_addr = (void *)OMAP_HSMMC2_BASE;
 #if (defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX) || \
 	defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX) || \
 	defined(CONFIG_AM43XX)) && defined(CONFIG_HSMMC2_8BIT)
@@ -687,7 +688,7 @@ int omap_mmc_init(int dev_index, uint host_caps_mask, uint f_max, int cd_gpio,
 #endif
 #ifdef OMAP_HSMMC3_BASE
 	case 2:
-		priv_data->base_addr = (struct hsmmc *)OMAP_HSMMC3_BASE;
+		priv_data->base_addr = (void *)OMAP_HSMMC3_BASE;
 #if (defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX)) && defined(CONFIG_HSMMC3_8BIT)
 		/* Enable 8-bit interface for eMMC on DRA7XX */
 		host_caps_val |= MMC_MODE_8BIT;

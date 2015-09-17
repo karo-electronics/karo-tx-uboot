@@ -8,6 +8,24 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#ifndef CONFIG_SOC_MX6UL
+#define CONFIG_ARM_ERRATA_743622
+#define CONFIG_ARM_ERRATA_751472
+#define CONFIG_ARM_ERRATA_794072
+#define CONFIG_ARM_ERRATA_761320
+
+#ifndef CONFIG_SYS_L2CACHE_OFF
+#define CONFIG_SYS_L2_PL310
+#define CONFIG_SYS_PL310_BASE   L2_PL310_BASE
+#endif
+
+#define CONFIG_SYS_FSL_ESDHC_HAS_DDR_MODE
+#define CONFIG_MP
+#endif
+#define CONFIG_BOARD_POSTCLK_INIT
+#define CONFIG_MXC_GPT_HCLK
+
+#include <linux/kconfig.h>
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 
@@ -69,11 +87,8 @@
  */
 #define CONFIG_SYS_LONGHELP
 #if defined(CONFIG_SOC_MX6Q)
-#define CONFIG_SYS_PROMPT		"TX6Q U-Boot > "
 #elif defined(CONFIG_SOC_MX6DL)
-#define CONFIG_SYS_PROMPT		"TX6DL U-Boot > "
 #elif defined(CONFIG_SOC_MX6S)
-#define CONFIG_SYS_PROMPT		"TX6S U-Boot > "
 #else
 #error Unsupported i.MX6 processor variant
 #endif
@@ -89,14 +104,6 @@
 #define CONFIG_CMDLINE_EDITING			/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
-
-/*
- * Flattened Device Tree (FDT) support
-*/
-#ifdef CONFIG_OF_LIBFDT
-#ifdef CONFIG_TX6_NAND
-#endif
-#endif /* CONFIG_OF_LIBFDT */
 
 /*
  * Boot Linux
@@ -122,13 +129,22 @@
 #ifndef CONFIG_TX6_UBOOT_MFG
 #define CONFIG_BOOTCOMMAND		DEFAULT_BOOTCMD
 #else
-#define CONFIG_BOOTCOMMAND		"set bootcmd '" DEFAULT_BOOTCMD "';" \
+#define CONFIG_BOOTCOMMAND		"setenv bootcmd '" DEFAULT_BOOTCMD "';" \
 	"env import " xstr(CONFIG_BOOTCMD_MFG_LOADADDR) ";run bootcmd_mfg"
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6UL))
+#define CONFIG_BOOTCMD_MFG_LOADADDR	80500000
+#else
 #define CONFIG_BOOTCMD_MFG_LOADADDR	10500000
+#endif
 #define CONFIG_DELAY_ENVIRONMENT
 #endif /* CONFIG_TX6_UBOOT_MFG */
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6UL))
+#define CONFIG_LOADADDR			82000000
+#define CONFIG_FDTADDR			81000000
+#else
 #define CONFIG_LOADADDR			18000000
 #define CONFIG_FDTADDR			11000000
+#endif
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #ifndef CONFIG_SYS_LVDS_IF
@@ -152,26 +168,29 @@
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
-	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_jffs2=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
-	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
 	MMC_ROOT_STR							\
-	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
-	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_ubifs=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
-	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	"bootcmd_jffs2=setenv autostart no;run bootargs_jffs2"		\
 	";nboot linux\0"						\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	"bootcmd_mmc=setenv autostart no;run bootargs_mmc"		\
 	";fatload mmc 0 ${loadaddr} uImage\0"				\
 	CONFIG_SYS_BOOT_CMD_NAND					\
-	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	"bootcmd_net=setenv autoload y;setenv autostart n"		\
+	";run bootargs_nfs"						\
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"boot_mode=" CONFIG_SYS_DEFAULT_BOOT_MODE "\0"			\
 	"cpu_clk=800\0"							\
-	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
+	"default_bootargs=setenv bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	EMMC_BOOT_PART_STR						\
 	EMMC_BOOT_ACK_STR						\
@@ -189,7 +208,7 @@
 #ifdef CONFIG_TX6_NAND
 #define CONFIG_SYS_DEFAULT_BOOT_MODE	"nand"
 #define CONFIG_SYS_BOOT_CMD_NAND					\
-	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"
+	"bootcmd_nand=setenv autostart no;run bootargs_ubifs;nboot linux\0"
 #define CONFIG_SYS_FDTSAVE_CMD						\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"
@@ -225,6 +244,7 @@
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
+#define CONFIG_CONS_INDEX		1
 
 /*
  * GPIO driver
@@ -245,7 +265,7 @@
 /*
  * I2C Configs
  */
-#ifdef CONFIG_SYS_I2C
+#ifdef CONFIG_HARD_I2C
 #define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
 #define CONFIG_SYS_I2C_SPEED		400000
 #if defined(CONFIG_TX6_REV)
@@ -283,8 +303,6 @@
 #define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
 #define CONFIG_ENV_SIZE			SZ_128K
 #define CONFIG_ENV_RANGE		(3 * CONFIG_SYS_NAND_BLOCK_SIZE)
-#else
-#undef CONFIG_ENV_IS_IN_NAND
 #endif /* CONFIG_TX6_NAND */
 
 #ifdef CONFIG_ENV_OFFSET_REDUND
@@ -318,14 +336,7 @@
 #define CONFIG_SYS_MMC_ENV_PART		0x1
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
-#else
-#undef CONFIG_ENV_IS_IN_MMC
 #endif /* CONFIG_CMD_MMC */
-
-#ifdef CONFIG_ENV_IS_NOWHERE
-#undef CONFIG_ENV_SIZE
-#define CONFIG_ENV_SIZE			SZ_4K
-#endif
 
 #ifdef CONFIG_TX6_NAND
 #define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\

@@ -41,8 +41,8 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 	}
 #endif
 #ifdef DEBUG
-	printf("PAD[%2d]=%016llx mux[%03x]=%02x pad[%03x]=%05x%c inp[%03x]=%d\n",
-		i, pad, mux_ctrl_ofs, mux_mode, pad_ctrl_ofs, pad_ctrl,
+	printf("PAD=%016llx mux[%03x]=%02x pad[%03x]=%05x%c inp[%03x]=%d\n",
+		pad, mux_ctrl_ofs, mux_mode, pad_ctrl_ofs, pad_ctrl,
 		pad & PAD_CTRL_VALID ? ' ' : '!', sel_input_ofs, sel_input);
 #endif
 

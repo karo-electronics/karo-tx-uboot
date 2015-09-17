@@ -12,13 +12,13 @@ UNAMES = $(shell uname -s)
 ifeq ("${UNAMES}", "Linux")
 
 SRC_DIR = $(shell pwd)
-BUILD_DIR = bld/linux
+BUILD_DIR = $(KBUILD_OUTPUT)/tools/elftosb/bld/linux
 
 else 
 ifeq ("${UNAMES}", "CYGWIN_NT-5.1")
 
 SRC_DIR = $(shell pwd)
-BUILD_DIR = bld/cygwin
+BUILD_DIR = $(KBUILD_OUTPUT)/tools/elftosb/bld/cygwin
 
 endif
 endif
@@ -28,5 +28,5 @@ endif
 #                                 Targets
 
 all clean elftosb sbtool keygen:
-	@mkdir -p ${BUILD_DIR};
-	make -C ${BUILD_DIR} -f ${SRC_DIR}/makefile.rules SRC_DIR=${SRC_DIR} $@;
+	@mkdir -p $(BUILD_DIR);
+	make -C $(BUILD_DIR) -f $(SRC_DIR)/makefile.rules SRC_DIR=$(SRC_DIR) $@;

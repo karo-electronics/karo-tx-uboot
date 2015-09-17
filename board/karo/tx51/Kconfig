@@ -1,4 +1,4 @@
-if TARGET_TX51_8XX0
+if TARGET_TX51
 
 config SYS_BOARD
 	default "tx51"
@@ -10,22 +10,66 @@ config SYS_SOC
 	default "mx5"
 
 config SYS_CONFIG_NAME
-	default "tx51-8xx0"
-
-endif
-
-if TARGET_TX51_8XX1_2
-
-config SYS_BOARD
 	default "tx51"
 
-config SYS_VENDOR
-	default "karo"
+config TX51
+	bool
+	default y
+	select CC_OPTIMIZE_LIBS_FOR_SPEED
+	select CMD_BMP if LCD
+	select CMD_BOOTCE
+	select CMD_BOOTZ
+	select CMD_CACHE
+	select CMD_MEMINFO
+	select CMD_MEMTEST
+	select CMD_MMC
+	select CMD_NAND
+	select CMD_NAND_TRIMFFS
+	select CMD_ROMUPDATE
+	select CMD_TIME
+	select DM
+	select DM_GPIO
+	select FDT_FIXUP_PARTITIONS if OF_LIBFDT
+	select GET_FEC_MAC_ADDR_FROM_IIM
+	select IMX_WATCHDOG
+	select LIB_RAND
+	select MMC
+	select MTD_PARTITIONS
+	select MTD_DEVICE
+	select NAND
+	select NAND_MXC
+	select OF_LIBFDT
+	select OF_BOARD_SETUP
+	select PHYLIB
+	select PHY_SMSC
+	select SOC_MX51
+	select SYS_NAND_USE_FLASH_BBT if NAND_MXC
 
-config SYS_SOC
-	default "mx5"
+choice
+	prompt "TX51 module variant"
 
-config SYS_CONFIG_NAME
-	default "tx51-8xx1_2"
+config TARGET_TX51_8XX0
+	bool "TX51-8010 and TX51-8110"
+
+config TARGET_TX51_8XX1_2
+	bool "TX51-8021, TX51-8021, TX51-8022 and TX51-8122"
+
+endchoice
+
+config NR_DRAM_BANKS
+	int
+	default 1
+
+choice
+	prompt "U-Boot image variant"
+
+config TX51_UBOOT
+	bool "Standard U-Boot image"
+
+config TX51_UBOOT_NOENV
+	bool "U-Boot using only built-in environment"
+	select UBOOT_IGNORE_ENV
+
+endchoice
 
 endif

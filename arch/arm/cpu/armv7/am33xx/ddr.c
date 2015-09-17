@@ -122,7 +122,7 @@ void config_sdram_emif4d5(const struct emif_regs *regs, int nr)
 			EMIF_REG_INITREF_DIS_MASK);
 
 	writel(regs->sdram_config, &emif_reg[nr]->emif_sdram_config);
-	writel(regs->sdram_config, &cstat->secure_emif_sdram_config);
+	writel(regs->sdram_config, &cstat->emif_sdram_config);
 	writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl);
 	writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl_shdw);
 
@@ -165,7 +165,7 @@ void config_sdram(const struct emif_regs *regs, int nr)
 {
 	if (regs->zq_config) {
 		writel(regs->zq_config, &emif_reg[nr]->emif_zq_config);
-		writel(regs->sdram_config, &cstat->secure_emif_sdram_config);
+		writel(regs->sdram_config, &cstat->emif_sdram_config);
 		writel(regs->sdram_config, &emif_reg[nr]->emif_sdram_config);
 		writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl);
 		writel(regs->ref_ctrl, &emif_reg[nr]->emif_sdram_ref_ctrl_shdw);

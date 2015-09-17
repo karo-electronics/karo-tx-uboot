@@ -605,6 +605,7 @@ struct pwmss_ecap_regs {
 
 unsigned long __clk_get_rate(u32 m_n, u32 div_m2);
 
+unsigned long lcdc_clk_rate(void);
 unsigned long mpu_clk_rate(void);
 
 #endif /* __ASSEMBLY__ */

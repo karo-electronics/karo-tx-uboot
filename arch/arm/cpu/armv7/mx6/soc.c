@@ -8,24 +8,24 @@
  */
 
 #include <common.h>
-#include <stdbool.h>
-#include <dm.h>
 #include <div64.h>
 #include <ipu.h>
-#include <imx_thermal.h>
 #include <asm/armv7.h>
 #include <asm/bootm.h>
 #include <asm/pl310.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/crm_regs.h>
-#include <asm/arch/regs-ocotp.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/mxc_hdmi.h>
+#include <asm/arch/regs-ocotp.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/imx-common/boot_mode.h>
 #include <asm/imx-common/dma.h>
+#include <stdbool.h>
+#include <asm/arch/mxc_hdmi.h>
+#include <asm/arch/crm_regs.h>
+#include <dm.h>
+#include <imx_thermal.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

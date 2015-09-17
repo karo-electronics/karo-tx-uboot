@@ -8,6 +8,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/kconfig.h>
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 
@@ -60,7 +61,6 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"TX53 U-Boot > "
 #define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -108,30 +108,42 @@
 /*
  * Extra Environment Settings
  */
+#ifdef CONFIG_TX53_UBOOT_NOENV
+#define CONFIG_EXTRA_ENV_SETTINGS					\
+	"autostart=no\0"						\
+	"autoload=no\0"							\
+	"bootdelay=-1\0"						\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"
+#else
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
-	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_jffs2=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
-	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p2 rootwait\0"				\
-	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
-	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_ubifs=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
-	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	"bootcmd_jffs2=setenv autostart no;run bootargs_jffs2"		\
 	";nboot linux\0"						\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	"bootcmd_mmc=setenv autostart no;run bootargs_mmc"		\
 	";fatload mmc 0 ${loadaddr} uImage\0"				\
-	"bootcmd_nand=set autostart no;run bootargs_ubifs"		\
+	"bootcmd_nand=setenv autostart no;run bootargs_ubifs"		\
 	";nboot linux\0"						\
-	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	"bootcmd_net=setenv autoload y"					\
+	";setenv autostart n;run bootargs_nfs"				\
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"boot_mode=nand\0"						\
 	"cpu_clk=800\0"							\
-	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
+	"default_bootargs=setenv bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
@@ -142,6 +154,7 @@
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=" DEFAULT_VIDEO_MODE "\0"
+#endif /*  CONFIG_TX53_UBOOT_NOENV */
 
 #define MTD_NAME			"mxc_nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME

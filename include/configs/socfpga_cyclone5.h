@@ -3,6 +3,8 @@
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
+#ifndef __CONFIG_SOCFPGA_CYCLONE5_H__
+#define __CONFIG_SOCFPGA_CYCLONE5_H__
 
 #include <asm/arch/socfpga_base_addrs.h>
 
@@ -36,6 +38,7 @@
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTFILE		"zImage"
 #define CONFIG_BOOTARGS		"console=ttyS0," __stringify(CONFIG_BAUDRATE)
+#ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
 #define CONFIG_BOOTCOMMAND	"run ramboot"
 #else
 #define CONFIG_BOOTCOMMAND	"run mmcload; run mmcboot"
@@ -91,3 +94,4 @@
 /* The rest of the configuration is shared */
 #include <configs/socfpga_common.h>
 
+#endif	/* __CONFIG_SOCFPGA_CYCLONE5_H__ */

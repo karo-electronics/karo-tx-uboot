@@ -9,8 +9,7 @@ obj-y += sg_init.o pll_init.o early_clkrst_init.o \
 obj-$(CONFIG_PFC_MICRO_SUPPORT_CARD) += sbc_init.o
 obj-$(CONFIG_DCC_MICRO_SUPPORT_CARD) += sbc_init_3cs.o
 else
-obj-$(CONFIG_BOARD_EARLY_INIT_F) += pinctrl.o
-obj-$(if $(CONFIG_OF_CONTROL),,y) += platdevice.o
+obj-$(CONFIG_BOARD_EARLY_INIT_F) += pinctrl.o clkrst_init.o
 endif
 
 obj-y += boot-mode.o

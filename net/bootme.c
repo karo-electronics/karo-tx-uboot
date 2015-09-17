@@ -53,10 +53,10 @@ static void __attribute__((unused)) ce_dump_block(const void *ptr, int length)
 		}
 
 		printf("%02x ", p[i]);
-		if (!((i + 1) % 16)){
+		if (!((i + 1) % 16)) {
 			printf("      ");
 			for (j = i - 15; j <= i; j++){
-				if((p[j] > 0x1f) && (p[j] < 0x7f)) {
+				if ((p[j] > 0x1f) && (p[j] < 0x7f)) {
 					printf("%c", p[j]);
 				} else {
 					printf(".");
@@ -98,9 +98,9 @@ static int is_broadcast(struct in_addr ip)
 	static struct in_addr netmask;
 	static struct in_addr our_ip;
 
-	return (ip == ~0 ||				/* 255.255.255.255 */
-	    ((netmask & our_ip) == (netmask & ip) &&	/* on the same net */
-	    (netmask | ip) == ~0));		/* broadcast to our net */
+	return (ip.s_addr == ~0 ||			/* 255.255.255.255 */
+	    ((netmask.s_addr & our_ip.s_addr) == (netmask.s_addr & ip.s_addr) && /* on the same net */
+	    (netmask.s_addr | ip.s_addr) == ~0));	/* broadcast to our net */
 }
 
 static int check_net_config(void)
@@ -110,11 +110,11 @@ static int check_net_config(void)
 		char *bip;
 
 		bootme_dst_port = EDBG_DOWNLOAD_PORT;
-		if (bootme_ip == 0) {
+		if (bootme_ip.s_addr == 0) {
 			bip = getenv("bootmeip");
 			if (bip) {
 				bootme_ip = getenv_ip("bootmeip");
-				if (!bootme_ip)
+				if (!bootme_ip.s_addr)
 					return -EINVAL;
 				p = strchr(bip, ':');
 				if (p) {
@@ -190,7 +190,7 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, struct in_addr src_ip
 	printf("%c\x08", cursor);
 	cursor = next_cursor(cursor);
 
-	if (!is_broadcast(bootme_ip) && src_ip != bootme_ip) {
+	if (!is_broadcast(bootme_ip) && src_ip.s_addr != bootme_ip.s_addr) {
 		debug("src_ip %pI4 does not match destination IP %pI4\n",
 			&src_ip, &bootme_ip);
 		return; /* not from our server */
@@ -231,7 +231,7 @@ static void bootme_handler(uchar *pkt, unsigned dest_port, struct in_addr src_ip
 		if (last_state == BOOTME_INIT ||
 			last_state == BOOTME_DEBUG_INIT)
 			bootme_timeout = 3 * 1000;
-		NetSetTimeout(bootme_timeout, bootme_timeout_handler);
+		net_set_timeout_handler(bootme_timeout, bootme_timeout_handler);
 		break;
 
 	case BOOTME_DONE:
@@ -255,7 +255,7 @@ void BootmeStart(void)
 		/* wait for incoming packet */
 		net_set_udp_handler(bootme_handler);
 		bootme_timed_out = 0;
-		NetSetTimeout(bootme_timeout, bootme_timeout_handler);
+		net_set_timeout_handler(bootme_timeout, bootme_timeout_handler);
 	} else {
 		/* send ARP request */
 		uchar *pkt;
@@ -289,11 +289,11 @@ int bootme_send_frame(const void *buf, size_t len)
 		__func__, buf, len, &net_ip, bootme_src_port, &bootme_ip,
 		bootme_dst_port);
 
-	if (is_zero_ether_addr(bootme_ether)) {
+	if (is_zero_ethaddr(bootme_ether)) {
 		output_packet = buf;
 		output_packet_len = len;
 		/* wait for arp reply and send packet */
-		ret = NetLoop(BOOTME);
+		ret = net_loop(BOOTME);
 		if (ret < 0) {
 			/* drop packet */
 			output_packet_len = 0;
@@ -306,12 +306,12 @@ int bootme_send_frame(const void *buf, size_t len)
 
 	if (eth->state != ETH_STATE_ACTIVE) {
 		if (eth_is_on_demand_init()) {
-			ret = eth_init(gd->bd);
+			ret = eth_init();
 			if (ret < 0)
 				return ret;
 			eth_set_last_protocol(BOOTME);
 		} else {
-			eth_init_state_only(gd->bd);
+			eth_init_state_only();
 		}
 	}
 
@@ -343,7 +343,7 @@ int BootMeDownload(bootme_hand_f *handler)
 
 	bootme_packet_handler = handler;
 
-	ret = NetLoop(BOOTME);
+	ret = net_loop(BOOTME);
 	if (ret < 0)
 		return BOOTME_ERROR;
 	if (bootme_timed_out && bootme_state != BOOTME_INIT)
@@ -364,9 +364,9 @@ int BootMeDebugStart(bootme_hand_f *handler)
 	bootme_state = BOOTME_DEBUG_INIT;
 
 	bootme_timeout = 3 * 1000;
-	NetSetTimeout(bootme_timeout, bootme_timeout_handler);
+	net_set_timeout_handler(bootme_timeout, bootme_timeout_handler);
 
-	ret = NetLoop(BOOTME);
+	ret = net_loop(BOOTME);
 	if (ret < 0)
 		return BOOTME_ERROR;
 	if (bootme_timed_out)
@@ -379,6 +379,6 @@ int BootMeRequest(struct in_addr server_ip, const void *buf, size_t len, int tim
 	bootme_init(server_ip);
 	bootme_timeout = timeout * 1000;
 	bootme_timed_out = 0;
-	NetSetTimeout(bootme_timeout, bootme_timeout_handler);
+	net_set_timeout_handler(bootme_timeout, bootme_timeout_handler);
 	return bootme_send_frame(buf, len);
 }

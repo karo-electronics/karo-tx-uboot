@@ -87,7 +87,7 @@ SECTIONS
 	}
 
 #ifdef CONFIG_SECURE_BOOT
-	. = CONFIG_SYS_TEXT_BASE + 0x70000;
+	. = CONFIG_SYS_TEXT_BASE + 0x71000;
 	.csf_data :
 	{
 		*(.__csf_data)

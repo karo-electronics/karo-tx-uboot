@@ -10,6 +10,7 @@
 #ifndef __CONFIG_KS2_EVM_H
 #define __CONFIG_KS2_EVM_H
 
+#define CONFIG_SOC_KEYSTONE
 
 /* U-Boot Build Configuration */
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* U-Boot is a 2nd stage loader */

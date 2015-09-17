@@ -125,6 +125,17 @@ static const iomux_v3_cfg_t const tx6qdl_fec_pads[] = {
 	MX6_PAD_ENET_TXD0__ENET_TX_DATA0,
 };
 
+#define TX6_I2C_GPIO_PAD_CTRL	(PAD_CTL_PUS_22K_UP |	\
+				PAD_CTL_SPEED_MED |	\
+				PAD_CTL_DSE_34ohm |	\
+				PAD_CTL_SRE_FAST)
+
+static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
+	/* internal I2C */
+	MX6_PAD_EIM_D28__GPIO3_IO28 | MUX_CFG_SION | MUX_PAD_CTRL(TX6_I2C_GPIO_PAD_CTRL),
+	MX6_PAD_EIM_D21__GPIO3_IO21 | MUX_CFG_SION | MUX_PAD_CTRL(TX6_I2C_GPIO_PAD_CTRL),
+};
+
 static const iomux_v3_cfg_t const tx6_i2c_pads[] = {
 	/* internal I2C */
 	MX6_PAD_EIM_D28__I2C1_SDA,
@@ -142,9 +153,93 @@ static const struct gpio const tx6qdl_gpios[] = {
 	{ TX6_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },
 };
 
-/*
- * Functions
- */
+static int pmic_addr __data;
+
+#if defined(CONFIG_SOC_MX6Q)
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e00a4
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e00c4
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e03b8
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e03d8
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0898
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e089c
+#define I2C1_SEL_INPUT_VAL			0
+#endif
+#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e0158
+#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e0174
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e0528
+#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e0544
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0868
+#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e086c
+#define I2C1_SEL_INPUT_VAL			1
+#endif
+
+#define GPIO_DR 0
+#define GPIO_DIR 4
+#define GPIO_PSR 8
+
+static void tx6_i2c_recover(void)
+{
+	int i;
+	int bad = 0;
+#define SCL_BIT		(1 << (TX6_I2C1_SCL_GPIO % 32))
+#define SDA_BIT		(1 << (TX6_I2C1_SDA_GPIO % 32))
+
+	if ((readl(GPIO3_BASE_ADDR + GPIO_PSR) &
+			(SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT))
+		return;
+
+	debug("Clearing I2C bus\n");
+	if (!(readl(GPIO3_BASE_ADDR + GPIO_PSR) & SCL_BIT)) {
+		printf("I2C SCL stuck LOW\n");
+		bad++;
+
+		writel(readl(GPIO3_BASE_ADDR + GPIO_DR) | SCL_BIT,
+			GPIO3_BASE_ADDR + GPIO_DR);
+		writel(readl(GPIO3_BASE_ADDR + GPIO_DIR) | SCL_BIT,
+			GPIO3_BASE_ADDR + GPIO_DIR);
+	}
+	if (!(readl(GPIO3_BASE_ADDR + GPIO_PSR) & SDA_BIT)) {
+		printf("I2C SDA stuck LOW\n");
+		bad++;
+
+		writel(readl(GPIO3_BASE_ADDR + GPIO_DIR) & ~SDA_BIT,
+			GPIO3_BASE_ADDR + GPIO_DIR);
+		writel(readl(GPIO3_BASE_ADDR + GPIO_DR) | SCL_BIT,
+			GPIO3_BASE_ADDR + GPIO_DR);
+		writel(readl(GPIO3_BASE_ADDR + GPIO_DIR) | SCL_BIT,
+			GPIO3_BASE_ADDR + GPIO_DIR);
+
+		imx_iomux_v3_setup_multiple_pads(tx6_i2c_gpio_pads,
+						ARRAY_SIZE(tx6_i2c_gpio_pads));
+		udelay(10);
+
+		for (i = 0; i < 18; i++) {
+			u32 reg = readl(GPIO3_BASE_ADDR + GPIO_DR) ^ SCL_BIT;
+
+			debug("%sing SCL\n", (reg & SCL_BIT) ? "Sett" : "Clear");
+			writel(reg, GPIO3_BASE_ADDR + GPIO_DR);
+			udelay(10);
+			if (reg & SCL_BIT &&
+				readl(GPIO3_BASE_ADDR + GPIO_PSR) & SDA_BIT)
+				break;
+		}
+	}
+	if (bad) {
+		u32 reg = readl(GPIO3_BASE_ADDR + GPIO_PSR);
+
+		if ((reg & (SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT)) {
+			printf("I2C bus recovery succeeded\n");
+		} else {
+			printf("I2C bus recovery FAILED: %08x:%08x\n", reg,
+				SCL_BIT | SDA_BIT);
+		}
+	}
+	debug("Setting up I2C Pads\n");
+	imx_iomux_v3_setup_multiple_pads(tx6_i2c_pads,
+					ARRAY_SIZE(tx6_i2c_pads));
+}
+
 /* placed in section '.data' to prevent overwriting relocation info
  * overlayed with bss
  */
@@ -208,7 +303,7 @@ static void print_reset_cause(void)
 
 static const char __data *tx6_mod_suffix;
 
-static void tx6qdl_print_cpuinfo(void)
+int checkboard(void)
 {
 	u32 cpurev = get_cpu_rev();
 	char *cpu_str = "?";
@@ -242,10 +337,14 @@ static void tx6qdl_print_cpuinfo(void)
 #ifdef CONFIG_MX6_TEMPERATURE_HOT
 	check_cpu_temperature(1);
 #endif
+	tx6_i2c_recover();
+	return 0;
 }
 
 int board_early_init_f(void)
 {
+	debug("%s@%d: \n", __func__, __LINE__);
+
 	return 0;
 }
 
@@ -254,155 +353,129 @@ static bool tx6_temp_check_enabled = true;
 #else
 #define tx6_temp_check_enabled	0
 #endif
-static int pmic_addr __data;
 
-#if defined(CONFIG_SOC_MX6Q)
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e00a4
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e00c4
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e03b8
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e03d8
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0898
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e089c
-#define I2C1_SEL_INPUT_VAL			0
+#ifdef CONFIG_TX6_NAND
+#define TX6_FLASH_SZ	(CONFIG_SYS_NAND_BLOCKS / 1024 - 1)
+#else
+#ifdef CONFIG_MMC_BOOT_SIZE
+#define TX6_FLASH_SZ	(CONFIG_MMC_BOOT_SIZE / 4096 + 2)
+#else
+#define TX6_FLASH_SZ	2
 #endif
-#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e0158
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e0174
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e0528
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e0544
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0868
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e086c
-#define I2C1_SEL_INPUT_VAL			1
-#endif
+#endif /* CONFIG_TX6_NAND */
 
-#define GPIO_DR 0
-#define GPIO_DIR 4
-#define GPIO_PSR 8
+#define TX6_DDR_SZ	(ffs(PHYS_SDRAM_1_WIDTH / 16) - 1)
 
-static const struct i2c_gpio_regs {
-	const char *label;
-	u32 gpio;
-	unsigned long gpio_base;
-	unsigned long muxctl;
-	unsigned long padctl;
-	unsigned long sel_input;
-} tx6_i2c_iomux_regs[] = {
-	{
-		.label = "PMIC SCL",
-		.gpio = TX6_I2C1_SCL_GPIO,
-		.gpio_base = GPIO3_BASE_ADDR,
-		.muxctl = IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21,
-		.padctl = IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21,
-		.sel_input = IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21,
-	}, {
-		.label = "PMIC SDA",
-		.gpio = TX6_I2C1_SDA_GPIO,
-		.gpio_base = GPIO3_BASE_ADDR,
-		.muxctl = IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28,
-		.padctl = IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28,
-		.sel_input = IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28,
-	},
+static char tx6_mem_table[] = {
+	'4', /* 256MiB SDRAM 16bit; 128MiB NAND */
+	'1', /* 512MiB SDRAM 32bit; 128MiB NAND */
+	'0', /* 1GiB SDRAM 64bit; 128MiB NAND */
+	'?', /* 256MiB SDRAM 16bit; 256MiB NAND */
+	'?', /* 512MiB SDRAM 32bit; 256MiB NAND */
+	'2', /* 1GiB SDRAM 64bit; 256MiB NAND */
+	'?', /* 256MiB SDRAM 16bit; 4GiB eMMC */
+	'5', /* 512MiB SDRAM 32bit; 4GiB eMMC */
+	'3', /* 1GiB SDRAM 64bit; 4GiB eMMC */
+	'?', /* 256MiB SDRAM 16bit; 8GiB eMMC */
+	'?', /* 512MiB SDRAM 32bit; 8GiB eMMC */
+	'0', /* 1GiB SDRAM 64bit; 8GiB eMMC */
 };
 
-static inline u32 __tx6_readl(void *addr,
-			const char *fn, int ln)
-{
-	u32 val = readl(addr);
-	debug("%s@%d: read %08x from %p\n", fn, ln, val, addr);
-	return val;
-}
-#undef readl
-#define readl(a)	__tx6_readl((void *)(a), __func__, __LINE__)
+static struct {
+	uchar addr;
+	uchar rev;
+} tx6_mod_revs[] = {
+	{ 0x3c, 1, },
+	{ 0x32, 2, },
+	{ 0x33, 3, },
+};
 
-static inline void __tx6_writel(u32 val, void *addr,
-				const char *fn, int ln)
+static inline char tx6_mem_suffix(void)
 {
-	debug("%s@%d: writing %08x to %p\n", fn, ln, val, addr);
-	writel(val, addr);
-}
-#undef writel
-#define writel(v, a)	__tx6_writel(v, (void *)(a), __func__, __LINE__)
+	size_t mem_idx = (TX6_FLASH_SZ * 3) + TX6_DDR_SZ;
 
-static void tx6_i2c_recover(void)
+	debug("TX6_DDR_SZ=%d TX6_FLASH_SZ=%d idx=%d\n",
+		TX6_DDR_SZ, TX6_FLASH_SZ, mem_idx);
+
+	if (mem_idx >= ARRAY_SIZE(tx6_mem_table))
+		return '?';
+
+	return tx6_mem_table[mem_idx];
+};
+
+static int tx6_get_mod_rev(unsigned int pmic_id)
+{
+	if (pmic_id < ARRAY_SIZE(tx6_mod_revs))
+		return tx6_mod_revs[pmic_id].rev;
+
+	return 0;
+}
+
+static int tx6_pmic_probe(void)
 {
 	int i;
-	int bad = 0;
-	int failed = 0;
-#define MAX_TRIES 100
 
-	debug("Clearing I2C bus\n");
+	debug("%s@%d: \n", __func__, __LINE__);
 
-	for (i = 0; i < ARRAY_SIZE(tx6_i2c_iomux_regs); i++) {
-		int gpio = tx6_i2c_iomux_regs[i].gpio;
-		u32 gpio_mask = 1 << (gpio % 32);
+//	i2c_init_all();
 
-		void *gpio_base = (void *)tx6_i2c_iomux_regs[i].gpio_base;
+	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
+		u8 i2c_addr = tx6_mod_revs[i].addr;
+		int ret = i2c_probe(i2c_addr);
 
-		if ((readl(gpio_base + GPIO_PSR) & gpio_mask) == 0) {
-			int retries = MAX_TRIES;
-
-			bad++;
-			printf("%s (GPIO%u_%u) is not HIGH\n",
-				tx6_i2c_iomux_regs[i].label,
-				gpio / 32 + 1, gpio % 32);
-			writel(readl(gpio_base + GPIO_DR) | gpio_mask,
-				gpio_base + GPIO_DR);
-			writel(readl(gpio_base + GPIO_DIR) | gpio_mask,
-				gpio_base + GPIO_DIR);
-			writel(0x15, tx6_i2c_iomux_regs[i].muxctl);
-			writel(0x0f079, tx6_i2c_iomux_regs[i].padctl);
-			writel(I2C1_SEL_INPUT_VAL, tx6_i2c_iomux_regs[i].sel_input);
-			if ((readl(gpio_base + GPIO_DR) & gpio_mask) == 0)
-				hang();
-			if ((readl(gpio_base + GPIO_DIR) & gpio_mask) == 0)
-				hang();
-			while ((readl(gpio_base + GPIO_PSR) & gpio_mask) == 0 &&
-				retries-- > 0) {
-				udelay(100);
-			}
-			writel(readl(gpio_base + GPIO_DIR) & ~gpio_mask,
-				gpio_base + GPIO_DIR);
-
-			if ((readl(gpio_base + GPIO_PSR) & gpio_mask) == 0) {
-				printf("Failed to force %s (GPIO%u_%u) HIGH\n",
-					tx6_i2c_iomux_regs[i].label,
-					gpio / 32 + 1, gpio % 32);
-				failed++;
-			} else if (retries < MAX_TRIES) {
-				printf("%s (GPIO%u_%u) forced HIGH after %u loops\n",
-					tx6_i2c_iomux_regs[i].label,
-					gpio / 32 + 1, gpio % 32,
-					MAX_TRIES - retries);
-			}
-		} else {
-			debug("%s (GPIO%u_%u) is HIGH\n",
-				tx6_i2c_iomux_regs[i].label,
-				gpio / 32 + 1, gpio % 32);
+		if (ret == 0) {
+			debug("I2C probe succeeded for addr 0x%02x\n", i2c_addr);
+			return i;
 		}
+		debug("I2C probe returned %d for addr 0x%02x\n", ret, i2c_addr);
 	}
-	debug("Setting up I2C Pads\n");
-	imx_iomux_v3_setup_multiple_pads(tx6_i2c_pads,
-					ARRAY_SIZE(tx6_i2c_pads));
-	if (bad) {
-		if (failed)
-			printf("I2C bus recovery FAILED\n");
-		else
-			printf("I2C bus recovery succeeded\n");
-	}
+	return -EINVAL;
 }
 
-#define pr_reg(b, n)	debug("%12s@%p=%08x\n", #n, (void *)(b) + (n), readl((b) + (n)))
-
-static inline void dump_regs(void)
+static inline int __checkboard(void)
 {
-	pr_reg(GPIO3_BASE_ADDR, GPIO_DR);
-	pr_reg(GPIO3_BASE_ADDR, GPIO_DIR);
-	pr_reg(GPIO3_BASE_ADDR, GPIO_PSR);
+	u32 cpurev = get_cpu_rev();
+	int cpu_variant = (cpurev >> 12) & 0xff;
+	int pmic_id;
+
+	debug("%s@%d: \n", __func__, __LINE__);
+
+	pmic_id = tx6_pmic_probe();
+	if (pmic_id >= 0)
+		pmic_addr = tx6_mod_revs[pmic_id].addr;
+
+	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
+		tx6_mod_suffix,
+		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
+		is_lvds(), tx6_get_mod_rev(pmic_id),
+		tx6_mem_suffix());
+
+	get_hab_status();
+
+	debug("%s@%d: done\n", __func__, __LINE__);
+	return 0;
 }
 
 int board_init(void)
 {
 	int ret;
+	u32 cpurev = get_cpu_rev();
+	int cpu_variant = (cpurev >> 12) & 0xff;
+	int pmic_id;
+
+	debug("%s@%d: \n", __func__, __LINE__);
+
+	pmic_id = tx6_pmic_probe();
+	if (pmic_id >= 0)
+		pmic_addr = tx6_mod_revs[pmic_id].addr;
+
+	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
+		tx6_mod_suffix,
+		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
+		is_lvds(), tx6_get_mod_rev(pmic_id),
+		tx6_mem_suffix());
+
+	get_hab_status();
 
 	ret = gpio_request_array(tx6qdl_gpios, ARRAY_SIZE(tx6qdl_gpios));
 	if (ret < 0) {
@@ -435,6 +508,8 @@ int board_init(void)
 
 int dram_init(void)
 {
+	debug("%s@%d: \n", __func__, __LINE__);
+
 	/* dram_init must store complete ramsize in gd->ram_size */
 	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
 				PHYS_SDRAM_1_SIZE * CONFIG_NR_DRAM_BANKS);
@@ -443,6 +518,8 @@ int dram_init(void)
 
 void dram_init_banksize(void)
 {
+	debug("%s@%d: \n", __func__, __LINE__);
+
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = get_ram_size((void *)PHYS_SDRAM_1,
 			PHYS_SDRAM_1_SIZE);
@@ -558,6 +635,8 @@ int board_mmc_init(bd_t *bis)
 {
 	int i;
 
+	debug("%s@%d: \n", __func__, __LINE__);
+
 	for (i = 0; i < ARRAY_SIZE(tx6qdl_esdhc_cfg); i++) {
 		struct mmc *mmc;
 		struct tx6_esdhc_cfg *cfg = &tx6qdl_esdhc_cfg[i];
@@ -591,11 +670,6 @@ int board_mmc_init(bd_t *bis)
 
 #ifdef CONFIG_FEC_MXC
 
-#define FEC_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH | \
-			PAD_CTL_SRE_FAST)
-#define FEC_PAD_CTL2	(PAD_CTL_DVS | PAD_CTL_SRE_FAST)
-#define GPIO_PAD_CTL	(PAD_CTL_DVS | PAD_CTL_DSE_HIGH)
-
 #ifndef ETH_ALEN
 #define ETH_ALEN 6
 #endif
@@ -603,6 +677,8 @@ int board_mmc_init(bd_t *bis)
 int board_eth_init(bd_t *bis)
 {
 	int ret;
+
+	debug("%s@%d: \n", __func__, __LINE__);
 
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
@@ -1301,6 +1377,8 @@ int board_late_init(void)
 	writel(0x12, &fuse->cfg5);
 #endif
 
+	debug("%s@%d: \n", __func__, __LINE__);
+
 	env_cleanup();
 
 	if (tx6_temp_check_enabled)
@@ -1350,106 +1428,6 @@ exit:
 	gpio_set_value(TX6_RESET_OUT_GPIO, 1);
 	clear_ctrlc();
 	return ret;
-}
-
-#ifdef CONFIG_TX6_NAND
-#define TX6_FLASH_SZ	(CONFIG_SYS_NAND_BLOCKS / 1024 - 1)
-#else
-#ifdef CONFIG_MMC_BOOT_SIZE
-#define TX6_FLASH_SZ	(CONFIG_MMC_BOOT_SIZE / 4096 + 2)
-#else
-#define TX6_FLASH_SZ	2
-#endif
-#endif /* CONFIG_TX6_NAND */
-
-#define TX6_DDR_SZ	(ffs(PHYS_SDRAM_1_WIDTH / 16) - 1)
-
-static char tx6_mem_table[] = {
-	'4', /* 256MiB SDRAM 16bit; 128MiB NAND */
-	'1', /* 512MiB SDRAM 32bit; 128MiB NAND */
-	'0', /* 1GiB SDRAM 64bit; 128MiB NAND */
-	'?', /* 256MiB SDRAM 16bit; 256MiB NAND */
-	'?', /* 512MiB SDRAM 32bit; 256MiB NAND */
-	'2', /* 1GiB SDRAM 64bit; 256MiB NAND */
-	'?', /* 256MiB SDRAM 16bit; 4GiB eMMC */
-	'5', /* 512MiB SDRAM 32bit; 4GiB eMMC */
-	'3', /* 1GiB SDRAM 64bit; 4GiB eMMC */
-	'?', /* 256MiB SDRAM 16bit; 8GiB eMMC */
-	'?', /* 512MiB SDRAM 32bit; 8GiB eMMC */
-	'0', /* 1GiB SDRAM 64bit; 8GiB eMMC */
-};
-
-static inline char tx6_mem_suffix(void)
-{
-	size_t mem_idx = (TX6_FLASH_SZ * 3) + TX6_DDR_SZ;
-
-	debug("TX6_DDR_SZ=%d TX6_FLASH_SZ=%d idx=%d\n",
-		TX6_DDR_SZ, TX6_FLASH_SZ, mem_idx);
-
-	if (mem_idx >= ARRAY_SIZE(tx6_mem_table))
-		return '?';
-
-	return tx6_mem_table[mem_idx];
-};
-
-static struct {
-	uchar addr;
-	uchar rev;
-} tx6_mod_revs[] = {
-	{ 0x3c, 1, },
-	{ 0x32, 2, },
-	{ 0x33, 3, },
-};
-
-static int tx6_get_mod_rev(unsigned int pmic_id)
-{
-	if (pmic_id < ARRAY_SIZE(tx6_mod_revs))
-		return tx6_mod_revs[pmic_id].rev;
-
-	return 0;
-}
-
-static int tx6_pmic_probe(void)
-{
-	int i;
-
-	tx6_i2c_recover();
-	i2c_init_all();
-
-	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
-		u8 i2c_addr = tx6_mod_revs[i].addr;
-		int ret = i2c_probe(i2c_addr);
-
-		if (ret == 0) {
-			debug("I2C probe succeeded for addr 0x%02x\n", i2c_addr);
-			return i;
-		}
-		debug("I2C probe returned %d for addr 0x%02x\n", ret, i2c_addr);
-	}
-	return -EINVAL;
-}
-
-int checkboard(void)
-{
-	u32 cpurev = get_cpu_rev();
-	int cpu_variant = (cpurev >> 12) & 0xff;
-	int pmic_id;
-
-	tx6qdl_print_cpuinfo();
-
-	pmic_id = tx6_pmic_probe();
-	if (pmic_id >= 0)
-		pmic_addr = tx6_mod_revs[pmic_id].addr;
-
-	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
-		tx6_mod_suffix,
-		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), tx6_get_mod_rev(pmic_id),
-		tx6_mem_suffix());
-
-	get_hab_status();
-
-	return 0;
 }
 
 #ifdef CONFIG_SERIAL_TAG

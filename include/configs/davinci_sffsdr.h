@@ -18,6 +18,7 @@
 /* SoC Configuration */
 #define CONFIG_SYS_TIMERBASE		0x01c21400	/* use timer 0 */
 #define CONFIG_SYS_HZ_CLOCK		27000000	/* Timer Input clock freq */
+#define CONFIG_SOC_DM644X
 /* EEPROM definitions for Atmel 24LC64 EEPROM chip */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		2
 #define CONFIG_SYS_I2C_EEPROM_ADDR		0x50

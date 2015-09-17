@@ -29,7 +29,8 @@
 #define DA8XX_FB_H
 
 enum panel_type {
-	QVGA = 0
+	QVGA,
+	WVGA,
 };
 
 enum panel_shade {
@@ -121,6 +122,7 @@ struct lcd_sync_arg {
 };
 
 void da8xx_fb_disable(void);
-void da8xx_video_init(const struct da8xx_panel *panel, int bits_pixel);
+void da8xx_video_init(const struct da8xx_panel *panel,
+		const struct lcd_ctrl_config *lcd_cfg, int bits_pixel);
 
 #endif  /* ifndef DA8XX_FB_H */

@@ -8,6 +8,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include <linux/kconfig.h>
 #include <linux/sizes.h>
 #include <asm/hardware.h>
 
@@ -120,7 +121,7 @@ extern int lcd_output_bpp;
 #ifdef CONFIG_TXA5_NAND
 #define CONFIG_SYS_DEFAULT_BOOT_MODE	"nand"
 #define CONFIG_SYS_BOOT_CMD_NAND					\
-	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"
+	"bootcmd_nand=setenv autostart no;run bootargs_ubifs;nboot linux\0"
 #define CONFIG_SYS_FDTSAVE_CMD						\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"
@@ -185,25 +186,28 @@ extern int lcd_output_bpp;
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
-	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_jffs2=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
-	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
 	MMC_ROOT_STR							\
-	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
-	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_ubifs=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
-	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	"bootcmd_jffs2=setenv autostart no;run bootargs_jffs2"		\
 	";nboot linux\0"						\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	"bootcmd_mmc=setenv autostart no;run bootargs_mmc"		\
 	";fatload mmc 0 ${loadaddr} uImage\0"				\
 	CONFIG_SYS_BOOT_CMD_NAND					\
-	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	"bootcmd_net=setenv autoload y;setenv autostart n"		\
+	";run bootargs_nfs"						\
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"boot_mode=" CONFIG_SYS_DEFAULT_BOOT_MODE "\0"			\
-	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
+	"default_bootargs=setenv bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	CONFIG_SYS_FDTSAVE_CMD						\
@@ -220,7 +224,6 @@ extern int lcd_output_bpp;
 #define CONFIG_BAUDRATE			115200
 
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"TXA5 U-Boot > "
 #define CONFIG_SYS_CBSIZE		2048
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)

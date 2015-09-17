@@ -86,8 +86,8 @@ ELFTOSB_TARGET-$(CONFIG_SOC_MX28) = imx28
 u-boot.bd: $(KBUILD_SRC)/$(CPUDIR)/$(SOC)/u-boot-$(ELFTOSB_TARGET-y).bd
 	sed "s@OBJTREE@$(objtree)@g" $^ > $@
 
-u-boot.sb: u-boot spl/u-boot-spl $(objtree)/u-boot.bd $(KBUILD_SRC)/tools/elftosb/bld/linux/elftosb
-		$(KBUILD_SRC)/tools/elftosb/bld/linux/elftosb -V -zf $(ELFTOSB_TARGET-y) -c u-boot.bd -o u-boot.sb
+u-boot.sb: u-boot spl/u-boot-spl $(objtree)/u-boot.bd $(KBUILD_OUTPUT)/tools/elftosb/bld/linux/elftosb
+		$(KBUILD_OUTPUT)/tools/elftosb/bld/linux/elftosb -V -zf $(ELFTOSB_TARGET-y) -c u-boot.bd -o u-boot.sb
 
 u-boot-signed.sb: $(src)/mxsimage-signed.cfg u-boot.ivt u-boot.sig spl/u-boot-spl.ivt spl/u-boot-spl.sig FORCE
 	$(call if_changed,mkimage_mxs)

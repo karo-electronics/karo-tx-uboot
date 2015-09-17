@@ -14,7 +14,9 @@
 #define __CONFIG_H
 
 #define CONFIG_AM33XX			/* must be set before including omap.h */
+#define CONFIG_SYS_L2CACHE_OFF
 
+#include <linux/kconfig.h>
 #include <linux/sizes.h>
 #include <asm/arch/omap.h>
 
@@ -71,7 +73,6 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		"TX48 U-Boot > "
 #define CONFIG_SYS_CBSIZE		2048	/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -119,27 +120,30 @@
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
-	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_jffs2=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" root=/dev/mtdblock4 rootfstype=jffs2\0"			\
-	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_mmc=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p2 rootwait\0"				\
-	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_nfs=run default_bootargs;setenv bootargs ${bootargs}"	\
 	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
 	" ip=dhcp\0"							\
-	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	"bootargs_ubifs=run default_bootargs"				\
+	";setenv bootargs ${bootargs}"					\
 	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
-	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	"bootcmd_jffs2=setenv autostart no;run bootargs_jffs2"		\
 	";nboot linux\0"						\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	"bootcmd_mmc=setenv autostart no;run bootargs_mmc"		\
 	";fatload mmc 0 ${loadaddr} uImage\0"				\
-	"bootcmd_nand=set autostart no;run bootargs_ubifs"		\
+	"bootcmd_nand=setenv autostart no;run bootargs_ubifs"		\
 	";nboot linux\0"						\
-	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	"bootcmd_net=setenv autoload y"					\
+	";setenv autostart n;run bootargs_nfs"				\
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"boot_mode=nand\0"						\
 	"cpu_clk=" CONFIG_SYS_CPU_CLK_STR "\0"				\
-	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
+	"default_bootargs=setenv bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
@@ -216,9 +220,6 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_OMAP_HSMMC
-#define CONFIG_OMAP_MMC_DEV_1
-
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2

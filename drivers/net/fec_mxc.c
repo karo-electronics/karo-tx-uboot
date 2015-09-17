@@ -256,7 +256,7 @@ static int miiphy_wait_aneg(struct eth_device *dev)
 
 static inline void fec_rx_task_enable(struct fec_priv *fec)
 {
-	writel(1 << 24, &fec->eth->r_des_active);
+	writel(FEC_X_DES_ACTIVE_TDAR, &fec->eth->r_des_active);
 }
 
 static inline void fec_rx_task_disable(struct fec_priv *fec)
@@ -265,7 +265,7 @@ static inline void fec_rx_task_disable(struct fec_priv *fec)
 
 static inline void fec_tx_task_enable(struct fec_priv *fec)
 {
-	writel(1 << 24, &fec->eth->x_des_active);
+	writel(FEC_X_DES_ACTIVE_TDAR, &fec->eth->x_des_active);
 }
 
 static inline void fec_tx_task_disable(struct fec_priv *fec)
@@ -783,6 +783,7 @@ static int fec_recv(struct eth_device *dev)
 	uint16_t bd_status;
 	uint32_t addr, size, end;
 	int i;
+	ALLOC_CACHE_ALIGN_BUFFER(uchar, buff, FEC_MAX_PKT_SIZE);
 
 	/*
 	 * Check if any critical events have happened
