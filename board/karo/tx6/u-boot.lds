@@ -79,8 +79,6 @@ SECTIONS
 		. = ALIGN(4096);
 	} = 0x01f0adde
 
-	_image_binary_end = . + (__ivt_end - __uboot_img_start);
-
 	.uboot_img_end :
 	{
 		KEEP(*(.__uboot_img_end))
@@ -115,7 +113,6 @@ SECTIONS
 		KEEP(*(.__bss_end));
 	}
 
-	.dynsym _image_binary_end : { *(.dynsym) }
 	/DISCARD/ : { *(.debug*) }
 	/DISCARD/ : { *(.note*) }
 	/DISCARD/ : { *(.comment*) }
