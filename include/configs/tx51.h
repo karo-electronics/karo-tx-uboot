@@ -113,6 +113,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"autoload=no\0"							\
+	"baseboard=stk5-v3\0"						\
 	"bootdelay=-1\0"						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
