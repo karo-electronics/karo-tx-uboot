@@ -407,7 +407,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	size_t size = 0;
 	void *addr = NULL;
 	struct mx28_fcb *fcb;
-	unsigned long mtd_num_blocks = mtd->size / mtd->erasesize;
+	unsigned long mtd_num_blocks = lldiv(mtd->size, mtd->erasesize);
 #ifdef CONFIG_ENV_IS_IN_NAND
 	unsigned long env_start_block = CONFIG_ENV_OFFSET / mtd->erasesize;
 	unsigned long env_end_block = env_start_block +
@@ -420,7 +420,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	unsigned long fw_num_blocks;
 	int fw1_skip, fw2_skip;
 	unsigned long extra_blocks = 0;
-	size_t max_len1, max_len2;
+	u64 max_len1, max_len2;
 	struct mtd_device *dev;
 	struct part_info *part_info;
 	struct part_info *redund_part_info;
@@ -544,12 +544,12 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 				uboot_part, ret);
 			return ret;
 		}
-		fw1_start_block = part_info->offset / mtd->erasesize;
+		fw1_start_block = lldiv(part_info->offset, mtd->erasesize);
 		max_len1 = part_info->size;
 		if (size == 0)
-			fw_num_blocks = max_len1 / mtd->erasesize;
+			fw_num_blocks = lldiv(max_len1, mtd->erasesize);
 	} else {
-		max_len1 = (fw_num_blocks + extra_blocks) * mtd->erasesize;
+		max_len1 = (u64)(fw_num_blocks + extra_blocks) * mtd->erasesize;
 	}
 
 	if (redund_part) {
@@ -560,26 +560,26 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 				redund_part, ret);
 			return ret;
 		}
-		fw2_start_block = redund_part_info->offset / mtd->erasesize;
+		fw2_start_block = lldiv(redund_part_info->offset, mtd->erasesize);
 		max_len2 = redund_part_info->size;
 		if (fw2_start_block == fcb_start_block) {
 			fw2_start_block++;
 			max_len2 -= mtd->erasesize;
 		}
 		if (size == 0)
-			fw_num_blocks = max_len2 / mtd->erasesize;
+			fw_num_blocks = lldiv(max_len2, mtd->erasesize);
 	} else if (fw2_set) {
-		max_len2 = (fw_num_blocks + extra_blocks) * mtd->erasesize;
+		max_len2 = (u64)(fw_num_blocks + extra_blocks) * mtd->erasesize;
 	} else {
 		max_len2 = 0;
 	}
 
 	fw1_skip = find_contig_space(fw1_start_block, fw_num_blocks,
-				max_len1 / mtd->erasesize);
+				lldiv(max_len1, mtd->erasesize));
 	if (fw1_skip < 0) {
-		printf("Could not find %lu contiguous good blocks for fw image in blocks %lu..%lu\n",
+		printf("Could not find %lu contiguous good blocks for fw image in blocks %lu..%llu\n",
 			fw_num_blocks, fw1_start_block,
-			fw1_start_block + max_len1 / mtd->erasesize - 1);
+			fw1_start_block + lldiv(max_len1, mtd->erasesize) - 1);
 		if (uboot_part) {
 #ifdef CONFIG_ENV_IS_IN_NAND
 			if (part_info->offset <= CONFIG_ENV_OFFSET + TOTAL_ENV_SIZE) {
@@ -606,11 +606,11 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		fw2_start_block = fw1_end_block + 1;
 	if (fw2_start_block > 0) {
 		fw2_skip = find_contig_space(fw2_start_block, fw_num_blocks,
-					max_len2 / mtd->erasesize);
+					lldiv(max_len2, mtd->erasesize));
 		if (fw2_skip < 0) {
-			printf("Could not find %lu contiguous good blocks for redundant fw image in blocks %lu..%lu\n",
+			printf("Could not find %lu contiguous good blocks for redundant fw image in blocks %lu..%llu\n",
 				fw_num_blocks, fw2_start_block,
-				fw2_start_block + max_len2 / mtd->erasesize - 1);
+				fw2_start_block + lldiv(max_len2, mtd->erasesize) - 1);
 			if (redund_part) {
 				printf("Increase the size of the '%s' partition or use a different partition\n",
 					redund_part);

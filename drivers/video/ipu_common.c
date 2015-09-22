@@ -13,6 +13,7 @@
 
 /* #define DEBUG */
 #include <common.h>
+#include <div64.h>
 #include <ipu.h>
 #include <linux/types.h>
 #include <linux/err.h>
@@ -179,10 +180,12 @@ static inline void ipu_ch_param_set_buffer(uint32_t ch, int bufNum,
 static void ipu_pixel_clk_recalc(struct clk *clk)
 {
 	u32 div = __raw_readl(DI_BS_CLKGEN0(clk->id));
+	u64 parent_rate = (u64)clk->parent->rate * 16;
+
 	if (div == 0)
 		clk->rate = 0;
 	else
-		clk->rate = (clk->parent->rate * 16) / div;
+		clk->rate = lldiv(parent_rate, div);
 }
 
 static unsigned long ipu_pixel_clk_round_rate(struct clk *clk,
@@ -190,38 +193,41 @@ static unsigned long ipu_pixel_clk_round_rate(struct clk *clk,
 {
 	u32 div, div1;
 	u64 tmp;
+
 	/*
 	 * Calculate divider
 	 * Fractional part is 4 bits,
 	 * so simply multiply by 2^4 to get fractional part.
 	 */
 	tmp = (u64)clk->parent->rate * 16;
-	div = tmp / rate;
+	div = lldiv(tmp, rate);
 
 	if (div < 0x10)            /* Min DI disp clock divider is 1 */
 		div = 0x10;
-	if (div & ~0xFEF)
+	if (div & ~0xFEF) {
 		div &= 0xFF8;
-	else {
+	} else {
 		div1 = div & 0xFE0;
-		if ((tmp/div1 - tmp/div) < rate / 4)
+
+		if ((lldiv(tmp, div1) - lldiv(tmp, div)) < rate / 4)
 			div = div1;
 		else
 			div &= 0xFF8;
 	}
-	tmp /= div;
+	do_div(tmp, div);
 #if 1
 	debug("%s: requested rate: %lu.%03luMHz parent_rate: %lu.%03luMHz actual rate: %llu.%03lluMHz div: %u.%u\n", __func__,
 		rate / 1000000, rate / 1000 % 1000,
 		clk->parent->rate / 1000000, clk->parent->rate / 1000 % 1000,
-		tmp / 1000000, tmp / 1000 % 1000, div / 16, div % 16);
+		lldiv(tmp, 1000000), lldiv(tmp, 1000) % 1000, div / 16, div % 16);
 #endif
 	return tmp;
 }
 
 static int ipu_pixel_clk_set_rate(struct clk *clk, unsigned long rate)
 {
-	u32 div = ((u64)clk->parent->rate * 16) / rate;
+	u64 parent_rate = (u64)clk->parent->rate * 16;
+	u32 div = lldiv(parent_rate, rate);
 
 	debug("%s: parent_rate: %lu.%03luMHz actual rate: %lu.%03luMHz div: %u.%u\n", __func__,
 		clk->parent->rate / 1000000, clk->parent->rate / 1000 % 1000,
@@ -231,8 +237,7 @@ static int ipu_pixel_clk_set_rate(struct clk *clk, unsigned long rate)
 
 	/* Setup pixel clock timing */
 	__raw_writel((div / 16) << 16, DI_BS_CLKGEN1(clk->id));
-
-	clk->rate = ((u64)clk->parent->rate * 16) / div;
+	clk->rate = lldiv(parent_rate, div);
 	debug("%s: pix_clk=%lu.%03luMHz\n", __func__,
 		clk->rate / 1000000, clk->rate / 1000 % 1000);
 	return 0;
