@@ -32,6 +32,7 @@ config TX28
 	select NAND_MXS
 	select OF_BOARD_SETUP
 	select OF_LIBFDT
+	select PHYLIB
 	select SYS_NAND_USE_FLASH_BBT
 
 config TARGET_TX28_40X2
