@@ -724,6 +724,7 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 	while (--timeout) {
 		if (!(readl(&fec->eth->x_des_active) & FEC_X_DES_ACTIVE_TDAR))
 			break;
+		udelay(1);
 	}
 
 	if (!timeout) {
@@ -751,6 +752,7 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 		if (!(readw(&fec->tbd_base[fec->tbd_index].status) &
 		    FEC_TBD_READY))
 			break;
+		udelay(1);
 	}
 
 	if (!timeout)
