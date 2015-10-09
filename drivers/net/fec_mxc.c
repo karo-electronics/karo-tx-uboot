@@ -531,8 +531,6 @@ static int fec_open(struct eth_device *edev)
 static int fec_init(struct eth_device *dev, bd_t* bd)
 {
 	struct fec_priv *fec = dev->priv;
-	uint32_t *mib_ptr = (uint32_t *)&fec->eth->rmon_t_drop;
-	int i;
 
 	/* Initialize MAC address */
 	fec_set_hwaddr(dev);
@@ -560,11 +558,6 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 	 */
 	writel(0x00000000, &fec->eth->gaddr1);
 	writel(0x00000000, &fec->eth->gaddr2);
-
-
-	/* clear MIB RAM */
-	for (i = 0; i <= 0xfc >> 2; i++)
-		writel(0, &mib_ptr[i]);
 
 	/* FIFO receive start register */
 	writel(0x520, &fec->eth->r_fstart);
