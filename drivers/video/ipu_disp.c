@@ -1157,7 +1157,7 @@ int ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		if (sig.Vsync_pol)
 			di_gen |= DI_GEN_POLARITY_3;
 
-		if (!sig.clk_pol)
+		if (sig.clk_pol)
 			di_gen |= DI_GEN_POL_CLK;
 
 		/* Set the clock to stop at counter 6. */
