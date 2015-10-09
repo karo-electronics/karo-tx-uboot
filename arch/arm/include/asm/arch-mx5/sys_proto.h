@@ -17,12 +17,6 @@ void sdelay(unsigned long);
 void set_chipselect_size(int const);
 void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
 
-/*
- * Initializes on-chip ethernet controllers.
- * to override, implement board_eth_init()
- */
-
-int fecmxc_initialize(bd_t *bis);
 u32 get_ahb_clk(void);
 u32 get_periph_clk(void);
 
