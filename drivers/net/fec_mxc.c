@@ -1106,7 +1106,8 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 	if (!bus)
 		return -ENOMEM;
 #ifdef CONFIG_PHYLIB
-	phydev = phy_find_by_mask(bus, 1 << phy_id, PHY_INTERFACE_MODE_RGMII);
+	phydev = phy_find_by_mask(bus, phy_id < 0 ? 0xff : (1 << phy_id),
+				PHY_INTERFACE_MODE_RGMII);
 	if (!phydev) {
 		free(bus);
 		return -ENOMEM;
