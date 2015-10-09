@@ -227,7 +227,7 @@ static int miiphy_restart_aneg(struct eth_device *dev)
 
 static int miiphy_wait_aneg(struct eth_device *dev)
 {
-	uint32_t start;
+	ulong start;
 	int status;
 	struct fec_priv *fec = (struct fec_priv *)dev->priv;
 	struct ethernet_regs *eth = fec->bus->priv;
@@ -284,7 +284,7 @@ static inline void fec_tx_task_disable(struct fec_priv *fec)
 static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
 {
 	uint32_t size;
-	uint8_t *data;
+	void *data;
 	int i;
 
 	/*
@@ -293,9 +293,10 @@ static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
 	 */
 	size = roundup(dsize, ARCH_DMA_MINALIGN);
 	for (i = 0; i < count; i++) {
-		data = (uint8_t *)fec->rbd_base[i].data_pointer;
+		data = (void *)fec->rbd_base[i].data_pointer;
 		memset(data, 0, dsize);
-		flush_dcache_range((uint32_t)data, (uint32_t)data + size);
+		flush_dcache_range((unsigned long)data,
+				(unsigned long)data + size);
 
 		fec->rbd_base[i].status = FEC_RBD_EMPTY;
 		fec->rbd_base[i].data_length = 0;
@@ -305,8 +306,8 @@ static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
 	fec->rbd_base[i - 1].status = FEC_RBD_WRAP | FEC_RBD_EMPTY;
 	fec->rbd_index = 0;
 
-	flush_dcache_range((unsigned)fec->rbd_base,
-			   (unsigned)fec->rbd_base + size);
+	flush_dcache_range((unsigned long)fec->rbd_base,
+			   (unsigned long)fec->rbd_base + size);
 }
 
 /**
@@ -323,7 +324,7 @@ static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
  */
 static void fec_tbd_init(struct fec_priv *fec)
 {
-	unsigned addr = (unsigned)fec->tbd_base;
+	unsigned long addr = (unsigned long)fec->tbd_base;
 	unsigned size = roundup(2 * sizeof(struct fec_bd),
 				ARCH_DMA_MINALIGN);
 
@@ -358,7 +359,7 @@ static int fec_get_hwaddr(struct eth_device *dev, int dev_id,
 static int fec_set_hwaddr(struct eth_device *dev)
 {
 	uchar *mac = dev->enetaddr;
-	struct fec_priv *fec = (struct fec_priv *)dev->priv;
+	struct fec_priv *fec = dev->priv;
 
 	writel(0, &fec->eth->iaddr1);
 	writel(0, &fec->eth->iaddr2);
@@ -583,7 +584,7 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
  */
 static void fec_halt(struct eth_device *dev)
 {
-	struct fec_priv *fec = (struct fec_priv *)dev->priv;
+	struct fec_priv *fec = dev->priv;
 	int counter = 1000;
 
 	/*
@@ -651,7 +652,7 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 	 * engine. We also flush the packet to RAM here to avoid cache trouble.
 	 */
 #ifdef CONFIG_FEC_MXC_SWAP_PACKET
-	swap_packet((uint32_t *)packet, length);
+	swap_packet(packet, length);
 #endif
 
 	addr = (uint32_t)packet;
@@ -773,7 +774,7 @@ out:
  */
 static int fec_recv(struct eth_device *dev)
 {
-	struct fec_priv *fec = (struct fec_priv *)dev->priv;
+	struct fec_priv *fec = dev->priv;
 	struct fec_bd *rbd = &fec->rbd_base[fec->rbd_index];
 	unsigned long ievent;
 	int frame_length, len = 0;
@@ -899,7 +900,7 @@ static int fec_alloc_descs(struct fec_priv *fec)
 {
 	unsigned int size;
 	int i;
-	uint8_t *data;
+	void *data;
 
 	/* Allocate TX descriptors. */
 	size = roundup(2 * sizeof(struct fec_bd), ARCH_DMA_MINALIGN);
@@ -932,7 +933,8 @@ static int fec_alloc_descs(struct fec_priv *fec)
 		fec->rbd_base[i].status = FEC_RBD_EMPTY;
 		fec->rbd_base[i].data_length = 0;
 		/* Flush the buffer to memory. */
-		flush_dcache_range((uint32_t)data, (uint32_t)data + size);
+		flush_dcache_range((unsigned long)data,
+				(unsigned long)data + size);
 	}
 
 	/* Mark the last RBD to close the ring. */
@@ -1133,7 +1135,7 @@ int fecmxc_initialize(bd_t *bd)
 #ifndef CONFIG_PHYLIB
 int fecmxc_register_mii_postcall(struct eth_device *dev, int (*cb)(int))
 {
-	struct fec_priv *fec = (struct fec_priv *)dev->priv;
+	struct fec_priv *fec = dev->priv;
 	fec->mii_postcall = cb;
 	return 0;
 }
