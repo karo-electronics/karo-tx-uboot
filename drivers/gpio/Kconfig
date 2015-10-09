@@ -17,14 +17,12 @@ config DM_GPIO
 config DWAPB_GPIO
 	bool "DWAPB GPIO driver"
 	depends on DM && DM_GPIO
-	default n
 	help
 	  Support for the Designware APB GPIO driver.
 
 config LPC32XX_GPIO
 	bool "LPC32XX GPIO driver"
 	depends on DM
-	default n
 	help
 	  Support for the LPC32XX GPIO driver.
 
@@ -52,7 +50,6 @@ config SANDBOX_GPIO_COUNT
 config VYBRID_GPIO
 	bool "Vybrid GPIO driver"
 	depends on DM
-	default n
 	help
 	  Say yes here to support Vybrid vf610 GPIOs.
 

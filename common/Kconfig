@@ -28,7 +28,6 @@ menu "Autoboot options"
 
 config AUTOBOOT_KEYED
 	bool "Stop autobooting via specific input key / string"
-	default n
 	help
 	  This option enables stopping (aborting) of the automatic
 	  boot feature only by issuing a specific input key or
@@ -55,7 +54,6 @@ config AUTOBOOT_PROMPT
 config AUTOBOOT_ENCRYPTION
 	bool "Enable encryption in autoboot stopping"
 	depends on AUTOBOOT_KEYED
-	default n
 
 config AUTOBOOT_DELAY_STR
 	string "Delay autobooting via specific input key / string"
@@ -84,7 +82,6 @@ config AUTOBOOT_STOP_STR
 config AUTOBOOT_KEYED_CTRLC
 	bool "Enable Ctrl-C autoboot interruption"
 	depends on AUTOBOOT_KEYED && !AUTOBOOT_ENCRYPTION
-	default n
 	help
 	  This option allows for the boot sequence to be interrupted
 	  by ctrl-c, in addition to the "bootdelaykey" and "bootstopkey".
