@@ -186,7 +186,7 @@ static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	ret = gpio_request(gpio, "cmd_gpio");
 	if (ret && ret != -EBUSY) {
 		printf("gpio: requesting pin %u failed\n", gpio);
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* finally, let's do it: set direction and exec command */
@@ -208,7 +208,7 @@ static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (ret != -EBUSY)
 		gpio_free(gpio);
 
-	return value;
+	return (ret && ret != -EBUSY) ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
 
 U_BOOT_CMD(gpio, 4, 0, do_gpio,
