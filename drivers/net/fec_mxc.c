@@ -110,7 +110,7 @@ static int fec_mdio_read(struct ethernet_regs *eth, uint8_t phyAddr,
 			if (readl(&eth->ievent) & FEC_IEVENT_MII)
 				break;
 			printf("Read MDIO failed...\n");
-			return -1;
+			return -ETIMEDOUT;
 		}
 	}
 
@@ -165,7 +165,7 @@ static int fec_mdio_write(struct ethernet_regs *eth, uint8_t phyAddr,
 			if (readl(&eth->ievent) & FEC_IEVENT_MII)
 				break;
 			printf("Write MDIO failed...\n");
-			return -1;
+			return -ETIMEDOUT;
 		}
 	}
 
@@ -239,14 +239,14 @@ static int miiphy_wait_aneg(struct eth_device *dev)
 	do {
 		if (get_timer(start) > (CONFIG_SYS_HZ * 5)) {
 			printf("%s: Autonegotiation timeout\n", dev->name);
-			return -1;
+			return -ETIMEDOUT;
 		}
 
 		status = fec_mdio_read(eth, fec->phy_id, MII_BMSR);
 		if (status < 0) {
 			printf("%s: Autonegotiation failed. status: %d\n",
 					dev->name, status);
-			return -1;
+			return status;
 		}
 	} while (!(status & BMSR_LSTATUS));
 
@@ -643,7 +643,7 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 	 */
 	if ((length > 1500) || (length <= 0)) {
 		printf("Payload (%d) too large\n", length);
-		return -1;
+		return -EINVAL;
 	}
 
 	/*
@@ -724,7 +724,7 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 	}
 
 	if (!timeout) {
-		ret = -EINVAL;
+		ret = -ETIMEDOUT;
 		goto out;
 	}
 
@@ -752,7 +752,7 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 	}
 
 	if (!timeout)
-		ret = -EINVAL;
+		ret = -ETIMEDOUT;
 
 out:
 	debug("fec_send: status 0x%x index %d ret %i\n",
