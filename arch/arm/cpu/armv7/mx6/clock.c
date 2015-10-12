@@ -1103,20 +1103,6 @@ void ldb_clk_disable(int ldb)
 	}
 }
 
-void ocotp_clk_enable(void)
-{
-	u32 reg = readl(&imx_ccm->CCGR2);
-	reg |= MXC_CCM_CCGR2_OCOTP_CTRL_MASK;
-	writel(reg, &imx_ccm->CCGR2);
-}
-
-void ocotp_clk_disable(void)
-{
-	u32 reg = readl(&imx_ccm->CCGR2);
-	reg &= ~MXC_CCM_CCGR2_OCOTP_CTRL_MASK;
-	writel(reg, &imx_ccm->CCGR2);
-}
-
 unsigned int mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {

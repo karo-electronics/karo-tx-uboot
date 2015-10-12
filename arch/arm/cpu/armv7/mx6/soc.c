@@ -394,11 +394,11 @@ int read_cpu_temperature(void)
 	struct mx6_ocotp_regs *const ocotp_regs = (void *)OCOTP_BASE_ADDR;
 
 	if (!thermal_calib) {
-		ocotp_clk_enable();
+		enable_ocotp_clk(1);
 		writel(1, &ocotp_regs->hw_ocotp_read_ctrl);
 		thermal_calib = readl(&ocotp_regs->hw_ocotp_ana1);
 		writel(0, &ocotp_regs->hw_ocotp_read_ctrl);
-		ocotp_clk_disable();
+		enable_ocotp_clk(0);
 	}
 
 	if (thermal_calib == 0 || thermal_calib == 0xffffffff)

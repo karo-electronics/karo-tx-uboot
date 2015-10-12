@@ -121,6 +121,4 @@ void ipu_di_clk_enable(int di);
 void ipu_di_clk_disable(int di);
 void ldb_clk_enable(int ldb);
 void ldb_clk_disable(int ldb);
-void ocotp_clk_enable(void);
-void ocotp_clk_disable(void);
 #endif /* __ASM_ARCH_CLOCK_H */
