@@ -35,8 +35,6 @@
 #define CONFIG_BOARD_POSTCLK_INIT
 #define CONFIG_MXC_GPT_HCLK
 
-#define CONFIG_SYS_NO_FLASH
-
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/imx-common/gpio.h>
@@ -80,7 +78,6 @@
 
 /* Filesystems and image support */
 #define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_BOOTZ
 #define CONFIG_SUPPORT_RAW_INITRD
 #define CONFIG_CMD_FS_GENERIC
 #define CONFIG_DOS_PARTITION
