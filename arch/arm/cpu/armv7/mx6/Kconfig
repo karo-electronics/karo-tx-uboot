@@ -26,7 +26,6 @@ config SOC_MX6SX
 	bool
 
 config SOC_MX6UL
-	select SYS_L2CACHE_OFF
 	bool
 
 choice
