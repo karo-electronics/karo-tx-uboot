@@ -42,7 +42,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static inline int gpt_has_clk_source_osc(void)
 {
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 	if (((is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D)) &&
 	    (soc_rev() > CHIP_REV_1_0)) || is_cpu_type(MXC_CPU_MX6DL) ||
 	     is_cpu_type(MXC_CPU_MX6SOLO) || is_cpu_type(MXC_CPU_MX6SX) ||

@@ -147,7 +147,7 @@ typedef struct ccsr_sec {
 #define CONFIG_JRSTARTR_JR0		0x00000001
 
 struct jr_regs {
-#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_ARCH_MX6)
 	u32 irba_l;
 	u32 irba_h;
 #else
@@ -160,7 +160,7 @@ struct jr_regs {
 	u32 irsa;
 	u32 rsvd3;
 	u32 irja;
-#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_ARCH_MX6)
 	u32 orba_l;
 	u32 orba_h;
 #else
@@ -192,7 +192,7 @@ struct jr_regs {
  * related information
  */
 struct sg_entry {
-#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_SYS_FSL_SEC_LE) && !defined(CONFIG_ARCH_MX6)
 	uint32_t addr_lo;	/* Memory Address - lo */
 	uint16_t addr_hi;	/* Memory Address of start of buffer - hi */
 	uint16_t reserved_zero;
@@ -213,7 +213,7 @@ struct sg_entry {
 #define SG_ENTRY_OFFSET_SHIFT	0
 };
 
-#ifdef CONFIG_SOC_MX6
+#ifdef CONFIG_ARCH_MX6
 /* CAAM Job Ring 0 Registers */
 /* Secure Memory Partition Owner register */
 #define SMCSJR_PO		(3 << 6)

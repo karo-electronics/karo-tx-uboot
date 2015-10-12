@@ -1,0 +1,9 @@
+if ARCH_MXS
+
+config SOC_MX23
+	bool
+
+config SOC_MX28
+	bool
+
+endif

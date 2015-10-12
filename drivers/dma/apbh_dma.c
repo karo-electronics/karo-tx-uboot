@@ -213,7 +213,7 @@ static int mxs_dma_reset(int channel)
 #if defined(CONFIG_SOC_MX23)
 	uint32_t *setreg = &apbh_regs->hw_apbh_ctrl0_set;
 	uint32_t offset = APBH_CTRL0_RESET_CHANNEL_OFFSET;
-#elif (defined(CONFIG_SOC_MX28) || defined(CONFIG_SOC_MX6))
+#elif (defined(CONFIG_SOC_MX28) || defined(CONFIG_ARCH_MX6))
 	uint32_t *setreg = &apbh_regs->hw_apbh_channel_ctrl_set;
 	uint32_t offset = APBH_CHANNEL_CTRL_RESET_CHANNEL_OFFSET;
 #endif

@@ -28,11 +28,11 @@ config FSL_ESDHC
 
 config FSL_USDHC
 	bool "Support USDHC"
-	depends on FSL_ESDHC && SOC_MX6
+	depends on FSL_ESDHC && ARCH_MX6
 
 config MXS_MMC
 	bool "i.MXS MMC/SDHC controller"
-	depends on SOC_MXS || SOC_MX6
+	depends on ARCH_MXS || ARCH_MX6
 	select GENERIC_MMC
 	select BOUNCE_BUFFER
 

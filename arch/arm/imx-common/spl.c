@@ -13,7 +13,7 @@
 #include <asm/spl.h>
 #include <spl.h>
 
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 /* determine boot device from SRC_SBMR1 (BOOT_CFG[4:1]) or SRC_GPR9 register */
 u32 spl_boot_device(void)
 {

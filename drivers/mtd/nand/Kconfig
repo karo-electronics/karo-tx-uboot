@@ -136,7 +136,7 @@ config NAND_MXS
 
 config NAND_MXS_NO_BBM_SWAP
 	bool "disable bad block mark swapping"
-	depends on NAND_MXS && SOC_MX6
+	depends on NAND_MXS && ARCH_MX6
 	select SYS_NAND_USE_FLASH_BBT
 
 endif

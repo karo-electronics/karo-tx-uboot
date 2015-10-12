@@ -92,7 +92,7 @@ typedef u64 iomux_v3_cfg_t;
 #define __PAD_CTRL_VALID	(1 << 17)
 #define PAD_CTRL_VALID		((iomux_v3_cfg_t)__PAD_CTRL_VALID << MUX_PAD_CTRL_SHIFT)
 
-#ifdef CONFIG_SOC_MX6
+#ifdef CONFIG_ARCH_MX6
 
 #define PAD_CTL_HYS		__MUX_PAD_CTRL(1 << 16)
 

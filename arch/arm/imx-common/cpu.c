@@ -64,7 +64,7 @@ u32 get_imx_reset_cause(void)
 }
 #endif
 
-#if defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_SOC_MX53) || defined(CONFIG_ARCH_MX6)
 #if defined(CONFIG_SOC_MX53)
 #define MEMCTL_BASE	ESDCTL_BASE_ADDR
 #else
@@ -154,14 +154,14 @@ int print_cpuinfo(void)
 	u32 cpurev;
 	__maybe_unused u32 max_freq;
 
-#if defined(CONFIG_SOC_MX6) && defined(CONFIG_IMX6_THERMAL)
+#if defined(CONFIG_ARCH_MX6) && defined(CONFIG_IMX6_THERMAL)
 	struct udevice *thermal_dev;
 	int cpu_tmp, minc, maxc, ret;
 #endif
 
 	cpurev = get_cpu_rev();
 
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 	printf("CPU:   Freescale i.MX%s rev%d.%d",
 	       get_imx_type((cpurev & 0xFF000) >> 12),
 	       (cpurev & 0x000F0) >> 4,
@@ -181,7 +181,7 @@ int print_cpuinfo(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 #endif
 
-#if defined(CONFIG_SOC_MX6) && defined(CONFIG_IMX6_THERMAL)
+#if defined(CONFIG_ARCH_MX6) && defined(CONFIG_IMX6_THERMAL)
 	puts("CPU:   ");
 	switch (get_cpu_temp_grade(&minc, &maxc)) {
 	case TEMP_AUTOMOTIVE:
@@ -253,7 +253,7 @@ void arch_preboot_os(void)
 {
 #if defined(CONFIG_CMD_SATA)
 	sata_stop();
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 	disable_sata_clock();
 #endif
 #endif

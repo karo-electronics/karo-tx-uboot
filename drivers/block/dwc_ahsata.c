@@ -562,7 +562,7 @@ int init_sata(int dev)
 	u32 linkmap;
 	struct ahci_probe_ent *probe_ent = NULL;
 
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 	if (!is_cpu_type(MXC_CPU_MX6Q) && !is_cpu_type(MXC_CPU_MX6D))
 		return 1;
 #endif

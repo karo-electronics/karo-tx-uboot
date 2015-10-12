@@ -74,6 +74,18 @@ config SYS_DCACHE_OFF
 config SYS_L2CACHE_OFF
 	bool "Do not use L2 cache"
 
+config ARCH_MXS
+	bool "Freescale i.MX23 & i.MX28"
+	select CPU_ARM926EJS
+
+config ARCH_MX6
+	bool "Freescale MX6"
+	select CPU_V7
+
+config ARCH_MX5
+	bool "Freescale MX5"
+	select CPU_V7
+
 config SOC_AM335X
 	bool
 	select CPU_V7
@@ -226,7 +238,6 @@ config TARGET_TX53
 
 config TARGET_TX6
 	bool "Support tx6"
-	select SOC_MX6
 
 config TARGET_ZMX25
 	bool "Support zmx25"
@@ -556,14 +567,6 @@ config ARCH_KEYSTONE
 	bool "TI Keystone"
 	select CPU_V7
 	select SUPPORT_SPL
-
-config ARCH_MX6
-	bool "Freescale MX6"
-	select CPU_V7
-
-config ARCH_MX5
-	bool "Freescale MX5"
-	select CPU_V7
 
 config TARGET_M53EVK
 	bool "Support m53evk"
@@ -937,6 +940,8 @@ source "arch/arm/mach-integrator/Kconfig"
 source "arch/arm/mach-keystone/Kconfig"
 
 source "arch/arm/mach-kirkwood/Kconfig"
+
+source "arch/arm/cpu/arm926ejs/mxs/Kconfig"
 
 source "arch/arm/cpu/armv7/mx6/Kconfig"
 

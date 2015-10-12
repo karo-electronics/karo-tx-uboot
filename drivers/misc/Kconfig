@@ -69,11 +69,11 @@ config FSL_SEC_MON
 
 config MXC_OCOTP
 	bool "Freescale OCOTP support"
-	depends on SOC_MX5 || SOC_MX6
+	depends on ARCH_MX5 || ARCH_MX6
 
 config MXS_OCOTP
 	bool "Freescale OCOTP support"
-	depends on SOC_MXS
+	depends on ARCH_MXS
 
 config PCA9551_LED
 	bool "Enable PCA9551 LED driver"

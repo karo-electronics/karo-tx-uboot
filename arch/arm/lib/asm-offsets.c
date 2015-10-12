@@ -16,10 +16,10 @@
 #include <linux/kbuild.h>
 
 #if defined(CONFIG_SOC_MX25) || defined(CONFIG_SOC_MX27) || defined(CONFIG_SOC_MX35) \
-	|| defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53) || defined(CONFIG_SOC_MX6)
+	|| defined(CONFIG_SOC_MX51) || defined(CONFIG_SOC_MX53) || defined(CONFIG_ARCH_MX6)
 #include <asm/arch/imx-regs.h>
 #endif
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 #include <asm/arch/crm_regs.h>
 #endif
 
@@ -200,7 +200,7 @@ int main(void)
 	DEFINE(PLL_DP_HFS_MFD, offsetof(struct dpll, dp_hfs_mfd));
 	DEFINE(PLL_DP_HFS_MFN, offsetof(struct dpll, dp_hfs_mfn));
 #endif
-#if defined(CONFIG_SOC_MX6)
+#if defined(CONFIG_ARCH_MX6)
 	DEFINE(CCM_CCR, offsetof(struct mxc_ccm_reg, ccr));
 	DEFINE(CCM_CCDR, offsetof(struct mxc_ccm_reg, ccdr));
 	DEFINE(CCM_CSR, offsetof(struct mxc_ccm_reg, csr));

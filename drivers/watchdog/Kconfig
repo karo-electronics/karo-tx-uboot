@@ -1,7 +1,7 @@
 config HW_WATCHDOG
 	bool "Generic SoC specific watchdog support"
-	depends on !SOC_MX6
+	depends on !ARCH_MX6
 
 config IMX_WATCHDOG
 	bool "Freescale i.MX watchdog support"
-	depends on SOC_MX31 || SOC_MX35 || SOC_MX5 || SOC_MX6 || SOC_VF610 || SOC_LS102XA
+	depends on SOC_MX31 || SOC_MX35 || ARCH_MX5 || ARCH_MX6 || SOC_VF610 || SOC_LS102XA
