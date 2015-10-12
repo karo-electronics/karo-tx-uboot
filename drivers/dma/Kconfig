@@ -1,6 +1,5 @@
 config APBH_DMA
 	bool "Freescale MXS and i.MX6 APBH DMA support"
-	default y
 	depends on SOC_MX28 || SOC_MX6
 
 config APBH_DMA_BURST
