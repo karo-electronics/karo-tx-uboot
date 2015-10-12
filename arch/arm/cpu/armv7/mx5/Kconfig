@@ -1,9 +1,5 @@
 if ARCH_MX5
 
-config SOC_MX5
-	bool
-	default y
-
 config SOC_MX51
 	bool
 

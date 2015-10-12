@@ -1,9 +1,5 @@
 if ARCH_MX6
 
-config SOC_MX6
-	bool
-	default y
-
 config SOC_MX6D
 	bool
 

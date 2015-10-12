@@ -91,54 +91,6 @@ config SOC_AM335X
 	select CPU_V7
 	select OMAP_COMMON
 
-config SOC_MXS
-	bool
-	select CPU_ARM926EJS
-
-config SOC_MX23
-	bool
-	select SOC_MXS
-
-config SOC_MX28
-	bool
-	select SOC_MXS
-
-config SOC_MX5
-	bool
-	select CPU_V7
-
-config SOC_MX53
-	bool
-	select SOC_MX5
-
-config SOC_MX51
-	bool
-	select SOC_MX5
-
-config SOC_MX53
-	bool
-	select SOC_MX5
-
-config SOC_MX6
-	bool
-	select CPU_V7
-
-config SOC_MX6Q
-	bool
-	select SOC_MX6
-
-config SOC_MX6DL
-	bool
-	select SOC_MX6
-
-config SOC_MX6S
-	bool
-	select SOC_MX6
-
-config SOC_MX6SX
-	bool
-	select SOC_MX6
-
 config SOC_SAMA5D4
 	bool
 	select CPU_V7
@@ -677,7 +629,7 @@ config TARGET_MX6SXSABRESD
 
 config TARGET_MX6UL_14X14_EVK
 	bool "Support mx6ul_14x14_evk"
-	select CPU_V7
+	select SOC_MX6UL
 	select DM
 	select DM_THERMAL
 	select SUPPORT_SPL
