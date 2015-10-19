@@ -13,17 +13,17 @@ LOGO_BMP = logos/karo.bmp
 PLATFORM_CPPFLAGS += -Werror
 
 ifneq ($(CONFIG_SECURE_BOOT),)
+	# promote config variable to linker script
 	PLATFORM_CPPFLAGS += -DCONFIG_SECURE_BOOT
 endif
-#PLATFORM_CPPFLAGS += -DDEBUG
 
 ifeq ($(CONFIG_TX6_NAND),y)
-# calculate U_BOOT_IMG_SIZE to be at least 3 eraseblocks larger than the maximum expected image size
 CONFIG_SYS_NAND_BLOCK_SIZE := 131072
 ifeq ($(CONFIG_SYS_NAND_BLOCKS),)
 CONFIG_SYS_NAND_BLOCKS := 1024
 endif
 ifneq ($(CONFIG_SYS_NAND_BLOCK_SIZE),)
+# calculate U_BOOT_IMG_SIZE to be at least 3 eraseblocks larger than the maximum expected image size
 CONFIG_U_BOOT_IMG_SIZE := $(shell echo 'e=$(CONFIG_SYS_NAND_BLOCK_SIZE);s=640*1024;s + (e - s % e) % e + 3*e' | bc)
 CONFIG_SYS_USERFS_SIZE := $(shell expr \( $(CONFIG_SYS_NAND_BLOCKS) - 12 \) \* $(CONFIG_SYS_NAND_BLOCK_SIZE) - $(CONFIG_U_BOOT_IMG_SIZE) - 38 \* 1048576)
 CONFIG_SYS_USERFS_SIZE2 := $(shell expr \( $(CONFIG_SYS_NAND_BLOCKS) - 15 \) \* $(CONFIG_SYS_NAND_BLOCK_SIZE) - $(CONFIG_U_BOOT_IMG_SIZE) - 38 \* 1048576)
