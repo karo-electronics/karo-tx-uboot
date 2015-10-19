@@ -10,6 +10,7 @@
 #include <common.h>
 #include <div64.h>
 #include <ipu.h>
+#include <fuse.h>
 #include <asm/armv7.h>
 #include <asm/bootm.h>
 #include <asm/pl310.h>
@@ -129,13 +130,12 @@ u32 get_cpu_rev(void)
 
 u32 get_cpu_speed_grade_hz(void)
 {
-	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank *bank = &ocotp->bank[0];
-	struct fuse_bank0_regs *fuse =
-		(struct fuse_bank0_regs *)bank->fuse_regs;
 	uint32_t val;
 
-	val = readl(&fuse->cfg3);
+	if (fuse_read(0, 3, &val)) {
+		printf("Failed to read speed_grade fuse\n");
+		return 0;
+	}
 	val >>= OCOTP_CFG3_SPEED_SHIFT;
 	val &= 0x3;
 
@@ -168,13 +168,12 @@ u32 get_cpu_speed_grade_hz(void)
 
 u32 get_cpu_temp_grade(int *minc, int *maxc)
 {
-	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank *bank = &ocotp->bank[1];
-	struct fuse_bank1_regs *fuse =
-		(struct fuse_bank1_regs *)bank->fuse_regs;
 	uint32_t val;
 
-	val = readl(&fuse->mem0);
+	if (fuse_read(1, 0, &val)) {
+		printf("Failed to read temp_grade fuse\n");
+		val = 0;
+	}
 	val >>= OCOTP_MEM0_TEMP_SHIFT;
 	val &= 0x3;
 
@@ -394,11 +393,10 @@ int read_cpu_temperature(void)
 	struct mx6_ocotp_regs *const ocotp_regs = (void *)OCOTP_BASE_ADDR;
 
 	if (!thermal_calib) {
-		enable_ocotp_clk(1);
-		writel(1, &ocotp_regs->hw_ocotp_read_ctrl);
-		thermal_calib = readl(&ocotp_regs->hw_ocotp_ana1);
-		writel(0, &ocotp_regs->hw_ocotp_read_ctrl);
-		enable_ocotp_clk(0);
+		if (fuse_read(1, 6, &thermal_calib) != 0) {
+			printf("Failed to read thermal calibration data\n");
+			thermal_calib = ~0;
+		}
 	}
 
 	if (thermal_calib == 0 || thermal_calib == 0xffffffff)
@@ -667,20 +665,31 @@ void enable_caches(void)
 #if defined(CONFIG_FEC_MXC)
 void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 {
-	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank *bank = &ocotp->bank[4];
-	struct fuse_bank4_regs *fuse =
-			(struct fuse_bank4_regs *)bank->fuse_regs;
+	unsigned int mac0, mac1;
 
-	u32 value = readl(&fuse->mac_addr_high);
-	mac[0] = (value >> 8);
-	mac[1] = value;
+	memset(mac, 0, 6);
+	if (dev_id < 0 || dev_id > 2)
+		return;
 
-	value = readl(&fuse->mac_addr_low);
-	mac[2] = value >> 24;
-	mac[3] = value >> 16;
-	mac[4] = value >> 8;
-	mac[5] = value;
+	if (fuse_read(4, 2, &mac0)) {
+		printf("Failed to read MAC0 fuse\n");
+		return;
+	}
+	if (fuse_read(4, 3, &mac1)) {
+		printf("Failed to read MAC1 fuse\n");
+		return;
+	}
+	mac[0] = mac1 >> 8;
+	mac[1] = mac1;
+	mac[2] = mac0 >> 24;
+	mac[3] = mac0 >> 16;
+	if (dev_id == 0) {
+		mac[4] = mac0 >> 8;
+		mac[5] = mac0;
+	} else {
+		mac[4] = mac1 >> 24;
+		mac[5] = mac1 >> 16;
+	}
 }
 #endif
 
