@@ -1,17 +1,7 @@
 /*
  * Copyright (C) 2012-2015 Lothar Waßmann <LW@KARO-electronics.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:     GPL-2.0+
  *
  */
 #include <common.h>
@@ -68,10 +58,6 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
-
-enum {
-	MX6_PAD_DECL(GARBAGE, 0, 0, 0, 0, 0, 0)
-};
 
 char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
 #ifdef CONFIG_SECURE_BOOT
@@ -243,7 +229,7 @@ static void tx6_i2c_recover(void)
 /* placed in section '.data' to prevent overwriting relocation info
  * overlayed with bss
  */
-static u32 wrsr __attribute__((section(".data")));
+static u32 wrsr __data;
 
 #define WRSR_POR			(1 << 4)
 #define WRSR_TOUT			(1 << 1)
@@ -303,6 +289,57 @@ static void print_reset_cause(void)
 
 static const char __data *tx6_mod_suffix;
 
+#ifdef CONFIG_IMX6_THERMAL
+#include <thermal.h>
+#include <imx_thermal.h>
+#include <fuse.h>
+
+static void print_temperature(void)
+{
+	struct udevice *thermal_dev;
+	int cpu_tmp, minc, maxc, ret;
+	char const *grade_str;
+	static u32 __data thermal_calib;
+
+	puts("Temperature: ");
+	switch (get_cpu_temp_grade(&minc, &maxc)) {
+	case TEMP_AUTOMOTIVE:
+		grade_str = "Automotive";
+		break;
+	case TEMP_INDUSTRIAL:
+		grade_str = "Industrial";
+		break;
+	case TEMP_EXTCOMMERCIAL:
+		grade_str = "Extended Commercial";
+		break;
+	default:
+		grade_str = "Commercial";
+	}
+	printf("%s grade (%dC to %dC)", grade_str, minc, maxc);
+	ret = uclass_get_device(UCLASS_THERMAL, 0, &thermal_dev);
+	if (ret == 0) {
+		ret = thermal_get_temp(thermal_dev, &cpu_tmp);
+
+		if (ret == 0)
+			printf(" at %dC", cpu_tmp);
+		else
+			puts(" - failed to read sensor data");
+	} else {
+		puts(" - no sensor device found");
+	}
+
+	if (fuse_read(1, 6, &thermal_calib) == 0) {
+		printf(" - calibration data 0x%08x\n", thermal_calib);
+	} else {
+		puts(" - Failed to read thermal calib fuse\n");
+	}
+}
+#else
+static inline void print_temperature(void)
+{
+}
+#endif
+
 int checkboard(void)
 {
 	u32 cpurev = get_cpu_rev();
@@ -327,12 +364,13 @@ int checkboard(void)
 		break;
 	}
 
-	printf("CPU:   Freescale i.MX6%s rev%d.%d at %d MHz\n",
+	printf("CPU:         Freescale i.MX6%s rev%d.%d at %d MHz\n",
 		cpu_str,
 		(cpurev & 0x000F0) >> 4,
 		(cpurev & 0x0000F) >> 0,
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 
+	print_temperature();
 	print_reset_cause();
 #ifdef CONFIG_MX6_TEMPERATURE_HOT
 	check_cpu_temperature(1);
@@ -341,10 +379,9 @@ int checkboard(void)
 	return 0;
 }
 
+/* serial port not initialized at this point */
 int board_early_init_f(void)
 {
-	debug("%s@%d: \n", __func__, __LINE__);
-
 	return 0;
 }
 
@@ -364,7 +401,7 @@ static bool tx6_temp_check_enabled = true;
 #endif
 #endif /* CONFIG_TX6_NAND */
 
-#define TX6_DDR_SZ	(ffs(PHYS_SDRAM_1_WIDTH / 16) - 1)
+#define TX6_DDR_SZ	(ffs(CONFIG_SYS_SDRAM_BUS_WIDTH / 16) - 1)
 
 static char tx6_mem_table[] = {
 	'4', /* 256MiB SDRAM 16bit; 128MiB NAND */
@@ -430,30 +467,6 @@ static int tx6_pmic_probe(void)
 		debug("I2C probe returned %d for addr 0x%02x\n", ret, i2c_addr);
 	}
 	return -EINVAL;
-}
-
-static inline int __checkboard(void)
-{
-	u32 cpurev = get_cpu_rev();
-	int cpu_variant = (cpurev >> 12) & 0xff;
-	int pmic_id;
-
-	debug("%s@%d: \n", __func__, __LINE__);
-
-	pmic_id = tx6_pmic_probe();
-	if (pmic_id >= 0)
-		pmic_addr = tx6_mod_revs[pmic_id].addr;
-
-	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
-		tx6_mod_suffix,
-		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), tx6_get_mod_rev(pmic_id),
-		tx6_mem_suffix());
-
-	get_hab_status();
-
-	debug("%s@%d: done\n", __func__, __LINE__);
-	return 0;
 }
 
 int board_init(void)
@@ -700,7 +713,7 @@ static void tx6_init_mac(void)
 {
 	u8 mac[ETH_ALEN];
 
-	imx_get_mac_from_fuse(-1, mac);
+	imx_get_mac_from_fuse(0, mac);
 	if (!is_valid_ethaddr(mac)) {
 		printf("No valid MAC address programmed\n");
 		return;
