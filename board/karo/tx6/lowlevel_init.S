@@ -46,22 +46,22 @@
 	.endm
 
 #define MXC_DCD_ITEM(addr, val)		mxc_dcd_item	(addr), (val)
-#if PHYS_SDRAM_1_WIDTH == 16
-#define MXC_DCD_ITEM_16(addr, val)		mxc_dcd_item	(addr), (val)
+#if CONFIG_SYS_SDRAM_BUS_WIDTH == 16
+#define MXC_DCD_ITEM_16(addr, val)	mxc_dcd_item	(addr), (val)
 #define MXC_DCD_CMD_CHK_16(type, flags, addr, mask) MXC_DCD_CMD_CHK(type, flags, addr, mask)
 #else
 #define MXC_DCD_ITEM_16(addr, val)
 #define MXC_DCD_CMD_CHK_16(type, flags, addr, mask)
 #endif
-#if PHYS_SDRAM_1_WIDTH > 16
-#define MXC_DCD_ITEM_32(addr, val)		mxc_dcd_item	(addr), (val)
+#if CONFIG_SYS_SDRAM_BUS_WIDTH > 16
+#define MXC_DCD_ITEM_32(addr, val)	mxc_dcd_item	(addr), (val)
 #define MXC_DCD_CMD_CHK_32(type, flags, addr, mask) MXC_DCD_CMD_CHK(type, flags, addr, mask)
 #else
 #define MXC_DCD_ITEM_32(addr, val)
 #define MXC_DCD_CMD_CHK_32(type, flags, addr, mask)
 #endif
-#if PHYS_SDRAM_1_WIDTH == 64
-#define MXC_DCD_ITEM_64(addr, val)		mxc_dcd_item	(addr), (val)
+#if CONFIG_SYS_SDRAM_BUS_WIDTH == 64
+#define MXC_DCD_ITEM_64(addr, val)	mxc_dcd_item	(addr), (val)
 #define MXC_DCD_CMD_CHK_64(type, flags, addr, mask) MXC_DCD_CMD_CHK(type, flags, addr, mask)
 #else
 #define MXC_DCD_ITEM_64(addr, val)
@@ -315,7 +315,7 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 #define MDCTL_VAL		(((ROW_ADDR_BITS - 11) << 24) |		\
 				((COL_ADDR_BITS - 9) << 20) |		\
 				(BURST_LEN << 19) |			\
-				((PHYS_SDRAM_1_WIDTH / 32) << 16) |	\
+				((CONFIG_SYS_SDRAM_BUS_WIDTH / 32) << 16) | \
 				((-1) << (32 - BANK_ADDR_BITS)))
 
 #define MDMISC_WALAT(n)		(((n) & 3) << 16)
@@ -366,7 +366,7 @@ ivt_end:
 #define DCD_VERSION	0x40
 
 #define DDR_SEL_VAL	3 /* DDR3 */
-#if PHYS_SDRAM_1_WIDTH == 16
+#if CONFIG_SYS_SDRAM_BUS_WIDTH == 16
 #define DSE1_VAL	6 /* Drive Strength for DATA lines */
 #define DSE2_VAL	6 /* Drive Strength for ADDR/CMD lines */
 #else
@@ -445,7 +445,7 @@ ivt_end:
 #define MMDC1_MPSWDRDR7				0x021b08b4
 #define MMDC1_MPMUR0				0x021b08b8
 
-#if PHYS_SDRAM_1_WIDTH == 64
+#if CONFIG_SYS_SDRAM_BUS_WIDTH == 64
 #define MMDC2_MPWLGCR				0x021b4808
 #define MMDC2_MPWLDECTRL0			0x021b480c
 #define MMDC2_MPWLDECTRL1			0x021b4810
@@ -859,7 +859,7 @@ dcd_hdr:
 	MXC_DCD_ITEM(IOMUXC_SW_PAD_CTL_GRP_TERM_CTL6, ODT_MASK)
 	MXC_DCD_ITEM(IOMUXC_SW_PAD_CTL_GRP_TERM_CTL7, ODT_MASK)
 #endif
-#if PHYS_SDRAM_1_WIDTH > 16
+#if CONFIG_SYS_SDRAM_BUS_WIDTH > 16
 #define DO_DDR_CALIB
 #endif
 	/* SDRAM initialization */
@@ -995,7 +995,7 @@ dcd_hdr:
 	MXC_DCD_ITEM(MMDC1_MPWRDLHWCTL, 0x00000030) /* start WR DL calibration */
 	MXC_DCD_CMD_CHK_16(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, MMDC1_MPWRDLHWCTL, 0x00000013)
 	MXC_DCD_CMD_CHK_32(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_CHK_CLR, MMDC1_MPWRDLHWCTL, 0x0000001f)
-#if PHYS_SDRAM_1_WIDTH == 64
+#if CONFIG_SYS_SDRAM_BUS_WIDTH == 64
 	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
 
 	MXC_DCD_ITEM(MMDC1_MDSCR, 0x04008050) /* precharge all to bank 0 */
