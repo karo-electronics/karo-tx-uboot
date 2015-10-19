@@ -5,3 +5,10 @@ config DM_THERMAL
 	  temperature sensors to permit warnings, speed throttling or even
 	  automatic power-off when the temperature gets too high or low. Other
 	  devices may be discrete but connected on a suitable bus.
+
+config IMX6_THERMAL
+	bool "Driver for i.MX6 thermal sensor"
+	depends on ARCH_MX6
+	help
+	  Enable support for the thermal sensor inside the i.MX6 SoC.
+

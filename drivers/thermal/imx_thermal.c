@@ -46,7 +46,7 @@ static int read_cpu_temperature(struct udevice *dev)
 	int temperature;
 	unsigned int reg, n_meas;
 	const struct imx_thermal_plat *pdata = dev_get_platdata(dev);
-	struct anatop_regs *anatop = (struct anatop_regs *)pdata->regs;
+	struct anatop_regs *anatop = pdata->regs;
 	struct thermal_data *priv = dev_get_priv(dev);
 	u32 fuse = priv->fuse;
 	int t1, n1;
@@ -93,10 +93,7 @@ static int read_cpu_temperature(struct udevice *dev)
 	writel(MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_set);
 
 	/* setup measure freq */
-	reg = readl(&anatop->tempsense1);
-	reg &= ~TEMPSENSE1_MEASURE_FREQ;
-	reg |= MEASURE_FREQ;
-	writel(reg, &anatop->tempsense1);
+	writel(MEASURE_FREQ, &anatop->tempsense1);
 
 	/* start the measurement process */
 	writel(TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_clr);
@@ -104,9 +101,16 @@ static int read_cpu_temperature(struct udevice *dev)
 	writel(TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_set);
 
 	/* make sure that the latest temp is valid */
-	while ((readl(&anatop->tempsense0) &
-		TEMPSENSE0_FINISHED) == 0)
-		udelay(10000);
+	const int max_loops = 30;
+	int loops = 0;
+
+	while (((reg = readl(&anatop->tempsense0)) & TEMPSENSE0_FINISHED) == 0) {
+		udelay(5);
+		if (++loops >= max_loops)
+			break;
+	}
+	if ((readl(&anatop->tempsense0) & TEMPSENSE0_FINISHED) == 0)
+		return 0;
 
 	/* read temperature count */
 	reg = readl(&anatop->tempsense0);
@@ -115,7 +119,7 @@ static int read_cpu_temperature(struct udevice *dev)
 	writel(TEMPSENSE0_FINISHED, &anatop->tempsense0_clr);
 
 	/* milli_Tmeas = c2 - Nmeas * c1 */
-	temperature = (long)(c2 - n_meas * c1)/1000;
+	temperature = (long)(c2 - n_meas * c1) / 1000;
 
 	/* power down anatop thermal sensor */
 	writel(TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_set);
@@ -149,18 +153,26 @@ static const struct dm_thermal_ops imx_thermal_ops = {
 
 static int imx_thermal_probe(struct udevice *dev)
 {
+	int ret;
 	unsigned int fuse = ~0;
-
 	const struct imx_thermal_plat *pdata = dev_get_platdata(dev);
 	struct thermal_data *priv = dev_get_priv(dev);
 
 	/* Read Temperature calibration data fuse */
-	fuse_read(pdata->fuse_bank, pdata->fuse_word, &fuse);
+	if ((ret = fuse_read(pdata->fuse_bank, pdata->fuse_word, &fuse))) {
+		printf("Failed to read temp calib fuse: %d\n", ret);
+		return ret;
+	}
 
 	/* Check for valid fuse */
 	if (fuse == 0 || fuse == ~0) {
-		printf("CPU:   Thermal invalid data, fuse: 0x%x\n", fuse);
-		return -EPERM;
+		static int first = 1;
+
+		if (first) {
+			printf("CPU:   Thermal invalid data, fuse: %#10x\n", fuse);
+			first = 0;
+		}
+		return -EINVAL;
 	}
 
 	/* set critical cooling temp */

@@ -11,6 +11,7 @@
 #include <div64.h>
 #include <ipu.h>
 #include <fuse.h>
+#include <thermal.h>
 #include <asm/armv7.h>
 #include <asm/bootm.h>
 #include <asm/pl310.h>
@@ -336,139 +337,28 @@ static int set_ldo_voltage(enum ldo_reg ldo, u32 mv)
 	return 0;
 }
 
-static u32 __data thermal_calib;
-
-#define FACTOR0				10000000
-#define FACTOR1				15976
-#define FACTOR2				4297157
-
-int raw_to_celsius(unsigned int raw, unsigned int raw_25c, unsigned int raw_hot,
-		unsigned int hot_temp)
-{
-	int temperature;
-
-	if (raw_hot != 0 && hot_temp != 0) {
-		unsigned int raw_n40c, ratio;
-
-		ratio = ((raw_25c - raw_hot) * 100) / (hot_temp - 25);
-		raw_n40c = raw_25c + (13 * ratio) / 20;
-		if (raw <= raw_n40c)
-			temperature = (raw_n40c - raw) * 100 / ratio - 40;
-		else
-			temperature = TEMPERATURE_MIN;
-	} else {
-		u64 temp64 = FACTOR0;
-		unsigned int c1, c2;
-		/*
-		 * Derived from linear interpolation:
-		 * slope = 0.4297157 - (0.0015976 * 25C fuse)
-		 * slope = (FACTOR2 - FACTOR1 * n1) / FACTOR0
-		 * (Nmeas - n1) / (Tmeas - t1) = slope
-		 * We want to reduce this down to the minimum computation necessary
-		 * for each temperature read.  Also, we want Tmeas in millicelsius
-		 * and we don't want to lose precision from integer division. So...
-		 * Tmeas = (Nmeas - n1) / slope + t1
-		 * milli_Tmeas = 1000 * (Nmeas - n1) / slope + 1000 * t1
-		 * milli_Tmeas = -1000 * (n1 - Nmeas) / slope + 1000 * t1
-		 * Let constant c1 = (-1000 / slope)
-		 * milli_Tmeas = (n1 - Nmeas) * c1 + 1000 * t1
-		 * Let constant c2 = n1 *c1 + 1000 * t1
-		 * milli_Tmeas = c2 - Nmeas * c1
-		 */
-		temp64 *= 1000;
-		do_div(temp64, FACTOR1 * raw_25c - FACTOR2);
-		c1 = temp64;
-		c2 = raw_25c * c1 + 1000 * 25;
-		temperature = (c2 - raw * c1) / 1000;
-	}
-	return temperature;
-}
-
-int read_cpu_temperature(void)
-{
-	unsigned int reg, tmp, i;
-	unsigned int raw_25c, raw_hot, hot_temp;
-	int temperature;
-	struct anatop_regs *const anatop = (void *)ANATOP_BASE_ADDR;
-	struct mx6_ocotp_regs *const ocotp_regs = (void *)OCOTP_BASE_ADDR;
-
-	if (!thermal_calib) {
-		if (fuse_read(1, 6, &thermal_calib) != 0) {
-			printf("Failed to read thermal calibration data\n");
-			thermal_calib = ~0;
-		}
-	}
-
-	if (thermal_calib == 0 || thermal_calib == 0xffffffff)
-		return TEMPERATURE_MIN;
-
-	/* Fuse data layout:
-	 * [31:20] sensor value @ 25C
-	 * [19:8] sensor value of hot
-	 * [7:0] hot temperature value */
-	raw_25c = thermal_calib >> 20;
-	raw_hot = (thermal_calib & 0xfff00) >> 8;
-	hot_temp = thermal_calib & 0xff;
-
-	/* now we only using single measure, every time we measure
-	 * the temperature, we will power on/off the anadig module
-	 */
-	writel(BM_ANADIG_TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_clr);
-	writel(BM_ANADIG_ANA_MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_set);
-
-	/* write measure freq */
-	writel(327, &anatop->tempsense1);
-	writel(BM_ANADIG_TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_clr);
-	writel(BM_ANADIG_TEMPSENSE0_FINISHED, &anatop->tempsense0_clr);
-	writel(BM_ANADIG_TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_set);
-
-	/* average the temperature value over multiple readings */
-	for (i = 0; i < TEMP_AVG_COUNT; i++) {
-		static int failed;
-		int limit = 100;
-
-		while ((readl(&anatop->tempsense0) &
-				BM_ANADIG_TEMPSENSE0_FINISHED) == 0) {
-			udelay(10000);
-			if (--limit < 0)
-				break;
-		}
-		if ((readl(&anatop->tempsense0) &
-				BM_ANADIG_TEMPSENSE0_FINISHED) == 0) {
-			if (!failed) {
-				printf("Failed to read temp sensor\n");
-				failed = 1;
-			}
-			return 0;
-		}
-		failed = 0;
-		reg = (readl(&anatop->tempsense0) &
-			BM_ANADIG_TEMPSENSE0_TEMP_VALUE) >>
-			BP_ANADIG_TEMPSENSE0_TEMP_VALUE;
-		if (i == 0)
-			tmp = reg;
-		else
-			tmp = (tmp * i + reg) / (i + 1);
-		writel(BM_ANADIG_TEMPSENSE0_FINISHED,
-			&anatop->tempsense0_clr);
-	}
-
-	temperature = raw_to_celsius(tmp, raw_25c, raw_hot, hot_temp);
-
-	/* power down anatop thermal sensor */
-	writel(BM_ANADIG_TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_set);
-	writel(BM_ANADIG_ANA_MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_clr);
-
-	return temperature;
-}
-
 int check_cpu_temperature(int boot)
 {
+	int ret;
 	static int __data max_temp;
 	int boot_limit = getenv_ulong("max_boot_temp", 10, TEMPERATURE_HOT);
-	int tmp = read_cpu_temperature();
+	int tmp;
+	struct udevice *dev;
 	bool first = true;
 
+	if (uclass_get_device_by_name(UCLASS_THERMAL, "imx_thermal", &dev)) {
+		if (first) {
+			printf("No thermal device found; cannot read CPU temperature\n");
+			first = false;
+		}
+		return 0;
+	}
+
+	ret = thermal_get_temp(dev, &tmp);
+	if (ret) {
+		printf("Failed to read temperature: %d\n", ret);
+		return TEMPERATURE_MAX;
+	}
 	if (tmp < TEMPERATURE_MIN || tmp > TEMPERATURE_MAX) {
 		printf("Temperature:   can't get valid data!\n");
 		return tmp;
@@ -476,7 +366,7 @@ int check_cpu_temperature(int boot)
 
 	if (!boot) {
 		if (tmp > boot_limit) {
-			printf("CPU is %d C, too hot, resetting...\n", tmp);
+			printf("CPU is %d C; too hot, resetting...\n", tmp);
 			udelay(100000);
 			reset_cpu(0);
 		}
@@ -486,18 +376,20 @@ int check_cpu_temperature(int boot)
 			max_temp = tmp;
 		}
 	} else {
-		printf("Temperature:   %d C, calibration data 0x%x\n",
-			tmp, thermal_calib);
 		while (tmp >= boot_limit) {
 			if (first) {
-				printf("CPU is %d C, too hot to boot, waiting...\n",
+				printf("CPU is %d C; too hot to boot, waiting...\n",
 					tmp);
 				first = false;
 			}
 			if (ctrlc())
 				break;
 			udelay(50000);
-			tmp = read_cpu_temperature();
+			ret = thermal_get_temp(dev, &tmp);
+			if (ret < 0) {
+				printf("Failed to read temperature: %d\n", ret);
+				return TEMPERATURE_MAX;
+			}
 			if (tmp > boot_limit - TEMP_WARN_THRESHOLD && tmp != max_temp)
 				printf("WARNING: CPU temperature %d C\n", tmp);
 			max_temp = tmp;
