@@ -428,12 +428,13 @@ int board_init(void)
 #endif
 		return 0;
 	}
-
+#if 0
 	ret = tx6_pmic_init(pmic_addr);
 	if (ret) {
 		printf("Failed to setup PMIC voltages: %d\n", ret);
-//		hang();
+		hang();
 	}
+#endif
 	return 0;
 }
 
