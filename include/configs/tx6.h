@@ -41,14 +41,17 @@
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_CMD_GPIO
 
 #ifndef CONFIG_TX6_UBOOT_MFG
 /* LCD Logo and Splash screen support */
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
+#ifndef CONFIG_SOC_MX6UL
 #define CONFIG_VIDEO_IPUV3
 #define CONFIG_IPUV3_CLK		(CONFIG_SYS_SDRAM_CLK * 1000000 / 2)
+#endif
 #define CONFIG_LCD_LOGO
 #define LCD_BPP				LCD_COLOR32
 #define CONFIG_CMD_BMP
@@ -60,7 +63,13 @@
  * Memory configuration options
  */
 #define CONFIG_NR_DRAM_BANKS		0x1		/* # of SDRAM banks */
+#ifndef CONFIG_SOC_MX6UL
 #define PHYS_SDRAM_1			0x10000000	/* Base address of bank 1 */
+#define CONFIG_SYS_MPU_CLK		792
+#else
+#define PHYS_SDRAM_1			0x80000000	/* Base address of bank 1 */
+#define CONFIG_SYS_MPU_CLK		528
+#endif
 #ifndef CONFIG_SYS_SDRAM_BUS_WIDTH
 #if defined(CONFIG_SYS_SDRAM_BUS_WIDTH_32)
 #define CONFIG_SYS_SDRAM_BUS_WIDTH	32
@@ -89,6 +98,7 @@
 #if defined(CONFIG_SOC_MX6Q)
 #elif defined(CONFIG_SOC_MX6DL)
 #elif defined(CONFIG_SOC_MX6S)
+#elif defined(CONFIG_SOC_MX6UL)
 #else
 #error Unsupported i.MX6 processor variant
 #endif
@@ -166,6 +176,8 @@
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"
 #else
+#define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_MPU_CLK)
+
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
@@ -190,7 +202,7 @@
 	";dhcp\0"							\
 	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
 	"boot_mode=" CONFIG_SYS_DEFAULT_BOOT_MODE "\0"			\
-	"cpu_clk=800\0"							\
+	"cpu_clk=" CONFIG_SYS_CPU_CLK_STR "\0"				\
 	"default_bootargs=setenv bootargs " CONFIG_BOOTARGS		\
 	" ${append_bootargs}\0"						\
 	EMMC_BOOT_PART_STR						\
@@ -259,7 +271,10 @@
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 
+#ifndef CONFIG_SOC_MX6UL
+#define CONFIG_FEC_MXC_PHYADDR		0
 #define IMX_FEC_BASE			ENET_BASE_ADDR
+#endif
 #define CONFIG_FEC_XCV_TYPE		RMII
 #endif
 
@@ -284,9 +299,11 @@
 #endif
 #endif /* CONFIG_TX6_REV */
 /* autodetect which PMIC is present to derive TX6_REV */
+#ifndef CONFIG_SOC_MX6UL
 #define CONFIG_LTC3676			/* TX6_REV == 1 */
+#endif
 #define CONFIG_RN5T567			/* TX6_REV == 3 */
-#endif /* CONFIG_CMD_I2C */
+#endif /* CONFIG_HARD_I2C */
 
 #define CONFIG_ENV_OVERWRITE
 

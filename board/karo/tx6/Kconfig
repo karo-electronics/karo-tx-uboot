@@ -24,10 +24,9 @@ config TX6
 	select DM_THERMAL
 	select FSL_ESDHC if MMC
 	select FSL_USDHC if MMC
+	select IMX6_THERMAL
 	select LIB_RAND
 	select PHYLIB
-	select SYS_I2C
-	select SYS_I2C_MXC
 	select GET_FEC_MAC_ADDR_FROM_IIM if FEC_MXC
 	select MXC_OCOTP if CMD_FUSE
 	select OF_BOARD_SETUP
@@ -52,6 +51,11 @@ config TX6_EMMC
 	select MMC
 	select SUPPORT_EMMC_BOOT
 
+config TX6UL
+	bool
+	select SOC_MX6UL
+	select SYS_SDRAM_BUS_WIDTH_16
+
 #
 # variables selected depending on module variant
 #
@@ -64,68 +68,100 @@ config SYS_SDRAM_BUS_WIDTH_16
 config SYS_SDRAM_BUS_WIDTH_32
 	bool
 
-
 choice
 	prompt "TX6 module variant"
 
 config TARGET_TX6Q_1020
 	bool "TX6Q-1020"
 	select SOC_MX6Q
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select TX6_EMMC
 
 config TARGET_TX6Q_1033
 	bool "TX6Q-1033"
 	select SOC_MX6Q
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select TX6_EMMC
 
 config TARGET_TX6Q_10X0
 	bool "TX6Q-1010 and TX6Q-1030"
 	select SOC_MX6Q
+	select SYS_I2C
+	select SYS_I2C_MXC
 
 config TARGET_TX6Q_11X0
 	bool "TX6Q-1110 and TX6Q-1130"
 	select SOC_MX6Q
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select SYS_LVDS_IF
 	
 config TARGET_TX6S_8034
 	bool "TX6S-8034"
 	select SOC_MX6S
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select SYS_SDRAM_BUS_WIDTH_16
 
 config TARGET_TX6S_8035
 	bool "TX6S-8035"
 	select SOC_MX6S
-	select TX6_EMMC
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select SYS_SDRAM_BUS_WIDTH_32
+	select TX6_EMMC
 
 config TARGET_TX6U_8011
 	bool "TX6U-8011"
 	select SOC_MX6DL
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select SYS_SDRAM_BUS_WIDTH_32
 
 config TARGET_TX6U_8012
 	bool "TX6U-8012"
 	select SOC_MX6DL
+	select SYS_I2C
+	select SYS_I2C_MXC
 
 config TARGET_TX6U_8033
 	bool "TX6U-8033"
 	select SOC_MX6DL
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select TX6_EMMC
 
 config TARGET_TX6U_80X0
 	bool "TX6U-8010 and TX6U-8030"
 	select SOC_MX6DL
+	select SYS_I2C
+	select SYS_I2C_MXC
 
 config TARGET_TX6U_8111
 	bool "TX6U-8111"
 	select SOC_MX6DL
-	select SYS_SDRAM_BUS_WIDTH_32
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select SYS_LVDS_IF
+	select SYS_SDRAM_BUS_WIDTH_32
 
 config TARGET_TX6U_81X0
 	bool "TX6U-8110 and TX6U-8130"
 	select SOC_MX6DL
+	select SYS_I2C
+	select SYS_I2C_MXC
 	select SYS_LVDS_IF
+
+config TARGET_TX6UL_0010
+	bool "TX6U-0010"
+	select TX6UL
+
+config TARGET_TX6UL_0011
+	bool "TX6U-0011"
+	select TX6UL
+	select TX6_EMMC
 
 endchoice
 

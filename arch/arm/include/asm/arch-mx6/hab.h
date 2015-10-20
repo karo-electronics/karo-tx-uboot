@@ -155,25 +155,42 @@ typedef void hapi_clock_init_t(void);
 #define HAB_ENG_RTL		0x77   /* RTL simulation engine */
 #define HAB_ENG_SW		0xff   /* Software engine */
 
-#ifdef CONFIG_SOC_MX6SX
-#define HAB_RVT_BASE			0x00000100
-#else
-#define HAB_RVT_BASE			0x00000094
-#endif
-
 static inline void **hab_rvt_base(void)
 {
-	uint32_t *base;
+	unsigned long base;
+	int cpu_type = get_cpu_type();
+	int rev = soc_rev();
+	const uint32_t mask = 0xfc0000ff;
 
-	if (((is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D)) &&
-		soc_rev() >= CHIP_REV_1_5) ||
-		(is_cpu_type(MXC_CPU_MX6DL) && soc_rev() >= CHIP_REV_1_2) ||
-		is_cpu_type(MXC_CPU_MX6SOLO))
-		base = (void *)0x98;
-	else
-		base = (void *)0x94;
-	if ((*base & 0xff0000ff) != cpu_to_be32(0xdd000041)) {
-		printf("Invalid RVT @ %p\n", base);
+	switch (cpu_type) {
+	case MXC_CPU_MX6Q:
+	case MXC_CPU_MX6D:
+		if (rev >= CHIP_REV_1_5)
+			base = 0x98UL;
+		else
+			base = 0x94UL;
+		break;
+	case MXC_CPU_MX6DL:
+		if (rev >= CHIP_REV_1_2)
+			base = 0x98UL;
+		else
+			base = 0x94UL;
+		break;
+	case MXC_CPU_MX6SOLO:
+		base = 0x98UL;
+		break;
+	case MXC_CPU_MX6SX:
+	case MXC_CPU_MX6UL:
+		base = 0x100UL;
+		break;
+	default:
+		printf("Unsupported CPU type: %02x\n", cpu_type);
+		return NULL;
+	}
+
+	if (((rev = readl(base)) & mask) != cpu_to_be32(0xdd000040)) {
+		printf("Invalid RVT @ %08lx: %08x:%08x\n",
+			base, rev, rev & mask);
 		return NULL;
 	}
 	return (void **)base;
