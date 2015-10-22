@@ -926,7 +926,7 @@ static int mxs_nand_ecc_write_page(struct mtd_info *mtd,
 
 rtn:
 	mxs_nand_return_dma_descs(nand_info);
-	return 0;
+	return ret;
 }
 
 /*
