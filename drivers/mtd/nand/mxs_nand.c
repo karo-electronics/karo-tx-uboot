@@ -174,7 +174,7 @@ static inline void dump_regs(void)
 }
 #endif
 
-struct nand_ecclayout fake_ecc_layout;
+static struct nand_ecclayout fake_ecc_layout;
 static int chunk_data_size = MXS_NAND_CHUNK_DATA_CHUNK_SIZE;
 static int galois_field = 13;
 
