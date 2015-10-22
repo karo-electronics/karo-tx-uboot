@@ -592,7 +592,7 @@ static void mxs_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int length)
 
 	mxs_dma_desc_append(channel, d);
 
-#ifndef CONFIG_SOC_MX6Q
+#ifndef CONFIG_ARCH_MX6
 	/*
 	 * A DMA descriptor that waits for the command to end and the chip to
 	 * become ready.
