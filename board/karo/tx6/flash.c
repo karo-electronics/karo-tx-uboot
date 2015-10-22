@@ -77,6 +77,7 @@ struct mx6_fcb {
 };
 
 #define BF_VAL(v, bf)		(((v) & bf##_MASK) >> bf##_OFFSET)
+#define BF_SET_VAL(r, v, bf)	r = ((r) & ~bf##_MASK) | (((v) << bf##_OFFSET) & bf##_MASK)
 
 static nand_info_t *mtd = &nand_info[0];
 static bool doit;
@@ -103,6 +104,40 @@ static void encode_hamming_13_8(void *_src, void *_ecc, size_t size)
 
 	for (i = 0; i < size; i++)
 		ecc[i] = calculate_parity_13_8(src[i]);
+}
+
+static struct bch_regs bch_save;
+static struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
+
+/*
+ * Reprogram BCH engine for 40bit ECC on chunks of 128 byte
+ * and 32 byte of metadata as required by the i.MX6UL ROM code.
+ */
+static void tx6_init_bch(void)
+{
+	u32 fl0 = readl(&bch_base->hw_bch_flash0layout0);
+	u32 fl1 = readl(&bch_base->hw_bch_flash0layout1);
+
+	bch_save.hw_bch_flash0layout0 = fl0;
+	bch_save.hw_bch_flash0layout1 = fl1;
+
+	BF_SET_VAL(fl0, 32, BCH_FLASHLAYOUT0_META_SIZE);
+	BF_SET_VAL(fl0, 7, BCH_FLASHLAYOUT0_NBLOCKS);
+
+	BF_SET_VAL(fl0, 0x14, BCH_FLASHLAYOUT0_ECC0);
+	BF_SET_VAL(fl0, 128 / 4, BCH_FLASHLAYOUT0_DATA0_SIZE);
+
+	BF_SET_VAL(fl1, 0x14, BCH_FLASHLAYOUT1_ECCN);
+	BF_SET_VAL(fl1, 128 / 4, BCH_FLASHLAYOUT1_DATAN_SIZE);
+
+	writel(fl0, &bch_base->hw_bch_flash0layout0);
+	writel(fl1, &bch_base->hw_bch_flash0layout1);
+}
+
+static void tx6_restore_bch(void)
+{
+	writel(bch_save.hw_bch_flash0layout0, &bch_base->hw_bch_flash0layout0);
+	writel(bch_save.hw_bch_flash0layout1, &bch_base->hw_bch_flash0layout1);
 }
 
 static u32 calc_chksum(void *buf, size_t size)
@@ -154,10 +189,8 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 				int fw2_start_block, int fw_num_blocks)
 {
 	struct gpmi_regs *gpmi_base = (void *)GPMI_BASE_ADDRESS;
-	struct bch_regs *bch_base = (void *)BCH_BASE_ADDRESS;
 	u32 fl0, fl1;
 	u32 t0;
-	int metadata_size;
 	struct mx6_fcb *fcb;
 	int fcb_offs;
 
@@ -169,14 +202,19 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 	fl1 = readl(&bch_base->hw_bch_flash0layout1);
 	t0 = readl(&gpmi_base->hw_gpmi_timing0);
 
-	metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
+	if (!is_cpu_type(MXC_CPU_MX6UL)) {
+		int metadata_size = BF_VAL(fl0, BCH_FLASHLAYOUT0_META_SIZE);
 
-	fcb = buf + ALIGN(metadata_size, 4);
-	fcb_offs = (void *)fcb - buf;
+		fcb = buf + ALIGN(metadata_size, 4);
+		fcb_offs = (void *)fcb - buf;
 
-	memset(buf, 0xff, fcb_offs);
-	memset(fcb, 0x00, sizeof(*fcb));
-	memset(fcb + 1, 0xff, mtd->erasesize - fcb_offs - sizeof(*fcb));
+		memset(buf, 0xff, fcb_offs);
+	} else {
+		fcb = buf;
+		fcb_offs = 0;
+	}
+
+	memset(fcb, 0, mtd->erasesize - fcb_offs);
 
 	strncpy((char *)&fcb->fingerprint, "FCB ", 4);
 	fcb->version = cpu_to_be32(1);
@@ -277,9 +315,18 @@ static int write_fcb(void *buf, int block)
 	printf("Writing FCB to block %d @ %08llx\n", block,
 		(u64)block * mtd->erasesize);
 	if (doit) {
-		chip->select_chip(mtd, 0);
-		ret = chip->write_page(mtd, chip, 0, mtd->writesize,
-				buf, 1, page, 0, 1);
+		if (is_cpu_type(MXC_CPU_MX6UL)) {
+			size_t len = mtd->writesize;
+
+			tx6_init_bch();
+			printf("writing block %u from buffer %p\n", block, buf);
+			ret = nand_write(mtd, block * mtd->erasesize, &len, buf);
+			tx6_restore_bch();
+		} else {
+			chip->select_chip(mtd, 0);
+			ret = chip->write_page(mtd, chip, 0, mtd->writesize,
+					buf, 1, page, 0, 1);
+		}
 		if (ret) {
 			printf("Failed to write FCB to block %u: %d\n", block, ret);
 		}
@@ -619,7 +666,8 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		ret = PTR_ERR(fcb);
 		goto out;
 	}
-	encode_hamming_13_8(fcb, (void *)fcb + 512, 512);
+	if (!is_cpu_type(MXC_CPU_MX6UL))
+		encode_hamming_13_8(fcb, (void *)fcb + 512, 512);
 
 	ret = write_fcb(buf, fcb_start_block);
 	if (ret) {
