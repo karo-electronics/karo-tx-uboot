@@ -25,7 +25,7 @@
 
 #include <asm/io.h>
 #include <linux/sizes.h>
-#include <asm/arch/imx-regs.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/imx-common/regs-gpmi.h>
 #include <asm/imx-common/regs-bch.h>
 
@@ -76,38 +76,6 @@ struct mx6_fcb {
 	u32 disbb_search;
 };
 
-struct mx6_dbbt_header {
-	u32 checksum;
-	u32 fingerprint;
-	u32 version;
-	u32 number_bb;
-	u32 number_pages;
-	u8 spare[492];
-};
-
-struct mx6_dbbt {
-	u32 nand_number;
-	u32 number_bb;
-	u32 bb_num[2040 / 4];
-};
-
-struct mx6_ivt {
-	u32 magic;
-	u32 app_start_addr;
-	u32 rsrvd1;
-	void *dcd;
-	void *boot_data;
-	void *self;
-	void *csf;
-	u32 rsrvd2;
-};
-
-struct mx6_boot_data {
-	void *start;
-	u32 length;
-	u32 plugin;
-};
-
 #define BF_VAL(v, bf)		(((v) & bf##_MASK) >> bf##_OFFSET)
 
 static nand_info_t *mtd = &nand_info[0];
@@ -147,41 +115,6 @@ static u32 calc_chksum(void *buf, size_t size)
 		chksum += bp[i];
 	}
 	return ~chksum;
-}
-
-/*
-  Physical organisation of data in NAND flash:
-  metadata
-  payload chunk 0 (may be empty)
-  ecc for metadata + payload chunk 0
-  payload chunk 1
-  ecc for payload chunk 1
-...
-  payload chunk n
-  ecc for payload chunk n
- */
-
-static inline int calc_bb_offset(nand_info_t *mtd, struct mx6_fcb *fcb)
-{
-	int bb_mark_offset;
-	int chunk_data_size = fcb->ecc_blockn_size * 8;
-	int chunk_ecc_size = (fcb->ecc_blockn_type << 1) * 13;
-	int chunk_total_size = chunk_data_size + chunk_ecc_size;
-	int bb_mark_chunk, bb_mark_chunk_offs;
-
-	bb_mark_offset = (mtd->writesize - fcb->metadata_size) * 8;
-	if (fcb->ecc_block0_size == 0)
-		bb_mark_offset -= (fcb->ecc_block0_type << 1) * 13;
-
-	bb_mark_chunk = bb_mark_offset / chunk_total_size;
-	bb_mark_chunk_offs = bb_mark_offset - (bb_mark_chunk * chunk_total_size);
-	if (bb_mark_chunk_offs > chunk_data_size) {
-		printf("Unsupported ECC layout; BB mark resides in ECC data: %u\n",
-			bb_mark_chunk_offs);
-		return -EINVAL;
-	}
-	bb_mark_offset -= bb_mark_chunk * chunk_ecc_size;
-	return bb_mark_offset;
 }
 
 /*
@@ -225,7 +158,6 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 	u32 fl0, fl1;
 	u32 t0;
 	int metadata_size;
-	int bb_mark_bit_offs;
 	struct mx6_fcb *fcb;
 	int fcb_offs;
 
@@ -290,17 +222,6 @@ static struct mx6_fcb *create_fcb(void *buf, int fw1_start_block,
 	}
 
 	fcb->dbbt_search_area = 0;
-
-	bb_mark_bit_offs = calc_bb_offset(mtd, fcb);
-	if (bb_mark_bit_offs < 0)
-		return ERR_PTR(bb_mark_bit_offs);
-	fcb->bb_mark_byte = bb_mark_bit_offs / 8;
-	fcb->bb_mark_startbit = bb_mark_bit_offs % 8;
-	fcb->bb_mark_phys_offset = mtd->writesize;
-
-	pr_fcb_val(fcb, bb_mark_byte);
-	pr_fcb_val(fcb, bb_mark_startbit);
-	pr_fcb_val(fcb, bb_mark_phys_offset);
 
 	fcb->checksum = calc_chksum(&fcb->fingerprint, 512 - 4);
 	return fcb;
