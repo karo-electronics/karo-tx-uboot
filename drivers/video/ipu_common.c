@@ -125,8 +125,8 @@ static struct clk ldb_clk = {
 };
 
 /* Globals */
-struct clk *g_ipu_clk;
-struct clk *g_ldb_clk;
+struct clk *g_ipu_clk = &ipu_clk;
+struct clk *g_ldb_clk = &ldb_clk;
 struct clk *g_di_clk[2];
 struct clk *g_pixel_clk[2];
 unsigned char g_dc_di_assignment[10];
@@ -409,10 +409,7 @@ int ipu_probe(int di, ipu_di_clk_parent_t di_clk_parent, int di_clk_val)
 	g_di_clk[1] = &di_clk[1];
 	g_di_clk[di]->rate = di_clk_val;
 
-	g_ipu_clk = &ipu_clk;
 	debug("ipu_clk = %u\n", clk_get_rate(g_ipu_clk));
-
-	g_ldb_clk = &ldb_clk;
 	debug("ldb_clk = %u\n", clk_get_rate(g_ldb_clk));
 
 	ret = clk_enable(g_ipu_clk);
