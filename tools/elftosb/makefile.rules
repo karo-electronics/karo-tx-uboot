@@ -15,6 +15,8 @@
 # UNAMES is going to be set to either "Linux" or "CYGWIN_NT-5.1"
 UNAMES = $(shell uname -s)
 
+CXX ?= g++
+
 #*******************************************************************************
 #                               Directories
 
@@ -37,10 +39,10 @@ INC_PATH =					\
 
 #*******************************************************************************
 #                               Build flags
-# gcc Compiler flags
+# Compiler flags
 #    -g						: Produce debugging information.
 
-CFLAGS	    = -g $(INC_PATH) -D${UNAMES}
+CXXFLAGS	= -g $(INC_PATH) -D${UNAMES}
 
 #*******************************************************************************
 #                               File lists
@@ -137,13 +139,13 @@ clean:
 		${EXEC_FILE_ELFTOSB2} ${EXEC_FILE_SBTOOL} ${EXEC_FILE_KEYGEN}
 
 elftosb: ${OBJ_FILES_ELFTOSB2}
-	gcc ${OBJ_FILES_ELFTOSB2} ${LIBS} -o ${EXEC_FILE_ELFTOSB2}
+	$(CXX) ${OBJ_FILES_ELFTOSB2} ${LIBS} -o ${EXEC_FILE_ELFTOSB2}
 
 sbtool: ${OBJ_FILES_SBTOOL}
-	gcc ${OBJ_FILES_SBTOOL} ${LIBS} -o ${EXEC_FILE_SBTOOL}
+	$(CXX) ${OBJ_FILES_SBTOOL} ${LIBS} -o ${EXEC_FILE_SBTOOL}
 
 keygen: ${OBJ_FILES_KEYGEN}
-	gcc ${OBJ_FILES_KEYGEN} ${LIBS} -o ${EXEC_FILE_KEYGEN}
+	$(CXX) ${OBJ_FILES_KEYGEN} ${LIBS} -o ${EXEC_FILE_KEYGEN}
 
 
 #ifeq ("${UNAMES}", "Linux")
@@ -152,10 +154,10 @@ keygen: ${OBJ_FILES_KEYGEN}
 .SUFFIXES : .c .cpp .o .h
 
 .c.o:
-	gcc ${CFLAGS} -c $<
+	$(CC) ${CXXFLAGS} -c $<
 
 .cpp.o:
-	gcc ${CFLAGS} -c $<
+	$(CXX) ${CXXFLAGS} -c $<
 
 #endif
 
@@ -164,13 +166,13 @@ keygen: ${OBJ_FILES_KEYGEN}
 
 %.d: %.c
 	@set -e; \
-	$(CC) -MM $(CFLAGS) $< | \
+	$(CC) -MM $(CXXFLAGS) $< | \
 	sed 's/\($*\)\.o[ :]*/\1.o $@ : /g' > $@; \
 	[ -s $@ ]  || rm -f $@
 
 %.d: %.cpp
 	@set -e; \
-	$(CC) -MM $(CFLAGS) $< | \
+	$(CC) -MM $(CXXFLAGS) $< | \
 	sed 's/\($*\)\.o[ :]*/\1.o $@ : /g' > $@; \
 	[ -s $@ ]  || rm -f $@
 
