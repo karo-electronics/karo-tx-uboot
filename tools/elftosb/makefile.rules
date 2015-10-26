@@ -15,6 +15,8 @@
 # UNAMES is going to be set to either "Linux" or "CYGWIN_NT-5.1"
 UNAMES = $(shell uname -s)
 
+CXX ?= g++
+
 #*******************************************************************************
 #                               Directories
 
@@ -22,93 +24,93 @@ UNAMES = $(shell uname -s)
 #                               Paths
 
 # search path for source files. make finds them automatically.
-VPATH = \
-	${SRC_DIR}/common	\
-	${SRC_DIR}/elftosb2 \
-	${SRC_DIR}/sbtool	\
+VPATH =						\
+	${SRC_DIR}/common			\
+	${SRC_DIR}/elftosb2			\
+	${SRC_DIR}/sbtool			\
 	${SRC_DIR}/keygen
 
 # include directories
-INC_PATH =                      \
-    -I${SRC_DIR}/elftosb2        \
-    -I${SRC_DIR}/keygen   \
-    -I${SRC_DIR}/sbtool      \
-	-I${SRC_DIR}/common
+INC_PATH =					\
+    -I${SRC_DIR}/elftosb2			\
+    -I${SRC_DIR}/keygen				\
+    -I${SRC_DIR}/sbtool				\
+    -I${SRC_DIR}/common
 
 #*******************************************************************************
 #                               Build flags
-# gcc Compiler flags
+# Compiler flags
 #    -g						: Produce debugging information.
 
-CFLAGS	    = -g $(INC_PATH) -D${UNAMES}
+CXXFLAGS	= -g $(INC_PATH) -D${UNAMES}
 
 #*******************************************************************************
 #                               File lists
 
-OBJ_FILES_COMMON =			\
-	AESKey.o	\
-	Blob.o	\
-	crc.o	\
-	DataSource.o	\
-	DataTarget.o	\
-	ELFSourceFile.o \
-	EncoreBootImage.o	\
-	EvalContext.o	\
-	GHSSecInfo.o	\
-	GlobMatcher.o	\
-	HexValues.o \
-	Logging.o	\
-	Operation.o \
-	OptionDictionary.o	\
-	options.o	\
-	OutputSection.o \
-	Random.o	\
-	RijndaelCBCMAC.o	\
-	rijndael.o	\
-	SHA1.o	\
-	SourceFile.o	\
-	SRecordSourceFile.o \
-	stdafx.o	\
-	StELFFile.o \
-	StExecutableImage.o \
-	StSRecordFile.o \
-	Value.o \
-	Version.o \
-	format_string.o \
-	ExcludesListMatcher.o \
-	SearchPath.o	\
-	DataSourceImager.o \
+OBJ_FILES_COMMON =				\
+	AESKey.o				\
+	Blob.o					\
+	crc.o					\
+	DataSource.o				\
+	DataTarget.o				\
+	ELFSourceFile.o				\
+	EncoreBootImage.o			\
+	EvalContext.o				\
+	GHSSecInfo.o				\
+	GlobMatcher.o				\
+	HexValues.o				\
+	Logging.o				\
+	Operation.o				\
+	OptionDictionary.o			\
+	options.o				\
+	OutputSection.o				\
+	Random.o				\
+	RijndaelCBCMAC.o			\
+	rijndael.o				\
+	SHA1.o					\
+	SourceFile.o				\
+	SRecordSourceFile.o			\
+	stdafx.o				\
+	StELFFile.o				\
+	StExecutableImage.o			\
+	StSRecordFile.o				\
+	Value.o					\
+	Version.o				\
+	format_string.o				\
+	ExcludesListMatcher.o			\
+	SearchPath.o				\
+	DataSourceImager.o			\
 	IVTDataSource.o
 
-OBJ_FILES_ELFTOSB2 = 		\
-	${OBJ_FILES_COMMON} \
-	BootImageGenerator.o	\
-	ConversionController.o	\
-	ElftosbAST.o	\
-	elftosb.o	\
-	elftosb_lexer.o \
-	ElftosbLexer.o	\
-	elftosb_parser.tab.o	\
+OBJ_FILES_ELFTOSB2 =				\
+	${OBJ_FILES_COMMON}			\
+	BootImageGenerator.o			\
+	ConversionController.o			\
+	ElftosbAST.o				\
+	elftosb.o				\
+	elftosb_lexer.o				\
+	ElftosbLexer.o				\
+	elftosb_parser.tab.o			\
 	EncoreBootImageGenerator.o
 
-OBJ_FILES_SBTOOL =			\
-	${OBJ_FILES_COMMON} \
-	EncoreBootImageReader.o \
+OBJ_FILES_SBTOOL =				\
+	${OBJ_FILES_COMMON}			\
+	EncoreBootImageReader.o			\
 	sbtool.o
 
-OBJ_FILES_KEYGEN =			\
-	${OBJ_FILES_COMMON} \
+OBJ_FILES_KEYGEN =				\
+	${OBJ_FILES_COMMON}			\
 	keygen.o
 
 
-LIBS =     -lstdc++
+LIBS = -lstdc++
 
 
 ifeq ("${UNAMES}", "Linux")
 EXEC_FILE_ELFTOSB2 = elftosb
 EXEC_FILE_SBTOOL = sbtool
 EXEC_FILE_KEYGEN = keygen
-else 
+else
 ifeq ("${UNAMES}", "CYGWIN_NT-5.1")
 EXEC_FILE_ELFTOSB2 = elftosb.exe
 EXEC_FILE_SBTOOL = sbtool.exe
@@ -137,13 +139,13 @@ clean:
 		${EXEC_FILE_ELFTOSB2} ${EXEC_FILE_SBTOOL} ${EXEC_FILE_KEYGEN}
 
 elftosb: ${OBJ_FILES_ELFTOSB2}
-	gcc ${OBJ_FILES_ELFTOSB2} ${LIBS} -o ${EXEC_FILE_ELFTOSB2}
+	$(CXX) ${OBJ_FILES_ELFTOSB2} ${LIBS} -o ${EXEC_FILE_ELFTOSB2}
 
 sbtool: ${OBJ_FILES_SBTOOL}
-	gcc ${OBJ_FILES_SBTOOL} ${LIBS} -o ${EXEC_FILE_SBTOOL}
+	$(CXX) ${OBJ_FILES_SBTOOL} ${LIBS} -o ${EXEC_FILE_SBTOOL}
 
 keygen: ${OBJ_FILES_KEYGEN}
-	gcc ${OBJ_FILES_KEYGEN} ${LIBS} -o ${EXEC_FILE_KEYGEN}
+	$(CXX) ${OBJ_FILES_KEYGEN} ${LIBS} -o ${EXEC_FILE_KEYGEN}
 
 
 #ifeq ("${UNAMES}", "Linux")
@@ -152,10 +154,10 @@ keygen: ${OBJ_FILES_KEYGEN}
 .SUFFIXES : .c .cpp .o .h
 
 .c.o:
-	gcc ${CFLAGS} -c $<
+	$(CC) ${CXXFLAGS} -c $<
 
 .cpp.o:
-	gcc ${CFLAGS} -c $<
+	$(CXX) ${CXXFLAGS} -c $<
 
 #endif
 
@@ -164,13 +166,13 @@ keygen: ${OBJ_FILES_KEYGEN}
 
 %.d: %.c
 	@set -e; \
-	$(CC) -MM $(CFLAGS) $< | \
+	$(CC) -MM $(CXXFLAGS) $< | \
 	sed 's/\($*\)\.o[ :]*/\1.o $@ : /g' > $@; \
 	[ -s $@ ]  || rm -f $@
 
 %.d: %.cpp
 	@set -e; \
-	$(CC) -MM $(CFLAGS) $< | \
+	$(CC) -MM $(CXXFLAGS) $< | \
 	sed 's/\($*\)\.o[ :]*/\1.o $@ : /g' > $@; \
 	[ -s $@ ]  || rm -f $@
 
