@@ -17,5 +17,6 @@ config TX48
 	default y
 	select PHYLIB
 	select SPL
+	select MMC if CMD_MMC
 
 endif
