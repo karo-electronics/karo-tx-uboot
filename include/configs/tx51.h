@@ -119,7 +119,7 @@
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"
 #else
-#define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_MPU_CLK)
+#define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_CPU_CLK)
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
