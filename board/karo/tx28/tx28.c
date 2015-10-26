@@ -1013,7 +1013,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 		karo_fdt_enable_node(blob, "stk5led", 0);
 
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
-	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob, tx28_touchpanels,
 				ARRAY_SIZE(tx28_touchpanels));

@@ -1129,7 +1129,6 @@ int ft_board_setup(void *blob, bd_t *bd)
 		return ret;
 	}
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
-	fdt_fixup_ethernet(blob);
 
 	karo_fdt_fixup_touchpanel(blob, tx51_touchpanels,
 				ARRAY_SIZE(tx51_touchpanels));
