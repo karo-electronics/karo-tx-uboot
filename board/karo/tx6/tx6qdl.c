@@ -1382,13 +1382,6 @@ int board_late_init(void)
 {
 	int ret = 0;
 	const char *baseboard;
-#if 1
-	/* override secure_boot fuse */
-	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank0_regs *fuse = (void *)ocotp->bank[0].fuse_regs;
-
-	writel(0x12, &fuse->cfg5);
-#endif
 
 	debug("%s@%d: \n", __func__, __LINE__);
 
