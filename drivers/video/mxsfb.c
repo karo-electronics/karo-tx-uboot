@@ -6,15 +6,15 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <errno.h>
 #include <malloc.h>
-#include <video_fb.h>
 #include <mxcfb.h>
-
-#include <asm/arch/imx-regs.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/sys_proto.h>
-#include <asm/errno.h>
+#include <video_fb.h>
 #include <asm/io.h>
+#include <asm/arch/clock.h>
+#include <asm/arch/imx-regs.h>
+#include <asm/arch/regs-lcdif.h>
+#include <asm/arch/sys_proto.h>
 
 #include <asm/imx-common/dma.h>
 
@@ -226,6 +226,5 @@ void *video_hw_init(void)
 	/* Execute the DMA chain. */
 	mxs_dma_circ_start(MXS_DMA_CHANNEL_AHB_APBH_LCDIF, &desc);
 #endif
-
-	return (void *)&panel;
+	return &panel;
 }

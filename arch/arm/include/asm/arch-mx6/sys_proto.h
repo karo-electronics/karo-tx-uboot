@@ -9,6 +9,7 @@
 #define _SYS_PROTO_H_
 
 #include <asm/imx-common/regs-common.h>
+#include <asm/arch/clock.h>
 #include "../arch-imx/cpu.h"
 
 #define soc_rev() (get_cpu_rev() & 0xFF)
@@ -46,6 +47,10 @@ int mxs_wait_mask_set(struct mxs_register_32 *reg,
 int mxs_wait_mask_clr(struct mxs_register_32 *reg,
 		       uint32_t mask,
 		       unsigned int timeout);
+
+#ifdef CONFIG_VIDEO_MXS
+void mxs_set_lcdclk(u32 freq);
+#endif
 
 int check_cpu_temperature(int boot);
 #endif

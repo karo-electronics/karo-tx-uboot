@@ -959,18 +959,8 @@ void lcd_disable(void)
 {
 	if (lcd_enabled) {
 		printf("Disabling LCD\n");
-//		ipuv3_fb_shutdown();
-	}
-}
-
-void lcd_panel_disable(void)
-{
-	if (lcd_enabled) {
-		debug("Switching LCD off\n");
-		gpio_set_value(TX6UL_LCD_BACKLIGHT_GPIO,
-			!lcd_backlight_polarity());
-		gpio_set_value(TX6UL_LCD_RST_GPIO, 0);
-		gpio_set_value(TX6UL_LCD_PWR_GPIO, 0);
+		panel_info.vl_row = 0;
+		lcd_enabled = 0;
 	}
 }
 
@@ -1017,7 +1007,7 @@ static const iomux_v3_cfg_t stk5_lcd_pads[] = {
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
-//	{ TX6UL_LCD_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD RESET", },
+	{ TX6UL_LCD_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD RESET", },
 	{ TX6UL_LCD_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD POWER", },
 	{ TX6UL_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
@@ -1032,8 +1022,6 @@ void lcd_ctrl_init(void *lcdbase)
 	struct fb_videomode *p = &tx6_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
-	int pix_fmt;
-	int lcd_bus_width;
 
 	if (!lcd_enabled) {
 		debug("LCD disabled\n");
@@ -1041,8 +1029,7 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 
 	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
-		debug("Disabling LCD\n");
-		lcd_enabled = 0;
+		lcd_disable();
 		setenv("splashimage", NULL);
 		return;
 	}
@@ -1051,8 +1038,7 @@ void lcd_ctrl_init(void *lcdbase)
 	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
 
 	if (video_mode == NULL) {
-		debug("Disabling LCD\n");
-		lcd_enabled = 0;
+		lcd_disable();
 		return;
 	}
 	vm = video_mode;
@@ -1101,22 +1087,14 @@ void lcd_ctrl_init(void *lcdbase)
 					yres_set = 1;
 				} else if (!bpp_set) {
 					switch (val) {
-					case 32:
-					case 24:
-						if (is_lvds())
-							pix_fmt = IPU_PIX_FMT_LVDS888;
-						/* fallthru */
-					case 16:
 					case 8:
+					case 16:
+					case 18:
+					case 24:
+					case 32:
 						color_depth = val;
 						break;
 
-					case 18:
-						if (is_lvds()) {
-							color_depth = val;
-							break;
-						}
-						/* fallthru */
 					default:
 						printf("Invalid color depth: '%.*s' in video_mode; using default: '%u'\n",
 							end - vm, vm, color_depth);
@@ -1201,67 +1179,24 @@ void lcd_ctrl_init(void *lcdbase)
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
 					ARRAY_SIZE(stk5_lcd_pads));
 
-	lcd_bus_width = karo_fdt_get_lcd_bus_width(working_fdt, 24);
-	switch (lcd_bus_width) {
-	case 24:
-		pix_fmt = is_lvds() ? IPU_PIX_FMT_LVDS888 : IPU_PIX_FMT_RGB24;
-		break;
+	debug("video format: %ux%u-%u@%u\n", p->xres, p->yres,
+		color_depth, refresh);
 
-	case 18:
-		pix_fmt = is_lvds() ? IPU_PIX_FMT_LVDS666 : IPU_PIX_FMT_RGB666;
-		break;
-
-	case 16:
-		if (!is_lvds()) {
-			pix_fmt = IPU_PIX_FMT_RGB565;
-			break;
-		}
-		/* fallthru */
-	default:
-		lcd_enabled = 0;
-		printf("Invalid %s bus width: %d\n", is_lvds() ? "LVDS" : "LCD",
-			lcd_bus_width);
-		return;
-	}
-	if (is_lvds()) {
-		int lvds_mapping = karo_fdt_get_lvds_mapping(working_fdt, 0);
-		int lvds_chan_mask = karo_fdt_get_lvds_channels(working_fdt);
-		uint32_t gpr2;
-		uint32_t gpr3;
-
-		if (lvds_chan_mask == 0) {
-			printf("No LVDS channel active\n");
-			lcd_enabled = 0;
-			return;
-		}
-
-		gpr2 = (lvds_mapping << 6) | (lvds_mapping << 8);
-		if (lcd_bus_width == 24)
-			gpr2 |= (1 << 5) | (1 << 7);
-		gpr2 |= (lvds_chan_mask & 1) ? 1 << 0 : 0;
-		gpr2 |= (lvds_chan_mask & 2) ? 3 << 2 : 0;
-		debug("writing %08x to GPR2[%08x]\n", gpr2, IOMUXC_BASE_ADDR + 8);
-		writel(gpr2, IOMUXC_BASE_ADDR + 8);
-
-		gpr3 = readl(IOMUXC_BASE_ADDR + 0xc);
-		gpr3 &= ~((3 << 8) | (3 << 6));
-		writel(gpr3, IOMUXC_BASE_ADDR + 0xc);
-	}
 	if (karo_load_splashimage(0) == 0) {
-#if 0
-		int ret;
+		char vmode[128];
+
+		/* setup env variable for mxsfb display driver */
+		snprintf(vmode, sizeof(vmode),
+			"x:%d,y:%d,le:%d,ri:%d,up:%d,lo:%d,hs:%d,vs:%d,sync:%d,pclk:%d,depth:%d",
+			p->xres, p->yres, p->left_margin, p->right_margin,
+			p->upper_margin, p->lower_margin, p->hsync_len,
+			p->vsync_len, p->sync, p->pixclock, color_depth);
+		setenv("videomode", vmode);
 
 		debug("Initializing LCD controller\n");
-		ret = ipuv3_fb_init(p, 0, pix_fmt,
-				is_lvds() ? DI_PCLK_LDB : DI_PCLK_PLL3,
-				di_clk_rate, -1);
-		if (ret) {
-			printf("Failed to initialize FB driver: %d\n", ret);
-			lcd_enabled = 0;
-		}
-#else
-		lcd_enabled = pix_fmt * 0;
-#endif
+		lcdif_clk_enable();
+		video_hw_init();
+		setenv("videomode", NULL);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
