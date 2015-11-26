@@ -352,7 +352,6 @@ static u32 mxc_get_pll_pfd(enum pll_clocks pll, int pfd_num)
 {
 	u32 div;
 	u64 freq;
-	struct anatop_regs *anatop = (struct anatop_regs *)ANATOP_BASE_ADDR;
 
 	switch (pll) {
 	case PLL_528:
@@ -754,9 +753,6 @@ int enable_fec_anatop_clock(enum enet_freq freq)
 	u32 reg = 0;
 	s32 timeout = 100000;
 
-	struct anatop_regs __iomem *anatop =
-		(struct anatop_regs __iomem *)ANATOP_BASE_ADDR;
-
 	if (freq < ENET_25MHZ || freq > ENET_125MHZ)
 		return -EINVAL;
 
@@ -887,9 +883,6 @@ static int enable_enet_pll(uint32_t en)
 #ifdef CONFIG_CMD_SATA
 static void ungate_sata_clock(void)
 {
-	struct mxc_ccm_reg *const imx_ccm =
-		(struct mxc_ccm_reg *)CCM_BASE_ADDR;
-
 	/* Enable SATA clock. */
 	setbits_le32(&imx_ccm->CCGR5, MXC_CCM_CCGR5_SATA_MASK);
 }
@@ -902,9 +895,6 @@ int enable_sata_clock(void)
 
 void disable_sata_clock(void)
 {
-	struct mxc_ccm_reg *const imx_ccm =
-		(struct mxc_ccm_reg *)CCM_BASE_ADDR;
-
 	clrbits_le32(&imx_ccm->CCGR5, MXC_CCM_CCGR5_SATA_MASK);
 }
 #endif
@@ -912,18 +902,12 @@ void disable_sata_clock(void)
 #ifdef CONFIG_PCIE_IMX
 static void ungate_pcie_clock(void)
 {
-	struct mxc_ccm_reg *const imx_ccm =
-		(struct mxc_ccm_reg *)CCM_BASE_ADDR;
-
 	/* Enable PCIe clock. */
 	setbits_le32(&imx_ccm->CCGR4, MXC_CCM_CCGR4_PCIE_MASK);
 }
 
 int enable_pcie_clock(void)
 {
-	struct anatop_regs *anatop_regs =
-		(struct anatop_regs *)ANATOP_BASE_ADDR;
-	struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
 	u32 lvds1_clk_sel;
 
 	/*
@@ -997,9 +981,6 @@ void hab_caam_clock_enable(unsigned char enable)
 
 static void enable_pll3(void)
 {
-	struct anatop_regs __iomem *anatop =
-		(struct anatop_regs __iomem *)ANATOP_BASE_ADDR;
-
 	/* make sure pll3 is enabled */
 	if ((readl(&anatop->usb1_pll_480_ctrl) &
 			BM_ANADIG_USB1_PLL_480_CTRL_LOCK) == 0) {
@@ -1411,15 +1392,13 @@ int do_clocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 #ifndef CONFIG_SOC_MX6SX
 void enable_ipu_clock(void)
 {
-	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
-	int reg;
-	reg = readl(&mxc_ccm->CCGR3);
+	int reg = readl(&imx_ccm->CCGR3);
 	reg |= MXC_CCM_CCGR3_IPU1_IPU_MASK;
-	writel(reg, &mxc_ccm->CCGR3);
+	writel(reg, &imx_ccm->CCGR3);
 
 	if (is_mx6dqp()) {
-		setbits_le32(&mxc_ccm->CCGR6, MXC_CCM_CCGR6_PRG_CLK0_MASK);
-		setbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU2_IPU_MASK);
+		setbits_le32(&imx_ccm->CCGR6, MXC_CCM_CCGR6_PRG_CLK0_MASK);
+		setbits_le32(&imx_ccm->CCGR3, MXC_CCM_CCGR3_IPU2_IPU_MASK);
 	}
 }
 #endif
