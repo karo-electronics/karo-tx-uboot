@@ -55,6 +55,10 @@
 #define CONFIG_LCD_LOGO
 #define LCD_BPP				LCD_COLOR32
 #define CONFIG_CMD_BMP
+#define CONFIG_BMP_8BPP
+#define CONFIG_BMP_16BPP
+#define CONFIG_BMP_24BPP
+#define CONFIG_BMP_32BPP
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
 #endif /* CONFIG_TX6_UBOOT_MFG */
