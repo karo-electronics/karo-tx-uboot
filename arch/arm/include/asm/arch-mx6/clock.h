@@ -40,6 +40,9 @@ enum mxc_clock {
 	MXC_SATA_CLK,
 	MXC_NFC_CLK,
 	MXC_I2C_CLK,
+#ifdef CONFIG_VIDEO_MXS
+	MXC_LCDIF_CLK,
+#endif
 };
 
 enum enet_freq {
@@ -121,4 +124,8 @@ void ipu_di_clk_enable(int di);
 void ipu_di_clk_disable(int di);
 void ldb_clk_enable(int ldb);
 void ldb_clk_disable(int ldb);
+#ifdef CONFIG_VIDEO_MXS
+void lcdif_clk_enable(void);
+void lcdif_clk_disable(void);
+#endif
 #endif /* __ASM_ARCH_CLOCK_H */

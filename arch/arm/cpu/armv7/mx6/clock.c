@@ -116,6 +116,24 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 	return 0;
 }
 
+#define PLL_LOCK_BIT		(1 << 31)
+
+static inline int wait_pll_lock(u32 *reg)
+{
+	int loops = 0;
+	u32 val;
+
+	while (!((val = readl(reg)) & PLL_LOCK_BIT)) {
+		loops++;
+		if (loops > 1000)
+			break;
+		udelay(1);
+	}
+	if (!(val & PLL_LOCK_BIT) && !(readl(reg) & PLL_LOCK_BIT))
+		return -ETIMEDOUT;
+	return 0;
+}
+
 #ifdef CONFIG_MXC_OCOTP
 void enable_ocotp_clk(unsigned char enable)
 {
@@ -284,9 +302,10 @@ int enable_spi_clk(unsigned char enable, unsigned spi_num)
 	__raw_writel(reg, &imx_ccm->CCGR1);
 	return 0;
 }
+
 static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 {
-	u32 div;
+	u32 div, post_div;
 
 	switch (pll) {
 	case PLL_ARM:
@@ -315,16 +334,22 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 		div = __raw_readl(&anatop->pll_audio);
 		if (div & BM_ANADIG_PLL_AUDIO_BYPASS)
 			return infreq;
+		post_div = (div & BM_ANADIG_PLL_AUDIO_POST_DIV_SELECT) >>
+			BP_ANADIG_PLL_AUDIO_POST_DIV_SELECT;
+		post_div = 1 << (2 - post_div);
 		div &= BM_ANADIG_PLL_AUDIO_DIV_SELECT;
 
-		return infreq * div;
+		return lldiv((u64)infreq * div, post_div);
 	case PLL_VIDEO:
 		div = __raw_readl(&anatop->pll_video);
 		if (div & BM_ANADIG_PLL_VIDEO_BYPASS)
 			return infreq;
+		post_div = (div & BM_ANADIG_PLL_VIDEO_POST_DIV_SELECT) >>
+			BP_ANADIG_PLL_VIDEO_POST_DIV_SELECT;
+		post_div = 1 << (2 - post_div);
 		div &= BM_ANADIG_PLL_VIDEO_DIV_SELECT;
 
-		return infreq * div;
+		return lldiv((u64)infreq * div, post_div);
 	case PLL_ENET:
 		div = __raw_readl(&anatop->pll_enet);
 		if (div & BM_ANADIG_PLL_ENET_BYPASS)
@@ -348,6 +373,7 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 	}
 	return 0;
 }
+
 static u32 mxc_get_pll_pfd(enum pll_clocks pll, int pfd_num)
 {
 	u32 div;
@@ -547,8 +573,10 @@ static u32 get_emi_slow_clk(void)
 static u32 get_nfc_clk(void)
 {
 	u32 cs2cdr = __raw_readl(&imx_ccm->cs2cdr);
-	u32 podf = (cs2cdr & MXC_CCM_CS2CDR_ENFC_CLK_PODF_MASK) >> MXC_CCM_CS2CDR_ENFC_CLK_PODF_OFFSET;
-	u32 pred = (cs2cdr & MXC_CCM_CS2CDR_ENFC_CLK_PRED_MASK) >> MXC_CCM_CS2CDR_ENFC_CLK_PRED_OFFSET;
+	u32 podf = (cs2cdr & MXC_CCM_CS2CDR_ENFC_CLK_PODF_MASK) >>
+		MXC_CCM_CS2CDR_ENFC_CLK_PODF_OFFSET;
+	u32 pred = (cs2cdr & MXC_CCM_CS2CDR_ENFC_CLK_PRED_MASK) >>
+		MXC_CCM_CS2CDR_ENFC_CLK_PRED_OFFSET;
 	int nfc_clk_sel = (cs2cdr & MXC_CCM_CS2CDR_ENFC_CLK_SEL_MASK) >>
 		MXC_CCM_CS2CDR_ENFC_CLK_SEL_OFFSET;
 	u32 root_freq;
@@ -565,6 +593,9 @@ static u32 get_nfc_clk(void)
 		break;
 	case 3:
 		root_freq = mxc_get_pll_pfd(PLL_528, 2);
+		break;
+	case 4:
+		root_freq = mxc_get_pll_pfd(PLL_USBOTG, 3);
 		break;
 	default:
 		return 0;
@@ -1084,6 +1115,278 @@ void ldb_clk_disable(int ldb)
 	}
 }
 
+#ifdef CONFIG_VIDEO_MXS
+void lcdif_clk_enable(void)
+{
+	setbits_le32(&imx_ccm->CCGR3, MXC_CCM_CCGR3_LCDIF_MASK);
+	setbits_le32(&imx_ccm->CCGR2, MXC_CCM_CCGR2_LCD_MASK);
+}
+
+void lcdif_clk_disable(void)
+{
+	clrbits_le32(&imx_ccm->CCGR2, MXC_CCM_CCGR2_LCD_MASK);
+	clrbits_le32(&imx_ccm->CCGR3, MXC_CCM_CCGR3_LCDIF_MASK);
+}
+
+#define CBCMR_LCDIF_MASK	MXC_CCM_CBCMR_LCDIF_PODF_MASK
+#define CSCDR2_LCDIF_MASK	(MXC_CCM_CSCDR2_LCDIF_PRED_MASK |	\
+				MXC_CCM_CSCDR2_LCDIF_CLK_SEL_MASK)
+
+static u32 get_lcdif_root_clk(u32 cscdr2)
+{
+	int lcdif_pre_clk_sel = (cscdr2 & MXC_CCM_CSCDR2_LCDIF_PRE_CLK_SEL_MASK) >>
+		MXC_CCM_CSCDR2_LCDIF_PRE_CLK_SEL_OFFSET;
+	int lcdif_clk_sel = (cscdr2 & MXC_CCM_CSCDR2_LCDIF_CLK_SEL_MASK) >>
+		MXC_CCM_CSCDR2_LCDIF_CLK_SEL_OFFSET;
+	u32 root_freq;
+
+	switch (lcdif_clk_sel) {
+	case 0:
+		switch (lcdif_pre_clk_sel) {
+		case 0:
+			root_freq = decode_pll(PLL_528, MXC_HCLK);
+			break;
+		case 1:
+			root_freq = mxc_get_pll_pfd(PLL_USBOTG, 3);
+			break;
+		case 2:
+			root_freq = decode_pll(PLL_VIDEO, MXC_HCLK);
+			break;
+		case 3:
+			root_freq = mxc_get_pll_pfd(PLL_528, 0);
+			break;
+		case 4:
+			root_freq = mxc_get_pll_pfd(PLL_528, 1);
+			break;
+		case 5:
+			root_freq = mxc_get_pll_pfd(PLL_USBOTG, 1);
+			break;
+		default:
+			return 0;
+		}
+		break;
+	case 1:
+		root_freq = mxc_get_pll_pfd(PLL_VIDEO, 0);
+		break;
+	case 2:
+		root_freq = decode_pll(PLL_USBOTG, MXC_HCLK);
+		break;
+	case 3:
+		root_freq = mxc_get_pll_pfd(PLL_528, 2);
+		break;
+	default:
+		return 0;
+	}
+
+	return root_freq;
+}
+
+static int set_lcdif_pll(u32 ref, u32 freq_khz,
+			unsigned post_div)
+{
+	int ret;
+	u64 freq = freq_khz * 1000;
+	u32 post_div_mask = 1 << (2 - post_div);
+	int mul = 1;
+	u32 min_err = ~0;
+	u32 reg;
+	int num = 0;
+	int denom = 1;
+	const int min_div = 27;
+	const int max_div = 54;
+	const int div_mask = 0x7f;
+	const u32 max_freq = ref * max_div / post_div;
+	const u32 min_freq = ref * min_div / post_div;
+
+	if (freq > max_freq || freq < min_freq) {
+		printf("Frequency %u.%03uMHz is out of range: %u.%03u..%u.%03uMHz\n",
+			freq_khz / 1000, freq_khz % 1000,
+			min_freq / 1000000, min_freq / 1000 % 1000,
+			max_freq / 1000000, max_freq / 1000 % 1000);
+		return -EINVAL;
+	}
+	{
+		int d = post_div;
+		int m = lldiv(freq * d + ref - 1, ref);
+		u32 err;
+		u32 f;
+
+		debug("%s@%d: d=%d m=%d max_div=%u min_div=%u\n", __func__, __LINE__,
+			d, m, max_div, min_div);
+		if (m > max_div || m < min_div)
+			return -EINVAL;
+
+		f = ref * m / d;
+		if (f > freq) {
+			debug("%s@%d: d=%d m=%d f=%u freq=%llu\n", __func__, __LINE__,
+				d, m, f, freq);
+			return -EINVAL;
+		}
+		err = freq - f;
+		debug("%s@%d: d=%d m=%d f=%u freq=%llu err=%d\n", __func__, __LINE__,
+			d, m, f, freq, err);
+		if (err < min_err) {
+			mul = m;
+			min_err = err;
+		}
+	}
+	if (min_err == ~0) {
+		printf("Cannot set VIDEO PLL to %u.%03uMHz\n",
+			freq_khz / 1000, freq_khz % 1000);
+		return -EINVAL;
+	}
+
+	debug("Setting M=%3u D=%u N=%d DE=%u for %u.%03uMHz (actual: %u.%03uMHz)\n",
+		mul, post_div, num, denom,
+		freq_khz / post_div / 1000, freq_khz / post_div % 1000,
+		ref * mul / post_div / 1000000,
+		ref * mul / post_div / 1000 % 1000);
+
+	reg = readl(&anatop->pll_video);
+	setbits_le32(&anatop->pll_video, BM_ANADIG_PLL_VIDEO_BYPASS);
+
+	reg = (reg & ~(div_mask |
+			BM_ANADIG_PLL_VIDEO_POST_DIV_SELECT)) |
+		mul | (post_div_mask << BP_ANADIG_PLL_VIDEO_POST_DIV_SELECT);
+	writel(reg, &anatop->pll_video);
+
+	ret = wait_pll_lock(&anatop->pll_video);
+	if (ret) {
+		printf("Video PLL failed to lock\n");
+		return ret;
+	}
+
+	clrbits_le32(&anatop->pll_video, BM_ANADIG_PLL_VIDEO_BYPASS);
+	return 0;
+}
+
+static int set_lcdif_clk(u32 ref, u32 freq_khz)
+{
+	u32 cbcmr = __raw_readl(&imx_ccm->cbcmr);
+	u32 cscdr2 = __raw_readl(&imx_ccm->cscdr2);
+	u32 cbcmr_val;
+	u32 cscdr2_val;
+	u32 freq = freq_khz * 1000;
+	u32 act_freq;
+	u32 err;
+	u32 min_div = 27;
+	u32 max_div = 54;
+	u32 min_pll_khz = ref * min_div / 4 / 1000;
+	u32 max_pll_khz = ref * max_div / 1000;
+	u32 pll_khz;
+	u32 post_div = 0;
+	u32 m;
+	u32 min_err = ~0;
+	u32 best_m = 0;
+	u32 best_pred = 1;
+	u32 best_podf = 1;
+	u32 div;
+	unsigned pd;
+
+	if (freq_khz > max_pll_khz)
+		return -EINVAL;
+
+	for (pd = 1; min_err && pd <= 4; pd <<= 1) {
+		for (m = max(min_div, DIV_ROUND_UP(648000 / pd, freq_khz * 64));
+		     m <= max_div; m++) {
+			u32 err;
+			int pred = 0;
+			int podf = 0;
+			u32 root_freq = ref * m / pd;
+
+			div = DIV_ROUND_UP(root_freq, freq);
+
+			while (pred * podf == 0 && div <= 64) {
+				int p1, p2;
+
+				for (p1 = 1; p1 <= 8; p1++) {
+					for (p2 = 1; p2 <= 8; p2++) {
+						if (p1 * p2 == div) {
+							podf = p1;
+							pred = p2;
+							break;
+						}
+					}
+				}
+				if (pred * podf == 0) {
+					div++;
+				}
+			}
+			if (pred * podf == 0)
+				continue;
+
+			/* relative error in per mille */
+			act_freq = root_freq / div;
+			err = abs(act_freq - freq) / freq_khz;
+
+			if (err < min_err) {
+				best_m = m;
+				best_pred = pred;
+				best_podf = podf;
+				post_div = pd;
+				min_err = err;
+				if (err <= 10)
+					break;
+			}
+		}
+	}
+	if (min_err > 50)
+		return -EINVAL;
+
+	pll_khz = ref / 1000 * best_m;
+	if (pll_khz > max_pll_khz)
+		return -EINVAL;
+
+	if (pll_khz < min_pll_khz)
+		return -EINVAL;
+
+	err = set_lcdif_pll(ref, pll_khz / post_div, post_div);
+	if (err)
+		return err;
+
+	cbcmr_val = (best_podf - 1) << MXC_CCM_CBCMR_LCDIF_PODF_OFFSET;
+	cscdr2_val = (best_pred - 1) << MXC_CCM_CSCDR2_LCDIF_PRED_OFFSET;
+
+	if ((cbcmr & CBCMR_LCDIF_MASK) != cbcmr_val) {
+		debug("changing cbcmr from %08x to %08x\n", cbcmr,
+			(cbcmr & ~CBCMR_LCDIF_MASK) | cbcmr_val);
+		clrsetbits_le32(&imx_ccm->cbcmr,
+				CBCMR_LCDIF_MASK,
+				cbcmr_val);
+	} else {
+		debug("Leaving cbcmr unchanged [%08x]\n", cbcmr);
+	}
+	if ((cscdr2 & CSCDR2_LCDIF_MASK) != cscdr2_val) {
+		debug("changing cscdr2 from %08x to %08x\n", cscdr2,
+			(cscdr2 & ~CSCDR2_LCDIF_MASK) | cscdr2_val);
+		clrsetbits_le32(&imx_ccm->cscdr2,
+				CSCDR2_LCDIF_MASK,
+				cscdr2_val);
+	} else {
+		debug("Leaving cscdr2 unchanged [%08x]\n", cscdr2);
+	}
+	return 0;
+}
+
+void mxs_set_lcdclk(u32 khz)
+{
+	set_lcdif_clk(CONFIG_SYS_MX6_HCLK, khz);
+}
+
+static u32 get_lcdif_clk(void)
+{
+	u32 cbcmr = __raw_readl(&imx_ccm->cbcmr);
+	u32 podf = ((cbcmr & MXC_CCM_CBCMR_LCDIF_PODF_MASK) >>
+		MXC_CCM_CBCMR_LCDIF_PODF_OFFSET) + 1;
+	u32 cscdr2 = __raw_readl(&imx_ccm->cscdr2);
+	u32 pred = ((cscdr2 & MXC_CCM_CSCDR2_LCDIF_PRED_MASK) >>
+		MXC_CCM_CSCDR2_LCDIF_PRED_OFFSET) + 1;
+	u32 root_freq = get_lcdif_root_clk(cscdr2);
+
+	return root_freq / pred / podf;
+}
+#endif
+
 unsigned int mxc_get_clock(enum mxc_clock clk)
 {
 	switch (clk) {
@@ -1120,6 +1423,10 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 		return get_ahb_clk();
 	case MXC_NFC_CLK:
 		return get_nfc_clk();
+#ifdef CONFIG_VIDEO_MXS
+	case MXC_LCDIF_CLK:
+		return get_lcdif_clk();
+#endif
 	default:
 		printf("Unsupported MXC CLK: %d\n", clk);
 	}
@@ -1127,34 +1434,26 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 	return 0;
 }
 
-static inline int gcd(int m, int n)
-{
-	int t;
-	while (m > 0) {
-		if (n > m) {
-			t = m;
-			m = n;
-			n = t;
-		} /* swap */
-		m -= n;
-	}
-	return n;
-}
-
 /* Config CPU clock */
 static int set_arm_clk(u32 ref, u32 freq_khz)
 {
+	int ret;
 	int d;
 	int div = 0;
 	int mul = 0;
 	u32 min_err = ~0;
 	u32 reg;
+	const int min_div = 54;
+	const int max_div = 108;
+	const int div_mask = 0x7f;
+	const u32 max_freq = ref * max_div / 2;
+	const u32 min_freq = ref * min_div / 8 / 2;
 
-	if (freq_khz > ref / 1000 * 108 / 2 || freq_khz < ref / 1000 * 54 / 8 / 2) {
+	if (freq_khz > max_freq / 1000 || freq_khz < min_freq / 1000) {
 		printf("Frequency %u.%03uMHz is out of range: %u.%03u..%u.%03u\n",
 			freq_khz / 1000, freq_khz % 1000,
-			54 * ref / 1000000 / 8 / 2, 54 * ref / 1000 / 8 / 2 % 1000,
-			108 * ref / 1000000 / 2, 108 * ref / 1000 / 2 % 1000);
+			min_freq / 1000000, min_freq / 1000 % 1000,
+			max_freq / 1000000, max_freq / 1000 % 1000);
 		return -EINVAL;
 	}
 
@@ -1163,7 +1462,7 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
 		u32 f;
 		u32 err;
 
-		if (m > 108) {
+		if (m > max_div) {
 			debug("%s@%d: d=%d m=%d\n", __func__, __LINE__,
 				d, m);
 			break;
@@ -1173,7 +1472,7 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
 		if (f > freq_khz * 1000) {
 			debug("%s@%d: d=%d m=%d f=%u freq=%u\n", __func__, __LINE__,
 				d, m, f, freq_khz);
-			if (--m < 54)
+			if (--m < min_div)
 				return -EINVAL;
 			f = ref * m / d / 2;
 		}
@@ -1195,19 +1494,20 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
 		ref * mul / 2 / div / 1000000, ref * mul / 2 / div / 1000 % 1000);
 
 	reg = readl(&anatop->pll_arm);
-	debug("anadig_pll_arm=%08x -> %08x\n",
-		reg, (reg & ~0x7f) | mul);
+	setbits_le32(&anatop->pll_video, BM_ANADIG_PLL_ARM_BYPASS);
 
-	reg |= 1 << 16;
-	writel(reg, &anatop->pll_arm); /* bypass PLL */
-
-	reg = (reg & ~0x7f) | mul;
+	reg = (reg & ~div_mask) | mul;
 	writel(reg, &anatop->pll_arm);
 
 	writel(div - 1, &imx_ccm->cacrr);
 
-	reg &= ~(1 << 16);
-	writel(reg, &anatop->pll_arm); /* disable PLL bypass */
+	ret = wait_pll_lock(&anatop->pll_video);
+	if (ret) {
+		printf("ARM PLL failed to lock\n");
+		return ret;
+	}
+
+	clrbits_le32(&anatop->pll_video, BM_ANADIG_PLL_ARM_BYPASS);
 
 	return 0;
 }
@@ -1226,11 +1526,6 @@ static int set_arm_clk(u32 ref, u32 freq_khz)
  *         so the caller has to make sure those values are sensible.
  *      2) Also adjust the NFC divider such that the NFC clock doesn't
  *         exceed NFC_CLK_MAX.
- *      3) IPU HSP clock is independent of AHB clock. Even it can go up to
- *         177MHz for higher voltage, this function fixes the max to 133MHz.
- *      4) This function should not have allowed diag_printf() calls since
- *         the serial driver has been stoped. But leave then here to allow
- *         easy debugging by NOT calling the cyg_hal_plf_serial_stop().
  */
 int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk)
 {
@@ -1319,6 +1614,9 @@ static void do_mx6_showclocks(void)
 	print_clk(NFC);
 	print_clk(IPG_PER);
 	print_clk(ARM);
+#ifdef CONFIG_VIDEO_MXS
+	print_clk(LCDIF);
+#endif
 }
 
 static struct clk_lookup {
