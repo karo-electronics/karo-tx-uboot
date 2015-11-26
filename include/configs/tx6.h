@@ -284,26 +284,31 @@
 #ifdef CONFIG_HARD_I2C
 #define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
 #define CONFIG_SYS_I2C_SPEED		400000
+#endif /* CONFIG_HARD_I2C */
 #if defined(CONFIG_TX6_REV)
 #if CONFIG_TX6_REV == 0x1
-#define CONFIG_SYS_I2C_SLAVE		0x3c
 #define CONFIG_LTC3676
 #elif CONFIG_TX6_REV == 0x2
-#define CONFIG_SYS_I2C_SLAVE		0x32
 #define CONFIG_RN5T618
 #elif CONFIG_TX6_REV == 0x3
-#define CONFIG_SYS_I2C_SLAVE		0x33
 #define CONFIG_RN5T567
 #else
 #error Unsupported TX6 module revision
 #endif
-#endif /* CONFIG_TX6_REV */
+#else /* CONFIG_TX6_REV */
 /* autodetect which PMIC is present to derive TX6_REV */
-#ifndef CONFIG_SOC_MX6UL
+#ifdef CONFIG_SOC_MX6UL
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_SOFT
+#define CONFIG_SYS_I2C_SOFT_SPEED	400000
+#define CONFIG_SOFT_I2C_GPIO_SCL	IMX_GPIO_NR(5, 0)
+#define CONFIG_SOFT_I2C_GPIO_SDA	IMX_GPIO_NR(5, 1)
+#define CONFIG_SOFT_I2C_READ_REPEATED_START
+#else
 #define CONFIG_LTC3676			/* TX6_REV == 1 */
 #endif
 #define CONFIG_RN5T567			/* TX6_REV == 3 */
-#endif /* CONFIG_HARD_I2C */
+#endif /* CONFIG_TX6_REV */
 
 #define CONFIG_ENV_OVERWRITE
 
