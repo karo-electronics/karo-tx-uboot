@@ -454,8 +454,6 @@ static int tx6_pmic_probe(void)
 
 	debug("%s@%d: \n", __func__, __LINE__);
 
-//	i2c_init_all();
-
 	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
 		u8 i2c_addr = tx6_mod_revs[i].addr;
 		int ret = i2c_probe(i2c_addr);
@@ -479,7 +477,7 @@ int board_init(void)
 	debug("%s@%d: \n", __func__, __LINE__);
 
 	pmic_id = tx6_pmic_probe();
-	if (pmic_id >= 0)
+	if (pmic_id >= 0 && pmic_id < ARRAY_SIZE(tx6_mod_revs))
 		pmic_addr = tx6_mod_revs[pmic_id].addr;
 
 	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
@@ -511,7 +509,7 @@ int board_init(void)
 		return 0;
 	}
 
-	ret = tx6_pmic_init(pmic_addr);
+	ret = tx6_pmic_init(pmic_addr, NULL, 0);
 	if (ret) {
 		printf("Failed to setup PMIC voltages: %d\n", ret);
 		hang();

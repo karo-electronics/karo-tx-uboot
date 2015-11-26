@@ -22,7 +22,7 @@
 
 static struct {
 	uchar addr;
-	int (*init)(uchar addr);
+	pmic_setup_func *init;
 } i2c_addrs[] = {
 #ifdef CONFIG_LTC3676
 	{ 0x3c, ltc3676_pmic_setup, },
@@ -35,7 +35,7 @@ static struct {
 #endif
 };
 
-int tx6_pmic_init(int addr)
+int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
 {
 	int ret = -ENODEV;
 	int i;
@@ -51,7 +51,7 @@ int tx6_pmic_init(int addr)
 		ret = i2c_probe(i2c_addr);
 		if (ret == 0) {
 			debug("Initializing PMIC at I2C addr 0x%02x\n", i2c_addr);
-			ret = i2c_addrs[i].init(i2c_addr);
+			ret = i2c_addrs[i].init(i2c_addr, regs, num_regs);
 			break;
 		}
 	}

@@ -103,11 +103,7 @@
 #define mV_to_regval(mV)	v2r((mV) * 10, 4125, 125)
 #define regval_to_mV(r)		r2v(r, 4125, 125)
 
-static struct ltc3676_regs {
-	u8 addr;
-	u8 val;
-	u8 mask;
-} ltc3676_regs[] = {
+static struct pmic_regs ltc3676_regs[] = {
 	{ LTC3676_MSKPG, ~LTC3676_MSKPG_BUCK1, },
 	{ LTC3676_DVB2B, VDD_SOC_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
 	{ LTC3676_DVB3B, VDD_DDR_VAL_LP, ~0x3f, },
@@ -122,12 +118,12 @@ static struct ltc3676_regs {
 	{ LTC3676_CLIRQ, 0, }, /* clear interrupt status */
 };
 
-static struct ltc3676_regs ltc3676_regs_1[] = {
+static struct pmic_regs ltc3676_regs_1[] = {
 	{ LTC3676_DVB1B, VDD_IO_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
 	{ LTC3676_DVB1A, VDD_IO_VAL, ~0x3f, },
 };
 
-static struct ltc3676_regs ltc3676_regs_2[] = {
+static struct pmic_regs ltc3676_regs_2[] = {
 	{ LTC3676_DVB1B, VDD_IO_VAL_2_LP | LTC3676_PGOOD_MASK, ~0x3f, },
 	{ LTC3676_DVB1A, VDD_IO_VAL_2, ~0x3f, },
 };
@@ -143,7 +139,7 @@ static int tx6_rev_2(void)
 	return pad_settings & 1;
 }
 
-static int ltc3676_setup_regs(uchar slave_addr, struct ltc3676_regs *r,
+static int ltc3676_setup_regs(uchar slave_addr, struct pmic_regs *r,
 			size_t count)
 {
 	int ret;
@@ -154,14 +150,14 @@ static int ltc3676_setup_regs(uchar slave_addr, struct ltc3676_regs *r,
 		unsigned char value;
 
 		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
-		if ((value & ~r->mask) != r->val) {
-			printf("Changing PMIC reg %02x from %02x to %02x\n",
-				r->addr, value, r->val);
-		}
 		if (ret) {
 			printf("%s: failed to read PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
 			return ret;
+		}
+		if ((value & ~r->mask) != r->val) {
+			printf("Changing PMIC reg %02x from %02x to %02x\n",
+				r->addr, value, r->val);
 		}
 #endif
 		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
@@ -170,11 +166,24 @@ static int ltc3676_setup_regs(uchar slave_addr, struct ltc3676_regs *r,
 				__func__, r->addr, ret);
 			return ret;
 		}
+#ifdef DEBUG
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
+		if (ret) {
+			printf("%s: failed to read PMIC register %02x: %d\n",
+				__func__, r->addr, ret);
+			return ret;
+		}
+		if (value != r->val) {
+			printf("Failed to set PMIC reg %02x to %02x; actual value: %02x\n",
+				r->addr, r->val, value);
+		}
+#endif
 	}
 	return 0;
 }
 
-int ltc3676_pmic_setup(uchar slave_addr)
+int ltc3676_pmic_setup(uchar slave_addr, struct pmic_regs *regs,
+			size_t count)
 {
 	int ret;
 	unsigned char value;

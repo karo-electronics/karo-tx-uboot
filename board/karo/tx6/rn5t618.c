@@ -36,8 +36,8 @@
 #define RN5T618_DC2DAC_SLP	0x3c
 #define RN5T618_DC3DAC_SLP	0x3d
 #define RN5T618_LDOEN1		0x44
+#define RN5T618_LDOEN2		0x45
 #define RN5T618_LDODIS		0x46
-#define RN5T618_LDOEN2		0x48
 #define RN5T618_LDO3DAC		0x4e /* IO */
 #define RN5T618_LDORTCDAC	0x56 /* VBACKUP */
 
@@ -71,11 +71,7 @@
 #define mV_to_regval_rtc(mV)	v2r((mV) * 10, 17000, 250)
 #define regval_rtc_to_mV(r)	r2v(r, 17000, 250)
 
-static struct rn5t618_regs {
-	u8 addr;
-	u8 val;
-	u8 mask;
-} rn5t618_regs[] = {
+static struct pmic_regs rn5t618_regs[] = {
 	{ RN5T618_NOETIMSET, 0, },
 	{ RN5T618_DC1DAC, VDD_CORE_VAL, },
 	{ RN5T618_DC2DAC, VDD_SOC_VAL, },
@@ -91,7 +87,7 @@ static struct rn5t618_regs {
 	{ RN5T618_LDORTC1_SLOT, 0x0f, ~0x3f, },
 };
 
-static int rn5t618_setup_regs(uchar slave_addr, struct rn5t618_regs *r,
+static int rn5t618_setup_regs(uchar slave_addr, struct pmic_regs *r,
 			size_t count)
 {
 	int ret;
@@ -102,14 +98,14 @@ static int rn5t618_setup_regs(uchar slave_addr, struct rn5t618_regs *r,
 		unsigned char value;
 
 		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
-		if ((value & ~r->mask) != r->val) {
-			printf("Changing PMIC reg %02x from %02x to %02x\n",
-				r->addr, value, r->val);
-		}
 		if (ret) {
 			printf("%s: failed to read PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
 			return ret;
+		}
+		if ((value & ~r->mask) != r->val) {
+			printf("Changing PMIC reg %02x from %02x to %02x\n",
+				r->addr, value, r->val);
 		}
 #endif
 		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
@@ -118,11 +114,24 @@ static int rn5t618_setup_regs(uchar slave_addr, struct rn5t618_regs *r,
 				__func__, r->addr, ret);
 			return ret;
 		}
+#ifdef DEBUG
+		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
+		if (ret) {
+			printf("%s: failed to read PMIC register %02x: %d\n",
+				__func__, r->addr, ret);
+			return ret;
+		}
+		if (value != r->val) {
+			printf("Failed to set PMIC reg %02x to %02x; actual value: %02x\n",
+				r->addr, r->val, value);
+		}
+#endif
 	}
 	return 0;
 }
 
-int rn5t618_pmic_setup(uchar slave_addr)
+int rn5t618_pmic_setup(uchar slave_addr, struct pmic_regs *regs,
+		size_t count)
 {
 	int ret;
 	unsigned char value;

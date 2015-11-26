@@ -15,8 +15,21 @@
  *
  */
 
-int ltc3676_pmic_setup(uchar addr);
-int rn5t618_pmic_setup(uchar addr);
-int rn5t567_pmic_setup(uchar addr);
+#ifdef CONFIG_RN5T567
+#include "rn5t567.h"
+#endif
 
-int tx6_pmic_init(int addr);
+struct pmic_regs {
+	u8 addr;
+	u8 val;
+	u8 mask;
+};
+
+typedef int pmic_setup_func(uchar addr, struct pmic_regs *regs,
+			size_t num_regs);
+
+int ltc3676_pmic_setup(uchar addr, struct pmic_regs *regs, size_t num_regs);
+int rn5t618_pmic_setup(uchar addr, struct pmic_regs *regs, size_t num_regs);
+int rn5t567_pmic_setup(uchar addr, struct pmic_regs *regs, size_t num_regs);
+
+int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs);

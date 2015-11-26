@@ -86,8 +86,11 @@ static const iomux_v3_cfg_t const tx6ul_pads[] = {
 	MX6_PAD_GPIO1_IO09__UART5_DCE_CTS,
 #endif
 	/* internal I2C */
-	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION, /* I2C SCL */
-	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION, /* I2C SDA */
+	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
+			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm), /* I2C SCL */
+	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
+			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm | PAD_CTL_HYS |
+			PAD_CTL_ODE), /* I2C SDA */
 
 	/* FEC PHY GPIO functions */
 	MX6_PAD_SNVS_TAMPER7__GPIO5_IO07 | MUX_CFG_SION, /* PHY POWER */
@@ -159,8 +162,6 @@ static const struct gpio const tx6ul_gpios[] = {
 	{ TX6UL_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },
 };
 
-static int pmic_addr __maybe_unused __data = 0x3c;
-
 #define GPIO_DR 0
 #define GPIO_DIR 4
 #define GPIO_PSR 8
@@ -223,7 +224,6 @@ static void tx6_i2c_recover(void)
 				SCL_BIT | SDA_BIT);
 		}
 	}
-	debug("Setting up I2C Pads\n");
 }
 
 /* placed in section '.data' to prevent overwriting relocation info
@@ -397,6 +397,36 @@ static inline u8 tx6ul_mem_suffix(void)
 #endif
 }
 
+/* PMIC settings */
+#define VDD_RTC_VAL		rn5t_mV_to_regval_rtc(3000)
+#define VDD_CORE_VAL		rn5t_mV_to_regval(1300)		/* DCDC1 */
+#define VDD_CORE_VAL_LP		rn5t_mV_to_regval(900)
+#define VDD_DDR_VAL		rn5t_mV_to_regval(1350)		/* DCDC3 */
+#define VDD_DDR_VAL_LP		rn5t_mV_to_regval(1350)
+#define VDD_HIGH_VAL		rn5t_mV_to_regval(3300)		/* DCDC4 */
+#define VDD_HIGH_VAL_LP		rn5t_mV_to_regval(3300)
+#define VDD_CSI_VAL		rn5t_mV_to_regval2(3300)	/* LDO4 */
+#define VDD_CSI_VAL_LP		rn5t_mV_to_regval2(3300)
+
+static struct pmic_regs rn5t567_regs[] = {
+	{ RN5T567_NOETIMSET, NOETIMSET_DIS_OFF_NOE_TIM | 0x5, },
+	{ RN5T567_DC2CTL, DC2_DC2DIS, },
+	{ RN5T567_DC1DAC, VDD_CORE_VAL, },
+	{ RN5T567_DC3DAC, VDD_DDR_VAL, },
+	{ RN5T567_DC4DAC, VDD_HIGH_VAL, },
+	{ RN5T567_DC1DAC_SLP, VDD_CORE_VAL_LP, },
+	{ RN5T567_DC3DAC_SLP, VDD_DDR_VAL_LP, },
+	{ RN5T567_DC4DAC_SLP, VDD_HIGH_VAL_LP, },
+	{ RN5T567_LDOEN1, 0x01f, ~0x1f, },
+	{ RN5T567_LDOEN2, 0x10, ~0x30, },
+	{ RN5T567_LDODIS, 0x00, },
+	{ RN5T567_LDO4DAC, VDD_CSI_VAL, },
+	{ RN5T567_LDORTC1DAC, VDD_RTC_VAL, },
+	{ RN5T567_LDORTC1_SLOT, 0x0f, ~0x3f, },
+};
+
+static int pmic_addr __maybe_unused = 0x33;
+
 int board_init(void)
 {
 	int ret;
@@ -428,13 +458,12 @@ int board_init(void)
 #endif
 		return 0;
 	}
-#if 0
-	ret = tx6_pmic_init(pmic_addr);
+
+	ret = tx6_pmic_init(pmic_addr, rn5t567_regs, ARRAY_SIZE(rn5t567_regs));
 	if (ret) {
 		printf("Failed to setup PMIC voltages: %d\n", ret);
 		hang();
 	}
-#endif
 	return 0;
 }
 
