@@ -621,7 +621,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	hdr_size = get_unaligned_le16(&bmp->header.size);
 	debug("hdr_size=%d, bmp_bpix=%d\n", hdr_size, bmp_bpix);
 
-	colors = 1 << bmp_bpix;
+	colors = 1ULL << bmp_bpix;
 
 	bpix = NBITS(panel_info.vl_bpix);
 
@@ -644,8 +644,8 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		return 1;
 	}
 
-	debug("Display-bmp: %lu x %lu  with %llu colors, display %d\n",
-		width, height, colors, NBITS(bmp_bpix));
+	debug("Display-bmp: %lu x %lu  with %llu colors, display %llu\n",
+		width, height, colors, 1ULL << bpix);
 
 	if (bmp_bpix == 8)
 		lcd_set_cmap(bmp, colors);
