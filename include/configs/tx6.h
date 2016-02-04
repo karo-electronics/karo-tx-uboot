@@ -281,6 +281,8 @@
 #ifndef CONFIG_SOC_MX6UL
 #define CONFIG_FEC_MXC_PHYADDR		0
 #define IMX_FEC_BASE			ENET_BASE_ADDR
+#else
+#define FEC_MDIO_BASE_ADDR		ENET_BASE_ADDR
 #endif
 #define CONFIG_FEC_XCV_TYPE		RMII
 #endif
