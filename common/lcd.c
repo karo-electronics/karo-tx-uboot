@@ -418,17 +418,18 @@ static inline void lcd_logo_plot(int x, int y) {}
 static void splash_align_axis(int *axis, unsigned long panel_size,
 					unsigned long picture_size)
 {
-	unsigned long panel_picture_delta = panel_size - picture_size;
-	unsigned long axis_alignment;
+	int panel_picture_delta = panel_size - picture_size;
+	int axis_alignment;
 
 	if (*axis == BMP_ALIGN_CENTER)
 		axis_alignment = panel_picture_delta / 2;
+	else if (abs(*axis) > (int)panel_size)
+		axis_alignment = panel_size;
 	else if (*axis < 0)
 		axis_alignment = panel_picture_delta + *axis + 1;
 	else
 		return;
-
-	*axis = max(0, (int)axis_alignment);
+	*axis = axis_alignment;
 }
 #endif
 
@@ -658,11 +659,21 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 	bmap = (uchar *)bmp + get_unaligned_le32(&bmp->header.data_offset);
 
-	if ((x + width) > pwidth)
+	if (x < 0) {
+		width += x;
+		bmap += -x * bmp_bpix / 8;
+		x = 0;
+	}
+	if ((x + width) > pwidth) {
 		width = pwidth - x;
+	}
+	if (y < 0) {
+		height += y;
+		y = 0;
+	}
 	if ((y + height) > panel_info.vl_row) {
+		bmap += (y + height - panel_info.vl_row) * bmp_bpix / 8 * padded_width;
 		height = panel_info.vl_row - y;
-		bmap += (panel_info.vl_row - y) * padded_width;
 	}
 
 	fb   = (uchar *)(lcd_base +
