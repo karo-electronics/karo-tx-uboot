@@ -637,9 +637,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	 * We support displaying 8bpp BMPs on 16bpp LCDs
 	 * and displaying 24bpp BMPs on 32bpp LCDs
 	 * */
-	if (bpix != bmp_bpix &&
-	    !(bmp_bpix == 8 && bpix == 16) &&
-	    !(bmp_bpix == 24 && bpix == 32)) {
+	if (bpix < bmp_bpix) {
 		printf ("Error: %d bit/pixel mode, but BMP has %d bit/pixel\n",
 			bpix, get_unaligned_le16(&bmp->header.bit_count));
 		return 1;
@@ -700,9 +698,9 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		for (i = 0; i < height; ++i) {
 			WATCHDOG_RESET();
 			for (j = 0; j < width; j++) {
-				if (bpix != 16) {
+				if (bpix == 8) {
 					fb_put_byte(&fb, &bmap);
-				} else {
+				} else if (bpix == 16) {
 					struct bmp_color_table_entry *entry;
 					uint val;
 
@@ -715,17 +713,27 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 							entry->red >> 3 << 11;
 					}
 					*(uint16_t *)fb = val;
-					bmap++;
 					fb += sizeof(uint16_t) / sizeof(*fb);
+				} else if (bpix == 32) {
+					uint32_t *fb32 = (uint32_t *)fb;
+					struct bmp_color_table_entry *entry;
+					uint val;
+
+					if (cmap_base) {
+						val = cmap_base[*bmap];
+					} else {
+						entry = &palette[*bmap];
+						val = entry->blue |
+							entry->green << 8 |
+							entry->red << 16;
+					}
+					*fb32 = val;
+					fb += sizeof(uint32_t) / sizeof(*fb);
 				}
+				bmap++;
 			}
-			if (bpix > 8) {
-				bmap += padded_width - width;
-				fb   -= width * bpix / 8 + lcd_line_length;
-			} else {
-				bmap += padded_width;
-				fb -= lcd_line_length;
-			}
+			bmap += padded_width - width;
+			fb   -= width * bpix / 8 + lcd_line_length;
 		}
 		break;
 	}
@@ -750,6 +758,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 				*(fb++) = *(bmap++);
 				*(fb++) = 0;
 			}
+			bmap += (padded_width - width) * 3;
 			fb -= lcd_line_length + width * (bpix / 8);
 		}
 		break;
@@ -770,6 +779,9 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		}
 		break;
 #endif /* CONFIG_BMP_32BPP */
+	default:
+		printf("Logo with %ubpp on %ubpp display not supported\n",
+			bmp_bpix, bpix);
 	};
 
 	lcd_sync();
