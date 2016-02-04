@@ -1107,12 +1107,14 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 	if (!bus)
 		return -ENOMEM;
 #ifdef CONFIG_PHYLIB
-	phydev = phy_find_by_mask(bus, phy_id < 0 ? 0xff : (1 << phy_id),
+	static u8 phy_mask = 0xff;
+	phydev = phy_find_by_mask(bus, phy_id < 0 ? phy_mask : (1 << phy_id),
 				PHY_INTERFACE_MODE_RGMII);
 	if (!phydev) {
 		free(bus);
 		return -ENOMEM;
 	}
+	phy_mask &= ~(1 << phydev->addr);
 	ret = fec_probe(bd, dev_id, addr, bus, phydev);
 #else
 	ret = fec_probe(bd, dev_id, addr, bus, phy_id);
