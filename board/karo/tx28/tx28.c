@@ -402,14 +402,12 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
-static ushort tx28_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 1600,
 	.vl_row = 1200,
 
 	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
-	.cmap = tx28_cmap,
 };
 
 static struct fb_videomode tx28_fb_modes[] = {

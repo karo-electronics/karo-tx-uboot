@@ -162,14 +162,12 @@ static const struct gpio stk5v5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
-static u16 tx48_cmap[256];
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
 	.vl_col = 1366,
 	.vl_row = 768,
 
 	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
-	.cmap = tx48_cmap,
 };
 
 static struct lcd_ctrl_config lcd_cfg = {
