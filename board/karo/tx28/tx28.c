@@ -879,7 +879,8 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		ret = -EINVAL;
+		if (!had_ctrlc())
+			ret = -EINVAL;
 	}
 
 exit:
