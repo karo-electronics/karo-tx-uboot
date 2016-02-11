@@ -167,10 +167,8 @@ rtc_err:
 
 int board_init(void)
 {
-	if (ctrlc()) {
+	if (ctrlc())
 		printf("CTRL-C detected; safeboot enabled\n");
-		return 1;
-	}
 
 	/* Address of boot parameters */
 #ifdef CONFIG_OF_LIBFDT
