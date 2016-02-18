@@ -496,7 +496,7 @@ int board_init(void)
 			printf("WDOG RESET detected; Skipping PMIC setup\n");
 		else
 			printf("<CTRL-C> detected; safeboot enabled\n");
-		return 1;
+		return 0;
 	}
 
 	ret = setup_pmic_voltages();
@@ -1330,7 +1330,6 @@ static void tx53_init_mac(void)
 
 int board_late_init(void)
 {
-	int ret = 0;
 	const char *baseboard;
 
 	env_cleanup();
@@ -1370,7 +1369,8 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		ret = -EINVAL;
+		if (!had_ctrlc())
+			return -EINVAL;
 	}
 
 exit:
@@ -1381,7 +1381,7 @@ exit:
 
 	get_hab_status();
 
-	return ret;
+	return 0;
 }
 
 int checkboard(void)
