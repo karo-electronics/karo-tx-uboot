@@ -1280,7 +1280,6 @@ static void tx6ul_set_cpu_clock(void)
 
 int board_late_init(void)
 {
-	int ret = 0;
 	const char *baseboard;
 
 	debug("%s@%d: \n", __func__, __LINE__);
@@ -1325,7 +1324,8 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		ret = -EINVAL;
+		if (!had_ctrlc())
+			return -EINVAL;
 	}
 
 exit:
@@ -1334,7 +1334,7 @@ exit:
 	debug("%s@%d: \n", __func__, __LINE__);
 
 	clear_ctrlc();
-	return ret;
+	return 0;
 }
 
 #ifdef CONFIG_SERIAL_TAG

@@ -1378,7 +1378,6 @@ static void tx6qdl_set_cpu_clock(void)
 
 int board_late_init(void)
 {
-	int ret = 0;
 	const char *baseboard;
 
 	debug("%s@%d: \n", __func__, __LINE__);
@@ -1423,7 +1422,8 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		ret = -EINVAL;
+		if (!had_ctrlc())
+			return -EINVAL;
 	}
 
 exit:
@@ -1431,7 +1431,7 @@ exit:
 
 	gpio_set_value(TX6_RESET_OUT_GPIO, 1);
 	clear_ctrlc();
-	return ret;
+	return 0;
 }
 
 #ifdef CONFIG_SERIAL_TAG
