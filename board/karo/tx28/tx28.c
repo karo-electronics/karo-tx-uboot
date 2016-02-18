@@ -24,6 +24,7 @@
 #include <netdev.h>
 #include <mmc.h>
 #include <mxcfb.h>
+#include <video_fb.h>
 #include <linux/list.h>
 #include <linux/fb.h>
 #include <asm/io.h>
@@ -167,10 +168,8 @@ rtc_err:
 
 int board_init(void)
 {
-	if (ctrlc()) {
+	if (ctrlc())
 		printf("CTRL-C detected; safeboot enabled\n");
-		return 1;
-	}
 
 	/* Address of boot parameters */
 #ifdef CONFIG_OF_LIBFDT
@@ -625,8 +624,6 @@ static const struct gpio stk5_lcd_gpios[] = {
 	{ TX28_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
 
-extern void video_hw_init(void *lcdbase);
-
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
@@ -810,7 +807,7 @@ void lcd_ctrl_init(void *lcdbase)
 		setenv("videomode", vmode);
 
 		debug("Initializing LCD controller\n");
-		video_hw_init(lcdbase);
+		video_hw_init();
 		setenv("videomode", NULL);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
@@ -879,7 +876,8 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		ret = -EINVAL;
+		if (!had_ctrlc())
+			ret = -EINVAL;
 	}
 
 exit:
