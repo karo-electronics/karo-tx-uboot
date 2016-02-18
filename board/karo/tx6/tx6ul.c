@@ -592,6 +592,12 @@ int board_mmc_init(bd_t *bis)
 
 	debug("%s@%d: \n", __func__, __LINE__);
 
+#ifndef CONFIG_ENV_IS_IN_MMC
+	if (!(gd->flags & GD_FLG_ENV_READY)) {
+		printf("deferred ...");
+		return 0;
+	}
+#endif
 	for (i = 0; i < ARRAY_SIZE(tx6ul_esdhc_cfg); i++) {
 		struct mmc *mmc;
 		struct tx6_esdhc_cfg *cfg = &tx6ul_esdhc_cfg[i];
@@ -1171,6 +1177,20 @@ void lcd_ctrl_init(void *lcdbase)
 #define lcd_enabled 0
 #endif /* CONFIG_LCD */
 
+#ifndef CONFIG_ENV_IS_IN_MMC
+static void tx6_mmc_init(void)
+{
+	puts("MMC:   ");
+	if (board_mmc_init(gd->bd) < 0)
+		cpu_mmc_init(gd->bd);
+	print_mmc_devices(',');
+}
+#else
+static inline void tx6_mmc_init(void)
+{
+}
+#endif
+
 static void stk5_board_init(void)
 {
 	int ret;
@@ -1189,6 +1209,7 @@ static void stk5v3_board_init(void)
 	debug("%s@%d: \n", __func__, __LINE__);
 	stk5_board_init();
 	debug("%s@%d: \n", __func__, __LINE__);
+	tx6_mmc_init();
 }
 
 static void stk5v5_board_init(void)
@@ -1196,6 +1217,7 @@ static void stk5v5_board_init(void)
 	int ret;
 
 	stk5_board_init();
+	tx6_mmc_init();
 
 	ret = gpio_request_one(IMX_GPIO_NR(3, 5), GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
