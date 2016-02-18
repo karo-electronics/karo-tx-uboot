@@ -148,8 +148,10 @@ static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
 
 static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
 	/* internal I2C */
-	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION | MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
-	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION | MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
+	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
+			MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
+	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
+			MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
 };
 
 static const struct gpio const tx6ul_gpios[] = {
@@ -1215,14 +1217,14 @@ static void stk5_board_init(void)
 		return;
 	}
 	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
-debug("%s@%d: \n", __func__, __LINE__);
+	debug("%s@%d: \n", __func__, __LINE__);
 }
 
 static void stk5v3_board_init(void)
 {
-debug("%s@%d: \n", __func__, __LINE__);
+	debug("%s@%d: \n", __func__, __LINE__);
 	stk5_board_init();
-debug("%s@%d: \n", __func__, __LINE__);
+	debug("%s@%d: \n", __func__, __LINE__);
 }
 
 static void stk5v5_board_init(void)
@@ -1314,9 +1316,9 @@ int board_late_init(void)
 	}
 
 exit:
-debug("%s@%d: \n", __func__, __LINE__);
+	debug("%s@%d: \n", __func__, __LINE__);
 	tx6_init_mac();
-debug("%s@%d: \n", __func__, __LINE__);
+	debug("%s@%d: \n", __func__, __LINE__);
 
 	clear_ctrlc();
 	return ret;
