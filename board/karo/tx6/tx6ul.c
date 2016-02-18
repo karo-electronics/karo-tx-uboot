@@ -34,6 +34,10 @@
 #define TX6UL_FEC_RST_GPIO		IMX_GPIO_NR(5, 6)
 #define TX6UL_FEC_PWR_GPIO		IMX_GPIO_NR(5, 7)
 #define TX6UL_FEC_INT_GPIO		IMX_GPIO_NR(5, 5)
+
+#define TX6UL_FEC2_RST_GPIO		IMX_GPIO_NR(4, 28)
+#define TX6UL_FEC2_INT_GPIO		IMX_GPIO_NR(4, 27)
+
 #define TX6UL_LED_GPIO			IMX_GPIO_NR(5, 9)
 
 #define TX6UL_LCD_PWR_GPIO		IMX_GPIO_NR(5, 4)
@@ -127,7 +131,9 @@ static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
 	MX6_PAD_ENET1_TX_EN__ENET1_TX_EN | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
 	MX6_PAD_ENET1_TX_DATA1__ENET1_TDATA01 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
 	MX6_PAD_ENET1_TX_DATA0__ENET1_TDATA00 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
+};
 
+static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
 	MX6_PAD_ENET2_TX_CLK__ENET2_REF_CLK2 | MUX_CFG_SION |
 				MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |
 				PAD_CTL_DSE_48ohm |
@@ -162,6 +168,11 @@ static const struct gpio const tx6ul_gpios[] = {
 	{ TX6UL_FEC_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
 	{ TX6UL_FEC_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY RESET", },
 	{ TX6UL_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },
+};
+
+static const struct gpio const tx6ul_fec2_gpios[] = {
+	{ TX6UL_FEC2_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC2 PHY RESET", },
+	{ TX6UL_FEC2_INT_GPIO, GPIOFLAG_INPUT, "FEC2 PHY INT", },
 };
 
 #define GPIO_DR 0
@@ -611,66 +622,6 @@ int board_mmc_init(bd_t *bis)
 	return 0;
 }
 #endif /* CONFIG_CMD_MMC */
-
-#ifdef CONFIG_FEC_MXC
-
-#ifndef ETH_ALEN
-#define ETH_ALEN 6
-#endif
-
-int board_eth_init(bd_t *bis)
-{
-	int ret;
-
-	debug("%s@%d: \n", __func__, __LINE__);
-
-	/* delay at least 21ms for the PHY internal POR signal to deassert */
-	udelay(22000);
-
-	imx_iomux_v3_setup_multiple_pads(tx6ul_enet1_pads,
-					ARRAY_SIZE(tx6ul_enet1_pads));
-
-	/* Deassert RESET to the external phy */
-	gpio_set_value(TX6UL_FEC_RST_GPIO, 1);
-
-	if (getenv("ethaddr")) {
-		ret = fecmxc_initialize_multi(bis, 0, -1, ENET_BASE_ADDR);
-		if (ret) {
-			printf("failed to initialize FEC0: %d\n", ret);
-			return ret;
-		}
-	}
-	if (getenv("eth1addr")) {
-		ret = fecmxc_initialize_multi(bis, 1, -1, ENET2_BASE_ADDR);
-		if (ret) {
-			printf("failed to initialize FEC1: %d\n", ret);
-			return ret;
-		}
-	}
-	return 0;
-}
-
-static void tx6_init_mac(void)
-{
-	u8 mac[ETH_ALEN];
-
-	imx_get_mac_from_fuse(0, mac);
-	if (!is_valid_ethaddr(mac)) {
-		printf("No valid MAC address programmed\n");
-		return;
-	}
-
-	printf("MAC addr from fuse: %pM\n", mac);
-	eth_setenv_enetaddr("ethaddr", mac);
-
-	imx_get_mac_from_fuse(1, mac);
-	eth_setenv_enetaddr("eth1addr", mac);
-}
-#else
-static inline void tx6_init_mac(void)
-{
-}
-#endif /* CONFIG_FEC_MXC */
 
 enum {
 	LED_STATE_INIT = -1,
@@ -1330,12 +1281,89 @@ int board_late_init(void)
 
 exit:
 	debug("%s@%d: \n", __func__, __LINE__);
-	tx6_init_mac();
-	debug("%s@%d: \n", __func__, __LINE__);
 
 	clear_ctrlc();
 	return 0;
 }
+
+#ifdef CONFIG_FEC_MXC
+
+#ifndef ETH_ALEN
+#define ETH_ALEN 6
+#endif
+
+static void tx6_init_mac(void)
+{
+	u8 mac[ETH_ALEN];
+	const char *baseboard = getenv("baseboard");
+
+	imx_get_mac_from_fuse(0, mac);
+	if (!is_valid_ethaddr(mac)) {
+		printf("No valid MAC address programmed\n");
+		return;
+	}
+	printf("MAC addr from fuse: %pM\n", mac);
+	if (!getenv("ethaddr"))
+		eth_setenv_enetaddr("ethaddr", mac);
+
+	if (!baseboard || strncmp(baseboard, "stk5", 4) == 0) {
+		setenv("eth1addr", NULL);
+		return;
+	}
+	if (getenv("eth1addr"))
+		return;
+	imx_get_mac_from_fuse(1, mac);
+	eth_setenv_enetaddr("eth1addr", mac);
+}
+
+int board_eth_init(bd_t *bis)
+{
+	int ret;
+
+	tx6_init_mac();
+
+	/* delay at least 21ms for the PHY internal POR signal to deassert */
+	udelay(22000);
+
+	imx_iomux_v3_setup_multiple_pads(tx6ul_enet1_pads,
+					ARRAY_SIZE(tx6ul_enet1_pads));
+
+	/* Deassert RESET to the external phys */
+	gpio_set_value(TX6UL_FEC_RST_GPIO, 1);
+
+	if (getenv("ethaddr")) {
+		ret = fecmxc_initialize_multi(bis, 0, 0, ENET_BASE_ADDR);
+		if (ret) {
+			printf("failed to initialize FEC0: %d\n", ret);
+			return ret;
+		}
+	}
+	if (getenv("eth1addr")) {
+		ret = gpio_request_array(tx6ul_fec2_gpios,
+					ARRAY_SIZE(tx6ul_fec2_gpios));
+		if (ret < 0) {
+			printf("Failed to request tx6ul_fec2_gpios: %d\n", ret);
+		}
+		imx_iomux_v3_setup_multiple_pads(tx6ul_enet2_pads,
+						ARRAY_SIZE(tx6ul_enet2_pads));
+
+		writel(0x00100000, 0x020c80e4); /* assert ENET2_125M_EN */
+
+		/* Minimum PHY reset duration */
+		udelay(100);
+		gpio_set_value(TX6UL_FEC2_RST_GPIO, 1);
+		/* Wait for PHY internal POR to finish */
+		udelay(22000);
+
+		ret = fecmxc_initialize_multi(bis, 1, 2, ENET2_BASE_ADDR);
+		if (ret) {
+			printf("failed to initialize FEC1: %d\n", ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+#endif /* CONFIG_FEC_MXC */
 
 #ifdef CONFIG_SERIAL_TAG
 void get_board_serial(struct tag_serialnr *serialnr)
