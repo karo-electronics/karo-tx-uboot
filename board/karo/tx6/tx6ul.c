@@ -1294,6 +1294,15 @@ int board_late_init(void)
 			printf("WARNING: Unsupported STK5 board rev.: %s\n",
 				baseboard + 4);
 		}
+	} else if (strncmp(baseboard, "ulmb-", 5) == 0) {
+			const char *otg_mode = getenv("otg_mode");
+
+			if (otg_mode && strcmp(otg_mode, "host") == 0) {
+				printf("otg_mode='%s' is incompatible with baseboard %s; setting to 'none'\n",
+					otg_mode, baseboard);
+				setenv("otg_mode", "none");
+			}
+			stk5_board_init();
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
