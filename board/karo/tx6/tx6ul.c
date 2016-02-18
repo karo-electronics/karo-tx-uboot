@@ -168,6 +168,7 @@ static const struct gpio const tx6ul_gpios[] = {
 #define GPIO_DIR 4
 #define GPIO_PSR 8
 
+/* run with default environment */
 static void tx6_i2c_recover(void)
 {
 	int i;
@@ -948,47 +949,14 @@ static int lcd_backlight_polarity(void)
 	return lcd_bl_polarity;
 }
 
-void lcd_enable(void)
-{
-	/* HACK ALERT:
-	 * global variable from common/lcd.c
-	 * Set to 0 here to prevent messages from going to LCD
-	 * rather than serial console
-	 */
-	lcd_is_enabled = 0;
-
-	if (lcd_enabled) {
-		karo_load_splashimage(1);
-
-		debug("Switching LCD on\n");
-		gpio_set_value(TX6UL_LCD_PWR_GPIO, 1);
-		udelay(100);
-		gpio_set_value(TX6UL_LCD_RST_GPIO, 1);
-		udelay(300000);
-		gpio_set_value(TX6UL_LCD_BACKLIGHT_GPIO,
-			lcd_backlight_polarity());
-	}
-}
-
-void lcd_disable(void)
-{
-	if (lcd_enabled) {
-		printf("Disabling LCD\n");
-		panel_info.vl_row = 0;
-		lcd_enabled = 0;
-	}
-}
-
 static const iomux_v3_cfg_t stk5_lcd_pads[] = {
-#if 1
+#ifdef CONFIG_LCD
 	/* LCD RESET */
-	MX6_PAD_LCD_RESET__LCDIF_RESET,
+	MX6_PAD_LCD_RESET__GPIO3_IO04 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL),
 	/* LCD POWER_ENABLE */
 	MX6_PAD_SNVS_TAMPER4__GPIO5_IO04 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL),
 	/* LCD Backlight (PWM) */
 	MX6_PAD_NAND_DQS__GPIO4_IO16 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL),
-#endif
-#ifdef CONFIG_LCD
 	/* Display */
 	MX6_PAD_LCD_DATA00__LCDIF_DATA00,
 	MX6_PAD_LCD_DATA01__LCDIF_DATA01,
@@ -1026,6 +994,38 @@ static const struct gpio stk5_lcd_gpios[] = {
 	{ TX6UL_LCD_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LCD POWER", },
 	{ TX6UL_LCD_BACKLIGHT_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "LCD BACKLIGHT", },
 };
+
+/* run with valid env from NAND/eMMC */
+void lcd_enable(void)
+{
+	/* HACK ALERT:
+	 * global variable from common/lcd.c
+	 * Set to 0 here to prevent messages from going to LCD
+	 * rather than serial console
+	 */
+	lcd_is_enabled = 0;
+
+	if (lcd_enabled) {
+		karo_load_splashimage(1);
+
+		debug("Switching LCD on\n");
+		gpio_set_value(TX6UL_LCD_PWR_GPIO, 1);
+		udelay(100);
+		gpio_set_value(TX6UL_LCD_RST_GPIO, 1);
+		udelay(300000);
+		gpio_set_value(TX6UL_LCD_BACKLIGHT_GPIO,
+			lcd_backlight_polarity());
+	}
+}
+
+static void lcd_disable(void)
+{
+	if (lcd_enabled) {
+		printf("Disabling LCD\n");
+		panel_info.vl_row = 0;
+		lcd_enabled = 0;
+	}
+}
 
 void lcd_ctrl_init(void *lcdbase)
 {
