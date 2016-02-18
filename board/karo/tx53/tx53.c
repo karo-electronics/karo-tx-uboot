@@ -496,7 +496,7 @@ int board_init(void)
 			printf("WDOG RESET detected; Skipping PMIC setup\n");
 		else
 			printf("<CTRL-C> detected; safeboot enabled\n");
-		return 1;
+		return 0;
 	}
 
 	ret = setup_pmic_voltages();
