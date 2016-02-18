@@ -386,7 +386,7 @@ static int tx6_prog_uboot(void *addr, int start_block, int skip,
 	if (doit) {
 		actual = size;
 		ret = nand_write_skip_bad(mtd, prg_start, &actual, NULL,
-					prg_length, addr, WITH_DROP_FFS);
+					prg_length, addr, 0);
 		if (ret) {
 			printf("Failed to program flash: %d\n", ret);
 			return ret;

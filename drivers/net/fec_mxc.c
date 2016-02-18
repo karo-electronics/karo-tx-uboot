@@ -1091,12 +1091,14 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 #endif
 	int ret;
 
-#ifdef CONFIG_SOC_MX28
+#if defined(CONFIG_SOC_MX28)
 	/*
 	 * The i.MX28 has two ethernet interfaces, but they are not equal.
 	 * Only the first one can access the MDIO bus.
 	 */
 	base_mii = MXS_ENET0_BASE;
+#elif defined(FEC_MDIO_BASE_ADDR)
+	base_mii = FEC_MDIO_BASE_ADDR;
 #else
 	base_mii = addr;
 #endif
@@ -1105,12 +1107,14 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 	if (!bus)
 		return -ENOMEM;
 #ifdef CONFIG_PHYLIB
-	phydev = phy_find_by_mask(bus, phy_id < 0 ? 0xff : (1 << phy_id),
+	static u8 phy_mask = 0xff;
+	phydev = phy_find_by_mask(bus, phy_id < 0 ? phy_mask : (1 << phy_id),
 				PHY_INTERFACE_MODE_RGMII);
 	if (!phydev) {
 		free(bus);
 		return -ENOMEM;
 	}
+	phy_mask &= ~(1 << phydev->addr);
 	ret = fec_probe(bd, dev_id, addr, bus, phydev);
 #else
 	ret = fec_probe(bd, dev_id, addr, bus, phy_id);
