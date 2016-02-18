@@ -711,11 +711,8 @@ static const iomux_v3_cfg_t stk5_pads[] = {
 static const struct gpio stk5_gpios[] = {
 	{ TX6UL_LED_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "HEARTBEAT LED", },
 
-	{ IMX_GPIO_NR(3, 23), GPIOFLAG_INPUT, "USBOTG ID", },
-	{ IMX_GPIO_NR(1, 8), GPIOFLAG_INPUT, "USBOTG OC", },
-	{ IMX_GPIO_NR(1, 7), GPIOFLAG_OUTPUT_INIT_LOW, "USBOTG VBUS enable", },
-	{ IMX_GPIO_NR(3, 30), GPIOFLAG_INPUT, "USBH1 OC", },
-	{ IMX_GPIO_NR(3, 31), GPIOFLAG_OUTPUT_INIT_LOW, "USBH1 VBUS enable", },
+	{ IMX_GPIO_NR(1, 27), GPIOFLAG_INPUT, "USBOTG OC", },
+	{ IMX_GPIO_NR(1, 26), GPIOFLAG_OUTPUT_INIT_LOW, "USBOTG VBUS enable", },
 };
 
 #ifdef CONFIG_LCD
