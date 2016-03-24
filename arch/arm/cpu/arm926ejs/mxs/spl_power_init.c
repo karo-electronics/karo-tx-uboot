@@ -324,8 +324,6 @@ static void mxs_src_power_init(void)
 {
 	debug("SPL: Pre-Configuring power block\n");
 
-	debug("SPL: Pre-Configuring power block\n");
-
 	/* Improve efficieny and reduce transient ripple */
 	writel(POWER_LOOPCTRL_TOGGLE_DIF | POWER_LOOPCTRL_EN_CM_HYST |
 		POWER_LOOPCTRL_EN_DF_HYST, &power_regs->hw_power_loopctrl_set);
@@ -368,8 +366,6 @@ static void mxs_src_power_init(void)
  */
 static void mxs_power_init_4p2_params(void)
 {
-	debug("SPL: Configuring common 4P2 regulator params\n");
-
 	debug("SPL: Configuring common 4P2 regulator params\n");
 
 	/* Setup 4P2 parameters */
@@ -596,8 +592,6 @@ static void mxs_power_init_dcdc_4p2_source(void)
 {
 	debug("SPL: Switching DC-DC converters to 4P2\n");
 
-	debug("SPL: Switching DC-DC converters to 4P2\n");
-
 	if (!(readl(&power_regs->hw_power_dcdc4p2) &
 		POWER_DCDC4P2_ENABLE_DCDC)) {
 		debug("SPL: Already switched - aborting\n");
@@ -695,8 +689,6 @@ static void mxs_boot_valid_5v(void)
 {
 	debug("SPL: Booting from 5V supply\n");
 
-	debug("SPL: Booting from 5V supply\n");
-
 	/*
 	 * Use VBUSVALID level instead of VDD5V_GT_VDDIO level to trigger a 5V
 	 * disconnect event. FIXME
@@ -737,8 +729,6 @@ static void mxs_powerdown(void)
  */
 static void mxs_batt_boot(void)
 {
-	debug("SPL: Configuring power block to boot from battery\n");
-
 	debug("SPL: Configuring power block to boot from battery\n");
 
 	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_PWDN_5VBRNOUT);
@@ -844,8 +834,6 @@ static void mxs_5v_boot(void)
 {
 	debug("SPL: Configuring power block to boot from 5V input\n");
 
-	debug("SPL: Configuring power block to boot from 5V input\n");
-
 	/*
 	 * NOTE: In original IMX-Bootlets, this also checks for VBUSVALID,
 	 * but their implementation always returns 1 so we omit it here.
@@ -907,8 +895,6 @@ static void mxs_init_batt_bo(void)
 {
 	debug("SPL: Initialising battery brown-out level to 3.0V\n");
 
-	debug("SPL: Initialising battery brown-out level to 3.0V\n");
-
 	/* Brownout at 3V */
 	clrsetbits_le32(&power_regs->hw_power_battmonitor,
 		POWER_BATTMONITOR_BRWNOUT_LVL_MASK,
@@ -926,8 +912,6 @@ static void mxs_init_batt_bo(void)
  */
 static void mxs_switch_vddd_to_dcdc_source(void)
 {
-	debug("SPL: Switching VDDD to DC-DC converters\n");
-
 	debug("SPL: Switching VDDD to DC-DC converters\n");
 
 	clrsetbits_le32(&power_regs->hw_power_vdddctrl,
@@ -1009,8 +993,6 @@ static void mxs_power_configure_power_source(void)
  */
 static void mxs_enable_output_rail_protection(void)
 {
-	debug("SPL: Enabling output rail protection\n");
-
 	debug("SPL: Enabling output rail protection\n");
 
 	writel(POWER_CTRL_VDDD_BO_IRQ | POWER_CTRL_VDDA_BO_IRQ |
@@ -1351,8 +1333,6 @@ static void mxs_ungate_power(void)
 
 void mxs_power_init(void)
 {
-	debug("SPL: Initialising Power Block\n");
-
 	debug("SPL: Initialising Power Block\n");
 
 	mxs_ungate_power();
