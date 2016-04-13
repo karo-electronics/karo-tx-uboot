@@ -306,6 +306,8 @@ int enable_spi_clk(unsigned char enable, unsigned spi_num)
 static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 {
 	u32 div, post_div;
+	u32 pll_num, pll_denom;
+	u64 freq;
 
 	switch (pll) {
 	case PLL_ARM:
@@ -332,24 +334,46 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 		return infreq * (20 + div * 2);
 	case PLL_AUDIO:
 		div = __raw_readl(&anatop->pll_audio);
+		/* BM_ANADIG_PLL_AUDIO_BYPASS_CLK_SRC is ignored */
 		if (div & BM_ANADIG_PLL_AUDIO_BYPASS)
 			return infreq;
+
+		pll_num = __raw_readl(&anatop->pll_audio_num);
+		pll_denom = __raw_readl(&anatop->pll_audio_denom);
+
 		post_div = (div & BM_ANADIG_PLL_AUDIO_POST_DIV_SELECT) >>
 			BP_ANADIG_PLL_AUDIO_POST_DIV_SELECT;
+		if (post_div == 3) {
+			printf("Invalid post divider value for PLL_AUDIO\n");
+			return 0;
+		}
 		post_div = 1 << (2 - post_div);
 		div &= BM_ANADIG_PLL_AUDIO_DIV_SELECT;
 
-		return lldiv((u64)infreq * div, post_div);
+		freq = (u64)infreq * pll_num / pll_denom;
+		freq += infreq * div;
+		return lldiv(freq, post_div);
 	case PLL_VIDEO:
 		div = __raw_readl(&anatop->pll_video);
+		/* BM_ANADIG_PLL_AUDIO_BYPASS_CLK_SRC is ignored */
 		if (div & BM_ANADIG_PLL_VIDEO_BYPASS)
 			return infreq;
+
+		pll_num = __raw_readl(&anatop->pll_video_num);
+		pll_denom = __raw_readl(&anatop->pll_video_denom);
+
 		post_div = (div & BM_ANADIG_PLL_VIDEO_POST_DIV_SELECT) >>
 			BP_ANADIG_PLL_VIDEO_POST_DIV_SELECT;
+		if (post_div == 3) {
+			printf("Invalid post divider value for PLL_VIDEO\n");
+			return 0;
+		}
 		post_div = 1 << (2 - post_div);
 		div &= BM_ANADIG_PLL_VIDEO_DIV_SELECT;
 
-		return lldiv((u64)infreq * div, post_div);
+		freq = (u64)infreq * pll_num / pll_denom;
+		freq += infreq * div;
+		return lldiv(freq, post_div);
 	case PLL_ENET:
 		div = __raw_readl(&anatop->pll_enet);
 		if (div & BM_ANADIG_PLL_ENET_BYPASS)
@@ -368,10 +392,11 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 		div = __raw_readl(&anatop->pll_mlb);
 		if (div & BM_ANADIG_PLL_MLB_BYPASS)
 			return infreq;
-		/* unknown external clock provided on MLB_CLK pin */
+		/* fallthru: unknown external clock provided on MLB_CLK pin */
+	default:
 		return 0;
 	}
-	return 0;
+	/* NOTREACHED */
 }
 
 static u32 mxc_get_pll_pfd(enum pll_clocks pll, int pfd_num)
