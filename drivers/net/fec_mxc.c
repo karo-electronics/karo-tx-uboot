@@ -283,7 +283,7 @@ static inline void fec_tx_task_disable(struct fec_priv *fec)
  */
 static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
 {
-	uint32_t size;
+	size_t rbd_size, pkt_size;
 	void *data;
 	int i;
 
@@ -291,12 +291,12 @@ static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
 	 * Reload the RX descriptors with default values and wipe
 	 * the RX buffers.
 	 */
-	size = roundup(dsize, ARCH_DMA_MINALIGN);
+	pkt_size = roundup(dsize, ARCH_DMA_MINALIGN);
 	for (i = 0; i < count; i++) {
 		data = (void *)fec->rbd_base[i].data_pointer;
 		memset(data, 0, dsize);
 		flush_dcache_range((unsigned long)data,
-				(unsigned long)data + size);
+				(unsigned long)data + pkt_size);
 
 		fec->rbd_base[i].status = FEC_RBD_EMPTY;
 		fec->rbd_base[i].data_length = 0;
@@ -306,8 +306,9 @@ static void fec_rbd_init(struct fec_priv *fec, int count, int dsize)
 	fec->rbd_base[i - 1].status = FEC_RBD_WRAP | FEC_RBD_EMPTY;
 	fec->rbd_index = 0;
 
+	rbd_size = roundup(sizeof(struct fec_bd) * count, ARCH_DMA_MINALIGN);
 	flush_dcache_range((unsigned long)fec->rbd_base,
-			   (unsigned long)fec->rbd_base + size);
+			   (unsigned long)fec->rbd_base + rbd_size);
 }
 
 /**
@@ -898,47 +899,47 @@ static void fec_set_dev_name(char *dest, int dev_id)
 
 static int fec_alloc_descs(struct fec_priv *fec)
 {
-	unsigned int size;
+	size_t tbd_size, rbd_size, pkt_size;
 	int i;
 	void *data;
 
 	/* Allocate TX descriptors. */
-	size = roundup(2 * sizeof(struct fec_bd), ARCH_DMA_MINALIGN);
-	fec->tbd_base = memalign(ARCH_DMA_MINALIGN, size);
+	tbd_size = roundup(2 * sizeof(struct fec_bd), ARCH_DMA_MINALIGN);
+	fec->tbd_base = memalign(ARCH_DMA_MINALIGN, tbd_size);
 	if (!fec->tbd_base)
 		goto err_tx;
 
 	/* Allocate RX descriptors. */
-	size = roundup(FEC_RBD_NUM * sizeof(struct fec_bd), ARCH_DMA_MINALIGN);
-	fec->rbd_base = memalign(ARCH_DMA_MINALIGN, size);
+	rbd_size = roundup(FEC_RBD_NUM * sizeof(struct fec_bd), ARCH_DMA_MINALIGN);
+	fec->rbd_base = memalign(ARCH_DMA_MINALIGN, rbd_size);
 	if (!fec->rbd_base)
 		goto err_rx;
 
-	memset(fec->rbd_base, 0, size);
+	memset(fec->rbd_base, 0, rbd_size);
 
 	/* Allocate RX buffers. */
 
 	/* Maximum RX buffer size. */
-	size = roundup(FEC_MAX_PKT_SIZE, FEC_DMA_RX_MINALIGN);
+	pkt_size = roundup(FEC_MAX_PKT_SIZE, FEC_DMA_RX_MINALIGN);
 	for (i = 0; i < FEC_RBD_NUM; i++) {
-		data = memalign(FEC_DMA_RX_MINALIGN, size);
+		data = memalign(FEC_DMA_RX_MINALIGN, pkt_size);
 		if (!data) {
 			printf("%s: error allocating rxbuf %d\n", __func__, i);
 			goto err_ring;
 		}
 
-		memset(data, 0, size);
+		memset(data, 0, pkt_size);
 
 		fec->rbd_base[i].data_pointer = (uint32_t)data;
 		fec->rbd_base[i].status = FEC_RBD_EMPTY;
 		fec->rbd_base[i].data_length = 0;
 		/* Flush the buffer to memory. */
-		flush_dcache_range((unsigned long)data,
-				(unsigned long)data + size);
+		flush_dcache_range((uint32_t)data, (uint32_t)data + pkt_size);
 	}
 
 	/* Mark the last RBD to close the ring. */
 	fec->rbd_base[i - 1].status = FEC_RBD_WRAP | FEC_RBD_EMPTY;
+	flush_dcache_range((unsigned long)fec->rbd_base, rbd_size);
 
 	fec->rbd_index = 0;
 	fec->tbd_index = 0;
