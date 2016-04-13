@@ -78,8 +78,8 @@ config TARGET_TX6Q_1020
 	select SYS_I2C_MXC
 	select TX6_EMMC
 
-config TARGET_TX6Q_1033
-	bool "TX6Q-1033"
+config TARGET_TX6Q_1036
+	bool "TX6Q-1036"
 	select SOC_MX6Q
 	select SYS_I2C
 	select SYS_I2C_MXC
