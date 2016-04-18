@@ -357,23 +357,16 @@ int checkboard(void)
 	u32 cpurev = get_cpu_rev();
 	char *cpu_str = "?";
 
-	switch ((cpurev >> 12) & 0xff) {
-	case MXC_CPU_MX6SL:
+	if (is_cpu_type(MXC_CPU_MX6SL))
 		cpu_str = "SL";
-		break;
-	case MXC_CPU_MX6DL:
+	else if (is_cpu_type(MXC_CPU_MX6DL))
 		cpu_str = "DL";
-		break;
-	case MXC_CPU_MX6SOLO:
+	else if (is_cpu_type(MXC_CPU_MX6SOLO))
 		cpu_str = "SOLO";
-		break;
-	case MXC_CPU_MX6Q:
+	else if (is_cpu_type(MXC_CPU_MX6Q))
 		cpu_str = "Q";
-		break;
-	case MXC_CPU_MX6UL:
+	else if (is_cpu_type(MXC_CPU_MX6UL))
 		cpu_str = "UL";
-		break;
-	}
 
 	printf("CPU:   Freescale i.MX6%s rev%d.%d at %d MHz\n",
 		cpu_str,

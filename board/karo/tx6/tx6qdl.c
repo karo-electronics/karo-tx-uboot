@@ -345,23 +345,18 @@ int checkboard(void)
 	u32 cpurev = get_cpu_rev();
 	char *cpu_str = "?";
 
-	switch ((cpurev >> 12) & 0xff) {
-	case MXC_CPU_MX6SL:
+	if (is_cpu_type(MXC_CPU_MX6SL)) {
 		cpu_str = "SL";
 		tx6_mod_suffix = "?";
-		break;
-	case MXC_CPU_MX6DL:
+	} else if (is_cpu_type(MXC_CPU_MX6DL)) {
 		cpu_str = "DL";
 		tx6_mod_suffix = "U";
-		break;
-	case MXC_CPU_MX6SOLO:
+	} else if (is_cpu_type(MXC_CPU_MX6SOLO)) {
 		cpu_str = "SOLO";
 		tx6_mod_suffix = "S";
-		break;
-	case MXC_CPU_MX6Q:
+	} else if (is_cpu_type(MXC_CPU_MX6Q)) {
 		cpu_str = "Q";
 		tx6_mod_suffix = "Q";
-		break;
 	}
 
 	printf("CPU:         Freescale i.MX6%s rev%d.%d at %d MHz\n",
@@ -470,8 +465,6 @@ static int tx6_pmic_probe(void)
 int board_init(void)
 {
 	int ret;
-	u32 cpurev = get_cpu_rev();
-	int cpu_variant = (cpurev >> 12) & 0xff;
 	int pmic_id;
 
 	debug("%s@%d: \n", __func__, __LINE__);
@@ -482,7 +475,7 @@ int board_init(void)
 
 	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
 		tx6_mod_suffix,
-		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
+		is_cpu_type(MXC_CPU_MX6Q) ? 1 : 8,
 		is_lvds(), tx6_get_mod_rev(pmic_id),
 		tx6_mem_suffix());
 
