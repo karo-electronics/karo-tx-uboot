@@ -68,6 +68,9 @@ config SYS_SDRAM_BUS_WIDTH_16
 config SYS_SDRAM_BUS_WIDTH_32
 	bool
 
+config SYS_SDRAM_CHIP_SIZE
+	int "SDRAM chip size in MiB"
+
 choice
 	prompt "TX6 module variant"
 

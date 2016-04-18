@@ -522,8 +522,8 @@ int dram_init(void)
 
 void dram_init_banksize(void)
 {
-	debug("%s@%d: \n", __func__, __LINE__);
-
+	debug("%s@%d: chip_size=%u (%u bit bus width)\n", __func__, __LINE__,
+		CONFIG_SYS_SDRAM_CHIP_SIZE, CONFIG_SYS_SDRAM_BUS_WIDTH);
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = get_ram_size((void *)PHYS_SDRAM_1,
 			PHYS_SDRAM_1_SIZE);

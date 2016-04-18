@@ -86,7 +86,20 @@
 #define CONFIG_SYS_SDRAM_BUS_WIDTH	64
 #endif
 #endif /* CONFIG_SYS_SDRAM_BUS_WIDTH */
-#define PHYS_SDRAM_1_SIZE		(SZ_512M / 32 * CONFIG_SYS_SDRAM_BUS_WIDTH)
+#ifdef __ASSEMBLY__
+#define _AC(x,s)			x
+#else
+#define _AC(x,s)			(x##s)
+#endif
+#define UL(x)				_AC(x,UL)
+#define PHYS_SDRAM_1_SIZE		(UL(CONFIG_SYS_SDRAM_CHIP_SIZE) * SZ_1M \
+				/ 32 * CONFIG_SYS_SDRAM_BUS_WIDTH)
+#if PHYS_SDRAM_1_SIZE > SZ_1G
+#define FDT_HIGH_STR			"fdt_high=ffffffff\0"
+#else
+#define FDT_HIGH_STR			""
+#endif
+
 #ifdef CONFIG_SOC_MX6Q
 #define CONFIG_SYS_SDRAM_CLK		528
 #else
@@ -215,6 +228,7 @@
 	EMMC_BOOT_PART_STR						\
 	EMMC_BOOT_ACK_STR						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
+	FDT_HIGH_STR							\
 	FDTSAVE_CMD_STR							\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
