@@ -215,7 +215,7 @@
 	EMMC_BOOT_PART_STR						\
 	EMMC_BOOT_ACK_STR						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
-	CONFIG_SYS_FDTSAVE_CMD						\
+	FDTSAVE_CMD_STR							\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
@@ -229,7 +229,7 @@
 #define CONFIG_SYS_DEFAULT_BOOT_MODE	"nand"
 #define CONFIG_SYS_BOOT_CMD_NAND					\
 	"bootcmd_nand=setenv autostart no;run bootargs_ubifs;nboot linux\0"
-#define CONFIG_SYS_FDTSAVE_CMD						\
+#define FDTSAVE_CMD_STR							\
 	"fdtsave=fdt resize;nand erase.part dtb"			\
 	";nand write ${fdtaddr} dtb ${fdtsize}\0"
 #define MTD_NAME			"gpmi-nand"
@@ -243,7 +243,7 @@
 #define CONFIG_SYS_DEFAULT_BOOT_MODE	"mmc"
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION 1
 #define CONFIG_SYS_BOOT_CMD_NAND	""
-#define CONFIG_SYS_FDTSAVE_CMD						\
+#define FDTSAVE_CMD_STR							\
 	"fdtsave=mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} ${emmc_boot_part}" \
 	";mmc write ${fdtaddr} " xstr(CONFIG_SYS_DTB_BLKNO) " 80"	\
 	";mmc partconf 0 ${emmc_boot_ack} ${emmc_boot_part} 0\0"
