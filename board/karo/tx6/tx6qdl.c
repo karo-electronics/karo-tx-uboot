@@ -357,6 +357,9 @@ int checkboard(void)
 	} else if (is_cpu_type(MXC_CPU_MX6Q)) {
 		cpu_str = "Q";
 		tx6_mod_suffix = "Q";
+	} else if (is_cpu_type(MXC_CPU_MX6QP)) {
+		cpu_str = "QP";
+		tx6_mod_suffix = "QP";
 	}
 
 	printf("CPU:         Freescale i.MX6%s rev%d.%d at %d MHz\n",
@@ -399,18 +402,22 @@ static bool tx6_temp_check_enabled = true;
 #define TX6_DDR_SZ	(ffs(CONFIG_SYS_SDRAM_BUS_WIDTH / 16) - 1)
 
 static char tx6_mem_table[] = {
-	'4', /* 256MiB SDRAM 16bit; 128MiB NAND */
-	'1', /* 512MiB SDRAM 32bit; 128MiB NAND */
-	'0', /* 1GiB SDRAM 64bit; 128MiB NAND */
-	'?', /* 256MiB SDRAM 16bit; 256MiB NAND */
-	'?', /* 512MiB SDRAM 32bit; 256MiB NAND */
-	'2', /* 1GiB SDRAM 64bit; 256MiB NAND */
-	'?', /* 256MiB SDRAM 16bit; 4GiB eMMC */
-	'5', /* 512MiB SDRAM 32bit; 4GiB eMMC */
-	'3', /* 1GiB SDRAM 64bit; 4GiB eMMC */
-	'?', /* 256MiB SDRAM 16bit; 8GiB eMMC */
-	'?', /* 512MiB SDRAM 32bit; 8GiB eMMC */
-	'0', /* 1GiB SDRAM 64bit; 8GiB eMMC */
+	'4', /* TX6S-8034 256MiB SDRAM 16bit; 128MiB NAND */
+	'1', /* TX6U-8011 512MiB SDRAM 32bit; 128MiB NAND */
+	'0', /* TX6Q-1030/TX6U-8030 1GiB SDRAM 64bit; 128MiB NAND */
+	'?', /* N/A 256MiB SDRAM 16bit; 256MiB NAND */
+	'?', /* N/A 512MiB SDRAM 32bit; 256MiB NAND */
+	'2', /* TX6U-8012 1GiB SDRAM 64bit; 256MiB NAND */
+	'?', /* N/A 256MiB SDRAM 16bit; 4GiB eMMC */
+	'5', /* TX6S-8035 512MiB SDRAM 32bit; 4GiB eMMC */
+	'3', /* TX6U-8033 1GiB SDRAM 64bit; 4GiB eMMC */
+	'?', /* N/A 256MiB SDRAM 16bit; 8GiB eMMC */
+	'?', /* N/A 512MiB SDRAM 32bit; 8GiB eMMC */
+#if defined(CONFIG_TX6_REV) && CONFIG_TX6_REV == 2
+	'0', /* TX6Q-1020 (legacy) 1GiB SDRAM 64bit; 8GiB eMMC */
+#else
+	'6', /* TX6Q-1036 1GiB SDRAM 64bit; 8GiB eMMC */
+#endif
 };
 
 static struct {
@@ -431,7 +438,10 @@ static inline char tx6_mem_suffix(void)
 
 	if (mem_idx >= ARRAY_SIZE(tx6_mem_table))
 		return '?';
-
+	if (CONFIG_SYS_SDRAM_CHIP_SIZE > 512)
+		return '7';
+	if (mem_idx == 8)
+		return is_cpu_type(MXC_CPU_MX6Q) ? '6' : '3';
 	return tx6_mem_table[mem_idx];
 };
 

@@ -56,6 +56,9 @@ config TX6UL
 	select SOC_MX6UL
 	select SYS_SDRAM_BUS_WIDTH_16
 
+config TX6QP
+	bool
+
 #
 # variables selected depending on module variant
 #
@@ -165,6 +168,14 @@ config TARGET_TX6UL_0011
 	bool "TX6U-0011"
 	select TX6UL
 	select TX6_EMMC
+
+config TARGET_TX6QP_8037
+	bool "TX6QP-8037"
+	select SOC_MX6Q
+	select SYS_I2C
+	select SYS_I2C_MXC
+	select TX6_EMMC
+	select TX6QP
 
 endchoice
 

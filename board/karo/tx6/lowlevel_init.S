@@ -17,11 +17,12 @@
 #define SDRAM_CLK		CONFIG_SYS_SDRAM_CLK
 
 #ifdef PHYS_SDRAM_2_SIZE
-#define SDRAM_SIZE		(PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE)
+#define SDRAM_SIZE		((PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE) / SZ_1M)
 #else
-#define SDRAM_SIZE		PHYS_SDRAM_1_SIZE
+#define SDRAM_SIZE		(PHYS_SDRAM_1_SIZE / SZ_1M)
 #endif
 
+#define BIT(x)			(1 << (x))
 #define CCGR(m)			(3 << ((m) * 2))
 
 #define CPU_2_BE_32(l)			\
@@ -30,6 +31,7 @@
 	(((l) >> 8) & 0x0000FF00) |	\
 	(((l) >> 24) & 0x000000FF))
 
+#ifndef CONFIG_TX6QP
 #define CHECK_DCD_ADDR(a)	(					\
 	((a) >= 0x020E0000 && (a) <= 0x020E3FFF) /* IOMUXC */ ||	\
 	((a) >= 0x020C4000 && (a) <= 0x020C7FFF) /* CCM */ ||		\
@@ -39,6 +41,18 @@
 	((a) >= 0x08000000 && (a) <= 0x0FFEFFFF) /* EIM (CS0) */ ||	\
 	((a) >= 0x021B8000 && (a) <= 0x021BBFFF) /* EIM registers */ ||	\
 	((a) >= 0x10000000 && (a) <= 0xFFFFFFFF) /* SDRAM */)
+#else
+#define CHECK_DCD_ADDR(a)	(					\
+	((a) >= 0x020E0000 && (a) <= 0x020E3FFF) /* IOMUXC */ ||	\
+	((a) >= 0x020C4000 && (a) <= 0x020C7FFF) /* CCM */ ||		\
+	((a) >= 0x020C8000 && (a) <= 0x020C8FFF) /* ANALOG */ ||	\
+	((a) >= 0x021B0000 && (a) <= 0x021B7FFF) /* MMDC */ ||		\
+	((a) >= 0x00907000 && (a) <= 0x00937FF0) /* OCRAM */ ||		\
+	((a) >= 0x08000000 && (a) <= 0x0FFEFFFF) /* EIM (CS0) */ ||	\
+	((a) >= 0x021B8000 && (a) <= 0x021BBFFF) /* EIM registers */ ||	\
+	((a) >= 0x10000000 && (a) <= 0xFFFFFFFF) /* SDRAM */ ||		\
+	((a) >= 0x00BB0000 && (a) <= 0x00BB003F) /* NoC DDR config */)
+#endif
 
 	.macro	mxc_dcd_item	addr, val
 	.ifne	CHECK_DCD_ADDR(\addr)
@@ -114,6 +128,7 @@ dcd_end:
 #define CK_TO_NS(ck)	(((ck) * 1000 + SDRAM_CLK / 2) / SDRAM_CLK)
 #define NS_TO_CK(ns)	(((ns) * SDRAM_CLK + 999) / 1000)
 #define NS_TO_CK10(ns)	DIV_ROUND_UP(NS_TO_CK(ns), 10)
+#define NS_TO_CK100(ns)	DIV_ROUND_UP(NS_TO_CK(ns), 100)
 #define PS_TO_CK(ps)	DIV_ROUND_UP(NS_TO_CK(ps), 1000)
 
 	.macro		CK_VAL,	name, clks, offs, max
@@ -185,6 +200,10 @@ dcd_end:
 #error SDRAM clock out of range: 303 .. 800
 #endif
 
+#if SDRAM_SIZE < 2048
+#define ROW_ADDR_BITS			14
+#define COL_ADDR_BITS			10
+
 /* MDCFG0 0x0c */
 NS_VAL	tRFC,	160, 1, 255		/* clks - 1 (0..255) */
 CK_MAX	tXS,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) tRFC + 10 */
@@ -211,6 +230,39 @@ CK_MAX	tRRD,	NS_TO_CK(10), 4, 1, 7	/* clks - 1 (0..7) (MT41K128M16JT: 6ns) */
 
 /* MDOR 0x30 */
 CK_MAX	tXPR,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) max(tRFC + 10, 5CK) */
+#else
+/* 4096MiB SDRAM: IM4G16D3EABG-125I */
+#define ROW_ADDR_BITS			15
+#define COL_ADDR_BITS			10
+
+/* MDCFG0 0x0c */
+NS_VAL	tRFC,	260, 1, 255		/* clks - 1 (0..255) */
+CK_MAX	tXS,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) tRFC + 10 */
+CK_MAX	tXP,	NS_TO_CK(6), 3, 1, 7 /* clks - 1 (0..7) */ /* max(3tCK, 7.5ns) */
+CK_MAX	tXPDLL, NS_TO_CK(24), 2, 1, 15	/* clks - 1 (0..15) */
+NS_VAL	tFAW,	30, 1, 31		/* clks - 1 (0..31) */
+CK_VAL	tCL,	CL_VAL, 3, 8		/* clks - 3 (0..8) CAS Latency */
+
+/* MDCFG1 0x10 */
+CK_VAL	tRCD,	NS_TO_CK100(1375), 1, 7	/* clks - 1 (0..7) */ /* 13.75 */
+CK_VAL	tRP,	NS_TO_CK100(1375), 1, 7	/* clks - 1 (0..7) */ /* 13.75 */
+CK_VAL	tRC,	NS_TO_CK100(4875), 1, 31 /* clks - 1 (0..31) */ /* 48.75 */
+CK_VAL	tRAS,	NS_TO_CK(35), 1, 31	/* clks - 1 (0..31) */ /* 35 */
+CK_VAL	tRPA,	1, 0, 1			/* clks     (0..1) */
+NS_VAL	tWR,	15, 1, 15		/* clks - 1 (0..15) */
+CK_VAL	tMRD,	4, 1, 15		/* clks - 1 (0..15) */
+CK_VAL	tCWL,	CWL_VAL, 2, 6		/* clks - 2 (0..6) */
+
+/* MDCFG2 0x14 */
+CK_VAL	tDLLK,	512, 1, 511		/* clks - 1 (0..511) */
+CK_MAX	tRTP,	NS_TO_CK10(75), 4, 1, 7	/* clks - 1 (0..7) */ /* max(4tCK, 7.5ns) */
+CK_MAX	tWTR,	NS_TO_CK10(75), 4, 1, 7	/* clks - 1 (0..7) */ /* max(4tCK, 7.5ns) */
+CK_MAX	tRRD,	NS_TO_CK10(75), 4, 1, 7	/* clks - 1 (0..7) */ /* max(4tCK, 7.5ns) */
+
+/* MDOR 0x30 */
+CK_MAX	tXPR,	NS_TO_CK(CK_TO_NS(tRFC + 1) + 10), 5, 1, 255 /* clks - 1 (0..255) max(tRFC + 10, 5CK) */
+#endif
+
 #define tSDE_RST	(DIV_ROUND_UP(200000, MDOR_CLK_PERIOD_ns) + 2)
 #define tRST_CKE	(DIV_ROUND_UP(500000, MDOR_CLK_PERIOD_ns) + 2)
 
@@ -246,9 +298,6 @@ CK_MAX	tCKSRE,	NS_TO_CK(10), 5, 0, 7
 	(PWDT << 12) |				\
 	(PWDT << 8)				\
 	)
-
-#define ROW_ADDR_BITS			14
-#define COL_ADDR_BITS			10
 
 #define Rtt_Nom				1 /* ODT: 0: off 1: RZQ/4 2: RZQ/2 3: RZQ/6 4: RZQ/12 5: RZQ/8 */
 #define Rtt_WR				0 /* Dynamic ODT: 0: off 1: RZQ/4 2: RZQ/2 */
@@ -416,7 +465,9 @@ ivt_end:
 #define MMDC1_MDOR				0x021b0030
 #define MMDC1_MDASP				0x021b0040
 
+#define MMDC1_MAARCR				0x021b0400
 #define MMDC1_MAPSR				0x021b0404
+#define MMDC1_MADPCR0				0x021b0410
 
 #define MMDC1_MPZQHWCTRL			0x021b0800
 #define MMDC1_MPWLGCR				0x021b0808
@@ -493,7 +544,20 @@ ivt_end:
 #endif
 
 #ifdef CONFIG_SOC_MX6Q
+#define IOMUXC_GPR0				0x020e0000
 #define IOMUXC_GPR1				0x020e0004
+#define IOMUXC_GPR2				0x020e0008
+#define IOMUXC_GPR3				0x020e000c
+#define IOMUXC_GPR4				0x020e0010
+#define IOMUXC_GPR5				0x020e0014
+#define IOMUXC_GPR6				0x020e0018
+#define IOMUXC_GPR7				0x020e001c
+#define IOMUXC_GPR8				0x020e0020
+#define IOMUXC_GPR9				0x020e0024
+#define IOMUXC_GPR10				0x020e0028
+#define IOMUXC_GPR11				0x020e002c
+#define IOMUXC_GPR12				0x020e0030
+#define IOMUXC_GPR13				0x020e0034
 #define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA20	0x020e00a0
 #define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e00a4
 #define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e00c4
@@ -733,7 +797,11 @@ dcd_hdr:
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR4, CCGR(14))
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR2, CCGR(7))
 	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
+#ifndef CONFIG_TX6QP
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CS2CDR, 0x006336c1) /* default: 0x007236c1 */
+#else
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CS2CDR, 0x0061b6c1) /* default: 0x007236c1 */
+#endif
 	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_SET)
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR4, CCGR(14))
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR2, CCGR(7))
@@ -759,6 +827,13 @@ dcd_hdr:
 
 	/* IOMUX: */
 	MXC_DCD_ITEM(IOMUXC_GPR1, 0x48640005) /* default: 0x48400005 ENET_CLK output */
+#ifdef CONFIG_TX6QP
+	/* enable AXI cache for VDOA/VPU/IPU */
+	MXC_DCD_ITEM(IOMUXC_GPR4, 0xf00000cf)
+	/* set IPU AXI-id1 Qos=0x1 AXI-id0/2/3 Qos=0x7 */
+	MXC_DCD_ITEM(IOMUXC_GPR6, 0x77177717)
+	MXC_DCD_ITEM(IOMUXC_GPR7, 0x77177717)
+#endif
 	/* UART1 pad config */
 	MXC_DCD_ITEM(IOMUXC_SW_MUX_CTL_PAD_SD3_DATA7,        0x00000001)	/* UART1 TXD */
 	MXC_DCD_ITEM(IOMUXC_SW_MUX_CTL_PAD_SD3_DATA6,        0x00000001)	/* UART1 RXD */
@@ -978,6 +1053,11 @@ dcd_hdr:
 
 	/* DDR3 calibration */
 	MXC_DCD_ITEM(MMDC1_MPPDCMPR2, 0x00000003) /* select default compare pattern for DQ calibration */
+#ifdef CONFIG_TX6QP
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_SET)
+	MXC_DCD_ITEM(MMDC1_MAARCR, BIT(25)) /* MMDC reorder disable BOOT_CFG3[5:4] */
+	MXC_DCD_CMD_WRT(MXC_DCD_CMD_SZ_WORD, MXC_DCD_CMD_FLAG_WRITE)
+#endif
 	MXC_DCD_ITEM(MMDC1_MAPSR, 1)
 
 #ifdef DO_DDR_CALIB
