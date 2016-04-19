@@ -595,6 +595,28 @@ static u32 get_emi_slow_clk(void)
 	return root_freq / (emi_slow_podf + 1);
 }
 
+static inline unsigned long get_nfc_root_clk(int nfc_clk_sel)
+{
+	switch (nfc_clk_sel) {
+	case 0:
+		return mxc_get_pll_pfd(PLL_528, 0);
+		break;
+	case 1:
+		return decode_pll(PLL_528, MXC_HCLK);
+		break;
+	case 2:
+		return decode_pll(PLL_USBOTG, MXC_HCLK);
+		break;
+	case 3:
+		return mxc_get_pll_pfd(PLL_528, 2);
+		break;
+	case 4:
+		return mxc_get_pll_pfd(PLL_USBOTG, 3);
+	default:
+		return 0;
+	}
+}
+
 static u32 get_nfc_clk(void)
 {
 	u32 cs2cdr = __raw_readl(&imx_ccm->cs2cdr);
@@ -604,27 +626,7 @@ static u32 get_nfc_clk(void)
 		MXC_CCM_CS2CDR_ENFC_CLK_PRED_OFFSET;
 	int nfc_clk_sel = (cs2cdr & MXC_CCM_CS2CDR_ENFC_CLK_SEL_MASK) >>
 		MXC_CCM_CS2CDR_ENFC_CLK_SEL_OFFSET;
-	u32 root_freq;
-
-	switch (nfc_clk_sel) {
-	case 0:
-		root_freq = mxc_get_pll_pfd(PLL_528, 0);
-		break;
-	case 1:
-		root_freq = decode_pll(PLL_528, MXC_HCLK);
-		break;
-	case 2:
-		root_freq = decode_pll(PLL_USBOTG, MXC_HCLK);
-		break;
-	case 3:
-		root_freq = mxc_get_pll_pfd(PLL_528, 2);
-		break;
-	case 4:
-		root_freq = mxc_get_pll_pfd(PLL_USBOTG, 3);
-		break;
-	default:
-		return 0;
-	}
+	u32 root_freq = get_nfc_root_clk(nfc_clk_sel);
 
 	return root_freq / (pred + 1) / (podf + 1);
 }
@@ -643,12 +645,13 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 	u32 min_err = ~0;
 	u32 nfc_val = ~0;
 	u32 freq = freq_khz * 1000;
+	int num_sel = is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL) ? 5 : 4;
 
-	for (nfc_clk_sel = 0; nfc_clk_sel < 4; nfc_clk_sel++) {
+	for (nfc_clk_sel = 0; nfc_clk_sel < num_sel; nfc_clk_sel++) {
 		u32 act_freq;
 		u32 err;
 
-		if (ref < 4 && ref != nfc_clk_sel)
+		if (ref < num_sel && ref != nfc_clk_sel)
 			continue;
 
 		switch (nfc_clk_sel) {
@@ -663,6 +666,9 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 			break;
 		case 3:
 			root_freq = mxc_get_pll_pfd(PLL_528, 2);
+			break;
+		case 4:
+			root_freq = mxc_get_pll_pfd(PLL_USBOTG, 3);
 			break;
 		}
 		if (root_freq < freq)
