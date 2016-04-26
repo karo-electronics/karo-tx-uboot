@@ -42,11 +42,22 @@
 #define BF(value, field)		(((value) << BO_##field) & BM_##field)
 
 #define WRITE_POSTAMBLE_US		2
+#define MXC_OTP_BUSY_TIMEOUT		1000
 
-static void wait_busy(struct ocotp_regs *regs, unsigned int delay_us)
+static bool wait_busy(struct ocotp_regs *regs, unsigned int delay_us)
 {
-	while (readl(&regs->ctrl) & BM_CTRL_BUSY)
+	unsigned long start;
+	u32 reg;
+
+	start = get_timer_masked();
+	while ((reg = readl(&regs->ctrl)) & BM_CTRL_BUSY) {
 		udelay(delay_us);
+		if (get_timer(start) > MXC_OTP_BUSY_TIMEOUT)
+			break;
+	}
+	if (!(reg & BM_CTRL_BUSY))
+		return 1;
+	return !(readl(&regs->ctrl) & BM_CTRL_BUSY);
 }
 
 static void clear_error(struct ocotp_regs *regs)
@@ -68,8 +79,10 @@ static int prepare_access(struct ocotp_regs **regs, u32 bank, u32 word,
 
 	enable_ocotp_clk(1);
 
-	wait_busy(*regs, 1);
-	clear_error(*regs);
+	if (wait_busy(*regs, 1))
+		clear_error(*regs);
+	else
+		return -ETIMEDOUT;
 
 	return 0;
 }
@@ -155,8 +168,10 @@ int fuse_sense(u32 bank, u32 word, u32 *val)
 
 	setup_direct_access(regs, bank, word, false);
 	writel(BM_READ_CTRL_READ_FUSE, &regs->read_ctrl);
-	wait_busy(regs, 1);
-	*val = readl(&regs->read_fuse_data);
+	if (wait_busy(regs, 1))
+		*val = readl(&regs->read_fuse_data);
+	else
+		*val = ~0;
 
 	return finish_access(regs, __func__);
 }
