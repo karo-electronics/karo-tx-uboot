@@ -698,8 +698,12 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 	if ((cs2cdr & CS2CDR_ENFC_MASK) != nfc_val) {
 		debug("changing cs2cdr from %08x to %08x\n", cs2cdr,
 			(cs2cdr & ~CS2CDR_ENFC_MASK) | nfc_val);
+#ifdef CONFIG_NAND_MXS
+		setup_gpmi_io_clk(nfc_val);
+#else
 		__raw_writel((cs2cdr & ~CS2CDR_ENFC_MASK) | nfc_val,
 			&imx_ccm->cs2cdr);
+#endif
 	} else {
 		debug("Leaving cs2cdr unchanged [%08x]\n", cs2cdr);
 	}
