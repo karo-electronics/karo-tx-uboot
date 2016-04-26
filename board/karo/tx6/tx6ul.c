@@ -437,10 +437,12 @@ static int pmic_addr __maybe_unused = 0x33;
 int board_init(void)
 {
 	int ret;
+	u32 cpurev = get_cpu_rev();
 
 	debug("%s@%d: \n", __func__, __LINE__);
 
-	printf("Board: Ka-Ro TXUL-001%c\n",
+	printf("Board: Ka-Ro TXUL-%c01%c\n",
+		((cpurev &0xff) > 0x10) ? '5' : '0',
 		tx6ul_mem_suffix());
 
 	get_hab_status();
@@ -620,7 +622,7 @@ int board_mmc_init(bd_t *bis)
 	}
 	return 0;
 }
-#endif /* CONFIG_CMD_MMC */
+#endif /* CONFIG_FSL_ESDHC */
 
 enum {
 	LED_STATE_INIT = -1,
