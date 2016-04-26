@@ -23,15 +23,16 @@
 static struct {
 	uchar addr;
 	pmic_setup_func *init;
+	const char *name;
 } i2c_addrs[] = {
 #ifdef CONFIG_LTC3676
-	{ 0x3c, ltc3676_pmic_setup, },
+	{ 0x3c, ltc3676_pmic_setup, "LTC3676", },
 #endif
 #ifdef CONFIG_RN5T618
-	{ 0x32, rn5t618_pmic_setup, },
+	{ 0x32, rn5t618_pmic_setup, "RN5T618", },
 #endif
 #ifdef CONFIG_RN5T567
-	{ 0x33, rn5t567_pmic_setup, },
+	{ 0x33, rn5t567_pmic_setup, "RN5T567", },
 #endif
 };
 
@@ -39,6 +40,8 @@ int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
 {
 	int ret = -ENODEV;
 	int i;
+
+	printf("PMIC: ");
 
 	debug("Probing for I2C dev 0x%02x\n", addr);
 	for (i = 0; i < ARRAY_SIZE(i2c_addrs); i++) {
@@ -55,5 +58,6 @@ int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
 			break;
 		}
 	}
+	printf("%s\n", i == ARRAY_SIZE(i2c_addrs) ? "N/A" : i2c_addrs[i].name);
 	return ret;
 }
