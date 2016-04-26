@@ -677,7 +677,7 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 		podf = min(DIV_ROUND_UP(root_freq, freq), 1U << 6);
 		pred = min(DIV_ROUND_UP(root_freq / podf, freq), 8U);
 		act_freq = root_freq / pred / podf;
-		err = (freq - act_freq) * 100 / freq;
+		err = (freq - act_freq) / (freq / 1000);
 		debug("root=%d[%u] freq=%u pred=%u podf=%u act=%u err=%d\n",
 			nfc_clk_sel, root_freq, freq, pred, podf, act_freq, err);
 		if (act_freq > freq)
@@ -692,7 +692,7 @@ static int set_nfc_clk(u32 ref, u32 freq_khz)
 		}
 	}
 
-	if (nfc_val == ~0 || min_err > 10)
+	if (nfc_val == ~0 || min_err > 100)
 		return -EINVAL;
 
 	if ((cs2cdr & CS2CDR_ENFC_MASK) != nfc_val) {
