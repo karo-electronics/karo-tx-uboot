@@ -321,15 +321,22 @@
 #else /* CONFIG_TX6_REV */
 /* autodetect which PMIC is present to derive TX6_REV */
 #ifdef CONFIG_SOC_MX6UL
+#ifndef CONFIG_TX6_UBOOT_NOENV
+/* NOENV U-Boot is used for initial bootstrap.
+ * Since the TAMPER_PIN_DISABLE fuses have to be programmed
+ * to be able to use the TAMPER pins as GPIO to access the
+ * PMIC I2C bus, this is not possible on virgin hardware.
+ */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_SOFT
 #define CONFIG_SYS_I2C_SOFT_SPEED	400000
 #define CONFIG_SOFT_I2C_GPIO_SCL	IMX_GPIO_NR(5, 0)
 #define CONFIG_SOFT_I2C_GPIO_SDA	IMX_GPIO_NR(5, 1)
 #define CONFIG_SOFT_I2C_READ_REPEATED_START
-#else
+#endif /* CONFIG_TX6_UBOOT_NOENV */
+#else /* !CONFIG_SOC_MX6UL */
 #define CONFIG_LTC3676			/* TX6_REV == 1 */
-#endif
+#endif /*  CONFIG_SOC_MX6UL */
 #define CONFIG_RN5T567			/* TX6_REV == 3 */
 #endif /* CONFIG_TX6_REV */
 

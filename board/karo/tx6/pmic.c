@@ -20,6 +20,7 @@
 
 #include "pmic.h"
 
+#ifdef CONFIG_SYS_I2C
 static struct {
 	uchar addr;
 	pmic_setup_func *init;
@@ -61,3 +62,10 @@ int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
 	printf("%s\n", i == ARRAY_SIZE(i2c_addrs) ? "N/A" : i2c_addrs[i].name);
 	return ret;
 }
+#else
+int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
+{
+	printf("PMIC: N/A\n");
+	return 0;
+}
+#endif

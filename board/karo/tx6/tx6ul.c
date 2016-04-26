@@ -44,8 +44,10 @@
 #define TX6UL_LCD_RST_GPIO		IMX_GPIO_NR(3, 4)
 #define TX6UL_LCD_BACKLIGHT_GPIO	IMX_GPIO_NR(4, 16)
 
+#ifdef CONFIG_SYS_I2C_SOFT
 #define TX6UL_I2C1_SCL_GPIO		CONFIG_SOFT_I2C_GPIO_SCL
 #define TX6UL_I2C1_SDA_GPIO		CONFIG_SOFT_I2C_GPIO_SDA
+#endif
 
 #define TX6UL_SD1_CD_GPIO		IMX_GPIO_NR(4, 14)
 
@@ -161,10 +163,11 @@ static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
 };
 
 static const struct gpio const tx6ul_gpios[] = {
+#ifdef CONFIG_SYS_I2C_SOFT
 	/* These two entries are used to forcefully reinitialize the I2C bus */
 	{ TX6UL_I2C1_SCL_GPIO, GPIOFLAG_INPUT, "I2C1 SCL", },
 	{ TX6UL_I2C1_SDA_GPIO, GPIOFLAG_INPUT, "I2C1 SDA", },
-
+#endif
 	{ TX6UL_FEC_PWR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH, "FEC PHY PWR", },
 	{ TX6UL_FEC_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC PHY RESET", },
 	{ TX6UL_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },
@@ -180,6 +183,7 @@ static const struct gpio const tx6ul_fec2_gpios[] = {
 #define GPIO_PSR 8
 
 /* run with default environment */
+#if defined(TX6UL_I2C1_SCL_GPIO) && defined(TX6UL_I2C1_SDA_GPIO)
 static void tx6_i2c_recover(void)
 {
 	int i;
@@ -239,6 +243,11 @@ static void tx6_i2c_recover(void)
 		}
 	}
 }
+#else
+static inline void tx6_i2c_recover(void)
+{
+}
+#endif
 
 /* placed in section '.data' to prevent overwriting relocation info
  * overlayed with bss
@@ -404,6 +413,7 @@ static inline u8 tx6ul_mem_suffix(void)
 #endif
 }
 
+#ifdef CONFIG_RN5T567
 /* PMIC settings */
 #define VDD_RTC_VAL		rn5t_mV_to_regval_rtc(3000)
 #define VDD_CORE_VAL		rn5t_mV_to_regval(1300)		/* DCDC1 */
@@ -433,6 +443,7 @@ static struct pmic_regs rn5t567_regs[] = {
 };
 
 static int pmic_addr __maybe_unused = 0x33;
+#endif
 
 int board_init(void)
 {
