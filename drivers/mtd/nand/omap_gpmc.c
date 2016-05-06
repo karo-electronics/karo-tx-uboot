@@ -723,6 +723,7 @@ static int omap_correct_data_bch(struct mtd_info *mtd, uint8_t *dat,
 	struct nand_bch_priv *bch = chip->priv;
 	uint8_t syndrome[28];
 	uint32_t error_count = 0;
+	int errors = 0;
 	uint32_t error_loc[8];
 	uint32_t i, ecc_flag;
 	int k, ecc_bytes, num_steps;
@@ -765,13 +766,15 @@ static int omap_correct_data_bch(struct mtd_info *mtd, uint8_t *dat,
 		}
 
 		/* correct bch error */
-		if (error_count > 0)
+		if (error_count > 0) {
 			omap_fix_errors_bch(mtd, dat, error_count, error_loc);
+			errors += error_count;
+		}
 		dat += 512;
 		read_ecc += ecc_bytes;
 		calc_ecc += ecc_bytes;
 	}
-	return 0;
+	return errors;
 }
 
 /**
@@ -830,7 +833,7 @@ static int omap_read_page_bch(struct mtd_info *mtd, struct nand_chip *chip,
 	eccsteps = chip->ecc.steps;
 	p = buf;
 
-	for (i = 0 ; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
+	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 		int stat;
 
 		stat = chip->ecc.correct(mtd, p, &ecc_code[i], &ecc_calc[i]);
