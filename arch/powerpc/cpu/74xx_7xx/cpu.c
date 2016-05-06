@@ -2,23 +2,7 @@
  * (C) Copyright 2001
  * Josh Huber <huber@mclx.com>, Mission Critical Linux, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -229,8 +213,7 @@ soft_restart(unsigned long addr)
 }
 
 
-#if !defined(CONFIG_PCIPPC2) && \
-    !defined(CONFIG_BAB7xx)  && \
+#if !defined(CONFIG_BAB7xx)  && \
     !defined(CONFIG_ELPPC)   && \
     !defined(CONFIG_PPMC7XX)
 /* no generic way to do board reset. simply call soft_reset. */
@@ -288,13 +271,13 @@ unsigned long get_tbclk(void)
 /* ------------------------------------------------------------------------- */
 
 #if defined(CONFIG_WATCHDOG)
-#if !defined(CONFIG_PCIPPC2) && !defined(CONFIG_BAB7xx)
+#if !defined(CONFIG_BAB7xx)
 void
 watchdog_reset(void)
 {
 
 }
-#endif  /* !CONFIG_PCIPPC2 && !CONFIG_BAB7xx */
+#endif  /* !CONFIG_BAB7xx */
 #endif	/* CONFIG_WATCHDOG */
 
 /* ------------------------------------------------------------------------- */

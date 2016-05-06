@@ -1,23 +1,7 @@
 /*
  * Copyright 2011,2012 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -227,6 +211,17 @@ int misc_init_r(void)
 				"'00' is unsupported\n");
 		else
 			actual[i] = freq[i][clock];
+
+		/*
+		 * PC board uses a different CPLD with PB board, this CPLD
+		 * has cpld_ver_sub = 1, and pcba_ver = 5. But CPLD on PB
+		 * board has cpld_ver_sub = 0, and pcba_ver = 4.
+		 */
+		if ((i == 1) && (CPLD_READ(cpld_ver_sub) == 1) &&
+		    (CPLD_READ(pcba_ver) == 5)) {
+			/* PC board bank2 frequency */
+			actual[i] = freq[i-1][clock];
+		}
 	}
 
 	for (i = 0; i < NUM_SRDS_BANKS; i++) {

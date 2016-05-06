@@ -16,27 +16,11 @@
  * (C) Copyright 2004
  * Philippe Robin, ARM Ltd. <philippe.robin@arm.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #include <common.h>
-#include <asm/proc-armv/ptrace.h>
+#include <asm/ptrace.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -123,11 +107,12 @@ void show_regs (struct pt_regs *regs)
 	"UK12_32",	"UK13_32",	"UK14_32",	"SYS_32",
 	};
 
-	flags = condition_codes (regs);
+	flags = condition_codes(regs);
 
-	printf ("pc : [<%08lx>]	   lr : [<%08lx>]\n"
+	printf ("pc : [<%08lx>] (pre-reloc: [<%08lx>]) lr : [<%08lx>]\n"
 		"sp : %08lx  ip : %08lx	 fp : %08lx\n",
-		instruction_pointer (regs),
+		instruction_pointer(regs),
+		instruction_pointer(regs) - gd->reloc_off,
 		regs->ARM_lr, regs->ARM_sp, regs->ARM_ip, regs->ARM_fp);
 	printf ("r10: %08lx  r9 : %08lx	 r8 : %08lx\n",
 		regs->ARM_r10, regs->ARM_r9, regs->ARM_r8);
@@ -146,9 +131,17 @@ void show_regs (struct pt_regs *regs)
 		thumb_mode (regs) ? " (T)" : "");
 }
 
+/* fixup PC to point to instruction leading to exception */
+static inline void fixup_pc(struct pt_regs *regs, int offset)
+{
+	uint32_t pc = instruction_pointer(regs) + offset;
+	regs->ARM_pc = pc | (regs->ARM_pc & PCMASK);
+}
+
 void do_undefined_instruction (struct pt_regs *pt_regs)
 {
 	printf ("undefined instruction\n");
+	fixup_pc(pt_regs, -4);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -156,6 +149,7 @@ void do_undefined_instruction (struct pt_regs *pt_regs)
 void do_software_interrupt (struct pt_regs *pt_regs)
 {
 	printf ("software interrupt\n");
+	fixup_pc(pt_regs, -4);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -163,13 +157,22 @@ void do_software_interrupt (struct pt_regs *pt_regs)
 void do_prefetch_abort (struct pt_regs *pt_regs)
 {
 	printf ("prefetch abort\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
 
 void do_data_abort (struct pt_regs *pt_regs)
 {
-	printf ("data abort\n\n    MAYBE you should read doc/README.arm-unaligned-accesses\n\n");
+	unsigned long fsr;
+
+	/* Read Fault Status Register */
+	asm volatile ("mrc p15, 0, %0, c5, c0, 0" : "=r"(fsr));
+
+	printf ("data abort\n\n");
+	if (fsr & 1)
+		printf ("MAYBE you should read doc/README.arm-unaligned-accesses\n\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -177,6 +180,7 @@ void do_data_abort (struct pt_regs *pt_regs)
 void do_not_used (struct pt_regs *pt_regs)
 {
 	printf ("not used\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -184,6 +188,7 @@ void do_not_used (struct pt_regs *pt_regs)
 void do_fiq (struct pt_regs *pt_regs)
 {
 	printf ("fast interrupt request\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }
@@ -192,6 +197,7 @@ void do_fiq (struct pt_regs *pt_regs)
 void do_irq (struct pt_regs *pt_regs)
 {
 	printf ("interrupt request\n");
+	fixup_pc(pt_regs, -8);
 	show_regs (pt_regs);
 	bad_mode ();
 }

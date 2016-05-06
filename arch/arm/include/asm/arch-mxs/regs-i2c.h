@@ -4,43 +4,30 @@
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_I2C_H__
 #define __MX28_REGS_I2C_H__
 
-#include <asm/arch/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_i2c_regs {
-	mxs_reg_32(hw_i2c_ctrl0)
-	mxs_reg_32(hw_i2c_timing0)
-	mxs_reg_32(hw_i2c_timing1)
-	mxs_reg_32(hw_i2c_timing2)
-	mxs_reg_32(hw_i2c_ctrl1)
-	mxs_reg_32(hw_i2c_stat)
-	mxs_reg_32(hw_i2c_queuectrl)
-	mxs_reg_32(hw_i2c_queuestat)
-	mxs_reg_32(hw_i2c_queuecmd)
-	mxs_reg_32(hw_i2c_queuedata)
-	mxs_reg_32(hw_i2c_data)
-	mxs_reg_32(hw_i2c_debug0)
-	mxs_reg_32(hw_i2c_debug1)
-	mxs_reg_32(hw_i2c_version)
+	mxs_reg_32(hw_i2c_ctrl0);
+	mxs_reg_32(hw_i2c_timing0);
+	mxs_reg_32(hw_i2c_timing1);
+	mxs_reg_32(hw_i2c_timing2);
+	mxs_reg_32(hw_i2c_ctrl1);
+	mxs_reg_32(hw_i2c_stat);
+	mxs_reg_32(hw_i2c_queuectrl);
+	mxs_reg_32(hw_i2c_queuestat);
+	mxs_reg_32(hw_i2c_queuecmd);
+	mxs_reg_32(hw_i2c_queuedata);
+	mxs_reg_32(hw_i2c_data);
+	mxs_reg_32(hw_i2c_debug0);
+	mxs_reg_32(hw_i2c_debug1);
+	mxs_reg_32(hw_i2c_version);
 };
 #endif
 

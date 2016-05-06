@@ -1,28 +1,15 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
@@ -42,6 +29,14 @@
 ssize_t os_read(int fd, void *buf, size_t count)
 {
 	return read(fd, buf, count);
+}
+
+ssize_t os_read_no_block(int fd, void *buf, size_t count)
+{
+	const int flags = fcntl(fd, F_GETFL, 0);
+
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	return os_read(fd, buf, count);
 }
 
 ssize_t os_write(int fd, const void *buf, size_t count)
@@ -141,7 +136,7 @@ void os_usleep(unsigned long usec)
 	usleep(usec);
 }
 
-u64 os_get_nsec(void)
+u64 __attribute__((no_instrument_function)) os_get_nsec(void)
 {
 #if defined(CLOCK_MONOTONIC) && defined(_POSIX_MONOTONIC_CLOCK)
 	struct timespec tp;
@@ -252,4 +247,102 @@ int os_parse_args(struct sandbox_state *state, int argc, char *argv[])
 	}
 
 	return 0;
+}
+
+void os_dirent_free(struct os_dirent_node *node)
+{
+	struct os_dirent_node *next;
+
+	while (node) {
+		next = node->next;
+		free(node);
+		node = next;
+	}
+}
+
+int os_dirent_ls(const char *dirname, struct os_dirent_node **headp)
+{
+	struct dirent entry, *result;
+	struct os_dirent_node *head, *node, *next;
+	struct stat buf;
+	DIR *dir;
+	int ret;
+	char *fname;
+	int len;
+
+	*headp = NULL;
+	dir = opendir(dirname);
+	if (!dir)
+		return -1;
+
+	/* Create a buffer for the maximum filename length */
+	len = sizeof(entry.d_name) + strlen(dirname) + 2;
+	fname = malloc(len);
+	if (!fname) {
+		ret = -ENOMEM;
+		goto done;
+	}
+
+	for (node = head = NULL;; node = next) {
+		ret = readdir_r(dir, &entry, &result);
+		if (ret || !result)
+			break;
+		next = malloc(sizeof(*node) + strlen(entry.d_name) + 1);
+		if (!next) {
+			os_dirent_free(head);
+			ret = -ENOMEM;
+			goto done;
+		}
+		strcpy(next->name, entry.d_name);
+		switch (entry.d_type) {
+		case DT_REG:
+			next->type = OS_FILET_REG;
+			break;
+		case DT_DIR:
+			next->type = OS_FILET_DIR;
+			break;
+		case DT_LNK:
+			next->type = OS_FILET_LNK;
+			break;
+		}
+		next->size = 0;
+		snprintf(fname, len, "%s/%s", dirname, next->name);
+		if (!stat(fname, &buf))
+			next->size = buf.st_size;
+		if (node)
+			node->next = next;
+		if (!head)
+			head = node;
+	}
+	*headp = head;
+
+done:
+	closedir(dir);
+	return ret;
+}
+
+const char *os_dirent_typename[OS_FILET_COUNT] = {
+	"   ",
+	"SYM",
+	"DIR",
+	"???",
+};
+
+const char *os_dirent_get_typename(enum os_dirent_t type)
+{
+	if (type >= 0 && type < OS_FILET_COUNT)
+		return os_dirent_typename[type];
+
+	return os_dirent_typename[OS_FILET_UNKNOWN];
+}
+
+ssize_t os_get_filesize(const char *fname)
+{
+	struct stat buf;
+	int ret;
+
+	ret = stat(fname, &buf);
+	if (ret)
+		return ret;
+	return buf.st_size;
 }

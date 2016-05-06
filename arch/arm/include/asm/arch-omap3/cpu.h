@@ -2,24 +2,7 @@
  * (C) Copyright 2006-2008
  * Texas Instruments, <www.ti.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _CPU_H
@@ -109,6 +92,10 @@ struct gpmc_cs {
 	u8 res[8];		/* blow up to 0x30 byte */
 };
 
+struct bch_res_0_3 {
+	u32 bch_result_x[4];
+};
+
 struct gpmc {
 	u8 res1[0x10];
 	u32 sysconfig;		/* 0x10 */
@@ -135,6 +122,8 @@ struct gpmc {
 	u32 ecc7_result;	/* 0x218 */
 	u32 ecc8_result;	/* 0x21C */
 	u32 ecc9_result;	/* 0x220 */
+	u8 res7[0x1C];		/* fill up to 0x240 */
+	struct bch_res_0_3 bch_result_0_3[7];	/* 0x240 */
 };
 
 /* Used for board specific gpmc initialization */

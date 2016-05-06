@@ -8,23 +8,7 @@
  * Modified for OMAP 1610 H2 board by Nishant Kamat, Jan 2004
  *
  * Modified for OMAP 5912 OSK board by Rishi Bhattacharya, Apr 2004
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -306,6 +290,23 @@ common_tc:
 	ldr	r1,	VAL_MPU_CNTL_TIMER
 	str	r1,	[r0]
 
+	/*
+	 * Setup a temporary stack
+	 */
+	ldr	sp,	SRAM_STACK
+	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
+
+	/*
+	 * Save the old lr(passed in ip) and the current lr to stack
+	 */
+	push	{ip, lr}
+
+	/*
+	 * go setup pll, mux, memory
+	 */
+	bl	s_init
+	pop	{ip, pc}
+
 	/* back to arch calling code */
 	mov	pc,	lr
 
@@ -469,6 +470,9 @@ VAL_ARM_IDLECT2:
 	.word 0x00000886
 VAL_ARM_IDLECT3:
 	.word 0x00000015
+
+SRAM_STACK:
+	.word CONFIG_SYS_INIT_SP_ADDR
 
 /* command values */
 .equ CMD_SDRAM_NOP,             0x00000000

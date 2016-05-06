@@ -3,23 +3,7 @@
  *
  * Michal SIMEK <monstr@monstr.eu>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -34,7 +18,7 @@
 /* Open Firmware DTS */
 #define CONFIG_OF_CONTROL	1
 #define CONFIG_OF_EMBED		1
-#define CONFIG_DEFAULT_DEVICE_TREE microblaze
+#define CONFIG_DEFAULT_DEVICE_TREE microblaze-generic
 
 /* linear and spi flash memory */
 #ifdef XILINX_FLASH_START
@@ -104,7 +88,7 @@
 
 /* gpio */
 #ifdef XILINX_GPIO_BASEADDR
-# define CONFIG_SYS_GPIO_0		1
+# define CONFIG_XILINX_GPIO
 # define CONFIG_SYS_GPIO_0_ADDR		XILINX_GPIO_BASEADDR
 #endif
 
@@ -118,6 +102,14 @@
 #if defined(XILINX_TIMER_BASEADDR) && defined(XILINX_TIMER_IRQ)
 #  define CONFIG_SYS_TIMER_0_ADDR	XILINX_TIMER_BASEADDR
 #  define CONFIG_SYS_TIMER_0_IRQ	XILINX_TIMER_IRQ
+#endif
+
+/* watchdog */
+#if defined(XILINX_WATCHDOG_BASEADDR) && defined(XILINX_WATCHDOG_IRQ)
+# define CONFIG_WATCHDOG_BASEADDR	XILINX_WATCHDOG_BASEADDR
+# define CONFIG_WATCHDOG_IRQ		XILINX_WATCHDOG_IRQ
+# define CONFIG_HW_WATCHDOG
+# define CONFIG_XILINX_TB_WATCHDOG
 #endif
 
 /*
@@ -304,6 +296,7 @@
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MFSL
 #define CONFIG_CMD_ECHO
+#define CONFIG_CMD_GPIO
 
 #if defined(CONFIG_DCACHE) || defined(CONFIG_ICACHE)
 # define CONFIG_CMD_CACHE
@@ -414,9 +407,16 @@
 					"nor0=flash-0\0"\
 					"mtdparts=mtdparts=flash-0:"\
 					"256k(u-boot),256k(env),3m(kernel),"\
-					"1m(romfs),1m(cramfs),-(jffs2)\0"
+					"1m(romfs),1m(cramfs),-(jffs2)\0"\
+					"nc=setenv stdout nc;"\
+					"setenv stdin nc\0" \
+					"serial=setenv stdout serial;"\
+					"setenv stdin serial\0"
 
 #define CONFIG_CMDLINE_EDITING
+
+#define CONFIG_NETCONSOLE
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV
 
 /* Use the HUSH parser */
 #define CONFIG_SYS_HUSH_PARSER

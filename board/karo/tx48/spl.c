@@ -32,10 +32,12 @@
 #include <asm/arch/mmc_host_def.h>
 #include <asm/arch/ddr_defs.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/arch/nand.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/mem.h>
 #include <video_fb.h>
 #include <asm/arch/da8xx-fb.h>
+
+#include "flash.h"
 
 #define TX48_LED_GPIO		AM33XX_GPIO_NR(1, 26)
 #define TX48_ETH_PHY_RST_GPIO	AM33XX_GPIO_NR(3, 8)
@@ -66,10 +68,6 @@
 
 #define NO_OF_MAC_ADDR		1
 #define ETH_ALEN		6
-
-#define MUX_CFG(value, offset)	{					\
-	__raw_writel(value, (CTRL_BASE + (offset)));			\
-	}
 
 /* PAD Control Fields */
 #define SLEWCTRL	(0x1 << 6)
@@ -369,7 +367,7 @@ static inline void tx48_set_pin_mux(const struct pin_mux *pin_mux,
 	int i;
 
 	for (i = 0; i < num_pins; i++)
-		MUX_CFG(pin_mux[i].val, pin_mux[i].reg_offset);
+		writel(pin_mux[i].val, CTRL_BASE + pin_mux[i].reg_offset);
 }
 
 static struct pin_mux tx48_uart0_pins[] = {
@@ -408,6 +406,15 @@ static void enable_mmc0_pin_mux(void)
 {
 	tx48_set_pin_mux(tx48_mmc_pins, ARRAY_SIZE(tx48_mmc_pins));
 }
+
+static const u32 gpmc_nand_cfg[GPMC_MAX_REG] = {
+	TX48_NAND_GPMC_CONFIG1,
+	TX48_NAND_GPMC_CONFIG2,
+	TX48_NAND_GPMC_CONFIG3,
+	TX48_NAND_GPMC_CONFIG4,
+	TX48_NAND_GPMC_CONFIG5,
+	TX48_NAND_GPMC_CONFIG6,
+};
 
 #define SDRAM_CLK		CONFIG_SYS_DDR_CLK
 
@@ -646,7 +653,7 @@ static void tx48_ddr_init(void)
 	r.emif_ddr_phy_ctlr_1 = 0x0000030b;
 
 	config_ddr(SDRAM_CLK, 0x04, &tx48_ddr3_data,
-		&tx48_ddr3_cmd_ctrl_data, &r);
+		&tx48_ddr3_cmd_ctrl_data, &r, 0);
 
 	ddr3_calib_start();
 
@@ -677,7 +684,17 @@ static inline void tx48_wdog_disable(void)
 void s_init(void)
 {
 	struct uart_sys *uart_base = (struct uart_sys *)DEFAULT_UART_BASE;
+	struct gpmc *gpmc_cfg = (struct gpmc *)GPMC_BASE;
 	int timeout = 1000;
+
+	gd = &gdata;
+
+	/*
+         * Save the boot parameters passed from romcode.
+         * We cannot delay the saving further than this,
+         * to prevent overwrites.
+         */
+	save_omap_boot_params();
 
 	/* Setup the PLLs and the clocks for the peripherals */
 	pll_init();
@@ -699,19 +716,18 @@ void s_init(void)
 	writel((readl(&uart_base->uartsyscfg) & ~UART_IDLE_MODE_MASK) |
 		UART_IDLE_MODE(1), &uart_base->uartsyscfg);
 
-	gd = &gdata;
-
 	preloader_console_init();
 
 	if (timeout <= 0)
 		printf("Timeout waiting for UART RESET\n");
-
 
 	timer_init();
 
 	tx48_ddr_init();
 
 	gpmc_init();
+	enable_gpmc_cs_config(gpmc_nand_cfg, &gpmc_cfg->cs[0],
+			CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_SIZE);
 
 	/* Enable MMC0 */
 	enable_mmc0_pin_mux();

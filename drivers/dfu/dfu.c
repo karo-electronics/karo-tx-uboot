@@ -4,22 +4,11 @@
  * Copyright (C) 2012 Samsung Electronics
  * author: Lukasz Majewski <l.majewski@samsung.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <errno.h>
 #include <malloc.h>
 #include <mmc.h>
 #include <fat.h>
@@ -27,8 +16,19 @@
 #include <linux/list.h>
 #include <linux/compiler.h>
 
+static bool dfu_reset_request;
 static LIST_HEAD(dfu_list);
 static int dfu_alt_num;
+
+bool dfu_reset(void)
+{
+	return dfu_reset_request;
+}
+
+void dfu_trigger_reset()
+{
+	dfu_reset_request = true;
+}
 
 static int dfu_find_alt_num(const char *s)
 {
@@ -41,93 +41,268 @@ static int dfu_find_alt_num(const char *s)
 	return ++i;
 }
 
-static unsigned char __aligned(CONFIG_SYS_CACHELINE_SIZE)
-				     dfu_buf[DFU_DATA_BUF_SIZE];
+static unsigned char *dfu_buf;
+static unsigned long dfu_buf_size = CONFIG_SYS_DFU_DATA_BUF_SIZE;
 
-int dfu_write(struct dfu_entity *dfu, void *buf, int size, int blk_seq_num)
+static unsigned char *dfu_free_buf(void)
 {
-	static unsigned char *i_buf;
-	static int i_blk_seq_num;
-	long w_size = 0;
-	int ret = 0;
+	free(dfu_buf);
+	dfu_buf = NULL;
+	return dfu_buf;
+}
 
-	debug("%s: name: %s buf: 0x%p size: 0x%x p_num: 0x%x i_buf: 0x%p\n",
-	       __func__, dfu->name, buf, size, blk_seq_num, i_buf);
+static unsigned char *dfu_get_buf(void)
+{
+	char *s;
 
-	if (blk_seq_num == 0) {
-		i_buf = dfu_buf;
-		i_blk_seq_num = 0;
-	}
+	if (dfu_buf != NULL)
+		return dfu_buf;
 
-	if (i_blk_seq_num++ != blk_seq_num) {
-		printf("%s: Wrong sequence number! [%d] [%d]\n",
-		       __func__, i_blk_seq_num, blk_seq_num);
-		return -1;
-	}
+	s = getenv("dfu_bufsiz");
+	dfu_buf_size = s ? (unsigned long)simple_strtol(s, NULL, 16) :
+			CONFIG_SYS_DFU_DATA_BUF_SIZE;
 
-	memcpy(i_buf, buf, size);
-	i_buf += size;
+	dfu_buf = memalign(CONFIG_SYS_CACHELINE_SIZE, dfu_buf_size);
+	if (dfu_buf == NULL)
+		printf("%s: Could not memalign 0x%lx bytes\n",
+		       __func__, dfu_buf_size);
 
-	if (size == 0) {
-		/* Integrity check (if needed) */
-		debug("%s: %s %d [B] CRC32: 0x%x\n", __func__, dfu->name,
-		       i_buf - dfu_buf, crc32(0, dfu_buf, i_buf - dfu_buf));
+	return dfu_buf;
+}
 
-		w_size = i_buf - dfu_buf;
-		ret = dfu->write_medium(dfu, dfu_buf, &w_size);
-		if (ret)
-			debug("%s: Write error!\n", __func__);
+static int dfu_write_buffer_drain(struct dfu_entity *dfu)
+{
+	long w_size;
+	int ret;
 
-		i_blk_seq_num = 0;
-		i_buf = NULL;
-		return ret;
-	}
+	/* flush size? */
+	w_size = dfu->i_buf - dfu->i_buf_start;
+	if (w_size == 0)
+		return 0;
+
+	/* update CRC32 */
+	dfu->crc = crc32(dfu->crc, dfu->i_buf_start, w_size);
+
+	ret = dfu->write_medium(dfu, dfu->offset, dfu->i_buf_start, &w_size);
+	if (ret)
+		debug("%s: Write error!\n", __func__);
+
+	/* point back */
+	dfu->i_buf = dfu->i_buf_start;
+
+	/* update offset */
+	dfu->offset += w_size;
+
+	puts("#");
 
 	return ret;
 }
 
-int dfu_read(struct dfu_entity *dfu, void *buf, int size, int blk_seq_num)
+int dfu_write(struct dfu_entity *dfu, void *buf, int size, int blk_seq_num)
 {
-	static unsigned char *i_buf;
-	static int i_blk_seq_num;
-	static long r_size;
-	static u32 crc;
 	int ret = 0;
+	int tret;
 
-	debug("%s: name: %s buf: 0x%p size: 0x%x p_num: 0x%x i_buf: 0x%p\n",
-	       __func__, dfu->name, buf, size, blk_seq_num, i_buf);
+	debug("%s: name: %s buf: 0x%p size: 0x%x p_num: 0x%x offset: 0x%llx bufoffset: 0x%x\n",
+	      __func__, dfu->name, buf, size, blk_seq_num, dfu->offset,
+	      dfu->i_buf - dfu->i_buf_start);
 
-	if (blk_seq_num == 0) {
-		i_buf = dfu_buf;
-		ret = dfu->read_medium(dfu, i_buf, &r_size);
-		debug("%s: %s %ld [B]\n", __func__, dfu->name, r_size);
-		i_blk_seq_num = 0;
-		/* Integrity check (if needed) */
-		crc = crc32(0, dfu_buf, r_size);
+	if (!dfu->inited) {
+		/* initial state */
+		dfu->crc = 0;
+		dfu->offset = 0;
+		dfu->bad_skip = 0;
+		dfu->i_blk_seq_num = 0;
+		dfu->i_buf_start = dfu_get_buf();
+		if (dfu->i_buf_start == NULL)
+			return -ENOMEM;
+		dfu->i_buf_end = dfu_get_buf() + dfu_buf_size;
+		dfu->i_buf = dfu->i_buf_start;
+
+		dfu->inited = 1;
 	}
 
-	if (i_blk_seq_num++ != blk_seq_num) {
+	if (dfu->i_blk_seq_num != blk_seq_num) {
 		printf("%s: Wrong sequence number! [%d] [%d]\n",
-		       __func__, i_blk_seq_num, blk_seq_num);
+		       __func__, dfu->i_blk_seq_num, blk_seq_num);
 		return -1;
 	}
 
-	if (r_size >= size) {
-		memcpy(buf, i_buf, size);
-		i_buf += size;
-		r_size -= size;
-		return size;
-	} else {
-		memcpy(buf, i_buf, r_size);
-		i_buf += r_size;
-		debug("%s: %s CRC32: 0x%x\n", __func__, dfu->name, crc);
-		puts("UPLOAD ... done\nCtrl+C to exit ...\n");
+	/* DFU 1.1 standard says:
+	 * The wBlockNum field is a block sequence number. It increments each
+	 * time a block is transferred, wrapping to zero from 65,535. It is used
+	 * to provide useful context to the DFU loader in the device."
+	 *
+	 * This means that it's a 16 bit counter that roll-overs at
+	 * 0xffff -> 0x0000. By having a typical 4K transfer block
+	 * we roll-over at exactly 256MB. Not very fun to debug.
+	 *
+	 * Handling rollover, and having an inited variable,
+	 * makes things work.
+	 */
 
-		i_buf = NULL;
-		i_blk_seq_num = 0;
-		crc = 0;
-		return r_size;
+	/* handle rollover */
+	dfu->i_blk_seq_num = (dfu->i_blk_seq_num + 1) & 0xffff;
+
+	/* flush buffer if overflow */
+	if ((dfu->i_buf + size) > dfu->i_buf_end) {
+		tret = dfu_write_buffer_drain(dfu);
+		if (ret == 0)
+			ret = tret;
 	}
+
+	/* we should be in buffer now (if not then size too large) */
+	if ((dfu->i_buf + size) > dfu->i_buf_end) {
+		printf("%s: Wrong size! [%d] [%d] - %d\n",
+		       __func__, dfu->i_blk_seq_num, blk_seq_num, size);
+		return -1;
+	}
+
+	memcpy(dfu->i_buf, buf, size);
+	dfu->i_buf += size;
+
+	/* if end or if buffer full flush */
+	if (size == 0 || (dfu->i_buf + size) > dfu->i_buf_end) {
+		tret = dfu_write_buffer_drain(dfu);
+		if (ret == 0)
+			ret = tret;
+	}
+
+	/* end? */
+	if (size == 0) {
+		/* Now try and flush to the medium if needed. */
+		if (dfu->flush_medium)
+			ret = dfu->flush_medium(dfu);
+		printf("\nDFU complete CRC32: 0x%08x\n", dfu->crc);
+
+		/* clear everything */
+		dfu_free_buf();
+		dfu->crc = 0;
+		dfu->offset = 0;
+		dfu->i_blk_seq_num = 0;
+		dfu->i_buf_start = dfu_buf;
+		dfu->i_buf_end = dfu_buf;
+		dfu->i_buf = dfu->i_buf_start;
+
+		dfu->inited = 0;
+
+	}
+
+	return ret = 0 ? size : ret;
+}
+
+static int dfu_read_buffer_fill(struct dfu_entity *dfu, void *buf, int size)
+{
+	long chunk;
+	int ret, readn;
+
+	readn = 0;
+	while (size > 0) {
+		/* get chunk that can be read */
+		chunk = min(size, dfu->b_left);
+		/* consume */
+		if (chunk > 0) {
+			memcpy(buf, dfu->i_buf, chunk);
+			dfu->crc = crc32(dfu->crc, buf, chunk);
+			dfu->i_buf += chunk;
+			dfu->b_left -= chunk;
+			size -= chunk;
+			buf += chunk;
+			readn += chunk;
+		}
+
+		/* all done */
+		if (size > 0) {
+			/* no more to read */
+			if (dfu->r_left == 0)
+				break;
+
+			dfu->i_buf = dfu->i_buf_start;
+			dfu->b_left = dfu->i_buf_end - dfu->i_buf_start;
+
+			/* got to read, but buffer is empty */
+			if (dfu->b_left > dfu->r_left)
+				dfu->b_left = dfu->r_left;
+			ret = dfu->read_medium(dfu, dfu->offset, dfu->i_buf,
+					&dfu->b_left);
+			if (ret != 0) {
+				debug("%s: Read error!\n", __func__);
+				return ret;
+			}
+			dfu->offset += dfu->b_left;
+			dfu->r_left -= dfu->b_left;
+
+			puts("#");
+		}
+	}
+
+	return readn;
+}
+
+int dfu_read(struct dfu_entity *dfu, void *buf, int size, int blk_seq_num)
+{
+	int ret = 0;
+
+	debug("%s: name: %s buf: 0x%p size: 0x%x p_num: 0x%x i_buf: 0x%p\n",
+	       __func__, dfu->name, buf, size, blk_seq_num, dfu->i_buf);
+
+	if (!dfu->inited) {
+		dfu->i_buf_start = dfu_get_buf();
+		if (dfu->i_buf_start == NULL)
+			return -ENOMEM;
+
+		ret = dfu->read_medium(dfu, 0, dfu->i_buf_start, &dfu->r_left);
+		if (ret != 0) {
+			debug("%s: failed to get r_left\n", __func__);
+			return ret;
+		}
+
+		debug("%s: %s %ld [B]\n", __func__, dfu->name, dfu->r_left);
+
+		dfu->i_blk_seq_num = 0;
+		dfu->crc = 0;
+		dfu->offset = 0;
+		dfu->i_buf_end = dfu_get_buf() + dfu_buf_size;
+		dfu->i_buf = dfu->i_buf_start;
+		dfu->b_left = 0;
+
+		dfu->bad_skip = 0;
+
+		dfu->inited = 1;
+	}
+
+	if (dfu->i_blk_seq_num != blk_seq_num) {
+		printf("%s: Wrong sequence number! [%d] [%d]\n",
+		       __func__, dfu->i_blk_seq_num, blk_seq_num);
+		return -1;
+	}
+	/* handle rollover */
+	dfu->i_blk_seq_num = (dfu->i_blk_seq_num + 1) & 0xffff;
+
+	ret = dfu_read_buffer_fill(dfu, buf, size);
+	if (ret < 0) {
+		printf("%s: Failed to fill buffer\n", __func__);
+		return -1;
+	}
+
+	if (ret < size) {
+		debug("%s: %s CRC32: 0x%x\n", __func__, dfu->name, dfu->crc);
+		puts("\nUPLOAD ... done\nCtrl+C to exit ...\n");
+
+		dfu_free_buf();
+		dfu->i_blk_seq_num = 0;
+		dfu->crc = 0;
+		dfu->offset = 0;
+		dfu->i_buf_start = dfu_buf;
+		dfu->i_buf_end = dfu_buf;
+		dfu->i_buf = dfu->i_buf_start;
+		dfu->b_left = 0;
+
+		dfu->bad_skip = 0;
+
+		dfu->inited = 0;
+	}
+
 	return ret;
 }
 
@@ -146,6 +321,9 @@ static int dfu_fill_entity(struct dfu_entity *dfu, char *s, int alt,
 	/* Specific for mmc device */
 	if (strcmp(interface, "mmc") == 0) {
 		if (dfu_fill_entity_mmc(dfu, s))
+			return -1;
+	} else if (strcmp(interface, "nand") == 0) {
+		if (dfu_fill_entity_nand(dfu, s))
 			return -1;
 	} else {
 		printf("%s: Device %s not (yet) supported!\n",

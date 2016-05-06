@@ -2,23 +2,7 @@
 # (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 include $(TOPDIR)/config.mk
@@ -46,10 +30,12 @@ COBJS-$(CONFIG_ETHOC) += ethoc.o
 COBJS-$(CONFIG_FEC_MXC) += fec_mxc.o
 COBJS-$(CONFIG_FSLDMAFEC) += fsl_mcdmafec.o mcfmii.o
 COBJS-$(CONFIG_FTGMAC100) += ftgmac100.o
+COBJS-$(CONFIG_FTMAC110) += ftmac110.o
 COBJS-$(CONFIG_FTMAC100) += ftmac100.o
 COBJS-$(CONFIG_GRETH) += greth.o
 COBJS-$(CONFIG_INCA_IP_SWITCH) += inca-ip_sw.o
 COBJS-$(CONFIG_DRIVER_KS8695ETH) += ks8695eth.o
+COBJS-$(CONFIG_KS8851_MLL) += ks8851_mll.o
 COBJS-$(CONFIG_LAN91C96) += lan91c96.o
 COBJS-$(CONFIG_MACB) += macb.o
 COBJS-$(CONFIG_MCFFEC) += mcffec.o mcfmii.o
@@ -68,9 +54,10 @@ COBJS-$(CONFIG_RTL8169) += rtl8169.o
 COBJS-$(CONFIG_SH_ETHER) += sh_eth.o
 COBJS-$(CONFIG_SMC91111) += smc91111.o
 COBJS-$(CONFIG_SMC911X) += smc911x.o
+COBJS-$(CONFIG_SUNXI_WEMAC) += sunxi_wemac.o
 COBJS-$(CONFIG_DRIVER_TI_EMAC) += davinci_emac.o
-COBJS-$(CONFIG_DRIVER_TI_CPSW) += cpsw.o
 COBJS-$(CONFIG_TSEC_ENET) += tsec.o fsl_mdio.o
+COBJS-$(CONFIG_DRIVER_TI_CPSW) += cpsw.o
 COBJS-$(CONFIG_FMAN_ENET) += fsl_mdio.o
 COBJS-$(CONFIG_TSI108_ETH) += tsi108_eth.o
 COBJS-$(CONFIG_ULI526X) += uli526x.o

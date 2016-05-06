@@ -2,23 +2,7 @@
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
  * Author: Srikanth Srinivasan <srikanth.srinivasan@freescale.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -605,8 +589,8 @@ int board_eth_init(bd_t *bis)
 	lane = serdes_get_first_lane(XAUI_FM1);
 	if (lane >= 0) {
 		debug("FM1@TGEC1 expects XAUI in slot %u\n", lane_to_slot[lane]);
-		mdio_mux[FM1_10GEC1].mask = BRDCFG1_EMI2_SEL_MASK;
-		mdio_mux[FM1_10GEC1].val = BRDCFG1_EMI2_SEL_SLOT2;
+		mdio_mux[i].mask = BRDCFG1_EMI2_SEL_MASK;
+		mdio_mux[i].val = BRDCFG1_EMI2_SEL_SLOT2;
 		super_hydra_mdio_set_mux("SUPER_HYDRA_FM1_TGEC_MDIO",
 					mdio_mux[i].mask, mdio_mux[i].val);
 	}
@@ -704,8 +688,8 @@ int board_eth_init(bd_t *bis)
 	lane = serdes_get_first_lane(XAUI_FM2);
 	if (lane >= 0) {
 		debug("FM2@TGEC1 expects XAUI in slot %u\n", lane_to_slot[lane]);
-		mdio_mux[FM2_10GEC1].mask = BRDCFG1_EMI2_SEL_MASK;
-		mdio_mux[FM2_10GEC1].val = BRDCFG1_EMI2_SEL_SLOT1;
+		mdio_mux[i].mask = BRDCFG1_EMI2_SEL_MASK;
+		mdio_mux[i].val = BRDCFG1_EMI2_SEL_SLOT1;
 		super_hydra_mdio_set_mux("SUPER_HYDRA_FM2_TGEC_MDIO",
 					mdio_mux[i].mask, mdio_mux[i].val);
 	}

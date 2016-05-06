@@ -255,7 +255,6 @@ typedef struct {
 	void	     *eEntryPoint;
 	void	     *eRamStart;
 	unsigned int eRamLen;
-	ce_driver_globals *eDrvGlb;
 
 	unsigned char parseState;
 	unsigned int parseChkSum;
@@ -291,6 +290,7 @@ struct sockaddr_in {
 enum bootme_state {
 	BOOTME_INIT,
 	BOOTME_DOWNLOAD,
+	BOOTME_DEBUG_INIT,
 	BOOTME_DEBUG,
 	BOOTME_DONE,
 	BOOTME_ERROR,

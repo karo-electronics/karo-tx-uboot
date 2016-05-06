@@ -1,24 +1,10 @@
 /*
  * Marvell PHY drivers
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
- *
  */
 #include <config.h>
 #include <common.h>
@@ -88,6 +74,12 @@
 #define MIIM_88E1145_PHY_CAL_OV 30
 
 #define MIIM_88E1149_PHY_PAGE	29
+
+/* 88E1310 PHY defines */
+#define MIIM_88E1310_PHY_LED_CTRL	16
+#define MIIM_88E1310_PHY_IRQ_EN		18
+#define MIIM_88E1310_PHY_RGMII_CTRL	21
+#define MIIM_88E1310_PHY_PAGE		22
 
 /* Marvell 88E1011S */
 static int m88e1011s_config(struct phy_device *phydev)
@@ -394,6 +386,37 @@ static int m88e1149_config(struct phy_device *phydev)
 	return 0;
 }
 
+/* Marvell 88E1310 */
+static int m88e1310_config(struct phy_device *phydev)
+{
+	u16 reg;
+
+	/* LED link and activity */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_PAGE, 0x0003);
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_LED_CTRL);
+	reg = (reg & ~0xf) | 0x1;
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_LED_CTRL, reg);
+
+	/* Set LED2/INT to INT mode, low active */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_PAGE, 0x0003);
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_IRQ_EN);
+	reg = (reg & 0x77ff) | 0x0880;
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_IRQ_EN, reg);
+
+	/* Set RGMII delay */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_PAGE, 0x0002);
+	reg = phy_read(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_RGMII_CTRL);
+	reg |= 0x0030;
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_RGMII_CTRL, reg);
+
+	/* Ensure to return to page 0 */
+	phy_write(phydev, MDIO_DEVAD_NONE, MIIM_88E1310_PHY_PAGE, 0x0000);
+
+	genphy_config_aneg(phydev);
+	phy_reset(phydev);
+
+	return 0;
+}
 
 static struct phy_driver M88E1011S_driver = {
 	.name = "Marvell 88E1011S",
@@ -465,8 +488,29 @@ static struct phy_driver M88E1149S_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
+static struct phy_driver M88E1518_driver = {
+	.name = "Marvell 88E1518",
+	.uid = 0x1410dd1,
+	.mask = 0xffffff0,
+	.features = PHY_GBIT_FEATURES,
+	.config = &m88e1111s_config,
+	.startup = &m88e1011s_startup,
+	.shutdown = &genphy_shutdown,
+};
+
+static struct phy_driver M88E1310_driver = {
+	.name = "Marvell 88E1310",
+	.uid = 0x01410e90,
+	.mask = 0xffffff0,
+	.features = PHY_GBIT_FEATURES,
+	.config = &m88e1310_config,
+	.startup = &m88e1011s_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 int phy_marvell_init(void)
 {
+	phy_register(&M88E1310_driver);
 	phy_register(&M88E1149S_driver);
 	phy_register(&M88E1145_driver);
 	phy_register(&M88E1121R_driver);
@@ -474,6 +518,7 @@ int phy_marvell_init(void)
 	phy_register(&M88E1118R_driver);
 	phy_register(&M88E1111S_driver);
 	phy_register(&M88E1011S_driver);
+	phy_register(&M88E1518_driver);
 
 	return 0;
 }

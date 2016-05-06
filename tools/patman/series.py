@@ -1,22 +1,6 @@
 # Copyright (c) 2011 The Chromium OS Authors.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import itertools
@@ -27,7 +11,8 @@ import gitutil
 import terminal
 
 # Series-xxx tags that we understand
-valid_series = ['to', 'cc', 'version', 'changes', 'prefix', 'notes', 'name'];
+valid_series = ['to', 'cc', 'version', 'changes', 'prefix', 'notes', 'name',
+                'cover-cc', 'process_log']
 
 class Series(dict):
     """Holds information about a patch series, including all tags.
@@ -39,14 +24,17 @@ class Series(dict):
         notes: List of lines in the notes
         changes: (dict) List of changes for each version, The key is
             the integer version number
+        allow_overwrite: Allow tags to overwrite an existing tag
     """
     def __init__(self):
         self.cc = []
         self.to = []
+        self.cover_cc = []
         self.commits = []
         self.cover = None
         self.notes = []
         self.changes = {}
+        self.allow_overwrite = False
 
         # Written in MakeCcFile()
         #  key: name of patch file
@@ -69,7 +57,8 @@ class Series(dict):
             value: Tag value (part after 'Series-xxx: ')
         """
         # If we already have it, then add to our list
-        if name in self:
+        name = name.replace('-', '_')
+        if name in self and not self.allow_overwrite:
             values = value.split(',')
             values = [str.strip() for str in values]
             if type(self[name]) != type([]):
@@ -140,7 +129,8 @@ class Series(dict):
         print 'Prefix:\t ', self.get('prefix')
         if self.cover:
             print 'Cover: %d lines' % len(self.cover)
-            all_ccs = itertools.chain(*self._generated_cc.values())
+            cover_cc = gitutil.BuildEmailList(self.get('cover_cc', ''))
+            all_ccs = itertools.chain(cover_cc, *self._generated_cc.values())
             for email in set(all_ccs):
                     print '      Cc: ',email
         if cmd:
@@ -163,15 +153,20 @@ class Series(dict):
             etc.
         """
         final = []
+        process_it = self.get('process_log', '').split(',')
+        process_it = [item.strip() for item in process_it]
         need_blank = False
         for change in sorted(self.changes, reverse=True):
             out = []
             for this_commit, text in self.changes[change]:
                 if commit and this_commit != commit:
                     continue
-                out.append(text)
+                if 'uniq' not in process_it or text not in out:
+                    out.append(text)
             line = 'Changes in v%d:' % change
             have_changes = len(out) > 0
+            if 'sort' in process_it:
+                out = sorted(out)
             if have_changes:
                 out.insert(0, line)
             else:
@@ -206,7 +201,7 @@ class Series(dict):
             str = 'Change log exists, but no version is set'
             print col.Color(col.RED, str)
 
-    def MakeCcFile(self, process_tags, cover_fname):
+    def MakeCcFile(self, process_tags, cover_fname, raise_on_error):
         """Make a cc file for us to use for per-commit Cc automation
 
         Also stores in self._generated_cc to make ShowActions() faster.
@@ -214,6 +209,8 @@ class Series(dict):
         Args:
             process_tags: Process tags as if they were aliases
             cover_fname: If non-None the name of the cover letter.
+            raise_on_error: True to raise an error when an alias fails to match,
+                False to just print a message.
         Return:
             Filename of temp file created
         """
@@ -224,15 +221,18 @@ class Series(dict):
         for commit in self.commits:
             list = []
             if process_tags:
-                list += gitutil.BuildEmailList(commit.tags)
-            list += gitutil.BuildEmailList(commit.cc_list)
+                list += gitutil.BuildEmailList(commit.tags,
+                                               raise_on_error=raise_on_error)
+            list += gitutil.BuildEmailList(commit.cc_list,
+                                           raise_on_error=raise_on_error)
             list += get_maintainer.GetMaintainer(commit.patch)
             all_ccs += list
             print >>fd, commit.patch, ', '.join(list)
             self._generated_cc[commit.patch] = list
 
         if cover_fname:
-            print >>fd, cover_fname, ', '.join(set(all_ccs))
+            cover_cc = gitutil.BuildEmailList(self.get('cover_cc', ''))
+            print >>fd, cover_fname, ', '.join(set(cover_cc + all_ccs))
 
         fd.close()
         return fname

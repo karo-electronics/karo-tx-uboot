@@ -5,23 +5,7 @@
  *
  * Copyright (C) 2001  Erik Mouw (J.A.K.Mouw@its.tudelft.nl)
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -48,6 +32,8 @@ int do_bootm_linux(int flag, int argc, char * const argv[],
 	size_t		len;
 #endif
 
+	if (flag & BOOTM_STATE_OS_PREP)
+		return 0;
 	if ((flag != 0) && (flag != BOOTM_STATE_OS_GO))
 		return 1;
 
@@ -63,6 +49,8 @@ int do_bootm_linux(int flag, int argc, char * const argv[],
 		}
 #if defined(CONFIG_FIT)
 	} else if (images->fit_uname_os) {
+		int ret;
+
 		ret = fit_image_get_data(images->fit_hdr_os,
 					images->fit_noffset_os, &data, &len);
 		if (ret) {
@@ -92,14 +80,6 @@ int do_bootm_linux(int flag, int argc, char * const argv[],
 		printf("## Setting up boot parameters failed ...\n");
 		goto error;
 	}
-
-#ifdef DEBUG
-	printf("## Transferring control to Linux (at address %08x) ...\n",
-		(u32)base_ptr);
-#endif
-
-	/* we assume that the kernel is in place */
-	printf("\nStarting kernel ...\n\n");
 
 	boot_zimage(base_ptr, load_address);
 	/* does not return */

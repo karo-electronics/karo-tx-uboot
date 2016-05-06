@@ -3,27 +3,25 @@
  *
  * hardware specific header
  *
- * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR /PURPOSE.  See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __AM33XX_HARDWARE_H
 #define __AM33XX_HARDWARE_H
 
+#include <config.h>
 #include <asm/arch/omap.h>
+#ifdef CONFIG_AM33XX
+#include <asm/arch/hardware_am33xx.h>
+#elif defined(CONFIG_TI814X)
+#include <asm/arch/hardware_ti814x.h>
+#endif
 
-/* Module base addresses */
-#define LOW_LEVEL_SRAM_STACK		0x4030B7FC
-#define UART0_BASE			0x44E09000
+/*
+ * Common hardware definitions
+ */
 
 /* DM Timer base addresses */
 #define DM_TIMER0_BASE			0x4802C000
@@ -35,18 +33,12 @@
 #define DM_TIMER6_BASE			0x48048000
 #define DM_TIMER7_BASE			0x4804A000
 
+/* GPIO Base address */
+#define GPIO0_BASE			0x48032000
+#define GPIO1_BASE			0x4804C000
+
 /* BCH Error Location Module */
 #define ELM_BASE			0x48080000
-
-/* Watchdog Timer */
-#define WDT_BASE			0x44E35000
-
-/* Control Module Base Address */
-#define CTRL_BASE			0x44E10000
-#define CTRL_DEVICE_BASE		0x44E10600
-
-/* PRCM Base Address */
-#define PRCM_BASE			0x44E00000
 
 /* EMIF Base address */
 #define EMIF4_0_CFG_BASE		0x4C000000
@@ -62,13 +54,13 @@
 #define PRM_DEVICE			0x44E00F00
 
 /* VTP Base address */
-#define VTP0_CTRL_ADDR			0x44E10E0C
+#define VTP1_CTRL_ADDR			0x48140E10
 
 /* DDR Base address */
 #define DDR_CTRL_ADDR			0x44E10E04
 #define DDR_CONTROL_BASE_ADDR		0x44E11404
-#define DDR_PHY_BASE_ADDR		0x44E12000
-#define DDR_PHY_BASE_ADDR2		0x44E120A4
+#define DDR_PHY_CMD_ADDR2		0x47C0C800
+#define DDR_PHY_DATA_ADDR2		0x47C0C8C8
 
 /* UART */
 #define DEFAULT_UART_BASE		UART0_BASE
@@ -80,14 +72,10 @@
 #define GPMC_BASE			0x50000000
 
 /* CPSW Config space */
-#define AM335X_CPSW_BASE		0x4A100000
-#define AM335X_CPSW_MDIO_BASE		0x4A101000
-
-/* RTC base address */
-#define AM335X_RTC_BASE			0x44E3E000
+#define CPSW_BASE			0x4A100000
 
 /* OTG */
-#define AM335X_USB0_OTG_BASE		0x47401000
-#define AM335X_USB1_OTG_BASE		0x47401800
+#define USB0_OTG_BASE			0x47401000
+#define USB1_OTG_BASE			0x47401800
 
 #endif /* __AM33XX_HARDWARE_H */

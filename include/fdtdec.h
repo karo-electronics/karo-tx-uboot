@@ -1,22 +1,6 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __fdtdec_h
@@ -38,11 +22,13 @@
  */
 #ifdef CONFIG_PHYS_64BIT
 typedef u64 fdt_addr_t;
+typedef u64 fdt_size_t;
 #define FDT_ADDR_T_NONE (-1ULL)
 #define fdt_addr_to_cpu(reg) be64_to_cpu(reg)
 #define fdt_size_to_cpu(reg) be64_to_cpu(reg)
 #else
 typedef u32 fdt_addr_t;
+typedef u32 fdt_size_t;
 #define FDT_ADDR_T_NONE (-1U)
 #define fdt_addr_to_cpu(reg) be32_to_cpu(reg)
 #define fdt_size_to_cpu(reg) be32_to_cpu(reg)
@@ -62,6 +48,9 @@ struct fdt_memory {
 enum fdt_compat_id {
 	COMPAT_UNKNOWN,
 	COMPAT_NVIDIA_TEGRA20_USB,	/* Tegra20 USB port */
+	COMPAT_NVIDIA_TEGRA30_USB,	/* Tegra30 USB port */
+	COMPAT_NVIDIA_TEGRA114_USB,	/* Tegra114 USB port */
+	COMPAT_NVIDIA_TEGRA114_I2C,	/* Tegra114 I2C w/single clock source */
 	COMPAT_NVIDIA_TEGRA20_I2C,	/* Tegra20 i2c */
 	COMPAT_NVIDIA_TEGRA20_DVC,	/* Tegra20 dvc (really just i2c) */
 	COMPAT_NVIDIA_TEGRA20_EMC,	/* Tegra20 memory controller */
@@ -70,15 +59,32 @@ enum fdt_compat_id {
 	COMPAT_NVIDIA_TEGRA20_NAND,	/* Tegra2 NAND controller */
 	COMPAT_NVIDIA_TEGRA20_PWM,	/* Tegra 2 PWM controller */
 	COMPAT_NVIDIA_TEGRA20_DC,	/* Tegra 2 Display controller */
+	COMPAT_NVIDIA_TEGRA30_SDMMC,	/* Tegra30 SDMMC controller */
+	COMPAT_NVIDIA_TEGRA20_SDMMC,	/* Tegra20 SDMMC controller */
+	COMPAT_NVIDIA_TEGRA20_SFLASH,	/* Tegra 2 SPI flash controller */
+	COMPAT_NVIDIA_TEGRA20_SLINK,	/* Tegra 2 SPI SLINK controller */
+	COMPAT_NVIDIA_TEGRA114_SPI,	/* Tegra 114 SPI controller */
 	COMPAT_SMSC_LAN9215,		/* SMSC 10/100 Ethernet LAN9215 */
 	COMPAT_SAMSUNG_EXYNOS5_SROMC,	/* Exynos5 SROMC */
 	COMPAT_SAMSUNG_S3C2440_I2C,	/* Exynos I2C Controller */
 	COMPAT_SAMSUNG_EXYNOS5_SOUND,	/* Exynos Sound */
 	COMPAT_WOLFSON_WM8994_CODEC,	/* Wolfson WM8994 Sound Codec */
 	COMPAT_SAMSUNG_EXYNOS_SPI,	/* Exynos SPI */
+	COMPAT_GOOGLE_CROS_EC,		/* Google CROS_EC Protocol */
+	COMPAT_GOOGLE_CROS_EC_KEYB,	/* Google CROS_EC Keyboard */
 	COMPAT_SAMSUNG_EXYNOS_EHCI,	/* Exynos EHCI controller */
 	COMPAT_SAMSUNG_EXYNOS_USB_PHY,	/* Exynos phy controller for usb2.0 */
+	COMPAT_SAMSUNG_EXYNOS_TMU,	/* Exynos TMU */
+	COMPAT_SAMSUNG_EXYNOS_FIMD,	/* Exynos Display controller */
+	COMPAT_SAMSUNG_EXYNOS5_DP,	/* Exynos Display port controller */
+	COMPAT_SAMSUNG_EXYNOS5_DWMMC,	/* Exynos5 DWMMC controller */
+	COMPAT_SAMSUNG_EXYNOS_SERIAL,	/* Exynos UART */
 	COMPAT_MAXIM_MAX77686_PMIC,	/* MAX77686 PMIC */
+	COMPAT_GENERIC_SPI_FLASH,	/* Generic SPI Flash chip */
+	COMPAT_MAXIM_98095_CODEC,	/* MAX98095 Codec */
+	COMPAT_INFINEON_SLB9635_TPM,	/* Infineon SLB9635 TPM */
+	COMPAT_INFINEON_SLB9645_TPM,	/* Infineon SLB9645 TPM */
+	COMPAT_SAMSUNG_EXYNOS5_I2C,	/* Exynos5 High Speed I2C Controller */
 
 	COMPAT_COUNT,
 };
@@ -193,6 +199,19 @@ int fdtdec_next_compatible_subnode(const void *blob, int node,
  */
 fdt_addr_t fdtdec_get_addr(const void *blob, int node,
 		const char *prop_name);
+
+/**
+ * Look up an address property in a node and return it as an address.
+ * The property must hold one address with a length. This is only tested
+ * on 32-bit machines.
+ *
+ * @param blob	FDT blob
+ * @param node	node to examine
+ * @param prop_name	name of property to find
+ * @return address, if found, or FDT_ADDR_T_NONE if not
+ */
+fdt_addr_t fdtdec_get_addr_size(const void *blob, int node,
+		const char *prop_name, fdt_size_t *sizep);
 
 /**
  * Look up a 32-bit integer property in a node and return it. The property

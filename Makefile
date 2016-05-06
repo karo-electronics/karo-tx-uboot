@@ -1,28 +1,12 @@
 #
-# (C) Copyright 2000-2012
+# (C) Copyright 2000-2013
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundatio; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 VERSION = 2013
-PATCHLEVEL = 01
+PATCHLEVEL = 07
 SUBLEVEL =
 EXTRAVERSION =
 ifneq "$(SUBLEVEL)" ""
@@ -44,12 +28,7 @@ HOSTARCH := $(shell uname -m | \
 HOSTOS := $(shell uname -s | tr '[:upper:]' '[:lower:]' | \
 	    sed -e 's/\(cygwin\).*/cygwin/')
 
-# Set shell to bash if possible, otherwise fall back to sh
-SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
-	else if [ -x /bin/bash ]; then echo /bin/bash; \
-	else echo sh; fi; fi)
-
-export	HOSTARCH HOSTOS SHELL
+export	HOSTARCH HOSTOS
 
 # Deal with colliding definitions from tcsh etc.
 VENDOR=
@@ -189,6 +168,16 @@ endif
 # load other configuration
 include $(TOPDIR)/config.mk
 
+# Targets which don't build the source code
+NON_BUILD_TARGETS = backup clean clobber distclean mkproper tidy unconfig
+
+# Only do the generic board check when actually building, not configuring
+ifeq ($(filter $(NON_BUILD_TARGETS),$(MAKECMDGOALS)),)
+ifeq ($(findstring _config,$(MAKECMDGOALS)),)
+$(CHECK_GENERIC_BOARD)
+endif
+endif
+
 # If board code explicitly specified LDSCRIPT or CONFIG_SYS_LDSCRIPT, use
 # that (or fail if absent).  Otherwise, search for a linker script in a
 # standard location.
@@ -231,10 +220,6 @@ endif
 # U-Boot objects....order is important (i.e. start must be first)
 
 OBJS  = $(CPUDIR)/start.o
-ifeq ($(CPU),x86)
-RESET_OBJS-$(CONFIG_X86_NO_RESET_VECTOR) += $(CPUDIR)/start16.o
-RESET_OBJS-$(CONFIG_X86_NO_RESET_VECTOR) += $(CPUDIR)/resetvec.o
-endif
 ifeq ($(CPU),ppc4xx)
 OBJS += $(CPUDIR)/resetvec.o
 endif
@@ -242,11 +227,12 @@ ifeq ($(CPU),mpc85xx)
 OBJS += $(CPUDIR)/resetvec.o
 endif
 
-OBJS := $(addprefix $(obj),$(OBJS) $(RESET_OBJS-))
+OBJS := $(addprefix $(obj),$(OBJS))
 
 HAVE_VENDOR_COMMON_LIB = $(if $(wildcard board/$(VENDOR)/common/Makefile),y,n)
 
 LIBS-y += lib/libgeneric.o
+LIBS-y += lib/rsa/librsa.o
 LIBS-y += lib/lzma/liblzma.o
 LIBS-y += lib/lzo/liblzo.o
 LIBS-y += lib/zlib/libz.o
@@ -269,6 +255,7 @@ LIBS-y += fs/libfs.o \
 	fs/fdos/libfdos.o \
 	fs/jffs2/libjffs2.o \
 	fs/reiserfs/libreiserfs.o \
+	fs/sandbox/libsandboxfs.o \
 	fs/ubifs/libubifs.o \
 	fs/yaffs2/libyaffs2.o \
 	fs/zfs/libzfs.o
@@ -277,6 +264,7 @@ LIBS-y += disk/libdisk.o
 LIBS-y += drivers/bios_emulator/libatibiosemu.o
 LIBS-y += drivers/block/libblock.o
 LIBS-$(CONFIG_BOOTCOUNT_LIMIT) += drivers/bootcount/libbootcount.o
+LIBS-y += drivers/crypto/libcrypto.o
 LIBS-y += drivers/dma/libdma.o
 LIBS-y += drivers/fpga/libfpga.o
 LIBS-y += drivers/gpio/libgpio.o
@@ -318,7 +306,7 @@ endif
 LIBS-y += drivers/rtc/librtc.o
 LIBS-y += drivers/serial/libserial.o
 LIBS-y += drivers/sound/libsound.o
-LIBS-$(CONFIG_GENERIC_LPC_TPM) += drivers/tpm/libtpm.o
+LIBS-y += drivers/tpm/libtpm.o
 LIBS-y += drivers/twserial/libtws.o
 LIBS-y += drivers/usb/eth/libusb_eth.o
 LIBS-y += drivers/usb/gadget/libusb_gadget.o
@@ -335,11 +323,11 @@ LIBS-y += api/libapi.o
 LIBS-y += post/libpost.o
 LIBS-y += test/libtest.o
 
-ifneq ($(CONFIG_AM33XX)$(CONFIG_OMAP34XX)$(CONFIG_OMAP44XX)$(CONFIG_OMAP54XX),)
+ifneq ($(CONFIG_AM33XX)$(CONFIG_OMAP34XX)$(CONFIG_OMAP44XX)$(CONFIG_OMAP54XX)$(CONFIG_TI814X),)
 LIBS-y += $(CPUDIR)/omap-common/libomap-common.o
 endif
 
-ifneq (,$(filter $(SOC), mx25 mx27 mx5 mx6 mx31 mx35))
+ifneq (,$(filter $(SOC), mx25 mx27 mx5 mx6 mx31 mx35 mxs vf610))
 LIBS-y += arch/$(ARCH)/imx-common/libimx-common.o
 endif
 
@@ -349,7 +337,7 @@ endif
 ifeq ($(SOC),exynos)
 LIBS-y += $(CPUDIR)/s5p-common/libs5p-common.o
 endif
-ifeq ($(SOC),tegra20)
+ifneq ($(CONFIG_TEGRA),)
 LIBS-y += arch/$(ARCH)/cpu/$(SOC)-common/lib$(SOC)-common.o
 LIBS-y += arch/$(ARCH)/cpu/tegra-common/libcputegra-common.o
 LIBS-y += $(CPUDIR)/tegra-common/libtegra-common.o
@@ -410,11 +398,13 @@ ALL-y += $(obj)u-boot.srec $(obj)u-boot.bin $(obj)System.map
 ALL-$(CONFIG_NAND_U_BOOT) += $(obj)u-boot-nand.bin
 ALL-$(CONFIG_ONENAND_U_BOOT) += $(obj)u-boot-onenand.bin
 ALL-$(CONFIG_SPL) += $(obj)spl/u-boot-spl.bin
-ALL-$(CONFIG_SPL) += $(obj)$(subst ",,$(CONFIG_SPL_TARGET))
 ALL-$(CONFIG_OF_SEPARATE) += $(obj)u-boot.dtb $(obj)u-boot-dtb.bin
+ifneq ($(CONFIG_SPL_TARGET),)
+ALL-$(CONFIG_SPL) += $(obj)$(subst ",,$(CONFIG_SPL_TARGET))
+endif
 
 # enable combined SPL/u-boot/dtb rules for tegra
-ifeq ($(SOC),tegra20)
+ifneq ($(CONFIG_TEGRA),)
 ifeq ($(CONFIG_OF_SEPARATE),y)
 ALL-y += $(obj)u-boot-dtb-tegra.bin
 else
@@ -424,7 +414,7 @@ endif
 
 all:		$(ALL-y) $(SUBDIR_EXAMPLES)
 
-$(obj)u-boot.dtb:	$(obj)u-boot
+$(obj)u-boot.dtb:	checkdtc $(obj)u-boot
 		$(MAKE) -C dts binary
 		mv $(obj)dts/dt.dtb $@
 
@@ -468,9 +458,8 @@ $(obj)u-boot.img:	$(obj)u-boot.bin
 			sed -e 's/"[	 ]*$$/ for $(BOARD) board"/') \
 		-d $< $@
 
-$(obj)u-boot.imx:       $(obj)u-boot.bin
-		$(obj)tools/mkimage -n  $(CONFIG_IMX_CONFIG) -T imximage \
-		-e $(CONFIG_SYS_TEXT_BASE) -d $< $@
+$(obj)u-boot.imx: $(obj)u-boot.bin depend
+		$(MAKE) -C $(SRCTREE)/arch/arm/imx-common $(OBJTREE)/u-boot.imx
 
 $(obj)u-boot.kwb:       $(obj)u-boot.bin
 		$(obj)tools/mkimage -n $(CONFIG_SYS_KWD_CONFIG) -T kwbimage \
@@ -490,11 +479,18 @@ $(obj)u-boot.dis:	$(obj)u-boot
 
 
 $(obj)u-boot-with-spl.bin: $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin
-		$(OBJCOPY) ${OBJCFLAGS} --pad-to=$(or $(CONFIG_SPL_PAD_TO),0) \
-			-O binary $(obj)spl/u-boot-spl \
-			$(obj)spl/u-boot-spl-pad.bin
+		$(OBJCOPY) ${OBJCFLAGS} --pad-to=$(CONFIG_SPL_PAD_TO) \
+			-I binary -O binary $< $(obj)spl/u-boot-spl-pad.bin
 		cat $(obj)spl/u-boot-spl-pad.bin $(obj)u-boot.bin > $@
 		rm $(obj)spl/u-boot-spl-pad.bin
+
+$(obj)u-boot-with-spl.imx: $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin
+		$(MAKE) -C $(SRCTREE)/arch/arm/imx-common \
+			$(OBJTREE)/u-boot-with-spl.imx
+
+$(obj)u-boot-with-nand-spl.imx: $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin
+		$(MAKE) -C $(SRCTREE)/arch/arm/imx-common \
+			$(OBJTREE)/u-boot-with-nand-spl.imx
 
 $(obj)u-boot.ubl:       $(obj)u-boot-with-spl.bin
 		$(obj)tools/mkimage -n $(UBL_CONFIG) -T ublimage \
@@ -512,13 +508,9 @@ $(obj)u-boot.ais:       $(obj)spl/u-boot-spl.bin $(obj)u-boot.img
 		cat $(obj)spl/u-boot-spl-pad.ais $(obj)u-boot.img > \
 			$(obj)u-boot.ais
 
-# Specify the target for use in elftosb call
-ELFTOSB_TARGET-$(CONFIG_MX28) = imx28
 
 $(obj)u-boot.sb:       $(obj)u-boot.bin $(obj)spl/u-boot-spl.bin elftosb
-		cd $(OBJTREE); \
-		$(TOPDIR)/$(SUBDIR_TOOLS)/elftosb/bld/linux/elftosb -zdf $(ELFTOSB_TARGET-y) -c $(TOPDIR)/$(CPUDIR)/$(SOC)/u-boot-$(ELFTOSB_TARGET-y).bd \
-			-o $(obj)u-boot.sb
+		$(MAKE) -C $(SRCTREE)/$(CPUDIR)/$(SOC)/ $(OBJTREE)/u-boot.sb
 
 # On x600 (SPEAr600) U-Boot is appended to U-Boot SPL.
 # Both images are created using mkimage (crc etc), so that the ROM
@@ -536,23 +528,32 @@ $(obj)u-boot.spr:	$(obj)u-boot.img $(obj)spl/u-boot-spl.bin
 			conv=notrunc 2>/dev/null
 		cat $(obj)spl/u-boot-spl-pad.img $(obj)u-boot.img > $@
 
-ifeq ($(SOC),tegra20)
-ifeq ($(CONFIG_OF_SEPARATE),y)
-nodtb=dtb
-dtbfile=$(obj)u-boot.dtb
-else
-nodtb=nodtb
-dtbfile=
-endif
-
-$(obj)u-boot-$(nodtb)-tegra.bin: $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin $(dtbfile)
+ifneq ($(CONFIG_TEGRA),)
+$(obj)u-boot-nodtb-tegra.bin: $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin
 		$(OBJCOPY) ${OBJCFLAGS} --pad-to=$(CONFIG_SYS_TEXT_BASE) -O binary $(obj)spl/u-boot-spl $(obj)spl/u-boot-spl-pad.bin
-		cat $(obj)spl/u-boot-spl-pad.bin $(obj)u-boot.bin $(dtbfile) > $@
+		cat $(obj)spl/u-boot-spl-pad.bin $(obj)u-boot.bin > $@
 		rm $(obj)spl/u-boot-spl-pad.bin
+
+ifeq ($(CONFIG_OF_SEPARATE),y)
+$(obj)u-boot-dtb-tegra.bin: $(obj)u-boot-nodtb-tegra.bin $(obj)u-boot.dtb
+		cat $(obj)u-boot-nodtb-tegra.bin $(obj)u-boot.dtb > $@
+endif
 endif
 
 $(obj)u-boot-img.bin: $(obj)spl/u-boot-spl.bin $(obj)u-boot.img
 		cat $(obj)spl/u-boot-spl.bin $(obj)u-boot.img > $@
+
+# PPC4xx needs the SPL at the end of the image, since the reset vector
+# is located at 0xfffffffc. So we can't use the "u-boot-img.bin" target
+# and need to introduce a new build target with the full blown U-Boot
+# at the start padded up to the start of the SPL image. And then concat
+# the SPL image to the end.
+$(obj)u-boot-img-spl-at-end.bin: $(obj)spl/u-boot-spl.bin $(obj)u-boot.img
+		tr "\000" "\377" < /dev/zero | dd ibs=1 count=$(CONFIG_UBOOT_PAD_TO) \
+			of=$(obj)u-boot-pad.img 2>/dev/null
+		dd if=$(obj)u-boot.img of=$(obj)u-boot-pad.img \
+			conv=notrunc 2>/dev/null
+		cat $(obj)u-boot-pad.img $(obj)spl/u-boot-spl.bin > $@
 
 ifeq ($(CONFIG_SANDBOX),y)
 GEN_UBOOT = \
@@ -561,10 +562,8 @@ GEN_UBOOT = \
 			$(PLATFORM_LIBS) -Wl,-Map -Wl,u-boot.map -o u-boot
 else
 GEN_UBOOT = \
-		UNDEF_LST=`$(OBJDUMP) -x $(LIBBOARD) $(LIBS) | \
-		sed  -n -e 's/.*\($(SYM_PREFIX)_u_boot_list_.*\)/-u\1/p'|sort|uniq`;\
 		cd $(LNDIR) && $(LD) $(LDFLAGS) $(LDFLAGS_$(@F)) \
-			$$UNDEF_LST $(__OBJS) \
+			$(__OBJS) \
 			--start-group $(__LIBS) --end-group $(PLATFORM_LIBS) \
 			-Map u-boot.map -o u-boot
 endif
@@ -597,11 +596,7 @@ $(SUBDIR_EXAMPLES): $(obj)u-boot
 $(LDSCRIPT):	depend
 		$(MAKE) -C $(dir $@) $(notdir $@)
 
-# The following line expands into whole rule which generates u-boot.lst,
-# the file containing u-boots LG-array linker section. This is included into
-# $(LDSCRIPT). The function make_u_boot_list is defined in helper.mk file.
-$(eval $(call make_u_boot_list, $(obj)include/u-boot.lst, $(LIBBOARD) $(LIBS)))
-$(obj)u-boot.lds: $(LDSCRIPT) $(obj)include/u-boot.lst
+$(obj)u-boot.lds: $(LDSCRIPT)
 		$(CPP) $(CPPFLAGS) $(LDPPFLAGS) -ansi -D__ASSEMBLY__ -P - <$< >$@
 
 nand_spl:	$(TIMESTAMP_FILE) $(VERSION_FILE) depend
@@ -675,6 +670,12 @@ checkgcc4:
 		false; \
 	fi
 
+checkdtc:
+	@if test $(call dtc-version) -lt 0104; then \
+		echo '*** Your dtc is too old, please upgrade to dtc 1.4 or newer'; \
+		false; \
+	fi
+
 #
 # Auto-generate the autoconf.mk file (which is included by all makefiles)
 #
@@ -736,6 +737,13 @@ tools: $(VERSION_FILE) $(TIMESTAMP_FILE)
 	$(MAKE) -C $@ all
 endif	# config.mk
 
+# ARM relocations should all be R_ARM_RELATIVE.
+checkarmreloc: $(obj)u-boot
+	@if test "R_ARM_RELATIVE" != \
+		"`$(CROSS_COMPILE)readelf -r $< | cut -d ' ' -f 4 | grep R_ARM | sort -u`"; \
+		then echo "$< contains relocations other than \
+		R_ARM_RELATIVE"; false; fi
+
 $(VERSION_FILE):
 		@mkdir -p $(dir $(VERSION_FILE))
 		@( localvers='$(shell $(TOPDIR)/tools/setlocalversion $(TOPDIR))' ; \
@@ -794,23 +802,6 @@ lcname	= $(shell echo $(1) | sed -e 's/\(.*\)_config/\L\1/')
 ucname	= $(shell echo $(1) | sed -e 's/\(.*\)_config/\U\1/')
 
 #########################################################################
-## ARM1176 Systems
-#########################################################################
-smdk6400_noUSB_config	\
-smdk6400_config	:	unconfig
-	@mkdir -p $(obj)include $(obj)board/samsung/smdk6400
-	@mkdir -p $(obj)nand_spl/board/samsung/smdk6400
-	@echo "#define CONFIG_NAND_U_BOOT" > $(obj)include/config.h
-	@echo "CONFIG_NAND_U_BOOT = y" >> $(obj)include/config.mk
-	@if [ -z "$(findstring smdk6400_noUSB_config,$@)" ]; then			\
-		echo "RAM_TEXT = 0x57e00000" >> $(obj)board/samsung/smdk6400/config.tmp;\
-	else										\
-		echo "RAM_TEXT = 0xc7e00000" >> $(obj)board/samsung/smdk6400/config.tmp;\
-	fi
-	@$(MKCONFIG) smdk6400 arm arm1176 smdk6400 samsung s3c64xx
-	@echo "CONFIG_NAND_U_BOOT = y" >> $(obj)include/config.mk
-
-#########################################################################
 #########################################################################
 
 clean:
@@ -834,12 +825,12 @@ clean:
 	       $(obj)tools/mk{smdk5250,}spl				  \
 	       $(obj)tools/mxsboot					  \
 	       $(obj)tools/ncb		   $(obj)tools/ubsha1		  \
-	       $(obj)tools/kernel-doc/docproc
+	       $(obj)tools/kernel-doc/docproc				  \
+	       $(obj)tools/proftool
 	@rm -f $(obj)board/cray/L1/{bootscript.c,bootscript.image}	  \
 	       $(obj)board/matrix_vision/*/bootscript.img		  \
 	       $(obj)board/voiceblue/eeprom 				  \
 	       $(obj)u-boot.lds						  \
-	       $(obj)include/u-boot.lst			  		  \
 	       $(obj)arch/blackfin/cpu/bootrom-asm-offsets.[chs]	  \
 	       $(obj)arch/blackfin/cpu/init.{lds,elf}
 	@rm -f $(obj)include/bmp_logo.h
@@ -851,7 +842,8 @@ clean:
 	@$(MAKE) -s -C doc/DocBook/ cleandocs
 	@find $(OBJTREE) -type f \
 		\( -name 'core' -o -name '*.bak' -o -name '*~' -o -name '*.su' \
-		-o -name '*.o'	-o -name '*.a' -o -name '*.exe'	\) -print \
+		-o -name '*.o'	-o -name '*.a' -o -name '*.exe' \
+		-o -name '*.cfgtmp' \) -print \
 		| xargs rm -f
 
 # Removes everything not needed for testing u-boot
@@ -868,15 +860,18 @@ clobber:	tidy
 	@rm -f $(obj)u-boot.kwb
 	@rm -f $(obj)u-boot.pbl
 	@rm -f $(obj)u-boot.imx
+	@rm -f $(obj)u-boot-with-spl.imx
+	@rm -f $(obj)u-boot-with-nand-spl.imx
 	@rm -f $(obj)u-boot.ubl
 	@rm -f $(obj)u-boot.ais
 	@rm -f $(obj)u-boot.dtb
 	@rm -f $(obj)u-boot.sb
+	@rm -f $(obj)u-boot.bd
 	@rm -f $(obj)u-boot.spr
 	@rm -f $(obj)nand_spl/{u-boot.{lds,lst},System.map}
 	@rm -f $(obj)nand_spl/{u-boot-nand_spl.lds,u-boot-spl,u-boot-spl.map}
 	@rm -f $(obj)spl/{u-boot-spl,u-boot-spl.bin,u-boot-spl.map}
-	@rm -f $(obj)spl/{u-boot-spl.lds,u-boot.lst}
+	@rm -f $(obj)spl/u-boot-spl.lds
 	@rm -f $(obj)MLO MLO.byteswap
 	@rm -f $(obj)SPL
 	@rm -f $(obj)tools/xway-swap-bytes

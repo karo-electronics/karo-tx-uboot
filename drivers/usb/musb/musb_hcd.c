@@ -3,20 +3,7 @@
  *
  * Copyright (c) 2008 Texas Instruments
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Author: Thomas Abraham t-abraham@ti.com, Texas Instruments
  */
@@ -1105,8 +1092,7 @@ int usb_lowlevel_init(int index, void **controller)
 
 	/* Configure all the endpoint FIFO's and start usb controller */
 	musbr = musb_cfg.regs;
-	musb_configure_ep(&epinfo[0],
-			sizeof(epinfo) / sizeof(struct musb_epinfo));
+	musb_configure_ep(&epinfo[0], ARRAY_SIZE(epinfo));
 	musb_start();
 
 	/*

@@ -3,23 +3,7 @@
  * Stelian Pop <stelian@popies.net>
  * Lead Tech Design <www.leadtechdesign.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -30,6 +14,7 @@
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
 #include <asm/arch/gpio.h>
+#include <atmel_mci.h>
 
 #if defined(CONFIG_RESET_PHY_R) && defined(CONFIG_MACB)
 # include <net.h>
@@ -143,6 +128,15 @@ static void at91sam9260ek_macb_hw_init(void)
 }
 #endif
 
+#ifdef CONFIG_GENERIC_ATMEL_MCI
+int board_mmc_init(bd_t *bd)
+{
+	at91_mci_hw_init();
+
+	return atmel_mci_init((void *)ATMEL_BASE_MCI);
+}
+#endif
+
 int board_early_init_f(void)
 {
 	struct at91_pmc *pmc = (struct at91_pmc *)ATMEL_BASE_PMC;
@@ -157,13 +151,6 @@ int board_early_init_f(void)
 
 int board_init(void)
 {
-#ifdef CONFIG_AT91SAM9G20EK
-	/* arch number of AT91SAM9260EK-Board */
-	gd->bd->bi_arch_number = MACH_TYPE_AT91SAM9G20EK;
-#else
-	/* arch number of AT91SAM9260EK-Board */
-	gd->bd->bi_arch_number = MACH_TYPE_AT91SAM9260EK;
-#endif
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
 

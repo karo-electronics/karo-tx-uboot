@@ -8,23 +8,7 @@
  * Add Programmable Multibit ECC support for various AT91 SoC
  *     (C) Copyright 2012 ATMEL, Hong Xu
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -489,7 +473,7 @@ normal_check:
 }
 
 static int atmel_nand_pmecc_read_page(struct mtd_info *mtd,
-	struct nand_chip *chip, uint8_t *buf, int page)
+	struct nand_chip *chip, uint8_t *buf, int oob_required, int page)
 {
 	struct atmel_nand_host *host = chip->priv;
 	int eccsize = chip->ecc.size;
@@ -529,8 +513,9 @@ static int atmel_nand_pmecc_read_page(struct mtd_info *mtd,
 	return 0;
 }
 
-static void atmel_nand_pmecc_write_page(struct mtd_info *mtd,
-		struct nand_chip *chip, const uint8_t *buf)
+static int atmel_nand_pmecc_write_page(struct mtd_info *mtd,
+		struct nand_chip *chip, const uint8_t *buf,
+		int oob_required)
 {
 	struct atmel_nand_host *host = chip->priv;
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
@@ -557,7 +542,7 @@ static void atmel_nand_pmecc_write_page(struct mtd_info *mtd,
 
 	if (!timeout) {
 		printk(KERN_ERR "atmel_nand : Timeout to read PMECC status, fail to write PMECC in oob\n");
-		return;
+		goto out;
 	}
 
 	for (i = 0; i < host->pmecc_sector_number; i++) {
@@ -570,6 +555,8 @@ static void atmel_nand_pmecc_write_page(struct mtd_info *mtd,
 		}
 	}
 	chip->write_buf(mtd, chip->oob_poi, mtd->oobsize);
+out:
+	return 0;
 }
 
 static void atmel_pmecc_core_init(struct mtd_info *mtd)
@@ -706,6 +693,7 @@ static int atmel_pmecc_nand_init_params(struct nand_chip *nand,
 
 	nand->ecc.read_page = atmel_nand_pmecc_read_page;
 	nand->ecc.write_page = atmel_nand_pmecc_write_page;
+	nand->ecc.strength = cap;
 
 	atmel_pmecc_core_init(mtd);
 
@@ -775,9 +763,10 @@ static int atmel_nand_calculate(struct mtd_info *mtd,
  * mtd:        mtd info structure
  * chip:       nand chip info structure
  * buf:        buffer to store read data
+ * oob_required:    caller expects OOB data read to chip->oob_poi
  */
-static int atmel_nand_read_page(struct mtd_info *mtd,
-		struct nand_chip *chip, uint8_t *buf, int page)
+static int atmel_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
+				uint8_t *buf, int oob_required, int page)
 {
 	int eccsize = chip->ecc.size;
 	int eccbytes = chip->ecc.bytes;

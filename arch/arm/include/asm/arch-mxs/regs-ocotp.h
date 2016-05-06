@@ -7,72 +7,59 @@
  * Based on code from LTIB:
  * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_OCOTP_H__
 #define __MX28_REGS_OCOTP_H__
 
-#include <asm/arch/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_ocotp_regs {
-	mxs_reg_32(hw_ocotp_ctrl)	/* 0x0 */
-	mxs_reg_32(hw_ocotp_data)	/* 0x10 */
-	mxs_reg_32(hw_ocotp_cust0)	/* 0x20 */
-	mxs_reg_32(hw_ocotp_cust1)	/* 0x30 */
-	mxs_reg_32(hw_ocotp_cust2)	/* 0x40 */
-	mxs_reg_32(hw_ocotp_cust3)	/* 0x50 */
-	mxs_reg_32(hw_ocotp_crypto0)	/* 0x60 */
-	mxs_reg_32(hw_ocotp_crypto1)	/* 0x70 */
-	mxs_reg_32(hw_ocotp_crypto2)	/* 0x80 */
-	mxs_reg_32(hw_ocotp_crypto3)	/* 0x90 */
-	mxs_reg_32(hw_ocotp_hwcap0)	/* 0xa0 */
-	mxs_reg_32(hw_ocotp_hwcap1)	/* 0xb0 */
-	mxs_reg_32(hw_ocotp_hwcap2)	/* 0xc0 */
-	mxs_reg_32(hw_ocotp_hwcap3)	/* 0xd0 */
-	mxs_reg_32(hw_ocotp_hwcap4)	/* 0xe0 */
-	mxs_reg_32(hw_ocotp_hwcap5)	/* 0xf0 */
-	mxs_reg_32(hw_ocotp_swcap)	/* 0x100 */
-	mxs_reg_32(hw_ocotp_custcap)	/* 0x110 */
-	mxs_reg_32(hw_ocotp_lock)	/* 0x120 */
-	mxs_reg_32(hw_ocotp_ops0)	/* 0x130 */
-	mxs_reg_32(hw_ocotp_ops1)	/* 0x140 */
-	mxs_reg_32(hw_ocotp_ops2)	/* 0x150 */
-	mxs_reg_32(hw_ocotp_ops3)	/* 0x160 */
-	mxs_reg_32(hw_ocotp_un0)	/* 0x170 */
-	mxs_reg_32(hw_ocotp_un1)	/* 0x180 */
-	mxs_reg_32(hw_ocotp_un2)	/* 0x190 */
-	mxs_reg_32(hw_ocotp_rom0)	/* 0x1a0 */
-	mxs_reg_32(hw_ocotp_rom1)	/* 0x1b0 */
-	mxs_reg_32(hw_ocotp_rom2)	/* 0x1c0 */
-	mxs_reg_32(hw_ocotp_rom3)	/* 0x1d0 */
-	mxs_reg_32(hw_ocotp_rom4)	/* 0x1e0 */
-	mxs_reg_32(hw_ocotp_rom5)	/* 0x1f0 */
-	mxs_reg_32(hw_ocotp_rom6)	/* 0x200 */
-	mxs_reg_32(hw_ocotp_rom7)	/* 0x210 */
-	mxs_reg_32(hw_ocotp_srk0)	/* 0x220 */
-	mxs_reg_32(hw_ocotp_srk1)	/* 0x230 */
-	mxs_reg_32(hw_ocotp_srk2)	/* 0x240 */
-	mxs_reg_32(hw_ocotp_srk3)	/* 0x250 */
-	mxs_reg_32(hw_ocotp_srk4)	/* 0x260 */
-	mxs_reg_32(hw_ocotp_srk5)	/* 0x270 */
-	mxs_reg_32(hw_ocotp_srk6)	/* 0x280 */
-	mxs_reg_32(hw_ocotp_srk7)	/* 0x290 */
-	mxs_reg_32(hw_ocotp_version)	/* 0x2a0 */
+	mxs_reg_32(hw_ocotp_ctrl);	/* 0x0 */
+	mxs_reg_32(hw_ocotp_data);	/* 0x10 */
+	mxs_reg_32(hw_ocotp_cust0);	/* 0x20 */
+	mxs_reg_32(hw_ocotp_cust1);	/* 0x30 */
+	mxs_reg_32(hw_ocotp_cust2);	/* 0x40 */
+	mxs_reg_32(hw_ocotp_cust3);	/* 0x50 */
+	mxs_reg_32(hw_ocotp_crypto0);	/* 0x60 */
+	mxs_reg_32(hw_ocotp_crypto1);	/* 0x70 */
+	mxs_reg_32(hw_ocotp_crypto2);	/* 0x80 */
+	mxs_reg_32(hw_ocotp_crypto3);	/* 0x90 */
+	mxs_reg_32(hw_ocotp_hwcap0);	/* 0xa0 */
+	mxs_reg_32(hw_ocotp_hwcap1);	/* 0xb0 */
+	mxs_reg_32(hw_ocotp_hwcap2);	/* 0xc0 */
+	mxs_reg_32(hw_ocotp_hwcap3);	/* 0xd0 */
+	mxs_reg_32(hw_ocotp_hwcap4);	/* 0xe0 */
+	mxs_reg_32(hw_ocotp_hwcap5);	/* 0xf0 */
+	mxs_reg_32(hw_ocotp_swcap);	/* 0x100 */
+	mxs_reg_32(hw_ocotp_custcap);	/* 0x110 */
+	mxs_reg_32(hw_ocotp_lock);	/* 0x120 */
+	mxs_reg_32(hw_ocotp_ops0);	/* 0x130 */
+	mxs_reg_32(hw_ocotp_ops1);	/* 0x140 */
+	mxs_reg_32(hw_ocotp_ops2);	/* 0x150 */
+	mxs_reg_32(hw_ocotp_ops3);	/* 0x160 */
+	mxs_reg_32(hw_ocotp_un0);	/* 0x170 */
+	mxs_reg_32(hw_ocotp_un1);	/* 0x180 */
+	mxs_reg_32(hw_ocotp_un2);	/* 0x190 */
+	mxs_reg_32(hw_ocotp_rom0);	/* 0x1a0 */
+	mxs_reg_32(hw_ocotp_rom1);	/* 0x1b0 */
+	mxs_reg_32(hw_ocotp_rom2);	/* 0x1c0 */
+	mxs_reg_32(hw_ocotp_rom3);	/* 0x1d0 */
+	mxs_reg_32(hw_ocotp_rom4);	/* 0x1e0 */
+	mxs_reg_32(hw_ocotp_rom5);	/* 0x1f0 */
+	mxs_reg_32(hw_ocotp_rom6);	/* 0x200 */
+	mxs_reg_32(hw_ocotp_rom7);	/* 0x210 */
+	mxs_reg_32(hw_ocotp_srk0);	/* 0x220 */
+	mxs_reg_32(hw_ocotp_srk1);	/* 0x230 */
+	mxs_reg_32(hw_ocotp_srk2);	/* 0x240 */
+	mxs_reg_32(hw_ocotp_srk3);	/* 0x250 */
+	mxs_reg_32(hw_ocotp_srk4);	/* 0x260 */
+	mxs_reg_32(hw_ocotp_srk5);	/* 0x270 */
+	mxs_reg_32(hw_ocotp_srk6);	/* 0x280 */
+	mxs_reg_32(hw_ocotp_srk7);	/* 0x290 */
+	mxs_reg_32(hw_ocotp_version);	/* 0x2a0 */
 };
 #endif
 

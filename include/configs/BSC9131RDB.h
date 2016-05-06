@@ -1,23 +1,7 @@
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -40,9 +24,33 @@
 #define CONFIG_RESET_VECTOR_ADDRESS	0x1107fffc
 #endif
 
-#ifndef CONFIG_SYS_MONITOR_BASE
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SYS_TEXT_BASE    /* start of monitor */
+#ifdef CONFIG_NAND
+#define CONFIG_SPL
+#define CONFIG_SPL_INIT_MINIMAL
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_NAND_SUPPORT
+#define CONFIG_SPL_NAND_MINIMAL
+#define CONFIG_SPL_FLUSH_IMAGE
+#define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
+
+#define CONFIG_SYS_TEXT_BASE		0x00201000
+#define CONFIG_SPL_TEXT_BASE		0xFFFFE000
+#define CONFIG_SPL_MAX_SIZE		8192
+#define CONFIG_SPL_RELOC_TEXT_BASE	0x00100000
+#define CONFIG_SPL_RELOC_STACK		0x00100000
+#define CONFIG_SYS_NAND_U_BOOT_SIZE	((512 << 10) - 0x2000)
+#define CONFIG_SYS_NAND_U_BOOT_DST	(0x00200000 - CONFIG_SPL_MAX_SIZE)
+#define CONFIG_SYS_NAND_U_BOOT_START	0x00200000
+#define CONFIG_SYS_NAND_U_BOOT_OFFS	0
+#define CONFIG_SYS_LDSCRIPT	"arch/powerpc/cpu/mpc85xx/u-boot-nand.lds"
 #endif
+
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SPL_TEXT_BASE
+#else
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
+#endif
+
 
 /* High Level Configuration Options */
 #define CONFIG_BOOKE			/* BOOKE */
@@ -55,7 +63,11 @@
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_DDR_CLK_FREQ	66666666 /* DDRCLK on 9131 RDB */
+#if defined(CONFIG_SYS_CLK_100)
+#define CONFIG_SYS_CLK_FREQ    100000000 /* SYSCLK for 9131 RDB */
+#else
 #define CONFIG_SYS_CLK_FREQ	66666666 /* SYSCLK for 9131 RDB */
+#endif
 
 #define CONFIG_HWCONFIG
 /*
@@ -125,16 +137,21 @@ extern unsigned long get_sdram_size(void);
 
 #define CONFIG_SYS_IMMR		CONFIG_SYS_CCSRBAR	/* PQII uses */
 							/* CONFIG_SYS_IMMR */
+/* DSP CCSRBAR */
+#define CONFIG_SYS_FSL_DSP_CCSRBAR	CONFIG_SYS_FSL_DSP_CCSRBAR_DEFAULT
+#define CONFIG_SYS_FSL_DSP_CCSRBAR_PHYS	CONFIG_SYS_FSL_DSP_CCSRBAR_DEFAULT
 
 /*
  * Memory map
  *
  * 0x0000_0000	0x3FFF_FFFF	DDR			1G cacheable
  * 0x8800_0000	0x8810_0000	IFC internal SRAM		1M
+ * 0xB000_0000	0xB0FF_FFFF	DSP core M2 memory	16M
  * 0xC100_0000	0xC13F_FFFF	MAPLE-2F		4M
  * 0xC1F0_0000	0xC1F3_FFFF	PA L2 SRAM Region 0	256K
  * 0xC1F8_0000	0xC1F9_FFFF	PA L2 SRAM Region 1	128K
  * 0xFED0_0000	0xFED0_3FFF	SEC Secured RAM		16K
+ * 0xFF60_0000	0xFF6F_FFFF	DSP CCSR		1M
  * 0xFF70_0000	0xFF7F_FFFF	PA CCSR			1M
  * 0xFF80_0000	0xFFFF_FFFF	Boot Page & NAND flash buffer	8M
  *
@@ -214,6 +231,9 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_NS16550_MIN_FUNCTIONS
+#endif
 
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV	/* determine from environment */
 
@@ -239,13 +259,11 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_FIT
 #define CONFIG_FIT_VERBOSE	/* enable fit_format_{error,warning}() */
 
-#define CONFIG_FSL_I2C			/* Use FSL common I2C driver */
-#define CONFIG_HARD_I2C			/* I2C with hardware support */
-#undef CONFIG_SOFT_I2C			/* I2C bit-banged */
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_CMD_TREE
-#define CONFIG_SYS_I2C_SPEED		400000 /* I2C speed and slave address*/
-#define CONFIG_SYS_I2C_OFFSET		0x3000
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_FSL
+#define CONFIG_SYS_FSL_I2C_SPEED	400000
+#define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
 
 /* I2C EEPROM */
 #define CONFIG_CMD_EEPROM
@@ -295,7 +313,6 @@ extern unsigned long get_sdram_size(void);
 /*
  * Environment
  */
-#if defined(CONFIG_SYS_RAMBOOT)
 #if defined(CONFIG_RAMBOOT_SPIFLASH)
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_SPI_BUS	0
@@ -305,15 +322,16 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_ENV_OFFSET	0x100000	/* 1MB */
 #define CONFIG_ENV_SECT_SIZE	0x10000
 #define CONFIG_ENV_SIZE		0x2000
-#else
-#define CONFIG_ENV_IS_NOWHERE		/* Store ENV in memory only */
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_MONITOR_BASE - 0x1000)
-#define CONFIG_ENV_SIZE			0x2000
-#endif
-#else
-#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
+#elif defined(CONFIG_NAND)
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_SYS_EXTRA_ENV_RELOC
+#define CONFIG_ENV_SIZE		CONFIG_SYS_NAND_BLOCK_SIZE
+#define CONFIG_ENV_OFFSET	((512 * 1024) + CONFIG_SYS_NAND_BLOCK_SIZE)
+#define CONFIG_ENV_RANGE	(3 * CONFIG_ENV_SIZE)
+#elif defined(CONFIG_SYS_RAMBOOT)
+#define CONFIG_ENV_IS_NOWHERE	/* Store ENV in memory only */
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
-#define CONFIG_ENV_SIZE		0x400
+#define CONFIG_ENV_SIZE		0x2000
 #endif
 
 #define CONFIG_LOADS_ECHO		/* echo on for serial download */
@@ -406,7 +424,9 @@ extern unsigned long get_sdram_size(void);
 	"fdtfile=bsc9131rdb.dtb\0"		\
 	"bdev=sda1\0"	\
 	"hwconfig=usb1:dr_mode=host,phy_type=ulpi\0"	\
-	"othbootargs=ramdisk_size=600000 \0" \
+	"bootm_size=0x37000000\0"	\
+	"othbootargs=ramdisk_size=600000 " \
+	"default_hugepagesz=256m hugepagesz=256m hugepages=1\0" \
 	"usbext2boot=setenv bootargs root=/dev/ram rw "	\
 	"console=$consoledev,$baudrate $othbootargs; "	\
 	"usb start;"			\

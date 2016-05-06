@@ -2,23 +2,7 @@
  * (C) Copyright 2000
  * Rob Taylor, Flying Pig Systems. robt@flyingpig.com.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -151,12 +135,7 @@ static int calc_divisor (NS16550_t port)
 	}
 #endif
 
-#ifdef CONFIG_APTIX
-#define MODE_X_DIV 13
-#else
 #define MODE_X_DIV 16
-#endif
-
 	/* Compute divisor value. Normally, we should simply return:
 	 *   CONFIG_SYS_NS16550_CLK) / MODE_X_DIV / gd->baudrate
 	 * but we need to round that value by adding 0.5.
@@ -247,24 +226,36 @@ serial_setbrg_dev(unsigned int dev_index)
 	_serial_setbrg(dev_index);
 }
 
+#if defined(CONFIG_SYS_NS16550_COM1)
 DECLARE_ESERIAL_FUNCTIONS(1);
 struct serial_device eserial1_device =
 	INIT_ESERIAL_STRUCTURE(1, "eserial0");
+#endif
+#if defined(CONFIG_SYS_NS16550_COM2)
 DECLARE_ESERIAL_FUNCTIONS(2);
 struct serial_device eserial2_device =
 	INIT_ESERIAL_STRUCTURE(2, "eserial1");
+#endif
+#if defined(CONFIG_SYS_NS16550_COM3)
 DECLARE_ESERIAL_FUNCTIONS(3);
 struct serial_device eserial3_device =
 	INIT_ESERIAL_STRUCTURE(3, "eserial2");
+#endif
+#if defined(CONFIG_SYS_NS16550_COM4)
 DECLARE_ESERIAL_FUNCTIONS(4);
 struct serial_device eserial4_device =
 	INIT_ESERIAL_STRUCTURE(4, "eserial3");
+#endif
+#if defined(CONFIG_SYS_NS16550_COM5)
 DECLARE_ESERIAL_FUNCTIONS(5);
 struct serial_device eserial5_device =
 	INIT_ESERIAL_STRUCTURE(5, "eserial4");
+#endif
+#if defined(CONFIG_SYS_NS16550_COM6)
 DECLARE_ESERIAL_FUNCTIONS(6);
 struct serial_device eserial6_device =
 	INIT_ESERIAL_STRUCTURE(6, "eserial5");
+#endif
 
 __weak struct serial_device *default_serial_console(void)
 {

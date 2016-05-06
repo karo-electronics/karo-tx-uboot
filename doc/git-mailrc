@@ -32,7 +32,9 @@ alias sbabic         Stefano Babic <sbabic@denx.de>
 alias scottwood      Scott Wood <scottwood@freescale.com>
 alias sjg            Simon Glass <sjg@chromium.org>
 alias smcnutt        Scott McNutt <smcnutt@psyent.com>
+alias sonic          Sonic Zhang <sonic.adi@gmail.com>
 alias stroese        Stefan Roese <sr@denx.de>
+alias trini          Tom Rini <trini@ti.com>
 alias vapier         Mike Frysinger <vapier@gentoo.org>
 alias wd             Wolfgang Denk <wd@denx.de>
 
@@ -53,11 +55,11 @@ alias s5pc           samsung
 alias samsung        uboot, prom
 alias tegra          uboot, sjg, Tom Warren <twarren@nvidia.com>, Stephen Warren <swarren@nvidia.com>
 alias tegra2         tegra
-alias ti             uboot, Tom Rini <trini@ti.com>
+alias ti             uboot, trini
 
 alias avr32          uboot, abiessmann
 
-alias bfin           uboot, vapier
+alias bfin           uboot, vapier, sonic
 alias blackfin       bfin
 
 alias m68k           uboot, jasonjin

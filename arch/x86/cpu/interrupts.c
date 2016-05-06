@@ -8,23 +8,7 @@
  * Portions of this file are derived from the Linux kernel source
  *  Copyright (C) 1991, 1992  Linus Torvalds
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -36,6 +20,8 @@
 #include <linux/compiler.h>
 #include <asm/msr.h>
 #include <asm/u-boot-x86.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define DECLARE_INTERRUPT(x) \
 	".globl irq_"#x"\n" \
@@ -626,13 +612,12 @@ asm(".globl irq_common_entry\n" \
  */
 u64 get_ticks(void)
 {
-	static u64 tick_base;
 	u64 now_tick = rdtsc();
 
-	if (!tick_base)
-		tick_base = now_tick;
+	if (!gd->arch.tsc_base)
+		gd->arch.tsc_base = now_tick;
 
-	return now_tick - tick_base;
+	return now_tick - gd->arch.tsc_base;
 }
 
 #define PLATFORM_INFO_MSR 0xce

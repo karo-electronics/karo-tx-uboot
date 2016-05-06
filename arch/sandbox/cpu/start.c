@@ -1,22 +1,6 @@
 /*
  * Copyright (c) 2011-2012 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -90,7 +74,7 @@ int sandbox_main_loop_init(void)
 
 	/* Execute command if required */
 	if (state->cmd) {
-		run_command(state->cmd, 0);
+		run_command_list(state->cmd, -1, 0);
 		os_exit(state->exit_type);
 	}
 
@@ -103,6 +87,13 @@ static int sb_cmdline_cb_command(struct sandbox_state *state, const char *arg)
 	return 0;
 }
 SB_CMDLINE_OPT_SHORT(command, 'c', 1, "Execute U-Boot command");
+
+static int sb_cmdline_cb_fdt(struct sandbox_state *state, const char *arg)
+{
+	state->fdt_fname = arg;
+	return 0;
+}
+SB_CMDLINE_OPT_SHORT(fdt, 'd', 1, "Specify U-Boot's control FDT");
 
 int main(int argc, char *argv[])
 {
@@ -122,4 +113,7 @@ int main(int argc, char *argv[])
 	 * never return.
 	 */
 	board_init_f(0);
+
+	/* NOTREACHED - board_init_f() does not return */
+	return 0;
 }

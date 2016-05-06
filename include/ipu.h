@@ -8,27 +8,11 @@
  *
  * (C) Copyright 2005-2011 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __ASM_ARCH_IPU_H__
-#define __ASM_ARCH_IPU_H__
+#ifndef __IPU_H__
+#define __IPU_H__
 
 #include <linux/types.h>
 #include <linux/list.h>
@@ -238,6 +222,7 @@ int ipuv3_fb_init(struct fb_videomode *mode, int di,
 		unsigned int interface_pix_fmt,
 		ipu_di_clk_parent_t di_clk_parent,
 		unsigned long di_clk_val, int bpp);
+void ipuv3_fb_shutdown(void);
 
 int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t *params);
 void ipu_uninit_channel(ipu_channel_t channel);
@@ -298,4 +283,4 @@ void ipu_dp_uninit(ipu_channel_t channel);
 void ipu_dp_dc_disable(ipu_channel_t channel, unsigned char swap);
 ipu_color_space_t format_to_colorspace(uint32_t fmt);
 
-#endif
+#endif /* __IPU_H */

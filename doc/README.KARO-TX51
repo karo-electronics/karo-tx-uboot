@@ -4,12 +4,15 @@
 Building U-Boot
 ---------------
 
-Note: There are currently six variants of the TX51 module, that
+Note: There are currently three variants of the TX51 module, that
       require slightly different U-Boot configurations. They are
-      distinguished through the first and last digit of the module
-      name suffix. Replace the '?' in the following description with
-      the corresponding numbers from your TX51 module.
-      E.g. TX51-8021 => 'make tx51-8xx1_config'
+      distinguished through the last digit of the module name
+      suffix. The configuration names depending on the last digit of
+      the module name are:
+      TX51-8??0                 tx51-8xx0_config
+      TX51-8??1                 tx51-8xx1_2_config
+      TX51-8??2                 tx51-8xx1_2_config
+
 
 Unpacking the source
 --------------------
@@ -18,14 +21,14 @@ cd u-boot
 tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
 
 Alternatively you can access the current source via the git repository:
-git://git.kernelconcepts.de/karo-tx-uboot.git master
+git://git.karo-electronics.de/karo-tx-uboot.git master
 
 
 Compiling U-Boot
 ----------------
 export ARCH=arm
 export CROSS_COMPILE=arm-cortexa8-linux-gnueabi-
-make tx51-?xx?_config            (see above Note!)
+make tx51-8xx?_config            (see above Note!)
 make
 
 
@@ -44,16 +47,44 @@ U-Boot Features
 ---------------
 
 Environment variables:
+boot_mode     selects which boot script will be used by 'bootcmd' to
+	      boot the application (Linux)
+	      supported values:
+	      nand: (default) load kernel from NAND partition 'linux'
+			      and mount rootfs (fstype UBIFS)
+			      from partition 'rootfs'. 
+	      mmc:	      load kernel from file 'uImage' on first
+	      		      partition (FAT) on (first) SD/MMC card
+			      and mount rootfs (fstype autodetected)
+			      from second partition.
+	      net:	      load kernel image via tftp (file uImage)
+	      		      and mount rootfs via NFS. This requires
+			      the additional variables 'nfsroot'
+			      (path to rootfs on NFS server) and
+			      'nfs_server' (hostname or IP address of
+			      NFS server) to be set.
+	      jffs2: (legacy) load kernel from NAND partition 'linux'
+			      and mount rootfs (fstype JFFS2)
+			      from partition 'rootfs'.
 
-cpu_clk       <CPU freq [MHz]>
-touchpanel    {tsc2007|edt-ft5x06}
-otg_mode      [host|device|none]
-video_mode    <video mode as understood by Linux fb_find_mode() function>
-              e.g.: VGA-1:640x480MR-24@60
+cpu_clk       <CPU freq [MHz]> CPU clock frequency set after boot.
+
+touchpanel    {tsc2007|edt-ft5x06} type of touchpanel.
+	      No touchpanel will be enabled when unset.
+
+otg_mode      [host|device|none] operation mode of the USBOTG port
+
+video_mode    <one of the display names from the Glyn Family Concept or
+	      a video mode as understood by Linux fb_find_mode() function
+              (e.g.: 640x480MR-24@60)>
+	      LCD interface will be disabled when unset.
+
 baseboard     {stk5-v3|stk5-v5} selects type of baseboard
-	      'stk5-v5' setting disables USB Host mode on USBOTG port.
-	      strings not starting in 'stk5' prevent the STK5 specific
+	      'stk5-v5' setting disables USB Host mode on USBOTG port
+	      and redefines the LCD0 pin as CAN transceiver control pin.
+	      Strings not starting in 'stk5' prevent the STK5 specific
 	      pad initialization to be done.
+
 splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
 	      to be displayed instead of the built-in logo. Since NAND
 	      flash is not accessible in a memory mapped fashion,
@@ -74,6 +105,7 @@ splashpos     (when 'splashimage' contains a memory address) the
 Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
       board unbootable if incorrectly set. Therefore these variables
       will not be evaluated in case the board has been reset through a
-      watchdog reset or a character is available on the serial console
+      watchdog reset or <CTRL-C> is detected on the serial console
       during startup to give the user a chance to recover from this
-      situation.
+      situation. You should press and hold <CTRL-C> before applying
+      power to the module, for this to work.

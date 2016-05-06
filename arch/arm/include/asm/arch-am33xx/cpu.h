@@ -5,15 +5,7 @@
  *
  * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR /PURPOSE.  See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _AM33XX_CPU_H
@@ -42,17 +34,22 @@
 #define HS_DEVICE			0x2
 #define GP_DEVICE			0x3
 
-/* cpu-id for AM33XX family */
-#define AM335X_ID			0xB944
-#define DEVICE_ID			0x44E10600
+/* cpu-id for AM33XX and TI81XX family */
+#define AM335X				0xB944
+#define TI81XX				0xB81E
+#define DEVICE_ID			(CTRL_BASE + 0x0600)
 
 /* This gives the status of the boot mode pins on the evm */
 #define SYSBOOT_MASK			(BIT(0) | BIT(1) | BIT(2) | \
 						BIT(3) | BIT(4))
 
 /* Reset control */
-#define PRM_RSTCTRL			0x44E00F00
-#define PRM_RSTST			0x44E00F08
+#ifdef CONFIG_AM33XX
+#define PRM_RSTCTRL			(PRCM_BASE + 0x0F00)
+#elif defined(CONFIG_TI814X)
+#define PRM_RSTCTRL			(PRCM_BASE + 0x00A0)
+#endif
+#define PRM_RSTST			(PRM_RSTCTRL + 8)
 #define PRM_RSTCTRL_RESET		0x01
 #define PRM_RSTST_WARM_RESET_MASK	0x232
 
@@ -77,19 +74,23 @@ struct bch_res_0_3 {
 };
 
 struct gpmc {
-	u8 res1[0x10];
+	u32 res1[4];
 	u32 sysconfig;		/* 0x10 */
-	u8 res2[0x4];
+	u32 res2;
 	u32 irqstatus;		/* 0x18 */
 	u32 irqenable;		/* 0x1C */
-	u8 res3[0x20];
+	u32 res3[8];
 	u32 timeout_control;	/* 0x40 */
-	u8 res4[0xC];
+	u32 res4[3];
 	u32 config;		/* 0x50 */
 	u32 status;		/* 0x54 */
-	u8 res5[0x8];		/* 0x58 */
+	u32 res5[2];		/* 0x58 */
 	struct gpmc_cs cs[8];	/* 0x60, 0x90, .. */
-	u8 res6[0x14];		/* 0x1E0 */
+	u32 pref_config1;	/* 0x1E0 */
+	u32 pref_config2;	/* 0x1E4 */
+	u32 res6;		/* 0x1E8 */
+	u32 pref_control;	/* 0x1EC */
+	u32 pref_status;	/* 0x1F0 */
 	u32 ecc_config;		/* 0x1F4 */
 	u32 ecc_control;	/* 0x1F8 */
 	u32 ecc_size_config;	/* 0x1FC */
@@ -102,9 +103,9 @@ struct gpmc {
 	u32 ecc7_result;	/* 0x218 */
 	u32 ecc8_result;	/* 0x21C */
 	u32 ecc9_result;	/* 0x220 */
-	u8 res7[12];		/* 0x224 */
+	u32 res7[3];		/* 0x224 */
 	u32 testmomde_ctrl;	/* 0x230 */
-	u8 res8[12];		/* 0x234 */
+	u32 res8[3];		/* 0x234 */
 	struct bch_res_0_3 bch_result_0_3[2];	/* 0x240 */
 };
 
@@ -350,7 +351,6 @@ unsigned long __clk_get_rate(u32 m_n, u32 div_m2);
 
 unsigned long lcdc_clk_rate(void);
 unsigned long mpu_clk_rate(void);
-void mpu_pll_config(int m);
 
 #endif /* __ASSEMBLY__ */
 #endif /* __KERNEL_STRICT_NAMES */

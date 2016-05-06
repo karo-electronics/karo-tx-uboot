@@ -5,8 +5,8 @@
  * Licensed under the GPL-2 or later.
  */
 
-#include <div64.h>
 #include <common.h>
+#include <div64.h>
 #include <malloc.h>
 #include <spi_flash.h>
 
@@ -234,7 +234,7 @@ static int do_spi_flash_read_write(int argc, char * const argv[])
 	unsigned long len;
 	void *buf;
 	char *endp;
-	int ret;
+	int ret = 1;
 
 	if (argc < 4)
 		return -1;
@@ -264,19 +264,23 @@ static int do_spi_flash_read_write(int argc, char * const argv[])
 
 	if (strcmp(argv[0], "update") == 0)
 		ret = spi_flash_update(flash, offset, len, buf);
-	else if (strcmp(argv[0], "read") == 0)
-		ret = spi_flash_read(flash, offset, len, buf);
-	else
-		ret = spi_flash_write(flash, offset, len, buf);
+	else if (strncmp(argv[0], "read", 4) == 0 ||
+			strncmp(argv[0], "write", 5) == 0) {
+		int read;
+
+		read = strncmp(argv[0], "read", 4) == 0;
+		if (read)
+			ret = spi_flash_read(flash, offset, len, buf);
+		else
+			ret = spi_flash_write(flash, offset, len, buf);
+
+		printf("SF: %zu bytes @ %#x %s: %s\n", (size_t)len, (u32)offset,
+			read ? "Read" : "Written", ret ? "ERROR" : "OK");
+	}
 
 	unmap_physmem(buf, len);
 
-	if (ret) {
-		printf("SPI flash %s failed\n", argv[0]);
-		return 1;
-	}
-
-	return 0;
+	return ret == 0 ? 0 : 1;
 }
 
 static int do_spi_flash_erase(int argc, char * const argv[])
@@ -305,12 +309,10 @@ static int do_spi_flash_erase(int argc, char * const argv[])
 	}
 
 	ret = spi_flash_erase(flash, offset, len);
-	if (ret) {
-		printf("SPI flash %s failed\n", argv[0]);
-		return 1;
-	}
+	printf("SF: %zu bytes @ %#x Erased: %s\n", (size_t)len, (u32)offset,
+			ret ? "ERROR" : "OK");
 
-	return 0;
+	return ret == 0 ? 0 : 1;
 }
 
 #ifdef CONFIG_CMD_SF_TEST
@@ -369,8 +371,8 @@ static void spi_test_next_stage(struct test_info *test)
  * @param vbuf		Verification buffer
  * @return 0 if ok, -1 on error
  */
-static int spi_flash_test(struct spi_flash *flash, char *buf, ulong len,
-			   ulong offset, char *vbuf)
+static int spi_flash_test(struct spi_flash *flash, uint8_t *buf, ulong len,
+			   ulong offset, uint8_t *vbuf)
 {
 	struct test_info test;
 	int i;
@@ -431,9 +433,9 @@ static int do_spi_flash_test(int argc, char * const argv[])
 {
 	unsigned long offset;
 	unsigned long len;
-	char *buf = (char *)CONFIG_SYS_TEXT_BASE;
+	uint8_t *buf = (uint8_t *)CONFIG_SYS_TEXT_BASE;
 	char *endp;
-	char *vbuf;
+	uint8_t *vbuf;
 	int ret;
 
 	offset = simple_strtoul(argv[1], &endp, 16);

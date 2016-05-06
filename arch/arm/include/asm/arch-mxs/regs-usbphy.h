@@ -4,36 +4,23 @@
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __REGS_USBPHY_H__
 #define __REGS_USBPHY_H__
 
 struct mxs_usbphy_regs {
-	mxs_reg_32(hw_usbphy_pwd)
-	mxs_reg_32(hw_usbphy_tx)
-	mxs_reg_32(hw_usbphy_rx)
-	mxs_reg_32(hw_usbphy_ctrl)
-	mxs_reg_32(hw_usbphy_status)
-	mxs_reg_32(hw_usbphy_debug)
-	mxs_reg_32(hw_usbphy_debug0_status)
-	mxs_reg_32(hw_usbphy_debug1)
-	mxs_reg_32(hw_usbphy_version)
-	mxs_reg_32(hw_usbphy_ip)
+	mxs_reg_32(hw_usbphy_pwd);
+	mxs_reg_32(hw_usbphy_tx);
+	mxs_reg_32(hw_usbphy_rx);
+	mxs_reg_32(hw_usbphy_ctrl);
+	mxs_reg_32(hw_usbphy_status);
+	mxs_reg_32(hw_usbphy_debug);
+	mxs_reg_32(hw_usbphy_debug0_status);
+	mxs_reg_32(hw_usbphy_debug1);
+	mxs_reg_32(hw_usbphy_version);
+	mxs_reg_32(hw_usbphy_ip);
 };
 
 #define	USBPHY_PWD_RXPWDRX				(1 << 20)

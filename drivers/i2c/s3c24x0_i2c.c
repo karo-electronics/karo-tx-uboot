@@ -2,23 +2,7 @@
  * (C) Copyright 2002
  * David Mueller, ELSOFT AG, d.mueller@elsoft.ch
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* This code should work for both the S3C2400 and the S3C2410
@@ -85,13 +69,6 @@ static int GetI2CSDA(void)
 	return (readl(&gpio->pgdat) & 0x0020) >> 5;
 #endif
 }
-
-#if 0
-static void SetI2CSDA(int x)
-{
-	rGPEDAT = (rGPEDAT & ~0x8000) | (x & 1) << 15;
-}
-#endif
 
 static void SetI2CSCL(int x)
 {
@@ -331,7 +308,7 @@ static int i2c_transfer(struct s3c24x0_i2c *i2c,
 			writel(I2C_MODE_MT | I2C_TXRX_ENA | I2C_START_STOP,
 			       &i2c->iicstat);
 			i = 0;
-			while ((i < data_len) && (result = I2C_OK)) {
+			while ((i < data_len) && (result == I2C_OK)) {
 				result = WaitForXfer(i2c);
 				writel(data[i], &i2c->iicds);
 				ReadWriteByte(i2c);
@@ -343,17 +320,16 @@ static int i2c_transfer(struct s3c24x0_i2c *i2c,
 			result = WaitForXfer(i2c);
 
 		/* send STOP */
-		writel(I2C_MODE_MR | I2C_TXRX_ENA, &i2c->iicstat);
+		writel(I2C_MODE_MT | I2C_TXRX_ENA, &i2c->iicstat);
 		ReadWriteByte(i2c);
 		break;
 
 	case I2C_READ:
 		if (addr && addr_len) {
-			writel(I2C_MODE_MT | I2C_TXRX_ENA, &i2c->iicstat);
 			writel(chip, &i2c->iicds);
 			/* send START */
-			writel(readl(&i2c->iicstat) | I2C_START_STOP,
-			       &i2c->iicstat);
+			writel(I2C_MODE_MT | I2C_TXRX_ENA | I2C_START_STOP,
+				&i2c->iicstat);
 			result = WaitForXfer(i2c);
 			if (IsACK(i2c)) {
 				i = 0;
@@ -387,11 +363,10 @@ static int i2c_transfer(struct s3c24x0_i2c *i2c,
 			}
 
 		} else {
-			writel(I2C_MODE_MR | I2C_TXRX_ENA, &i2c->iicstat);
 			writel(chip, &i2c->iicds);
 			/* send START */
-			writel(readl(&i2c->iicstat) | I2C_START_STOP,
-			       &i2c->iicstat);
+			writel(I2C_MODE_MR | I2C_TXRX_ENA | I2C_START_STOP,
+				&i2c->iicstat);
 			result = WaitForXfer(i2c);
 
 			if (IsACK(i2c)) {
@@ -527,8 +502,9 @@ int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len)
 #ifdef CONFIG_OF_CONTROL
 void board_i2c_init(const void *blob)
 {
+	int i;
 	int node_list[CONFIG_MAX_I2C_NUM];
-	int count, i;
+	int count;
 
 	count = fdtdec_find_aliases_for_id(blob, "i2c",
 		COMPAT_SAMSUNG_S3C2440_I2C, node_list,

@@ -2,23 +2,7 @@
  * Copyright (C) 2012 Samsung Electronics
  * R. Chandrasekar <rcsekar@samsung.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <malloc.h>
@@ -31,6 +15,7 @@
 #include <sound.h>
 #include <asm/arch/sound.h>
 #include "wm8994.h"
+#include "max98095.h"
 
 /* defines */
 #define SOUND_400_HZ 400
@@ -149,11 +134,15 @@ static int codec_init(const void *blob, struct i2stx_info *pi2s_tx)
 			pi2s_tx->samplingrate,
 			(pi2s_tx->samplingrate * (pi2s_tx->rfs)),
 			pi2s_tx->bitspersample, pi2s_tx->channels);
+	} else if (!strcmp(codectype, "max98095")) {
+		ret = max98095_init(blob, pi2s_tx->samplingrate,
+				(pi2s_tx->samplingrate * (pi2s_tx->rfs)),
+				pi2s_tx->bitspersample);
 	} else {
-		debug("%s: Unknown code type %s\n", __func__,
-		      codectype);
+		debug("%s: Unknown codec type %s\n", __func__, codectype);
 		return -1;
 	}
+
 	if (ret) {
 		debug("%s: Codec init failed\n", __func__);
 		return -1;

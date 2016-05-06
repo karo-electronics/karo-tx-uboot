@@ -2,23 +2,7 @@
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_CLOCK_H
@@ -55,6 +39,9 @@ enum mxc_clock {
 	MXC_NFC_CLK,
 	MXC_PERIPH_CLK,
 	MXC_I2C_CLK,
+	MXC_AXI_A_CLK,
+	MXC_AXI_B_CLK,
+	MXC_EMI_SLOW_CLK,
 };
 
 
@@ -108,6 +95,7 @@ u32 imx_get_uartclk(void);
 u32 imx_get_fecclk(void);
 unsigned int mxc_get_clock(enum mxc_clock clk);
 int mxc_set_clock(u32 ref, u32 freq, enum mxc_clock clk);
+int adjust_core_voltage(u32 freq);
 void set_usb_phy_clk(void);
 void enable_usb_phy1_clk(unsigned char enable);
 void enable_usb_phy2_clk(unsigned char enable);
@@ -115,7 +103,21 @@ void set_usboh3_clk(void);
 void enable_usboh3_clk(unsigned char enable);
 void mxc_set_sata_internal_clock(void);
 int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
+void enable_nfc_clk(unsigned char enable);
 void ipu_clk_enable(void);
 void ipu_clk_disable(void);
+void ipu_di_clk_enable(int di);
+void ipu_di_clk_disable(int di);
+#ifdef CONFIG_MX53
+void ldb_clk_enable(int ldb);
+void ldb_clk_disable(int ldb);
+#else
+static inline void ldb_clk_enable(int ldb)
+{
+}
+static inline void ldb_clk_disable(int ldb)
+{
+}
+#endif /* CONFIG_MX53 */
 
 #endif /* __ASM_ARCH_CLOCK_H */

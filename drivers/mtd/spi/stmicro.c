@@ -8,23 +8,7 @@
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #include <common.h>
@@ -140,6 +124,30 @@ static const struct stmicro_spi_flash_params stmicro_spi_flash_table[] = {
 		.nr_sectors = 512,
 		.name = "N25Q256A",
 	},
+	{
+		.id = 0xba20,
+		.pages_per_sector = 256,
+		.nr_sectors = 1024,
+		.name = "N25Q512",
+	},
+	{
+		.id = 0xbb20,
+		.pages_per_sector = 256,
+		.nr_sectors = 1024,
+		.name = "N25Q512A",
+	},
+	{
+		.id = 0xba21,
+		.pages_per_sector = 256,
+		.nr_sectors = 2048,
+		.name = "N25Q1024",
+	},
+	{
+		.id = 0xbb21,
+		.pages_per_sector = 256,
+		.nr_sectors = 2048,
+		.name = "N25Q1024A",
+	},
 };
 
 struct spi_flash *spi_flash_probe_stmicro(struct spi_slave *spi, u8 * idcode)
@@ -176,21 +184,19 @@ struct spi_flash *spi_flash_probe_stmicro(struct spi_slave *spi, u8 * idcode)
 		return NULL;
 	}
 
-	flash = malloc(sizeof(*flash));
+	flash = spi_flash_alloc_base(spi, params->name);
 	if (!flash) {
 		debug("SF: Failed to allocate memory\n");
 		return NULL;
 	}
 
-	flash->spi = spi;
-	flash->name = params->name;
-
-	flash->write = spi_flash_cmd_write_multi;
-	flash->erase = spi_flash_cmd_erase;
-	flash->read = spi_flash_cmd_read_fast;
 	flash->page_size = 256;
 	flash->sector_size = 256 * params->pages_per_sector;
 	flash->size = flash->sector_size * params->nr_sectors;
+
+	/* for >= 512MiB flashes, use flag status instead of read_status */
+	if (flash->size >= 0x4000000)
+		flash->poll_cmd = CMD_FLAG_STATUS;
 
 	return flash;
 }

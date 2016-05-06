@@ -5,19 +5,7 @@
  * author: Lukasz Majewski <l.majewski@samsung.com>
  * author: Piotr Wilczek <p.wilczek@samsung.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -27,6 +15,7 @@
 #include <part_efi.h>
 #include <exports.h>
 #include <linux/ctype.h>
+#include <div64.h>
 
 #ifndef CONFIG_PARTITION_UUIDS
 #error CONFIG_PARTITION_UUIDS must be enabled for CONFIG_CMD_GPT to be enabled
@@ -130,7 +119,9 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	char *val, *p;
 	int p_count;
 	disk_partition_t *parts;
+	char *guid_str;
 	int errno = 0;
+	uint64_t size_ll, start_ll;
 
 	debug("%s: MMC lba num: 0x%x %d\n", __func__,
 	      (unsigned int)dev_desc->lba, (unsigned int)dev_desc->lba);
@@ -145,16 +136,20 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	tok = strsep(&s, ";");
 	val = extract_val(tok, "uuid_disk");
 	if (!val) {
-		free(str);
-		return -2;
+		errno = -2;
+		goto free_str;
 	}
-	if (extract_env(val, &p))
-		p = val;
-	*str_disk_guid = strdup(p);
+	if (extract_env(val, &p) == 0)
+		guid_str = strdup(p);
+	else
+		guid_str = strdup(val);
+
 	free(val);
 
-	if (strlen(s) == 0)
-		return -3;
+	if (strlen(s) == 0) {
+		errno = -3;
+		goto free_guid;
+	}
 
 	i = strlen(s) - 1;
 	if (s[i] == ';')
@@ -217,8 +212,8 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 		}
 		if (extract_env(val, &p))
 			p = val;
-		parts[i].size = ustrtoul(p, &p, 0);
-		parts[i].size /= dev_desc->blksz;
+		size_ll = ustrtoull(p, &p, 0);
+		parts[i].size = lldiv(size_ll, dev_desc->blksz);
 		free(val);
 
 		/* start address */
@@ -226,22 +221,29 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 		if (val) { /* start address is optional */
 			if (extract_env(val, &p))
 				p = val;
-			parts[i].start = ustrtoul(p, &p, 0);
-			parts[i].start /= dev_desc->blksz;
+			start_ll = ustrtoull(p, &p, 0);
+			parts[i].start = lldiv(start_ll, dev_desc->blksz);
 			free(val);
 		}
 	}
 
+	*str_disk_guid = guid_str;
 	*parts_count = p_count;
 	*partitions = parts;
 	free(str);
 
 	return 0;
-err:
-	free(str);
-	free(*str_disk_guid);
-	free(parts);
 
+err:
+	free(parts);
+free_guid:
+	free(guid_str);
+free_str:
+	free(str);
+
+	*str_disk_guid = NULL;
+	*parts_count = 0;
+	*partitions = NULL;
 	return errno;
 }
 

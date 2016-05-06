@@ -2,23 +2,7 @@
  * (C) Copyright 2001
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -33,16 +17,6 @@
 #define	PRINTF(fmt,args...)	printf (fmt ,##args)
 #else
 #define PRINTF(fmt,args...)
-#endif
-
-/* Rather than repeat this expression each time, add a define for it */
-#if (defined(CONFIG_CMD_IDE) || \
-     defined(CONFIG_CMD_SATA) || \
-     defined(CONFIG_CMD_SCSI) || \
-     defined(CONFIG_CMD_USB) || \
-     defined(CONFIG_MMC) || \
-     defined(CONFIG_SYSTEMACE) )
-#define HAVE_BLOCK_DEVICE
 #endif
 
 struct block_drvr {
@@ -475,6 +449,23 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 	int part;
 	disk_partition_t tmpinfo;
 
+	/*
+	 * For now, we have a special case for sandbox, since there is no
+	 * real block device support.
+	 */
+	if (0 == strcmp(ifname, "host")) {
+		*dev_desc = NULL;
+		info->start = info->size =  info->blksz = 0;
+		info->bootable = 0;
+		strcpy((char *)info->type, BOOT_PART_TYPE);
+		strcpy((char *)info->name, "Sandbox host");
+#ifdef CONFIG_PARTITION_UUIDS
+		info->uuid[0] = 0;
+#endif
+
+		return 0;
+	}
+
 	/* If no dev_part_str, use bootdevice environment variable */
 	if (!dev_part_str || !strlen(dev_part_str) ||
 	    !strcmp(dev_part_str, "-"))
@@ -543,6 +534,8 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 			       dev_str);
 			goto cleanup;
 		}
+
+		(*dev_desc)->log2blksz = LOG2((*dev_desc)->blksz);
 
 		info->start = 0;
 		info->size = (*dev_desc)->lba;
@@ -626,6 +619,8 @@ int get_device_and_partition(const char *ifname, const char *dev_part_str,
 		ret  = -1;
 		goto cleanup;
 	}
+
+	(*dev_desc)->log2blksz = LOG2((*dev_desc)->blksz);
 
 	ret = part;
 	goto cleanup;

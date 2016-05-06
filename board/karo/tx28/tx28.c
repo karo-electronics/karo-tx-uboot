@@ -1,24 +1,19 @@
 /*
- * Copyright (C) 2011 Lothar Waßmann <LW@KARO-electronics.de>
- * based on: board/freesclae/mx28_evk.c (C) 2010 Freescale Semiconductor, Inc.
+ * Copyright (C) 2011-2013 Lothar Waßmann <LW@KARO-electronics.de>
+ * based on: board/freescale/mx28_evk.c (C) 2010 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
  * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -28,14 +23,13 @@
 #include <lcd.h>
 #include <netdev.h>
 #include <mmc.h>
-#include <imx_ssp_mmc.h>
+#include <mxcfb.h>
 #include <linux/list.h>
 #include <linux/fb.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <asm/arch/iomux-mx28.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/mxsfb.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 
@@ -100,26 +94,79 @@ static const iomux_cfg_t tx28_pads[] = {
 /*
  * Functions
  */
+
+/* provide at least _some_ sort of randomness */
+#define MAX_LOOPS       100
+
+static u32 random;
+
+static inline void random_init(void)
+{
+	struct mxs_digctl_regs *digctl_regs = (void *)MXS_DIGCTL_BASE;
+	u32 seed = 0;
+	int i;
+
+	for (i = 0; i < MAX_LOOPS; i++) {
+		unsigned int usec = readl(&digctl_regs->hw_digctl_microseconds);
+
+		seed = get_timer(usec + random + seed);
+		srand(seed);
+		random = rand();
+	}
+}
+
+#define RTC_PERSISTENT0_CLK32_MASK	(RTC_PERSISTENT0_CLOCKSOURCE |	\
+					RTC_PERSISTENT0_XTAL32KHZ_PWRUP)
+static u32 boot_cause __attribute__((section("data")));
+
 int board_early_init_f(void)
 {
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
+	u32 rtc_stat;
+	int timeout = 5000;
+
+	random_init();
+
 	/* IO0 clock at 480MHz */
-	mx28_set_ioclk(MXC_IOCLK0, 480000);
+	mxs_set_ioclk(MXC_IOCLK0, 480000);
 	/* IO1 clock at 480MHz */
-	mx28_set_ioclk(MXC_IOCLK1, 480000);
+	mxs_set_ioclk(MXC_IOCLK1, 480000);
 
 	/* SSP0 clock at 96MHz */
-	mx28_set_sspclk(MXC_SSPCLK0, 96000, 0);
+	mxs_set_sspclk(MXC_SSPCLK0, 96000, 0);
 	/* SSP2 clock at 96MHz */
-	mx28_set_sspclk(MXC_SSPCLK2, 96000, 0);
+	mxs_set_sspclk(MXC_SSPCLK2, 96000, 0);
 
 	gpio_request_array(tx28_gpios, ARRAY_SIZE(tx28_gpios));
 	mxs_iomux_setup_multiple_pads(tx28_pads, ARRAY_SIZE(tx28_pads));
+
+	while ((rtc_stat = readl(&rtc_regs->hw_rtc_stat)) &
+		RTC_STAT_STALE_REGS_PERSISTENT0) {
+		if (timeout-- < 0)
+			return 0;
+		udelay(1);
+	}
+	boot_cause = readl(&rtc_regs->hw_rtc_persistent0);
+	if ((boot_cause & RTC_PERSISTENT0_CLK32_MASK) !=
+		RTC_PERSISTENT0_CLK32_MASK) {
+		if (boot_cause & RTC_PERSISTENT0_CLOCKSOURCE)
+			goto rtc_err;
+		writel(RTC_PERSISTENT0_CLK32_MASK,
+			&rtc_regs->hw_rtc_persistent0_set);
+	}
+	return 0;
+
+rtc_err:
+	serial_puts("Inconsistent value in RTC_PERSISTENT0 register; power-on-reset required\n");
 	return 0;
 }
 
 int board_init(void)
 {
 	/* Address of boot parameters */
+#ifdef CONFIG_OF_LIBFDT
+	gd->bd->bi_arch_number = -1;
+#endif
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
 	return 0;
 }
@@ -137,7 +184,7 @@ static int tx28_mmc_wp(int dev_no)
 
 int board_mmc_init(bd_t *bis)
 {
-	return mxsmmc_initialize(bis, 0, tx28_mmc_wp);
+	return mxsmmc_initialize(bis, 0, tx28_mmc_wp, NULL);
 }
 #endif /* CONFIG_CMD_MMC */
 
@@ -149,16 +196,20 @@ int board_mmc_init(bd_t *bis)
 #else
 #define FEC_MAX_IDX			0
 #endif
+#ifndef ETH_ALEN
+#define ETH_ALEN			6
+#endif
 
 static int fec_get_mac_addr(int index)
 {
-	u32 val1, val2;
 	int timeout = 1000;
 	struct mxs_ocotp_regs *ocotp_regs =
 		(struct mxs_ocotp_regs *)MXS_OCOTP_BASE;
 	u32 *cust = &ocotp_regs->hw_ocotp_cust0;
-	char mac[6 * 3];
+	u8 mac[ETH_ALEN];
 	char env_name[] = "eth.addr";
+	u32 val = 0;
+	int i;
 
 	if (index < 0 || index > FEC_MAX_IDX)
 		return -EINVAL;
@@ -174,20 +225,26 @@ static int fec_get_mac_addr(int index)
 		udelay(100);
 	}
 
-	val1 = readl(&cust[index * 8]);
-	val2 = readl(&cust[index * 8 + 4]);
-	if ((val1 | val2) == 0)
-		return 0;
-	snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x",
-		(val1 >> 24) & 0xFF, (val1 >> 16) & 0xFF,
-		(val1 >> 8) & 0xFF, (val1 >> 0) & 0xFF,
-		(val2 >> 24) & 0xFF, (val2 >> 16) & 0xFF);
-	if (index == 0)
-		snprintf(env_name, sizeof(env_name), "ethaddr");
-	else
-		snprintf(env_name, sizeof(env_name), "eth%daddr", index);
+	for (i = 0; i < sizeof(mac); i++) {
+		int shift = 24 - i % 4 * 8;
 
-	setenv(env_name, mac);
+		if (i % 4 == 0)
+			val = readl(&cust[index * 8 + i]);
+		mac[i] = val >> shift;
+	}
+	if (!is_valid_ether_addr(mac)) {
+		if (index == 0)
+			printf("No valid MAC address programmed\n");
+		return 0;
+	}
+
+	if (index == 0) {
+		printf("MAC addr from fuse: %pM\n", mac);
+		snprintf(env_name, sizeof(env_name), "ethaddr");
+	} else {
+		snprintf(env_name, sizeof(env_name), "eth%daddr", index);
+	}
+	eth_setenv_enetaddr(env_name, mac);
 	return 0;
 }
 #endif /* CONFIG_GET_FEC_MAC_ADDR_FROM_IIM */
@@ -226,11 +283,6 @@ int board_eth_init(bd_t *bis)
 		return ret;
 	}
 
-	ret = fec_get_mac_addr(0);
-	if (ret < 0) {
-		printf("Failed to read FEC0 MAC address from OCOTP\n");
-		return ret;
-	}
 #ifdef CONFIG_FEC_MXC_MULTI
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
@@ -240,11 +292,6 @@ int board_eth_init(bd_t *bis)
 		}
 	}
 
-	ret = fec_get_mac_addr(1);
-	if (ret < 0) {
-		printf("Failed to read FEC1 MAC address from OCOTP\n");
-		return ret;
-	}
 	if (getenv("eth1addr")) {
 		ret = fecmxc_initialize_multi(bis, 1, 1, MXS_ENET1_BASE);
 		if (ret) {
@@ -252,13 +299,16 @@ int board_eth_init(bd_t *bis)
 			return ret;
 		}
 	}
-	return 0;
 #else
 	if (getenv("ethaddr")) {
 		ret = fecmxc_initialize(bis);
+		if (ret) {
+			printf("FEC MXS: Unable to init FEC\n");
+			return ret;
+		}
 	}
-	return ret;
 #endif
+	return 0;
 }
 #endif /* CONFIG_FEC_MXC */
 
@@ -299,6 +349,16 @@ static const struct gpio stk5_gpios[] = {
 };
 
 #ifdef CONFIG_LCD
+static ushort tx28_cmap[256];
+vidinfo_t panel_info = {
+	/* set to max. size supported by SoC */
+	.vl_col = 1600,
+	.vl_row = 1200,
+
+	.vl_bpix = LCD_COLOR24,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
+	.cmap = tx28_cmap,
+};
+
 static struct fb_videomode tx28_fb_modes[] = {
 	{
 		/* Standard VGA timing */
@@ -313,7 +373,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 31,
 		.vsync_len	= 2,
 		.lower_margin	= 12,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -332,7 +391,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 32,
 		.vsync_len	= 3,
 		.lower_margin	= 10,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -350,7 +408,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 18 - 3,
 		.vsync_len	= 3,
 		.lower_margin	= 4,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -368,7 +425,7 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 2,
 		.vsync_len	= 10,
 		.lower_margin	= 2,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -386,7 +443,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 35 - 2,
 		.vsync_len	= 2,
 		.lower_margin	= 525 - 480 - 35,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -404,7 +460,6 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 16, /* 15 according to datasheet */
 		.vsync_len	= 3, /* TVP -> 1>x>5 */
 		.lower_margin	= 4, /* 4.5 according to datasheet */
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
@@ -422,17 +477,21 @@ static struct fb_videomode tx28_fb_modes[] = {
 		.upper_margin	= 35 - 2,
 		.vsync_len	= 2,
 		.lower_margin	= 525 - 480 - 35,
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 	{
 		/* unnamed entry for assigning parameters parsed from 'video_mode' string */
-		.sync		= FB_SYNC_DATA_ENABLE_HIGH_ACT,
 		.vmode		= FB_VMODE_NONINTERLACED,
 	},
 };
 
 static int lcd_enabled = 1;
+static int lcd_bl_polarity;
+
+static int lcd_backlight_polarity(void)
+{
+	return lcd_bl_polarity;
+}
 
 void lcd_enable(void)
 {
@@ -450,20 +509,21 @@ void lcd_enable(void)
 		udelay(100);
 		gpio_set_value(TX28_LCD_RST_GPIO, 1);
 		udelay(300000);
-		gpio_set_value(TX28_LCD_BACKLIGHT_GPIO, 0);
+		gpio_set_value(TX28_LCD_BACKLIGHT_GPIO,
+			lcd_backlight_polarity());
 	}
 }
 
 void lcd_disable(void)
 {
-	mxsfb_disable();
 }
 
 void lcd_panel_disable(void)
 {
 	if (lcd_enabled) {
 		debug("Switching LCD off\n");
-		gpio_set_value(TX28_LCD_BACKLIGHT_GPIO, 1);
+		gpio_set_value(TX28_LCD_BACKLIGHT_GPIO,
+			!lcd_backlight_polarity());
 		gpio_set_value(TX28_LCD_RST_GPIO, 0);
 		gpio_set_value(TX28_LCD_PWR_GPIO, 0);
 	}
@@ -506,9 +566,6 @@ static const iomux_cfg_t stk5_lcd_pads[] = {
 	MX28_PAD_LCD_WR_RWN__LCD_HSYNC | MXS_PAD_CTRL,
 	MX28_PAD_LCD_RS__LCD_DOTCLK | MXS_PAD_CTRL,
 	MX28_PAD_LCD_CS__LCD_CS | MXS_PAD_CTRL,
-	MX28_PAD_LCD_VSYNC__LCD_VSYNC | MXS_PAD_CTRL,
-	MX28_PAD_LCD_HSYNC__LCD_HSYNC | MXS_PAD_CTRL,
-	MX28_PAD_LCD_DOTCLK__LCD_DOTCLK | MXS_PAD_CTRL,
 };
 
 static const struct gpio stk5_lcd_gpios[] = {
@@ -522,10 +579,12 @@ extern void video_hw_init(void *lcdbase);
 void lcd_ctrl_init(void *lcdbase)
 {
 	int color_depth = 24;
-	char *vm;
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	const char *vm;
 	unsigned long val;
 	int refresh = 60;
-	struct fb_videomode *p = &tx28_fb_modes[0];
+	struct fb_videomode *p = tx28_fb_modes;
+	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 
 	if (!lcd_enabled) {
@@ -533,27 +592,47 @@ void lcd_ctrl_init(void *lcdbase)
 		return;
 	}
 
-	if (tstc()) {
+	if (had_ctrlc()) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
+		setenv("splashimage", NULL);
 		return;
 	}
 
-	vm = getenv("video_mode");
-	if (vm == NULL) {
+	karo_fdt_move_fdt();
+	lcd_bl_polarity = karo_fdt_get_backlight_polarity(working_fdt);
+
+	if (video_mode == NULL) {
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		return;
 	}
+	vm = video_mode;
+	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
+		p = &fb_mode;
+		debug("Using video mode from FDT\n");
+		vm += strlen(vm);
+		if (fb_mode.xres > panel_info.vl_col ||
+			fb_mode.yres > panel_info.vl_row) {
+			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
+				fb_mode.xres, fb_mode.yres,
+				panel_info.vl_col, panel_info.vl_row);
+			lcd_enabled = 0;
+			return;
+		}
+	}
+	if (p->name != NULL)
+		debug("Trying compiled-in video modes\n");
 	while (p->name != NULL) {
 		if (strcmp(p->name, vm) == 0) {
-			printf("Using video mode: '%s'\n", p->name);
+			debug("Using video mode: '%s'\n", p->name);
 			vm += strlen(vm);
 			break;
 		}
 		p++;
 	}
-
+	if (*vm != '\0')
+		debug("Trying to decode video_mode: '%s'\n", vm);
 	while (*vm != '\0') {
 		if (*vm >= '0' && *vm <= '9') {
 			char *end;
@@ -564,11 +643,13 @@ void lcd_ctrl_init(void *lcdbase)
 					if (val > panel_info.vl_col)
 						val = panel_info.vl_col;
 					p->xres = val;
+					panel_info.vl_col = val;
 					xres_set = 1;
 				} else if (!yres_set) {
 					if (val > panel_info.vl_row)
 						val = panel_info.vl_row;
 					p->yres = val;
+					panel_info.vl_row = val;
 					yres_set = 1;
 				} else if (!bpp_set) {
 					switch (val) {
@@ -621,12 +702,43 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("\n");
 		return;
 	}
+	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
+		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
+			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		lcd_enabled = 0;
+		return;
+	}
+	panel_info.vl_col = p->xres;
+	panel_info.vl_row = p->yres;
+
+	switch (color_depth) {
+	case 8:
+		panel_info.vl_bpix = LCD_COLOR8;
+		break;
+	case 16:
+		panel_info.vl_bpix = LCD_COLOR16;
+		break;
+	default:
+		panel_info.vl_bpix = LCD_COLOR24;
+	}
+
 	p->pixclock = KHZ2PICOS(refresh *
 		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
 		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
 				1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 		PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
+
+	if (p != &fb_mode) {
+		int ret;
+
+		debug("Creating new display-timing node from '%s'\n",
+			video_mode);
+		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
+		if (ret)
+			printf("Failed to create new display-timing node from '%s': %d\n",
+				video_mode, ret);
+	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	mxs_iomux_setup_multiple_pads(stk5_lcd_pads,
@@ -636,9 +748,19 @@ void lcd_ctrl_init(void *lcdbase)
 		color_depth, refresh);
 
 	if (karo_load_splashimage(0) == 0) {
+		char vmode[128];
+
+		/* setup env variable for mxsfb display driver */
+		snprintf(vmode, sizeof(vmode),
+			"x:%d,y:%d,le:%d,ri:%d,up:%d,lo:%d,hs:%d,vs:%d,sync:%d,pclk:%d,depth:%d",
+			p->xres, p->yres, p->left_margin, p->right_margin,
+			p->upper_margin, p->lower_margin, p->hsync_len,
+			p->vsync_len, p->sync, p->pixclock, color_depth);
+		setenv("videomode", vmode);
+
 		debug("Initializing LCD controller\n");
-		mxsfb_init(p, PIX_FMT_RGB24, color_depth);
 		video_hw_init(lcdbase);
+		setenv("videomode", NULL);
 	} else {
 		debug("Skipping initialization of LCD controller\n");
 	}
@@ -668,22 +790,67 @@ static void stk5v5_board_init(void)
 	mxs_iomux_setup_pad(MX28_PAD_LCD_D00__GPIO_1_0);
 }
 
+int tx28_fec1_enabled(void)
+{
+	const char *status;
+	int off;
+
+	if (!gd->fdt_blob)
+		return 0;
+
+	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
+	if (off < 0)
+		return 0;
+
+	status = fdt_getprop(gd->fdt_blob, off, "status", NULL);
+	return status && (strcmp(status, "okay") == 0);
+}
+
+static void tx28_init_mac(void)
+{
+	int ret;
+
+	ret = fec_get_mac_addr(0);
+	if (ret < 0) {
+		printf("Failed to read FEC0 MAC address from OCOTP\n");
+		return;
+	}
+#ifdef CONFIG_FEC_MXC_MULTI
+	if (tx28_fec1_enabled()) {
+		ret = fec_get_mac_addr(1);
+		if (ret < 0) {
+			printf("Failed to read FEC1 MAC address from OCOTP\n");
+			return;
+		}
+	}
+#endif
+}
+
 int board_late_init(void)
 {
+	int ret = 0;
 	const char *baseboard;
 
 	karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)
-		return 0;
+		goto exit;
+
+	printf("Baseboard: %s\n", baseboard);
 
 	if (strncmp(baseboard, "stk5", 4) == 0) {
-		printf("Baseboard: %s\n", baseboard);
 		if ((strlen(baseboard) == 4) ||
 			strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
 		} else if (strcmp(baseboard, "stk5-v5") == 0) {
+			const char *otg_mode = getenv("otg_mode");
+
+			if (otg_mode && strcmp(otg_mode, "host") == 0) {
+				printf("otg_mode='%s' is incompatible with baseboard %s; setting to 'none'\n",
+					otg_mode, baseboard);
+				setenv("otg_mode", "none");
+			}
 			stk5v5_board_init();
 		} else {
 			printf("WARNING: Unsupported STK5 board rev.: %s\n",
@@ -692,15 +859,95 @@ int board_late_init(void)
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	return 0;
+exit:
+	tx28_init_mac();
+	clear_ctrlc();
+	return ret;
+}
+
+#define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
+				RTC_PERSISTENT0_ALARM_WAKE |		\
+				RTC_PERSISTENT0_THERMAL_RESET)
+
+static void thermal_init(void)
+{
+	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
+	struct mxs_clkctrl_regs *clkctrl_regs = (void *)MXS_CLKCTRL_BASE;
+
+	writel(POWER_THERMAL_LOW_POWER | POWER_THERMAL_OFFSET_ADJ_ENABLE |
+		POWER_THERMAL_OFFSET_ADJ_OFFSET(3),
+		&power_regs->hw_power_thermal);
+
+	writel(CLKCTRL_RESET_EXTERNAL_RESET_ENABLE |
+		CLKCTRL_RESET_THERMAL_RESET_ENABLE,
+		&clkctrl_regs->hw_clkctrl_reset);
 }
 
 int checkboard(void)
 {
-	printf("Board: Ka-Ro TX28-4%sxx\n", TX28_MOD_SUFFIX);
+	struct mxs_power_regs *power_regs = (void *)MXS_POWER_BASE;
+	u32 pwr_sts = readl(&power_regs->hw_power_sts);
+	u32 pwrup_src = (pwr_sts >> 24) & 0x3f;
+	const char *dlm = "";
+
+	printf("Board: Ka-Ro TX28-4%sx%d\n", TX28_MOD_SUFFIX,
+		CONFIG_SDRAM_SIZE / SZ_128M +
+		CONFIG_SYS_NAND_BLOCKS / 2048 * 2);
+
+	printf("POWERUP Source: ");
+	if (pwrup_src & (3 << 0)) {
+		printf("%sPSWITCH %s voltage", dlm,
+			pwrup_src & (1 << 1) ? "HIGH" : "MID");
+		dlm = " | ";
+	}
+	if (pwrup_src & (1 << 4)) {
+		printf("%sRTC", dlm);
+		dlm = " | ";
+	}
+	if (pwrup_src & (1 << 5)) {
+		printf("%s5V", dlm);
+		dlm = " | ";
+	}
+	printf("\n");
+
+	if (boot_cause & BOOT_CAUSE_MASK) {
+		dlm="";
+		printf("Last boot cause: ");
+		if (boot_cause & RTC_PERSISTENT0_EXTERNAL_RESET) {
+			printf("%sEXTERNAL", dlm);
+			dlm = " | ";
+		}
+		if (boot_cause & RTC_PERSISTENT0_THERMAL_RESET) {
+			printf("%sTHERMAL", dlm);
+			dlm = " | ";
+		}
+		if (*dlm != '\0')
+			printf(" RESET");
+		if (boot_cause & RTC_PERSISTENT0_ALARM_WAKE) {
+			printf("%sALARM WAKE", dlm);
+			dlm = " | ";
+		}
+		printf("\n");
+	}
+
+	while (pwr_sts & POWER_STS_THERMAL_WARNING) {
+		static int first = 1;
+
+		if (first) {
+			printf("CPU too hot to boot\n");
+			first = 0;
+		}
+		if (tstc())
+			break;
+		pwr_sts = readl(&power_regs->hw_power_sts);
+	}
+
+	if (!(boot_cause & RTC_PERSISTENT0_THERMAL_RESET))
+		thermal_init();
+
 	return 0;
 }
 
@@ -708,60 +955,47 @@ int checkboard(void)
 #ifdef CONFIG_FDT_FIXUP_PARTITIONS
 #include <jffs2/jffs2.h>
 #include <mtd_node.h>
-struct node_info tx28_nand_nodes[] = {
-	{ "gpmi-nand", MTD_DEV_TYPE_NAND, },
+static struct node_info tx28_nand_nodes[] = {
+	{ "fsl,imx28-gpmi-nand", MTD_DEV_TYPE_NAND, },
 };
 #else
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static void tx28_fixup_flexcan(void *blob)
-{
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x80032000, "transceiver-switch");
-	karo_fdt_del_prop(blob, "fsl,p1010-flexcan", 0x80034000, "transceiver-switch");
-}
-
-static void tx28_fixup_fec(void *blob)
-{
-	karo_fdt_remove_node(blob, "ethernet1");
-}
+static const char *tx28_touchpanels[] = {
+	"ti,tsc2007",
+	"edt,edt-ft5x06",
+	"fsl,imx28-lradc",
+};
 
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	const char *baseboard = getenv("baseboard");
+	int stk5_v5 = baseboard != NULL && (strcmp(baseboard, "stk5-v5") == 0);
+	const char *video_mode = karo_get_vmode(getenv("video_mode"));
+	int ret;
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Failed to increase FDT size: %s\n", fdt_strerror(ret));
 
 #ifdef CONFIG_TX28_S
 	/* TX28-41xx (aka TX28S) has no external RTC
 	 * and no I2C GPIO extender
 	 */
 	karo_fdt_remove_node(blob, "ds1339");
-	karo_fdt_remove_node(blob, "pca9554");
+	karo_fdt_remove_node(blob, "gpio5");
 #endif
-	if (baseboard != NULL && strcmp(baseboard, "stk5-v5") == 0) {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && strcmp(otg_mode, "host") == 0) {
-			printf("otg_mode=%s incompatible with baseboard %s\n",
-				otg_mode, baseboard);
-			setenv(otg_mode, "none");
-		}
-		karo_fdt_remove_node(blob, "stk5led");
-	} else {
-		tx28_fixup_flexcan(blob);
-		tx28_fixup_fec(blob);
-	}
-
-	if (baseboard != NULL && strcmp(baseboard, "stk5-v3") == 0) {
-		const char *otg_mode = getenv("otg_mode");
-
-		if (otg_mode && strcmp(otg_mode, "device") == 0)
-			karo_fdt_remove_node(blob, "can1");
-	}
+	if (stk5_v5)
+		karo_fdt_enable_node(blob, "stk5led", 0);
 
 	fdt_fixup_mtdparts(blob, tx28_nand_nodes, ARRAY_SIZE(tx28_nand_nodes));
 	fdt_fixup_ethernet(blob);
 
-	karo_fdt_fixup_touchpanel(blob);
-	karo_fdt_fixup_usb_otg(blob, "fsl,imx28-usbphy", 0x8007c000);
+	karo_fdt_fixup_touchpanel(blob, tx28_touchpanels,
+				ARRAY_SIZE(tx28_touchpanels));
+	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
+	karo_fdt_fixup_flexcan(blob, stk5_v5);
+	karo_fdt_update_fb_mode(blob, video_mode);
 }
-#endif
+#endif /* CONFIG_OF_BOARD_SETUP */

@@ -1,24 +1,11 @@
 /*
  * Micrel PHY drivers
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
- *
+ * (C) 2012 NetModule AG, David Andrey, added KSZ9031
  */
 #include <config.h>
 #include <common.h>
@@ -52,16 +39,46 @@ static struct phy_driver KS8721_driver = {
 };
 #endif
 
+
+/**
+ * KSZ9021 - KSZ9031 common
+ */
+
+#define MII_KSZ90xx_PHY_CTL		0x1f
+#define MIIM_KSZ90xx_PHYCTL_1000	(1 << 6)
+#define MIIM_KSZ90xx_PHYCTL_100		(1 << 5)
+#define MIIM_KSZ90xx_PHYCTL_10		(1 << 4)
+#define MIIM_KSZ90xx_PHYCTL_DUPLEX	(1 << 3)
+
+static int ksz90xx_startup(struct phy_device *phydev)
+{
+	unsigned phy_ctl;
+	genphy_update_link(phydev);
+	phy_ctl = phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZ90xx_PHY_CTL);
+
+	if (phy_ctl & MIIM_KSZ90xx_PHYCTL_DUPLEX)
+		phydev->duplex = DUPLEX_FULL;
+	else
+		phydev->duplex = DUPLEX_HALF;
+
+	if (phy_ctl & MIIM_KSZ90xx_PHYCTL_1000)
+		phydev->speed = SPEED_1000;
+	else if (phy_ctl & MIIM_KSZ90xx_PHYCTL_100)
+		phydev->speed = SPEED_100;
+	else if (phy_ctl & MIIM_KSZ90xx_PHYCTL_10)
+		phydev->speed = SPEED_10;
+	return 0;
+}
 #ifdef CONFIG_PHY_MICREL_KSZ9021
-/* ksz9021 PHY Registers */
+
+/*
+ * KSZ9021
+ */
+
+/* PHY Registers */
 #define MII_KSZ9021_EXTENDED_CTRL	0x0b
 #define MII_KSZ9021_EXTENDED_DATAW	0x0c
 #define MII_KSZ9021_EXTENDED_DATAR	0x0d
-#define MII_KSZ9021_PHY_CTL		0x1f
-#define MIIM_KSZ9021_PHYCTL_1000	(1 << 6)
-#define MIIM_KSZ9021_PHYCTL_100		(1 << 5)
-#define MIIM_KSZ9021_PHYCTL_10		(1 << 4)
-#define MIIM_KSZ9021_PHYCTL_DUPLEX	(1 << 3)
 
 #define CTRL1000_PREFER_MASTER		(1 << 10)
 #define CTRL1000_CONFIG_MASTER		(1 << 11)
@@ -106,36 +123,63 @@ static int ksz9021_config(struct phy_device *phydev)
 	return 0;
 }
 
-static int ksz9021_startup(struct phy_device *phydev)
-{
-	unsigned phy_ctl;
-	genphy_update_link(phydev);
-	phy_ctl = phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZ9021_PHY_CTL);
-
-	if (phy_ctl & MIIM_KSZ9021_PHYCTL_DUPLEX)
-		phydev->duplex = DUPLEX_FULL;
-	else
-		phydev->duplex = DUPLEX_HALF;
-
-	if (phy_ctl & MIIM_KSZ9021_PHYCTL_1000)
-		phydev->speed = SPEED_1000;
-	else if (phy_ctl & MIIM_KSZ9021_PHYCTL_100)
-		phydev->speed = SPEED_100;
-	else if (phy_ctl & MIIM_KSZ9021_PHYCTL_10)
-		phydev->speed = SPEED_10;
-	return 0;
-}
-
 static struct phy_driver ksz9021_driver = {
 	.name = "Micrel ksz9021",
 	.uid  = 0x221610,
 	.mask = 0xfffff0,
 	.features = PHY_GBIT_FEATURES,
 	.config = &ksz9021_config,
-	.startup = &ksz9021_startup,
+	.startup = &ksz90xx_startup,
 	.shutdown = &genphy_shutdown,
 };
 #endif
+
+/**
+ * KSZ9031
+ */
+/* PHY Registers */
+#define MII_KSZ9031_MMD_ACCES_CTRL	0x0d
+#define MII_KSZ9031_MMD_REG_DATA	0x0e
+
+/* Accessors to extended registers*/
+int ksz9031_phy_extended_write(struct phy_device *phydev,
+			       int devaddr, int regnum, u16 mode, u16 val)
+{
+	/*select register addr for mmd*/
+	phy_write(phydev, MDIO_DEVAD_NONE,
+		  MII_KSZ9031_MMD_ACCES_CTRL, devaddr);
+	/*select register for mmd*/
+	phy_write(phydev, MDIO_DEVAD_NONE,
+		  MII_KSZ9031_MMD_REG_DATA, regnum);
+	/*setup mode*/
+	phy_write(phydev, MDIO_DEVAD_NONE,
+		  MII_KSZ9031_MMD_ACCES_CTRL, (mode | devaddr));
+	/*write the value*/
+	return	phy_write(phydev, MDIO_DEVAD_NONE,
+		MII_KSZ9031_MMD_REG_DATA, val);
+}
+
+int ksz9031_phy_extended_read(struct phy_device *phydev, int devaddr,
+			      int regnum, u16 mode)
+{
+	phy_write(phydev, MDIO_DEVAD_NONE,
+		  MII_KSZ9031_MMD_ACCES_CTRL, devaddr);
+	phy_write(phydev, MDIO_DEVAD_NONE,
+		  MII_KSZ9031_MMD_REG_DATA, regnum);
+	phy_write(phydev, MDIO_DEVAD_NONE,
+		  MII_KSZ9031_MMD_ACCES_CTRL, (devaddr | mode));
+	return phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZ9031_MMD_REG_DATA);
+}
+
+static struct phy_driver ksz9031_driver = {
+	.name = "Micrel ksz9031",
+	.uid  = 0x221620,
+	.mask = 0xfffffe,
+	.features = PHY_GBIT_FEATURES,
+	.config   = &genphy_config,
+	.startup  = &ksz90xx_startup,
+	.shutdown = &genphy_shutdown,
+};
 
 int phy_micrel_init(void)
 {
@@ -145,5 +189,6 @@ int phy_micrel_init(void)
 #else
 	phy_register(&KS8721_driver);
 #endif
+	phy_register(&ksz9031_driver);
 	return 0;
 }

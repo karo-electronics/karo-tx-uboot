@@ -3,23 +3,7 @@
  * Raymond Lo, lo@routefree.com
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -35,12 +19,7 @@
 #include <ide.h>
 #include "part_dos.h"
 
-#if defined(CONFIG_CMD_IDE) || \
-    defined(CONFIG_CMD_SATA) || \
-    defined(CONFIG_CMD_SCSI) || \
-    defined(CONFIG_CMD_USB) || \
-    defined(CONFIG_MMC) || \
-    defined(CONFIG_SYSTEMACE)
+#ifdef HAVE_BLOCK_DEVICE
 
 /* Convert char[4] in little endian format to the host format integer
  */
@@ -79,13 +58,26 @@ static void print_one_part(dos_partition_t *p, int ext_part_sector,
 
 static int test_block_type(unsigned char *buffer)
 {
+	int slot;
+	struct dos_partition *p;
+
 	if((buffer[DOS_PART_MAGIC_OFFSET + 0] != 0x55) ||
 	    (buffer[DOS_PART_MAGIC_OFFSET + 1] != 0xaa) ) {
 		return (-1);
 	} /* no DOS Signature at all */
-	if (strncmp((char *)&buffer[DOS_PBR_FSTYPE_OFFSET],"FAT",3)==0 ||
-	    strncmp((char *)&buffer[DOS_PBR32_FSTYPE_OFFSET],"FAT32",5)==0) {
-		return DOS_PBR; /* is PBR */
+	p = (struct dos_partition *)&buffer[DOS_PART_TBL_OFFSET];
+	for (slot = 0; slot < 3; slot++) {
+		if (p->boot_ind != 0 && p->boot_ind != 0x80) {
+			if (!slot &&
+			    (strncmp((char *)&buffer[DOS_PBR_FSTYPE_OFFSET],
+				     "FAT", 3) == 0 ||
+			     strncmp((char *)&buffer[DOS_PBR32_FSTYPE_OFFSET],
+				     "FAT32", 5) == 0)) {
+				return DOS_PBR; /* is PBR */
+			} else {
+				return -1;
+			}
+		}
 	}
 	return DOS_MBR;	    /* Is MBR */
 }

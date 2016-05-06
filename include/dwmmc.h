@@ -2,20 +2,7 @@
  * (C) Copyright 2012 SAMSUNG Electronics
  * Jaehoon Chung <jh80.chung@samsung.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,  MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __DWMMC_HW_H
@@ -123,6 +110,8 @@
 #define MSIZE(x)		((x) << 28)
 #define RX_WMARK(x)		((x) << 16)
 #define TX_WMARK(x)		(x)
+#define RX_WMARK_SHIFT		16
+#define RX_WMARK_MASK		(0xfff << RX_WMARK_SHIFT)
 
 #define DWMCI_IDMAC_OWN		(1 << 31)
 #define DWMCI_IDMAC_CH		(1 << 4)
@@ -144,6 +133,7 @@ struct dwmci_host {
 	unsigned int bus_hz;
 	int dev_index;
 	int buswidth;
+	u32 clksel_val;
 	u32 fifoth_val;
 	struct mmc *mmc;
 

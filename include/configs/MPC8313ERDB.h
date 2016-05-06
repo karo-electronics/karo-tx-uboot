@@ -1,23 +1,7 @@
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006, 2010.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 /*
  * mpc8313epb board configuration file
@@ -52,7 +36,7 @@
 #define CONFIG_SYS_TEXT_BASE	0x00100000 /* CONFIG_SYS_NAND_U_BOOT_DST */
 #define CONFIG_SYS_TEXT_BASE_SPL 0xfff00000
 #define CONFIG_SPL_MAX_SIZE	(4 * 1024)
-#define CONFIG_SPL_PAD_TO	0xfff04000
+#define CONFIG_SPL_PAD_TO	0x4000
 
 #define CONFIG_SYS_NAND_U_BOOT_SIZE  (512 << 10)
 #define CONFIG_SYS_NAND_U_BOOT_DST   0x00100000
@@ -76,6 +60,7 @@
 #endif
 
 #define CONFIG_PCI
+#define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_FSL_ELBC 1
 
 #define CONFIG_MISC_INIT_R
@@ -402,14 +387,15 @@
 #define CONFIG_SYS_HUSH_PARSER
 
 /* I2C */
-#define CONFIG_HARD_I2C			/* I2C with hardware support*/
-#define CONFIG_FSL_I2C
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_I2C_SPEED	400000	/* I2C speed and slave address */
-#define CONFIG_SYS_I2C_SLAVE	0x7F
-#define CONFIG_SYS_I2C_NOPROBES	{ {0, 0x69} } /* Don't probe these addrs */
-#define CONFIG_SYS_I2C_OFFSET	0x3000
-#define CONFIG_SYS_I2C2_OFFSET	0x3100
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_FSL
+#define CONFIG_SYS_FSL_I2C_SPEED	400000
+#define CONFIG_SYS_FSL_I2C_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
+#define CONFIG_SYS_FSL_I2C2_SPEED	400000
+#define CONFIG_SYS_FSL_I2C2_SLAVE	0x7F
+#define CONFIG_SYS_FSL_I2C2_OFFSET	0x3100
+#define CONFIG_SYS_I2C_NOPROBES		{ {0, 0x69} }
 
 /*
  * General PCI

@@ -1,23 +1,8 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * Copyright (C) 2009 NVIDIA, Corporation
- * See file CREDITS for list of people who contributed to this
- * project.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm/unaligned.h>
@@ -265,10 +250,6 @@ static int smsc95xx_eeprom_confirm_not_busy(struct ueth_data *dev)
 
 	do {
 		smsc95xx_read_reg(dev, E2P_CMD, &val);
-		if (!(val & E2P_CMD_LOADED_)) {
-			debug("No EEPROM present\n");
-			return -1;
-		}
 		if (!(val & E2P_CMD_BUSY_))
 			return 0;
 		udelay(40);
@@ -802,6 +783,7 @@ struct smsc95xx_dongle {
 static const struct smsc95xx_dongle smsc95xx_dongles[] = {
 	{ 0x0424, 0xec00 },	/* LAN9512/LAN9514 Ethernet */
 	{ 0x0424, 0x9500 },	/* LAN9500 Ethernet */
+	{ 0x0424, 0x9730 },	/* LAN9730 Ethernet (HSIC) */
 	{ 0x0000, 0x0000 }	/* END - Do not remove */
 };
 

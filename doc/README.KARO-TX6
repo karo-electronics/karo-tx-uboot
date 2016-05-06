@@ -1,0 +1,135 @@
+                                        U-Boot for TX6
+                                        ==============
+
+Building U-Boot
+---------------
+
+Note: There are currently seven variants of the TX6 module, that
+      require slightly different U-Boot configurations. They are
+      distinguished through the 'TX6' suffix 'Q' or 'U' and the
+      numerical suffix of the module name. Replace the '?' in the
+      following description with the corresponding digits from your
+      TX6 module.
+      E.g. TX6Q-1010 => 'make tx6q-1010_config'
+
+Unpacking the source
+--------------------
+mkdir u-boot
+cd u-boot
+tar -xjf /cdrom/U-Boot/u-boot-src.tar.bz2
+
+Alternatively you can access the current source via the git repository:
+git://git.karo-electronics.de/karo-tx-uboot.git master
+
+
+Compiling U-Boot
+----------------
+export ARCH=arm
+export CROSS_COMPILE=arm-cortexa9-linux-gnueabi-
+make tx6?-????_config            (see above Note!)
+make
+
+
+Flashing U-Boot Image
+---------------------
+For all TX6 modules except TX6Q-1020:
+-------------------------------------
+If you want to replace a working U-Boot with a new version, you can
+load the new U-Boot image via TFTP or SD-Card and write it to flash
+with the 'romupdate' command.
+
+If you want to revive a bricked module, U-Boot can be downloaded via
+USB with the 'sbloader' tool in recovery boot mode (Bootmode jumper ST3
+on Starterkit-5 baseboard closed). See TX6_U-Boot.pdf for details.
+
+e.g.: /cdrom/Flashtools/Linux/sbloader/sbloader-x86_32 -m -s /cdrom/U-Boot/target/u-boot-tx6q-1010.bin
+(This command can be used from within the ARMSK-VM)
+
+For TX6Q-1020:
+--------------
+The TX6Q-1020 is equipped with eMMC instead of NAND flash.
+The bootloader, U-Boot environment and DTB is stored in the first boot
+partition of the eMMC device. The command to update the bootloader
+TX6Q U-Boot > set autostart n
+TX6Q U-Boot > tftp u-boot-tx6q-1020.bin
+TX6Q U-Boot > mmc open 0 1
+TX6Q U-Boot > mmc write ${fileaddr} 0 400
+TX6Q U-Boot > mmc close 0 1
+
+
+MfgTool
+-------
+For Windows users the application MfgTool allows the (re-)flashing of
+U-Boot. For more information either see:
+
+\U-Boot\TX6Q_U-Boot.pdf
+\STK5_TX6Q_Quickstart_Guide.pdf
+\Flashtools\Windows\Mfgtools-TX6...
+
+
+U-Boot Features
+---------------
+
+Environment variables:
+boot_mode     selects which boot script will be used by 'bootcmd' to
+	      boot the application (Linux)
+	      supported values:
+	      nand: (default) load kernel from NAND partition 'linux'
+			      and mount rootfs (fstype UBIFS)
+			      from partition 'rootfs'. 
+	      mmc:	      load kernel from file 'uImage' on first
+	      		      partition (FAT) on (first) SD/MMC card
+			      and mount rootfs (fstype autodetected)
+			      from second partition.
+	      net:	      load kernel image via tftp (file uImage)
+	      		      and mount rootfs via NFS. This requires
+			      the additional variables 'nfsroot'
+			      (path to rootfs on NFS server) and
+			      'nfs_server' (hostname or IP address of
+			      NFS server) to be set.
+	      jffs2: (legacy) load kernel from NAND partition 'linux'
+			      and mount rootfs (fstype JFFS2)
+			      from partition 'rootfs'.
+
+cpu_clk       <CPU freq [MHz]> CPU clock frequency set after boot.
+
+touchpanel    {tsc2007|edt-ft5x06|egalax_ts} type of touchpanel.
+	      No touchpanel will be enabled when unset.
+
+otg_mode      [host|device|none] operation mode of the USBOTG port
+
+video_mode    <one of the display names from the Glyn Family Concept or
+	      a video mode as understood by Linux fb_find_mode() function
+              (e.g.: 640x480MR-24@60)>
+	      LCD interface will be disabled when unset.
+
+baseboard     {stk5-v3|stk5-v5} selects type of baseboard
+	      'stk5-v5' setting disables USB Host mode on USBOTG port
+	      and redefines the LCD0 pin as CAN transceiver control pin.
+	      Strings not starting in 'stk5' prevent the STK5 specific
+	      pad initialization to be done.
+
+splashimage   either: memory address (e.g. ${loadaddr}) of a BMP file
+	      to be displayed instead of the built-in logo. Since NAND
+	      flash is not accessible in a memory mapped fashion,
+	      U-Boot will try to load the contents of the flash
+	      partition 'logo.bmp' to the address given with
+	      'splashimage'.
+
+	      or: the name of an MTD partition, that contains a raw
+	      dump of the frame buffer contents which will be loaded
+	      to the framebuffer.
+
+splashpos     (when 'splashimage' contains a memory address) the
+	      position ('x,y') on the screen at which the BMP image
+	      will be displayed.
+	      Setting splashpos to 'm,m' will center the image on the
+	      screen.
+
+Note: Some variables (like 'cpu_clk' or 'splashimage') may render the
+      board unbootable if incorrectly set. Therefore these variables
+      will not be evaluated in case the board has been reset through a
+      watchdog reset or <CTRL-C> is detected on the serial console
+      during startup to give the user a chance to recover from this
+      situation. You should press and hold <CTRL-C> before applying
+      power to the module, for this to work.

@@ -2,23 +2,7 @@
  * (C) Copyright 2005-2006
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #if 0
@@ -322,7 +306,7 @@ static int npe_csr_load(void)
 	}
 
 	/* don't need this for U-Boot */
-	ixFeatureCtrlSwConfigurationWrite(IX_FEATURECTRL_ETH_LEARNING, FALSE);
+	ixFeatureCtrlSwConfigurationWrite(IX_FEATURECTRL_ETH_LEARNING, false);
 
 	if (ixEthAccInit() != IX_ETH_ACC_SUCCESS) {
 		printf("Error initialising Ethernet access driver!\n");
@@ -647,29 +631,29 @@ int npe_initialize(bd_t * bis)
 					 */
 					if (ixFeatureCtrlComponentCheck(IX_FEATURECTRL_ETH0) ==
 					    IX_FEATURE_CTRL_COMPONENT_ENABLED)
-						npe_exists[IX_ETH_PORT_1] = TRUE;
+						npe_exists[IX_ETH_PORT_1] = true;
 
 					if (ixFeatureCtrlComponentCheck(IX_FEATURECTRL_ETH1) ==
 					    IX_FEATURE_CTRL_COMPONENT_ENABLED)
-						npe_exists[IX_ETH_PORT_2] = TRUE;
+						npe_exists[IX_ETH_PORT_2] = true;
 					break;
 				case IX_FEATURE_CTRL_SILICON_TYPE_A0:
 					/*
 					 * If it is A0 Silicon, we enable both as both Eth Coprocessors
 					 * are available.
 					 */
-					npe_exists[IX_ETH_PORT_1] = TRUE;
-					npe_exists[IX_ETH_PORT_2] = TRUE;
+					npe_exists[IX_ETH_PORT_1] = true;
+					npe_exists[IX_ETH_PORT_2] = true;
 					break;
 				}
 			} else if (ixFeatureCtrlDeviceRead() == IX_FEATURE_CTRL_DEVICE_TYPE_IXP46X) {
 				if (ixFeatureCtrlComponentCheck(IX_FEATURECTRL_ETH0) ==
 				    IX_FEATURE_CTRL_COMPONENT_ENABLED)
-					npe_exists[IX_ETH_PORT_1] = TRUE;
+					npe_exists[IX_ETH_PORT_1] = true;
 
 				if (ixFeatureCtrlComponentCheck(IX_FEATURECTRL_ETH1) ==
 				    IX_FEATURE_CTRL_COMPONENT_ENABLED)
-					npe_exists[IX_ETH_PORT_2] = TRUE;
+					npe_exists[IX_ETH_PORT_2] = true;
 			}
 
 			npe_used[IX_ETH_PORT_1] = 1;

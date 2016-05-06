@@ -121,7 +121,13 @@ struct cpsw_slave_regs {
 	u32	flow_thresh;
 	u32	port_vlan;
 	u32	tx_pri_map;
+#ifdef CONFIG_AM33XX
 	u32	gap_thresh;
+#elif defined(CONFIG_TI814X)
+	u32	ts_ctl;
+	u32	ts_seq_ltype;
+	u32	ts_vlan;
+#endif
 	u32	sa_lo;
 	u32	sa_hi;
 };
@@ -243,6 +249,9 @@ struct cpsw_priv {
 	struct cpsw_slave		*slaves;
 	struct phy_device		*phydev;
 	struct mii_dev			*bus;
+
+	u32				mdio_link;
+	u32				phy_mask;
 };
 
 static inline int cpsw_ale_get_field(u32 *ale_entry, u32 start, u32 bits)
@@ -635,11 +644,22 @@ static int cpsw_update_link(struct cpsw_priv *priv)
 
 	for_each_slave(slave, priv)
 		cpsw_slave_update_link(slave, priv, &link);
-
+	priv->mdio_link = readl(&mdio_regs->link);
 	return link;
 }
 
-static inline u32 cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
+static int cpsw_check_link(struct cpsw_priv *priv)
+{
+	u32 link;
+
+	link = __raw_readl(&mdio_regs->link) & priv->phy_mask;
+	if (link && (link == priv->mdio_link))
+		return 1;
+
+	return cpsw_update_link(priv);
+}
+
+static inline u32  cpsw_get_slave_port(struct cpsw_priv *priv, u32 slave_num)
 {
 	if (priv->host_port == 0)
 		return slave_num + 1;
@@ -669,6 +689,8 @@ static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	cpsw_ale_port_state(priv, slave_port, ALE_PORT_STATE_FORWARD);
 
 	cpsw_ale_add_mcast(priv, NetBcastAddr, 1 << slave_port);
+
+	priv->phy_mask |= 1 << slave->data->phy_id;
 }
 
 static void cpdma_desc_get(struct cpsw_desc *desc)
@@ -948,10 +970,7 @@ static int cpsw_send(struct eth_device *dev, void *packet, int length)
 	void *buffer;
 	int len;
 
-	debug("%s@%d: sending packet %p..%p\n", __func__, __LINE__,
-		packet, packet + length - 1);
-
-	if (!priv->data->mac_control && !cpsw_update_link(priv)) {
+	if (!priv->data->mac_control && !cpsw_check_link(priv)) {
 		printf("%s: Cannot send packet; link is down\n", __func__);
 		return -EIO;
 	}

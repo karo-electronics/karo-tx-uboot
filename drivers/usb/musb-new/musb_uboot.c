@@ -1,4 +1,5 @@
 #include <common.h>
+#include <watchdog.h>
 #include <asm/errno.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -164,6 +165,7 @@ static struct musb *gadget;
 
 int usb_gadget_handle_interrupts(void)
 {
+	WATCHDOG_RESET();
 	if (!gadget || !gadget->isr)
 		return -EINVAL;
 
@@ -174,7 +176,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 {
 	int ret;
 
-	if (!driver || driver->speed < USB_SPEED_HIGH || !driver->bind ||
+	if (!driver || driver->speed < USB_SPEED_FULL || !driver->bind ||
 	    !driver->setup) {
 		printf("bad parameter.\n");
 		return -EINVAL;

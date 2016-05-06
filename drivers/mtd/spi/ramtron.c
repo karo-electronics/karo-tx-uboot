@@ -2,23 +2,7 @@
  * (C) Copyright 2010
  * Reinhard Meyer, EMK Elektronik, reinhard.meyer@emk-elektronik.de
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -284,15 +268,13 @@ struct spi_flash *spi_fram_probe_ramtron(struct spi_slave *spi, u8 *idcode)
 	return NULL;
 
 found:
-	sn = malloc(sizeof(*sn));
+	sn = spi_flash_alloc(struct ramtron_spi_fram, spi, params->name);
 	if (!sn) {
 		debug("SF: Failed to allocate memory\n");
 		return NULL;
 	}
 
 	sn->params = params;
-	sn->flash.spi = spi;
-	sn->flash.name = params->name;
 
 	sn->flash.write = ramtron_write;
 	sn->flash.read = ramtron_read;

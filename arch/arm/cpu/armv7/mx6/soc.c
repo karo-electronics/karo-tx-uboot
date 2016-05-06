@@ -4,23 +4,7 @@
  *
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -30,9 +14,10 @@
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/regs-ocotp.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/dma.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/imx-common/boot_mode.h>
+#include <asm/imx-common/dma.h>
+#include <stdbool.h>
 #ifdef CONFIG_VIDEO_IPUV3
 #include <ipu.h>
 #endif
@@ -96,6 +81,18 @@ u32 get_cpu_rev(void)
 	reg &= 0xff;		/* mx6 silicon revision */
 	return (type << 12) | (reg + 0x10);
 }
+
+#ifdef CONFIG_REVISION_TAG
+u32 __weak get_board_rev(void)
+{
+	u32 cpurev = get_cpu_rev();
+	u32 type = ((cpurev >> 12) & 0xff);
+	if (type == MXC_CPU_MX6SOLO)
+		cpurev = (MXC_CPU_MX6DL) << 12 | (cpurev & 0xFFF);
+
+	return cpurev;
+}
+#endif
 
 void init_aips(void)
 {
@@ -237,8 +234,6 @@ int check_cpu_temperature(int boot)
 	int boot_limit = TEMPERATURE_HOT;
 	int tmp = read_cpu_temperature();
 
-debug("max_temp[%p]=%d diff=%d\n", &max_temp, max_temp, tmp - max_temp);
-
 	if (tmp < TEMPERATURE_MIN || tmp > TEMPERATURE_MAX) {
 		printf("Temperature:   can't get valid data!\n");
 		return tmp;
@@ -270,11 +265,24 @@ debug("max_temp[%p]=%d diff=%d\n", &max_temp, max_temp, tmp - max_temp);
 	return tmp;
 }
 
+static void imx_set_wdog_powerdown(bool enable)
+{
+	struct wdog_regs *wdog1 = (struct wdog_regs *)WDOG1_BASE_ADDR;
+	struct wdog_regs *wdog2 = (struct wdog_regs *)WDOG2_BASE_ADDR;
+
+	/* Write to the PDE (Power Down Enable) bit */
+	writew(enable, &wdog1->wmcr);
+	writew(enable, &wdog2->wmcr);
+}
+
+#ifdef CONFIG_ARCH_CPU_INIT
 int arch_cpu_init(void)
 {
 	init_aips();
 
 	set_vddsoc(1200);	/* Set VDDSOC to 1.2V */
+
+	imx_set_wdog_powerdown(false); /* Disable PDE bit of WMCR register */
 
 #ifdef CONFIG_VIDEO_IPUV3
 	gd->arch.ipu_hw_rev = IPUV3_HW_REV_IPUV3H;
@@ -286,6 +294,7 @@ int arch_cpu_init(void)
 #endif
 	return 0;
 }
+#endif
 
 #ifndef CONFIG_SYS_DCACHE_OFF
 void enable_caches(void)
@@ -298,8 +307,8 @@ void enable_caches(void)
 #if defined(CONFIG_FEC_MXC)
 void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 {
-	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
-	struct fuse_bank *bank = &iim->bank[4];
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank *bank = &ocotp->bank[4];
 	struct fuse_bank4_regs *fuse =
 			(struct fuse_bank4_regs *)bank->fuse_regs;
 
@@ -349,100 +358,7 @@ const struct boot_mode soc_boot_modes[] = {
 	{"esdhc4",	MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},
 	{NULL,		0},
 };
-#define RESET_MAX_TIMEOUT		1000000
-#define MXS_BLOCK_SFTRST		(1 << 31)
-#define MXS_BLOCK_CLKGATE		(1 << 30)
-#include <div64.h>
 
-static const int scale = 1;
-
-int mxs_wait_mask_set(struct mx6_register_32 *mx6_reg, uint32_t mask, unsigned long timeout)
+void s_init(void)
 {
-	unsigned long loops = 0;
-
-	timeout /= scale;
-	if (timeout == 0)
-		timeout++;
-
-	/* Wait for at least one microsecond for the bit mask to be set */
-	while ((readl(&mx6_reg->reg) & mask) != mask) {
-		if ((loops += scale) >= timeout) {
-			printf("MASK %08x in %p not set after %lu ticks\n",
-				mask, &mx6_reg->reg, loops * scale);
-			return 1;
-		}
-		udelay(scale);
-	}
-	if (loops == 0)
-		udelay(1);
-
-	return 0;
-}
-
-int mxs_wait_mask_clr(struct mx6_register_32 *mx6_reg, uint32_t mask, unsigned long timeout)
-{
-	unsigned long loops = 0;
-
-	timeout /= scale;
-	if (timeout == 0)
-		timeout++;
-
-	/* Wait for at least one microsecond for the bit mask to be cleared */
-	while ((readl(&mx6_reg->reg) & mask) != 0) {
-		if ((loops += scale) >= timeout) {
-			printf("MASK %08x in %p not cleared after %lu ticks\n",
-				mask, &mx6_reg->reg, loops * scale);
-			return 1;
-		}
-		udelay(scale);
-	}
-	if (loops == 0)
-		udelay(1);
-
-	return 0;
-}
-
-int mxs_reset_block(struct mx6_register_32 *mx6_reg)
-{
-	/* Clear SFTRST */
-	writel(MXS_BLOCK_SFTRST, &mx6_reg->reg_clr);
-
-	if (mxs_wait_mask_clr(mx6_reg, MXS_BLOCK_SFTRST, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for SFTRST[%p] to clear: %08x\n",
-			&mx6_reg->reg, readl(&mx6_reg->reg));
-		return 1;
-	}
-
-	/* Clear CLKGATE */
-	writel(MXS_BLOCK_CLKGATE, &mx6_reg->reg_clr);
-
-	/* Set SFTRST */
-	writel(MXS_BLOCK_SFTRST, &mx6_reg->reg_set);
-
-	/* Wait for CLKGATE being set */
-	if (mxs_wait_mask_set(mx6_reg, MXS_BLOCK_CLKGATE, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for CLKGATE[%p] to set: %08x\n",
-			&mx6_reg->reg, readl(&mx6_reg->reg));
-		return 0;
-	}
-
-	/* Clear SFTRST */
-	writel(MXS_BLOCK_SFTRST, &mx6_reg->reg_clr);
-
-	if (mxs_wait_mask_clr(mx6_reg, MXS_BLOCK_SFTRST, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for SFTRST[%p] to clear: %08x\n",
-			&mx6_reg->reg, readl(&mx6_reg->reg));
-		return 1;
-	}
-
-	/* Clear CLKGATE */
-	writel(MXS_BLOCK_CLKGATE, &mx6_reg->reg_clr);
-
-	if (mxs_wait_mask_clr(mx6_reg, MXS_BLOCK_CLKGATE, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for CLKGATE[%p] to clear: %08x\n",
-			&mx6_reg->reg, readl(&mx6_reg->reg));
-		return 1;
-	}
-
-	return 0;
 }

@@ -2,23 +2,7 @@
  * (C) Copyright 2006
  * DENX Software Engineering <mk@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -42,7 +26,7 @@ int usb_cpu_init(void)
 	while ((readl(&pmc->sr) & AT91_PMC_LOCKB) != AT91_PMC_LOCKB)
 		;
 #elif defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45) || \
-	defined(CONFIG_AT91SAM9X5)
+	defined(CONFIG_AT91SAM9X5) || defined(CONFIG_SAMA5D3)
 	/* Enable UPLL */
 	writel(readl(&pmc->uckr) | AT91_PMC_UPLLEN | AT91_PMC_BIASEN,
 		&pmc->uckr);
@@ -54,8 +38,13 @@ int usb_cpu_init(void)
 #endif
 
 	/* Enable USB host clock. */
+#ifdef CONFIG_SAMA5D3
+	writel(1 << (ATMEL_ID_UHP - 32), &pmc->pcer1);
+#else
 	writel(1 << ATMEL_ID_UHP, &pmc->pcer);
-#ifdef CONFIG_AT91SAM9261
+#endif
+
+#if defined(CONFIG_AT91SAM9261) || defined(CONFIG_AT91SAM9G10)
 	writel(ATMEL_PMC_UHP | AT91_PMC_HCK0, &pmc->scer);
 #else
 	writel(ATMEL_PMC_UHP, &pmc->scer);
@@ -69,8 +58,13 @@ int usb_cpu_stop(void)
 	at91_pmc_t *pmc	= (at91_pmc_t *)ATMEL_BASE_PMC;
 
 	/* Disable USB host clock. */
+#ifdef CONFIG_SAMA5D3
+	writel(1 << (ATMEL_ID_UHP - 32), &pmc->pcdr1);
+#else
 	writel(1 << ATMEL_ID_UHP, &pmc->pcdr);
-#ifdef CONFIG_AT91SAM9261
+#endif
+
+#if defined(CONFIG_AT91SAM9261) || defined(CONFIG_AT91SAM9G10)
 	writel(ATMEL_PMC_UHP | AT91_PMC_HCK0, &pmc->scdr);
 #else
 	writel(ATMEL_PMC_UHP, &pmc->scdr);
@@ -83,7 +77,7 @@ int usb_cpu_stop(void)
 	while ((readl(&pmc->sr) & AT91_PMC_LOCKB) != 0)
 		;
 #elif defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45) || \
-	defined(CONFIG_AT91SAM9X5)
+	defined(CONFIG_AT91SAM9X5) || defined(CONFIG_SAMA5D3)
 	/* Disable UPLL */
 	writel(readl(&pmc->uckr) & (~AT91_PMC_UPLLEN), &pmc->uckr);
 	while ((readl(&pmc->sr) & AT91_PMC_LOCKU) == AT91_PMC_LOCKU)

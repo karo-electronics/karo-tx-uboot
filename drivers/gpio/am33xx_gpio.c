@@ -45,8 +45,11 @@ static unsigned long gpio_map[ARRAY_SIZE(gpio_base)] __attribute__((section("dat
 
 int gpio_request(unsigned gpio, const char *name)
 {
-	if (gpio >= MAX_GPIO)
+	if (gpio >= MAX_GPIO) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
 		return -EINVAL;
+	}
 	if (test_and_set_bit(gpio, gpio_map))
 		return -EBUSY;
 	return 0;
@@ -54,9 +57,11 @@ int gpio_request(unsigned gpio, const char *name)
 
 int gpio_free(unsigned gpio)
 {
-	if (gpio >= MAX_GPIO)
+	if (gpio >= MAX_GPIO) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
 		return -EINVAL;
-
+	}
 	if (test_bit(gpio, gpio_map))
 		__clear_bit(gpio, gpio_map);
 	else
@@ -70,9 +75,11 @@ int gpio_set_value(unsigned gpio, int val)
 	int bank = gpio / 32;
 	int mask = 1 << (gpio % 32);
 
-	if (bank >= ARRAY_SIZE(gpio_base))
+	if (bank >= ARRAY_SIZE(gpio_base)) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
 		return -EINVAL;
-
+	}
 	if (val)
 		writel(mask, &gpio_base[bank]->setdataout);
 	else
@@ -80,14 +87,29 @@ int gpio_set_value(unsigned gpio, int val)
 	return 0;
 }
 
+int gpio_get_value(unsigned gpio)
+{
+	int bank = gpio / 32;
+	int mask = 1 << (gpio % 32);
+
+	if (bank >= ARRAY_SIZE(gpio_base)) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
+		return -EINVAL;
+	}
+	return (readl(&gpio_base[bank]->datain) & mask) != 0;
+}
+
 int gpio_direction_input(unsigned gpio)
 {
 	int bank = gpio / 32;
 	int mask = 1 << (gpio % 32);
 
-	if (bank >= ARRAY_SIZE(gpio_base))
+	if (bank >= ARRAY_SIZE(gpio_base)) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
 		return -EINVAL;
-
+	}
 	writel(readl(&gpio_base[bank]->oe) | mask, &gpio_base[bank]->oe);
 	return 0;
 }
@@ -97,9 +119,11 @@ int gpio_direction_output(unsigned gpio, int val)
 	int bank = gpio / 32;
 	int mask = 1 << (gpio % 32);
 
-	if (bank >= ARRAY_SIZE(gpio_base))
+	if (bank >= ARRAY_SIZE(gpio_base)) {
+		printf("ERROR: Invalid GPIO: %u (GPIO%u_%u)\n", gpio,
+			gpio / 32, gpio % 32);
 		return -EINVAL;
-
+	}
 	gpio_set_value(gpio, val);
 	writel(readl(&gpio_base[bank]->oe) & ~mask, &gpio_base[bank]->oe);
 	return 0;

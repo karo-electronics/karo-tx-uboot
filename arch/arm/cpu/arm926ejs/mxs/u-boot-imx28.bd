@@ -1,6 +1,6 @@
 sources {
-	u_boot_spl="spl/u-boot-spl";
-	u_boot="u-boot";
+	u_boot_spl="OBJTREE/spl/u-boot-spl";
+	u_boot="OBJTREE/u-boot";
 }
 
 section (0) {

@@ -1,5 +1,5 @@
 /*
- * Freescale i.MX28 common code
+ * Freescale i.MX23/i.MX28 common code
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
@@ -7,45 +7,49 @@
  * Based on code from LTIB:
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <asm/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/dma.h>
+#include <asm/imx-common/dma.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/compiler.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-/* 1 second delay should be plenty of time for block reset. */
-#define	RESET_MAX_TIMEOUT	1000000
-
-#define	MXS_BLOCK_SFTRST	(1 << 31)
-#define	MXS_BLOCK_CLKGATE	(1 << 30)
-
 /* Lowlevel init isn't used on i.MX28, so just have a dummy here */
 inline void lowlevel_init(void) {}
+
+#define BOOT_CAUSE_MASK		(RTC_PERSISTENT0_EXTERNAL_RESET |	\
+				RTC_PERSISTENT0_ALARM_WAKE |		\
+				RTC_PERSISTENT0_THERMAL_RESET)
+
+static int wait_rtc_stat(u32 mask)
+{
+	int timeout = 5000;
+	u32 val;
+	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
+	u32 old_val = readl(&rtc_regs->hw_rtc_stat);
+
+	debug("stat=%x\n", old_val);
+
+	while ((val = readl(&rtc_regs->hw_rtc_stat)) & mask) {
+		if (val != old_val) {
+			old_val = val;
+			debug("stat: %x -> %x\n", old_val, val);
+		}
+		udelay(1);
+		if (timeout-- < 0)
+			break;
+	}
+	return !!(readl(&rtc_regs->hw_rtc_stat) & mask);
+}
 
 void reset_cpu(ulong ignored) __attribute__((noreturn));
 
@@ -55,6 +59,7 @@ void reset_cpu(ulong ignored)
 		(struct mxs_rtc_regs *)MXS_RTC_BASE;
 	struct mxs_lcdif_regs *lcdif_regs =
 		(struct mxs_lcdif_regs *)MXS_LCDIF_BASE;
+	u32 reg;
 
 	/*
 	 * Shut down the LCD controller as it interferes with BootROM boot mode
@@ -62,7 +67,13 @@ void reset_cpu(ulong ignored)
 	 */
 	writel(LCDIF_CTRL_RUN, &lcdif_regs->hw_lcdif_ctrl_clr);
 
-	/* Wait 1 uS before doing the actual watchdog reset */
+	reg = readl(&rtc_regs->hw_rtc_persistent0);
+	if (reg & BOOT_CAUSE_MASK) {
+		writel(reg & ~BOOT_CAUSE_MASK, &rtc_regs->hw_rtc_persistent0);
+		wait_rtc_stat(RTC_STAT_NEW_REGS_PERSISTENT0);
+	}
+
+	/* Wait 1 mS before doing the actual watchdog reset */
 	writel(1, &rtc_regs->hw_rtc_watchdog);
 	writel(RTC_CTRL_WATCHDOGEN, &rtc_regs->hw_rtc_ctrl_set);
 
@@ -81,96 +92,29 @@ void enable_caches(void)
 #endif
 }
 
-#define	MX28_HW_DIGCTL_MICROSECONDS	(void *)0x8001c0c0
-
-int mxs_wait_mask_set(struct mxs_register_32 *reg, uint32_t mask, unsigned
-								int timeout)
-{
-	uint32_t start = readl(MX28_HW_DIGCTL_MICROSECONDS);
-
-	/* Wait for at least one microsecond for the bit mask to be set */
-	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1 || --timeout) {
-		if ((readl(&reg->reg) & mask) == mask) {
-			while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1)
-				;
-			return 0;
-		}
-		udelay(1);
-	}
-
-	return !timeout;
-}
-
-int mxs_wait_mask_clr(struct mxs_register_32 *reg, uint32_t mask, unsigned
-								int timeout)
-{
-	uint32_t start = readl(MX28_HW_DIGCTL_MICROSECONDS);
-
-	/* Wait for at least one microsecond for the bit mask to be cleared */
-	while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1 || --timeout) {
-		if ((readl(&reg->reg) & mask) == 0) {
-			while (readl(MX28_HW_DIGCTL_MICROSECONDS) - start <= 1)
-				;
-			return 0;
-		}
-		udelay(1);
-	}
-
-	return !timeout;
-}
-
-int mxs_reset_block(struct mxs_register_32 *reg)
-{
-	/* Clear SFTRST */
-	writel(MXS_BLOCK_SFTRST, &reg->reg_clr);
-
-	if (mxs_wait_mask_clr(reg, MXS_BLOCK_SFTRST, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for SFTRST[%p] to clear: %08x\n",
-			reg, readl(&reg->reg));
-		return 1;
-	}
-
-	/* Clear CLKGATE */
-	writel(MXS_BLOCK_CLKGATE, &reg->reg_clr);
-
-	/* Set SFTRST */
-	writel(MXS_BLOCK_SFTRST, &reg->reg_set);
-
-	/* Wait for CLKGATE being set */
-	if (mxs_wait_mask_set(reg, MXS_BLOCK_CLKGATE, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for CLKGATE[%p] to set: %08x\n",
-			reg, readl(&reg->reg));
-		return 1;
-	}
-
-	/* Clear SFTRST */
-	writel(MXS_BLOCK_SFTRST, &reg->reg_clr);
-
-	if (mxs_wait_mask_clr(reg, MXS_BLOCK_SFTRST, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for SFTRST[%p] to clear: %08x\n",
-			reg, readl(&reg->reg));
-		return 1;
-	}
-
-	/* Clear CLKGATE */
-	writel(MXS_BLOCK_CLKGATE, &reg->reg_clr);
-
-	if (mxs_wait_mask_clr(reg, MXS_BLOCK_CLKGATE, RESET_MAX_TIMEOUT)) {
-		printf("TIMEOUT waiting for CLKGATE[%p] to clear: %08x\n",
-			reg, readl(&reg->reg));
-		return 1;
-	}
-
-	return 0;
-}
-
+/*
+ * This function will craft a jumptable at 0x0 which will redirect interrupt
+ * vectoring to proper location of U-Boot in RAM.
+ *
+ * The structure of the jumptable will be as follows:
+ *  ldr pc, [pc, #0x18] ..... for each vector, thus repeated 8 times
+ *  <destination address> ... for each previous ldr, thus also repeated 8 times
+ *
+ * The "ldr pc, [pc, #0x18]" instruction above loads address from memory at
+ * offset 0x18 from current value of PC register. Note that PC is already
+ * incremented by 4 when computing the offset, so the effective offset is
+ * actually 0x20, this the associated <destination address>. Loading the PC
+ * register with an address performs a jump to that address.
+ */
 void mx28_fixup_vt(uint32_t start_addr)
 {
+	/* ldr pc, [pc, #0x18] */
+	/* Jumptable location is 0x0 */
 	uint32_t *vt = (uint32_t *)0x20;
-	int i;
+	uint32_t cr = get_cr();
 
-	for (i = 0; i < 8; i++)
-		vt[i] = start_addr + (4 * i);
+	memcpy(vt, (void *)start_addr + 0x20, 32);
+	set_cr(cr & ~CR_V);
 }
 
 #ifdef	CONFIG_ARCH_MISC_INIT
@@ -181,7 +125,7 @@ int arch_misc_init(void)
 }
 #endif
 
-#ifdef	CONFIG_ARCH_CPU_INIT
+#ifdef CONFIG_ARCH_CPU_INIT
 int arch_cpu_init(void)
 {
 	struct mxs_clkctrl_regs *clkctrl_regs =
@@ -224,6 +168,8 @@ static const char *get_cpu_type(void)
 		(struct mxs_digctl_regs *)MXS_DIGCTL_BASE;
 
 	switch (readl(&digctl_regs->hw_digctl_chipid) & HW_DIGCTL_CHIPID_MASK) {
+	case HW_DIGCTL_CHIPID_MX23:
+		return "23";
 	case HW_DIGCTL_CHIPID_MX28:
 		return "28";
 	default:
@@ -238,6 +184,21 @@ static const char *get_cpu_rev(void)
 	uint8_t rev = readl(&digctl_regs->hw_digctl_chipid) & 0x000000FF;
 
 	switch (readl(&digctl_regs->hw_digctl_chipid) & HW_DIGCTL_CHIPID_MASK) {
+	case HW_DIGCTL_CHIPID_MX23:
+		switch (rev) {
+		case 0x0:
+			return "1.0";
+		case 0x1:
+			return "1.1";
+		case 0x2:
+			return "1.2";
+		case 0x3:
+			return "1.3";
+		case 0x4:
+			return "1.4";
+		default:
+			return "??";
+		}
 	case HW_DIGCTL_CHIPID_MX28:
 		switch (rev) {
 		case 0x1:
@@ -264,12 +225,21 @@ int print_cpuinfo(void)
 }
 #endif
 
+#define pr_clk(n, c) {						\
+	unsigned long clk = c;	\
+	printf("%-5s  %3lu.%03lu MHz\n", #n ":", clk / 1000000,	\
+		clk / 1000 % 1000);				\
+}
+
 int do_mx28_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	printf("CPU:   %3d MHz\n", mxc_get_clock(MXC_ARM_CLK) / 1000000);
-	printf("BUS:   %3d MHz\n", mxc_get_clock(MXC_AHB_CLK) / 1000000);
-	printf("EMI:   %3d MHz\n", mxc_get_clock(MXC_EMI_CLK));
-	printf("GPMI:  %3d MHz\n", mxc_get_clock(MXC_GPMI_CLK) / 1000000);
+	pr_clk(CPU, mxc_get_clock(MXC_ARM_CLK));
+	pr_clk(APBH, mxc_get_clock(MXC_AHB_CLK));
+	pr_clk(APBX, mxc_get_clock(MXC_XBUS_CLK));
+	pr_clk(IO0, mxc_get_clock(MXC_IO0_CLK) * 1000);
+	pr_clk(IO1, mxc_get_clock(MXC_IO1_CLK) * 1000);
+	pr_clk(EMI, mxc_get_clock(MXC_EMI_CLK) * 1000000);
+	pr_clk(GPMI, mxc_get_clock(MXC_GPMI_CLK));
 	return 0;
 }
 
@@ -303,11 +273,12 @@ int cpu_eth_init(bd_t *bis)
 	writel(CLKCTRL_PLL2CTRL0_CLKGATE,
 		&clkctrl_regs->hw_clkctrl_pll2ctrl0_clr);
 
+	udelay(6000);
 	return 0;
 }
 #endif
 
-static void __mx28_adjust_mac(int dev_id, unsigned char *mac)
+__weak void mx28_adjust_mac(int dev_id, unsigned char *mac)
 {
 	mac[0] = 0x00;
 	mac[1] = 0x04; /* Use FSL vendor MAC address by default */
@@ -315,9 +286,6 @@ static void __mx28_adjust_mac(int dev_id, unsigned char *mac)
 	if (dev_id == 1) /* Let MAC1 be MAC0 + 1 by default */
 		mac[5] += 1;
 }
-
-void mx28_adjust_mac(int dev_id, unsigned char *mac)
-	__attribute__((weak, alias("__mx28_adjust_mac")));
 
 #ifdef	CONFIG_MX28_FEC_MAC_IN_OCOTP
 

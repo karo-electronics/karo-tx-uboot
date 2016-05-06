@@ -4,23 +4,7 @@
  * Kshitij Gupta <kshitij@ti.com>
  * Configuation settings for the TI OMAP Innovator board.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __CONFIG_H
@@ -134,7 +118,7 @@
  */
 #define CONFIG_SYS_TIMERBASE	0xFFFEC500	/* use timer 1 */
 #define CONFIG_SYS_PTV		7	/* 2^(PTV+1), divide by 256 */
-#define CONFIG_SYS_HZ		((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PTV))
+#define CONFIG_SYS_HZ		1000
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
@@ -178,12 +162,15 @@
  */
 #define CONFIG_ENV_IS_IN_FLASH	1
 /* addr of environment */
-#define CONFIG_ENV_ADDR	(CONFIG_SYS_FLASH_BASE + 0x020000)
+#define CONFIG_ENV_ADDR	(CONFIG_SYS_FLASH_BASE + CONFIG_ENV_OFFSET)
 
-#define CONFIG_ENV_SIZE	0x20000	/* Total Size of Environment Sector */
-#define CONFIG_ENV_OFFSET	0x20000	/* environment starts here  */
+#define CONFIG_ENV_SIZE		0x20000	/* Total Size of Environment Sector */
+#define CONFIG_ENV_OFFSET	0x40000	/* environment starts here  */
 
-#define CONFIG_SYS_SDRAM_BASE	PHYS_SDRAM_1
-#define CONFIG_SYS_INIT_SP_ADDR PHYS_SRAM
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_RAM_ADDR        PHYS_SRAM
+#define CONFIG_SYS_INIT_RAM_SIZE        (250 * 1024)
+#define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE)
 
 #endif							/* __CONFIG_H */

@@ -2,23 +2,7 @@
  * (C) Copyright 2008
  * Benjamin Warren, biggerbadderben@gmail.com
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -67,17 +51,18 @@ int fecmxc_initialize(bd_t *bis);
 int fecmxc_initialize_multi(bd_t *bis, int dev_id, int phy_id, uint32_t addr);
 int ftgmac100_initialize(bd_t *bits);
 int ftmac100_initialize(bd_t *bits);
+int ftmac110_initialize(bd_t *bits);
 int greth_initialize(bd_t *bis);
 void gt6426x_eth_initialize(bd_t *bis);
 int inca_switch_initialize(bd_t *bis);
 int ks8695_eth_initialize(void);
+int ks8851_mll_initialize(u8 dev_num, int base_addr);
 int lan91c96_initialize(u8 dev_num, int base_addr);
 int macb_eth_initialize(int id, void *regs, unsigned int phy_addr);
 int mcdmafec_initialize(bd_t *bis);
 int mcffec_initialize(bd_t *bis);
 int mpc512x_fec_initialize(bd_t *bis);
 int mpc5xxx_fec_initialize(bd_t *bis);
-int mpc8220_fec_initialize(bd_t *bis);
 int mpc82xx_scc_enet_initialize(bd_t *bis);
 int mvgbe_initialize(bd_t *bis);
 int natsemi_initialize(bd_t *bis);
@@ -94,6 +79,7 @@ int sh_eth_initialize(bd_t *bis);
 int skge_initialize(bd_t *bis);
 int smc91111_initialize(u8 dev_num, int base_addr);
 int smc911x_initialize(u8 dev_num, int base_addr);
+int sunxi_wemac_initialize(bd_t *bis);
 int tsi108_eth_initialize(bd_t *bis);
 int uec_standard_init(bd_t *bis);
 int uli526x_initialize(bd_t *bis);
@@ -104,7 +90,7 @@ int xilinx_emaclite_initialize(bd_t *bis, unsigned long base_addr,
 							int txpp, int rxpp);
 int xilinx_ll_temac_eth_init(bd_t *bis, unsigned long base_addr, int flags,
 						unsigned long ctrl_addr);
-int zynq_gem_initialize(bd_t *bis, int base_addr);
+int zynq_gem_initialize(bd_t *bis, int base_addr, int phy_addr, u32 emio);
 /*
  * As long as the Xilinx xps_ll_temac ethernet driver has not its own interface
  * exported by a public hader file, we need a global definition at this point.
@@ -215,8 +201,19 @@ struct mv88e61xx_config {
 int mv88e61xx_switch_initialize(struct mv88e61xx_config *swconfig);
 #endif /* CONFIG_MV88E61XX_SWITCH */
 
-#ifdef CONFIG_DRIVER_TI_CPSW
+struct mii_dev *fec_get_miibus(uint32_t base_addr, int dev_id);
+#ifdef CONFIG_PHYLIB
+struct phy_device;
+int fec_probe(bd_t *bd, int dev_id, uint32_t base_addr,
+		struct mii_dev *bus, struct phy_device *phydev);
+#else
+/*
+ * Allow FEC to fine-tune MII configuration on boards which require this.
+ */
+int fecmxc_register_mii_postcall(struct eth_device *dev, int (*cb)(int));
+#endif
 
+#ifdef CONFIG_DRIVER_TI_CPSW
 enum {
 	CPSW_CTRL_VERSION_1 = 0, /* version1 devices */
 	CPSW_CTRL_VERSION_2      /* version2 devices */
@@ -250,11 +247,6 @@ struct cpsw_platform_data {
 };
 
 int cpsw_register(struct cpsw_platform_data *data);
-
 #endif /* CONFIG_DRIVER_TI_CPSW */
-/*
- * Allow FEC to fine-tune MII configuration on boards which require this.
- */
-int fecmxc_register_mii_postcall(struct eth_device *dev, int (*cb)(int));
 
 #endif /* _NETDEV_H_ */

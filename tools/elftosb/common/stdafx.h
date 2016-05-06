@@ -16,10 +16,10 @@
 
 #if defined(WIN32)
 //#include <tchar.h>
-    
+
     // define this macro for use in VC++
     #if !defined(__LITTLE_ENDIAN__)
-        #define __LITTLE_ENDIAN__ 1
+	#define __LITTLE_ENDIAN__ 1
     #endif // !defined(__LITTLE_ENDIAN__)
 #endif // defined(WIN32)
 
@@ -27,7 +27,7 @@
 // For Linux systems only, types.h only defines the signed
 // integer types.  This is not professional code.
 // Update: They are defined in the header files in the more recent version of redhat enterprise gcc.
-#include "/usr/include/sys/types.h"
+#include <sys/types.h>
 #include <stdint.h>
 //typedef unsigned long uint32_t;
 //typedef unsigned short uint16_t;
@@ -38,7 +38,7 @@
 
     // give a default endian in case one is not defined on Linux (it should be, though)
     #if !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
-        #define __LITTLE_ENDIAN__ 1
+	#define __LITTLE_ENDIAN__ 1
     #endif // !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
 
 #endif // defined(Linux)
@@ -46,7 +46,7 @@
 // gcc on Mac OS X
 #if defined(__GNUC__) && ( defined(__APPLE_CPP__) || defined(__APPLE_CC__) || defined(__MACOS_CLASSIC__) )
 	#include <TargetConditionals.h>
-	
+
 	#if defined(TARGET_RT_LITTLE_ENDIAN) && TARGET_RT_LITTLE_ENDIAN
 		#if !defined(__LITTLE_ENDIAN__)
 			#define __LITTLE_ENDIAN__

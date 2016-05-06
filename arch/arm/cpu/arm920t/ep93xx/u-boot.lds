@@ -2,23 +2,7 @@
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
@@ -31,18 +15,19 @@ SECTIONS
 	. = ALIGN(4);
 	.text      :
 	{
-	  arch/arm/cpu/arm920t/start.o	(.text)
+		*(.__image_copy_start)
+	  arch/arm/cpu/arm920t/start.o	(.text*)
 		/* the EP93xx expects to find the pattern 'CRUS' at 0x1000 */
 	  . = 0x1000;
 	  LONG(0x53555243)
-	  *(.text)
+	  *(.text*)
 	}
 
 	. = ALIGN(4);
-	.rodata : { *(.rodata) }
+	.rodata : { *(.rodata*) }
 
 	. = ALIGN(4);
-	.data : { *(.data) }
+	.data : { *(.data*) }
 
 	. = ALIGN(4);
 	.got : { *(.got) }
@@ -51,13 +36,19 @@ SECTIONS
 
 	. = ALIGN(4);
 	.u_boot_list : {
-	#include <u-boot.lst>
+		KEEP(*(SORT(.u_boot_list*)));
 	}
 
 	. = ALIGN(4);
+
+	.image_copy_end :
+	{
+		*(.__image_copy_end)
+	}
+
 	__bss_start = .;
-	.bss : { *(.bss) }
-	__bss_end__ = .;
+	.bss : { *(.bss*) }
+	__bss_end = .;
 
 	_end = .;
 }

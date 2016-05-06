@@ -13,29 +13,14 @@
  * (C) Copyright 2002
  * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <div64.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
+#include <asm/arch/clock.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -104,6 +89,7 @@ int timer_init(void)
 #endif
 	gd->arch.lastinc = -30 * TIMER_CLOCK;
 	gd->arch.tbl = TIMER_START;
+	gd->arch.tbu = 0;
 	gd->arch.timer_rate_hz = TIMER_CLOCK;
 
 	return 0;
@@ -148,9 +134,11 @@ unsigned long long get_ticks(void)
 	ulong now = readl(&timer_base->tcrr);
 	ulong inc = now - gd->arch.lastinc;
 
+	if (gd->arch.tbl + inc < gd->arch.tbl)
+		gd->arch.tbu++;
 	gd->arch.tbl += inc;
 	gd->arch.lastinc = now;
-	return gd->arch.tbl;
+	return ((unsigned long long)gd->arch.tbu << 32) | gd->arch.tbl;
 }
 
 /*

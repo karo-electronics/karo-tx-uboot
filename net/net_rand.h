@@ -37,7 +37,7 @@ static inline unsigned int seed_mac(void)
  */
 static inline void srand_mac(void)
 {
-	srand(seed_mac());
+	srand(rand() ^ seed_mac());
 }
 
 #endif /* __NET_RAND_H__ */

@@ -1,23 +1,7 @@
 #
 # Copyright (c) 2011 The Chromium OS Authors.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 import os
@@ -141,27 +125,11 @@ new file mode 100644
 index 0000000..2234c87
 --- /dev/null
 +++ b/common/bootstage.c
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,39 @@
 +/*
 + * Copyright (c) 2011, Google Inc. All rights reserved.
 + *
-+ * See file CREDITS for list of people who contributed to this
-+ * project.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License as
-+ * published by the Free Software Foundation; either version 2 of
-+ * the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-+ * MA 02111-1307 USA
++ * SPDX-License-Identifier:	GPL-2.0+
 + */
 +
 +
@@ -190,6 +158,11 @@ index 0000000..2234c87
 +		rec->time_us = (uint32_t)timer_get_us();
 +		rec->name = name;
 +	}
++	if (!rec->name &&
++	%ssomething_else) {
++		rec->time_us = (uint32_t)timer_get_us();
++		rec->name = name;
++	}
 +%sreturn rec->time_us;
 +}
 --
@@ -197,15 +170,18 @@ index 0000000..2234c87
 '''
         signoff = 'Signed-off-by: Simon Glass <sjg@chromium.org>\n'
         tab = '	'
+        indent = '    '
         if data_type == 'good':
             pass
         elif data_type == 'no-signoff':
             signoff = ''
         elif data_type == 'spaces':
             tab = '   '
+        elif data_type == 'indent':
+            indent = tab
         else:
             print 'not implemented'
-        return data % (signoff, tab, tab)
+        return data % (signoff, tab, indent, tab)
 
     def SetupData(self, data_type):
         inhandle, inname = tempfile.mkstemp()
@@ -215,33 +191,49 @@ index 0000000..2234c87
         infd.close()
         return inname
 
-    def testCheckpatch(self):
+    def testGood(self):
         """Test checkpatch operation"""
         inf = self.SetupData('good')
-        result, problems, err, warn, lines, stdout = checkpatch.CheckPatch(inf)
-        self.assertEqual(result, True)
-        self.assertEqual(problems, [])
-        self.assertEqual(err, 0)
-        self.assertEqual(warn, 0)
-        self.assertEqual(lines, 67)
+        result = checkpatch.CheckPatch(inf)
+        self.assertEqual(result.ok, True)
+        self.assertEqual(result.problems, [])
+        self.assertEqual(result.errors, 0)
+        self.assertEqual(result.warnings, 0)
+        self.assertEqual(result.checks, 0)
+        self.assertEqual(result.lines, 67)
         os.remove(inf)
 
+    def testNoSignoff(self):
         inf = self.SetupData('no-signoff')
-        result, problems, err, warn, lines, stdout = checkpatch.CheckPatch(inf)
-        self.assertEqual(result, False)
-        self.assertEqual(len(problems), 1)
-        self.assertEqual(err, 1)
-        self.assertEqual(warn, 0)
-        self.assertEqual(lines, 67)
+        result = checkpatch.CheckPatch(inf)
+        self.assertEqual(result.ok, False)
+        self.assertEqual(len(result.problems), 1)
+        self.assertEqual(result.errors, 1)
+        self.assertEqual(result.warnings, 0)
+        self.assertEqual(result.checks, 0)
+        self.assertEqual(result.lines, 67)
         os.remove(inf)
 
+    def testSpaces(self):
         inf = self.SetupData('spaces')
-        result, problems, err, warn, lines, stdout = checkpatch.CheckPatch(inf)
-        self.assertEqual(result, False)
-        self.assertEqual(len(problems), 2)
-        self.assertEqual(err, 0)
-        self.assertEqual(warn, 2)
-        self.assertEqual(lines, 67)
+        result = checkpatch.CheckPatch(inf)
+        self.assertEqual(result.ok, False)
+        self.assertEqual(len(result.problems), 1)
+        self.assertEqual(result.errors, 0)
+        self.assertEqual(result.warnings, 1)
+        self.assertEqual(result.checks, 0)
+        self.assertEqual(result.lines, 67)
+        os.remove(inf)
+
+    def testIndent(self):
+        inf = self.SetupData('indent')
+        result = checkpatch.CheckPatch(inf)
+        self.assertEqual(result.ok, False)
+        self.assertEqual(len(result.problems), 1)
+        self.assertEqual(result.errors, 0)
+        self.assertEqual(result.warnings, 0)
+        self.assertEqual(result.checks, 1)
+        self.assertEqual(result.lines, 67)
         os.remove(inf)
 
 

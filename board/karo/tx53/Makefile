@@ -21,6 +21,9 @@ LDSCRIPT := $(BOARDDIR)/u-boot.lds
 LIB	= $(obj)lib$(BOARD).o
 
 COBJS	:= tx53.o
+ifeq ($(CONFIG_CMD_ROMUPDATE),y)
+	COBJS += flash.o
+endif
 SOBJS	:= lowlevel_init.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)

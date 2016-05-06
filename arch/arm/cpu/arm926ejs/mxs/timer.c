@@ -7,23 +7,7 @@
  * Based on code from LTIB:
  * (C) Copyright 2009-2010 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #include <common.h>
@@ -32,7 +16,11 @@
 #include <asm/arch/sys_proto.h>
 
 /* Maximum fixed count */
-#define TIMER_LOAD_VAL	0xffffffff
+#if defined(CONFIG_MX23)
+#define TIMER_LOAD_VAL 0xffff
+#elif defined(CONFIG_MX28)
+#define TIMER_LOAD_VAL 0xffffffff
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -75,12 +63,23 @@ int timer_init(void)
 	mxs_reset_block(&timrot_regs->hw_timrot_rotctrl_reg);
 
 	/* Set fixed_count to 0 */
+#if defined(CONFIG_MX23)
+	writel(0, &timrot_regs->hw_timrot_timcount0);
+#elif defined(CONFIG_MX28)
 	writel(0, &timrot_regs->hw_timrot_fixed_count0);
+#endif
 
 	/* Set UPDATE bit and 1Khz frequency */
 	writel(TIMROT_TIMCTRLn_UPDATE | TIMROT_TIMCTRLn_RELOAD |
 		TIMROT_TIMCTRLn_SELECT_1KHZ_XTAL,
 		&timrot_regs->hw_timrot_timctrl0);
+
+	/* Set fixed_count to maximum value */
+#if defined(CONFIG_MX23)
+	writel(TIMER_LOAD_VAL - 1, &timrot_regs->hw_timrot_timcount0);
+#elif defined(CONFIG_MX28)
+	writel(TIMER_LOAD_VAL, &timrot_regs->hw_timrot_fixed_count0);
+#endif
 
 #ifndef DEBUG_TIMER_WRAP
 	/* Set fixed_count to maximum value */
@@ -90,8 +89,7 @@ int timer_init(void)
 	writel(20 * MXS_INCREMENTER_HZ,
 		&timrot_regs->hw_timrot_fixed_count0);
 	gd->arch.lastinc = TIMER_LOAD_VAL - 20 * MXS_INCREMENTER_HZ;
-#endif
-#ifdef DEBUG_TIMER_WRAP
+
 	/* Make the usec counter roll over 30 seconds after startup */
 	writel(-30000000, MXS_HW_DIGCTL_MICROSECONDS);
 #endif
@@ -117,18 +115,25 @@ unsigned long long get_ticks(void)
 {
 	struct mxs_timrot_regs *timrot_regs =
 		(struct mxs_timrot_regs *)MXS_TIMROT_BASE;
+	unsigned long now;
+#if defined(CONFIG_MX23)
+	/* Upper bits are the valid ones. */
+	now = readl(&timrot_regs->hw_timrot_timcount0) >>
+		TIMROT_RUNNING_COUNTn_RUNNING_COUNT_OFFSET;
+#else
 	/* The timer is counting down, so subtract the register value from
-	 * the counter period length to get an incrementing timestamp
+	 * the counter period length (implicitly 2^32) to get an incrementing
+	 * timestamp
 	 */
-	unsigned long now = -readl(&timrot_regs->hw_timrot_running_count0);
+	now = -readl(&timrot_regs->hw_timrot_running_count0);
+#endif
 	ulong inc = now - gd->arch.lastinc;
 
+	if (gd->arch.tbl + inc < gd->arch.tbl)
+		gd->arch.tbu++;
 	gd->arch.tbl += inc;
 	gd->arch.lastinc = now;
-	/* Since the get_timer() function only uses a 32bit value
-	 * it doesn't make sense to return a real 64 bit value here.
-	 */
-	return gd->arch.tbl;
+	return ((unsigned long long)gd->arch.tbu << 32) | gd->arch.tbl;
 }
 
 ulong get_timer_masked(void)

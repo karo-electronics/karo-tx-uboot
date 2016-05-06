@@ -11,24 +11,7 @@
  *
  * Modified by Ruslan Araslanov <ruslan.araslanov@vitecmm.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -80,12 +63,7 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 				  unsigned int max_hz, unsigned int mode)
 {
 	struct omap3_spi_slave	*ds;
-
-	ds = malloc(sizeof(struct omap3_spi_slave));
-	if (!ds) {
-		printf("SPI error: malloc of SPI structure failed\n");
-		return NULL;
-	}
+	struct mcspi *regs;
 
 	/*
 	 * OMAP3 McSPI (MultiChannel SPI) has 4 busses (modules)
@@ -98,21 +76,21 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 
 	switch (bus) {
 	case 0:
-		ds->regs = (struct mcspi *)OMAP3_MCSPI1_BASE;
+		regs = (struct mcspi *)OMAP3_MCSPI1_BASE;
 		break;
 #ifdef OMAP3_MCSPI2_BASE
 	case 1:
-		ds->regs = (struct mcspi *)OMAP3_MCSPI2_BASE;
+		regs = (struct mcspi *)OMAP3_MCSPI2_BASE;
 		break;
 #endif
 #ifdef OMAP3_MCSPI3_BASE 
 	case 2:
-		ds->regs = (struct mcspi *)OMAP3_MCSPI3_BASE;
+		regs = (struct mcspi *)OMAP3_MCSPI3_BASE;
 		break;
 #endif
 #ifdef OMAP3_MCSPI4_BASE
 	case 3:
-		ds->regs = (struct mcspi *)OMAP3_MCSPI4_BASE;
+		regs = (struct mcspi *)OMAP3_MCSPI4_BASE;
 		break;
 #endif
 	default:
@@ -120,7 +98,6 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 			Supported busses 0 - 3\n", bus);
 		return NULL;
 	}
-	ds->slave.bus = bus;
 
 	if (((bus == 0) && (cs > 3)) ||
 			((bus == 1) && (cs > 1)) ||
@@ -130,19 +107,26 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 			on bus %i\n", cs, bus);
 		return NULL;
 	}
-	ds->slave.cs = cs;
 
 	if (max_hz > OMAP3_MCSPI_MAX_FREQ) {
 		printf("SPI error: unsupported frequency %i Hz. \
 			Max frequency is 48 Mhz\n", max_hz);
 		return NULL;
 	}
-	ds->freq = max_hz;
 
 	if (mode > SPI_MODE_3) {
 		printf("SPI error: unsupported SPI mode %i\n", mode);
 		return NULL;
 	}
+
+	ds = spi_alloc_slave(struct omap3_spi_slave, bus, cs);
+	if (!ds) {
+		printf("SPI error: malloc of SPI structure failed\n");
+		return NULL;
+	}
+
+	ds->regs = regs;
+	ds->freq = max_hz;
 	ds->mode = mode;
 
 	return &ds->slave;

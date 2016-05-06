@@ -10,19 +10,7 @@
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
  * Copyright (C) 2008 Embedded Alley Solutions, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 //#define DEBUG
 
@@ -35,19 +23,19 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/regs-bch.h>
-#include <asm/arch/regs-gpmi.h>
+#include <asm/imx-common/regs-bch.h>
+#include <asm/imx-common/regs-gpmi.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/arch/dma.h>
+#include <asm/imx-common/dma.h>
 
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
-#ifndef CONFIG_MX6
 #define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		512
+#if defined(CONFIG_MX6)
+#define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT	2
 #else
-#define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE		(512 / 4)
+#define	MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT	0
 #endif
-
 #define	MXS_NAND_METADATA_SIZE			10
 
 #define	MXS_NAND_COMMAND_BUFFER_SIZE		32
@@ -253,7 +241,7 @@ static uint32_t mxs_nand_ecc_chunk_cnt(struct mtd_info *mtd)
 	return mtd->writesize / nand->ecc.size;
 }
 
-static uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
+static inline uint32_t mxs_nand_ecc_size_in_bits(uint32_t ecc_strength)
 {
 	return ecc_strength * 13;
 }
@@ -350,14 +338,14 @@ static inline uint32_t mxs_nand_get_mark_offset(uint32_t page_data_size,
 	return block_mark_bit_offset;
 }
 
-static uint32_t mxs_nand_mark_byte_offset(struct mtd_info *mtd)
+static inline uint32_t mxs_nand_mark_byte_offset(struct mtd_info *mtd)
 {
 	uint32_t ecc_strength;
 	ecc_strength = mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize);
 	return mxs_nand_get_mark_offset(mtd->writesize, ecc_strength) >> 3;
 }
 
-static uint32_t mxs_nand_mark_bit_offset(struct mtd_info *mtd)
+static inline uint32_t mxs_nand_mark_bit_offset(struct mtd_info *mtd)
 {
 	uint32_t ecc_strength;
 	ecc_strength = mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize);
@@ -510,6 +498,7 @@ static void mxs_nand_select_chip(struct mtd_info *mtd, int chip)
  * swapping the block mark, or swapping it *back* -- but it doesn't matter
  * because the the operation is the same.
  */
+#ifndef CONFIG_NAND_MXS_NO_BBM_SWAP
 static void mxs_nand_swap_block_mark(struct mtd_info *mtd,
 					uint8_t *data_buf, uint8_t *oob_buf)
 {
@@ -518,7 +507,7 @@ static void mxs_nand_swap_block_mark(struct mtd_info *mtd,
 
 	uint32_t src;
 	uint32_t dst;
-return;
+
 	bit_offset = mxs_nand_mark_bit_offset(mtd);
 	buf_offset = mxs_nand_mark_byte_offset(mtd);
 
@@ -544,6 +533,12 @@ return;
 	data_buf[buf_offset] |= dst << bit_offset;
 	data_buf[buf_offset + 1] |= dst >> (8 - bit_offset);
 }
+#else
+static inline void mxs_nand_swap_block_mark(struct mtd_info *mtd,
+					uint8_t *data_buf, uint8_t *oob_buf)
+{
+}
+#endif
 
 /*
  * Read data from NAND.
@@ -705,7 +700,8 @@ static void flush_buffers(struct mtd_info *mtd, struct mxs_nand_info *nand_info)
  * Read a page from NAND.
  */
 static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
-					uint8_t *buf, int page)
+					uint8_t *buf, int oob_required,
+					int page)
 {
 	struct mxs_nand_info *nand_info = nand->priv;
 	struct mxs_dma_desc *d;
@@ -852,8 +848,9 @@ rtn:
 /*
  * Write a page to NAND.
  */
-static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
-				struct nand_chip *nand, const uint8_t *buf)
+static int mxs_nand_ecc_write_page(struct mtd_info *mtd,
+				struct nand_chip *nand, const uint8_t *buf,
+				int oob_required)
 {
 	struct mxs_nand_info *nand_info = nand->priv;
 	struct mxs_dma_desc *d;
@@ -911,6 +908,7 @@ static void mxs_nand_ecc_write_page(struct mtd_info *mtd,
 
 rtn:
 	mxs_nand_return_dma_descs(nand_info);
+	return 0;
 }
 
 /*
@@ -926,7 +924,7 @@ static int mxs_nand_hook_read_oob(struct mtd_info *mtd, loff_t from,
 	struct mxs_nand_info *nand_info = chip->priv;
 	int ret;
 
-	if (ops->mode == MTD_OOB_RAW)
+	if (ops->mode == MTD_OPS_RAW)
 		nand_info->raw_oob_mode = 1;
 	else
 		nand_info->raw_oob_mode = 0;
@@ -951,7 +949,7 @@ static int mxs_nand_hook_write_oob(struct mtd_info *mtd, loff_t to,
 	struct mxs_nand_info *nand_info = chip->priv;
 	int ret;
 
-	if (ops->mode == MTD_OOB_RAW)
+	if (ops->mode == MTD_OPS_RAW)
 		nand_info->raw_oob_mode = 1;
 	else
 		nand_info->raw_oob_mode = 0;
@@ -1029,7 +1027,7 @@ static int mxs_nand_hook_block_markbad(struct mtd_info *mtd, loff_t ofs)
  * what to do.
  */
 static int mxs_nand_ecc_read_oob(struct mtd_info *mtd, struct nand_chip *nand,
-				int page, int cmd)
+				int page)
 {
 	struct mxs_nand_info *nand_info = nand->priv;
 
@@ -1154,14 +1152,16 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 	tmp |= MXS_NAND_METADATA_SIZE << BCH_FLASHLAYOUT0_META_SIZE_OFFSET;
 	tmp |= (mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize) >> 1)
 		<< BCH_FLASHLAYOUT0_ECC0_OFFSET;
-	tmp |= MXS_NAND_CHUNK_DATA_CHUNK_SIZE;
+	tmp |= MXS_NAND_CHUNK_DATA_CHUNK_SIZE
+		>> MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT;
 	writel(tmp, &bch_regs->hw_bch_flash0layout0);
 
 	tmp = (mtd->writesize + mtd->oobsize)
 		<< BCH_FLASHLAYOUT1_PAGE_SIZE_OFFSET;
 	tmp |= (mxs_nand_get_ecc_strength(mtd->writesize, mtd->oobsize) >> 1)
 		<< BCH_FLASHLAYOUT1_ECCN_OFFSET;
-	tmp |= MXS_NAND_CHUNK_DATA_CHUNK_SIZE;
+	tmp |= MXS_NAND_CHUNK_DATA_CHUNK_SIZE
+		>> MXS_NAND_CHUNK_DATA_CHUNK_SIZE_SHIFT;
 	writel(tmp, &bch_regs->hw_bch_flash0layout1);
 
 	/* Set *all* chip selects to use layout 0 */
@@ -1171,19 +1171,19 @@ static int mxs_nand_scan_bbt(struct mtd_info *mtd)
 	writel(BCH_CTRL_COMPLETE_IRQ_EN, &bch_regs->hw_bch_ctrl_set);
 
 	/* Hook some operations at the MTD level. */
-	if (mtd->read_oob != mxs_nand_hook_read_oob) {
-		nand_info->hooked_read_oob = mtd->read_oob;
-		mtd->read_oob = mxs_nand_hook_read_oob;
+	if (mtd->_read_oob != mxs_nand_hook_read_oob) {
+		nand_info->hooked_read_oob = mtd->_read_oob;
+		mtd->_read_oob = mxs_nand_hook_read_oob;
 	}
 
-	if (mtd->write_oob != mxs_nand_hook_write_oob) {
-		nand_info->hooked_write_oob = mtd->write_oob;
-		mtd->write_oob = mxs_nand_hook_write_oob;
+	if (mtd->_write_oob != mxs_nand_hook_write_oob) {
+		nand_info->hooked_write_oob = mtd->_write_oob;
+		mtd->_write_oob = mxs_nand_hook_write_oob;
 	}
 
-	if (mtd->block_markbad != mxs_nand_hook_block_markbad) {
-		nand_info->hooked_block_markbad = mtd->block_markbad;
-		mtd->block_markbad = mxs_nand_hook_block_markbad;
+	if (mtd->_block_markbad != mxs_nand_hook_block_markbad) {
+		nand_info->hooked_block_markbad = mtd->_block_markbad;
+		mtd->_block_markbad = mxs_nand_hook_block_markbad;
 	}
 
 	/* We use the reference implementation for bad block management. */
@@ -1316,7 +1316,7 @@ int board_nand_init(struct nand_chip *nand)
 	nand->priv = nand_info;
 	nand->options |= NAND_NO_SUBPAGE_WRITE;
 #ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
-	nand->options |= NAND_USE_FLASH_BBT | NAND_USE_FLASH_BBT_NO_OOB;
+	nand->bbt_options |= NAND_BBT_USE_FLASH | NAND_BBT_NO_OOB;
 #endif
 	nand->cmd_ctrl		= mxs_nand_cmd_ctrl;
 
@@ -1339,6 +1339,7 @@ int board_nand_init(struct nand_chip *nand)
 	nand->ecc.mode		= NAND_ECC_HW;
 	nand->ecc.bytes		= 9;
 	nand->ecc.size		= 512;
+	nand->ecc.strength	= 8;
 
 	return 0;
 

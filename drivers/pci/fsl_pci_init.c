@@ -1,20 +1,7 @@
 /*
  * Copyright 2007-2012 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -211,7 +198,7 @@ static int fsl_pci_setup_inbound_windows(struct pci_controller *hose,
 	return 1;
 }
 
-#ifdef CONFIG_SYS_FSL_SRIO_PCIE_BOOT_MASTER
+#ifdef CONFIG_SRIO_PCIE_BOOT_MASTER
 static void fsl_pcie_boot_master(pit_t *pi)
 {
 	/* configure inbound window for slave's u-boot image */
@@ -388,7 +375,7 @@ void fsl_pci_init(struct pci_controller *hose, struct fsl_pci_info *pci_info)
 	/* see if we are a PCIe or PCI controller */
 	pci_hose_read_config_byte(hose, dev, FSL_PCIE_CAP_ID, &pcie_cap);
 
-#ifdef CONFIG_SYS_FSL_SRIO_PCIE_BOOT_MASTER
+#ifdef CONFIG_SRIO_PCIE_BOOT_MASTER
 	/* boot from PCIE --master */
 	char *s = getenv("bootmaster");
 	char pcie[6];
@@ -624,7 +611,7 @@ int fsl_pci_init_port(struct fsl_pci_info *pci_info,
 	if (fsl_is_pci_agent(hose)) {
 		fsl_pci_config_unlock(hose);
 		hose->last_busno = hose->first_busno;
-#ifdef CONFIG_SYS_FSL_SRIO_PCIE_BOOT_MASTER
+#ifdef CONFIG_SRIO_PCIE_BOOT_MASTER
 	} else {
 		/* boot from PCIE --master releases slave's core 0 */
 		char *s = getenv("bootmaster");

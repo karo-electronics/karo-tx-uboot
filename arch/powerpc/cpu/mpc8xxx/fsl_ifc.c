@@ -2,20 +2,7 @@
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * Author: Dipen Dudhat <dipen.dudhat@freescale.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -26,7 +13,7 @@ void print_ifc_regs(void)
 	int i, j;
 
 	printf("IFC Controller Registers\n");
-	for (i = 0; i < FSL_IFC_BANK_COUNT; i++) {
+	for (i = 0; i < CONFIG_SYS_FSL_IFC_BANK_COUNT; i++) {
 		printf("CSPR%d:0x%08X\tAMASK%d:0x%08X\tCSOR%d:0x%08X\n",
 			i, get_ifc_cspr(i), i, get_ifc_amask(i),
 			i, get_ifc_csor(i));
@@ -43,7 +30,7 @@ void init_early_memctl_regs(void)
 	set_ifc_ftim(IFC_CS0, IFC_FTIM2, CONFIG_SYS_CS0_FTIM2);
 	set_ifc_ftim(IFC_CS0, IFC_FTIM3, CONFIG_SYS_CS0_FTIM3);
 
-#if !defined(CONFIG_SYS_FSL_ERRATUM_IFC_A003399) || defined(CONFIG_SYS_RAMBOOT)
+#ifndef CONFIG_A003399_NOR_WORKAROUND
 #ifdef CONFIG_SYS_CSPR0_EXT
 	set_ifc_cspr_ext(IFC_CS0, CONFIG_SYS_CSPR0_EXT);
 #endif
@@ -93,5 +80,61 @@ void init_early_memctl_regs(void)
 	set_ifc_cspr(IFC_CS3, CONFIG_SYS_CSPR3);
 	set_ifc_amask(IFC_CS3, CONFIG_SYS_AMASK3);
 	set_ifc_csor(IFC_CS3, CONFIG_SYS_CSOR3);
+#endif
+
+#ifdef CONFIG_SYS_CSPR4_EXT
+	set_ifc_cspr_ext(IFC_CS4, CONFIG_SYS_CSPR4_EXT);
+#endif
+#if defined(CONFIG_SYS_CSPR4) && defined(CONFIG_SYS_CSOR4)
+	set_ifc_ftim(IFC_CS4, IFC_FTIM0, CONFIG_SYS_CS4_FTIM0);
+	set_ifc_ftim(IFC_CS4, IFC_FTIM1, CONFIG_SYS_CS4_FTIM1);
+	set_ifc_ftim(IFC_CS4, IFC_FTIM2, CONFIG_SYS_CS4_FTIM2);
+	set_ifc_ftim(IFC_CS4, IFC_FTIM3, CONFIG_SYS_CS4_FTIM3);
+
+	set_ifc_cspr(IFC_CS4, CONFIG_SYS_CSPR4);
+	set_ifc_amask(IFC_CS4, CONFIG_SYS_AMASK4);
+	set_ifc_csor(IFC_CS4, CONFIG_SYS_CSOR4);
+#endif
+
+#ifdef CONFIG_SYS_CSPR5_EXT
+	set_ifc_cspr_ext(IFC_CS5, CONFIG_SYS_CSPR5_EXT);
+#endif
+#if defined(CONFIG_SYS_CSPR5) && defined(CONFIG_SYS_CSOR5)
+	set_ifc_ftim(IFC_CS5, IFC_FTIM0, CONFIG_SYS_CS5_FTIM0);
+	set_ifc_ftim(IFC_CS5, IFC_FTIM1, CONFIG_SYS_CS5_FTIM1);
+	set_ifc_ftim(IFC_CS5, IFC_FTIM2, CONFIG_SYS_CS5_FTIM2);
+	set_ifc_ftim(IFC_CS5, IFC_FTIM3, CONFIG_SYS_CS5_FTIM3);
+
+	set_ifc_cspr(IFC_CS5, CONFIG_SYS_CSPR5);
+	set_ifc_amask(IFC_CS5, CONFIG_SYS_AMASK5);
+	set_ifc_csor(IFC_CS5, CONFIG_SYS_CSOR5);
+#endif
+
+#ifdef CONFIG_SYS_CSPR6_EXT
+	set_ifc_cspr_ext(IFC_CS6, CONFIG_SYS_CSPR6_EXT);
+#endif
+#if defined(CONFIG_SYS_CSPR6) && defined(CONFIG_SYS_CSOR6)
+	set_ifc_ftim(IFC_CS6, IFC_FTIM0, CONFIG_SYS_CS6_FTIM0);
+	set_ifc_ftim(IFC_CS6, IFC_FTIM1, CONFIG_SYS_CS6_FTIM1);
+	set_ifc_ftim(IFC_CS6, IFC_FTIM2, CONFIG_SYS_CS6_FTIM2);
+	set_ifc_ftim(IFC_CS6, IFC_FTIM3, CONFIG_SYS_CS6_FTIM3);
+
+	set_ifc_cspr(IFC_CS6, CONFIG_SYS_CSPR6);
+	set_ifc_amask(IFC_CS6, CONFIG_SYS_AMASK6);
+	set_ifc_csor(IFC_CS6, CONFIG_SYS_CSOR6);
+#endif
+
+#ifdef CONFIG_SYS_CSPR7_EXT
+	set_ifc_cspr_ext(IFC_CS7, CONFIG_SYS_CSPR7_EXT);
+#endif
+#if defined(CONFIG_SYS_CSPR7) && defined(CONFIG_SYS_CSOR7)
+	set_ifc_ftim(IFC_CS7, IFC_FTIM0, CONFIG_SYS_CS7_FTIM0);
+	set_ifc_ftim(IFC_CS7, IFC_FTIM1, CONFIG_SYS_CS7_FTIM1);
+	set_ifc_ftim(IFC_CS7, IFC_FTIM2, CONFIG_SYS_CS7_FTIM2);
+	set_ifc_ftim(IFC_CS7, IFC_FTIM3, CONFIG_SYS_CS7_FTIM3);
+
+	set_ifc_cspr(IFC_CS7, CONFIG_SYS_CSPR7);
+	set_ifc_amask(IFC_CS7, CONFIG_SYS_AMASK7);
+	set_ifc_csor(IFC_CS7, CONFIG_SYS_CSOR7);
 #endif
 }

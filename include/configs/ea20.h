@@ -5,19 +5,7 @@
  *
  * Copyright (C) 2007 Sergey Kubushyn <ksi@koi8.net>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -42,6 +30,7 @@
 #define CONFIG_MACH_DAVINCI_DA850_EVM
 #define CONFIG_ARM926EJS		/* arm926ejs CPU core */
 #define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
+#define CONFIG_SOC_DA850		/* TI DA850 SoC */
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		24000000
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
@@ -293,12 +282,12 @@
 		"bootm ${kernel_addr_r}\0"				\
 	"net_self_load=tftp ${kernel_addr_r} ${bootfile};"		\
 		"tftp ${ramdisk_addr_r} ${ramdisk_file};\0"		\
-	"nand_nand=ubi part nand0,${as};ubifsmount rootfs;"		\
+	"nand_nand=ubi part nand0,${as};ubifsmount ubi:rootfs;"		\
 		"ubifsload ${kernel_addr_r} /boot/uImage;"		\
 		"ubifsumount; run nandargs addip addtty "		\
 		"addmtd addmisc addmem;clrlogo;"			\
 		"bootm ${kernel_addr_r}\0"				\
-	"nand_nandrw=ubi part nand0,${as};ubifsmount rootfs;"		\
+	"nand_nandrw=ubi part nand0,${as};ubifsmount ubi:rootfs;"	\
 		"ubifsload ${kernel_addr_r} /boot/uImage;"		\
 		"ubifsumount; run nandrwargs addip addtty "		\
 		"addmtd addmisc addmem;clrlogo;"			\
@@ -309,7 +298,7 @@
 	"u-boot=" __stringify(CONFIG_HOSTNAME) "/u-boot.bin\0"		\
 	"load_magic=if sf probe 0;then sf "				\
 		"read c0000000 0x10000 0x60000;fi\0"			\
-	"load_nand=ubi part nand0,${as};ubifsmount rootfs;"		\
+	"load_nand=ubi part nand0,${as};ubifsmount ubi:rootfs;"		\
 		"if ubifsload c0000014 /boot/u-boot.bin;"		\
 		"then mw c0000008 ${filesize};else echo Error reading"	\
 		" u-boot from nand!;fi\0"				\

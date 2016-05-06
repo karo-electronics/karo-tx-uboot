@@ -2,20 +2,7 @@
  * Copyright 2012 Freescale Semiconductor, Inc.
  *	Roy Zang <tie-fei.zang@freescale.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <phy.h>
@@ -70,12 +57,18 @@ phy_interface_t fman_port_enet_if(enum fm_port port)
 	if (is_device_disabled(port))
 		return PHY_INTERFACE_MODE_NONE;
 
-	if ((port == FM1_10GEC1 || port == FM1_10GEC2)
-			&& (is_serdes_configured(XAUI_FM1)))
+	if ((port == FM1_10GEC1 || port == FM1_10GEC2) &&
+	    ((is_serdes_configured(XAUI_FM1_MAC9))	||
+	     (is_serdes_configured(XAUI_FM1_MAC10))	||
+	     (is_serdes_configured(XFI_FM1_MAC9))	||
+	     (is_serdes_configured(XFI_FM1_MAC10))))
 		return PHY_INTERFACE_MODE_XGMII;
 
-	if ((port == FM2_10GEC1 || port == FM2_10GEC2)
-			&& (is_serdes_configured(XAUI_FM2)))
+	if ((port == FM2_10GEC1 || port == FM2_10GEC2) &&
+	    ((is_serdes_configured(XAUI_FM2_MAC9))	||
+	     (is_serdes_configured(XAUI_FM2_MAC10))	||
+	     (is_serdes_configured(XFI_FM2_MAC9))	||
+	     (is_serdes_configured(XFI_FM2_MAC10))))
 		return PHY_INTERFACE_MODE_XGMII;
 
 #define FSL_CORENET_RCWSR13_EC1			0x60000000 /* bits 417..418 */

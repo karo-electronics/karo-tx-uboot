@@ -1,29 +1,17 @@
 #
-# (C) Copyright 2000-2006
+# (C) Copyright 2000-2013
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
+# SPDX-License-Identifier:	GPL-2.0+
 #
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
-#
-
 #########################################################################
 
-include $(TOPDIR)/helper.mk
+# Set shell to bash if possible, otherwise fall back to sh
+SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
+	else if [ -x /bin/bash ]; then echo /bin/bash; \
+	else echo sh; fi; fi)
+
+export	SHELL
 
 ifeq ($(CURDIR),$(SRCTREE))
 dir :=
@@ -131,6 +119,7 @@ endif
 # Usage gcc-ver := $(call cc-version)
 cc-version = $(shell $(SHELL) $(SRCTREE)/tools/gcc-version.sh $(CC))
 binutils-version = $(shell $(SHELL) $(SRCTREE)/tools/binutils-version.sh $(AS))
+dtc-version = $(shell $(SHELL) $(SRCTREE)/tools/dtc-version.sh $(DTC))
 
 #
 # Include the make variables (CC, etc...)
@@ -205,6 +194,15 @@ CPPFLAGS += -ffunction-sections -fdata-sections
 LDFLAGS_FINAL += --gc-sections
 endif
 
+# TODO(sjg@chromium.org): Is this correct on Mac OS?
+ifdef CONFIG_FIT_SIGNATURE
+HOSTLIBS	+= -lssl -lcrypto
+
+# This affects include/image.h, but including the board config file
+# is tricky, so manually define this options here.
+HOSTCFLAGS	+= -DCONFIG_FIT_SIGNATURE
+endif
+
 ifneq ($(CONFIG_SYS_TEXT_BASE),)
 CPPFLAGS += -DCONFIG_SYS_TEXT_BASE=$(CONFIG_SYS_TEXT_BASE)
 endif
@@ -217,8 +215,20 @@ ifneq ($(CONFIG_SPL_PAD_TO),)
 CPPFLAGS += -DCONFIG_SPL_PAD_TO=$(CONFIG_SPL_PAD_TO)
 endif
 
+ifneq ($(CONFIG_UBOOT_PAD_TO),)
+CPPFLAGS += -DCONFIG_UBOOT_PAD_TO=$(CONFIG_UBOOT_PAD_TO)
+endif
+
 ifeq ($(CONFIG_SPL_BUILD),y)
 CPPFLAGS += -DCONFIG_SPL_BUILD
+endif
+
+# Does this architecture support generic board init?
+ifeq ($(__HAVE_ARCH_GENERIC_BOARD),)
+ifneq ($(CONFIG_SYS_GENERIC_BOARD),)
+CHECK_GENERIC_BOARD = $(error Your architecture does not support generic board. \
+Please undefined CONFIG_SYS_GENERIC_BOARD in your board config file)
+endif
 endif
 
 ifneq ($(RESET_VECTOR_ADDRESS),)
@@ -232,6 +242,12 @@ endif
 CPPFLAGS += -I$(TOPDIR)/include
 CPPFLAGS += -fno-builtin -ffreestanding -nostdinc	\
 	-isystem $(gccincdir) -pipe $(PLATFORM_CPPFLAGS)
+
+CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
+
+ifdef BUILD_TAG
+CFLAGS += -DBUILD_TAG='"$(BUILD_TAG)"'
+endif
 
 CFLAGS_SSP := $(call cc-option,-fno-stack-protector)
 
@@ -248,6 +264,16 @@ endif
 # Report stack usage if supported
 CFLAGS_STACK := $(call cc-option,-fstack-usage)
 CFLAGS += $(CFLAGS_STACK)
+
+BCURDIR = $(subst $(SRCTREE)/,,$(CURDIR:$(obj)%=%))
+
+ifeq ($(findstring examples/,$(BCURDIR)),)
+ifeq ($(CONFIG_SPL_BUILD),)
+ifdef FTRACE
+CFLAGS += -finstrument-functions -DFTRACE
+endif
+endif
+endif
 
 # $(CPPFLAGS) sets -g, which causes gcc to pass a suitable -g<format>
 # option to the assembler.
@@ -311,7 +337,6 @@ export	CONFIG_SYS_TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS 
 #########################################################################
 
 # Allow boards to use custom optimize flags on a per dir/file basis
-BCURDIR = $(subst $(SRCTREE)/,,$(CURDIR:$(obj)%=%))
 ALL_AFLAGS = $(AFLAGS) $(AFLAGS_$(BCURDIR)/$(@F)) $(AFLAGS_$(BCURDIR))
 ALL_CFLAGS = $(CFLAGS) $(CFLAGS_$(BCURDIR)/$(@F)) $(CFLAGS_$(BCURDIR))
 EXTRA_CPPFLAGS = $(CPPFLAGS_$(BCURDIR)/$(@F)) $(CPPFLAGS_$(BCURDIR))

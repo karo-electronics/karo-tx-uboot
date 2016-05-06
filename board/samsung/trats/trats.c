@@ -4,23 +4,7 @@
  * Kyungmin Park <kyungmin.park@samsung.com>
  * Donghwa Lee <dh09.lee@samsung.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -42,6 +26,7 @@
 #include <power/max8997_muic.h>
 #include <power/battery.h>
 #include <power/max17042_fg.h>
+#include <usb_mass_storage.h>
 
 #include "setup.h"
 
@@ -57,12 +42,6 @@ u32 get_board_rev(void)
 #endif
 
 static void check_hw_revision(void);
-
-static int hwrevision(int rev)
-{
-	return (board_rev & 0xf) == rev;
-}
-
 struct s3c_plat_otg_data s5pc210_otg_data;
 
 int board_init(void)
@@ -634,7 +613,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
-static void lcd_reset(void)
+void exynos_reset_lcd(void)
 {
 	struct exynos4_gpio_part2 *gpio2 =
 		(struct exynos4_gpio_part2 *)samsung_get_base_gpio_part2();
@@ -754,10 +733,6 @@ vidinfo_t panel_info = {
 	.vl_cmd_allow_len = 0xf,
 
 	.win_id		= 3,
-	.cfg_gpio	= NULL,
-	.backlight_on	= NULL,
-	.lcd_power_on	= NULL,	/* lcd_power_on in mipi dsi driver */
-	.reset_lcd	= lcd_reset,
 	.dual_lcd_enabled = 0,
 
 	.init_delay	= 0,
@@ -776,9 +751,7 @@ void init_panel_info(vidinfo_t *vid)
 #ifdef CONFIG_TIZEN
 	get_tizen_logo_info(vid);
 #endif
-
-	if (hwrevision(2))
-		mipi_lcd_device.reverse_panel = 1;
+	mipi_lcd_device.reverse_panel = 1;
 
 	strcpy(s6e8ax0_platform_data.lcd_panel_name, mipi_lcd_device.name);
 	s6e8ax0_platform_data.lcd_power = lcd_power;
@@ -791,3 +764,65 @@ void init_panel_info(vidinfo_t *vid)
 
 	setenv("lcdinfo", "lcd=s6e8ax0");
 }
+
+#ifdef CONFIG_USB_GADGET_MASS_STORAGE
+static int ums_read_sector(struct ums_device *ums_dev,
+			   ulong start, lbaint_t blkcnt, void *buf)
+{
+	if (ums_dev->mmc->block_dev.block_read(ums_dev->dev_num,
+			start + ums_dev->offset, blkcnt, buf) != blkcnt)
+		return -1;
+
+	return 0;
+}
+
+static int ums_write_sector(struct ums_device *ums_dev,
+			    ulong start, lbaint_t blkcnt, const void *buf)
+{
+	if (ums_dev->mmc->block_dev.block_write(ums_dev->dev_num,
+			start + ums_dev->offset, blkcnt, buf) != blkcnt)
+		return -1;
+
+	return 0;
+}
+
+static void ums_get_capacity(struct ums_device *ums_dev,
+			     long long int *capacity)
+{
+	long long int tmp_capacity;
+
+	tmp_capacity = (long long int) ((ums_dev->offset + ums_dev->part_size)
+					* SECTOR_SIZE);
+	*capacity = ums_dev->mmc->capacity - tmp_capacity;
+}
+
+static struct ums_board_info ums_board = {
+	.read_sector = ums_read_sector,
+	.write_sector = ums_write_sector,
+	.get_capacity = ums_get_capacity,
+	.name = "TRATS UMS disk",
+	.ums_dev = {
+		.mmc = NULL,
+		.dev_num = 0,
+		.offset = 0,
+		.part_size = 0.
+	},
+};
+
+struct ums_board_info *board_ums_init(unsigned int dev_num, unsigned int offset,
+				      unsigned int part_size)
+{
+	struct mmc *mmc;
+
+	mmc = find_mmc_device(dev_num);
+	if (!mmc)
+		return NULL;
+
+	ums_board.ums_dev.mmc = mmc;
+	ums_board.ums_dev.dev_num = dev_num;
+	ums_board.ums_dev.offset = offset;
+	ums_board.ums_dev.part_size = part_size;
+
+	return &ums_board;
+}
+#endif

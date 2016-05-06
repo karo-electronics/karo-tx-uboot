@@ -2,23 +2,7 @@
  * Copyright 2011, Marvell Semiconductor Inc.
  * Lei Wen <leiwen@marvell.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Back ported to the 8xx platform (from the 8260 platform) by
  * Murray.Jensen@cmst.csiro.au, 27-Jan-01.
@@ -412,9 +396,11 @@ int sdhci_init(struct mmc *mmc)
 			status = sdhci_readl(host, SDHCI_PRESENT_STATE);
 	}
 
-	/* Eable all state */
-	sdhci_writel(host, SDHCI_INT_ALL_MASK, SDHCI_INT_ENABLE);
-	sdhci_writel(host, SDHCI_INT_ALL_MASK, SDHCI_SIGNAL_ENABLE);
+	/* Enable only interrupts served by the SD controller */
+	sdhci_writel(host, SDHCI_INT_DATA_MASK | SDHCI_INT_CMD_MASK
+		     , SDHCI_INT_ENABLE);
+	/* Mask all sdhci interrupt sources */
+	sdhci_writel(host, 0x0, SDHCI_SIGNAL_ENABLE);
 
 	return 0;
 }
@@ -438,6 +424,7 @@ int add_sdhci(struct sdhci_host *host, u32 max_clk, u32 min_clk)
 	mmc->set_ios = sdhci_set_ios;
 	mmc->init = sdhci_init;
 	mmc->getcd = NULL;
+	mmc->getwp = NULL;
 
 	caps = sdhci_readl(host, SDHCI_CAPABILITIES);
 #ifdef CONFIG_MMC_SDMA
@@ -483,8 +470,10 @@ int add_sdhci(struct sdhci_host *host, u32 max_clk, u32 min_clk)
 		mmc->voltages |= host->voltages;
 
 	mmc->host_caps = MMC_MODE_HS | MMC_MODE_HS_52MHz | MMC_MODE_4BIT;
-	if (caps & SDHCI_CAN_DO_8BIT)
-		mmc->host_caps |= MMC_MODE_8BIT;
+	if ((host->version & SDHCI_SPEC_VER_MASK) >= SDHCI_SPEC_300) {
+		if (caps & SDHCI_CAN_DO_8BIT)
+			mmc->host_caps |= MMC_MODE_8BIT;
+	}
 	if (host->host_caps)
 		mmc->host_caps |= host->host_caps;
 

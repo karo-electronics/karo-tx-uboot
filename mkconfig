@@ -5,7 +5,9 @@
 #
 # Parameters:  Target  Architecture  CPU  Board [VENDOR] [SOC]
 #
-# (C) 2002-2010 DENX Software Engineering, Wolfgang Denk <wd@denx.de>
+# (C) 2002-2013 DENX Software Engineering, Wolfgang Denk <wd@denx.de>
+#
+# SPDX-License-Identifier:	GPL-2.0+
 #
 
 APPEND=no	# Default: Create new config file
@@ -29,15 +31,6 @@ if [ \( $# -eq 2 \) -a \( "$1" = "-A" \) ] ; then
 	set ${line}
 	# add default board name if needed
 	[ $# = 3 ] && set ${line} ${1}
-elif [ "${MAKEFLAGS+set}${MAKELEVEL+set}" = "setset" ] ; then
-	# only warn when using a config target in the Makefile
-	cat <<-EOF
-
-	warning: Please migrate to boards.cfg.  Failure to do so will
-	         mean removal of your board in the next release.
-
-	EOF
-	sleep 5
 fi
 
 while [ $# -gt 0 ] ; do

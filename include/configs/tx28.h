@@ -1,17 +1,14 @@
 /*
  * Copyright (C) 2012 <LW@KARO-electronics.de>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation version 2.
+ * SPDX-License-Identifier:      GPL-2.0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
  */
-#ifndef __CONFIGS_TX28_H
-#define __CONFIGS_TX28_H
+
+#ifndef __CONFIG_H
+#define __CONFIG_H
+
+#define CONFIG_MX28			/* must be defined before including regs-base.h */
 
 #include <asm/sizes.h>
 #include <asm/arch/regs-base.h>
@@ -19,23 +16,23 @@
 /*
  * Ka-Ro TX28 board - SoC configuration
  */
-#define CONFIG_MX28				/* i.MX28 SoC */
-#define CONFIG_MXS_GPIO				/* GPIO control */
-#define CONFIG_SYS_HZ		1000		/* Ticks per second */
+#define CONFIG_MXS_GPIO					/* GPIO control */
+#define CONFIG_SYS_HZ			1000		/* Ticks per second */
+#define PHYS_SDRAM_1_SIZE		CONFIG_SDRAM_SIZE
 #ifdef CONFIG_TX28_S
-#define PHYS_SDRAM_1_SIZE	SZ_64M
-#define TX28_MOD_SUFFIX		"1"
+#define TX28_MOD_SUFFIX			"1"
 #else
-#define PHYS_SDRAM_1_SIZE	SZ_128M
 #define CONFIG_SYS_SPL_FIXED_BATT_SUPPLY
-#define TX28_MOD_SUFFIX		"0"
+#define TX28_MOD_SUFFIX			"0"
 #endif
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_SHOW_ACTIVITY
 #define CONFIG_ARCH_CPU_INIT
+#define CONFIG_ARCH_MISC_INIT		/* init vector table after relocation */
 #define CONFIG_DISPLAY_CPUINFO
+#define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
 
@@ -66,17 +63,17 @@
  * U-Boot general configurations
  */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT	"TX28 U-Boot > "
-#define CONFIG_SYS_CBSIZE	2048		/* Console I/O buffer size */
+#define CONFIG_SYS_PROMPT		"TX28 U-Boot > "
+#define CONFIG_SYS_CBSIZE		2048		/* Console I/O buffer size */
 #define CONFIG_SYS_PBSIZE \
 	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-						/* Print buffer size */
-#define CONFIG_SYS_MAXARGS	64		/* Max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-						/* Boot argument buffer size */
-#define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
-#define CONFIG_AUTO_COMPLETE			/* Command auto complete */
-#define CONFIG_CMDLINE_EDITING			/* Command history etc */
+							/* Print buffer size */
+#define CONFIG_SYS_MAXARGS		256		/* Max number of command args */
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+					/* Boot argument buffer size */
+#define CONFIG_VERSION_VARIABLE		/* U-BOOT version */
+#define CONFIG_AUTO_COMPLETE		/* Command auto complete */
+#define CONFIG_CMDLINE_EDITING		/* Command history etc */
 
 #define CONFIG_SYS_64BIT_VSPRINTF
 #define CONFIG_SYS_NO_FLASH
@@ -87,18 +84,14 @@
 #define CONFIG_OF_LIBFDT
 #ifdef CONFIG_OF_LIBFDT
 #define CONFIG_FDT_FIXUP_PARTITIONS
-#define CONFIG_OF_EMBED
 #define CONFIG_OF_BOARD_SETUP
-#define CONFIG_DEFAULT_DEVICE_TREE	tx28
-#define CONFIG_ARCH_DEVICE_TREE		mx28
-#define CONFIG_SYS_FDT_ADDR		(PHYS_SDRAM_1 + SZ_16M)
 #endif
 
 /*
  * Boot Linux
  */
-#define xstr(s)	str(s)
-#define str(s)	#s
+#define xstr(s)				str(s)
+#define str(s)				#s
 #define __pfx(x, s)			(x##s)
 #define _pfx(x, s)			__pfx(x, s)
 
@@ -108,40 +101,62 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_BOOTARGS			"console=ttyAMA0,115200 ro debug panic=1"
-#define CONFIG_BOOTCOMMAND		"run bootcmd_nand"
+#define CONFIG_BOOTARGS			"init=/linuxrc console=ttyAMA0,115200 ro debug panic=1"
+#define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
+#ifdef CONFIG_TX28_S
+#define CONFIG_LOADADDR			41000000
+#else
 #define CONFIG_LOADADDR			43000000
+#endif
+#define CONFIG_FDTADDR			40001000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+#define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
 
 /*
- * Extra Environments
+ * Extra Environment Settings
  */
+#ifdef CONFIG_ENV_IS_NOWHERE
+#define CONFIG_EXTRA_ENV_SETTINGS					\
+	"autostart=no\0"						\
+	"autoload=no\0"							\
+	"bootdelay=-1\0"						\
+	"mtdids=" MTDIDS_DEFAULT "\0"					\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"
+#else
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"autostart=no\0"						\
 	"baseboard=stk5-v3\0"						\
+	"bootargs_jffs2=run default_bootargs;set bootargs ${bootargs}"	\
+	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_mmc=run default_bootargs;set bootargs ${bootargs}"	\
 	" root=/dev/mmcblk0p3 rootwait\0"				\
-	"bootargs_nand=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/mtdblock3 rootfstype=jffs2\0"			\
 	"bootargs_nfs=run default_bootargs;set bootargs ${bootargs}"	\
-	" root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},nolock\0"\
-	"bootcmd_mmc=set autostart no;run bootargs_mmc;"		\
-	"fatload mmc 0 ${loadaddr} uImage;run bootm_cmd\0"		\
-	"bootcmd_nand=set autostart no;run bootargs_nand;"		\
-	"nboot linux;run bootm_cmd\0"					\
-	"bootcmd_net=set autostart no;run bootargs_nfs;dhcp;"		\
-	"run bootm_cmd\0"						\
-	"bootm_cmd=fdt boardsetup;bootm ${loadaddr} - ${fdtaddr}\0"	\
+	" root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock"	\
+	" ip=dhcp\0"							\
+	"bootargs_ubifs=run default_bootargs;set bootargs ${bootargs}"	\
+	" ubi.mtd=rootfs root=ubi0:rootfs rootfstype=ubifs\0"		\
+	"bootcmd_jffs2=set autostart no;run bootargs_jffs2"		\
+	";nboot linux\0"						\
+	"bootcmd_mmc=set autostart no;run bootargs_mmc"			\
+	";fatload mmc 0 ${loadaddr} uImage\0"				\
+	"bootcmd_nand=set autostart no;run bootargs_ubifs;nboot linux\0"\
+	"bootcmd_net=set autoload y;set autostart n;run bootargs_nfs"	\
+	";dhcp\0"							\
+	"bootm_cmd=bootm ${loadaddr} - ${fdtaddr}\0"			\
+	"boot_mode=nand\0"						\
 	"default_bootargs=set bootargs " CONFIG_BOOTARGS		\
-	" mxsfb.mode=${video_mode} ${append_bootargs}\0"		\
-	"fdtaddr=41000000\0"						\
+	" ${append_bootargs}\0"						\
+	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
+	"fdtsave=fdt resize;nand erase.part dtb"			\
+	";nand write ${fdtaddr} dtb ${fdtsize}\0"			\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=VGA\0"
+#endif /*  CONFIG_ENV_IS_NOWHERE */
 
 #define MTD_NAME			"gpmi-nand"
 #define MTDIDS_DEFAULT			"nand0=" MTD_NAME
@@ -156,6 +171,7 @@
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_CMD_BOOTCE
 #define CONFIG_CMD_TIME
+#define CONFIG_CMD_MEMTEST
 
 /*
  * Serial Driver
@@ -177,6 +193,7 @@
 #ifdef CONFIG_FEC_MXC
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
+#define CONFIG_SYS_CACHELINE_SIZE	32
 
 #ifndef CONFIG_TX28_S
 #define CONFIG_FEC_MXC_MULTI
@@ -185,6 +202,8 @@
 #define CONFIG_FEC_MXC_PHYADDR		0x00
 #endif
 
+#define CONFIG_PHY_SMSC
+#define CONFIG_PHYLIB
 #define CONFIG_MII
 #define CONFIG_FEC_XCV_TYPE		RMII
 #define CONFIG_GET_FEC_MAC_ADDR_FROM_IIM
@@ -196,44 +215,63 @@
 #define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_DNS
+#define CONFIG_BOOTP_RANDOM_ID
 #endif
+
+#ifndef CONFIG_ENV_IS_NOWHERE
+/* define one of the following options:
+#define CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_IS_IN_MMC
+*/
+#define CONFIG_ENV_IS_IN_NAND
+#endif
+#define CONFIG_ENV_OVERWRITE
 
 /*
  * NAND flash driver
  */
 #ifdef CONFIG_CMD_NAND
+#define CONFIG_SYS_NAND_BLOCK_SIZE	SZ_128K
 #define CONFIG_MTD_DEVICE
-#define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_NAND_MXS
 #define CONFIG_APBH_DMA
 #define CONFIG_APBH_DMA_BURST
 #define CONFIG_APBH_DMA_BURST8
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x20000
+#define CONFIG_SYS_NAND_U_BOOT_OFFS	CONFIG_SYS_NAND_BLOCK_SIZE
 #define CONFIG_CMD_NAND_TRIMFFS
 #define CONFIG_SYS_MXS_DMA_CHANNEL	4
-#define CONFIG_SYS_MAX_FLASH_SECT	1024
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
-#ifdef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_OVERWRITE
-#define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
-#define CONFIG_ENV_SIZE			SZ_128K
-#define CONFIG_ENV_RANGE		0x60000
-#endif /* CONFIG_ENV_IS_IN_NAND */
 #define CONFIG_SYS_NAND_BASE		0x00000000
 #define CONFIG_CMD_ROMUPDATE
+#else
+#undef CONFIG_ENV_IS_IN_NAND
 #endif /* CONFIG_CMD_NAND */
+
+#ifdef CONFIG_ENV_IS_IN_NAND
+#define CONFIG_ENV_OFFSET		(CONFIG_U_BOOT_IMG_SIZE + CONFIG_SYS_NAND_U_BOOT_OFFS)
+#define CONFIG_ENV_SIZE			SZ_128K
+#define CONFIG_ENV_RANGE		(3 * CONFIG_SYS_NAND_BLOCK_SIZE)
+#endif /* CONFIG_ENV_IS_IN_NAND */
+
+#ifdef CONFIG_ENV_OFFSET_REDUND
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_SYS_ENV_PART_SIZE)	\
+	"(env),"							\
+	xstr(CONFIG_SYS_ENV_PART_SIZE)					\
+	"(env2),"
+#define CONFIG_SYS_USERFS_PART_STR	xstr(CONFIG_SYS_USERFS_PART_SIZE2) "(userfs)"
+#else
+#define CONFIG_SYS_ENV_PART_STR		xstr(CONFIG_SYS_ENV_PART_SIZE)	\
+	"(env),"
+#define CONFIG_SYS_USERFS_PART_STR	xstr(CONFIG_SYS_USERFS_PART_SIZE) "(userfs)"
+#endif /* CONFIG_ENV_OFFSET_REDUND */
 
 /*
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#ifndef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_IS_IN_MMC
-#endif
 #define CONFIG_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_MXS_MMC
@@ -241,34 +279,34 @@
 
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_FAT
+#define CONFIG_FAT_WRITE
 #define CONFIG_CMD_EXT2
 
 /*
  * Environments on MMC
  */
 #ifdef CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV	0
-#define CONFIG_ENV_OVERWRITE
+#define CONFIG_SYS_MMC_ENV_DEV		0
 /* Associated with the MMC layout defined in mmcops.c */
 #define CONFIG_ENV_OFFSET		SZ_1K
 #define CONFIG_ENV_SIZE			(SZ_128K - CONFIG_ENV_OFFSET)
 #define CONFIG_DYNAMIC_MMC_DEVNO
 #endif /* CONFIG_ENV_IS_IN_MMC */
+#else
+#undef CONFIG_ENV_IS_IN_MMC
 #endif /* CONFIG_CMD_MMC */
 
-#ifdef CONFIG_ENV_OFFSET_REDUND
-#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"			\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env),"							\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env2),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
-#else
-#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
-	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"			\
-	xstr(CONFIG_ENV_RANGE)						\
-	"(env),4m(linux),16m(rootfs),256k(dtb),-(userfs)"
+#ifdef CONFIG_ENV_IS_NOWHERE
+#undef CONFIG_ENV_SIZE
+#define CONFIG_ENV_SIZE			SZ_4K
 #endif
+
+#define MTDPARTS_DEFAULT		"mtdparts=" MTD_NAME ":"	\
+	"1m@" xstr(CONFIG_SYS_NAND_U_BOOT_OFFS) "(u-boot),"		\
+	CONFIG_SYS_ENV_PART_STR						\
+	"6m(linux),32m(rootfs)," CONFIG_SYS_USERFS_PART_STR		\
+	",512k@" xstr(CONFIG_SYS_NAND_DTB_OFFSET) "(dtb)"		\
+	",512k@" xstr(CONFIG_SYS_NAND_BBT_OFFSET) "(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
@@ -276,9 +314,8 @@
 
 /* Defines for SPL */
 #define CONFIG_SPL
-#define CONFIG_SPL_NO_CPU_SUPPORT_CODE
-#define CONFIG_SPL_START_S_PATH	"arch/arm/cpu/arm926ejs/mxs"
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
+#define CONFIG_SPL_START_S_PATH		"arch/arm/cpu/arm926ejs/mxs"
+#define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/arm926ejs/mxs/u-boot-spl.lds"
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT

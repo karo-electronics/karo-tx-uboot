@@ -4,20 +4,7 @@
  * Copyright (C) 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __CONFIG_H
@@ -230,7 +217,7 @@
 #define CONFIG_SPL_STACK		(0x00010000 + 0x7f00)
 
 #define CONFIG_SPL_TEXT_BASE		0x00000020 /*CONFIG_SYS_SRAM_START*/
-#define CONFIG_SPL_MAX_SIZE		12320
+#define CONFIG_SPL_MAX_FOOTPRINT	12288
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_SYS_TEXT_BASE		0x81080000
@@ -451,7 +438,7 @@
 	"bootfile=" __stringify(CONFIG_HOSTNAME) "/uImage \0"		\
 	"kernel_addr_r=80600000\0"					\
 	"load_kernel=tftp ${kernel_addr_r} ${bootfile}\0"		\
-	"ubi_load_kernel=ubi part ubi 2048;ubifsmount ${img_volume};"	\
+	"ubi_load_kernel=ubi part ubi 2048;ubifsmount ubi:${img_volume};" \
 		"ubifsload ${kernel_addr_r} boot/uImage\0"		\
 	"fit_addr_r=" __stringify(CONFIG_BOARD_IMG_ADDR_R) "\0"		\
 	"img_addr_r=" __stringify(CONFIG_BOARD_IMG_ADDR_R) "\0"		\

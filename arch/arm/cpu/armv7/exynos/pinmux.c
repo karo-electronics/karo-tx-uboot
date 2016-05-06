@@ -2,23 +2,7 @@
  * Copyright (c) 2012 Samsung Electronics.
  * Abhilash Kesavan <a.kesavan@samsung.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -408,9 +392,49 @@ static int exynos4_mmc_config(int peripheral, int flags)
 	return 0;
 }
 
+static void exynos4_uart_config(int peripheral)
+{
+	struct exynos4_gpio_part1 *gpio1 =
+		(struct exynos4_gpio_part1 *)samsung_get_base_gpio_part1();
+	struct s5p_gpio_bank *bank;
+	int i, start, count;
+
+	switch (peripheral) {
+	case PERIPH_ID_UART0:
+		bank = &gpio1->a0;
+		start = 0;
+		count = 4;
+		break;
+	case PERIPH_ID_UART1:
+		bank = &gpio1->a0;
+		start = 4;
+		count = 4;
+		break;
+	case PERIPH_ID_UART2:
+		bank = &gpio1->a1;
+		start = 0;
+		count = 4;
+		break;
+	case PERIPH_ID_UART3:
+		bank = &gpio1->a1;
+		start = 4;
+		count = 2;
+		break;
+	}
+	for (i = start; i < start + count; i++) {
+		s5p_gpio_set_pull(bank, i, GPIO_PULL_NONE);
+		s5p_gpio_cfg_pin(bank, i, GPIO_FUNC(0x2));
+	}
+}
 static int exynos4_pinmux_config(int peripheral, int flags)
 {
 	switch (peripheral) {
+	case PERIPH_ID_UART0:
+	case PERIPH_ID_UART1:
+	case PERIPH_ID_UART2:
+	case PERIPH_ID_UART3:
+		exynos4_uart_config(peripheral);
+		break;
 	case PERIPH_ID_I2C0:
 	case PERIPH_ID_I2C1:
 	case PERIPH_ID_I2C2:

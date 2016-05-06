@@ -2,31 +2,11 @@
  * (C) Copyright 2008-2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __CONFIG_KEYMILE_H
 #define __CONFIG_KEYMILE_H
-
-/* Do boardspecific init for all boards */
-#define CONFIG_BOARD_EARLY_INIT_R
-#define CONFIG_LAST_STAGE_INIT
 
 #define CONFIG_BOOTCOUNT_LIMIT
 
@@ -82,10 +62,7 @@
 #define CONFIG_LOADS_ECHO
 #define CONFIG_SYS_LOADS_BAUD_CHANGE
 
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_MAX_I2C_BUS		1
 #define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_I2C_MUX
 
 /* Support the IVM EEprom */
 #define	CONFIG_SYS_IVM_EEPROM_ADR	0x50
@@ -148,6 +125,14 @@
 	"ubi part " CONFIG_KM_UBI_PARTITION_NAME_APP "; fi\0"
 #endif /* CONFIG_KM_UBI_PARTITION_NAME_APP */
 
+#ifdef CONFIG_NAND_ECC_BCH
+#define CONFIG_KM_UIMAGE_NAME "ecc_bch_uImage\0"
+#define CONFIG_KM_ECC_MODE    " eccmode=bch"
+#else
+#define CONFIG_KM_UIMAGE_NAME "uImage\0"
+#define CONFIG_KM_ECC_MODE
+#endif
+
 /*
  * boottargets
  * - set 'subbootcmds'
@@ -184,6 +169,7 @@
 		":${hostname}:${netdev}:off3"				\
 		" console=" CONFIG_KM_CONSOLE_TTY ",${baudrate}"	\
 		" mem=${kernelmem} init=${init}"			\
+		CONFIG_KM_ECC_MODE					\
 		" phram.phram=phvar,${varaddr}," __stringify(CONFIG_KM_PHRAM)\
 		" " CONFIG_KM_UBI_LINUX_MTD " "				\
 		CONFIG_KM_DEF_BOOT_ARGS_CPU				\
@@ -210,9 +196,10 @@
  */
 #define CONFIG_KM_DEF_ENV_FLASH_BOOT					\
 	"cramfsaddr=" __stringify(CONFIG_KM_CRAMFS_ADDR) "\0"		\
-	"cramfsloadkernel=cramfsload ${load_addr_r} uImage\0"		\
+	"cramfsloadkernel=cramfsload ${load_addr_r} ${uimage}\0"	\
 	"ubicopy=ubi read "__stringify(CONFIG_KM_CRAMFS_ADDR)		\
 			" bootfs${boot_bank}\0"				\
+	"uimage=" CONFIG_KM_UIMAGE_NAME					\
 	CONFIG_KM_DEV_ENV_FLASH_BOOT_UBI
 
 /*

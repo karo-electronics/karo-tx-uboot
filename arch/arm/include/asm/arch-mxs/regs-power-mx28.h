@@ -3,64 +3,42 @@
  *
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MX28_REGS_POWER_H__
 #define __MX28_REGS_POWER_H__
 
-#include <asm/arch/regs-common.h>
+#include <asm/imx-common/regs-common.h>
 
 #ifndef	__ASSEMBLY__
 struct mxs_power_regs {
-	mxs_reg_32(hw_power_ctrl)
-	mxs_reg_32(hw_power_5vctrl)
-	mxs_reg_32(hw_power_minpwr)
-	mxs_reg_32(hw_power_charge)
-	uint32_t	hw_power_vdddctrl;
-	uint32_t	reserved_vddd[3];
-	uint32_t	hw_power_vddactrl;
-	uint32_t	reserved_vdda[3];
-	uint32_t	hw_power_vddioctrl;
-	uint32_t	reserved_vddio[3];
-	uint32_t	hw_power_vddmemctrl;
-	uint32_t	reserved_vddmem[3];
-	uint32_t	hw_power_dcdc4p2;
-	uint32_t	reserved_dcdc4p2[3];
-	uint32_t	hw_power_misc;
-	uint32_t	reserved_misc[3];
-	uint32_t	hw_power_dclimits;
-	uint32_t	reserved_dclimits[3];
-	mxs_reg_32(hw_power_loopctrl)
-	uint32_t	hw_power_sts;
-	uint32_t	reserved_sts[3];
-	mxs_reg_32(hw_power_speed)
-	uint32_t	hw_power_battmonitor;
-	uint32_t	reserved_battmonitor[3];
+	mxs_reg_32(hw_power_ctrl);		/* 0x00 */
+	mxs_reg_32(hw_power_5vctrl);		/* 0x10 */
+	mxs_reg_32(hw_power_minpwr);		/* 0x20 */
+	mxs_reg_32(hw_power_charge);		/* 0x30 */
+	reg_32(hw_power_vdddctrl);		/* 0x40 */
+	reg_32(hw_power_vddactrl);		/* 0x50 */
+	reg_32(hw_power_vddioctrl);		/* 0x60 */
+	reg_32(hw_power_vddmemctrl);		/* 0x70 */
+	reg_32(hw_power_dcdc4p2);		/* 0x80 */
+	reg_32(hw_power_misc);			/* 0x90 */
+	reg_32(hw_power_dclimits);		/* 0xa0 */
+	mxs_reg_32(hw_power_loopctrl);		/* 0xb0 */
+	reg_32(hw_power_sts);			/* 0xc0 */
+	mxs_reg_32(hw_power_speed);		/* 0xd0 */
+	reg_32(hw_power_battmonitor);		/* 0xe0 */
 
-	uint32_t	reserved[4];
+	reg_32(reserved);			/* 0xf0 */
 
-	mxs_reg_32(hw_power_reset)
-	mxs_reg_32(hw_power_debug)
-	mxs_reg_32(hw_power_thermal)
-	mxs_reg_32(hw_power_usb1ctrl)
-	mxs_reg_32(hw_power_special)
-	mxs_reg_32(hw_power_version)
-	mxs_reg_32(hw_power_anaclkctrl)
-	mxs_reg_32(hw_power_refctrl)
+	mxs_reg_32(hw_power_reset);		/* 0x100 */
+	mxs_reg_32(hw_power_debug);		/* 0x110 */
+	mxs_reg_32(hw_power_thermal);		/* 0x120 */
+	mxs_reg_32(hw_power_usb1ctrl);		/* 0x130 */
+	mxs_reg_32(hw_power_special);		/* 0x140 */
+	mxs_reg_32(hw_power_version);		/* 0x150 */
+	mxs_reg_32(hw_power_anaclkctrl);	/* 0x160 */
+	mxs_reg_32(hw_power_refctrl);		/* 0x170 */
 };
 #endif
 
@@ -361,7 +339,8 @@ struct mxs_power_regs {
 #define	POWER_THERMAL_PWD				(1 << 7)
 #define	POWER_THERMAL_LOW_POWER				(1 << 6)
 #define	POWER_THERMAL_OFFSET_ADJ_MASK			(0x3 << 4)
-#define	POWER_THERMAL_OFFSET_ADJ_OFFSET			4
+#define	POWER_THERMAL_OFFSET_ADJ_OFFSET(n)		(((n) << 4) &	\
+						POWER_THERMAL_OFFSET_ADJ_MASK)
 #define	POWER_THERMAL_OFFSET_ADJ_ENABLE			(1 << 3)
 #define	POWER_THERMAL_TEMP_THRESHOLD_MASK		0x7
 #define	POWER_THERMAL_TEMP_THRESHOLD_OFFSET		0

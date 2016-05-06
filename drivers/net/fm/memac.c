@@ -2,20 +2,7 @@
  * Copyright 2012 Freescale Semiconductor, Inc.
  *	Roy Zang <tie-fei.zang@freescale.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* MAXFRM - maximum frame length */
@@ -111,6 +98,23 @@ static void memac_set_interface_mode(struct fsl_enet_mac *mac,
 	}
 	/* Enable automatic speed selection */
 	if_mode |= IF_MODE_EN_AUTO;
+
+	if (type == PHY_INTERFACE_MODE_RGMII) {
+		if_mode &= ~IF_MODE_EN_AUTO;
+		if_mode &= ~IF_MODE_SETSP_MASK;
+		switch (speed) {
+		case SPEED_1000:
+			if_mode |= IF_MODE_SETSP_1000M;
+			break;
+		case SPEED_100:
+			if_mode |= IF_MODE_SETSP_100M;
+			break;
+		case SPEED_10:
+			if_mode |= IF_MODE_SETSP_10M;
+		default:
+			break;
+		}
+	}
 
 	debug(" %s, if_mode = %x\n", __func__,  if_mode);
 	debug(" %s, if_status = %x\n", __func__,  if_status);

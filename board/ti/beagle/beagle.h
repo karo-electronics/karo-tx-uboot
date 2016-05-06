@@ -2,23 +2,7 @@
  * (C) Copyright 2008
  * Dirk Behme <dirk.behme@gmail.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef _BEAGLE_H_
 #define _BEAGLE_H_
@@ -544,7 +528,8 @@ static const struct panel_config dvid_cfg = {
 	.panel_type	= 0x01, /* TFT */
 	.data_lines	= 0x03, /* 24 Bit RGB */
 	.load_mode	= 0x02, /* Frame Mode */
-	.panel_color	= DVI_BEAGLE_ORANGE_COL /* ORANGE */
+	.panel_color	= DVI_BEAGLE_ORANGE_COL, /* ORANGE */
+	.gfx_format	= GFXFORMAT_RGB24_UNPACKED,
 };
 
 static const struct panel_config dvid_cfg_xm = {
@@ -556,6 +541,7 @@ static const struct panel_config dvid_cfg_xm = {
 	.panel_type	= 0x01, /* TFT */
 	.data_lines	= 0x03, /* 24 Bit RGB */
 	.load_mode	= 0x02, /* Frame Mode */
-	.panel_color	= DVI_BEAGLE_ORANGE_COL /* ORANGE */
+	.panel_color	= DVI_BEAGLE_ORANGE_COL, /* ORANGE */
+	.gfx_format	= GFXFORMAT_RGB24_UNPACKED,
 };
 #endif

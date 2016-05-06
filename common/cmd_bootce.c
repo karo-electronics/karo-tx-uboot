@@ -50,9 +50,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CE_MIN(a, b)		(((a) < (b)) ? (a) : (b))
 #define CE_MAX(a, b)		(((a) > (b)) ? (a) : (b))
 
-#define _STRMAC(s)		#s
-#define STRMAC(s)		_STRMAC(s)
-
 static ce_bin __attribute__ ((aligned (32))) g_bin;
 static ce_net __attribute__ ((aligned (32))) g_net;
 static IPaddr_t server_ip;
@@ -148,12 +145,25 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 	}
 }
 
-static void ce_prepare_run_bin(ce_bin *bin)
+static void ce_init_drv_globals(void)
 {
-	ce_driver_globals *drv_glb;
 	struct ce_magic *ce_magic = (void *)CONFIG_SYS_SDRAM_BASE + 0x160;
 	ce_std_driver_globals *std_drv_glb = &ce_magic->drv_glb;
 
+	debug("Copying CE MAGIC from %p to %p..%p\n",
+		&ce_magic_template, ce_magic,
+		(void *)ce_magic + sizeof(*ce_magic) - 1);
+	memcpy(ce_magic, &ce_magic_template, sizeof(*ce_magic));
+
+	ce_setup_std_drv_globals(std_drv_glb);
+	ce_magic->size = sizeof(*std_drv_glb) +
+		strlen(std_drv_glb->mtdparts) + 1;
+	ce_dump_block(ce_magic, offsetof(struct ce_magic, drv_glb) +
+		ce_magic->size);
+}
+
+static void ce_prepare_run_bin(ce_bin *bin)
+{
 	/* Clear os RAM area (if needed) */
 	if (bin->edbgConfig.flags & EDBG_FL_CLEANBOOT) {
 		debug("cleaning memory from %p to %p\n",
@@ -164,49 +174,7 @@ static void ce_prepare_run_bin(ce_bin *bin)
 		printf("ok\n");
 	}
 
-	/* Prepare driver globals (if needed) */
-	if (bin->eDrvGlb) {
-		debug("Copying CE MAGIC from %p to %p..%p\n",
-			&ce_magic_template, ce_magic,
-			(void *)ce_magic + sizeof(*ce_magic) - 1);
-		memcpy(ce_magic, &ce_magic_template, sizeof(*ce_magic));
-
-		ce_setup_std_drv_globals(std_drv_glb);
-		ce_magic->size = sizeof(*std_drv_glb) +
-			strlen(std_drv_glb->mtdparts) + 1;
-		ce_dump_block(ce_magic, offsetof(struct ce_magic, drv_glb) +
-			ce_magic->size);
-
-		drv_glb = bin->eDrvGlb;
-		memset(drv_glb, 0, sizeof(*drv_glb));
-
-		drv_glb->signature = DRV_GLB_SIGNATURE;
-
-		/* Local ethernet MAC address */
-		memcpy(drv_glb->macAddr, std_drv_glb->kitl.mac,
-			sizeof(drv_glb->macAddr));
-		debug("got MAC address %02x:%02x:%02x:%02x:%02x:%02x from environment\n",
-			drv_glb->macAddr[0], drv_glb->macAddr[1],
-			drv_glb->macAddr[2], drv_glb->macAddr[3],
-			drv_glb->macAddr[4], drv_glb->macAddr[5]);
-
-		/* Local IP address */
-		drv_glb->ipAddr = getenv_IPaddr("ipaddr");
-
-		/* Subnet mask */
-		drv_glb->ipMask = getenv_IPaddr("netmask");
-
-		/* Gateway config */
-		drv_glb->ipGate = getenv_IPaddr("gatewayip");
-#ifdef DEBUG
-		debug("got IP address %pI4 from environment\n", &drv_glb->ipAddr);
-		debug("got IP mask %pI4 from environment\n", &drv_glb->ipMask);
-		debug("got gateway address %pI4 from environment\n", &drv_glb->ipGate);
-#endif
-		/* EDBG services config */
-		memcpy(&drv_glb->edbgConfig, &bin->edbgConfig,
-			sizeof(bin->edbgConfig));
-	}
+	ce_init_drv_globals();
 
 	/*
 	 * Make sure, all the above makes it into SDRAM because
@@ -251,15 +219,6 @@ static int ce_lookup_ep_bin(ce_bin *bin)
 				e32->e32_entryrva;
 			bin->eRamStart = CE_FIX_ADDRESS(header->ramStart);
 			bin->eRamLen = header->ramEnd - header->ramStart;
-			// Save driver_globals address
-			// Must follow RAM section in CE config.bib file
-			//
-			// eg.
-			//
-			// RAM		80900000	03200000	RAM
-			// DRV_GLB	83B00000	00001000	RESERVED
-			//
-			bin->eDrvGlb = CE_FIX_ADDRESS(header->ramEnd);
 			return 1;
 		}
 	}
@@ -418,6 +377,10 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	size_t image_size;
 
 	if (argc > 1) {
+		if (strcmp(argv[1], "-i") == 0) {
+			ce_init_drv_globals();
+			return CMD_RET_SUCCESS;
+		}
 		addr = (void *)simple_strtoul(argv[1], NULL, 16);
 		image_size = INT_MAX;		/* actually we do not know the image size */
 	} else if (getenv("fileaddr") != NULL) {
@@ -454,11 +417,14 @@ static int do_bootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 }
 U_BOOT_CMD(
 	bootce, 2, 0, do_bootce,
-	"Boot a Windows CE image from RAM\n",
+	"Boot a Windows CE image from RAM",
 	"[addr]\n"
 	"\taddr\t\tboot image from address addr (default ${fileaddr})\n"
+	"or\n"
+	"\t-i\t\tinitialize the WinCE globals data structure (before loading a .nb0 image)"
 );
 
+#ifdef CONFIG_CMD_NAND
 static int ce_nand_load(ce_bin *bin, loff_t *offset, void *buf, size_t max_len)
 {
 	int ret;
@@ -552,14 +518,17 @@ static int do_nbootce(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			break;
 
 			case CE_PR_EOF:
+				ce_prepare_run_bin(&g_bin);
+				break;
+
 			case CE_PR_ERROR:
 				break;
 			}
 		} while (ret == CE_PR_MORE);
+		free(buffer);
 		if (ret != CE_PR_EOF)
 			return CMD_RET_FAILURE;
 
-		free(buffer);
 		if (getenv_yesno("autostart") != 1) {
 			/*
 			 * just use bootce to load the image to SDRAM;
@@ -578,11 +547,12 @@ err:
 }
 U_BOOT_CMD(
 	nbootce, 2, 0, do_nbootce,
-	"Boot a Windows CE image from NAND\n",
+	"Boot a Windows CE image from NAND",
 	"off|partitition\n"
 	"\toff\t\t- flash offset (hex)\n"
-	"\tpartition\t- partition name\n"
+	"\tpartition\t- partition name"
 );
+#endif
 
 static int ce_send_write_ack(ce_net *net)
 {
@@ -627,8 +597,9 @@ static enum bootme_state ce_process_download(ce_net *net, ce_bin *bin)
 			} else {
 				int rc = ce_send_write_ack(net);
 
-				printf("Dropping out of sequence packet with ID %d (expected %d)\n",
-					blknum, nxt);
+				if (net->verbose)
+					printf("Dropping out of sequence packet with ID %d (expected %d)\n",
+						blknum, nxt);
 				if (rc != 0)
 					return rc;
 
@@ -741,47 +712,36 @@ static enum bootme_state ce_process_edbg(ce_net *net, ce_bin *bin)
 		net->state = BOOTME_DEBUG;
 	}
 
-debug("%s@%d\n", __func__, __LINE__);
 	switch (header.cmd) {
 	case EDBG_CMD_JUMPIMG:
-debug("%s@%d\n", __func__, __LINE__);
 		net->gotJumpingRequest = 1;
 
 		if (net->verbose) {
 			printf("Received JUMPING command\n");
 		}
 		/* Just pass through and copy CONFIG structure */
+		ret = BOOTME_DONE;
 	case EDBG_CMD_OS_CONFIG:
-debug("%s@%d\n", __func__, __LINE__);
 		/* Copy config structure */
-		memcpy(&bin->edbgConfig, header.data,
+		memcpy(&bin->edbgConfig, &net->data[sizeof(header)],
 			sizeof(edbg_os_config_data));
 		if (net->verbose) {
 			printf("Received CONFIG command\n");
 			if (bin->edbgConfig.flags & EDBG_FL_DBGMSG) {
-				printf("--> Enabling DBGMSG service, IP: %d.%d.%d.%d, port: %d\n",
-					(bin->edbgConfig.dbgMsgIPAddr >> 0) & 0xFF,
-					(bin->edbgConfig.dbgMsgIPAddr >> 8) & 0xFF,
-					(bin->edbgConfig.dbgMsgIPAddr >> 16) & 0xFF,
-					(bin->edbgConfig.dbgMsgIPAddr >> 24) & 0xFF,
+				printf("--> Enabling DBGMSG service, IP: %pI4, port: %d\n",
+					&bin->edbgConfig.dbgMsgIPAddr,
 					ntohs(bin->edbgConfig.dbgMsgPort));
 			}
 
 			if (bin->edbgConfig.flags & EDBG_FL_PPSH) {
-				printf("--> Enabling PPSH service, IP: %d.%d.%d.%d, port: %d\n",
-					(bin->edbgConfig.ppshIPAddr >> 0) & 0xFF,
-					(bin->edbgConfig.ppshIPAddr >> 8) & 0xFF,
-					(bin->edbgConfig.ppshIPAddr >> 16) & 0xFF,
-					(bin->edbgConfig.ppshIPAddr >> 24) & 0xFF,
+				printf("--> Enabling PPSH service, IP: %pI4, port: %d\n",
+					&bin->edbgConfig.ppshIPAddr,
 					ntohs(bin->edbgConfig.ppshPort));
 			}
 
 			if (bin->edbgConfig.flags & EDBG_FL_KDBG) {
-				printf("--> Enabling KDBG service, IP: %d.%d.%d.%d, port: %d\n",
-					(bin->edbgConfig.kdbgIPAddr >> 0) & 0xFF,
-					(bin->edbgConfig.kdbgIPAddr >> 8) & 0xFF,
-					(bin->edbgConfig.kdbgIPAddr >> 16) & 0xFF,
-					(bin->edbgConfig.kdbgIPAddr >> 24) & 0xFF,
+				printf("--> Enabling KDBG service, IP: %pI4, port: %d\n",
+					&bin->edbgConfig.kdbgIPAddr,
 					ntohs(bin->edbgConfig.kdbgPort));
 			}
 
@@ -789,7 +749,6 @@ debug("%s@%d\n", __func__, __LINE__);
 				printf("--> Force clean boot\n");
 			}
 		}
-		ret = BOOTME_DEBUG;
 		break;
 
 	default:
@@ -801,11 +760,18 @@ debug("%s@%d\n", __func__, __LINE__);
 
 	/* Respond with ack */
 	header.flags = EDBG_FL_FROM_DEV | EDBG_FL_ACK;
+	memcpy(net->data, &header, sizeof(header));
 	net->dataLen = EDBG_DATA_OFFSET;
-debug("%s@%d: sending packet %p len %u\n", __func__, __LINE__,
-	net->data, net->dataLen);
-	bootme_send_frame(net->data, net->dataLen);
-	return ret;
+
+	int retries = 10;
+	int rc;
+	do {
+		rc = bootme_send_frame(net->data, net->dataLen);
+		if (rc != 0) {
+			printf("Failed to send ACK: %d\n", rc);
+		}
+	} while (rc && retries-- > 0);
+	return rc ?: ret;
 }
 
 static enum bootme_state ce_edbg_handler(const void *buf, size_t len)
@@ -884,33 +850,23 @@ static int ce_send_bootme(ce_net *net)
 		data->platformId, data->macAddr[5]);
 
 #ifdef DEBUG
-	printf("header->id: %08X\r\n", header->id);
-	printf("header->service: %08X\r\n", header->service);
-	printf("header->flags: %08X\r\n", header->flags);
-	printf("header->seqNum: %08X\r\n", header->seqNum);
-	printf("header->cmd: %08X\r\n\r\n", header->cmd);
+	printf("header->id: %08X\n", header->id);
+	printf("header->service: %08X\n", header->service);
+	printf("header->flags: %08X\n", header->flags);
+	printf("header->seqNum: %08X\n", header->seqNum);
+	printf("header->cmd: %08X\n\n", header->cmd);
 
-	printf("data->versionMajor: %08X\r\n", data->versionMajor);
-	printf("data->versionMinor: %08X\r\n", data->versionMinor);
-	printf("data->cpuId: %08X\r\n", data->cpuId);
-	printf("data->bootmeVer: %08X\r\n", data->bootmeVer);
-	printf("data->bootFlags: %08X\r\n", data->bootFlags);
-	printf("data->svcPort: %08X\r\n\r\n", ntohs(data->svcPort));
+	printf("data->versionMajor: %08X\n", data->versionMajor);
+	printf("data->versionMinor: %08X\n", data->versionMinor);
+	printf("data->cpuId: %08X\n", data->cpuId);
+	printf("data->bootmeVer: %08X\n", data->bootmeVer);
+	printf("data->bootFlags: %08X\n", data->bootFlags);
+	printf("data->svcPort: %08X\n\n", ntohs(data->svcPort));
 
-	printf("data->macAddr: %02X-%02X-%02X-%02X-%02X-%02X\r\n",
-		data->macAddr[0], data->macAddr[1],
-		data->macAddr[2], data->macAddr[3],
-		data->macAddr[4], data->macAddr[5]);
-
-	printf("data->ipAddr: %d.%d.%d.%d\r\n",
-		(data->ipAddr >> 0) & 0xFF,
-		(data->ipAddr >> 8) & 0xFF,
-		(data->ipAddr >> 16) & 0xFF,
-		(data->ipAddr >> 24) & 0xFF);
-
-	printf("data->platformId: %s\r\n", data->platformId);
-
-	printf("data->deviceName: %s\r\n", data->deviceName);
+	printf("data->macAddr: %pM\n", data->macAddr);
+	printf("data->ipAddr: %pI4\n", &data->ipAddr);
+	printf("data->platformId: %s\n", data->platformId);
+	printf("data->deviceName: %s\n", data->deviceName);
 #endif
 	// Some diag output ...
 	if (net->verbose) {
@@ -1023,7 +979,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 			i++;
 			if (argc > i) {
 				timeout = simple_strtoul(argv[i],
-							NULL, 10);
+							NULL, 0);
 				if (timeout >= UINT_MAX / CONFIG_SYS_HZ) {
 					printf("Timeout value %lu out of range (max.: %lu)\n",
 						timeout, UINT_MAX / CONFIG_SYS_HZ - 1);
@@ -1040,7 +996,7 @@ static int do_ceconnect(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[]
 				server_ip = string_to_ip(argv[i]);
 				printf("Using server %pI4\n", &server_ip);
 			} else {
-				printf("Option requires an argument - t\n");
+				printf("Option requires an argument - h\n");
 				return CMD_RET_USAGE;
 			}
 		}
@@ -1076,7 +1032,7 @@ err:
 }
 U_BOOT_CMD(
 	ceconnect, 6, 1, do_ceconnect,
-	"Set up a connection to the CE host PC over TCP/IP and download the run-time image\n",
+	"Set up a connection to the CE host PC over TCP/IP and download the run-time image",
 	"[-v] [-t <timeout>] [-h host]\n"
 	"  -v            - verbose operation\n"
 	"  -t <timeout>  - max wait time (#sec) for the connection\n"

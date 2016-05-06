@@ -6,23 +6,7 @@
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 /* Required to obtain the getline prototype from stdio.h */
@@ -37,6 +21,7 @@
  */
 static table_entry_t imximage_cmds[] = {
 	{CMD_BOOT_FROM,         "BOOT_FROM",            "boot command",	  },
+	{CMD_BOOT_OFFSET,       "BOOT_OFFSET",          "Boot offset",	  },
 	{CMD_DATA,              "DATA",                 "Reg Write Data", },
 	{CMD_IMAGE_VERSION,     "IMAGE_VERSION",        "image version",  },
 	{-1,                    "",                     "",	          },
@@ -352,6 +337,11 @@ static void parse_cfg_cmd(struct imx_header *imxhdr, int32_t cmd, char *token,
 		if (unlikely(cmd_ver_first != 1))
 			cmd_ver_first = 0;
 		break;
+	case CMD_BOOT_OFFSET:
+		imxhdr->flash_offset = get_cfg_value(token, name, lineno);
+		if (unlikely(cmd_ver_first != 1))
+			cmd_ver_first = 0;
+		break;
 	case CMD_DATA:
 		value = get_cfg_value(token, name, lineno);
 		(*set_dcd_val)(imxhdr, name, lineno, fld, value, dcd_len);
@@ -518,11 +508,14 @@ static void imximage_set_header(void *ptr, struct stat *sbuf, int ifd,
 
 	/*
 	 * ROM bug alert
-	 * mx53 only loads 512 byte multiples.
-	 * The remaining fraction of a block bytes would
-	 * not be loaded.
+	 *
+	 * MX53 only loads 512 byte multiples in case of SD boot.
+	 * MX53 only loads NAND page multiples in case of NAND boot and
+	 * supports up to 4096 byte large pages, thus align to 4096.
+	 *
+	 * The remaining fraction of a block bytes would not be loaded!
 	 */
-	*header_size_ptr = ROUND(sbuf->st_size + imxhdr->flash_offset, 512);
+	*header_size_ptr = ROUND(sbuf->st_size + imxhdr->flash_offset, 4096);
 }
 
 int imximage_check_params(struct mkimage_params *params)
@@ -551,7 +544,7 @@ int imximage_check_params(struct mkimage_params *params)
  * imximage parameters
  */
 static struct image_type_params imximage_params = {
-	.name		= "Freescale i.MX 5x Boot Image support",
+	.name		= "Freescale i.MX Boot Image support",
 	.header_size	= sizeof(struct imx_header),
 	.hdr		= (void *)&imximage_header,
 	.check_image_type = imximage_check_image_types,

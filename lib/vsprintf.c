@@ -126,6 +126,29 @@ unsigned long ustrtoul(const char *cp, char **endp, unsigned int base)
 	return result;
 }
 
+unsigned long long ustrtoull(const char *cp, char **endp, unsigned int base)
+{
+	unsigned long long result = simple_strtoull(cp, endp, base);
+	switch (**endp) {
+	case 'G':
+		result *= 1024;
+		/* fall through */
+	case 'M':
+		result *= 1024;
+		/* fall through */
+	case 'K':
+	case 'k':
+		result *= 1024;
+		if ((*endp)[1] == 'i') {
+			if ((*endp)[2] == 'B')
+				(*endp) += 3;
+			else
+				(*endp) += 2;
+		}
+	}
+	return result;
+}
+
 unsigned long long simple_strtoull(const char *cp, char **endp,
 					unsigned int base)
 {
@@ -846,4 +869,20 @@ char *simple_itoa(ulong i)
 		i /= 10;
 	} while (i > 0);
 	return p + 1;
+}
+
+/* We don't seem to have %'d in U-Boot */
+void print_grouped_ull(unsigned long long int_val, int digits)
+{
+	char str[21], *s;
+	int grab = 3;
+
+	digits = (digits + 2) / 3;
+	sprintf(str, "%*llu", digits * 3, int_val);
+	for (s = str; *s; s += grab) {
+		if (s != str)
+			putc(s[-1] != ' ' ? ',' : ' ');
+		printf("%.*s", grab, s);
+		grab = 3;
+	}
 }

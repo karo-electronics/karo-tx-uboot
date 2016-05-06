@@ -9,15 +9,7 @@
  *      Richard Woodruff <r-woodruff2@ti.com>
  *      Syed Mohammed Khasim <khasim@ti.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR /PURPOSE.  See the
- * GNU General Public License for more details.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -86,77 +78,48 @@ u32 get_sysboot_value(void)
 }
 
 #ifdef CONFIG_DISPLAY_CPUINFO
-#define SYSBOOT_FREQ_SHIFT	22
-#define SYSBOOT_FREQ_MASK	(3 << SYSBOOT_FREQ_SHIFT)
-
-static unsigned long bootfreqs[] = {
-	19200000,
-	24000000,
-	25000000,
-	26000000,
+static char *cpu_revs[] = {
+	"1.0",
+	"2.0",
+	"2.1",
 };
 
-static u32 get_sysboot_freq(void)
-{
-	int mode;
-	mode = readl(&cstat->statusreg) & SYSBOOT_FREQ_MASK;
-	return bootfreqs[mode >> SYSBOOT_FREQ_SHIFT];
-}
+static char *dev_types[] = {
+	"TST",
+	"EMU",
+	"HS",
+	"GP",
+};
 
 /**
  * Print CPU information
  */
 int print_cpuinfo(void)
 {
-	char *cpu_s, *sec_s;
-	unsigned long clk;
-	const struct cm_wkuppll *cmwkup = (struct cm_wkuppll *)CM_WKUP;
+	char *cpu_s, *sec_s, *rev_s;
 
 	switch (get_cpu_type()) {
-	case AM335X_ID:
+	case AM335X:
 		cpu_s = "AM335X";
 		break;
+	case TI81XX:
+		cpu_s = "TI81XX";
+		break;
 	default:
-		cpu_s = "Unknown cpu type";
+		cpu_s = "Unknown CPU type";
 	}
 
-	switch (get_device_type()) {
-	case TST_DEVICE:
-		sec_s = "TST";
-		break;
-	case EMU_DEVICE:
-		sec_s = "EMU";
-		break;
-	case HS_DEVICE:
-		sec_s = "HS";
-		break;
-	case GP_DEVICE:
-		sec_s = "GP";
-		break;
-	default:
+	if (get_cpu_rev() < ARRAY_SIZE(cpu_revs))
+		rev_s = cpu_revs[get_cpu_rev()];
+	else
+		rev_s = "?";
+
+	if (get_device_type() < ARRAY_SIZE(dev_types))
+		sec_s = dev_types[get_device_type()];
+	else
 		sec_s = "?";
-	}
 
-	printf("%s-%s rev %d\n",
-			cpu_s, sec_s, get_cpu_rev());
-
-	clk = get_sysboot_freq();
-	printf("OSC clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, mpu);
-	printf("MPU clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, ddr);
-	printf("DDR clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-	clk = clk_get_rate(cmwkup, per);
-	printf("PER clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-#ifdef CONFIG_LCD
-	clk = clk_get_rate(cmwkup, disp);
-	printf("LCD clk: %4lu.%03lu MHz\n",
-		clk / 1000000, clk / 1000 % 1000);
-#endif
+	printf("%s-%s rev %s\n", cpu_s, sec_s, rev_s);
 
 	return 0;
 }

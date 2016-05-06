@@ -2,20 +2,7 @@
  * Copyright 2012 Freescale Semiconductor, Inc.
  *	Roy Zang <tie-fei.zang@freescale.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __MEMAC_H__
@@ -222,6 +209,10 @@ struct memac {
 
 /* IF_MODE - Interface Mode Register */
 #define IF_MODE_EN_AUTO	0x00008000 /* 1 - Enable automatic speed selection */
+#define IF_MODE_SETSP_100M	0x00000000 /* 00 - 100Mbps RGMII */
+#define IF_MODE_SETSP_10M	0x00002000 /* 01 - 10Mbps RGMII */
+#define IF_MODE_SETSP_1000M	0x00004000 /* 10 - 1000Mbps RGMII */
+#define IF_MODE_SETSP_MASK	0x00006000 /* setsp mask bits */
 #define IF_MODE_XGMII	0x00000000 /* 00- XGMII(10) interface mode */
 #define IF_MODE_GMII		0x00000002 /* 10- GMII interface mode */
 #define IF_MODE_MASK	0x00000003 /* mask for mode interface mode */

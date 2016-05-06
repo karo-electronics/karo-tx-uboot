@@ -2,23 +2,7 @@
  * Copyright (C) 2011 Samsung Electronics
  * Heungjun Kim <riverful.kim@samsung.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARM_ARCH_POWER_H_
@@ -857,6 +841,9 @@ void set_mipi_phy_ctrl(unsigned int dev_index, unsigned int enable);
 
 void set_usbhost_phy_ctrl(unsigned int enable);
 
+/* Enables hardware tripping to power off the system when TMU fails */
+void set_hw_thermal_trip(void);
+
 #define POWER_USB_HOST_PHY_CTRL_EN		(1 << 0)
 #define POWER_USB_HOST_PHY_CTRL_DISABLE		(0 << 0)
 
@@ -864,4 +851,37 @@ void set_dp_phy_ctrl(unsigned int enable);
 
 #define EXYNOS_DP_PHY_ENABLE		(1 << 0)
 
+#define EXYNOS_PS_HOLD_CONTROL_DATA_HIGH	(1 << 8)
+#define POWER_ENABLE_HW_TRIP			(1UL << 31)
+
+/*
+ * Set ps_hold data driving value high
+ * This enables the machine to stay powered on
+ * after the initial power-on condition goes away
+ * (e.g. power button).
+ */
+void set_ps_hold_ctrl(void);
+
+/* PMU_DEBUG bits [12:8] = 0x1000 selects XXTI clock source */
+#define PMU_DEBUG_XXTI                          0x1000
+/* Mask bit[12:8] for xxti clock selection */
+#define PMU_DEBUG_CLKOUT_SEL_MASK               0x1f00
+
+/*
+ * Pmu debug is used for xclkout, enable xclkout with
+ * source as XXTI
+ */
+void set_xclkout(void);
+
+/*
+ *  Read inform1 to get the reset status.
+ *  @return: the value can be either S5P_CHECK_SLEEP or
+ *  S5P_CHECK_DIDLE or S5P_CHECK_LPA as stored in inform1
+ *  if none of these then its normal booting.
+ */
+uint32_t get_reset_status(void);
+
+
+/* Read the resume function and call it */
+void power_exit_wakeup(void);
 #endif

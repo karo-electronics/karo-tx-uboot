@@ -3,23 +3,7 @@
  * (C) Copyright 2010,2011
  * Graeme Russ, <graeme.russ@gmail.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but without any warranty; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -28,6 +12,7 @@
 #include <asm/u-boot-x86.h>
 #include <asm/global_data.h>
 #include <asm/processor.h>
+#include <asm/sections.h>
 #include <asm/arch/sysinfo.h>
 #include <asm/arch/tables.h>
 
@@ -60,12 +45,8 @@ unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
  * address, and how far U-Boot is moved by relocation are set in the global
  * data structure.
  */
-int calculate_relocation_address(void)
+ulong board_get_usable_ram_top(ulong total_size)
 {
-	const uint64_t uboot_size = (uintptr_t)&__bss_end -
-			(uintptr_t)&__text_start;
-	const uint64_t total_size = uboot_size + CONFIG_SYS_MALLOC_LEN +
-		CONFIG_SYS_STACK_SIZE;
 	uintptr_t dest_addr = 0;
 	int i;
 
@@ -87,21 +68,15 @@ int calculate_relocation_address(void)
 			continue;
 
 		/* Use this address if it's the largest so far. */
-		if (end - uboot_size > dest_addr)
+		if (end > dest_addr)
 			dest_addr = end;
 	}
 
 	/* If no suitable area was found, return an error. */
 	if (!dest_addr)
-		return 1;
+		panic("No available memory found for relocation");
 
-	dest_addr -= uboot_size;
-	dest_addr &= ~((1 << 12) - 1);
-	gd->relocaddr = dest_addr;
-	gd->reloc_off = dest_addr - (uintptr_t)&__text_start;
-	gd->start_addr_sp = dest_addr - CONFIG_SYS_MALLOC_LEN;
-
-	return 0;
+	return (ulong)dest_addr;
 }
 
 int dram_init_f(void)
@@ -122,7 +97,7 @@ int dram_init_f(void)
 	return 0;
 }
 
-int dram_init(void)
+int dram_init_banksize(void)
 {
 	int i, j;
 
@@ -140,4 +115,9 @@ int dram_init(void)
 		}
 	}
 	return 0;
+}
+
+int dram_init(void)
+{
+	return dram_init_banksize();
 }

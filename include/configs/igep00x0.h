@@ -4,20 +4,7 @@
  * (C) Copyright 2012
  * ISEE 2007 SL, <www.iseebcn.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __IGEP00X0_H
@@ -36,6 +23,7 @@
 
 #include <asm/arch/cpu.h>
 #include <asm/arch/omap3.h>
+#include <asm/mach-types.h>
 
 /*
  * Display CPU and Board information
@@ -54,7 +42,8 @@
 #define CONFIG_INITRD_TAG		1
 #define CONFIG_REVISION_TAG		1
 
-#define CONFIG_OF_LIBFDT		1
+#define CONFIG_OF_LIBFDT
+#define CONFIG_CMD_BOOTZ
 
 /*
  * NS16550 Configuration
@@ -66,9 +55,6 @@
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
-
-/* define to avoid U-Boot to hang while waiting for TEMT */
-#define CONFIG_SYS_NS16550_BROKEN_TEMT
 
 /* select serial console configuration */
 #define CONFIG_CONS_INDEX		3
@@ -84,6 +70,12 @@
 #define CONFIG_MMC			1
 #define CONFIG_OMAP_HSMMC		1
 #define CONFIG_DOS_PARTITION		1
+
+/* define to enable boot progress via leds */
+#if (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0020) || \
+    (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0030)
+#define CONFIG_SHOW_BOOT_PROGRESS
+#endif
 
 /* USB */
 #define CONFIG_MUSB_UDC			1
@@ -115,7 +107,10 @@
 #ifdef CONFIG_BOOT_NAND
 #define CONFIG_CMD_NAND
 #endif
+#if (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0020) || \
+    (CONFIG_MACH_TYPE == MACH_TYPE_IGEP0032)
 #define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot	*/
+#endif
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_NFS		/* NFS support			*/

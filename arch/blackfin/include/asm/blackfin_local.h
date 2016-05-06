@@ -3,23 +3,7 @@
  *
  * Copyright (c) 2005-2007 Analog Devices Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- * MA 02110-1301 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __BLACKFIN_LOCAL_H__
@@ -61,6 +45,9 @@
 extern u_long get_vco(void);
 extern u_long get_cclk(void);
 extern u_long get_sclk(void);
+extern u_long get_sclk0(void);
+extern u_long get_sclk1(void);
+extern u_long get_dclk(void);
 
 # define bfin_revid() (bfin_read_CHIPID() >> 28)
 

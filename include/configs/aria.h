@@ -2,23 +2,7 @@
  * (C) Copyright 2009 Wolfgang Denk <wd@denx.de>
  * (C) Copyright 2009, DAVE Srl <www.dave.eu>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 /*
@@ -64,7 +48,6 @@
 
 #define CONFIG_SYS_MPC512X_CLKIN	33000000	/* in Hz */
 
-#define CONFIG_BOARD_EARLY_INIT_F		/* call board_early_init_f() */
 #define CONFIG_MISC_INIT_R
 
 #define CONFIG_SYS_IMMR			0x80000000
@@ -266,10 +249,15 @@
 #define CONFIG_SYS_ARIA_SRAM_BASE	(CONFIG_SYS_SRAM_BASE + \
 					 CONFIG_SYS_SRAM_SIZE)
 #define CONFIG_SYS_ARIA_SRAM_SIZE	0x00100000	/* reserve 1MB-window */
+#define CONFIG_SYS_CS6_START		CONFIG_SYS_ARIA_SRAM_BASE
+#define CONFIG_SYS_CS6_SIZE		CONFIG_SYS_ARIA_SRAM_SIZE
 
 #define CONFIG_SYS_ARIA_FPGA_BASE	(CONFIG_SYS_ARIA_SRAM_BASE + \
 					 CONFIG_SYS_ARIA_SRAM_SIZE)
 #define CONFIG_SYS_ARIA_FPGA_SIZE	0x20000		/* 128 KB */
+
+#define CONFIG_SYS_CS2_START		CONFIG_SYS_ARIA_FPGA_BASE
+#define CONFIG_SYS_CS2_SIZE		CONFIG_SYS_ARIA_FPGA_SIZE
 
 #define CONFIG_SYS_CS0_CFG		0x05059150
 #define CONFIG_SYS_CS2_CFG		(	(5 << 24) | \
@@ -346,6 +334,7 @@
  * PCI
  */
 #ifdef CONFIG_PCI
+#define CONFIG_PCI_INDIRECT_BRIDGE
 
 #define CONFIG_SYS_PCI_MEM_BASE		0xA0000000
 #define CONFIG_SYS_PCI_MEM_PHYS		CONFIG_SYS_PCI_MEM_BASE
@@ -366,7 +355,6 @@
 
 /* I2C */
 #define CONFIG_HARD_I2C			/* I2C with hardware support */
-#undef CONFIG_SOFT_I2C			/* so disable bit-banged I2C */
 #define CONFIG_I2C_MULTI_BUS
 
 /* I2C speed and slave address */
@@ -379,7 +367,7 @@
 /*
  * IIM - IC Identification Module
  */
-#undef CONFIG_IIM
+#undef CONFIG_FSL_IIM
 
 /*
  * EEPROM configuration for Atmel AT24C32A-10TQ-2.7:
@@ -642,5 +630,22 @@
 #define FSL_ATA_CTRL_DMA_ULTRA		0x04000000
 #define FSL_ATA_CTRL_DMA_WRITE		0x02000000
 #define FSL_ATA_CTRL_IORDY_EN		0x01000000
+
+/* Clocks in use */
+#define SCCR1_CLOCKS_EN	(CLOCK_SCCR1_CFG_EN |				\
+			 CLOCK_SCCR1_LPC_EN |				\
+			 CLOCK_SCCR1_PSC_EN(CONFIG_PSC_CONSOLE) |	\
+			 CLOCK_SCCR1_PSCFIFO_EN |			\
+			 CLOCK_SCCR1_DDR_EN |				\
+			 CLOCK_SCCR1_FEC_EN |				\
+			 CLOCK_SCCR1_NFC_EN |				\
+			 CLOCK_SCCR1_PATA_EN |				\
+			 CLOCK_SCCR1_PCI_EN |				\
+			 CLOCK_SCCR1_TPR_EN)
+
+#define SCCR2_CLOCKS_EN	(CLOCK_SCCR2_MEM_EN |		\
+			 CLOCK_SCCR2_SPDIF_EN |		\
+			 CLOCK_SCCR2_DIU_EN |		\
+			 CLOCK_SCCR2_I2C_EN)
 
 #endif	/* __CONFIG_H */

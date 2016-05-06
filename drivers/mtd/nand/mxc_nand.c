@@ -30,14 +30,6 @@
 #include <asm/arch/imx-regs.h>
 #endif
 
-#ifdef DEBUG
-#define pr_debug(fmt...) printk(fmt)
-#else
-#define pr_debug(fmt...) do { } while (0)
-#endif
-
-typedef enum _bool { false, true } bool;
-
 static struct mxc_nand_host mxc_host;
 static struct mxc_nand_host *host = &mxc_host;
 
@@ -130,16 +122,12 @@ static int is_16bit_nand(void)
 #define nfc_is_v3_2()		1
 #define nfc_is_v3()		nfc_is_v3_2()
 #define NFC_VERSION		"V3"
-#ifndef CONFIG_MXC_NAND_IP_BASE
-#error CONFIG_MXC_NAND_IP_BASE not defined
+#ifndef CONFIG_MXC_NAND_IP_REGS_BASE
+#error CONFIG_MXC_NAND_IP_REGS_BASE not defined
 #endif
 #else
 #error mxc_nand driver not supported on this platform
 #define NFC_VERSION		"unknown"
-#endif
-
-#ifndef CONFIG_MXC_NAND_IP_BASE
-#define CONFIG_MXC_NAND_IP_BASE	0
 #endif
 
 /* Addresses for NFC registers */
@@ -1100,7 +1088,7 @@ static void mxc_nand_chip_init(int devno)
 		this->ecc.bytes = 3;
 		host->eccsize = 1;
 	} else if (nfc_is_v3_2()) {
-		host->regs_ip = (void __iomem *)CONFIG_MXC_NAND_IP_BASE;
+		host->regs_ip = (void __iomem *)CONFIG_MXC_NAND_IP_REGS_BASE;
 		host->regs_axi = host->base + 0x1e00;
 		host->spare0 = host->base + 0x1000;
 		host->spare_len = 64;
@@ -1113,6 +1101,7 @@ static void mxc_nand_chip_init(int devno)
 		host->get_dev_status = get_dev_status_v3;
 		oob_smallpage = &nandv2_hw_eccoob_smallpage;
 		oob_largepage = &nandv2_hw_eccoob_largepage;
+		this->ecc.strength = 4;
 	} else
 		hang();
 
@@ -1135,7 +1124,7 @@ static void mxc_nand_chip_init(int devno)
 		this->options |= NAND_BUSWIDTH_16;
 
 #ifdef CONFIG_SYS_NAND_USE_FLASH_BBT
-	this->options |= NAND_USE_FLASH_BBT;
+	this->bbt_options |= NAND_BBT_USE_FLASH;
 	this->bbt_td = &bbt_main_descr;
 	this->bbt_md = &bbt_mirror_descr;
 	this->bbt_td->options |= NAND_BBT_CREATE;

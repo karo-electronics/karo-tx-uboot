@@ -1,22 +1,6 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -37,6 +21,9 @@ DECLARE_GLOBAL_DATA_PTR;
 static const char * const compat_names[COMPAT_COUNT] = {
 	COMPAT(UNKNOWN, "<none>"),
 	COMPAT(NVIDIA_TEGRA20_USB, "nvidia,tegra20-ehci"),
+	COMPAT(NVIDIA_TEGRA30_USB, "nvidia,tegra30-ehci"),
+	COMPAT(NVIDIA_TEGRA114_USB, "nvidia,tegra114-ehci"),
+	COMPAT(NVIDIA_TEGRA114_I2C, "nvidia,tegra114-i2c"),
 	COMPAT(NVIDIA_TEGRA20_I2C, "nvidia,tegra20-i2c"),
 	COMPAT(NVIDIA_TEGRA20_DVC, "nvidia,tegra20-i2c-dvc"),
 	COMPAT(NVIDIA_TEGRA20_EMC, "nvidia,tegra20-emc"),
@@ -45,15 +32,32 @@ static const char * const compat_names[COMPAT_COUNT] = {
 	COMPAT(NVIDIA_TEGRA20_NAND, "nvidia,tegra20-nand"),
 	COMPAT(NVIDIA_TEGRA20_PWM, "nvidia,tegra20-pwm"),
 	COMPAT(NVIDIA_TEGRA20_DC, "nvidia,tegra20-dc"),
+	COMPAT(NVIDIA_TEGRA30_SDMMC, "nvidia,tegra30-sdhci"),
+	COMPAT(NVIDIA_TEGRA20_SDMMC, "nvidia,tegra20-sdhci"),
+	COMPAT(NVIDIA_TEGRA20_SFLASH, "nvidia,tegra20-sflash"),
+	COMPAT(NVIDIA_TEGRA20_SLINK, "nvidia,tegra20-slink"),
+	COMPAT(NVIDIA_TEGRA114_SPI, "nvidia,tegra114-spi"),
 	COMPAT(SMSC_LAN9215, "smsc,lan9215"),
 	COMPAT(SAMSUNG_EXYNOS5_SROMC, "samsung,exynos-sromc"),
 	COMPAT(SAMSUNG_S3C2440_I2C, "samsung,s3c2440-i2c"),
 	COMPAT(SAMSUNG_EXYNOS5_SOUND, "samsung,exynos-sound"),
 	COMPAT(WOLFSON_WM8994_CODEC, "wolfson,wm8994-codec"),
 	COMPAT(SAMSUNG_EXYNOS_SPI, "samsung,exynos-spi"),
+	COMPAT(GOOGLE_CROS_EC, "google,cros-ec"),
+	COMPAT(GOOGLE_CROS_EC_KEYB, "google,cros-ec-keyb"),
 	COMPAT(SAMSUNG_EXYNOS_EHCI, "samsung,exynos-ehci"),
 	COMPAT(SAMSUNG_EXYNOS_USB_PHY, "samsung,exynos-usb-phy"),
+	COMPAT(SAMSUNG_EXYNOS_TMU, "samsung,exynos-tmu"),
+	COMPAT(SAMSUNG_EXYNOS_FIMD, "samsung,exynos-fimd"),
+	COMPAT(SAMSUNG_EXYNOS5_DP, "samsung,exynos5-dp"),
+	COMPAT(SAMSUNG_EXYNOS5_DWMMC, "samsung,exynos5250-dwmmc"),
+	COMPAT(SAMSUNG_EXYNOS_SERIAL, "samsung,exynos4210-uart"),
 	COMPAT(MAXIM_MAX77686_PMIC, "maxim,max77686_pmic"),
+	COMPAT(GENERIC_SPI_FLASH, "spi-flash"),
+	COMPAT(MAXIM_98095_CODEC, "maxim,max98095-codec"),
+	COMPAT(INFINEON_SLB9635_TPM, "infineon,slb9635-tpm"),
+	COMPAT(INFINEON_SLB9645_TPM, "infineon,slb9645-tpm"),
+	COMPAT(SAMSUNG_EXYNOS5_I2C, "samsung,exynos5-hsi2c"),
 };
 
 const char *fdtdec_get_compatible(enum fdt_compat_id id)
@@ -63,23 +67,38 @@ const char *fdtdec_get_compatible(enum fdt_compat_id id)
 	return compat_names[id];
 }
 
-fdt_addr_t fdtdec_get_addr(const void *blob, int node,
-		const char *prop_name)
+fdt_addr_t fdtdec_get_addr_size(const void *blob, int node,
+		const char *prop_name, fdt_size_t *sizep)
 {
 	const fdt_addr_t *cell;
 	int len;
 
 	debug("%s: %s: ", __func__, prop_name);
 	cell = fdt_getprop(blob, node, prop_name, &len);
-	if (cell && (len == sizeof(fdt_addr_t) ||
-			len == sizeof(fdt_addr_t) * 2)) {
+	if (cell && ((!sizep && len == sizeof(fdt_addr_t)) ||
+		     len == sizeof(fdt_addr_t) * 2)) {
 		fdt_addr_t addr = fdt_addr_to_cpu(*cell);
+		if (sizep) {
+			const fdt_size_t *size;
 
-		debug("%p\n", (void *)addr);
+			size = (fdt_size_t *)((char *)cell +
+					sizeof(fdt_addr_t));
+			*sizep = fdt_size_to_cpu(*size);
+			debug("addr=%p, size=%p\n", (void *)addr,
+			      (void *)*sizep);
+		} else {
+			debug("%p\n", (void *)addr);
+		}
 		return addr;
 	}
 	debug("(not found)\n");
 	return FDT_ADDR_T_NONE;
+}
+
+fdt_addr_t fdtdec_get_addr(const void *blob, int node,
+		const char *prop_name)
+{
+	return fdtdec_get_addr_size(blob, node, prop_name, NULL);
 }
 
 s32 fdtdec_get_int(const void *blob, int node, const char *prop_name,
@@ -327,10 +346,11 @@ int fdtdec_check_fdt(void)
  */
 int fdtdec_prepare_fdt(void)
 {
-	if (((uintptr_t)gd->fdt_blob & 3) || fdt_check_header(gd->fdt_blob)) {
+	if (!gd->fdt_blob || ((uintptr_t)gd->fdt_blob & 3) ||
+	    fdt_check_header(gd->fdt_blob)) {
 		printf("No valid FDT found - please append one to U-Boot "
 			"binary, use u-boot-dtb.bin or define "
-			"CONFIG_OF_EMBED\n");
+			"CONFIG_OF_EMBED. For sandbox, use -d <file.dtb>\n");
 		return -1;
 	}
 	return 0;

@@ -22,6 +22,8 @@
 #ifndef USB_EHCI_H
 #define USB_EHCI_H
 
+#include <usb.h>
+
 #if !defined(CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS)
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	2
 #endif
@@ -69,6 +71,7 @@ struct ehci_hcor {
 #define CMD_RUN		(1 << 0)		/* start/stop HC */
 	uint32_t or_usbsts;
 #define STS_ASS		(1 << 15)
+#define	STS_PSS		(1 << 14)
 #define STS_HALT	(1 << 12)
 	uint32_t or_usbintr;
 #define INTR_UE         (1 << 0)                /* USB interrupt enable */
@@ -245,7 +248,21 @@ struct QH {
 	 * Add dummy fill value to make the size of this struct
 	 * aligned to 32 bytes
 	 */
-	uint8_t fill[16];
+	union {
+		uint32_t fill[4];
+		void *buffer;
+	};
+};
+
+struct ehci_ctrl {
+	struct ehci_hccr *hccr;	/* R/O registers, not need for volatile */
+	struct ehci_hcor *hcor;
+	int rootdev;
+	uint16_t portreset;
+	struct QH qh_list __aligned(USB_DMA_MINALIGN);
+	struct QH periodic_queue __aligned(USB_DMA_MINALIGN);
+	uint32_t *periodic_list;
+	int ntds;
 };
 
 /* Low level init functions */

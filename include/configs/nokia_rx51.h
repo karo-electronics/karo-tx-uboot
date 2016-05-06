@@ -13,23 +13,7 @@
  *
  * Configuration settings for the Nokia RX-51 aka N900.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+ 
  */
 
 #ifndef __CONFIG_H
@@ -148,6 +132,7 @@
 #define CONFIG_CMDLINE_EDITING		/* add command line history */
 #define CONFIG_AUTO_COMPLETE		/* add autocompletion support */
 
+#define CONFIG_CMD_BOOTMENU		/* ANSI terminal Boot Menu */
 #define CONFIG_CMD_CLEAR		/* ANSI terminal clear screen command */
 
 #ifdef ONENAND_SUPPORT
@@ -287,8 +272,6 @@ int rx51_kp_getc(void);
 #endif
 
 /* Environment information */
-#define CONFIG_BOOTDELAY		3
-
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"mtdparts=" MTDPARTS_DEFAULT "\0" \
 	"usbtty=cdc_acm\0" \
@@ -360,10 +343,40 @@ int rx51_kp_getc(void);
 		"fi\0" \
 	"emmcboot=setenv mmcnum 1; run trymmcboot\0" \
 	"sdboot=setenv mmcnum 0; run trymmcboot\0" \
+	"menucmd=bootmenu\0" \
+	"bootmenu_0=Attached kernel=run attachboot\0" \
+	"bootmenu_1=Internal eMMC=run emmcboot\0" \
+	"bootmenu_2=External SD card=run sdboot\0" \
+	"bootmenu_3=U-Boot boot order=boot\0" \
+	"bootmenu_delay=30\0" \
 	""
 
 #define CONFIG_PREBOOT \
-	"if run slide; then true; else run attachboot; fi;" \
+	"setenv mmcnum 1; setenv mmcpart 1;" \
+	"setenv mmcscriptfile bootmenu.scr;" \
+	"if run switchmmc; then " \
+		"setenv mmcdone true;" \
+		"setenv mmctype fat;" \
+		"if run scriptload; then true; else " \
+			"setenv mmctype ext2;" \
+			"if run scriptload; then true; else " \
+				"setenv mmctype ext4;" \
+				"if run scriptload; then true; else " \
+					"setenv mmcdone false;" \
+				"fi;" \
+			"fi;" \
+		"fi;" \
+		"if ${mmcdone}; then " \
+			"run scriptboot;" \
+		"fi;" \
+	"fi;" \
+	"if run slide; then true; else " \
+		"setenv bootmenu_delay 0;" \
+		"setenv bootdelay 0;" \
+	"fi"
+
+#define CONFIG_POSTBOOTMENU \
+	"echo;" \
 	"echo Extra commands:;" \
 	"echo run sercon - Use serial port for control.;" \
 	"echo run usbcon - Use usbtty for control.;" \
@@ -378,6 +391,11 @@ int rx51_kp_getc(void);
 	"run emmcboot;" \
 	"run attachboot;" \
 	"echo"
+
+#define CONFIG_BOOTDELAY 30
+#define CONFIG_AUTOBOOT_KEYED
+#define CONFIG_MENU
+#define CONFIG_MENU_SHOW
 
 /*
  * Miscellaneous configurable options

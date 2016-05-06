@@ -4,22 +4,7 @@
   Copyright(c) 1999 - 2002 Intel Corporation. All rights reserved.
   Copyright 2011 Freescale Semiconductor, Inc.
 
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of the GNU General Public License as published by the Free
-  Software Foundation; either version 2 of the License, or (at your option)
-  any later version.
-
-  This program is distributed in the hope that it will be useful, but WITHOUT
-  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-  more details.
-
-  You should have received a copy of the GNU General Public License along with
-  this program; if not, write to the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston, MA	02111-1307, USA.
-
-  The full GNU General Public License is included in this distribution in the
-  file called LICENSE.
+ * SPDX-License-Identifier:	GPL-2.0+
 
   Contact Information:
   Linux NICS <linux.nics@intel.com>
@@ -88,11 +73,6 @@ void e1000_lower_ee_clk(struct e1000_hw *hw, uint32_t *eecd);
 int do_e1000_spi(cmd_tbl_t *cmdtp, struct e1000_hw *hw,
 		int argc, char * const argv[]);
 #endif
-
-typedef enum {
-	FALSE = 0,
-	TRUE = 1
-} boolean_t;
 
 /* Enumerated types specific to the e1000 hardware */
 /* Media Access Controlers */
@@ -340,7 +320,7 @@ struct e1000_phy_stats {
 						   Control and Address */
 #define IFE_PHY_SPECIAL_CONTROL           0x11  /* 100BaseTx PHY special
 						   control register */
-#define IFE_PHY_RCV_FALSE_CARRIER         0x13  /* 100BaseTx Receive False
+#define IFE_PHY_RCV_FALSE_CARRIER         0x13  /* 100BaseTx Receive false
 						   Carrier Counter */
 #define IFE_PHY_RCV_DISCONNECT            0x14  /* 100BaseTx Receive Disconnet
 						   Counter */
@@ -1040,14 +1020,14 @@ struct e1000_hw_stats {
 };
 
 struct e1000_eeprom_info {
-    e1000_eeprom_type type;
-    uint16_t word_size;
-    uint16_t opcode_bits;
-    uint16_t address_bits;
-    uint16_t delay_usec;
-    uint16_t page_size;
-    boolean_t use_eerd;
-    boolean_t use_eewr;
+e1000_eeprom_type type;
+	uint16_t word_size;
+	uint16_t opcode_bits;
+	uint16_t address_bits;
+	uint16_t delay_usec;
+	uint16_t page_size;
+	bool use_eerd;
+	bool use_eewr;
 };
 
 typedef enum {
@@ -1150,20 +1130,20 @@ struct e1000_hw {
 #if 0
 	uint8_t perm_mac_addr[NODE_ADDRESS_SIZE];
 #endif
-	boolean_t disable_polarity_correction;
-	boolean_t		speed_downgraded;
-	boolean_t get_link_status;
-	boolean_t tbi_compatibility_en;
-	boolean_t tbi_compatibility_on;
-	boolean_t		fc_strict_ieee;
-	boolean_t fc_send_xon;
-	boolean_t report_tx_early;
-	boolean_t phy_reset_disable;
-	boolean_t		initialize_hw_bits_disable;
+	bool disable_polarity_correction;
+	bool		speed_downgraded;
+	bool get_link_status;
+	bool tbi_compatibility_en;
+	bool tbi_compatibility_on;
+	bool		fc_strict_ieee;
+	bool fc_send_xon;
+	bool report_tx_early;
+	bool phy_reset_disable;
+	bool		initialize_hw_bits_disable;
 #if 0
-	boolean_t adaptive_ifs;
-	boolean_t ifs_params_forced;
-	boolean_t in_ifs_mode;
+	bool adaptive_ifs;
+	bool ifs_params_forced;
+	bool in_ifs_mode;
 #endif
 	e1000_smart_speed	smart_speed;
 	e1000_dsp_config	dsp_config_state;
@@ -1860,11 +1840,11 @@ struct e1000_hw {
  * Typical use:
  *  ...
  *  if (TBI_ACCEPT) {
- *	accept_frame = TRUE;
+ *	accept_frame = true;
  *	e1000_tbi_adjust_stats(adapter, MacAddress);
  *	frame_length--;
  *  } else {
- *	accept_frame = FALSE;
+ *	accept_frame = false;
  *  }
  *  ...
  */
@@ -2080,7 +2060,7 @@ struct e1000_hw {
 #define GG82563_PSSR2_ENERGY_DETECT_CHANGED 0x0010 /* 1=Energy Detect Changed */
 #define GG82563_PSSR2_DOWNSHIFT_INTERRUPT   0x0020 /* 1=Downshift Detected */
 #define GG82563_PSSR2_MDI_CROSSOVER_CHANGE  0x0040 /* 1=Crossover Changed */
-#define GG82563_PSSR2_FALSE_CARRIER         0x0100 /* 1=False Carrier */
+#define GG82563_PSSR2_FALSE_CARRIER         0x0100 /* 1=false Carrier */
 #define GG82563_PSSR2_SYMBOL_ERROR          0x0200 /* 1=Symbol Error */
 #define GG82563_PSSR2_LINK_STATUS_CHANGED   0x0400 /* 1=Link Status Changed */
 #define GG82563_PSSR2_AUTO_NEG_COMPLETED    0x0800 /* 1=Auto-Neg Completed */
