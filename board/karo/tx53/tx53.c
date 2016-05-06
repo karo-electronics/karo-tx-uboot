@@ -486,7 +486,10 @@ int board_init(void)
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
 
 	if (ctrlc() || (wrsr & WRSR_TOUT)) {
-		printf("CTRL-C detected; Skipping PMIC setup\n");
+		if (wrsr & WRSR_TOUT)
+			printf("WDOG RESET detected; Skipping PMIC setup\n");
+		else
+			printf("<CTRL-C> detected; safeboot enabled\n");
 		return 1;
 	}
 
@@ -1289,11 +1292,14 @@ static void tx53_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 
-	if (had_ctrlc() || (wrsr & WRSR_TOUT))
-		return;
-
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
+
+	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
+		printf("%s detected; skipping cpu clock change\n",
+			(wrsr & WRSR_TOUT) ? "WDOG RESET" : "<CTRL-C>");
+		return;
+	}
 
 	if (mxc_set_clock(CONFIG_SYS_MX5_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
 		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
@@ -1323,8 +1329,16 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
+	env_cleanup();
+
 	tx53_set_cpu_clock();
-	karo_fdt_move_fdt();
+
+	if (had_ctrlc())
+		setenv_ulong("safeboot", 1);
+	else if (wrsr & WRSR_TOUT)
+		setenv_ulong("wdreset", 1);
+	else
+		karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)

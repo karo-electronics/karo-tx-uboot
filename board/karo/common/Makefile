@@ -28,7 +28,7 @@ ifeq ($(CONFIG_SPL_BUILD),)
 endif
 COBJS-$(CONFIG_CMD_NAND)		+= nand.o
 COBJS-$(CONFIG_ENV_IS_IN_MMC)		+= mmc.o
-
+COBJS-y 				+= env.o
 COBJS   := $(COBJS-y)
 SOBJS	:= 
 

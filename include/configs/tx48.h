@@ -54,7 +54,7 @@
  * Memory configuration options
  */
 #define CONFIG_SYS_SDRAM_DDR3
-#define CONFIG_NR_DRAM_BANKS		1		/*  1 bank of SDRAM */
+#define CONFIG_NR_DRAM_BANKS		0x1		/* '1' would be converted to 'y' by define2mk.sed */
 #define PHYS_SDRAM_1			0x80000000	/* SDRAM Bank #1 */
 #define CONFIG_MAX_RAM_BANK_SIZE	SZ_1G
 
@@ -108,7 +108,7 @@
 #define CONFIG_BOOTARGS			"init=/linuxrc console=ttyO0,115200 ro debug panic=1"
 #define CONFIG_BOOTCOMMAND		"run bootcmd_${boot_mode} bootm_cmd"
 #define CONFIG_LOADADDR			83000000
-#define CONFIG_FDTADDR			80001000
+#define CONFIG_FDTADDR			81000000
 #define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
 #define CONFIG_SYS_FDT_ADDR		_pfx(0x, CONFIG_FDTADDR)
 #define CONFIG_U_BOOT_IMG_SIZE		SZ_1M
@@ -228,9 +228,9 @@
 #define CONFIG_SYS_NAND_ECCSIZE		512
 #define CONFIG_SYS_NAND_ECCBYTES	14
 #define CONFIG_CMD_NAND_TRIMFFS
-#define CONFIG_SYS_NAND_MAX_CHIPS	1
+#define CONFIG_SYS_NAND_MAX_CHIPS	0x1
 #define CONFIG_SYS_NAND_MAXBAD		20 /* Max. number of bad blocks guaranteed by manufacturer */
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
+#define CONFIG_SYS_MAX_NAND_DEVICE	0x1
 #define CONFIG_SYS_NAND_5_ADDR_CYCLE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
 #ifdef CONFIG_ENV_IS_IN_NAND

@@ -79,7 +79,7 @@ struct ipu_ch_param {
 	temp1;							\
 })
 
-#define IPU_SW_RST_TOUT_USEC	(10000)
+#define IPU_SW_RST_TOUT_USEC	10000
 
 static int clk_ipu_enable(struct clk *clk)
 {

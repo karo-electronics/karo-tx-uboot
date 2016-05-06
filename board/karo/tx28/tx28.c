@@ -51,6 +51,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define TX28_LED_GPIO		MX28_PAD_ENET0_RXD3__GPIO_4_10
 
+#define STK5_CAN_XCVR_GPIO	MX28_PAD_LCD_D00__GPIO_1_0
+
 static const struct gpio tx28_gpios[] = {
 	{ TX28_USBH_VBUSEN_GPIO, GPIOF_OUTPUT_INIT_LOW, "USBH VBUSEN", },
 	{ TX28_USBH_OC_GPIO, GPIOF_INPUT, "USBH OC", },
@@ -107,9 +109,11 @@ static inline void random_init(void)
 	int i;
 
 	for (i = 0; i < MAX_LOOPS; i++) {
-		unsigned int usec = readl(&digctl_regs->hw_digctl_microseconds);
+		u32 hclk = readl(&digctl_regs->hw_digctl_hclkcount);
+		u32 entropy = readl(&digctl_regs->hw_digctl_entropy);
+		u32 usec = readl(&digctl_regs->hw_digctl_microseconds);
 
-		seed = get_timer(usec + random + seed);
+		seed = get_timer(hclk ^ entropy ^ usec ^ random ^ seed);
 		srand(seed);
 		random = rand();
 	}
@@ -143,7 +147,7 @@ int board_early_init_f(void)
 	while ((rtc_stat = readl(&rtc_regs->hw_rtc_stat)) &
 		RTC_STAT_STALE_REGS_PERSISTENT0) {
 		if (timeout-- < 0)
-			return 0;
+			return 1;
 		udelay(1);
 	}
 	boot_cause = readl(&rtc_regs->hw_rtc_persistent0);
@@ -158,11 +162,16 @@ int board_early_init_f(void)
 
 rtc_err:
 	serial_puts("Inconsistent value in RTC_PERSISTENT0 register; power-on-reset required\n");
-	return 0;
+	return 1;
 }
 
 int board_init(void)
 {
+	if (ctrlc()) {
+		printf("CTRL-C detected; safeboot enabled\n");
+		return 1;
+	}
+
 	/* Address of boot parameters */
 #ifdef CONFIG_OF_LIBFDT
 	gd->bd->bi_arch_number = -1;
@@ -785,9 +794,9 @@ static void stk5v5_board_init(void)
 	stk5_board_init();
 
 	/* init flexcan transceiver enable GPIO */
-	gpio_request_one(MXS_GPIO_NR(0, 1), GPIOF_OUTPUT_INIT_HIGH,
+	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOF_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
-	mxs_iomux_setup_pad(MX28_PAD_LCD_D00__GPIO_1_0);
+	mxs_iomux_setup_pad(STK5_CAN_XCVR_GPIO);
 }
 
 int tx28_fec1_enabled(void)
@@ -831,7 +840,12 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
-	karo_fdt_move_fdt();
+	env_cleanup();
+
+	if (had_ctrlc())
+		setenv_ulong("safeboot", 1);
+	else
+		karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)

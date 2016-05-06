@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012,2013 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2015 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -14,7 +14,6 @@
  * GNU General Public License for more details.
  *
  */
-
 #include <common.h>
 #include <errno.h>
 #include <libfdt.h>
@@ -37,6 +36,7 @@
 #include <asm/arch/sys_proto.h>
 
 #include "../common/karo.h"
+#include "pmic.h"
 
 #define TX6_FEC_RST_GPIO		IMX_GPIO_NR(7, 6)
 #define TX6_FEC_PWR_GPIO		IMX_GPIO_NR(3, 20)
@@ -49,15 +49,23 @@
 
 #define TX6_RESET_OUT_GPIO		IMX_GPIO_NR(7, 12)
 
-#define TEMPERATURE_MIN			-40
+#ifdef CONFIG_MX6_TEMPERATURE_MIN
+#define TEMPERATURE_MIN			CONFIG_MX6_TEMPERATURE_MIN
+#else
+#define TEMPERATURE_MIN			(-40)
+#endif
+#ifdef CONFIG_MX6_TEMPERATURE_HOT
+#define TEMPERATURE_HOT			CONFIG_MX6_TEMPERATURE_HOT
+#else
 #define TEMPERATURE_HOT			80
-#define TEMPERATURE_MAX			125
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 static const iomux_v3_cfg_t tx6qdl_pads[] = {
+#ifndef CONFIG_NO_NAND
 	/* NAND flash pads */
 	MX6_PAD_NANDF_CLE__RAWNAND_CLE,
 	MX6_PAD_NANDF_ALE__RAWNAND_ALE,
@@ -74,7 +82,7 @@ static const iomux_v3_cfg_t tx6qdl_pads[] = {
 	MX6_PAD_NANDF_D5__RAWNAND_D5,
 	MX6_PAD_NANDF_D6__RAWNAND_D6,
 	MX6_PAD_NANDF_D7__RAWNAND_D7,
-
+#endif
 	/* RESET_OUT */
 	MX6_PAD_GPIO_17__GPIO_7_12,
 
@@ -192,8 +200,7 @@ static void print_reset_cause(void)
 	printf("\n");
 }
 
-int read_cpu_temperature(void);
-int check_cpu_temperature(int boot);
+static const char *tx6_mod_suffix;
 
 static void tx6qdl_print_cpuinfo(void)
 {
@@ -203,15 +210,19 @@ static void tx6qdl_print_cpuinfo(void)
 	switch ((cpurev >> 12) & 0xff) {
 	case MXC_CPU_MX6SL:
 		cpu_str = "SL";
+		tx6_mod_suffix = "?";
 		break;
 	case MXC_CPU_MX6DL:
 		cpu_str = "DL";
+		tx6_mod_suffix = "U";
 		break;
 	case MXC_CPU_MX6SOLO:
 		cpu_str = "SOLO";
+		tx6_mod_suffix = "S";
 		break;
 	case MXC_CPU_MX6Q:
 		cpu_str = "Q";
+		tx6_mod_suffix = "Q";
 		break;
 	}
 
@@ -222,194 +233,9 @@ static void tx6qdl_print_cpuinfo(void)
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 
 	print_reset_cause();
+#ifdef CONFIG_MX6_TEMPERATURE_HOT
 	check_cpu_temperature(1);
-}
-
-#define LTC3676_BUCK1		0x01
-#define LTC3676_BUCK2		0x02
-#define LTC3676_BUCK3		0x03
-#define LTC3676_BUCK4		0x04
-#define LTC3676_DVB1A		0x0A
-#define LTC3676_DVB1B		0x0B
-#define LTC3676_DVB2A		0x0C
-#define LTC3676_DVB2B		0x0D
-#define LTC3676_DVB3A		0x0E
-#define LTC3676_DVB3B		0x0F
-#define LTC3676_DVB4A		0x10
-#define LTC3676_DVB4B		0x11
-#define LTC3676_MSKPG		0x13
-#define LTC3676_CLIRQ		0x1f
-
-#define LTC3676_BUCK_DVDT_FAST	(1 << 0)
-#define LTC3676_BUCK_KEEP_ALIVE	(1 << 1)
-#define LTC3676_BUCK_CLK_RATE_LOW (1 << 2)
-#define LTC3676_BUCK_PHASE_SEL	(1 << 3)
-#define LTC3676_BUCK_ENABLE_300	(1 << 4)
-#define LTC3676_BUCK_PULSE_SKIP	(0 << 5)
-#define LTC3676_BUCK_BURST_MODE	(1 << 5)
-#define LTC3676_BUCK_CONTINUOUS	(2 << 5)
-#define LTC3676_BUCK_ENABLE	(1 << 7)
-
-#define LTC3676_PGOOD_MASK	(1 << 5)
-
-#define LTC3676_MSKPG_BUCK1	(1 << 0)
-#define LTC3676_MSKPG_BUCK2	(1 << 1)
-#define LTC3676_MSKPG_BUCK3	(1 << 2)
-#define LTC3676_MSKPG_BUCK4	(1 << 3)
-#define LTC3676_MSKPG_LDO2	(1 << 5)
-#define LTC3676_MSKPG_LDO3	(1 << 6)
-#define LTC3676_MSKPG_LDO4	(1 << 7)
-
-#define VDD_IO_VAL		mV_to_regval(vout_to_vref(3300 * 10, 5))
-#define VDD_IO_VAL_LP		mV_to_regval(vout_to_vref(3100 * 10, 5))
-#define VDD_IO_VAL_2		mV_to_regval(vout_to_vref(3300 * 10, 5_2))
-#define VDD_IO_VAL_2_LP		mV_to_regval(vout_to_vref(3100 * 10, 5_2))
-#define VDD_SOC_VAL		mV_to_regval(vout_to_vref(1425 * 10, 6))
-#define VDD_SOC_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 6))
-#define VDD_DDR_VAL		mV_to_regval(vout_to_vref(1500 * 10, 7))
-#define VDD_DDR_VAL_LP		mV_to_regval(vout_to_vref(1500 * 10, 7))
-#define VDD_CORE_VAL		mV_to_regval(vout_to_vref(1425 * 10, 8))
-#define VDD_CORE_VAL_LP		mV_to_regval(vout_to_vref(900 * 10, 8))
-
-/* LDO1 */
-#define R1_1			470
-#define R2_1			150
-/* LDO4 */
-#define R1_4			470
-#define R2_4			150
-/* Buck1 */
-#define R1_5			390
-#define R2_5			110
-#define R1_5_2			470
-#define R2_5_2			150
-/* Buck2 (SOC) */
-#define R1_6			150
-#define R2_6			180
-/* Buck3 (DDR) */
-#define R1_7			150
-#define R2_7			140
-/* Buck4 (CORE) */
-#define R1_8			150
-#define R2_8			180
-
-/* calculate voltages in 10mV */
-#define R1(idx)			R1_##idx
-#define R2(idx)			R2_##idx
-
-#define vout_to_vref(vout, idx)	((vout) * R2(idx) / (R1(idx) + R2(idx)))
-#define vref_to_vout(vref, idx)	DIV_ROUND_UP((vref) * (R1(idx) + R2(idx)), R2(idx))
-
-#define mV_to_regval(mV)	DIV_ROUND(((((mV) < 4125) ? 4125 : (mV)) - 4125), 125)
-#define regval_to_mV(v)		(((v) * 125 + 4125))
-
-static struct ltc3673_regs {
-	u8 addr;
-	u8 val;
-	u8 mask;
-} ltc3676_regs[] = {
-	{ LTC3676_MSKPG, ~LTC3676_MSKPG_BUCK1, },
-	{ LTC3676_DVB2B, VDD_SOC_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
-	{ LTC3676_DVB3B, VDD_DDR_VAL_LP, ~0x3f, },
-	{ LTC3676_DVB4B, VDD_CORE_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
-	{ LTC3676_DVB2A, VDD_SOC_VAL, ~0x3f, },
-	{ LTC3676_DVB3A, VDD_DDR_VAL, ~0x3f, },
-	{ LTC3676_DVB4A, VDD_CORE_VAL, ~0x3f, },
-	{ LTC3676_BUCK1, LTC3676_BUCK_BURST_MODE | LTC3676_BUCK_CLK_RATE_LOW, },
-	{ LTC3676_BUCK2, LTC3676_BUCK_BURST_MODE, },
-	{ LTC3676_BUCK3, LTC3676_BUCK_BURST_MODE, },
-	{ LTC3676_BUCK4, LTC3676_BUCK_BURST_MODE, },
-	{ LTC3676_CLIRQ, 0, }, /* clear interrupt status */
-};
-
-static struct ltc3673_regs ltc3676_regs_1[] = {
-	{ LTC3676_DVB1B, VDD_IO_VAL_LP | LTC3676_PGOOD_MASK, ~0x3f, },
-	{ LTC3676_DVB1A, VDD_IO_VAL, ~0x3f, },
-};
-
-static struct ltc3673_regs ltc3676_regs_2[] = {
-	{ LTC3676_DVB1B, VDD_IO_VAL_2_LP | LTC3676_PGOOD_MASK, ~0x3f, },
-	{ LTC3676_DVB1A, VDD_IO_VAL_2, ~0x3f, },
-};
-
-static int tx6_rev_2(void)
-{
-	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank5_regs *fuse = (void *)ocotp->bank[5].fuse_regs;
-	u32 pad_settings = readl(&fuse->pad_settings);
-
-	debug("Fuse pad_settings @ %p = %02x\n",
-		&fuse->pad_settings, pad_settings);
-	return pad_settings & 1;
-}
-
-static int tx6_ltc3676_setup_regs(struct ltc3673_regs *r, size_t count)
-{
-	int ret;
-	int i;
-
-	for (i = 0; i < count; i++, r++) {
-#ifdef DEBUG
-		unsigned char value;
-
-		ret = i2c_read(CONFIG_SYS_I2C_SLAVE, r->addr, 1, &value, 1);
-		if ((value & ~r->mask) != r->val) {
-			printf("Changing PMIC reg %02x from %02x to %02x\n",
-				r->addr, value, r->val);
-		}
-		if (ret) {
-			printf("%s: failed to read PMIC register %02x: %d\n",
-				__func__, r->addr, ret);
-			return ret;
-		}
 #endif
-		ret = i2c_write(CONFIG_SYS_I2C_SLAVE,
-				r->addr, 1, &r->val, 1);
-		if (ret) {
-			printf("%s: failed to write PMIC register %02x: %d\n",
-				__func__, r->addr, ret);
-			return ret;
-		}
-	}
-	return 0;
-}
-
-static int setup_pmic_voltages(void)
-{
-	int ret;
-	unsigned char value;
-
-	ret = i2c_probe(CONFIG_SYS_I2C_SLAVE);
-	if (ret != 0) {
-		printf("Failed to initialize I2C\n");
-		return ret;
-	}
-
-	ret = i2c_read(CONFIG_SYS_I2C_SLAVE, 0x11, 1, &value, 1);
-	if (ret) {
-		printf("%s: i2c_read error: %d\n", __func__, ret);
-		return ret;
-	}
-
-	ret = tx6_ltc3676_setup_regs(ltc3676_regs, ARRAY_SIZE(ltc3676_regs));
-	if (ret)
-		return ret;
-
-	printf("VDDCORE set to %umV\n",
-		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_CORE_VAL), 8), 10));
-	printf("VDDSOC  set to %umV\n",
-		DIV_ROUND(vref_to_vout(regval_to_mV(VDD_SOC_VAL), 6), 10));
-
-	if (tx6_rev_2()) {
-		ret = tx6_ltc3676_setup_regs(ltc3676_regs_2,
-				ARRAY_SIZE(ltc3676_regs_2));
-		printf("VDDIO   set to %umV\n",
-			DIV_ROUND(vref_to_vout(
-					regval_to_mV(VDD_IO_VAL_2), 5_2), 10));
-	} else {
-		ret = tx6_ltc3676_setup_regs(ltc3676_regs_1,
-				ARRAY_SIZE(ltc3676_regs_1));
-	}
-	return ret;
 }
 
 int board_early_init_f(void)
@@ -420,6 +246,12 @@ int board_early_init_f(void)
 	return 0;
 }
 
+#ifndef CONFIG_MX6_TEMPERATURE_HOT
+static bool tx6_temp_check_enabled = true;
+#else
+#define tx6_temp_check_enabled	0
+#endif
+
 int board_init(void)
 {
 	int ret;
@@ -428,12 +260,18 @@ int board_init(void)
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x1000;
 	gd->bd->bi_arch_number = -1;
 
-	if (ctrlc()) {
-		printf("CTRL-C detected; Skipping PMIC setup\n");
+	if (ctrlc() || (wrsr & WRSR_TOUT)) {
+		if (wrsr & WRSR_TOUT)
+			printf("WDOG RESET detected; Skipping PMIC setup\n");
+		else
+			printf("<CTRL-C> detected; safeboot enabled\n");
+#ifndef CONFIG_MX6_TEMPERATURE_HOT
+		tx6_temp_check_enabled = false;
+#endif
 		return 1;
 	}
 
-	ret = setup_pmic_voltages();
+	ret = tx6_pmic_init();
 	if (ret) {
 		printf("Failed to setup PMIC voltages\n");
 		hang();
@@ -462,27 +300,44 @@ void dram_init_banksize(void)
 }
 
 #ifdef	CONFIG_CMD_MMC
+#define USDHC_PAD_CTRL (PAD_CTL_PUS_47K_UP |			\
+	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |		\
+	PAD_CTL_SRE_FAST)
+
 static const iomux_v3_cfg_t mmc0_pads[] = {
-	MX6_PAD_SD1_CMD__USDHC1_CMD,
-	MX6_PAD_SD1_CLK__USDHC1_CLK,
-	MX6_PAD_SD1_DAT0__USDHC1_DAT0,
-	MX6_PAD_SD1_DAT1__USDHC1_DAT1,
-	MX6_PAD_SD1_DAT2__USDHC1_DAT2,
-	MX6_PAD_SD1_DAT3__USDHC1_DAT3,
+	MX6_PAD_SD1_CMD__USDHC1_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_CLK__USDHC1_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT0__USDHC1_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT1__USDHC1_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT2__USDHC1_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD1_DAT3__USDHC1_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* SD1 CD */
 	MX6_PAD_SD3_CMD__GPIO_7_2,
 };
 
 static const iomux_v3_cfg_t mmc1_pads[] = {
-	MX6_PAD_SD2_CMD__USDHC2_CMD,
-	MX6_PAD_SD2_CLK__USDHC2_CLK,
-	MX6_PAD_SD2_DAT0__USDHC2_DAT0,
-	MX6_PAD_SD2_DAT1__USDHC2_DAT1,
-	MX6_PAD_SD2_DAT2__USDHC2_DAT2,
-	MX6_PAD_SD2_DAT3__USDHC2_DAT3,
+	MX6_PAD_SD2_CMD__USDHC2_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_CLK__USDHC2_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT0__USDHC2_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT1__USDHC2_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT2__USDHC2_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD2_DAT3__USDHC2_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	/* SD2 CD */
 	MX6_PAD_SD3_CLK__GPIO_7_3,
 };
+
+#ifdef CONFIG_MMC_BOOT_SIZE
+static const iomux_v3_cfg_t mmc3_pads[] = {
+	MX6_PAD_SD4_CMD__USDHC4_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_CLK__USDHC4_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT0__USDHC4_DAT0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT1__USDHC4_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT2__USDHC4_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	MX6_PAD_SD4_DAT3__USDHC4_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	/* eMMC RESET */
+	MX6_PAD_NANDF_ALE__USDHC4_RST,
+};
+#endif
 
 static struct tx6_esdhc_cfg {
 	const iomux_v3_cfg_t *pads;
@@ -491,6 +346,18 @@ static struct tx6_esdhc_cfg {
 	struct fsl_esdhc_cfg cfg;
 	int cd_gpio;
 } tx6qdl_esdhc_cfg[] = {
+#ifdef CONFIG_MMC_BOOT_SIZE
+	{
+		.pads = mmc3_pads,
+		.num_pads = ARRAY_SIZE(mmc3_pads),
+		.clkid = MXC_ESDHC4_CLK,
+		.cfg = {
+			.esdhc_base = (void __iomem *)USDHC4_BASE_ADDR,
+			.max_bus_width = 4,
+		},
+		.cd_gpio = -EINVAL,
+	},
+#endif
 	{
 		.pads = mmc0_pads,
 		.num_pads = ARRAY_SIZE(mmc0_pads),
@@ -523,11 +390,12 @@ int board_mmc_getcd(struct mmc *mmc)
 	struct tx6_esdhc_cfg *cfg = to_tx6_esdhc_cfg(mmc->priv);
 
 	if (cfg->cd_gpio < 0)
-		return cfg->cd_gpio;
+		return 1;
 
-	debug("SD card %d is %spresent\n",
+	debug("SD card %d is %spresent (GPIO %d)\n",
 		cfg - tx6qdl_esdhc_cfg,
-		gpio_get_value(cfg->cd_gpio) ? "NOT " : "");
+		gpio_get_value(cfg->cd_gpio) ? "NOT " : "",
+		cfg->cd_gpio);
 	return !gpio_get_value(cfg->cd_gpio);
 }
 
@@ -543,12 +411,14 @@ int board_mmc_init(bd_t *bis)
 		cfg->cfg.sdhc_clk = mxc_get_clock(cfg->clkid);
 		imx_iomux_v3_setup_multiple_pads(cfg->pads, cfg->num_pads);
 
-		ret = gpio_request_one(cfg->cd_gpio,
-				GPIOF_INPUT, "MMC CD");
-		if (ret) {
-			printf("Error %d requesting GPIO%d_%d\n",
-				ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
-			continue;
+		if (cfg->cd_gpio >= 0) {
+			ret = gpio_request_one(cfg->cd_gpio,
+					GPIOF_INPUT, "MMC CD");
+			if (ret) {
+				printf("Error %d requesting GPIO%d_%d\n",
+					ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
+				continue;
+			}
 		}
 
 		debug("%s: Initializing MMC slot %d\n", __func__, i);
@@ -557,7 +427,7 @@ int board_mmc_init(bd_t *bis)
 		mmc = find_mmc_device(i);
 		if (mmc == NULL)
 			continue;
-		if (board_mmc_getcd(mmc) > 0)
+		if (board_mmc_getcd(mmc))
 			mmc_init(mmc);
 	}
 	return 0;
@@ -601,10 +471,13 @@ enum {
 	LED_STATE_ON,
 };
 
-static inline int calc_blink_rate(int tmp)
+static inline int calc_blink_rate(void)
 {
+	if (!tx6_temp_check_enabled)
+		return CONFIG_SYS_HZ;
+
 	return CONFIG_SYS_HZ + CONFIG_SYS_HZ / 10 -
-		(tmp - TEMPERATURE_MIN) * CONFIG_SYS_HZ /
+		(check_cpu_temperature(0) - TEMPERATURE_MIN) * CONFIG_SYS_HZ /
 		(TEMPERATURE_HOT - TEMPERATURE_MIN);
 }
 
@@ -618,10 +491,10 @@ void show_activity(int arg)
 		last = get_timer(0);
 		gpio_set_value(TX6_LED_GPIO, 1);
 		led_state = LED_STATE_ON;
-		blink_rate = calc_blink_rate(check_cpu_temperature(0));
+		blink_rate = calc_blink_rate();
 	} else {
 		if (get_timer(last) > blink_rate) {
-			blink_rate = calc_blink_rate(check_cpu_temperature(0));
+			blink_rate = calc_blink_rate();
 			last = get_timer_masked();
 			if (led_state == LED_STATE_ON) {
 				gpio_set_value(TX6_LED_GPIO, 0);
@@ -1150,6 +1023,7 @@ void lcd_ctrl_init(void *lcdbase)
 		int lvds_mapping = karo_fdt_get_lvds_mapping(working_fdt, 0);
 		int lvds_chan_mask = karo_fdt_get_lvds_channels(working_fdt);
 		uint32_t gpr2;
+		uint32_t gpr3;
 
 		if (lvds_chan_mask == 0) {
 			printf("No LVDS channel active\n");
@@ -1164,12 +1038,18 @@ void lcd_ctrl_init(void *lcdbase)
 		gpr2 |= (lvds_chan_mask & 2) ? 3 << 2 : 0;
 		debug("writing %08x to GPR2[%08x]\n", gpr2, IOMUXC_BASE_ADDR + 8);
 		writel(gpr2, IOMUXC_BASE_ADDR + 8);
+
+		gpr3 = readl(IOMUXC_BASE_ADDR + 0xc);
+		gpr3 &= ~((3 << 8) | (3 << 6));
+		writel(gpr3, IOMUXC_BASE_ADDR + 0xc);
 	}
 	if (karo_load_splashimage(0) == 0) {
 		int ret;
 
 		debug("Initializing LCD controller\n");
-		ret = ipuv3_fb_init(p, 0, pix_fmt, DI_PCLK_PLL3, di_clk_rate, -1);
+		ret = ipuv3_fb_init(p, 0, pix_fmt,
+				is_lvds() ? DI_PCLK_LDB : DI_PCLK_PLL3,
+				di_clk_rate, -1);
 		if (ret) {
 			printf("Failed to initialize FB driver: %d\n", ret);
 			lcd_enabled = 0;
@@ -1206,12 +1086,14 @@ static void tx6qdl_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
 
-	if (had_ctrlc() || (wrsr & WRSR_TOUT))
-		return;
-
 	if (cpu_clk == 0 || cpu_clk == mxc_get_clock(MXC_ARM_CLK) / 1000000)
 		return;
 
+	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
+		printf("%s detected; skipping cpu clock change\n",
+			(wrsr & WRSR_TOUT) ? "WDOG RESET" : "<CTRL-C>");
+		return;
+	}
 	if (mxc_set_clock(CONFIG_SYS_MX6_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
 		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
 		printf("CPU clock set to %lu.%03lu MHz\n",
@@ -1240,8 +1122,19 @@ int board_late_init(void)
 	int ret = 0;
 	const char *baseboard;
 
+	env_cleanup();
+
+	if (tx6_temp_check_enabled)
+		check_cpu_temperature(1);
+
 	tx6qdl_set_cpu_clock();
-	karo_fdt_move_fdt();
+
+	if (had_ctrlc())
+		setenv_ulong("safeboot", 1);
+	else if (wrsr & WRSR_TOUT)
+		setenv_ulong("wdreset", 1);
+	else
+		karo_fdt_move_fdt();
 
 	baseboard = getenv("baseboard");
 	if (!baseboard)
@@ -1280,6 +1173,71 @@ exit:
 	return ret;
 }
 
+#ifdef CONFIG_NO_NAND
+#define TX6_FLASH_SZ	(CONFIG_MMC_BOOT_SIZE / 4096 + 2)
+#else /* CONFIG_NO_NAND */
+#define TX6_FLASH_SZ	(CONFIG_SYS_NAND_BLOCKS / 1024 - 1)
+#endif /* CONFIG_NO_NAND */
+
+#ifdef CONFIG_SYS_SDRAM_BUS_WIDTH
+#define TX6_DDR_SZ	(ffs(CONFIG_SYS_SDRAM_BUS_WIDTH / 16) - 1)
+#else
+#define TX6_DDR_SZ	2
+#endif
+
+static char tx6_mem_table[] = {
+	'4', /* 256MiB SDRAM 16bit; 128MiB NAND */
+	'1', /* 512MiB SDRAM 32bit; 128MiB NAND */
+	'0', /* 1GiB SDRAM 64bit; 128MiB NAND */
+	'?', /* 256MiB SDRAM 16bit; 256MiB NAND */
+	'?', /* 512MiB SDRAM 32bit; 256MiB NAND */
+	'2', /* 1GiB SDRAM 64bit; 256MiB NAND */
+	'?', /* 256MiB SDRAM 16bit; 4GiB eMMC */
+	'5', /* 512MiB SDRAM 32bit; 4GiB eMMC */
+	'3', /* 1GiB SDRAM 64bit; 4GiB eMMC */
+	'?', /* 256MiB SDRAM 16bit; 8GiB eMMC */
+	'?', /* 512MiB SDRAM 32bit; 8GiB eMMC */
+	'0', /* 1GiB SDRAM 64bit; 8GiB eMMC */
+};
+
+static inline char tx6_mem_suffix(void)
+{
+	size_t mem_idx = (TX6_FLASH_SZ * 3) + TX6_DDR_SZ;
+
+	debug("TX6_DDR_SZ=%d TX6_FLASH_SZ=%d idx=%d\n",
+		TX6_DDR_SZ, TX6_FLASH_SZ, mem_idx);
+
+	if (mem_idx >= ARRAY_SIZE(tx6_mem_table))
+		return '?';
+
+	return tx6_mem_table[mem_idx];
+};
+
+static struct {
+	uchar addr;
+	uchar rev;
+} tx6_mod_revs[] = {
+	{ 0x3c, 1, },
+	{ 0x32, 2, },
+	{ 0x33, 3, },
+};
+
+static int tx6_get_mod_rev(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(tx6_mod_revs); i++) {
+		int ret = i2c_probe(tx6_mod_revs[i].addr);
+		if (ret == 0) {
+			debug("I2C probe succeeded for addr %02x\n", tx6_mod_revs[i].addr);
+			return tx6_mod_revs[i].rev;
+		}
+		debug("I2C probe returned %d for addr %02x\n", ret,
+			tx6_mod_revs[i].addr);
+	}
+	return 0;
+}
+
 int checkboard(void)
 {
 	u32 cpurev = get_cpu_rev();
@@ -1287,11 +1245,13 @@ int checkboard(void)
 
 	tx6qdl_print_cpuinfo();
 
-	printf("Board: Ka-Ro TX6%c-%d%d1%d\n",
-		cpu_variant == MXC_CPU_MX6Q ? 'Q' : 'U',
+	i2c_init(CONFIG_SYS_I2C_SPEED, 0 /* unused */);
+
+	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
+		tx6_mod_suffix,
 		cpu_variant == MXC_CPU_MX6Q ? 1 : 8,
-		is_lvds(), 1 - PHYS_SDRAM_1_WIDTH / 64 +
-		2 * (CONFIG_SYS_NAND_BLOCKS / 1024 - 1));
+		is_lvds(), tx6_get_mod_rev(),
+		tx6_mem_suffix());
 
 	return 0;
 }

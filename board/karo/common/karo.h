@@ -22,6 +22,8 @@ struct fb_videomode;
 #define is_lvds()			0
 #endif
 
+void env_cleanup(void);
+
 #ifdef CONFIG_OF_LIBFDT
 void karo_fdt_remove_node(void *blob, const char *node);
 void karo_fdt_move_fdt(void);

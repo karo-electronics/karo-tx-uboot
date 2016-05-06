@@ -139,7 +139,11 @@ FIQ_STACK_START:
 /* IRQ stack memory (calculated at run-time) + 8 bytes */
 .globl IRQ_STACK_START_IN
 IRQ_STACK_START_IN:
+#ifdef IRAM_BASE_ADDR
+	.word	IRAM_BASE_ADDR + 0x20
+#else
 	.word	0x0badc0de
+#endif
 
 /*
  * the actual reset code
