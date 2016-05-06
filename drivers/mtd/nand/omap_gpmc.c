@@ -1128,13 +1128,8 @@ int board_nand_init(struct nand_chip *nand)
 #if defined(CONFIG_AM33XX) || defined(CONFIG_NAND_OMAP_BCH8)
 	nand->ecc.mode = NAND_ECC_HW;
 	nand->ecc.layout = &hw_bch8_nand_oob;
-#ifdef CONFIG_SYS_GPMC_PREFETCH_ENABLE
-	nand->ecc.size = CONFIG_SYS_NAND_ECCSIZE * 4;
-	nand->ecc.bytes = CONFIG_SYS_NAND_ECCBYTES * 4;
-#else
 	nand->ecc.size = CONFIG_SYS_NAND_ECCSIZE;
 	nand->ecc.bytes = CONFIG_SYS_NAND_ECCBYTES;
-#endif
 	nand->ecc.strength = 8;
 	nand->ecc.hwctl = omap_enable_ecc_bch;
 	nand->ecc.correct = omap_correct_data_bch;
