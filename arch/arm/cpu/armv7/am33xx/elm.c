@@ -111,8 +111,7 @@ int elm_check_error(u8 *syndrome, u32 nibbles, u32 *error_count,
 	/* wait for processing to complete */
 	while (!(readl(&elm_cfg->irqstatus) & (0x1 << poly)));
 	/* clear status */
-	writel((readl(&elm_cfg->irqstatus) & ~(0x1 << poly)),
-		&elm_cfg->irqstatus);
+	writel(0x1 << poly, &elm_cfg->irqstatus);
 
 	/* check if correctable */
 	location_status = readl(&elm_cfg->error_location[poly].location_status);
