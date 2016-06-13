@@ -254,8 +254,12 @@
 	",512k@" xstr(CONFIG_SYS_NAND_BBT_OFFSET) "(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - \
 					GENERATED_GBL_DATA_SIZE)
+#else
+#define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SPL_STACK
+#endif
 
 /* Defines for SPL */
 #define CONFIG_SPL_START_S_PATH		"arch/arm/cpu/arm926ejs/mxs"
@@ -268,5 +272,6 @@
 #define CONFIG_SYS_SPL_BATT_BO_LEVEL	2400
 #define CONFIG_SYS_SPL_VDDA_BO_VAL	100
 #define CONFIG_SYS_SPL_VDDMEM_VAL	0	/* VDDMEM is not utilized on TX28 */
+#define CONFIG_SPL_STACK		0x1fffc /* End of OCRAM */
 
 #endif /* __CONFIG_H */
