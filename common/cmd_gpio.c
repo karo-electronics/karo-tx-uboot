@@ -211,8 +211,14 @@ static int do_gpio(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return (ret && ret != -EBUSY) ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
 
+#ifdef gpio_status
+#define gpio_status_help_msg "gpio status [-a] [<bank> | <pin>]  - show [all/claimed] GPIOs"
+#else
+#define gpio_status_help_msg ""
+#endif
+
 U_BOOT_CMD(gpio, 4, 0, do_gpio,
 	   "query and control gpio pins",
 	   "<input|set|clear|toggle> <pin>\n"
 	   "    - input/set/clear/toggle the specified pin\n"
-	   "gpio status [-a] [<bank> | <pin>]  - show [all/claimed] GPIOs");
+	   gpio_status_help_msg);
