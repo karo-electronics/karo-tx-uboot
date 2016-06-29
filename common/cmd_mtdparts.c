@@ -1406,17 +1406,17 @@ static int delete_partition(const char *id)
 				part->name, part->size, part->offset);
 
 		if (part_del(dev, part) != 0)
-			return 1;
+			return CMD_RET_FAILURE;
 
 		if (generate_mtdparts_save(last_parts, MTDPARTS_MAXLEN) != 0) {
 			printf("generated mtdparts too long, resetting to null\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	printf("partition %s not found\n", id);
-	return 1;
+	return CMD_RET_FAILURE;
 }
 
 #if defined(CONFIG_CMD_MTDPARTS_SPREAD)
@@ -1482,7 +1482,7 @@ static int spread_partitions(void)
 		dev = list_entry(dentry, struct mtd_device, link);
 
 		if (get_mtd_info(dev->id->type, dev->id->num, &mtd))
-			return 1;
+			return CMD_RET_FAILURE;
 
 		part_num = 0;
 		cur_offs = 0;
@@ -1508,9 +1508,9 @@ static int spread_partitions(void)
 
 	if (generate_mtdparts_save(last_parts, MTDPARTS_MAXLEN) != 0) {
 		printf("generated mtdparts too long, resetting to null\n");
-		return 1;
+		return CMD_RET_FAILURE;
 	}
-	return 0;
+	return CMD_RET_SUCCESS;
 }
 #endif /* CONFIG_CMD_MTDPARTS_SPREAD */
 
@@ -1897,15 +1897,15 @@ static int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	u8 pnum;
 
 	if (mtdparts_init() !=0)
-		return 1;
+		return CMD_RET_FAILURE;
 
 	if (argc < 2) {
 		printf("no partition id specified\n");
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 
 	if (find_dev_and_part(argv[1], &dev, &pnum, &part) != 0)
-		return 1;
+		return CMD_RET_FAILURE;
 
 	current_mtd_dev = dev;
 	current_mtd_partnum = pnum;
@@ -1914,7 +1914,7 @@ static int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	printf("partition changed to %s%d,%d\n",
 			MTD_DEV_TYPE(dev->id->type), dev->id->num, pnum);
 
-	return 0;
+	return CMD_RET_SUCCESS;
 }
 
 /**
@@ -1945,17 +1945,18 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 			setenv("mtdparts", NULL);
 
 			/* mtd_devices_init() calls current_save() */
-			return mtd_devices_init();
+			return mtd_devices_init() ? CMD_RET_FAILURE :
+				CMD_RET_SUCCESS;
 		}
 	}
 
 	/* make sure we are in sync with env variables */
 	if (mtdparts_init() != 0)
-		return 1;
+		return CMD_RET_FAILURE;
 
 	if (argc == 1) {
 		list_partitions();
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	/* mtdparts add <mtd-dev> <size>[@<offset>] <name> [ro] */
@@ -1973,11 +1974,11 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 		struct part_info *p;
 
 		if (mtd_id_parse(argv[2], NULL, &type, &num) != 0)
-			return 1;
+			return CMD_RET_FAILURE;
 
 		if ((id = id_find(type, num)) == NULL) {
 			printf("no such device %s defined in mtdids variable\n", argv[2]);
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 
 		len = strlen(id->mtd_id) + 1;	/* 'mtd_id:' */
@@ -1988,14 +1989,14 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 
 		if (len >= PART_ADD_DESC_MAXLEN) {
 			printf("too long partition description\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 		sprintf(tmpbuf, "%s:%s(%s)%s",
 				id->mtd_id, argv[3], argv[4], argv[5] ? argv[5] : "");
 		debug("add tmpbuf: %s\n", tmpbuf);
 
 		if ((device_parse(tmpbuf, NULL, &dev) != 0) || (!dev))
-			return 1;
+			return CMD_RET_FAILURE;
 
 		debug("+ %s\t%d\t%s\n", MTD_DEV_TYPE(dev->id->type),
 				dev->id->num, dev->id->mtd_id);
@@ -2004,7 +2005,7 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 
 #if defined(CONFIG_CMD_MTDPARTS_SPREAD)
 		if (get_mtd_info(dev->id->type, dev->id->num, &mtd))
-			return 1;
+			return CMD_RET_FAILURE;
 
 		if (!strcmp(&argv[1][3], ".spread")) {
 			spread_partition(mtd, p, &next_offset);
@@ -2018,15 +2019,15 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 		} else if (part_add(dev_tmp, p) != 0) {
 			/* merge new partition with existing ones*/
 			device_del(dev);
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 
 		if (generate_mtdparts_save(last_parts, MTDPARTS_MAXLEN) != 0) {
 			printf("generated mtdparts too long, resetting to null\n");
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	/* mtdparts del part-id */
