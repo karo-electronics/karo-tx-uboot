@@ -285,24 +285,30 @@ int fs_size(const char *filename, loff_t *size)
 	return ret;
 }
 
-int fs_read(const char *filename, ulong addr, loff_t offset, loff_t len,
+int fs_read(const char *filename, ulong addr, loff_t offset, loff_t maxlen,
 	    loff_t *actread)
 {
 	struct fstype_info *info = fs_get_info(fs_type);
 	void *buf;
 	int ret;
+	loff_t len;
 
-	/*
-	 * We don't actually know how many bytes are being read, since len==0
-	 * means read the whole file.
-	 */
+	ret = info->size(filename, &len);
+	if (ret) {
+		printf("Failed to determine size of file %s: %d\n",
+			filename, ret);
+		goto err;
+	}
+	if (maxlen == 0)
+		maxlen = len;
+	else if (len > maxlen)
+		printf("** File %s larger than buffer size; truncating to %llu of %llu bytes\n",
+			filename, maxlen, len);
+	len = min(len, maxlen);
 	buf = map_sysmem(addr, len);
 	ret = info->read(filename, buf, offset, len, actread);
+err:
 	unmap_sysmem(buf);
-
-	/* If we requested a specific number of bytes, check we got it */
-	if (ret == 0 && len && *actread != len)
-		printf("** %s shorter than offset + len **\n", filename);
 	fs_close();
 
 	return ret;
