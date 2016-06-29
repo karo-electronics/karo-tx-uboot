@@ -1233,6 +1233,18 @@ static uint64_t net_part_size(struct mtd_info *mtd, struct part_info *part)
 }
 #endif
 
+static void show_ecc_stats(struct mtd_device *dev)
+{
+	struct mtd_info *mtd;
+
+	if (get_mtd_info(dev->id->type, dev->id->num, &mtd))
+		return;
+
+	printf("ECC stats for device %s:\n", mtd->name);
+	printf("  corrected bit flips:\t%4u\n", mtd->ecc_stats.corrected);
+	printf("  uncorrectable errors:\t%4u\n", mtd->ecc_stats.failed);
+}
+
 static void print_partition_table(void)
 {
 	struct list_head *dentry, *pentry;
@@ -1280,6 +1292,7 @@ static void print_partition_table(void)
 #endif /* defined(CONFIG_CMD_MTDPARTS_SHOW_NET_SIZES) */
 			part_num++;
 		}
+		show_ecc_stats(dev);
 	}
 
 	if (list_empty(&devices))
