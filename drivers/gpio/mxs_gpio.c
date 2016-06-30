@@ -35,13 +35,6 @@
 #error "Please select CONFIG_SOC_MX23 or CONFIG_SOC_MX28"
 #endif
 
-#define GPIO_INT_FALL_EDGE	0x0
-#define GPIO_INT_LOW_LEV	0x1
-#define GPIO_INT_RISE_EDGE	0x2
-#define GPIO_INT_HIGH_LEV	0x3
-#define GPIO_INT_LEV_MASK	(1 << 0)
-#define GPIO_INT_POL_MASK	(1 << 1)
-
 void mxs_gpio_init(void)
 {
 	int i;
