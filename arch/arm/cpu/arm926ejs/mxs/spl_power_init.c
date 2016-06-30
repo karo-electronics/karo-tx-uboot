@@ -893,7 +893,9 @@ static void mxs_fixed_batt_boot(void)
  */
 static void mxs_init_batt_bo(void)
 {
-	debug("SPL: Initialising battery brown-out level to 3.0V\n");
+	debug("SPL: Initialising battery brown-out level to %u.%uV\n",
+		(BATT_BO_VAL * 40 + 2400) / 1000,
+		(BATT_BO_VAL * 40 + 2400) / 100 % 10);
 
 	/* Brownout at 3V */
 	clrsetbits_le32(&power_regs->hw_power_battmonitor,
