@@ -165,12 +165,27 @@
 /*
  * Serial Driver
  */
+#ifdef CONFIG_CONS_INDEX
+/*
+ * select STK5 UART port 0: 1st UART (DUART) 1,2 2nd,3rd UART (Appl. UART)
+ */
+#if CONFIG_CONS_INDEX == 0
 #define CONFIG_PL011_SERIAL
 #define CONFIG_PL011_CLOCK		24000000
 #define CONFIG_PL01x_PORTS	{	\
 	(void *)MXS_UARTDBG_BASE,	\
 	}
-#define CONFIG_CONS_INDEX		0		/* do not change! */
+#else /* CONFIG_CONS_INDEX == 0 */
+#define CONFIG_MXS_AUART
+#if CONFIG_CONS_INDEX == 1
+#define CONFIG_MXS_AUART_BASE		((void *)MXS_UARTAPP1_BASE)
+#elif CONFIG_CONS_INDEX == 2
+#define CONFIG_MXS_AUART_BASE		((void *)MXS_UARTAPP3_BASE)
+#elif CONFIG_CONS_INDEX != -1
+#error Unsupported console UART selection
+#endif
+#endif /* CONFIG_CONS_INDEX == 0 */
+#endif /* ifdef CONFIG_CONS_INDEX */
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
