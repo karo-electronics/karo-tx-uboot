@@ -362,14 +362,18 @@ enum {
 	LED_STATE_INIT = -1,
 	LED_STATE_OFF,
 	LED_STATE_ON,
+	LED_STATE_DISABLED,
 };
+
+static int led_state = LED_STATE_DISABLED;
 
 void show_activity(int arg)
 {
-	static int led_state = LED_STATE_INIT;
 	static ulong last;
 
-	if (led_state == LED_STATE_INIT) {
+	if (led_state == LED_STATE_DISABLED) {
+		return;
+	} else if (led_state == LED_STATE_INIT) {
 		last = get_timer(0);
 		gpio_set_value(TX28_LED_GPIO, 1);
 		led_state = LED_STATE_ON;
@@ -378,10 +382,11 @@ void show_activity(int arg)
 			last = get_timer(0);
 			if (led_state == LED_STATE_ON) {
 				gpio_set_value(TX28_LED_GPIO, 0);
+				led_state = LED_STATE_OFF;
 			} else {
 				gpio_set_value(TX28_LED_GPIO, 1);
+				led_state = LED_STATE_ON;
 			}
-			led_state = 1 - led_state;
 		}
 	}
 }
@@ -819,6 +824,7 @@ static void stk5_board_init(void)
 
 static void stk5v3_board_init(void)
 {
+	led_state = LED_STATE_INIT;
 	stk5_board_init();
 }
 
