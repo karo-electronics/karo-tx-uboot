@@ -121,16 +121,16 @@ static void mxs_power_clock2pll(void)
 	 * introduce some instability (causing the CPU core to hang). Maybe
 	 * we aren't giving PLL0 enough time to stabilise?
 	 */
-	setbits_le32(&clkctrl_regs->hw_clkctrl_pll0ctrl0,
-			CLKCTRL_PLL0CTRL0_POWER);
+	writel(CLKCTRL_PLL0CTRL0_POWER,
+		&clkctrl_regs->hw_clkctrl_pll0ctrl0_set);
 	udelay(100);
 
 	/*
 	 * TODO: Should the PLL0 FORCE_LOCK bit be set here followed be a
 	 * wait on the PLL0 LOCK bit?
 	 */
-	setbits_le32(&clkctrl_regs->hw_clkctrl_clkseq,
-			CLKCTRL_CLKSEQ_BYPASS_CPU);
+	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
+		&clkctrl_regs->hw_clkctrl_clkseq_clr);
 }
 
 static int mxs_power_wait_rtc_stat(u32 mask)
@@ -352,9 +352,11 @@ static void mxs_src_power_init(void)
 
 	if (!fixed_batt_supply) {
 		/* 5V to battery handoff ... FIXME */
-		setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+		writel(POWER_5VCTRL_DCDC_XFER,
+			&power_regs->hw_power_5vctrl_set);
 		udelay(30);
-		clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+		writel(POWER_5VCTRL_DCDC_XFER,
+			&power_regs->hw_power_5vctrl_clr);
 	}
 }
 
@@ -409,11 +411,11 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 	prev_5v_droop = readl(&power_regs->hw_power_ctrl) &
 				POWER_CTRL_ENIRQ_VDD5V_DROOP;
 
-	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_PWDN_5VBRNOUT);
+	writel(POWER_5VCTRL_PWDN_5VBRNOUT, &power_regs->hw_power_5vctrl_clr);
 	writel(POWER_RESET_UNLOCK_KEY | POWER_RESET_PWD_OFF,
 		&power_regs->hw_power_reset);
 
-	clrbits_le32(&power_regs->hw_power_ctrl, POWER_CTRL_ENIRQ_VDD5V_DROOP);
+	writel(POWER_CTRL_ENIRQ_VDD5V_DROOP, &power_regs->hw_power_ctrl_clr);
 
 	/*
 	 * Recording orignal values that will be modified temporarlily
@@ -429,24 +431,24 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 	 * Disable mechanisms that get erroneously tripped by when setting
 	 * the DCDC4P2 EN_DCDC
 	 */
-	clrbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_VBUSVALID_5VDETECT |
-		POWER_5VCTRL_VBUSVALID_TRSH_MASK);
+	writel(POWER_5VCTRL_VBUSVALID_5VDETECT |
+		POWER_5VCTRL_VBUSVALID_TRSH_MASK,
+		&power_regs->hw_power_5vctrl);
 
 	writel(POWER_MINPWR_PWD_BO, &power_regs->hw_power_minpwr_set);
 
 	if (xfer) {
-		setbits_le32(&power_regs->hw_power_5vctrl,
-				POWER_5VCTRL_DCDC_XFER);
+		writel(POWER_5VCTRL_DCDC_XFER,
+			&power_regs->hw_power_5vctrl);
 		udelay(20);
-		clrbits_le32(&power_regs->hw_power_5vctrl,
-				POWER_5VCTRL_DCDC_XFER);
+		writel(POWER_5VCTRL_DCDC_XFER,
+			&power_regs->hw_power_5vctrl_clr);
 
-		setbits_le32(&power_regs->hw_power_5vctrl,
-				POWER_5VCTRL_ENABLE_DCDC);
+		writel(POWER_5VCTRL_ENABLE_DCDC,
+			&power_regs->hw_power_5vctrl_set);
 	} else {
-		setbits_le32(&power_regs->hw_power_dcdc4p2,
-				POWER_DCDC4P2_ENABLE_DCDC);
+		writel(POWER_DCDC4P2_ENABLE_DCDC,
+			&power_regs->hw_power_dcdc4p2);
 	}
 
 	udelay(25);
@@ -458,7 +460,7 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 		writel(vbus_5vdetect, &power_regs->hw_power_5vctrl_set);
 
 	if (!pwd_bo)
-		clrbits_le32(&power_regs->hw_power_minpwr, POWER_MINPWR_PWD_BO);
+		writel(POWER_MINPWR_PWD_BO, &power_regs->hw_power_minpwr_clr);
 
 	while (readl(&power_regs->hw_power_ctrl) & POWER_CTRL_VBUS_VALID_IRQ)
 		writel(POWER_CTRL_VBUS_VALID_IRQ,
@@ -481,11 +483,11 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 			&power_regs->hw_power_ctrl_clr);
 
 	if (prev_5v_droop)
-		clrbits_le32(&power_regs->hw_power_ctrl,
-				POWER_CTRL_ENIRQ_VDD5V_DROOP);
+		writel(POWER_CTRL_ENIRQ_VDD5V_DROOP,
+			&power_regs->hw_power_ctrl_set);
 	else
-		setbits_le32(&power_regs->hw_power_ctrl,
-				POWER_CTRL_ENIRQ_VDD5V_DROOP);
+		writel(POWER_CTRL_ENIRQ_VDD5V_DROOP,
+			&power_regs->hw_power_ctrl_clr);
 }
 
 /**
@@ -552,8 +554,8 @@ static void mxs_power_init_4p2_regulator(void)
 			22 << POWER_DCDC4P2_BO_OFFSET);	/* 4.15V */
 
 	if (!(readl(&power_regs->hw_power_sts) & POWER_STS_DCDC_4P2_BO)) {
-		setbits_le32(&power_regs->hw_power_5vctrl,
-			0x3f << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET);
+		writel(0x3f << POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET,
+			&power_regs->hw_power_5vctrl_set);
 	} else {
 		tmp = (readl(&power_regs->hw_power_5vctrl) &
 			POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK) >>
@@ -731,17 +733,19 @@ static void mxs_batt_boot(void)
 {
 	debug("SPL: Configuring power block to boot from battery\n");
 
-	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_PWDN_5VBRNOUT);
-	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_ENABLE_DCDC);
+	writel(POWER_5VCTRL_PWDN_5VBRNOUT,
+		&power_regs->hw_power_5vctrl_clr);
+	writel(POWER_5VCTRL_ENABLE_DCDC,
+		&power_regs->hw_power_5vctrl_clr);
 
 	clrbits_le32(&power_regs->hw_power_dcdc4p2,
 			POWER_DCDC4P2_ENABLE_DCDC | POWER_DCDC4P2_ENABLE_4P2);
 	writel(POWER_CHARGE_ENABLE_LOAD, &power_regs->hw_power_charge_clr);
 
 	/* 5V to battery handoff. */
-	setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	writel(POWER_5VCTRL_DCDC_XFER, &power_regs->hw_power_5vctrl_set);
 	udelay(30);
-	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
+	writel(POWER_5VCTRL_DCDC_XFER, &power_regs->hw_power_5vctrl_clr);
 
 	writel(POWER_CTRL_ENIRQ_DCDC4P2_BO, &power_regs->hw_power_ctrl_clr);
 
@@ -759,11 +763,10 @@ static void mxs_batt_boot(void)
 	clrbits_le32(&power_regs->hw_power_vddioctrl,
 		POWER_VDDIOCTRL_DISABLE_FET);
 
-	setbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_PWD_CHARGE_4P2_MASK);
+	writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
+		&power_regs->hw_power_5vctrl_set);
 
-	setbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_ENABLE_DCDC);
+	writel(POWER_5VCTRL_ENABLE_DCDC, &power_regs->hw_power_5vctrl_set);
 
 	clrsetbits_le32(&power_regs->hw_power_5vctrl,
 		POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK,
@@ -859,11 +862,11 @@ static void mxs_fixed_batt_boot(void)
 {
 	writel(POWER_CTRL_ENIRQ_BATT_BO, &power_regs->hw_power_ctrl_clr);
 
-	setbits_le32(&power_regs->hw_power_5vctrl,
-		POWER_5VCTRL_ENABLE_DCDC |
+	writel(POWER_5VCTRL_ENABLE_DCDC |
 		POWER_5VCTRL_ILIMIT_EQ_ZERO |
 		POWER_5VCTRL_PWDN_5VBRNOUT |
-		POWER_5VCTRL_PWD_CHARGE_4P2_MASK);
+		POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
+		&power_regs->hw_power_5vctrl_set);
 
 	writel(POWER_CHARGE_PWD_BATTCHRG, &power_regs->hw_power_charge_set);
 
