@@ -49,55 +49,73 @@ void mxs_gpio_init(void)
 
 int gpio_get_value(unsigned gpio)
 {
-	uint32_t bank = PAD_BANK(gpio);
+	uint32_t bank = MXS_GPIO_TO_BANK(gpio);
 	uint32_t offset = PINCTRL_DIN(bank);
 	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
-	return (readl(&reg->reg) >> PAD_PIN(gpio)) & 1;
+	if (bank >= PINCTRL_BANKS)
+		return -EINVAL;
+
+	return (readl(&reg->reg) >> MXS_GPIO_TO_PIN(gpio)) & 1;
 }
 
 int gpio_set_value(unsigned gpio, int value)
 {
-	uint32_t bank = PAD_BANK(gpio);
+	uint32_t bank = MXS_GPIO_TO_BANK(gpio);
 	uint32_t offset = PINCTRL_DOUT(bank);
 	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
+	if (bank >= PINCTRL_BANKS)
+		return -EINVAL;
+
 	if (value)
-		writel(1 << PAD_PIN(gpio), &reg->reg_set);
+		writel(1 << MXS_GPIO_TO_PIN(gpio), &reg->reg_set);
 	else
-		writel(1 << PAD_PIN(gpio), &reg->reg_clr);
+		writel(1 << MXS_GPIO_TO_PIN(gpio), &reg->reg_clr);
 
 	return 0;
 }
 
 int gpio_direction_input(unsigned gpio)
 {
-	uint32_t bank = PAD_BANK(gpio);
+	uint32_t bank = MXS_GPIO_TO_BANK(gpio);
 	uint32_t offset = PINCTRL_DOE(bank);
 	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
-	writel(1 << PAD_PIN(gpio), &reg->reg_clr);
+	if (bank >= PINCTRL_BANKS)
+		return -EINVAL;
+
+	writel(1 << MXS_GPIO_TO_PIN(gpio), &reg->reg_clr);
 
 	return 0;
 }
 
 int gpio_direction_output(unsigned gpio, int value)
 {
-	uint32_t bank = PAD_BANK(gpio);
+	uint32_t bank = MXS_GPIO_TO_BANK(gpio);
 	uint32_t offset = PINCTRL_DOE(bank);
 	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
+	if (bank >= PINCTRL_BANKS)
+		return -EINVAL;
+
 	gpio_set_value(gpio, value);
 
-	writel(1 << PAD_PIN(gpio), &reg->reg_set);
+	writel(1 << MXS_GPIO_TO_PIN(gpio), &reg->reg_set);
 
 	return 0;
 }
 
 int gpio_request(unsigned gpio, const char *label)
 {
-	if (PAD_BANK(gpio) >= PINCTRL_BANKS)
-		return -1;
+	if (MXS_GPIO_TO_BANK(gpio) >= PINCTRL_BANKS) {
+		printf("%s(): Invalid GPIO%d (GPIO_%u_%u) requested; possibly intended: GPIO_%u_%u\n",
+			__func__, gpio, gpio / 32, gpio % 32,
+			PAD_BANK(gpio), PAD_PIN(gpio));
+		printf("Linear GPIO number required rather than iomux_cfg_t cookie!\n");
+		printf("Possibly missing MXS_PAD_TO_GPIO() in the GPIO specification.\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }

@@ -45,14 +45,14 @@ int board_early_init_f(void)
 	mxs_iomux_setup_pad(MX28_PAD_SSP2_SS1__USB1_OVERCURRENT);
 	mxs_iomux_setup_pad(MX28_PAD_AUART2_RX__GPIO_3_8 |
 			MXS_PAD_4MA | MXS_PAD_3V3 | MXS_PAD_NOPULL);
-	gpio_direction_output(MX28_PAD_AUART2_RX__GPIO_3_8, 1);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_AUART2_RX__GPIO_3_8), 1);
 #endif
 
 	/* Power on LCD */
-	gpio_direction_output(MX28_PAD_LCD_RESET__GPIO_3_30, 1);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_LCD_RESET__GPIO_3_30), 1);
 
 	/* Set contrast to maximum */
-	gpio_direction_output(MX28_PAD_PWM2__GPIO_3_18, 1);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_PWM2__GPIO_3_18), 1);
 
 	return 0;
 }
@@ -78,16 +78,16 @@ static int mx28evk_mmc_wp(int id)
 		return 1;
 	}
 
-	return gpio_get_value(MX28_PAD_SSP1_SCK__GPIO_2_12);
+	return gpio_get_value(MXS_PAD_TO_GPIO(MX28_PAD_SSP1_SCK__GPIO_2_12));
 }
 
 int board_mmc_init(bd_t *bis)
 {
 	/* Configure WP as input */
-	gpio_direction_input(MX28_PAD_SSP1_SCK__GPIO_2_12);
+	gpio_direction_input(MXS_PAD_TO_GPIO(MX28_PAD_SSP1_SCK__GPIO_2_12));
 
 	/* Configure MMC0 Power Enable */
-	gpio_direction_output(MX28_PAD_PWM3__GPIO_3_28, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_PWM3__GPIO_3_28), 0);
 
 	return mxsmmc_initialize(bis, 0, mx28evk_mmc_wp, NULL);
 }
@@ -111,12 +111,12 @@ int board_eth_init(bd_t *bis)
 	       &clkctrl_regs->hw_clkctrl_enet);
 
 	/* Power-on FECs */
-	gpio_direction_output(MX28_PAD_SSP1_DATA3__GPIO_2_15, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_SSP1_DATA3__GPIO_2_15), 0);
 
 	/* Reset FEC PHYs */
-	gpio_direction_output(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RX_CLK__GPIO_4_13), 0);
 	udelay(200);
-	gpio_set_value(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 1);
+	gpio_set_value(MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RX_CLK__GPIO_4_13), 1);
 
 	ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
 	if (ret) {

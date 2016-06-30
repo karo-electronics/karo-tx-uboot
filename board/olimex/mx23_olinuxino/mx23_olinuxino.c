@@ -9,6 +9,7 @@
 #include <common.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <asm/arch/iomux.h>
 #include <asm/arch/iomux-mx23.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -37,7 +38,7 @@ int board_early_init_f(void)
 int board_ehci_hcd_init(int port)
 {
 	/* Enable LAN9512 (Maxi) or GL850G (Mini) USB HUB power. */
-	gpio_direction_output(MX23_PAD_GPMI_ALE__GPIO_0_17, 1);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX23_PAD_GPMI_ALE__GPIO_0_17), 1);
 	udelay(100);
 	return 0;
 }
@@ -45,7 +46,7 @@ int board_ehci_hcd_init(int port)
 int board_ehci_hcd_exit(int port)
 {
 	/* Enable LAN9512 (Maxi) or GL850G (Mini) USB HUB power. */
-	gpio_direction_output(MX23_PAD_GPMI_ALE__GPIO_0_17, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX23_PAD_GPMI_ALE__GPIO_0_17), 0);
 	return 0;
 }
 #endif

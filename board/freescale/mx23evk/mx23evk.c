@@ -33,10 +33,10 @@ int board_early_init_f(void)
 	mxs_set_sspclk(MXC_SSPCLK0, 96000, 0);
 
 	/* Power on LCD */
-	gpio_direction_output(MX23_PAD_LCD_RESET__GPIO_1_18, 1);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX23_PAD_LCD_RESET__GPIO_1_18), 1);
 
 	/* Set contrast to maximum */
-	gpio_direction_output(MX23_PAD_PWM2__GPIO_1_28, 1);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX23_PAD_PWM2__GPIO_1_28), 1);
 
 	return 0;
 }
@@ -62,16 +62,16 @@ static int mx23evk_mmc_wp(int id)
 		return 1;
 	}
 
-	return gpio_get_value(MX23_PAD_PWM4__GPIO_1_30);
+	return gpio_get_value(MXS_PAD_TO_GPIO(MX23_PAD_PWM4__GPIO_1_30));
 }
 
 int board_mmc_init(bd_t *bis)
 {
 	/* Configure WP as input */
-	gpio_direction_input(MX23_PAD_PWM4__GPIO_1_30);
+	gpio_direction_input(MXS_PAD_TO_GPIO(MX23_PAD_PWM4__GPIO_1_30));
 
 	/* Configure MMC0 Power Enable */
-	gpio_direction_output(MX23_PAD_PWM3__GPIO_1_29, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX23_PAD_PWM3__GPIO_1_29), 0);
 
 	return mxsmmc_initialize(bis, 0, mx23evk_mmc_wp, NULL);
 }

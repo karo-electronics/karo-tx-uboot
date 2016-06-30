@@ -40,11 +40,11 @@ int board_early_init_f(void)
 	mxs_iomux_setup_pad(MX28_PAD_SSP2_SS1__USB1_OVERCURRENT);
 	mxs_iomux_setup_pad(MX28_PAD_AUART3_TX__GPIO_3_13 |
 			MXS_PAD_12MA | MXS_PAD_3V3 | MXS_PAD_PULLUP);
-	gpio_direction_output(MX28_PAD_AUART3_TX__GPIO_3_13, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_AUART3_TX__GPIO_3_13), 0);
 
 	mxs_iomux_setup_pad(MX28_PAD_AUART3_RX__GPIO_3_12 |
 			MXS_PAD_12MA | MXS_PAD_3V3 | MXS_PAD_PULLUP);
-	gpio_direction_output(MX28_PAD_AUART3_RX__GPIO_3_12, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_AUART3_RX__GPIO_3_12), 0);
 #endif
 
 	return 0;
@@ -71,15 +71,15 @@ static int m28_mmc_wp(int id)
 		return 1;
 	}
 
-	return gpio_get_value(MX28_PAD_AUART2_CTS__GPIO_3_10);
+	return gpio_get_value(MXS_PAD_TO_GPIO(MX28_PAD_AUART2_CTS__GPIO_3_10));
 }
 
 int board_mmc_init(bd_t *bis)
 {
 	/* Configure WP as input. */
-	gpio_direction_input(MX28_PAD_AUART2_CTS__GPIO_3_10);
+	gpio_direction_input(MXS_PAD_TO_GPIO(MX28_PAD_AUART2_CTS__GPIO_3_10));
 	/* Turn on the power to the card. */
-	gpio_direction_output(MX28_PAD_PWM3__GPIO_3_28, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_PWM3__GPIO_3_28), 0);
 
 	return mxsmmc_initialize(bis, 0, m28_mmc_wp, NULL);
 }
@@ -125,9 +125,9 @@ int board_eth_init(bd_t *bis)
 
 #if !defined(CONFIG_DENX_M28_V11) && !defined(CONFIG_DENX_M28_V10)
 	/* Reset the new PHY */
-	gpio_direction_output(MX28_PAD_AUART2_RTS__GPIO_3_11, 0);
+	gpio_direction_output(MXS_PAD_TO_GPIO(MX28_PAD_AUART2_RTS__GPIO_3_11), 0);
 	udelay(10000);
-	gpio_set_value(MX28_PAD_AUART2_RTS__GPIO_3_11, 1);
+	gpio_set_value(MXS_PAD_TO_GPIO(MX28_PAD_AUART2_RTS__GPIO_3_11), 1);
 	udelay(10000);
 #endif
 

@@ -29,6 +29,7 @@
 #include <linux/fb.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
+#include <asm/arch/iomux.h>
 #include <asm/arch/iomux-mx28.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
@@ -38,21 +39,20 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define MXS_GPIO_NR(p, o)      (((p) << 5) | (o))
+#define TX28_LCD_PWR_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_LCD_ENABLE__GPIO_1_31)
+#define TX28_LCD_RST_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_LCD_RESET__GPIO_3_30)
+#define TX28_LCD_BACKLIGHT_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_PWM0__GPIO_3_16)
 
-#define TX28_LCD_PWR_GPIO	MX28_PAD_LCD_ENABLE__GPIO_1_31
-#define TX28_LCD_RST_GPIO	MX28_PAD_LCD_RESET__GPIO_3_30
-#define TX28_LCD_BACKLIGHT_GPIO	MX28_PAD_PWM0__GPIO_3_16
+#define TX28_USBH_VBUSEN_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_SPDIF__GPIO_3_27)
+#define TX28_USBH_OC_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_JTAG_RTCK__GPIO_4_20)
+#define TX28_USBOTG_VBUSEN_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_GPMI_CE2N__GPIO_0_18)
+#define TX28_USBOTG_OC_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_GPMI_CE3N__GPIO_0_19)
+#define TX28_USBOTG_ID_GPIO	MXS_PAD_TO_GPIO(MX28_PAD_PWM2__GPIO_3_18)
 
-#define TX28_USBH_VBUSEN_GPIO	MX28_PAD_SPDIF__GPIO_3_27
-#define TX28_USBH_OC_GPIO	MX28_PAD_JTAG_RTCK__GPIO_4_20
-#define TX28_USBOTG_VBUSEN_GPIO	MX28_PAD_GPMI_CE2N__GPIO_0_18
-#define TX28_USBOTG_OC_GPIO	MX28_PAD_GPMI_CE3N__GPIO_0_19
-#define TX28_USBOTG_ID_GPIO	MX28_PAD_PWM2__GPIO_3_18
+#define TX28_LED_GPIO		MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RXD3__GPIO_4_10)
 
-#define TX28_LED_GPIO		MX28_PAD_ENET0_RXD3__GPIO_4_10
-
-#define STK5_CAN_XCVR_GPIO	MX28_PAD_LCD_D00__GPIO_1_0
+#define STK5_CAN_XCVR_PAD	MX28_PAD_LCD_D00__GPIO_1_0
+#define STK5_CAN_XCVR_GPIO	MXS_PAD_TO_GPIO(STK5_CAN_XCVR_PAD)
 
 #define ENET_PAD_CTRL		(MXS_PAD_3V3 | MXS_PAD_4MA | MXS_PAD_PULLUP)
 #define GPIO_PAD_CTRL		(MXS_PAD_3V3 | MXS_PAD_4MA | MXS_PAD_PULLUP)
@@ -297,24 +297,38 @@ static const iomux_cfg_t tx28_fec_pads[] = {
 	MX28_PAD_ENET0_RXD1__ENET0_RXD1 | ENET_PAD_CTRL,
 };
 
+static struct gpio tx28_fec_strap_gpios[] = {
+	/* first entry must be RESET pin */
+	{ MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RX_CLK__GPIO_4_13),
+	  GPIOFLAG_OUTPUT_INIT_LOW, "PHY Reset", },
+
+	{ MXS_PAD_TO_GPIO(MX28_PAD_PWM4__GPIO_3_29),
+	  GPIOFLAG_OUTPUT_INIT_HIGH, "PHY Power", },
+
+	/* Pull strap pins to high */
+	{ MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RX_EN__GPIO_4_2),
+	  GPIOFLAG_OUTPUT_INIT_HIGH, "PHY Mode0", },
+	{ MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RXD0__GPIO_4_3),
+	  GPIOFLAG_OUTPUT_INIT_HIGH, "PHY Mode1", },
+	{ MXS_PAD_TO_GPIO(MX28_PAD_ENET0_RXD1__GPIO_4_4),
+	  GPIOFLAG_OUTPUT_INIT_HIGH, "PHY Mode2", },
+
+	{ MXS_PAD_TO_GPIO(MX28_PAD_ENET0_TX_CLK__GPIO_4_5),
+	  GPIOFLAG_INPUT, "PHY INT", },
+};
+
 int board_eth_init(bd_t *bis)
 {
 	int ret;
 
 	/* Reset the external phy */
-	gpio_direction_output(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 0);
-
-	/* Power on the external phy */
-	gpio_direction_output(MX28_PAD_PWM4__GPIO_3_29, 1);
-
-	/* Pull strap pins to high */
-	gpio_direction_output(MX28_PAD_ENET0_RX_EN__GPIO_4_2, 1);
-	gpio_direction_output(MX28_PAD_ENET0_RXD0__GPIO_4_3, 1);
-	gpio_direction_output(MX28_PAD_ENET0_RXD1__GPIO_4_4, 1);
-	gpio_direction_input(MX28_PAD_ENET0_TX_CLK__GPIO_4_5);
+	ret = gpio_request_array(tx28_fec_strap_gpios,
+				ARRAY_SIZE(tx28_fec_strap_gpios));
+	if (ret)
+		printf("Failed to request FEC GPIOs: %d\n", ret);
 
 	udelay(25000);
-	gpio_set_value(MX28_PAD_ENET0_RX_CLK__GPIO_4_13, 1);
+	gpio_set_value(tx28_fec_strap_gpios[0].gpio, 1);
 	udelay(100);
 
 	mxs_iomux_setup_multiple_pads(tx28_fec_pads, ARRAY_SIZE(tx28_fec_pads));
@@ -840,7 +854,7 @@ static void stk5v5_board_init(void)
 	/* init flexcan transceiver enable GPIO */
 	gpio_request_one(STK5_CAN_XCVR_GPIO, GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
-	mxs_iomux_setup_pad(STK5_CAN_XCVR_GPIO);
+	mxs_iomux_setup_pad(STK5_CAN_XCVR_PAD);
 }
 
 int board_late_init(void)
