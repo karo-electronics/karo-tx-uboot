@@ -155,13 +155,12 @@ ulong get_timer(ulong base)
 }
 
 /* We use the HW_DIGCTL_MICROSECONDS register for sub-millisecond timer. */
-#define	MXS_HW_DIGCTL_MICROSECONDS	0x8001c0c0
-
 void __udelay(unsigned long usec)
 {
-	uint32_t start = readl(MXS_HW_DIGCTL_MICROSECONDS);
+	struct mxs_digctl_regs *digctl_regs = (void *)MXS_DIGCTL_BASE;
+	u32 start = readl(&digctl_regs->hw_digctl_microseconds);
 
-	while (readl(MXS_HW_DIGCTL_MICROSECONDS) - start <= usec)
+	while (readl(&digctl_regs->hw_digctl_microseconds) - start <= usec)
 		/* use '<=' to guarantee a delay of _at least_
 		 * the given number of microseconds.
 		 * No need for fancy rollover checks
