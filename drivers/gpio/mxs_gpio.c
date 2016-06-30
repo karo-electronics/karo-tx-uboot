@@ -51,8 +51,7 @@ int gpio_get_value(unsigned gpio)
 {
 	uint32_t bank = PAD_BANK(gpio);
 	uint32_t offset = PINCTRL_DIN(bank);
-	struct mxs_register_32 *reg =
-		(struct mxs_register_32 *)(MXS_PINCTRL_BASE + offset);
+	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
 	return (readl(&reg->reg) >> PAD_PIN(gpio)) & 1;
 }
@@ -61,8 +60,7 @@ int gpio_set_value(unsigned gpio, int value)
 {
 	uint32_t bank = PAD_BANK(gpio);
 	uint32_t offset = PINCTRL_DOUT(bank);
-	struct mxs_register_32 *reg =
-		(struct mxs_register_32 *)(MXS_PINCTRL_BASE + offset);
+	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
 	if (value)
 		writel(1 << PAD_PIN(gpio), &reg->reg_set);
@@ -76,8 +74,7 @@ int gpio_direction_input(unsigned gpio)
 {
 	uint32_t bank = PAD_BANK(gpio);
 	uint32_t offset = PINCTRL_DOE(bank);
-	struct mxs_register_32 *reg =
-		(struct mxs_register_32 *)(MXS_PINCTRL_BASE + offset);
+	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
 	writel(1 << PAD_PIN(gpio), &reg->reg_clr);
 
@@ -88,8 +85,7 @@ int gpio_direction_output(unsigned gpio, int value)
 {
 	uint32_t bank = PAD_BANK(gpio);
 	uint32_t offset = PINCTRL_DOE(bank);
-	struct mxs_register_32 *reg =
-		(struct mxs_register_32 *)(MXS_PINCTRL_BASE + offset);
+	struct mxs_register_32 *reg = (void *)(MXS_PINCTRL_BASE + offset);
 
 	gpio_set_value(gpio, value);
 
