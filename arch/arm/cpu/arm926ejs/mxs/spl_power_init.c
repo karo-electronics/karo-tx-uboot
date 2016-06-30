@@ -114,19 +114,16 @@ static void mxs_power_clock2pll(void)
 
 	debug("SPL: Switching CPU core clock source to PLL\n");
 
-	/*
-	 * TODO: Are we really? It looks like we turn on PLL0, but we then
-	 * set the CLKCTRL_CLKSEQ_BYPASS_CPU bit of the (which was already
-	 * set by mxs_power_clock2xtal()). Clearing this bit here seems to
-	 * introduce some instability (causing the CPU core to hang). Maybe
-	 * we aren't giving PLL0 enough time to stabilise?
-	 */
 	writel(CLKCTRL_PLL0CTRL0_POWER,
 		&clkctrl_regs->hw_clkctrl_pll0ctrl0_set);
-	udelay(100);
+	/*
+	 * The PLL is documented to lock within 10 µs from setting
+	 * the POWER bit.
+	 */
+	udelay(15);
 
 	/*
-	 * TODO: Should the PLL0 FORCE_LOCK bit be set here followed be a
+	 * TODO: Should the PLL0 FORCE_LOCK bit be set here followed by a
 	 * wait on the PLL0 LOCK bit?
 	 */
 	writel(CLKCTRL_CLKSEQ_BYPASS_CPU,
