@@ -83,19 +83,18 @@ SECTIONS
 		. = ALIGN(4096);
 	} = 0x01f0adde
 
-	_image_binary_end = . + (__ivt_end - __uboot_img_start);
-
 	.uboot_img_end :
 	{
 		KEEP(*(.__uboot_img_end))
 	}
 
-	. = CONFIG_SYS_TEXT_BASE + 0x70000;
+#ifdef CONFIG_SECURE_BOOT
 	.csf_data :
 	{
 		*(.__csf_data)
 		. = . + 0x2000;
 	}
+#endif
 	__uboot_img_len = . - __uboot_img_start;
 
 /*
@@ -117,7 +116,6 @@ SECTIONS
 		KEEP(*(.__bss_end));
 	}
 
-	.dynsym _image_binary_end : { *(.dynsym) }
 	/DISCARD/ : { *(.debug*) }
 	/DISCARD/ : { *(.note*) }
 	/DISCARD/ : { *(.comment*) }
