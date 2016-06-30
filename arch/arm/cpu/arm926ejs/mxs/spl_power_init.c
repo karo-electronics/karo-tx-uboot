@@ -123,7 +123,7 @@ static void mxs_power_clock2pll(void)
 	 */
 	setbits_le32(&clkctrl_regs->hw_clkctrl_pll0ctrl0,
 			CLKCTRL_PLL0CTRL0_POWER);
-	early_delay(100);
+	udelay(100);
 
 	/*
 	 * TODO: Should the PLL0 FORCE_LOCK bit be set here followed be a
@@ -140,7 +140,7 @@ static int mxs_power_wait_rtc_stat(u32 mask)
 	struct mxs_rtc_regs *rtc_regs = (void *)MXS_RTC_BASE;
 
 	while ((val = readl(&rtc_regs->hw_rtc_stat)) & mask) {
-		early_delay(1);
+		udelay(1);
 		if (timeout-- < 0)
 			break;
 	}
@@ -267,7 +267,7 @@ static int mxs_is_batt_good(void)
 	writel(POWER_5VCTRL_PWD_CHARGE_4P2_MASK,
 		&power_regs->hw_power_5vctrl_clr);
 
-	early_delay(500000);
+	udelay(500000);
 
 	volt = mxs_get_batt_volt();
 
@@ -353,7 +353,7 @@ static void mxs_src_power_init(void)
 	if (!fixed_batt_supply) {
 		/* 5V to battery handoff ... FIXME */
 		setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
-		early_delay(30);
+		udelay(30);
 		clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
 	}
 }
@@ -438,7 +438,7 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 	if (xfer) {
 		setbits_le32(&power_regs->hw_power_5vctrl,
 				POWER_5VCTRL_DCDC_XFER);
-		early_delay(20);
+		udelay(20);
 		clrbits_le32(&power_regs->hw_power_5vctrl,
 				POWER_5VCTRL_DCDC_XFER);
 
@@ -449,7 +449,7 @@ static void mxs_enable_4p2_dcdc_input(int xfer)
 				POWER_DCDC4P2_ENABLE_DCDC);
 	}
 
-	early_delay(25);
+	udelay(25);
 
 	clrsetbits_le32(&power_regs->hw_power_5vctrl,
 			POWER_5VCTRL_VBUSVALID_TRSH_MASK, vbus_thresh);
@@ -563,7 +563,7 @@ static void mxs_power_init_4p2_regulator(void)
 					POWER_STS_DCDC_4P2_BO)) {
 				tmp = readl(&power_regs->hw_power_5vctrl);
 				tmp |= POWER_5VCTRL_CHARGE_4P2_ILIMIT_MASK;
-				early_delay(100);
+				udelay(100);
 				writel(tmp, &power_regs->hw_power_5vctrl);
 				break;
 			} else {
@@ -573,7 +573,7 @@ static void mxs_power_init_4p2_regulator(void)
 				tmp2 |= tmp <<
 					POWER_5VCTRL_CHARGE_4P2_ILIMIT_OFFSET;
 				writel(tmp2, &power_regs->hw_power_5vctrl);
-				early_delay(100);
+				udelay(100);
 			}
 		}
 	}
@@ -654,9 +654,9 @@ static void mxs_power_enable_4p2(void)
 	mxs_power_init_dcdc_4p2_source();
 
 	writel(vdddctrl, &power_regs->hw_power_vdddctrl);
-	early_delay(20);
+	udelay(20);
 	writel(vddactrl, &power_regs->hw_power_vddactrl);
-	early_delay(20);
+	udelay(20);
 	writel(vddioctrl, &power_regs->hw_power_vddioctrl);
 
 	/*
@@ -740,7 +740,7 @@ static void mxs_batt_boot(void)
 
 	/* 5V to battery handoff. */
 	setbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
-	early_delay(30);
+	udelay(30);
 	clrbits_le32(&power_regs->hw_power_5vctrl, POWER_5VCTRL_DCDC_XFER);
 
 	writel(POWER_CTRL_ENIRQ_DCDC4P2_BO, &power_regs->hw_power_ctrl_clr);
@@ -844,7 +844,7 @@ static void mxs_5v_boot(void)
 		return;
 	}
 
-	early_delay(1000);
+	udelay(1000);
 	if (readl(&power_regs->hw_power_sts) & POWER_STS_VDD5V_GT_VDDIO) {
 		debug("SPL: 5V VDD good (after delay)\n");
 		mxs_boot_valid_5v();
@@ -1258,7 +1258,7 @@ static void mxs_power_set_vddx(const struct mxs_vddx_cfg *cfg,
 		if (powered_by_linreg ||
 			(readl(&power_regs->hw_power_sts) &
 				POWER_STS_VDD5V_GT_VDDIO)) {
-			early_delay(500);
+			udelay(500);
 		} else {
 			while (!(readl(&power_regs->hw_power_sts) &
 					POWER_STS_DC_OK)) {
@@ -1299,7 +1299,7 @@ static void mxs_setup_batt_detect(void)
 
 	mxs_lradc_init();
 	mxs_lradc_enable_batt_measurement();
-	early_delay(10);
+	udelay(10);
 }
 
 /**
