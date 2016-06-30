@@ -370,13 +370,18 @@ static int led_state = LED_STATE_DISABLED;
 void show_activity(int arg)
 {
 	static ulong last;
+	int ret;
 
 	if (led_state == LED_STATE_DISABLED) {
 		return;
 	} else if (led_state == LED_STATE_INIT) {
 		last = get_timer(0);
-		gpio_set_value(TX28_LED_GPIO, 1);
-		led_state = LED_STATE_ON;
+		ret = gpio_request_one(TX28_LED_GPIO,
+				GPIOFLAG_OUTPUT_INIT_HIGH, "Activity");
+		if (ret == 0)
+			led_state = LED_STATE_ON;
+		else
+			led_state = LED_STATE_DISABLED;
 	} else {
 		if (get_timer(last) > CONFIG_SYS_HZ) {
 			last = get_timer(0);
