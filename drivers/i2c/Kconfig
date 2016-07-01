@@ -10,6 +10,10 @@ config HARD_I2C
 config SYS_I2C
 	bool
 
+config SYS_I2C_SOFT
+	bool "Software emulated I2C bus driver"
+	depends on SYS_I2C
+
 config DM_I2C
 	bool "Enable Driver Model for I2C drivers"
 	depends on DM

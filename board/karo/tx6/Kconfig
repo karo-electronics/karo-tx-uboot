@@ -54,6 +54,8 @@ config TX6_EMMC
 config TX6UL
 	bool
 	select SOC_MX6UL
+	select SYS_I2C
+	select SYS_I2C_SOFT
 	select SYS_SDRAM_BUS_WIDTH_16
 
 config TX6QP

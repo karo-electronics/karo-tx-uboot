@@ -467,7 +467,7 @@ static struct pmic_regs rn5t567_regs[] = {
 	{ RN5T567_LDORTC1_SLOT, 0x0f, ~0x3f, },
 };
 
-static int pmic_addr __maybe_unused = 0x33;
+static int pmic_addr = 0x33;
 #endif
 
 int board_init(void)
