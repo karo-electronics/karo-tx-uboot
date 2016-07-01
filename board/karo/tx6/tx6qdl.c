@@ -1111,7 +1111,6 @@ void lcd_ctrl_init(void *lcdbase)
 	if (!lcd_enabled) {
 		debug("LCD disabled\n");
 		goto disable;
-		return;
 	}
 
 	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
@@ -1119,7 +1118,6 @@ void lcd_ctrl_init(void *lcdbase)
 		lcd_enabled = 0;
 		setenv("splashimage", NULL);
 		goto disable;
-		return;
 	}
 
 	karo_fdt_move_fdt();
@@ -1129,7 +1127,6 @@ void lcd_ctrl_init(void *lcdbase)
 		debug("Disabling LCD\n");
 		lcd_enabled = 0;
 		goto disable;
-		return;
 	}
 	vm = video_mode;
 	if (karo_fdt_get_fb_mode(working_fdt, video_mode, &fb_mode) == 0) {
@@ -1143,7 +1140,6 @@ void lcd_ctrl_init(void *lcdbase)
 				panel_info.vl_col, panel_info.vl_row);
 			lcd_enabled = 0;
 			goto disable;
-			return;
 		}
 	}
 	if (p->name != NULL)
@@ -1235,14 +1231,12 @@ void lcd_ctrl_init(void *lcdbase)
 		}
 		printf("\n");
 		goto disable;
-		return;
 	}
 	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
 		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
 			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
 		lcd_enabled = 0;
 		goto disable;
-		return;
 	}
 	panel_info.vl_col = p->xres;
 	panel_info.vl_row = p->yres;
@@ -1301,7 +1295,6 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("Invalid %s bus width: %d\n", is_lvds() ? "LVDS" : "LCD",
 			lcd_bus_width);
 		goto disable;
-		return;
 	}
 	if (is_lvds()) {
 		int lvds_mapping = karo_fdt_get_lvds_mapping(working_fdt, 0);
@@ -1313,7 +1306,6 @@ void lcd_ctrl_init(void *lcdbase)
 			printf("No LVDS channel active\n");
 			lcd_enabled = 0;
 			goto disable;
-			return;
 		}
 
 		gpr2 = (lvds_mapping << 6) | (lvds_mapping << 8);
