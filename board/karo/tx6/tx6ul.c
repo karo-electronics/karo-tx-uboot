@@ -148,7 +148,7 @@ static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
 	MX6_PAD_ENET2_TX_DATA0__ENET2_TDATA00 | TX6UL_ENET_PAD_CTRL,
 };
 
-static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
+static const iomux_v3_cfg_t const tx6ul_i2c_gpio_pads[] = {
 	/* internal I2C */
 	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
 			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm | PAD_CTL_HYS |
@@ -180,7 +180,7 @@ static const struct gpio const tx6ul_fec2_gpios[] = {
 
 /* run with default environment */
 #if defined(TX6UL_I2C1_SCL_GPIO) && defined(TX6UL_I2C1_SDA_GPIO)
-static void tx6_i2c_recover(void)
+static void tx6ul_i2c_recover(void)
 {
 	int i;
 	int bad = 0;
@@ -213,8 +213,8 @@ static void tx6_i2c_recover(void)
 		writel(readl(I2C_GPIO_BASE + GPIO_DIR) | SCL_BIT,
 			I2C_GPIO_BASE + GPIO_DIR);
 
-		imx_iomux_v3_setup_multiple_pads(tx6_i2c_gpio_pads,
-						ARRAY_SIZE(tx6_i2c_gpio_pads));
+		imx_iomux_v3_setup_multiple_pads(tx6ul_i2c_gpio_pads,
+						ARRAY_SIZE(tx6ul_i2c_gpio_pads));
 		udelay(10);
 
 		for (i = 0; i < 18; i++) {
@@ -240,7 +240,7 @@ static void tx6_i2c_recover(void)
 	}
 }
 #else
-static inline void tx6_i2c_recover(void)
+static inline void tx6ul_i2c_recover(void)
 {
 }
 #endif
@@ -384,7 +384,7 @@ int checkboard(void)
 #ifdef CONFIG_MX6_TEMPERATURE_HOT
 	check_cpu_temperature(1);
 #endif
-	tx6_i2c_recover();
+	tx6ul_i2c_recover();
 	return 0;
 }
 
@@ -395,14 +395,14 @@ int board_early_init_f(void)
 }
 
 #ifndef CONFIG_MX6_TEMPERATURE_HOT
-static bool tx6_temp_check_enabled = true;
+static bool tx6ul_temp_check_enabled = true;
 #else
-#define tx6_temp_check_enabled	0
+#define tx6ul_temp_check_enabled	0
 #endif
 
 static inline u8 tx6ul_mem_suffix(void)
 {
-#ifdef CONFIG_TX6_NAND
+#ifdef CONFIG_TX6UL_NAND
 	return '0';
 #else
 	return '1';
@@ -470,7 +470,7 @@ int board_init(void)
 		else
 			printf("<CTRL-C> detected; safeboot enabled\n");
 #ifndef CONFIG_MX6_TEMPERATURE_HOT
-		tx6_temp_check_enabled = false;
+		tx6ul_temp_check_enabled = false;
 #endif
 		return 0;
 	}
@@ -538,7 +538,7 @@ static const iomux_v3_cfg_t mmc1_pads[] = {
 };
 #endif
 
-static struct tx6_esdhc_cfg {
+static struct tx6ul_esdhc_cfg {
 	const iomux_v3_cfg_t *pads;
 	int num_pads;
 	enum mxc_clock clkid;
@@ -569,14 +569,14 @@ static struct tx6_esdhc_cfg {
 	},
 };
 
-static inline struct tx6_esdhc_cfg *to_tx6_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+static inline struct tx6ul_esdhc_cfg *to_tx6ul_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
 {
-	return container_of(cfg, struct tx6_esdhc_cfg, cfg);
+	return container_of(cfg, struct tx6ul_esdhc_cfg, cfg);
 }
 
 int board_mmc_getcd(struct mmc *mmc)
 {
-	struct tx6_esdhc_cfg *cfg = to_tx6_esdhc_cfg(mmc->priv);
+	struct tx6ul_esdhc_cfg *cfg = to_tx6ul_esdhc_cfg(mmc->priv);
 
 	if (cfg->cd_gpio < 0)
 		return 1;
@@ -602,7 +602,7 @@ int board_mmc_init(bd_t *bis)
 #endif
 	for (i = 0; i < ARRAY_SIZE(tx6ul_esdhc_cfg); i++) {
 		struct mmc *mmc;
-		struct tx6_esdhc_cfg *cfg = &tx6ul_esdhc_cfg[i];
+		struct tx6ul_esdhc_cfg *cfg = &tx6ul_esdhc_cfg[i];
 		int ret;
 
 		cfg->cfg.sdhc_clk = mxc_get_clock(cfg->clkid);
@@ -640,7 +640,7 @@ enum {
 
 static inline int calc_blink_rate(void)
 {
-	if (!tx6_temp_check_enabled)
+	if (!tx6ul_temp_check_enabled)
 		return CONFIG_SYS_HZ;
 
 	return CONFIG_SYS_HZ + CONFIG_SYS_HZ / 10 -
@@ -735,7 +735,7 @@ vidinfo_t panel_info = {
 	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 };
 
-static struct fb_videomode tx6_fb_modes[] = {
+static struct fb_videomode tx6ul_fb_modes[] = {
 #ifndef CONFIG_SYS_LVDS_IF
 	{
 		/* Standard VGA timing */
@@ -996,7 +996,7 @@ void lcd_ctrl_init(void *lcdbase)
 	const char *vm;
 	unsigned long val;
 	int refresh = 60;
-	struct fb_videomode *p = &tx6_fb_modes[0];
+	struct fb_videomode *p = &tx6ul_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 
@@ -1108,7 +1108,7 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("Invalid video mode: %s\n", getenv("video_mode"));
 		lcd_enabled = 0;
 		printf("Supported video modes are:");
-		for (p = &tx6_fb_modes[0]; p->name != NULL; p++) {
+		for (p = &tx6ul_fb_modes[0]; p->name != NULL; p++) {
 			printf(" %s", p->name);
 		}
 		printf("\n");
@@ -1183,7 +1183,7 @@ void lcd_ctrl_init(void *lcdbase)
 #endif /* CONFIG_LCD */
 
 #ifndef CONFIG_ENV_IS_IN_MMC
-static void tx6_mmc_init(void)
+static void tx6ul_mmc_init(void)
 {
 	puts("MMC:   ");
 	if (board_mmc_init(gd->bd) < 0)
@@ -1191,7 +1191,7 @@ static void tx6_mmc_init(void)
 	print_mmc_devices(',');
 }
 #else
-static inline void tx6_mmc_init(void)
+static inline void tx6ul_mmc_init(void)
 {
 }
 #endif
@@ -1218,7 +1218,7 @@ static void stk5v3_board_init(void)
 	debug("%s@%d: \n", __func__, __LINE__);
 	stk5_board_init();
 	debug("%s@%d: \n", __func__, __LINE__);
-	tx6_mmc_init();
+	tx6ul_mmc_init();
 }
 
 static void stk5v5_board_init(void)
@@ -1226,7 +1226,7 @@ static void stk5v5_board_init(void)
 	int ret;
 
 	stk5_board_init();
-	tx6_mmc_init();
+	tx6ul_mmc_init();
 
 	ret = gpio_request_one(IMX_GPIO_NR(3, 5), GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
@@ -1268,7 +1268,7 @@ int board_late_init(void)
 
 	env_cleanup();
 
-	if (tx6_temp_check_enabled)
+	if (tx6ul_temp_check_enabled)
 		check_cpu_temperature(1);
 
 	tx6ul_set_cpu_clock();
@@ -1332,7 +1332,7 @@ exit:
 #define ETH_ALEN 6
 #endif
 
-static void tx6_init_mac(void)
+static void tx6ul_init_mac(void)
 {
 	u8 mac[ETH_ALEN];
 	const char *baseboard = getenv("baseboard");
@@ -1360,7 +1360,7 @@ int board_eth_init(bd_t *bis)
 {
 	int ret;
 
-	tx6_init_mac();
+	tx6ul_init_mac();
 
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
@@ -1427,7 +1427,7 @@ static struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static const char *tx6_touchpanels[] = {
+static const char *tx6ul_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
 	"eeti,egalax_ts",
@@ -1450,8 +1450,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 
-	karo_fdt_fixup_touchpanel(blob, tx6_touchpanels,
-				ARRAY_SIZE(tx6_touchpanels));
+	karo_fdt_fixup_touchpanel(blob, tx6ul_touchpanels,
+				ARRAY_SIZE(tx6ul_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
