@@ -76,10 +76,15 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 					PAD_CTL_DSE_40ohm |		\
 					PAD_CTL_SRE_FAST)
 #define TX6UL_I2C_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
+					PAD_CTL_ODE |			\
 					PAD_CTL_HYS |			\
 					PAD_CTL_SPEED_LOW |		\
 					PAD_CTL_DSE_34ohm |		\
 					PAD_CTL_SRE_FAST)
+#define TX6UL_I2C_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
+					PAD_CTL_HYS |			\
+					PAD_CTL_DSE_34ohm |		\
+					PAD_CTL_SPEED_MED)
 #define TX6UL_ENET_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |	\
 					PAD_CTL_DSE_48ohm |		\
 					PAD_CTL_PUS_100K_UP |		\
@@ -148,14 +153,20 @@ static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
 	MX6_PAD_ENET2_TX_DATA0__ENET2_TDATA00 | TX6UL_ENET_PAD_CTRL,
 };
 
-static const iomux_v3_cfg_t const tx6ul_i2c_gpio_pads[] = {
+static const iomux_v3_cfg_t const tx6ul_i2c_pads[] = {
 	/* internal I2C */
 	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
-			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm | PAD_CTL_HYS |
-			PAD_CTL_ODE), /* I2C SCL */
+			TX6UL_I2C_PAD_CTRL, /* I2C SCL */
 	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
-			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm | PAD_CTL_HYS |
-			PAD_CTL_ODE), /* I2C SDA */
+			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
+};
+
+static const iomux_v3_cfg_t const tx6ul_i2c_gpio_pads[] = {
+	/* internal I2C set up for I2C bus recovery */
+	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
+			TX6UL_I2C_PAD_CTRL, /* I2C SCL */
+	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
+			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
 };
 
 static const struct gpio const tx6ul_gpios[] = {
@@ -180,63 +191,81 @@ static const struct gpio const tx6ul_fec2_gpios[] = {
 
 /* run with default environment */
 #if defined(TX6UL_I2C1_SCL_GPIO) && defined(TX6UL_I2C1_SDA_GPIO)
+#define SCL_BANK	(TX6UL_I2C1_SCL_GPIO / 32)
+#define SDA_BANK	(TX6UL_I2C1_SDA_GPIO / 32)
+#define SCL_BIT		(1 << (TX6UL_I2C1_SCL_GPIO % 32))
+#define SDA_BIT		(1 << (TX6UL_I2C1_SDA_GPIO % 32))
+
+static void * const gpio_ports[] = {
+	(void *)GPIO1_BASE_ADDR,
+	(void *)GPIO2_BASE_ADDR,
+	(void *)GPIO3_BASE_ADDR,
+	(void *)GPIO4_BASE_ADDR,
+	(void *)GPIO5_BASE_ADDR,
+};
+
 static void tx6ul_i2c_recover(void)
 {
 	int i;
 	int bad = 0;
-#define SCL_BIT		(1 << (TX6UL_I2C1_SCL_GPIO % 32))
-#define SDA_BIT		(1 << (TX6UL_I2C1_SDA_GPIO % 32))
-#define I2C_GPIO_BASE	(GPIO1_BASE_ADDR + TX6UL_I2C1_SCL_GPIO / 32 * 0x4000)
+	struct gpio_regs *scl_regs = gpio_ports[SCL_BANK];
+	struct gpio_regs *sda_regs = gpio_ports[SDA_BANK];
 
-	if ((readl(I2C_GPIO_BASE + GPIO_PSR) &
-			(SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT))
+	if ((readl(&scl_regs->gpio_psr) & SCL_BIT) &&
+		(readl(&sda_regs->gpio_psr) & SDA_BIT))
 		return;
 
 	debug("Clearing I2C bus\n");
-	if (!(readl(I2C_GPIO_BASE + GPIO_PSR) & SCL_BIT)) {
+	if (!(readl(&scl_regs->gpio_psr) & SCL_BIT)) {
 		printf("I2C SCL stuck LOW\n");
 		bad++;
 
-		writel(readl(I2C_GPIO_BASE + GPIO_DR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DR);
-		writel(readl(I2C_GPIO_BASE + GPIO_DIR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DIR);
+		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
+		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
+
+		imx_iomux_v3_setup_pad(MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 |
+				MUX_CFG_SION | TX6UL_GPIO_OUT_PAD_CTRL);
 	}
-	if (!(readl(I2C_GPIO_BASE + GPIO_PSR) & SDA_BIT)) {
+	if (!(readl(&sda_regs->gpio_psr) & SDA_BIT)) {
 		printf("I2C SDA stuck LOW\n");
 		bad++;
 
-		writel(readl(I2C_GPIO_BASE + GPIO_DIR) & ~SDA_BIT,
-			I2C_GPIO_BASE + GPIO_DIR);
-		writel(readl(I2C_GPIO_BASE + GPIO_DR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DR);
-		writel(readl(I2C_GPIO_BASE + GPIO_DIR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DIR);
+		clrbits_le32(&sda_regs->gpio_dir, SDA_BIT);
+		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
+		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
 
 		imx_iomux_v3_setup_multiple_pads(tx6ul_i2c_gpio_pads,
 						ARRAY_SIZE(tx6ul_i2c_gpio_pads));
-		udelay(10);
+
+		udelay(5);
 
 		for (i = 0; i < 18; i++) {
-			u32 reg = readl(I2C_GPIO_BASE + GPIO_DR) ^ SCL_BIT;
+			u32 reg = readl(&scl_regs->gpio_dr) ^ SCL_BIT;
 
 			debug("%sing SCL\n", (reg & SCL_BIT) ? "Sett" : "Clear");
-			writel(reg, I2C_GPIO_BASE + GPIO_DR);
-			udelay(10);
-			if (reg & SCL_BIT &&
-				readl(I2C_GPIO_BASE + GPIO_PSR) & SDA_BIT)
+			writel(reg, &scl_regs->gpio_dr);
+			udelay(5);
+			if (reg & SCL_BIT) {
+				if (readl(&sda_regs->gpio_psr) & SDA_BIT)
+					break;
+				if (!(readl(&scl_regs->gpio_psr) & SCL_BIT))
+					break;
 				break;
+			}
 		}
 	}
 	if (bad) {
-		u32 reg = readl(I2C_GPIO_BASE + GPIO_PSR);
+		bool scl = !!(readl(&scl_regs->gpio_psr) & SCL_BIT);
+		bool sda = !!(readl(&sda_regs->gpio_psr) & SDA_BIT);
 
-		if ((reg & (SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT)) {
+		if (scl && sda) {
 			printf("I2C bus recovery succeeded\n");
 		} else {
-			printf("I2C bus recovery FAILED: %08x:%08x\n", reg,
-				SCL_BIT | SDA_BIT);
+			printf("I2C bus recovery FAILED: SCL: %d SDA: %d\n",
+				scl, sda);
 		}
+		imx_iomux_v3_setup_multiple_pads(tx6ul_i2c_pads,
+						ARRAY_SIZE(tx6ul_i2c_pads));
 	}
 }
 #else
@@ -508,7 +537,7 @@ void dram_init_banksize(void)
 }
 
 #ifdef	CONFIG_FSL_ESDHC
-#define TX6UL_SD_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_PUS_47K_UP |	\
+#define TX6UL_SD_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_47K_UP |	\
 					PAD_CTL_SPEED_MED |		\
 					PAD_CTL_DSE_40ohm |		\
 					PAD_CTL_SRE_FAST)
