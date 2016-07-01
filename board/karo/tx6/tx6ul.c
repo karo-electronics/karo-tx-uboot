@@ -685,6 +685,15 @@ void show_activity(int arg)
 	}
 }
 
+static const iomux_v3_cfg_t stk5_jtag_pads[] = {
+	MX6_PAD_JTAG_MOD__SJC_MOD | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TCK__SJC_TCK | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TRST_B__SJC_TRSTB | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TDI__SJC_TDI | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TDO__SJC_TDO | TX6UL_GPIO_OUT_PAD_CTRL,
+	MX6_PAD_JTAG_TMS__SJC_TMS | TX6UL_GPIO_IN_PAD_CTRL,
+};
+
 static const iomux_v3_cfg_t stk5_pads[] = {
 	/* SW controlled LED on STK5 baseboard */
 	MX6_PAD_SNVS_TAMPER9__GPIO5_IO09,
@@ -1197,6 +1206,10 @@ static void stk5_board_init(void)
 		return;
 	}
 	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
+	if (getenv_yesno("jtag_enable") != 0) {
+		/* true if unset or set to one of: 'yYtT1' */
+		imx_iomux_v3_setup_multiple_pads(stk5_jtag_pads, ARRAY_SIZE(stk5_jtag_pads));
+	}
 	debug("%s@%d: \n", __func__, __LINE__);
 }
 
