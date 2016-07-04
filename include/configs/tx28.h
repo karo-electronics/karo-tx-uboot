@@ -36,6 +36,7 @@
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_CMD_GPIO
 
 /* LCD Logo and Splash screen support */
 #ifdef CONFIG_LCD
@@ -165,12 +166,27 @@
 /*
  * Serial Driver
  */
+#ifdef CONFIG_CONS_INDEX
+/*
+ * select STK5 UART port 0: 1st UART (DUART) 1,2 2nd,3rd UART (Appl. UART)
+ */
+#if CONFIG_CONS_INDEX == 0
 #define CONFIG_PL011_SERIAL
 #define CONFIG_PL011_CLOCK		24000000
 #define CONFIG_PL01x_PORTS	{	\
 	(void *)MXS_UARTDBG_BASE,	\
 	}
-#define CONFIG_CONS_INDEX		0		/* do not change! */
+#else /* CONFIG_CONS_INDEX == 0 */
+#define CONFIG_MXS_AUART
+#if CONFIG_CONS_INDEX == 1
+#define CONFIG_MXS_AUART_BASE		((void *)MXS_UARTAPP1_BASE)
+#elif CONFIG_CONS_INDEX == 2
+#define CONFIG_MXS_AUART_BASE		((void *)MXS_UARTAPP3_BASE)
+#elif CONFIG_CONS_INDEX != -1
+#error Unsupported console UART selection
+#endif
+#endif /* CONFIG_CONS_INDEX == 0 */
+#endif /* ifdef CONFIG_CONS_INDEX */
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
@@ -254,8 +270,12 @@
 	",512k@" xstr(CONFIG_SYS_NAND_BBT_OFFSET) "(bbt)ro"
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - \
 					GENERATED_GBL_DATA_SIZE)
+#else
+#define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SPL_STACK
+#endif
 
 /* Defines for SPL */
 #define CONFIG_SPL_START_S_PATH		"arch/arm/cpu/arm926ejs/mxs"
@@ -268,5 +288,6 @@
 #define CONFIG_SYS_SPL_BATT_BO_LEVEL	2400
 #define CONFIG_SYS_SPL_VDDA_BO_VAL	100
 #define CONFIG_SYS_SPL_VDDMEM_VAL	0	/* VDDMEM is not utilized on TX28 */
+#define CONFIG_SPL_STACK		0x1fffc /* End of OCRAM */
 
 #endif /* __CONFIG_H */

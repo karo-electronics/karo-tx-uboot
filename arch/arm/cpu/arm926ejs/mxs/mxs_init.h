@@ -10,8 +10,6 @@
 #ifndef	__M28_INIT_H__
 #define	__M28_INIT_H__
 
-void early_delay(int delay);
-
 void mxs_power_init(void);
 
 #ifdef	CONFIG_SPL_MXS_PSWITCH_WAIT

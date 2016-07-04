@@ -43,7 +43,6 @@
 #define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_CMD_GPIO
 
-#ifndef CONFIG_TX6_UBOOT_MFG
 /* LCD Logo and Splash screen support */
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
@@ -64,7 +63,6 @@
 #define CONFIG_BMP_32BPP
 #define CONFIG_VIDEO_BMP_RLE8
 #endif /* CONFIG_LCD */
-#endif /* CONFIG_TX6_UBOOT_MFG */
 
 /*
  * Memory configuration options
@@ -184,7 +182,7 @@
 #endif
 
 /*
- * Extra Environments
+ * Extra Environment Settings
  */
 #ifdef CONFIG_TX6_UBOOT_NOENV
 #define CONFIG_EXTRA_ENV_SETTINGS					\

@@ -25,48 +25,60 @@
  * PAD_VOL_VALID:	14	(1)
  * PAD_PULL:		15	(1)
  * PAD_PULL_VALID:	16	(1)
- * RESERVED:		17..31	(15)
+ * RESERVED:		17..30	(14)
+ * sentinel to produce an invalid GPIO number when using an
+ * iomux_cfg_t value where a plain GPIO number is expected
+ * GPIO_SENTINEL:	31	(1)
  */
-typedef u32 iomux_cfg_t;
-
-#define MXS_PAD_BANK_SHIFT	0
-#define MXS_PAD_BANK_MASK	((iomux_cfg_t)0x7 << MXS_PAD_BANK_SHIFT)
-#define MXS_PAD_PIN_SHIFT	3
-#define MXS_PAD_PIN_MASK	((iomux_cfg_t)0x1f << MXS_PAD_PIN_SHIFT)
-#define MXS_PAD_MUXSEL_SHIFT	8
-#define MXS_PAD_MUXSEL_MASK	((iomux_cfg_t)0x3 << MXS_PAD_MUXSEL_SHIFT)
-#define MXS_PAD_MA_SHIFT	10
-#define MXS_PAD_MA_MASK		((iomux_cfg_t)0x3 << MXS_PAD_MA_SHIFT)
-#define MXS_PAD_MA_VALID_SHIFT	12
-#define MXS_PAD_MA_VALID_MASK	((iomux_cfg_t)0x1 << MXS_PAD_MA_VALID_SHIFT)
-#define MXS_PAD_VOL_SHIFT	13
-#define MXS_PAD_VOL_MASK	((iomux_cfg_t)0x1 << MXS_PAD_VOL_SHIFT)
-#define MXS_PAD_VOL_VALID_SHIFT	14
-#define MXS_PAD_VOL_VALID_MASK	((iomux_cfg_t)0x1 << MXS_PAD_VOL_VALID_SHIFT)
-#define MXS_PAD_PULL_SHIFT	15
-#define MXS_PAD_PULL_MASK	((iomux_cfg_t)0x1 << MXS_PAD_PULL_SHIFT)
-#define MXS_PAD_PULL_VALID_SHIFT 16
-#define MXS_PAD_PULL_VALID_MASK	((iomux_cfg_t)0x1 << MXS_PAD_PULL_VALID_SHIFT)
-
-#define PAD_MUXSEL_0		0
-#define PAD_MUXSEL_1		1
-#define PAD_MUXSEL_2		2
-#define PAD_MUXSEL_GPIO		3
-
-#define PAD_4MA			0
-#define PAD_8MA			1
-#define PAD_12MA		2
-#define PAD_16MA		3
-
-#define PAD_1V8			0
-#if defined(CONFIG_SOC_MX28)
-#define PAD_3V3			1
+#ifdef CONFIG_MXS_IOMUX_COMPILE_CHECK
+typedef u64 iomux_cfg_t;
+#define IOMUX_CFG_SHIFT		32
 #else
-#define PAD_3V3			0
+typedef u32 iomux_cfg_t;
+#define IOMUX_CFG_SHIFT		0
 #endif
 
-#define PAD_NOPULL		0
-#define PAD_PULLUP		1
+#define MXS_PAD_BANK_SHIFT	(IOMUX_CFG_SHIFT + 0)
+#define MXS_PAD_BANK_MASK	((iomux_cfg_t)0x7 << MXS_PAD_BANK_SHIFT)
+#define MXS_PAD_PIN_SHIFT	(IOMUX_CFG_SHIFT + 3)
+#define MXS_PAD_PIN_MASK	((iomux_cfg_t)0x1f << MXS_PAD_PIN_SHIFT)
+#define MXS_PAD_MUXSEL_SHIFT	(IOMUX_CFG_SHIFT + 8)
+#define MXS_PAD_MUXSEL_MASK	((iomux_cfg_t)0x3 << MXS_PAD_MUXSEL_SHIFT)
+#define MXS_PAD_MA_SHIFT	(IOMUX_CFG_SHIFT + 10)
+#define MXS_PAD_MA_MASK		((iomux_cfg_t)0x3 << MXS_PAD_MA_SHIFT)
+#define MXS_PAD_MA_VALID_SHIFT	(IOMUX_CFG_SHIFT + 12)
+#define MXS_PAD_MA_VALID_MASK	((iomux_cfg_t)0x1 << MXS_PAD_MA_VALID_SHIFT)
+#define MXS_PAD_VOL_SHIFT	(IOMUX_CFG_SHIFT + 13)
+#define MXS_PAD_VOL_MASK	((iomux_cfg_t)0x1 << MXS_PAD_VOL_SHIFT)
+#define MXS_PAD_VOL_VALID_SHIFT	(IOMUX_CFG_SHIFT + 14)
+#define MXS_PAD_VOL_VALID_MASK	((iomux_cfg_t)0x1 << MXS_PAD_VOL_VALID_SHIFT)
+#define MXS_PAD_PULL_SHIFT	(IOMUX_CFG_SHIFT + 15)
+#define MXS_PAD_PULL_MASK	((iomux_cfg_t)0x1 << MXS_PAD_PULL_SHIFT)
+#define MXS_PAD_PULL_VALID_SHIFT (IOMUX_CFG_SHIFT + 16)
+#define MXS_PAD_PULL_VALID_MASK	((iomux_cfg_t)0x1 << MXS_PAD_PULL_VALID_SHIFT)
+
+#define MXS_GPIO_SENTINEL_SHIFT	(IOMUX_CFG_SHIFT + 31)
+#define MXS_GPIO_SENTINEL_MASK	((iomux_cfg_t)0x1 << MXS_GPIO_SENTINEL_SHIFT)
+
+#define PAD_MUXSEL_0		(iomux_cfg_t)0
+#define PAD_MUXSEL_1		(iomux_cfg_t)1
+#define PAD_MUXSEL_2		(iomux_cfg_t)2
+#define PAD_MUXSEL_GPIO		(iomux_cfg_t)3
+
+#define PAD_4MA			(iomux_cfg_t)0
+#define PAD_8MA			(iomux_cfg_t)1
+#define PAD_12MA		(iomux_cfg_t)2
+#define PAD_16MA		(iomux_cfg_t)3
+
+#define PAD_1V8			(iomux_cfg_t)0
+#if defined(CONFIG_SOC_MX28)
+#define PAD_3V3			(iomux_cfg_t)1
+#else
+#define PAD_3V3			(iomux_cfg_t)0
+#endif
+
+#define PAD_NOPULL		(iomux_cfg_t)0
+#define PAD_PULLUP		(iomux_cfg_t)1
 
 #define MXS_PAD_4MA	((PAD_4MA << MXS_PAD_MA_SHIFT) | \
 					MXS_PAD_MA_VALID_MASK)
@@ -96,7 +108,13 @@ typedef u32 iomux_cfg_t;
 		((iomux_cfg_t)(_muxsel) << MXS_PAD_MUXSEL_SHIFT) |	\
 		((iomux_cfg_t)(_ma) << MXS_PAD_MA_SHIFT) |		\
 		((iomux_cfg_t)(_vol) << MXS_PAD_VOL_SHIFT) |		\
-		((iomux_cfg_t)(_pull) << MXS_PAD_PULL_SHIFT))
+		((iomux_cfg_t)(_pull) << MXS_PAD_PULL_SHIFT) |		\
+		((iomux_cfg_t)1 << 31))
+
+#define MXS_PAD_TO_GPIO(p)	((unsigned)(((((p) & MXS_PAD_BANK_MASK) >> \
+					MXS_PAD_BANK_SHIFT) << 5) |	\
+					((p) & MXS_PAD_PIN_MASK) >>	\
+					MXS_PAD_PIN_SHIFT))
 
 /*
  * A pad becomes naked, when none of mA, vol or pull
