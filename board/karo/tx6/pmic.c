@@ -37,33 +37,33 @@ static struct {
 #endif
 };
 
-int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
+int tx6_pmic_init(int i2c_addr, struct pmic_regs *regs, size_t num_regs)
 {
 	int ret = -ENODEV;
 	int i;
+	const char *pmic = "N/A";
 
 	printf("PMIC: ");
 
-	debug("Probing for I2C dev 0x%02x\n", addr);
 	for (i = 0; i < ARRAY_SIZE(i2c_addrs); i++) {
-		u8 i2c_addr = i2c_addrs[i].addr;
 
-		if (i2c_addr != addr)
-			continue;
-
-		debug("Probing for I2C dev 0x%02x\n", i2c_addr);
-		ret = i2c_probe(i2c_addr);
-		if (ret == 0) {
-			debug("Initializing PMIC at I2C addr 0x%02x\n", i2c_addr);
-			ret = i2c_addrs[i].init(i2c_addr, regs, num_regs);
+		if (i2c_addrs[i].addr == i2c_addr) {
+			pmic = i2c_addrs[i].name;
 			break;
 		}
 	}
-	printf("%s\n", i == ARRAY_SIZE(i2c_addrs) ? "N/A" : i2c_addrs[i].name);
+	printf("%s\n", pmic);
+
+	debug("Probing for I2C dev 0x%02x\n", i2c_addr);
+	ret = i2c_probe(i2c_addr);
+	if (ret == 0) {
+		debug("Initializing PMIC at I2C addr 0x%02x\n", i2c_addr);
+		ret = i2c_addrs[i].init(i2c_addr, regs, num_regs);
+	}
 	return ret;
 }
 #else
-int tx6_pmic_init(int addr, struct pmic_regs *regs, size_t num_regs)
+int tx6_pmic_init(int i2c_addr, struct pmic_regs *regs, size_t num_regs)
 {
 	printf("PMIC: N/A\n");
 	return 0;

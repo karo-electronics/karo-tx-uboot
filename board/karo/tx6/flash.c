@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Lothar Waßmann <LW@KARO-electronics.de>
+ * Copyright (C) 2012-2016 Lothar Waßmann <LW@KARO-electronics.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -365,9 +365,9 @@ static int tx6_prog_uboot(void *addr, int start_block, int skip,
 	nand_erase_options_t erase_opts = { 0, };
 	size_t actual;
 	size_t prg_length = max_len - skip * mtd->erasesize;
-	int prg_start = (start_block + skip) * mtd->erasesize;
+	int prg_start = start_block * mtd->erasesize;
 
-	erase_opts.offset = start_block * mtd->erasesize;
+	erase_opts.offset = (start_block - skip) * mtd->erasesize;
 	erase_opts.length = max_len;
 	erase_opts.quiet = 1;
 
@@ -676,7 +676,7 @@ int do_update(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 	}
 
 	printf("Programming U-Boot image from %p to block %lu @ %08llx\n",
-		buf, fw1_start_block, (u64)fw1_start_block * mtd->erasesize);
+		addr, fw1_start_block, (u64)fw1_start_block * mtd->erasesize);
 	ret = tx6_prog_uboot(addr, fw1_start_block, fw1_skip, size,
 			max_len1);
 

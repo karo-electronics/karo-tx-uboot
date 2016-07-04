@@ -71,95 +71,102 @@ char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
 char __csf_data[0] __attribute__((section(".__csf_data")));
 #endif
 
+#define TX6UL_DEFAULT_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |	\
+					PAD_CTL_SPEED_MED |		\
+					PAD_CTL_DSE_40ohm |		\
+					PAD_CTL_SRE_FAST)
+#define TX6UL_I2C_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
+					PAD_CTL_ODE |			\
+					PAD_CTL_HYS |			\
+					PAD_CTL_SPEED_LOW |		\
+					PAD_CTL_DSE_34ohm |		\
+					PAD_CTL_SRE_FAST)
+#define TX6UL_I2C_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
+					PAD_CTL_HYS |			\
+					PAD_CTL_DSE_34ohm |		\
+					PAD_CTL_SPEED_MED)
+#define TX6UL_ENET_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |	\
+					PAD_CTL_DSE_48ohm |		\
+					PAD_CTL_PUS_100K_UP |		\
+					PAD_CTL_SRE_FAST)
+#define TX6UL_GPIO_OUT_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_LOW |	\
+					PAD_CTL_DSE_60ohm |		\
+					PAD_CTL_SRE_SLOW)
+#define TX6UL_GPIO_IN_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_LOW |	\
+					PAD_CTL_PUS_47K_UP)
+
+
 static const iomux_v3_cfg_t const tx6ul_pads[] = {
 	/* UART pads */
 #if CONFIG_MXC_UART_BASE == UART1_BASE
-	MX6_PAD_UART1_TX_DATA__UART1_DCE_TX,
-	MX6_PAD_UART1_RX_DATA__UART1_DCE_RX,
-	MX6_PAD_UART1_RTS_B__UART1_DCE_RTS,
-	MX6_PAD_UART1_CTS_B__UART1_DCE_CTS,
+	MX6_PAD_UART1_TX_DATA__UART1_DCE_TX | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_UART1_RX_DATA__UART1_DCE_RX | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_UART1_RTS_B__UART1_DCE_RTS | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_UART1_CTS_B__UART1_DCE_CTS | TX6UL_DEFAULT_PAD_CTRL,
 #endif
 #if CONFIG_MXC_UART_BASE == UART2_BASE
-	MX6_PAD_UART2_TX_DATA__UART2_DCE_TX,
-	MX6_PAD_UART2_RX_DATA__UART2_DCE_RX,
-	MX6_PAD_UART3_RX_DATA__UART2_DCE_RTS,
-	MX6_PAD_UART3_TX_DATA__UART2_DCE_CTS,
+	MX6_PAD_UART2_TX_DATA__UART2_DCE_TX | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_UART2_RX_DATA__UART2_DCE_RX | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_UART3_RX_DATA__UART2_DCE_RTS | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_UART3_TX_DATA__UART2_DCE_CTS | TX6UL_DEFAULT_PAD_CTRL,
 #endif
 #if CONFIG_MXC_UART_BASE == UART5_BASE
-	MX6_PAD_GPIO1_IO04__UART5_DCE_TX,
-	MX6_PAD_GPIO1_IO05__UART5_DCE_RX,
-	MX6_PAD_GPIO1_IO08__UART5_DCE_RTS,
-	MX6_PAD_GPIO1_IO09__UART5_DCE_CTS,
+	MX6_PAD_GPIO1_IO04__UART5_DCE_TX | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_GPIO1_IO05__UART5_DCE_RX | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_GPIO1_IO08__UART5_DCE_RTS | TX6UL_DEFAULT_PAD_CTRL,
+	MX6_PAD_GPIO1_IO09__UART5_DCE_CTS | TX6UL_DEFAULT_PAD_CTRL,
 #endif
-	/* internal I2C */
-	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
-			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm), /* I2C SCL */
-	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
-			MUX_PAD_CTRL(PAD_CTL_DSE_240ohm | PAD_CTL_HYS |
-			PAD_CTL_ODE), /* I2C SDA */
-
 	/* FEC PHY GPIO functions */
-	MX6_PAD_SNVS_TAMPER7__GPIO5_IO07 | MUX_CFG_SION, /* PHY POWER */
-	MX6_PAD_SNVS_TAMPER6__GPIO5_IO06 | MUX_CFG_SION, /* PHY RESET */
-	MX6_PAD_SNVS_TAMPER5__GPIO5_IO05 | MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |
-							PAD_CTL_DSE_40ohm), /* PHY INT */
+	MX6_PAD_SNVS_TAMPER7__GPIO5_IO07 | TX6UL_GPIO_OUT_PAD_CTRL, /* PHY POWER */
+	MX6_PAD_SNVS_TAMPER6__GPIO5_IO06 | TX6UL_GPIO_OUT_PAD_CTRL, /* PHY RESET */
+	MX6_PAD_SNVS_TAMPER5__GPIO5_IO05 | TX6UL_GPIO_IN_PAD_CTRL, /* PHY INT */
 };
-
-#define TX6_ENET_PAD_CTRL	(PAD_CTL_SPEED_HIGH |	\
-				PAD_CTL_DSE_48ohm |	\
-				PAD_CTL_PUS_100K_UP |	\
-				PAD_CTL_SRE_FAST)
-#define TX6_GPIO_OUT_PAD_CTRL	(PAD_CTL_SPEED_LOW |	\
-				PAD_CTL_DSE_60ohm |	\
-				PAD_CTL_SRE_SLOW)
-#define TX6_GPIO_IN_PAD_CTRL	(PAD_CTL_SPEED_LOW |	\
-				PAD_CTL_PUS_47K_UP)
 
 static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
 	/* FEC functions */
 	MX6_PAD_GPIO1_IO07__ENET1_MDC | MUX_PAD_CTRL(PAD_CTL_DSE_48ohm |
 				PAD_CTL_SPEED_MED),
 	MX6_PAD_GPIO1_IO06__ENET1_MDIO | MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |
-				PAD_CTL_DSE_48ohm |
-				PAD_CTL_SPEED_MED),
+				PAD_CTL_DSE_48ohm | PAD_CTL_SPEED_MED),
 	MX6_PAD_ENET1_TX_CLK__ENET1_REF_CLK1 | MUX_CFG_SION |
 				MUX_PAD_CTRL(PAD_CTL_SPEED_MED |
-				PAD_CTL_DSE_40ohm |
-				PAD_CTL_SRE_FAST),
-	MX6_PAD_ENET1_RX_ER__ENET1_RX_ER | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET1_RX_EN__ENET1_RX_EN | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET1_RX_DATA1__ENET1_RDATA01 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET1_RX_DATA0__ENET1_RDATA00 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET1_TX_EN__ENET1_TX_EN | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET1_TX_DATA1__ENET1_TDATA01 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET1_TX_DATA0__ENET1_TDATA00 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
+				PAD_CTL_DSE_40ohm | PAD_CTL_SRE_FAST),
+	MX6_PAD_ENET1_RX_ER__ENET1_RX_ER | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET1_RX_EN__ENET1_RX_EN | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET1_RX_DATA1__ENET1_RDATA01 | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET1_RX_DATA0__ENET1_RDATA00 | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET1_TX_EN__ENET1_TX_EN | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET1_TX_DATA1__ENET1_TDATA01 | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET1_TX_DATA0__ENET1_TDATA00 | TX6UL_ENET_PAD_CTRL,
 };
 
 static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
 	MX6_PAD_ENET2_TX_CLK__ENET2_REF_CLK2 | MUX_CFG_SION |
 				MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |
-				PAD_CTL_DSE_48ohm |
-				PAD_CTL_SRE_FAST),
-	MX6_PAD_ENET2_RX_ER__ENET2_RX_ER | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET2_RX_EN__ENET2_RX_EN | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET2_RX_DATA1__ENET2_RDATA01 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET2_RX_DATA0__ENET2_RDATA00 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET2_TX_EN__ENET2_TX_EN | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET2_TX_DATA1__ENET2_TDATA01 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
-	MX6_PAD_ENET2_TX_DATA0__ENET2_TDATA00 | MUX_PAD_CTRL(TX6_ENET_PAD_CTRL),
+				PAD_CTL_DSE_48ohm | PAD_CTL_SRE_FAST),
+	MX6_PAD_ENET2_RX_ER__ENET2_RX_ER | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET2_RX_EN__ENET2_RX_EN | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET2_RX_DATA1__ENET2_RDATA01 | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET2_RX_DATA0__ENET2_RDATA00 | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET2_TX_EN__ENET2_TX_EN | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET2_TX_DATA1__ENET2_TDATA01 | TX6UL_ENET_PAD_CTRL,
+	MX6_PAD_ENET2_TX_DATA0__ENET2_TDATA00 | TX6UL_ENET_PAD_CTRL,
 };
 
-#define TX6_I2C_PAD_CTRL	(PAD_CTL_PUS_22K_UP |	\
-				PAD_CTL_SPEED_MED |	\
-				PAD_CTL_DSE_34ohm |	\
-				PAD_CTL_SRE_FAST)
-
-static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
+static const iomux_v3_cfg_t const tx6ul_i2c_pads[] = {
 	/* internal I2C */
 	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
-			MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
+			TX6UL_I2C_PAD_CTRL, /* I2C SCL */
 	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
-			MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
+			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
+};
+
+static const iomux_v3_cfg_t const tx6ul_i2c_gpio_pads[] = {
+	/* internal I2C set up for I2C bus recovery */
+	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
+			TX6UL_I2C_PAD_CTRL, /* I2C SCL */
+	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
+			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
 };
 
 static const struct gpio const tx6ul_gpios[] = {
@@ -184,67 +191,85 @@ static const struct gpio const tx6ul_fec2_gpios[] = {
 
 /* run with default environment */
 #if defined(TX6UL_I2C1_SCL_GPIO) && defined(TX6UL_I2C1_SDA_GPIO)
-static void tx6_i2c_recover(void)
+#define SCL_BANK	(TX6UL_I2C1_SCL_GPIO / 32)
+#define SDA_BANK	(TX6UL_I2C1_SDA_GPIO / 32)
+#define SCL_BIT		(1 << (TX6UL_I2C1_SCL_GPIO % 32))
+#define SDA_BIT		(1 << (TX6UL_I2C1_SDA_GPIO % 32))
+
+static void * const gpio_ports[] = {
+	(void *)GPIO1_BASE_ADDR,
+	(void *)GPIO2_BASE_ADDR,
+	(void *)GPIO3_BASE_ADDR,
+	(void *)GPIO4_BASE_ADDR,
+	(void *)GPIO5_BASE_ADDR,
+};
+
+static void tx6ul_i2c_recover(void)
 {
 	int i;
 	int bad = 0;
-#define SCL_BIT		(1 << (TX6UL_I2C1_SCL_GPIO % 32))
-#define SDA_BIT		(1 << (TX6UL_I2C1_SDA_GPIO % 32))
-#define I2C_GPIO_BASE	(GPIO1_BASE_ADDR + TX6UL_I2C1_SCL_GPIO / 32 * 0x4000)
+	struct gpio_regs *scl_regs = gpio_ports[SCL_BANK];
+	struct gpio_regs *sda_regs = gpio_ports[SDA_BANK];
 
-	if ((readl(I2C_GPIO_BASE + GPIO_PSR) &
-			(SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT))
+	if ((readl(&scl_regs->gpio_psr) & SCL_BIT) &&
+		(readl(&sda_regs->gpio_psr) & SDA_BIT))
 		return;
 
 	debug("Clearing I2C bus\n");
-	if (!(readl(I2C_GPIO_BASE + GPIO_PSR) & SCL_BIT)) {
+	if (!(readl(&scl_regs->gpio_psr) & SCL_BIT)) {
 		printf("I2C SCL stuck LOW\n");
 		bad++;
 
-		writel(readl(I2C_GPIO_BASE + GPIO_DR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DR);
-		writel(readl(I2C_GPIO_BASE + GPIO_DIR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DIR);
+		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
+		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
+
+		imx_iomux_v3_setup_pad(MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 |
+				MUX_CFG_SION | TX6UL_GPIO_OUT_PAD_CTRL);
 	}
-	if (!(readl(I2C_GPIO_BASE + GPIO_PSR) & SDA_BIT)) {
+	if (!(readl(&sda_regs->gpio_psr) & SDA_BIT)) {
 		printf("I2C SDA stuck LOW\n");
 		bad++;
 
-		writel(readl(I2C_GPIO_BASE + GPIO_DIR) & ~SDA_BIT,
-			I2C_GPIO_BASE + GPIO_DIR);
-		writel(readl(I2C_GPIO_BASE + GPIO_DR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DR);
-		writel(readl(I2C_GPIO_BASE + GPIO_DIR) | SCL_BIT,
-			I2C_GPIO_BASE + GPIO_DIR);
+		clrbits_le32(&sda_regs->gpio_dir, SDA_BIT);
+		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
+		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
 
-		imx_iomux_v3_setup_multiple_pads(tx6_i2c_gpio_pads,
-						ARRAY_SIZE(tx6_i2c_gpio_pads));
-		udelay(10);
+		imx_iomux_v3_setup_multiple_pads(tx6ul_i2c_gpio_pads,
+						ARRAY_SIZE(tx6ul_i2c_gpio_pads));
+
+		udelay(5);
 
 		for (i = 0; i < 18; i++) {
-			u32 reg = readl(I2C_GPIO_BASE + GPIO_DR) ^ SCL_BIT;
+			u32 reg = readl(&scl_regs->gpio_dr) ^ SCL_BIT;
 
 			debug("%sing SCL\n", (reg & SCL_BIT) ? "Sett" : "Clear");
-			writel(reg, I2C_GPIO_BASE + GPIO_DR);
-			udelay(10);
-			if (reg & SCL_BIT &&
-				readl(I2C_GPIO_BASE + GPIO_PSR) & SDA_BIT)
+			writel(reg, &scl_regs->gpio_dr);
+			udelay(5);
+			if (reg & SCL_BIT) {
+				if (readl(&sda_regs->gpio_psr) & SDA_BIT)
+					break;
+				if (!(readl(&scl_regs->gpio_psr) & SCL_BIT))
+					break;
 				break;
+			}
 		}
 	}
 	if (bad) {
-		u32 reg = readl(I2C_GPIO_BASE + GPIO_PSR);
+		bool scl = !!(readl(&scl_regs->gpio_psr) & SCL_BIT);
+		bool sda = !!(readl(&sda_regs->gpio_psr) & SDA_BIT);
 
-		if ((reg & (SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT)) {
+		if (scl && sda) {
 			printf("I2C bus recovery succeeded\n");
 		} else {
-			printf("I2C bus recovery FAILED: %08x:%08x\n", reg,
-				SCL_BIT | SDA_BIT);
+			printf("I2C bus recovery FAILED: SCL: %d SDA: %d\n",
+				scl, sda);
 		}
+		imx_iomux_v3_setup_multiple_pads(tx6ul_i2c_pads,
+						ARRAY_SIZE(tx6ul_i2c_pads));
 	}
 }
 #else
-static inline void tx6_i2c_recover(void)
+static inline void tx6ul_i2c_recover(void)
 {
 }
 #endif
@@ -388,7 +413,7 @@ int checkboard(void)
 #ifdef CONFIG_MX6_TEMPERATURE_HOT
 	check_cpu_temperature(1);
 #endif
-	tx6_i2c_recover();
+	tx6ul_i2c_recover();
 	return 0;
 }
 
@@ -399,14 +424,14 @@ int board_early_init_f(void)
 }
 
 #ifndef CONFIG_MX6_TEMPERATURE_HOT
-static bool tx6_temp_check_enabled = true;
+static bool tx6ul_temp_check_enabled = true;
 #else
-#define tx6_temp_check_enabled	0
+#define tx6ul_temp_check_enabled	0
 #endif
 
 static inline u8 tx6ul_mem_suffix(void)
 {
-#ifdef CONFIG_TX6_NAND
+#ifdef CONFIG_TX6UL_NAND
 	return '0';
 #else
 	return '1';
@@ -442,7 +467,7 @@ static struct pmic_regs rn5t567_regs[] = {
 	{ RN5T567_LDORTC1_SLOT, 0x0f, ~0x3f, },
 };
 
-static int pmic_addr __maybe_unused = 0x33;
+static int pmic_addr = 0x33;
 #endif
 
 int board_init(void)
@@ -459,9 +484,9 @@ int board_init(void)
 	get_hab_status();
 
 	ret = gpio_request_array(tx6ul_gpios, ARRAY_SIZE(tx6ul_gpios));
-	if (ret < 0) {
+	if (ret < 0)
 		printf("Failed to request tx6ul_gpios: %d\n", ret);
-	}
+
 	imx_iomux_v3_setup_multiple_pads(tx6ul_pads, ARRAY_SIZE(tx6ul_pads));
 
 	/* Address of boot parameters */
@@ -474,7 +499,7 @@ int board_init(void)
 		else
 			printf("<CTRL-C> detected; safeboot enabled\n");
 #ifndef CONFIG_MX6_TEMPERATURE_HOT
-		tx6_temp_check_enabled = false;
+		tx6ul_temp_check_enabled = false;
 #endif
 		return 0;
 	}
@@ -512,37 +537,37 @@ void dram_init_banksize(void)
 }
 
 #ifdef	CONFIG_FSL_ESDHC
-#define TX6_SD_PAD_CTRL		(PAD_CTL_PUS_47K_UP |	\
-				PAD_CTL_SPEED_MED |	\
-				PAD_CTL_DSE_40ohm |	\
-				PAD_CTL_SRE_FAST)
+#define TX6UL_SD_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_47K_UP |	\
+					PAD_CTL_SPEED_MED |		\
+					PAD_CTL_DSE_40ohm |		\
+					PAD_CTL_SRE_FAST)
 
 static const iomux_v3_cfg_t mmc0_pads[] = {
-	MX6_PAD_SD1_CMD__USDHC1_CMD | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_SD1_CLK__USDHC1_CLK | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_SD1_DATA0__USDHC1_DATA0 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_SD1_DATA1__USDHC1_DATA1 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_SD1_DATA2__USDHC1_DATA2 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_SD1_DATA3__USDHC1_DATA3 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
+	MX6_PAD_SD1_CMD__USDHC1_CMD | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_SD1_CLK__USDHC1_CLK | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_SD1_DATA0__USDHC1_DATA0 | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_SD1_DATA1__USDHC1_DATA1 | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_SD1_DATA2__USDHC1_DATA2 | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_SD1_DATA3__USDHC1_DATA3 | TX6UL_SD_PAD_CTRL,
 	/* SD1 CD */
-	MX6_PAD_NAND_CE1_B__GPIO4_IO14 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
+	MX6_PAD_NAND_CE1_B__GPIO4_IO14 | TX6UL_SD_PAD_CTRL,
 };
 
 #ifdef CONFIG_TX6_EMMC
 static const iomux_v3_cfg_t mmc1_pads[] = {
-	MX6_PAD_NAND_WE_B__USDHC2_CMD | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_NAND_RE_B__USDHC2_CLK | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_NAND_DATA00__USDHC2_DATA0 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_NAND_DATA01__USDHC2_DATA1 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_NAND_DATA02__USDHC2_DATA2 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
-	MX6_PAD_NAND_DATA03__USDHC2_DATA3 | MUX_PAD_CTRL(TX6_SD_PAD_CTRL),
+	MX6_PAD_NAND_WE_B__USDHC2_CMD | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_NAND_RE_B__USDHC2_CLK | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_NAND_DATA00__USDHC2_DATA0 | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_NAND_DATA01__USDHC2_DATA1 | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_NAND_DATA02__USDHC2_DATA2 | TX6UL_SD_PAD_CTRL,
+	MX6_PAD_NAND_DATA03__USDHC2_DATA3 | TX6UL_SD_PAD_CTRL,
 	/* eMMC RESET */
 	MX6_PAD_NAND_ALE__USDHC2_RESET_B | MUX_PAD_CTRL(PAD_CTL_PUS_47K_UP |
 						PAD_CTL_DSE_40ohm),
 };
 #endif
 
-static struct tx6_esdhc_cfg {
+static struct tx6ul_esdhc_cfg {
 	const iomux_v3_cfg_t *pads;
 	int num_pads;
 	enum mxc_clock clkid;
@@ -573,14 +598,14 @@ static struct tx6_esdhc_cfg {
 	},
 };
 
-static inline struct tx6_esdhc_cfg *to_tx6_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
+static inline struct tx6ul_esdhc_cfg *to_tx6ul_esdhc_cfg(struct fsl_esdhc_cfg *cfg)
 {
-	return container_of(cfg, struct tx6_esdhc_cfg, cfg);
+	return container_of(cfg, struct tx6ul_esdhc_cfg, cfg);
 }
 
 int board_mmc_getcd(struct mmc *mmc)
 {
-	struct tx6_esdhc_cfg *cfg = to_tx6_esdhc_cfg(mmc->priv);
+	struct tx6ul_esdhc_cfg *cfg = to_tx6ul_esdhc_cfg(mmc->priv);
 
 	if (cfg->cd_gpio < 0)
 		return 1;
@@ -606,7 +631,7 @@ int board_mmc_init(bd_t *bis)
 #endif
 	for (i = 0; i < ARRAY_SIZE(tx6ul_esdhc_cfg); i++) {
 		struct mmc *mmc;
-		struct tx6_esdhc_cfg *cfg = &tx6ul_esdhc_cfg[i];
+		struct tx6ul_esdhc_cfg *cfg = &tx6ul_esdhc_cfg[i];
 		int ret;
 
 		cfg->cfg.sdhc_clk = mxc_get_clock(cfg->clkid);
@@ -644,7 +669,7 @@ enum {
 
 static inline int calc_blink_rate(void)
 {
-	if (!tx6_temp_check_enabled)
+	if (!tx6ul_temp_check_enabled)
 		return CONFIG_SYS_HZ;
 
 	return CONFIG_SYS_HZ + CONFIG_SYS_HZ / 10 -
@@ -689,29 +714,38 @@ void show_activity(int arg)
 	}
 }
 
+static const iomux_v3_cfg_t stk5_jtag_pads[] = {
+	MX6_PAD_JTAG_MOD__SJC_MOD | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TCK__SJC_TCK | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TRST_B__SJC_TRSTB | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TDI__SJC_TDI | TX6UL_GPIO_IN_PAD_CTRL,
+	MX6_PAD_JTAG_TDO__SJC_TDO | TX6UL_GPIO_OUT_PAD_CTRL,
+	MX6_PAD_JTAG_TMS__SJC_TMS | TX6UL_GPIO_IN_PAD_CTRL,
+};
+
 static const iomux_v3_cfg_t stk5_pads[] = {
 	/* SW controlled LED on STK5 baseboard */
 	MX6_PAD_SNVS_TAMPER9__GPIO5_IO09,
 
 	/* I2C bus on DIMM pins 40/41 */
-	MX6_PAD_GPIO1_IO01__I2C2_SDA | MUX_MODE_SION | MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
-	MX6_PAD_GPIO1_IO00__I2C2_SCL | MUX_MODE_SION | MUX_PAD_CTRL(TX6_I2C_PAD_CTRL),
+	MX6_PAD_GPIO1_IO01__I2C2_SDA | MUX_MODE_SION | TX6UL_I2C_PAD_CTRL,
+	MX6_PAD_GPIO1_IO00__I2C2_SCL | MUX_MODE_SION | TX6UL_I2C_PAD_CTRL,
 
 	/* TSC200x PEN IRQ */
-	MX6_PAD_JTAG_TMS__GPIO1_IO11 | MUX_PAD_CTRL(TX6_GPIO_IN_PAD_CTRL),
+	MX6_PAD_JTAG_TMS__GPIO1_IO11 | TX6UL_GPIO_IN_PAD_CTRL,
 
 	/* EDT-FT5x06 Polytouch panel */
-	MX6_PAD_SNVS_TAMPER2__GPIO5_IO02 | MUX_PAD_CTRL(TX6_GPIO_IN_PAD_CTRL), /* IRQ */
-	MX6_PAD_SNVS_TAMPER3__GPIO5_IO03 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL), /* RESET */
-	MX6_PAD_SNVS_TAMPER8__GPIO5_IO08 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL), /* WAKE */
+	MX6_PAD_SNVS_TAMPER2__GPIO5_IO02 | TX6UL_GPIO_IN_PAD_CTRL, /* IRQ */
+	MX6_PAD_SNVS_TAMPER3__GPIO5_IO03 | TX6UL_GPIO_OUT_PAD_CTRL, /* RESET */
+	MX6_PAD_SNVS_TAMPER8__GPIO5_IO08 | TX6UL_GPIO_OUT_PAD_CTRL, /* WAKE */
 
 	/* USBH1 */
-	MX6_PAD_GPIO1_IO02__USB_OTG2_PWR | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL), /* VBUSEN */
-	MX6_PAD_GPIO1_IO03__USB_OTG2_OC | MUX_PAD_CTRL(TX6_GPIO_IN_PAD_CTRL), /* OC */
+	MX6_PAD_GPIO1_IO02__USB_OTG2_PWR | TX6UL_GPIO_OUT_PAD_CTRL, /* VBUSEN */
+	MX6_PAD_GPIO1_IO03__USB_OTG2_OC | TX6UL_GPIO_IN_PAD_CTRL, /* OC */
 
 	/* USBOTG */
-	MX6_PAD_UART3_CTS_B__GPIO1_IO26 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL), /* VBUSEN */
-	MX6_PAD_UART3_RTS_B__GPIO1_IO27 | MUX_PAD_CTRL(TX6_GPIO_IN_PAD_CTRL), /* OC */
+	MX6_PAD_UART3_CTS_B__GPIO1_IO26 | TX6UL_GPIO_OUT_PAD_CTRL, /* VBUSEN */
+	MX6_PAD_UART3_RTS_B__GPIO1_IO27 | TX6UL_GPIO_IN_PAD_CTRL, /* OC */
 };
 
 static const struct gpio stk5_gpios[] = {
@@ -730,7 +764,7 @@ vidinfo_t panel_info = {
 	.vl_bpix = LCD_COLOR32,	   /* Bits per pixel, 0: 1bpp, 1: 2bpp, 2: 4bpp, 3: 8bpp ... */
 };
 
-static struct fb_videomode tx6_fb_modes[] = {
+static struct fb_videomode tx6ul_fb_modes[] = {
 #ifndef CONFIG_SYS_LVDS_IF
 	{
 		/* Standard VGA timing */
@@ -909,11 +943,11 @@ static int lcd_backlight_polarity(void)
 static const iomux_v3_cfg_t stk5_lcd_pads[] = {
 #ifdef CONFIG_LCD
 	/* LCD RESET */
-	MX6_PAD_LCD_RESET__GPIO3_IO04 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL),
+	MX6_PAD_LCD_RESET__GPIO3_IO04 | TX6UL_GPIO_OUT_PAD_CTRL,
 	/* LCD POWER_ENABLE */
-	MX6_PAD_SNVS_TAMPER4__GPIO5_IO04 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL),
+	MX6_PAD_SNVS_TAMPER4__GPIO5_IO04 | TX6UL_GPIO_OUT_PAD_CTRL,
 	/* LCD Backlight (PWM) */
-	MX6_PAD_NAND_DQS__GPIO4_IO16 | MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL),
+	MX6_PAD_NAND_DQS__GPIO4_IO16 | TX6UL_GPIO_OUT_PAD_CTRL,
 	/* Display */
 	MX6_PAD_LCD_DATA00__LCDIF_DATA00,
 	MX6_PAD_LCD_DATA01__LCDIF_DATA01,
@@ -991,7 +1025,7 @@ void lcd_ctrl_init(void *lcdbase)
 	const char *vm;
 	unsigned long val;
 	int refresh = 60;
-	struct fb_videomode *p = &tx6_fb_modes[0];
+	struct fb_videomode *p = &tx6ul_fb_modes[0];
 	struct fb_videomode fb_mode;
 	int xres_set = 0, yres_set = 0, bpp_set = 0, refresh_set = 0;
 
@@ -1103,7 +1137,7 @@ void lcd_ctrl_init(void *lcdbase)
 		printf("Invalid video mode: %s\n", getenv("video_mode"));
 		lcd_enabled = 0;
 		printf("Supported video modes are:");
-		for (p = &tx6_fb_modes[0]; p->name != NULL; p++) {
+		for (p = &tx6ul_fb_modes[0]; p->name != NULL; p++) {
 			printf(" %s", p->name);
 		}
 		printf("\n");
@@ -1178,7 +1212,7 @@ void lcd_ctrl_init(void *lcdbase)
 #endif /* CONFIG_LCD */
 
 #ifndef CONFIG_ENV_IS_IN_MMC
-static void tx6_mmc_init(void)
+static void tx6ul_mmc_init(void)
 {
 	puts("MMC:   ");
 	if (board_mmc_init(gd->bd) < 0)
@@ -1186,7 +1220,7 @@ static void tx6_mmc_init(void)
 	print_mmc_devices(',');
 }
 #else
-static inline void tx6_mmc_init(void)
+static inline void tx6ul_mmc_init(void)
 {
 }
 #endif
@@ -1201,6 +1235,10 @@ static void stk5_board_init(void)
 		return;
 	}
 	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
+	if (getenv_yesno("jtag_enable") != 0) {
+		/* true if unset or set to one of: 'yYtT1' */
+		imx_iomux_v3_setup_multiple_pads(stk5_jtag_pads, ARRAY_SIZE(stk5_jtag_pads));
+	}
 	debug("%s@%d: \n", __func__, __LINE__);
 }
 
@@ -1209,7 +1247,7 @@ static void stk5v3_board_init(void)
 	debug("%s@%d: \n", __func__, __LINE__);
 	stk5_board_init();
 	debug("%s@%d: \n", __func__, __LINE__);
-	tx6_mmc_init();
+	tx6ul_mmc_init();
 }
 
 static void stk5v5_board_init(void)
@@ -1217,7 +1255,7 @@ static void stk5v5_board_init(void)
 	int ret;
 
 	stk5_board_init();
-	tx6_mmc_init();
+	tx6ul_mmc_init();
 
 	ret = gpio_request_one(IMX_GPIO_NR(3, 5), GPIOFLAG_OUTPUT_INIT_HIGH,
 			"Flexcan Transceiver");
@@ -1227,7 +1265,7 @@ static void stk5v5_board_init(void)
 	}
 
 	imx_iomux_v3_setup_pad(MX6_PAD_LCD_DATA00__GPIO3_IO05 |
-			MUX_PAD_CTRL(TX6_GPIO_OUT_PAD_CTRL));
+			TX6UL_GPIO_OUT_PAD_CTRL);
 }
 
 static void tx6ul_set_cpu_clock(void)
@@ -1259,7 +1297,7 @@ int board_late_init(void)
 
 	env_cleanup();
 
-	if (tx6_temp_check_enabled)
+	if (tx6ul_temp_check_enabled)
 		check_cpu_temperature(1);
 
 	tx6ul_set_cpu_clock();
@@ -1323,7 +1361,7 @@ exit:
 #define ETH_ALEN 6
 #endif
 
-static void tx6_init_mac(void)
+static void tx6ul_init_mac(void)
 {
 	u8 mac[ETH_ALEN];
 	const char *baseboard = getenv("baseboard");
@@ -1351,7 +1389,7 @@ int board_eth_init(bd_t *bis)
 {
 	int ret;
 
-	tx6_init_mac();
+	tx6ul_init_mac();
 
 	/* delay at least 21ms for the PHY internal POR signal to deassert */
 	udelay(22000);
@@ -1418,7 +1456,7 @@ static struct node_info nodes[] = {
 #define fdt_fixup_mtdparts(b,n,c) do { } while (0)
 #endif
 
-static const char *tx6_touchpanels[] = {
+static const char *tx6ul_touchpanels[] = {
 	"ti,tsc2007",
 	"edt,edt-ft5x06",
 	"eeti,egalax_ts",
@@ -1441,8 +1479,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 
-	karo_fdt_fixup_touchpanel(blob, tx6_touchpanels,
-				ARRAY_SIZE(tx6_touchpanels));
+	karo_fdt_fixup_touchpanel(blob, tx6ul_touchpanels,
+				ARRAY_SIZE(tx6ul_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
