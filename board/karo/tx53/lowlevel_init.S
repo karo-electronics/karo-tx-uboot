@@ -382,7 +382,11 @@ boot_data_ptr:
 self_ptr:
 	.word	ivt_header
 app_code_csf:
+#ifdef CONFIG_SECURE_BOOT
 	.word	__csf_data
+#else
+	.word	0x0
+#endif
 	.word	0x0
 boot_data:
 	.long	CONFIG_SYS_TEXT_BASE

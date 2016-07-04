@@ -25,6 +25,7 @@
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_CMD_GPIO
 
 /* LCD Logo and Splash screen support */
 #ifdef CONFIG_LCD

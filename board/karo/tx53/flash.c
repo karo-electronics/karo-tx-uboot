@@ -211,9 +211,9 @@ static int tx53_prog_uboot(void *addr, int start_block, int skip,
 	nand_erase_options_t erase_opts = { 0, };
 	size_t actual;
 	size_t prg_length = max_len - skip * mtd->erasesize;
-	int prg_start = (start_block + skip) * mtd->erasesize;
+	int prg_start = start_block * mtd->erasesize;
 
-	erase_opts.offset = start_block * mtd->erasesize;
+	erase_opts.offset = (start_block - skip) * mtd->erasesize;
 	erase_opts.length = max_len;
 	erase_opts.quiet = 1;
 
