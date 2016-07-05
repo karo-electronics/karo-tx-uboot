@@ -431,7 +431,7 @@ static bool tx6ul_temp_check_enabled = true;
 
 static inline u8 tx6ul_mem_suffix(void)
 {
-#ifdef CONFIG_TX6UL_NAND
+#ifdef CONFIG_TX6_NAND
 	return '0';
 #else
 	return '1';
