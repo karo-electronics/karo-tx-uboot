@@ -430,11 +430,7 @@ static char tx6_mem_table[] = {
 	'3', /* TX6U-8033 1GiB SDRAM 64bit; 4GiB eMMC */
 	'?', /* N/A 256MiB SDRAM 16bit; 8GiB eMMC */
 	'?', /* N/A 512MiB SDRAM 32bit; 8GiB eMMC */
-#if defined(CONFIG_TX6_REV) && CONFIG_TX6_REV == 2
-	'0', /* TX6Q-1020 (legacy) 1GiB SDRAM 64bit; 8GiB eMMC */
-#else
 	'6', /* TX6Q-1036 1GiB SDRAM 64bit; 8GiB eMMC */
-#endif
 };
 
 static struct {

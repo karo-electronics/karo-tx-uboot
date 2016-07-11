@@ -86,7 +86,7 @@ config TARGET_TX6Q_NAND
 	select SYS_I2C_MXC
 
 config TARGET_TX6Q_EMMC
-	bool "TX6Q modules with eMMC (TX6Q-1020/TX6Q-1036)"
+	bool "TX6Q modules with eMMC (TX6Q-1036)"
 	select SOC_MX6Q
 	select SYS_I2C
 	select SYS_I2C_MXC

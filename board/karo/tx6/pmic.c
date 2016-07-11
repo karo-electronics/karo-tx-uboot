@@ -29,9 +29,6 @@ static struct {
 #ifdef CONFIG_LTC3676
 	{ 0x3c, ltc3676_pmic_setup, "LTC3676", },
 #endif
-#ifdef CONFIG_RN5T618
-	{ 0x32, rn5t618_pmic_setup, "RN5T618", },
-#endif
 #ifdef CONFIG_RN5T567
 	{ 0x33, rn5t567_pmic_setup, "RN5T567", },
 #endif

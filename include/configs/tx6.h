@@ -309,8 +309,6 @@
 #if defined(CONFIG_TX6_REV)
 #if CONFIG_TX6_REV == 0x1
 #define CONFIG_LTC3676
-#elif CONFIG_TX6_REV == 0x2
-#define CONFIG_RN5T618
 #elif CONFIG_TX6_REV == 0x3
 #define CONFIG_RN5T567
 #else
