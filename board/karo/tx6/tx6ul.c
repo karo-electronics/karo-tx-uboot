@@ -452,7 +452,7 @@ static inline u8 tx6ul_mem_suffix(void)
 
 static struct pmic_regs rn5t567_regs[] = {
 	{ RN5T567_NOETIMSET, NOETIMSET_DIS_OFF_NOE_TIM | 0x5, },
-	{ RN5T567_DC2CTL, DC2_DC2DIS, },
+	{ RN5T567_DC2CTL, DCnCTL_DCnDIS, },
 	{ RN5T567_DC1DAC, VDD_CORE_VAL, },
 	{ RN5T567_DC3DAC, VDD_DDR_VAL, },
 	{ RN5T567_DC4DAC, VDD_HIGH_VAL, },

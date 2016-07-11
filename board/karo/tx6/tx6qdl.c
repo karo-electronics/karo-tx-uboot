@@ -433,13 +433,62 @@ static char tx6_mem_table[] = {
 	'6', /* TX6Q-1036 1GiB SDRAM 64bit; 8GiB eMMC */
 };
 
+#ifdef CONFIG_RN5T567
+/* PMIC settings */
+#define VDD_RTC_VAL		rn5t_mV_to_regval_rtc(3000)
+#define VDD_CORE_VAL		rn5t_mV_to_regval(1400)		/* DCDC1 */
+#define VDD_CORE_VAL_LP		rn5t_mV_to_regval(900)
+#define VDD_SOC_VAL		rn5t_mV_to_regval(1400)		/* DCDC2 */
+#define VDD_SOC_VAL_LP		rn5t_mV_to_regval(1400)
+#define VDD_DDR_VAL		rn5t_mV_to_regval(1350)		/* DCDC3 */
+#define VDD_DDR_VAL_LP		rn5t_mV_to_regval(1350)
+#define VDD_HIGH_VAL		rn5t_mV_to_regval(3000)		/* DCDC4 */
+#define VDD_HIGH_VAL_LP		rn5t_mV_to_regval(3000)
+#define VDD_IO_INT_VAL		rn5t_mV_to_regval2(3300)	/* LDO1 */
+#define VDD_IO_INT_VAL_LP	rn5t_mV_to_regval2(3300)
+#define VDD_IO_EXT_VAL		rn5t_mV_to_regval2(3300)	/* LDO2 */
+#define VDD_IO_EXT_VAL_LP	rn5t_mV_to_regval2(3300)
+
+static struct pmic_regs rn5t567_regs[] = {
+	{ RN5T567_NOETIMSET, 0x5, },
+	{ RN5T567_DC1DAC, VDD_CORE_VAL, },
+	{ RN5T567_DC2DAC, VDD_SOC_VAL, },
+	{ RN5T567_DC3DAC, VDD_DDR_VAL, },
+	{ RN5T567_DC4DAC, VDD_HIGH_VAL, },
+	{ RN5T567_DC1DAC_SLP, VDD_CORE_VAL_LP, },
+	{ RN5T567_DC2DAC_SLP, VDD_SOC_VAL_LP, },
+	{ RN5T567_DC3DAC_SLP, VDD_DDR_VAL_LP, },
+	{ RN5T567_DC4DAC_SLP, VDD_HIGH_VAL_LP, },
+	{ RN5T567_DC1CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
+	{ RN5T567_DC2CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
+	{ RN5T567_DC3CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
+	{ RN5T567_DC4CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
+	{ RN5T567_LDORTC1DAC, VDD_RTC_VAL, },
+	{ RN5T567_LDORTC1_SLOT, 0x0f, ~0x3f, },
+	{ RN5T567_LDO1DAC, VDD_IO_INT_VAL, },
+	{ RN5T567_LDO2DAC, VDD_IO_EXT_VAL, },
+	{ RN5T567_LDOEN1, 0x03, ~0x1f, },
+	{ RN5T567_LDOEN2, 0x10, ~0x30, },
+	{ RN5T567_LDODIS, 0x1c, ~0x1f, },
+	{ RN5T567_INTPOL, 0, },
+	{ RN5T567_INTEN, 0x3, },
+	{ RN5T567_IREN, 0xf, },
+	{ RN5T567_EN_GPIR, 0, },
+};
+#endif
+
 static struct {
 	uchar addr;
 	uchar rev;
+	struct pmic_regs *regs;
+	size_t num_regs;
 } tx6_mod_revs[] = {
-	{ 0x3c, 1, },
-	{ 0x32, 2, },
-	{ 0x33, 3, },
+#ifdef CONFIG_LTC3676
+	{ 0x3c, 1, NULL, 0, },
+#endif
+#ifdef CONFIG_RN5T567
+	{ 0x33, 3, rn5t567_regs, ARRAY_SIZE(rn5t567_regs), },
+#endif
 };
 
 static inline char tx6_mem_suffix(void)
@@ -525,7 +574,8 @@ int board_init(void)
 		return 0;
 	}
 
-	ret = tx6_pmic_init(pmic_addr, NULL, 0);
+	ret = tx6_pmic_init(pmic_addr, tx6_mod_revs[pmic_id].regs,
+			tx6_mod_revs[pmic_id].num_regs);
 	if (ret) {
 		printf("Failed to setup PMIC voltages: %d\n", ret);
 		hang();
