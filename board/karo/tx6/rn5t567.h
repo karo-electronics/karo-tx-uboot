@@ -63,5 +63,5 @@
 #define rn5t_regval3_to_mV(r)		rn5t_r2v(r, 6000, 250)
 
 /* LDORTC */
-#define rn5t_mV_to_regval_rtc(mV)	rn5t_v2r((mV) * 10, 17000, 250)
-#define rn5t_regval_rtc_to_mV(r)	rn5t_r2v(r, 17000, 250)
+#define rn5t_mV_to_regval_rtc(mV)	rn5t_v2r((mV) * 10, 12000, 250)
+#define rn5t_regval_rtc_to_mV(r)	rn5t_r2v(r, 12000, 250)
