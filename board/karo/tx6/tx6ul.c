@@ -445,26 +445,42 @@ static inline u8 tx6ul_mem_suffix(void)
 #define VDD_CORE_VAL_LP		rn5t_mV_to_regval(900)
 #define VDD_DDR_VAL		rn5t_mV_to_regval(1350)		/* DCDC3 */
 #define VDD_DDR_VAL_LP		rn5t_mV_to_regval(1350)
-#define VDD_HIGH_VAL		rn5t_mV_to_regval(3300)		/* DCDC4 */
-#define VDD_HIGH_VAL_LP		rn5t_mV_to_regval(3300)
-#define VDD_CSI_VAL		rn5t_mV_to_regval2(3300)	/* LDO4 */
-#define VDD_CSI_VAL_LP		rn5t_mV_to_regval2(3300)
+#define VDD_IO_EXT_VAL		rn5t_mV_to_regval(3300)		/* DCDC4 */
+#define VDD_IO_EXT_VAL_LP	rn5t_mV_to_regval(3300)
+#define VDD_IO_INT_VAL		rn5t_mV_to_regval2(3300)	/* LDO1 */
+#define VDD_IO_INT_VAL_LP	rn5t_mV_to_regval2(3300)
+#define VDD_ADC_VAL		rn5t_mV_to_regval2(3300)	/* LDO2 */
+#define VDD_ADC_VAL_LP		rn5t_mV_to_regval2(3300)
+#define VDD_PMIC_VAL		rn5t_mV_to_regval2(2500)	/* LDO3 */
+#define VDD_PMIC_VAL_LP		rn5t_mV_to_regval2(2500)
+#define VDD_CSI_VAL		rn5t_mV_to_regval2(1800)	/* LDO4 */
+#define VDD_CSI_VAL_LP		rn5t_mV_to_regval2(1800)
 
 static struct pmic_regs rn5t567_regs[] = {
 	{ RN5T567_NOETIMSET, NOETIMSET_DIS_OFF_NOE_TIM | 0x5, },
-	{ RN5T567_DC2CTL, DCnCTL_DCnDIS, },
 	{ RN5T567_DC1DAC, VDD_CORE_VAL, },
 	{ RN5T567_DC3DAC, VDD_DDR_VAL, },
-	{ RN5T567_DC4DAC, VDD_HIGH_VAL, },
+	{ RN5T567_DC4DAC, VDD_IO_EXT_VAL, },
 	{ RN5T567_DC1DAC_SLP, VDD_CORE_VAL_LP, },
 	{ RN5T567_DC3DAC_SLP, VDD_DDR_VAL_LP, },
-	{ RN5T567_DC4DAC_SLP, VDD_HIGH_VAL_LP, },
-	{ RN5T567_LDOEN1, 0x01f, ~0x1f, },
-	{ RN5T567_LDOEN2, 0x10, ~0x30, },
-	{ RN5T567_LDODIS, 0x00, },
-	{ RN5T567_LDO4DAC, VDD_CSI_VAL, },
+	{ RN5T567_DC4DAC_SLP, VDD_IO_EXT_VAL_LP, },
+	{ RN5T567_DC1CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
+	{ RN5T567_DC2CTL, DCnCTL_DCnDIS, },
+	{ RN5T567_DC3CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
+	{ RN5T567_DC4CTL, DCnCTL_DCnEN | DCnMODE_SLP(DCnMODE_PSM), },
 	{ RN5T567_LDORTC1DAC, VDD_RTC_VAL, },
 	{ RN5T567_LDORTC1_SLOT, 0x0f, ~0x3f, },
+	{ RN5T567_LDO1DAC, VDD_IO_INT_VAL, },
+	{ RN5T567_LDO2DAC, VDD_ADC_VAL, },
+	{ RN5T567_LDO3DAC, VDD_PMIC_VAL, },
+	{ RN5T567_LDO4DAC, VDD_CSI_VAL, },
+	{ RN5T567_LDOEN1, 0x0f, ~0x1f, },
+	{ RN5T567_LDOEN2, 0x10, ~0x30, },
+	{ RN5T567_LDODIS, 0x10, ~0x1f, },
+	{ RN5T567_INTPOL, 0, },
+	{ RN5T567_INTEN, 0x3, },
+	{ RN5T567_IREN, 0xf, },
+	{ RN5T567_EN_GPIR, 0, },
 };
 
 static int pmic_addr = 0x33;
