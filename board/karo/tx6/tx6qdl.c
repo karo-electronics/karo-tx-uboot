@@ -534,6 +534,17 @@ static int tx6_pmic_probe(void)
 	return -EINVAL;
 }
 
+static int tx6_mipi(void)
+{
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank5_regs *fuse = (void *)ocotp->bank[5].fuse_regs;
+	u32 pad_settings = readl(&fuse->pad_settings);
+
+	debug("Fuse pad_settings @ %p = %02x\n",
+		&fuse->pad_settings, pad_settings);
+	return !(pad_settings & 1);
+}
+
 int board_init(void)
 {
 	int ret;
@@ -548,7 +559,7 @@ int board_init(void)
 	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
 		tx6_mod_suffix,
 		is_cpu_type(MXC_CPU_MX6Q) ? 1 : 8,
-		is_lvds(), tx6_get_mod_rev(pmic_id),
+		tx6_mipi() ? 2 : is_lvds(), tx6_get_mod_rev(pmic_id),
 		tx6_mem_suffix());
 
 	get_hab_status();
