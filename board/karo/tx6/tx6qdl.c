@@ -537,12 +537,11 @@ static int tx6_pmic_probe(void)
 static int tx6_mipi(void)
 {
 	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank5_regs *fuse = (void *)ocotp->bank[5].fuse_regs;
-	u32 pad_settings = readl(&fuse->pad_settings);
+	struct fuse_bank4_regs *fuse = (void *)ocotp->bank[4].fuse_regs;
+	u32 gp1 = readl(&fuse->gp1);
 
-	debug("Fuse pad_settings @ %p = %02x\n",
-		&fuse->pad_settings, pad_settings);
-	return !(pad_settings & 1);
+	debug("Fuse gp1 @ %p = %08x\n", &fuse->gp1, gp1);
+	return gp1 & 1;
 }
 
 int board_init(void)
