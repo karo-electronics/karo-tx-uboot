@@ -16,10 +16,10 @@
 #include <linux/bitops.h>
 
 /* GPLL0 clock control registers */
-#define GPLL0_STATUS        0x2101C
-#define GPLL0_STATUS_ACTIVE BIT(17)
+#define GPLL0_STATUS		0x2101C
+#define GPLL0_STATUS_ACTIVE	BIT(17)
 
-#define APCS_GPLL_ENA_VOTE  0x45000
+#define APCS_GPLL_ENA_VOTE	0x45000
 #define APCS_GPLL_ENA_VOTE_GPLL0 BIT(0)
 
 /* vote reg for blsp1 clock */
@@ -29,36 +29,36 @@
 /* SDC(n) clock control registers; n=1,2 */
 
 /* block control register */
-#define SDCC_BCR(n)                 ((n * 0x1000) + 0x41000)
+#define SDCC_BCR(n)		((n) * 0x1000 + 0x41000)
 /* cmd */
-#define SDCC_CMD_RCGR(n)            ((n * 0x1000) + 0x41004)
+#define SDCC_CMD_RCGR(n)	((n) * 0x1000 + 0x41004)
 /* cfg */
-#define SDCC_CFG_RCGR(n)            ((n * 0x1000) + 0x41008)
+#define SDCC_CFG_RCGR(n)	((n) * 0x1000 + 0x41008)
 /* m */
-#define SDCC_M(n)                   ((n * 0x1000) + 0x4100C)
+#define SDCC_M(n)		((n) * 0x1000 + 0x4100C)
 /* n */
-#define SDCC_N(n)                   ((n * 0x1000) + 0x41010)
+#define SDCC_N(n)		((n) * 0x1000 + 0x41010)
 /* d */
-#define SDCC_D(n)                   ((n * 0x1000) + 0x41014)
+#define SDCC_D(n)		((n) * 0x1000 + 0x41014)
 /* branch control */
-#define SDCC_APPS_CBCR(n)           ((n * 0x1000) + 0x41018)
-#define SDCC_AHB_CBCR(n)            ((n * 0x1000) + 0x4101C)
+#define SDCC_APPS_CBCR(n)	((n) * 0x1000 + 0x41018)
+#define SDCC_AHB_CBCR(n)	((n) * 0x1000 + 0x4101C)
 
 /* BLSP1 AHB clock (root clock for BLSP) */
-#define BLSP1_AHB_CBCR              0x1008
+#define BLSP1_AHB_CBCR		0x1008
 
 /* Uart clock control registers */
-#define BLSP1_UART2_BCR             0x3028
-#define BLSP1_UART2_APPS_CBCR       0x302C
-#define BLSP1_UART2_APPS_CMD_RCGR   0x3034
-#define BLSP1_UART2_APPS_CFG_RCGR   0x3038
-#define BLSP1_UART2_APPS_M          0x303C
-#define BLSP1_UART2_APPS_N          0x3040
-#define BLSP1_UART2_APPS_D          0x3044
+#define BLSP1_UART2_BCR		0x3028
+#define BLSP1_UART2_APPS_CBCR	0x302C
+#define BLSP1_UART2_APPS_CMD_RCGR 0x3034
+#define BLSP1_UART2_APPS_CFG_RCGR 0x3038
+#define BLSP1_UART2_APPS_M	0x303C
+#define BLSP1_UART2_APPS_N	0x3040
+#define BLSP1_UART2_APPS_D	0x3044
 
 /* CBCR register fields */
-#define CBCR_BRANCH_ENABLE_BIT  BIT(0)
-#define CBCR_BRANCH_OFF_BIT     BIT(31)
+#define CBCR_BRANCH_ENABLE_BIT	BIT(0)
+#define CBCR_BRANCH_OFF_BIT	BIT(31)
 
 struct msm_clk_priv {
 	phys_addr_t base;
@@ -156,18 +156,18 @@ static void clk_rcg_set_rate_mnd(phys_addr_t base, const struct bcr_regs *regs,
 
 static const struct bcr_regs sdc_regs[] = {
 	{
-	.cfg_rcgr = SDCC_CFG_RCGR(1),
-	.cmd_rcgr = SDCC_CMD_RCGR(1),
-	.M = SDCC_M(1),
-	.N = SDCC_N(1),
-	.D = SDCC_D(1),
+		.cfg_rcgr = SDCC_CFG_RCGR(1),
+		.cmd_rcgr = SDCC_CMD_RCGR(1),
+		.M = SDCC_M(1),
+		.N = SDCC_N(1),
+		.D = SDCC_D(1),
 	},
 	{
-	.cfg_rcgr = SDCC_CFG_RCGR(2),
-	.cmd_rcgr = SDCC_CMD_RCGR(2),
-	.M = SDCC_M(2),
-	.N = SDCC_N(2),
-	.D = SDCC_D(2),
+		.cfg_rcgr = SDCC_CFG_RCGR(2),
+		.cmd_rcgr = SDCC_CMD_RCGR(2),
+		.M = SDCC_M(2),
+		.N = SDCC_N(2),
+		.D = SDCC_D(2),
 	}
 };
 
