@@ -244,7 +244,7 @@ static int ehci_td_buffer(struct qTD *td, void *buf, size_t sz)
 	int idx;
 
 	if (addr != ALIGN(addr, ARCH_DMA_MINALIGN))
-		debug("EHCI-HCD: Misaligned buffer address (%p)\n", buf);
+			printf("EHCI-HCD: Misaligned buffer address (%p)\n", buf);
 
 	flush_dcache_range(addr, ALIGN(addr + sz, ARCH_DMA_MINALIGN));
 
@@ -724,13 +724,14 @@ static int ehci_submit_root(struct usb_device *dev, unsigned long pipe,
 				srclen = 42;
 				break;
 			default:
-				debug("unknown value DT_STRING %x\n",
-					le16_to_cpu(req->value));
+				printf("%s: unknown value DT_STRING %x\n",
+					__func__, le16_to_cpu(req->value));
 				goto unknown;
 			}
 			break;
 		default:
-			debug("unknown value %x\n", le16_to_cpu(req->value));
+			printf("%s: unknown value %x\n", __func__,
+				le16_to_cpu(req->value));
 			goto unknown;
 		}
 		break;
@@ -742,7 +743,8 @@ static int ehci_submit_root(struct usb_device *dev, unsigned long pipe,
 			srclen = descriptor.hub.bLength;
 			break;
 		default:
-			debug("unknown value %x\n", le16_to_cpu(req->value));
+			printf("%s: unknown value %x\n", __func__,
+				le16_to_cpu(req->value));
 			goto unknown;
 		}
 		break;
@@ -874,7 +876,8 @@ static int ehci_submit_root(struct usb_device *dev, unsigned long pipe,
 			ehci_writel(status_reg, reg);
 			break;
 		default:
-			debug("unknown feature %x\n", le16_to_cpu(req->value));
+			printf("%s: unknown feature %04x\n", __func__,
+				le16_to_cpu(req->value));
 			goto unknown;
 		}
 		/* unblock posted writes */
@@ -904,7 +907,8 @@ static int ehci_submit_root(struct usb_device *dev, unsigned long pipe,
 			ctrl->portreset &= ~(1 << port);
 			break;
 		default:
-			debug("unknown feature %x\n", le16_to_cpu(req->value));
+			printf("%s: unknown feature %04x\n", __func__,
+				le16_to_cpu(req->value));
 			goto unknown;
 		}
 		ehci_writel(status_reg, reg);
@@ -912,7 +916,7 @@ static int ehci_submit_root(struct usb_device *dev, unsigned long pipe,
 		(void) ehci_readl(&ctrl->hcor->or_usbcmd);
 		break;
 	default:
-		debug("Unknown request\n");
+		printf("%s: Unknown request %04x\n", __func__, typeReq);
 		goto unknown;
 	}
 
@@ -1139,7 +1143,8 @@ static int _ehci_submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 {
 
 	if (usb_pipetype(pipe) != PIPE_BULK) {
-		debug("non-bulk pipe (type=%lu)", usb_pipetype(pipe));
+		printf("%s: non-bulk pipe (type=%lu)", __func__,
+			usb_pipetype(pipe));
 		return -1;
 	}
 	return ehci_submit_async(dev, pipe, buffer, length, NULL);
@@ -1152,7 +1157,8 @@ static int _ehci_submit_control_msg(struct usb_device *dev, unsigned long pipe,
 	struct ehci_ctrl *ctrl = ehci_get_ctrl(dev);
 
 	if (usb_pipetype(pipe) != PIPE_CONTROL) {
-		debug("non-control pipe (type=%lu)", usb_pipetype(pipe));
+		printf("%s: non-control pipe (type=%lu)", __func__,
+			usb_pipetype(pipe));
 		return -1;
 	}
 
@@ -1243,7 +1249,8 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 
 	debug("Enter create_int_queue\n");
 	if (usb_pipetype(pipe) != PIPE_INTERRUPT) {
-		debug("non-interrupt pipe (type=%lu)", usb_pipetype(pipe));
+		printf("%s: non-interrupt pipe (type=%lu)", __func__,
+			usb_pipetype(pipe));
 		return NULL;
 	}
 
@@ -1252,13 +1259,14 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 	 * no matter the alignment
 	 */
 	if (elementsize >= 16384) {
-		debug("too large elements for interrupt transfers\n");
+		printf("%s: too many elements for interrupt transfers\n",
+			__func__);
 		return NULL;
 	}
 
 	result = malloc(sizeof(*result));
 	if (!result) {
-		debug("ehci intr queue: out of memory\n");
+		printf("%s: ehci intr queue: out of memory\n", __func__);
 		goto fail1;
 	}
 	result->elementsize = elementsize;
@@ -1266,7 +1274,7 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 	result->first = memalign(USB_DMA_MINALIGN,
 				 sizeof(struct QH) * queuesize);
 	if (!result->first) {
-		debug("ehci intr queue: out of memory\n");
+		printf("%s: ehci intr queue: out of memory\n", __func__);
 		goto fail2;
 	}
 	result->current = result->first;
@@ -1274,7 +1282,7 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 	result->tds = memalign(USB_DMA_MINALIGN,
 			       sizeof(struct qTD) * queuesize);
 	if (!result->tds) {
-		debug("ehci intr queue: out of memory\n");
+		printf("%s: ehci intr queue: out of memory\n", __func__);
 		goto fail3;
 	}
 	memset(result->first, 0, sizeof(struct QH) * queuesize);
@@ -1344,10 +1352,8 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 					  queuesize));
 
 	if (ctrl->periodic_schedules > 0) {
-		if (disable_periodic(ctrl) < 0) {
-			debug("FATAL: periodic should never fail, but did");
+		if (disable_periodic(ctrl) < 0)
 			goto fail3;
-		}
 	}
 
 	/* hook up to periodic list */
@@ -1360,10 +1366,9 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 	flush_dcache_range((unsigned long)list,
 			   ALIGN_END_ADDR(struct QH, list, 1));
 
-	if (enable_periodic(ctrl) < 0) {
-		debug("FATAL: periodic should never fail, but did");
+	if (enable_periodic(ctrl) < 0)
 		goto fail3;
-	}
+
 	ctrl->periodic_schedules++;
 
 	debug("Exit create_int_queue\n");
@@ -1390,7 +1395,8 @@ static void *_ehci_poll_int_queue(struct usb_device *dev,
 
 	/* depleted queue */
 	if (cur == NULL) {
-		debug("Exit poll_int_queue with completed queue\n");
+		printf("%s: Exit poll_int_queue with completed queue\n",
+			__func__);
 		return NULL;
 	}
 	/* still active */
@@ -1399,7 +1405,8 @@ static void *_ehci_poll_int_queue(struct usb_device *dev,
 				ALIGN_END_ADDR(struct qTD, cur_td, 1));
 	token = hc32_to_cpu(cur_td->qt_token);
 	if (QT_TOKEN_GET_STATUS(token) & QT_TOKEN_STATUS_ACTIVE) {
-		debug("Exit poll_int_queue with no completed intr transfer. token is %x\n", token);
+		printf("%s: Exit poll_int_queue with no completed intr transfer. token is %x\n",
+			__func__, token);
 		return NULL;
 	}
 
@@ -1428,10 +1435,9 @@ static int _ehci_destroy_int_queue(struct usb_device *dev,
 	int result = -1;
 	unsigned long timeout;
 
-	if (disable_periodic(ctrl) < 0) {
-		debug("FATAL: periodic should never fail, but did");
+	if (disable_periodic(ctrl) < 0)
 		goto out;
-	}
+
 	ctrl->periodic_schedules--;
 
 	struct QH *cur = &ctrl->periodic_queue;
@@ -1454,11 +1460,8 @@ static int _ehci_destroy_int_queue(struct usb_device *dev,
 		}
 	}
 
-	if (ctrl->periodic_schedules > 0) {
+	if (ctrl->periodic_schedules > 0)
 		result = enable_periodic(ctrl);
-		if (result < 0)
-			debug("FATAL: periodic should never fail, but did");
-	}
 
 out:
 	free(queue->tds);
@@ -1492,8 +1495,8 @@ static int _ehci_submit_int_msg(struct usb_device *dev, unsigned long pipe,
 		}
 
 	if (backbuffer != buffer) {
-		debug("got wrong buffer back (%p instead of %p)\n",
-		      backbuffer, buffer);
+		printf("%s: got wrong buffer back (%p instead of %p)\n",
+			__func__, backbuffer, buffer);
 		return -EINVAL;
 	}
 
@@ -1631,7 +1634,7 @@ done:
 	return 0;
 err:
 	free(ctrl);
-	debug("%s: failed, ret=%d\n", __func__, ret);
+	printf("%s: failed, ret=%d\n", __func__, ret);
 	return ret;
 }
 
