@@ -141,14 +141,16 @@ int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 int mmc_send_status(struct mmc *mmc, int timeout)
 {
 	struct mmc_cmd cmd;
-	int err, retries = 5;
+	int err;
+	int retries = 0;
+	const int max_tries = 5000;
 
 	cmd.cmdidx = MMC_CMD_SEND_STATUS;
 	cmd.resp_type = MMC_RSP_R1;
 	if (!mmc_host_is_spi(mmc))
 		cmd.cmdarg = mmc->rca << 16;
 
-	while (1) {
+	do {
 		err = mmc_send_cmd(mmc, &cmd, NULL);
 		if (!err) {
 			if ((cmd.response[0] & MMC_STATUS_RDY_FOR_DATA) &&
@@ -162,21 +164,29 @@ int mmc_send_status(struct mmc *mmc, int timeout)
 #endif
 				return -ECOMM;
 			}
-		} else if (--retries < 0)
-			return err;
+		}
+		if (err == -EBUSY) {
+			if (retries == 0)
+				printf("(e)MMC is busy; please wait... ");
+			if (retries++ > max_tries)
+				break;
+			udelay(10000);
+			continue;
+		}
 
 		if (timeout-- <= 0)
 			break;
 
 		udelay(1000);
-	}
-
+	} while (err);
+	if (retries)
+		printf("\n");
 	mmc_trace_state(mmc, &cmd);
-	if (timeout <= 0) {
+	if (err) {
 #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
-		printf("Timeout waiting card ready\n");
+		printf("Timeout waiting for card ready\n");
 #endif
-		return -ETIMEDOUT;
+		return err;
 	}
 
 	return 0;
@@ -407,7 +417,7 @@ static int mmc_send_op_cond(struct mmc *mmc)
 	/* Some cards seem to need this */
 	mmc_go_idle(mmc);
 
- 	/* Asking to the card its capabilities */
+	/* Asking the card for its capabilities */
 	for (i = 0; i < 2; i++) {
 		err = mmc_send_op_cond_iter(mmc, i != 0);
 		if (err)
@@ -424,7 +434,7 @@ static int mmc_send_op_cond(struct mmc *mmc)
 static int mmc_complete_op_cond(struct mmc *mmc)
 {
 	struct mmc_cmd cmd;
-	int timeout = 1000;
+	int timeout = 10 * CONFIG_SYS_HZ;
 	uint start;
 	int err;
 
@@ -508,7 +518,6 @@ int mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value)
 		ret = mmc_send_status(mmc, timeout);
 
 	return ret;
-
 }
 
 static int mmc_change_freq(struct mmc *mmc)
@@ -1131,10 +1140,11 @@ static int mmc_startup(struct mmc *mmc)
 	cmd.cmdarg = mmc->rca << 16;
 
 	err = mmc_send_cmd(mmc, &cmd, NULL);
+	if (err)
+		return err;
 
 	/* Waiting for the ready status */
-	mmc_send_status(mmc, timeout);
-
+	err = mmc_send_status(mmc, timeout);
 	if (err)
 		return err;
 
@@ -1231,6 +1241,7 @@ static int mmc_startup(struct mmc *mmc)
 	mmc->part_config = MMCPART_NOAVAILABLE;
 	if (!IS_SD(mmc) && (mmc->version >= MMC_VERSION_4)) {
 		/* check  ext_csd version and capacity */
+
 		err = mmc_send_ext_csd(mmc, ext_csd);
 		if (err)
 			return err;

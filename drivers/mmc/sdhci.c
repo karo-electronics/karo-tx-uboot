@@ -139,7 +139,7 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 {
 #endif
 	struct sdhci_host *host = mmc->priv;
-	unsigned int stat = 0;
+	unsigned int stat;
 	int ret = 0;
 	int trans_bytes = 0, is_aligned = 1;
 	u32 mask, flags, mode;
@@ -148,7 +148,9 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	unsigned start = get_timer(0);
 
 	/* Timeout unit - ms */
-	static unsigned int cmd_timeout = SDHCI_CMD_DEFAULT_TIMEOUT;
+	unsigned int cmd_timeout;
+
+	cmd_timeout = cmd->cmdidx == MMC_CMD_SEND_STATUS ? 10 : 200;
 
 	sdhci_writel(host, SDHCI_INT_ALL_MASK, SDHCI_INT_STATUS);
 	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
@@ -158,19 +160,14 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
 		mask &= ~SDHCI_DATA_INHIBIT;
 
-	while (sdhci_readl(host, SDHCI_PRESENT_STATE) & mask) {
-		if (time >= cmd_timeout) {
-			printf("%s: MMC: %d busy ", __func__, mmc_dev);
-			if (2 * cmd_timeout <= SDHCI_CMD_MAX_TIMEOUT) {
-				cmd_timeout += cmd_timeout;
-				printf("timeout increasing to: %u ms.\n",
-				       cmd_timeout);
-			} else {
-				puts("timeout.\n");
+	while ((stat = sdhci_readl(host, SDHCI_PRESENT_STATE) & mask)) {
+		if (time++ >= cmd_timeout) {
+			debug("%s: MMC: %d busy\n", __func__, mmc_dev);
+			if (stat & (SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT))
+				return -EBUSY;
+			else
 				return -ECOMM;
-			}
 		}
-		time++;
 		udelay(1000);
 	}
 
@@ -227,7 +224,6 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		if (data->flags != MMC_DATA_READ)
 			memcpy(aligned_buffer, data->src, trans_bytes);
 #endif
-
 		sdhci_writel(host, start_addr, SDHCI_DMA_ADDRESS);
 		mode |= SDHCI_TRNS_DMA;
 #endif
@@ -265,8 +261,9 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	if ((stat & (SDHCI_INT_ERROR | mask)) == mask) {
 		sdhci_cmd_done(host, cmd);
 		sdhci_writel(host, mask, SDHCI_INT_STATUS);
-	} else
+	} else {
 		ret = -1;
+	}
 
 	if (!ret && data)
 		ret = sdhci_transfer_data(host, data, start_addr);
@@ -294,14 +291,15 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 {
 	struct sdhci_host *host = mmc->priv;
-	unsigned int div, clk = 0, timeout, reg;
+	unsigned int div, timeout, reg;
+	uint16_t clk = 0;
 
 	/* Wait max 20 ms */
 	timeout = 200;
 	while (sdhci_readl(host, SDHCI_PRESENT_STATE) &
 			   (SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT)) {
 		if (timeout == 0) {
-			printf("%s: Timeout to wait cmd & data inhibit\n",
+			printf("%s: Timeout waiting for cmd & data inhibit\n",
 			       __func__);
 			return -1;
 		}
