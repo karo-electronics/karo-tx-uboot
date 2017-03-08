@@ -242,9 +242,9 @@ static void probe_valid_drivers(struct usb_device *dev)
 					usb_max_eth_dev - 1))
 				puts("Warning: failed to set MAC address\n");
 			break;
-			}
 		}
 	}
+}
 
 /*******************************************************************************
  * scan the usb and reports device info
