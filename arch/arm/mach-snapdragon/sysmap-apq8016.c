@@ -11,22 +11,21 @@
 
 static struct mm_region apq8016_mem_map[] = {
 	{
-		.virt = 0x0UL, /* Peripheral block */
 		.phys = 0x0UL, /* Peripheral block */
-		.size = 0x8000000UL,
+		.virt = 0x0UL,
+		.size = SZ_256M,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
-			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-	}, {
-		.virt = 0x80000000UL, /* DDR */
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN,
+	},
+	{
 		.phys = 0x80000000UL, /* DDR */
-		.size = 0x80000000UL,
+		.virt = 0x80000000UL,
+		.size = SZ_1G,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
-			 PTE_BLOCK_INNER_SHARE
-	}, {
-		/* List terminator */
-		0,
-	}
+			 PTE_BLOCK_INNER_SHARE,
+	},
+	{ /* List terminator */ }
 };
 
 struct mm_region *mem_map = apq8016_mem_map;
