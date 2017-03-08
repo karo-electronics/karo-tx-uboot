@@ -749,8 +749,8 @@ int fdtdec_parse_phandle_with_args(const void *blob, int src_node,
 				node = fdt_node_offset_by_phandle(blob,
 								  phandle);
 				if (!node) {
-					debug("%s: could not find phandle\n",
-					      fdt_get_name(blob, src_node,
+					printf("%s: could not find phandle\n",
+					       fdt_get_name(blob, src_node,
 							   NULL));
 					goto err;
 				}
@@ -760,12 +760,12 @@ int fdtdec_parse_phandle_with_args(const void *blob, int src_node,
 				count = fdtdec_get_int(blob, node, cells_name,
 						       -1);
 				if (count == -1) {
-					debug("%s: could not get %s for %s\n",
-					      fdt_get_name(blob, src_node,
-							   NULL),
-					      cells_name,
-					      fdt_get_name(blob, node,
-							   NULL));
+					printf("%s: could not get %s for %s\n",
+					       fdt_get_name(blob, src_node,
+							    NULL),
+					       cells_name,
+					       fdt_get_name(blob, node,
+							    NULL));
 					goto err;
 				}
 			} else {
@@ -777,7 +777,7 @@ int fdtdec_parse_phandle_with_args(const void *blob, int src_node,
 			 * remaining property data length
 			 */
 			if (list + count > list_end) {
-				debug("%s: arguments longer than property\n",
+				printf("%s: arguments longer than property\n",
 				      fdt_get_name(blob, src_node, NULL));
 				goto err;
 			}
@@ -798,9 +798,9 @@ int fdtdec_parse_phandle_with_args(const void *blob, int src_node,
 				int i;
 
 				if (count > MAX_PHANDLE_ARGS) {
-					debug("%s: too many arguments %d\n",
-					      fdt_get_name(blob, src_node,
-							   NULL), count);
+					printf("%s: too many arguments %d\n",
+					       fdt_get_name(blob, src_node,
+							    NULL), count);
 					count = MAX_PHANDLE_ARGS;
 				}
 				out_args->node = node;
@@ -948,7 +948,7 @@ int fdtdec_read_fmap_entry(const void *blob, int node, const char *name,
 	u32 reg[2];
 
 	if (fdtdec_get_int_array(blob, node, "reg", reg, 2)) {
-		debug("Node '%s' has bad/missing 'reg' property\n", name);
+		printf("Node '%s' has bad/missing 'reg' property\n", name);
 		return -FDT_ERR_NOTFOUND;
 	}
 	entry->offset = reg[0];
@@ -1034,7 +1034,7 @@ int fdtdec_decode_memory_region(const void *blob, int config_node,
 	if (config_node == -1) {
 		config_node = fdt_path_offset(blob, "/config");
 		if (config_node < 0) {
-			debug("%s: Cannot find /config node\n", __func__);
+			printf("%s: Cannot find /config node\n", __func__);
 			return -ENOENT;
 		}
 	}
@@ -1045,15 +1045,15 @@ int fdtdec_decode_memory_region(const void *blob, int config_node,
 		 suffix);
 	mem = fdt_getprop(blob, config_node, prop_name, NULL);
 	if (!mem) {
-		debug("%s: No memory type for '%s', using /memory\n", __func__,
-		      prop_name);
+		printf("%s: No memory type for '%s', using /memory\n", __func__,
+		       prop_name);
 		mem = "/memory";
 	}
 
 	node = fdt_path_offset(blob, mem);
 	if (node < 0) {
-		debug("%s: Failed to find node '%s': %s\n", __func__, mem,
-		      fdt_strerror(node));
+		printf("%s: Failed to find node '%s': %s\n", __func__, mem,
+		       fdt_strerror(node));
 		return -ENOENT;
 	}
 
@@ -1062,8 +1062,8 @@ int fdtdec_decode_memory_region(const void *blob, int config_node,
 	 * use the first
 	 */
 	if (fdtdec_decode_region(blob, node, "reg", &base, &size)) {
-		debug("%s: Failed to decode memory region %s\n", __func__,
-		      mem);
+		printf("%s: Failed to decode memory region %s\n", __func__,
+		       mem);
 		return -EINVAL;
 	}
 
@@ -1071,8 +1071,8 @@ int fdtdec_decode_memory_region(const void *blob, int config_node,
 		 suffix);
 	if (fdtdec_decode_region(blob, config_node, prop_name, &offset,
 				 &offset_size)) {
-		debug("%s: Failed to decode memory region '%s'\n", __func__,
-		      prop_name);
+		printf("%s: Failed to decode memory region '%s'\n", __func__,
+		       prop_name);
 		return -EINVAL;
 	}
 
@@ -1090,8 +1090,8 @@ static int decode_timing_property(const void *blob, int node, const char *name,
 
 	prop = fdt_getprop(blob, node, name, &length);
 	if (!prop) {
-		debug("%s: could not find property %s\n",
-		      fdt_get_name(blob, node, NULL), name);
+		printf("%s: could not find property %s\n",
+		       fdt_get_name(blob, node, NULL), name);
 		return length;
 	}
 
