@@ -124,6 +124,7 @@ struct blk_desc *blk_get_devnum_by_typename(const char *if_typename, int devnum)
 	return NULL;
 }
 
+#ifndef CONFIG_DM_MMC
 /**
  * get_desc() - Get the block device descriptor for the given device number
  *
@@ -164,6 +165,7 @@ static int get_desc(enum if_type if_type, int devnum, struct blk_desc **descp)
 
 	return found_more ? -ENOENT : -ENODEV;
 }
+#endif
 
 int blk_select_hwpart_devnum(enum if_type if_type, int devnum, int hwpart)
 {
@@ -177,6 +179,7 @@ int blk_select_hwpart_devnum(enum if_type if_type, int devnum, int hwpart)
 	return blk_select_hwpart(dev, hwpart);
 }
 
+#ifndef CONFIG_DM_MMC
 int blk_list_part(enum if_type if_type)
 {
 	struct blk_desc *desc;
@@ -302,6 +305,7 @@ ulong blk_write_devnum(enum if_type if_type, int devnum, lbaint_t start,
 		return ret;
 	return blk_dwrite(desc, start, blkcnt, buffer);
 }
+#endif
 
 int blk_select_hwpart(struct udevice *dev, int hwpart)
 {
