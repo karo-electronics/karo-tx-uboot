@@ -58,7 +58,7 @@ static int msm_sdc_clk_init(struct udevice *dev)
 	struct clk clk;
 	int ret;
 
-	ret = fdtdec_get_int_array(gd->fdt_blob, dev->of_offset, "clock", clkd,
+	ret = fdtdec_get_int_array(gd->fdt_blob, dev->of_offset, "clocks", clkd,
 				   2);
 	if (ret)
 		return ret;
