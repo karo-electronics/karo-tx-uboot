@@ -436,7 +436,7 @@ int fdt_fixup_memory_banks(void *blob, u64 start[], u64 size[], int banks)
 	/* find or create "/memory" node. */
 	nodeoffset = fdt_find_or_add_subnode(blob, 0, "memory");
 	if (nodeoffset < 0)
-			return nodeoffset;
+		return nodeoffset;
 
 	err = fdt_setprop(blob, nodeoffset, "device_type", "memory",
 			sizeof("memory"));
@@ -1229,11 +1229,11 @@ static u64 __of_translate_address(const void *blob, int node_offset,
 		goto bail;
 	bus = of_match_bus(blob, parent);
 
-	/* Cound address cells & copy address locally */
+	/* Count address cells & copy address locally */
 	bus->count_cells(blob, parent, &na, &ns);
 	if (!OF_CHECK_COUNTS(na, ns)) {
-		printf("%s: Bad cell count for %s\n", __FUNCTION__,
-		       fdt_get_name(blob, node_offset, NULL));
+		printf("%s: Bad cell count #address-cells=%d #size-cells=%d for %s\n", __FUNCTION__,
+			na, ns, fdt_get_name(blob, node_offset, NULL));
 		goto bail;
 	}
 	memcpy(addr, in_addr, na * 4);
@@ -1259,8 +1259,8 @@ static u64 __of_translate_address(const void *blob, int node_offset,
 		pbus = of_match_bus(blob, parent);
 		pbus->count_cells(blob, parent, &pna, &pns);
 		if (!OF_CHECK_COUNTS(pna, pns)) {
-			printf("%s: Bad cell count for %s\n", __FUNCTION__,
-				fdt_get_name(blob, node_offset, NULL));
+			printf("%s: Bad cell count #address-cells=%d #size-cells=%d for %s\n", __FUNCTION__,
+				pna, pns, fdt_get_name(blob, node_offset, NULL));
 			break;
 		}
 
