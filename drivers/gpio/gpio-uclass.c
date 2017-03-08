@@ -656,31 +656,33 @@ static int _gpio_request_by_name_nodev(const void *blob, int node,
 	ret = fdtdec_parse_phandle_with_args(blob, node, list_name,
 					     "#gpio-cells", 0, index, &args);
 	if (ret) {
-		debug("%s: fdtdec_parse_phandle_with_args failed\n", __func__);
+		if (ret != -ENOENT)
+			printf("%s: fdtdec_parse_phandle_with_args failed: %d\n",
+				__func__, ret);
 		goto err;
 	}
 
 	ret = uclass_get_device_by_of_offset(UCLASS_GPIO, args.node,
 					     &desc->dev);
 	if (ret) {
-		debug("%s: uclass_get_device_by_of_offset failed\n", __func__);
+		printf("%s: uclass_get_device_by_of_offset failed\n", __func__);
 		goto err;
 	}
 	ret = gpio_find_and_xlate(desc, &args);
 	if (ret) {
-		debug("%s: gpio_find_and_xlate failed\n", __func__);
+		printf("%s: gpio_find_and_xlate failed\n", __func__);
 		goto err;
 	}
 	ret = dm_gpio_requestf(desc, add_index ? "%s.%s%d" : "%s.%s",
 			       fdt_get_name(blob, node, NULL),
 			       list_name, index);
 	if (ret) {
-		debug("%s: dm_gpio_requestf failed\n", __func__);
+		printf("%s: dm_gpio_requestf failed\n", __func__);
 		goto err;
 	}
 	ret = dm_gpio_set_dir_flags(desc, flags | desc->flags);
 	if (ret) {
-		debug("%s: dm_gpio_set_dir failed\n", __func__);
+		printf("%s: dm_gpio_set_dir failed\n", __func__);
 		goto err;
 	}
 
