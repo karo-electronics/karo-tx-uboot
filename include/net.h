@@ -230,7 +230,7 @@ int usb_eth_initialize(bd_t *bi);
 
 int eth_initialize(void);		/* Initialize network subsystem */
 void eth_try_another(int first_restart);	/* Change the device */
-void eth_set_current(void);		/* set nterface to ethcur var */
+void eth_set_current(void);		/* set interface to ethcur var */
 
 int eth_get_dev_index(void);		/* get the device index */
 void eth_parse_enetaddr(const char *addr, uchar *enetaddr);
