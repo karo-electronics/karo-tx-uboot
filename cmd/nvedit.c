@@ -970,7 +970,7 @@ sep_err:
 /*
  * env import [-d] [-t [-r] | -b | -c] addr [size]
  *	-d:	delete existing environment before importing;
- *		otherwise overwrite / append to existion definitions
+ *		otherwise overwrite / append to existing definitions
  *	-t:	assume text format; either "size" must be given or the
  *		text data must be '\0' terminated
  *	-r:	handle CRLF like LF, that means exported variables with
@@ -1035,7 +1035,7 @@ static int do_env_import(cmd_tbl_t *cmdtp, int flag,
 	if (!fmt)
 		printf("## Warning: defaulting to text format\n");
 
-	if (sep != '\n' && crlf_is_lf )
+	if (sep != '\n' && crlf_is_lf)
 		crlf_is_lf = 0;
 
 	addr = simple_strtoul(argv[0], NULL, 16);
@@ -1210,6 +1210,20 @@ static char env_help_text[] =
 #endif
 #if defined(CONFIG_CMD_IMPORTENV)
 	"env import [-d] [-t [-r] | -b | -c] addr [size] - import environment\n"
+	"	-d:	delete existing environment before importing;\n"
+	"		otherwise overwrite / append to existing definitions\n"
+	"	-t:	assume text format; either 'size' must be given or the\n"
+	"		text data must be '\0' terminated\n"
+	"	-r:	handle CRLF like LF, that means exported variables with\n"
+	"		a content which ends with \r won't get imported. Used\n"
+	"		to import text files created with editors which are using CRLF\n"
+	"		for line endings. Only effective in addition to -t.\n"
+	"	-b:	assume binary format ('\0' separated, '\0\0' terminated)\n"
+	"	-c:	assume checksum protected environment format\n"
+	"	addr:	memory address to read from\n"
+	"	size:	length of input data; if missing, proper '\0'\n"
+	"		termination is mandatory\n"
+
 #endif
 	"env print [-a | name ...] - print environment\n"
 #if defined(CONFIG_CMD_RUN)
