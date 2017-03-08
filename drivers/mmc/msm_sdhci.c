@@ -44,6 +44,7 @@ struct msm_sdhc_plat {
 struct msm_sdhc {
 	struct sdhci_host host;
 	void *base;
+	struct gpio_desc wp_gpio;
 };
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -84,6 +85,40 @@ static int msm_sdc_clk_init(struct udevice *dev)
 	return 0;
 }
 
+#include <mvebu_mmc.h>
+
+static int msm_sdhci_get_cd(struct udevice *dev)
+{
+	struct msm_sdhc *priv = dev_get_priv(dev);
+	struct sdhci_host *host = &priv->host;
+
+	if (host->host_caps & MMC_CAP_NONREMOVABLE)
+		return 1;
+
+	if (dm_gpio_is_valid(&host->cd_gpio)) {
+		int ret;
+
+		ret = dm_gpio_get_value(&host->cd_gpio);
+		return ret;
+	}
+	return 0;
+}
+
+static int msm_sdhci_get_wp(struct udevice *dev)
+{
+	struct msm_sdhc *priv = dev_get_priv(dev);
+
+	if (dm_gpio_is_valid(&priv->wp_gpio)) {
+		return dm_gpio_get_value(&priv->wp_gpio);
+	}
+	return 0;
+}
+
+static struct dm_mmc_ops msm_sdhci_ops = {
+	.get_cd		= msm_sdhci_get_cd,
+	.get_wp		= msm_sdhci_get_wp,
+};
+
 static int msm_sdc_probe(struct udevice *dev)
 {
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
@@ -93,6 +128,9 @@ static int msm_sdc_probe(struct udevice *dev)
 	u32 core_version, core_minor, core_major;
 	u32 caps;
 	int ret;
+
+	msm_sdhci_ops.set_ios = sdhci_ops.set_ios;
+	msm_sdhci_ops.send_cmd = sdhci_ops.send_cmd;
 
 	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD | SDHCI_QUIRK_BROKEN_R1B;
 
@@ -183,7 +221,13 @@ static int msm_ofdata_to_platdata(struct udevice *dev)
 	if (priv->base == (void *)FDT_ADDR_T_NONE ||
 	    host->ioaddr == (void *)FDT_ADDR_T_NONE)
 		return -EINVAL;
-
+	if (fdtdec_get_bool(gd->fdt_blob, dev->of_offset, "non-removable"))
+		host->host_caps |= MMC_CAP_NONREMOVABLE;
+	else
+		gpio_request_by_name(dev, "cd-gpios", 0, &host->cd_gpio,
+				GPIOD_IS_IN);
+	gpio_request_by_name(dev, "wp-gpios", 0, &priv->wp_gpio,
+			GPIOD_IS_IN);
 	return 0;
 }
 
@@ -204,7 +248,7 @@ U_BOOT_DRIVER(msm_sdc_drv) = {
 	.id		= UCLASS_MMC,
 	.of_match	= msm_mmc_ids,
 	.ofdata_to_platdata = msm_ofdata_to_platdata,
-	.ops		= &sdhci_ops,
+	.ops		= &msm_sdhci_ops,
 	.bind		= msm_sdc_bind,
 	.probe		= msm_sdc_probe,
 	.remove		= msm_sdc_remove,
