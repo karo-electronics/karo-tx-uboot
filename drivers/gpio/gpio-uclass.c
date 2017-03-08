@@ -376,7 +376,7 @@ int dm_gpio_get_open_drain(struct gpio_desc *desc)
 	if (ret)
 		return ret;
 
-	if (ops->set_open_drain)
+	if (ops->get_open_drain)
 		return ops->get_open_drain(desc->dev, desc->offset);
 	else
 		return -ENOSYS;
