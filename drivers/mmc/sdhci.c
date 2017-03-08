@@ -15,9 +15,9 @@
 #include <sdhci.h>
 
 #if defined(CONFIG_FIXED_SDHCI_ALIGNED_BUFFER)
-void *aligned_buffer = (void *)CONFIG_FIXED_SDHCI_ALIGNED_BUFFER;
+static void *aligned_buffer = (void *)CONFIG_FIXED_SDHCI_ALIGNED_BUFFER;
 #else
-void *aligned_buffer;
+static void *aligned_buffer;
 #endif
 
 static void sdhci_reset(struct sdhci_host *host, u8 mask)
