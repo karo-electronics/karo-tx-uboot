@@ -294,11 +294,12 @@ void cli_simple_loop(void)
 		}
 #endif
 
-		if (len == -1)
+		if (len == -1) {
 			puts("<INTERRUPT>\n");
-		else
+			rc = 0;
+		} else {
 			rc = run_command_repeatable(lastcommand, flag);
-
+		}
 		if (rc <= 0) {
 			/* invalid command or not repeatable, forget it */
 			lastcommand[0] = 0;
