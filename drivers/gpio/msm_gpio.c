@@ -15,17 +15,17 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Register offsets */
-#define GPIO_CONFIG_OFF(no)         ((no) * 0x1000)
-#define GPIO_IN_OUT_OFF(no)         ((no) * 0x1000 + 0x4)
+#define GPIO_CONFIG_OFF(no)	    ((no) * 0x1000)
+#define GPIO_IN_OUT_OFF(no)	    ((no) * 0x1000 + 0x4)
 
 /* OE */
-#define GPIO_OE_DISABLE  (0x0 << 9)
-#define GPIO_OE_ENABLE   (0x1 << 9)
-#define GPIO_OE_MASK     (0x1 << 9)
+#define GPIO_OE_DISABLE (0x0 << 9)
+#define GPIO_OE_ENABLE  (0x1 << 9)
+#define GPIO_OE_MASK    (0x1 << 9)
 
 /* GPIO_IN_OUT register shifts. */
-#define GPIO_IN          0
-#define GPIO_OUT         1
+#define GPIO_IN		0
+#define GPIO_OUT	1
 
 struct msm_gpio_bank {
 	phys_addr_t base;
@@ -107,7 +107,7 @@ static int msm_gpio_ofdata_to_platdata(struct udevice *dev)
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
 	uc_priv->gpio_count = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
-					     "gpio-count", 0);
+					     "gpio-count", 122);
 	uc_priv->bank_name = fdt_getprop(gd->fdt_blob, dev->of_offset,
 					 "gpio-bank-name", NULL);
 	if (uc_priv->bank_name == NULL)
