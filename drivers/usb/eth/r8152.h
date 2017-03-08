@@ -600,36 +600,22 @@ struct r8152 {
 #endif
 };
 
-int generic_ocp_write(struct r8152 *tp, u16 index, u16 byteen,
-		      u16 size, void *data, u16 type);
-int generic_ocp_read(struct r8152 *tp, u16 index, u16 size,
-		     void *data, u16 type);
+int generic_ocp_write(struct r8152 *tp, off_t index, u16 byteen,
+		      size_t size, const void *data, u16 type);
+void r815x_ocp_write_dword(struct r8152 *tp, u16 type, off_t index, u32 data);
 
-int pla_ocp_read(struct r8152 *tp, u16 index, u16 size, void *data);
-int pla_ocp_write(struct r8152 *tp, u16 index, u16 byteen,
-		  u16 size, void *data);
+u16 r815x_ocp_read_word(struct r8152 *tp, u16 type, off_t index);
+void r815x_ocp_write_word(struct r8152 *tp, u16 type, off_t index, u32 data);
 
-int usb_ocp_read(struct r8152 *tp, u16 index, u16 size, void *data);
-int usb_ocp_write(struct r8152 *tp, u16 index, u16 byteen,
-		  u16 size, void *data);
+u8 r815x_ocp_read_byte(struct r8152 *tp, u16 type, off_t index);
+void r815x_ocp_write_byte(struct r8152 *tp, u16 type, off_t index, u32 data);
 
-u32 ocp_read_dword(struct r8152 *tp, u16 type, u16 index);
-void ocp_write_dword(struct r8152 *tp, u16 type, u16 index, u32 data);
+u16 r815x_ocp_reg_read(struct r8152 *tp, u16 addr);
+void r815x_ocp_reg_write(struct r8152 *tp, u16 addr, u16 data);
 
-u16 ocp_read_word(struct r8152 *tp, u16 type, u16 index);
-void ocp_write_word(struct r8152 *tp, u16 type, u16 index, u32 data);
-
-u8 ocp_read_byte(struct r8152 *tp, u16 type, u16 index);
-void ocp_write_byte(struct r8152 *tp, u16 type, u16 index, u32 data);
-
-u16 ocp_reg_read(struct r8152 *tp, u16 addr);
-void ocp_reg_write(struct r8152 *tp, u16 addr, u16 data);
-
-void sram_write(struct r8152 *tp, u16 addr, u16 data);
-
-int r8152_wait_for_bit(struct r8152 *tp, bool ocp_reg, u16 type, u16 index,
-		       const u32 mask, bool set, unsigned int timeout);
+void r815x_sram_write(struct r8152 *tp, u16 addr, u16 data);
 
 void r8152b_firmware(struct r8152 *tp);
 void r8153_firmware(struct r8152 *tp);
+
 #endif

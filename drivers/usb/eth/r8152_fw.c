@@ -723,25 +723,25 @@ static u16 r8153_usb_patch_d_bp[] = {
 
 static void rtl_clear_bp(struct r8152 *tp)
 {
-	ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_0, 0);
-	ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_2, 0);
-	ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_4, 0);
-	ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_6, 0);
-	ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_0, 0);
-	ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_2, 0);
-	ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_4, 0);
-	ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_6, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_0, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_2, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_4, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_PLA, PLA_BP_6, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_0, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_2, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_4, 0);
+	r815x_ocp_write_dword(tp, MCU_TYPE_USB, USB_BP_6, 0);
 
 	mdelay(6);
 
-	ocp_write_word(tp, MCU_TYPE_PLA, PLA_BP_BA, 0);
-	ocp_write_word(tp, MCU_TYPE_USB, USB_BP_BA, 0);
+	r815x_ocp_write_word(tp, MCU_TYPE_PLA, PLA_BP_BA, 0);
+	r815x_ocp_write_word(tp, MCU_TYPE_USB, USB_BP_BA, 0);
 }
 
 static void r8153_clear_bp(struct r8152 *tp)
 {
-	ocp_write_byte(tp, MCU_TYPE_PLA, PLA_BP_EN, 0);
-	ocp_write_byte(tp, MCU_TYPE_USB, USB_BP_EN, 0);
+	r815x_ocp_write_byte(tp, MCU_TYPE_PLA, PLA_BP_EN, 0);
+	r815x_ocp_write_byte(tp, MCU_TYPE_USB, USB_BP_EN, 0);
 	rtl_clear_bp(tp);
 }
 
@@ -749,13 +749,13 @@ static void r8152b_set_dq_desc(struct r8152 *tp)
 {
 	u8 data;
 
-	data = ocp_read_byte(tp, MCU_TYPE_USB, 0xd429);
+	data = r815x_ocp_read_byte(tp, MCU_TYPE_USB, 0xd429);
 	data |= 0x80;
-	ocp_write_byte(tp, MCU_TYPE_USB, 0xd429, data);
-	ocp_write_word(tp, MCU_TYPE_USB, 0xc0ce, 0x0210);
-	data = ocp_read_byte(tp, MCU_TYPE_USB, 0xd429);
+	r815x_ocp_write_byte(tp, MCU_TYPE_USB, 0xd429, data);
+	r815x_ocp_write_word(tp, MCU_TYPE_USB, 0xc0ce, 0x0210);
+	data = r815x_ocp_read_byte(tp, MCU_TYPE_USB, 0xd429);
 	data &= ~0x80;
-	ocp_write_byte(tp, MCU_TYPE_USB, 0xd429, data);
+	r815x_ocp_write_byte(tp, MCU_TYPE_USB, 0xd429, data);
 }
 
 static int r8153_pre_ram_code(struct r8152 *tp, u16 patch_key)
@@ -763,17 +763,17 @@ static int r8153_pre_ram_code(struct r8152 *tp, u16 patch_key)
 	u16 data;
 	int i;
 
-	data = ocp_reg_read(tp, 0xb820);
+	data = r815x_ocp_reg_read(tp, 0xb820);
 	data |= 0x0010;
-	ocp_reg_write(tp, 0xb820, data);
+	r815x_ocp_reg_write(tp, 0xb820, data);
 
 	for (i = 0, data = 0; !data && i < 5000; i++) {
 		mdelay(2);
-		data = ocp_reg_read(tp, 0xb800) & 0x0040;
+		data = r815x_ocp_reg_read(tp, 0xb800) & 0x0040;
 	}
 
-	sram_write(tp, 0x8146, patch_key);
-	sram_write(tp, 0xb82e, 0x0001);
+	r815x_sram_write(tp, 0x8146, patch_key);
+	r815x_sram_write(tp, 0xb82e, 0x0001);
 
 	return -EBUSY;
 }
@@ -782,19 +782,19 @@ static int r8153_post_ram_code(struct r8152 *tp)
 {
 	u16 data;
 
-	sram_write(tp, 0x0000, 0x0000);
+	r815x_sram_write(tp, 0x0000, 0x0000);
 
-	data = ocp_reg_read(tp, 0xb82e);
+	data = r815x_ocp_reg_read(tp, 0xb82e);
 	data &= ~0x0001;
-	ocp_reg_write(tp, 0xb82e, data);
+	r815x_ocp_reg_write(tp, 0xb82e, data);
 
-	sram_write(tp, 0x8146, 0x0000);
+	r815x_sram_write(tp, 0x8146, 0x0000);
 
-	data = ocp_reg_read(tp, 0xb820);
+	data = r815x_ocp_reg_read(tp, 0xb820);
 	data &= ~0x0010;
-	ocp_reg_write(tp, 0xb820, data);
+	r815x_ocp_reg_write(tp, 0xb820, data);
 
-	ocp_write_word(tp, MCU_TYPE_PLA, PLA_OCP_GPHY_BASE, tp->ocp_base);
+	r815x_ocp_write_word(tp, MCU_TYPE_PLA, PLA_OCP_GPHY_BASE, tp->ocp_base);
 
 	return 0;
 }
@@ -804,7 +804,7 @@ static void r8153_wdt1_end(struct r8152 *tp)
 	int i;
 
 	for (i = 0; i < 104; i++) {
-		if (!(ocp_read_byte(tp, MCU_TYPE_USB, 0xe404) & 1))
+		if (!(r815x_ocp_read_byte(tp, MCU_TYPE_USB, 0xe404) & 1))
 			break;
 		mdelay(2);
 	}
@@ -825,19 +825,19 @@ void r8152b_firmware(struct r8152 *tp)
 				  r8152b_pla_patch_a, MCU_TYPE_PLA);
 
 		for (i = 0; i < ARRAY_SIZE(r8152b_pla_patch_a_bp); i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8152b_pla_patch_a_bp[i],
 				       r8152b_pla_patch_a_bp[i+1]);
 
-		ocp_write_word(tp, MCU_TYPE_PLA, PLA_OCP_GPHY_BASE, 0x2000);
-		ocp_write_word(tp, MCU_TYPE_PLA, 0xb092, 0x7070);
-		ocp_write_word(tp, MCU_TYPE_PLA, 0xb098, 0x0600);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, PLA_OCP_GPHY_BASE, 0x2000);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xb092, 0x7070);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xb098, 0x0600);
 		for (i = 0; i < ARRAY_SIZE(r8152b_ram_code1); i++)
-			ocp_write_word(tp, MCU_TYPE_PLA, 0xb09a,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xb09a,
 				       r8152b_ram_code1[i]);
 
-		ocp_write_word(tp, MCU_TYPE_PLA, 0xb098, 0x0200);
-		ocp_write_word(tp, MCU_TYPE_PLA, 0xb092, 0x7030);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xb098, 0x0200);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xb092, 0x7030);
 	} else if (tp->version == RTL_VER_02) {
 		rtl_clear_bp(tp);
 
@@ -847,7 +847,7 @@ void r8152b_firmware(struct r8152 *tp)
 
 		for (i = 0; i < ARRAY_SIZE(r8152b_pla_patch_a2_bp);
 		     i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8152b_pla_patch_a2_bp[i],
 				       r8152b_pla_patch_a2_bp[i+1]);
 	}
@@ -863,7 +863,7 @@ void r8153_firmware(struct r8152 *tp)
 		r8153_pre_ram_code(tp, 0x7000);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_ram_code_a); i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8153_ram_code_a[i],
 				       r8153_ram_code_a[i+1]);
 
@@ -872,7 +872,7 @@ void r8153_firmware(struct r8152 *tp)
 		r8153_pre_ram_code(tp, 0x7001);
 
 	for (i = 0; i < ARRAY_SIZE(r8153_ram_code_bc); i += 2)
-		ocp_write_word(tp, MCU_TYPE_PLA,
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 			       r8153_ram_code_bc[i],
 			       r8153_ram_code_bc[i+1]);
 
@@ -881,43 +881,43 @@ void r8153_firmware(struct r8152 *tp)
 		r8153_wdt1_end(tp);
 		r8153_clear_bp(tp);
 
-		ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x0000);
+		r815x_ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x0000);
 		generic_ocp_write(tp, 0xf800, 0xff,
 				  sizeof(r8153_usb_patch_b),
 				  r8153_usb_patch_b, MCU_TYPE_USB);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_usb_patch_b_bp); i += 2)
-			ocp_write_word(tp, MCU_TYPE_USB,
+			r815x_ocp_write_word(tp, MCU_TYPE_USB,
 				       r8153_usb_patch_b_bp[i],
 				       r8153_usb_patch_b_bp[i+1]);
 
-		if (!(ocp_read_word(tp, MCU_TYPE_PLA, 0xd38e) & BIT(0))) {
-			ocp_write_word(tp, MCU_TYPE_PLA, 0xd38c, 0x0082);
-			ocp_write_word(tp, MCU_TYPE_PLA, 0xd38e, 0x0082);
+		if (!(r815x_ocp_read_word(tp, MCU_TYPE_PLA, 0xd38e) & BIT(0))) {
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xd38c, 0x0082);
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xd38e, 0x0082);
 		}
 
-		ocp_write_word(tp, MCU_TYPE_PLA, PLA_BP_EN, 0x0000);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, PLA_BP_EN, 0x0000);
 		generic_ocp_write(tp, 0xf800, 0xff,
 				  sizeof(r8153_pla_patch_b),
 				  r8153_pla_patch_b, MCU_TYPE_PLA);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_pla_patch_b_bp); i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8153_pla_patch_b_bp[i],
 				       r8153_pla_patch_b_bp[i+1]);
 
-		ocp_write_word(tp, MCU_TYPE_PLA, 0xd388, 0x08ca);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xd388, 0x08ca);
 	} else if (tp->version == RTL_VER_05) {
 		u32 ocp_data;
 
-		ocp_data = ocp_read_word(tp, MCU_TYPE_USB, 0xcfca);
+		ocp_data = r815x_ocp_read_word(tp, MCU_TYPE_USB, 0xcfca);
 		ocp_data &= ~0x4000;
-		ocp_write_word(tp, MCU_TYPE_USB, 0xcfca, ocp_data);
+		r815x_ocp_write_word(tp, MCU_TYPE_USB, 0xcfca, ocp_data);
 
 		r8153_pre_ram_code(tp, 0x7001);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_ram_code_bc); i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8153_ram_code_bc[i],
 				       r8153_ram_code_bc[i+1]);
 
@@ -926,43 +926,43 @@ void r8153_firmware(struct r8152 *tp)
 		r8153_wdt1_end(tp);
 		r8153_clear_bp(tp);
 
-		ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x0000);
+		r815x_ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x0000);
 		generic_ocp_write(tp, 0xf800, 0xff,
 				  sizeof(r8153_usb_patch_c),
 				  r8153_usb_patch_c, MCU_TYPE_USB);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_usb_patch_c_bp); i += 2)
-			ocp_write_word(tp, MCU_TYPE_USB,
+			r815x_ocp_write_word(tp, MCU_TYPE_USB,
 				       r8153_usb_patch_c_bp[i],
 				       r8153_usb_patch_c_bp[i+1]);
 
-		if (ocp_read_byte(tp, MCU_TYPE_USB, 0xcfef) & 1) {
-			ocp_write_word(tp, MCU_TYPE_USB, 0xfc30, 0x1578);
-			ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x00ff);
+		if (r815x_ocp_read_byte(tp, MCU_TYPE_USB, 0xcfef) & 1) {
+			r815x_ocp_write_word(tp, MCU_TYPE_USB, 0xfc30, 0x1578);
+			r815x_ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x00ff);
 		} else {
-			ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x00ef);
+			r815x_ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x00ef);
 		}
 
-		ocp_write_word(tp, MCU_TYPE_PLA, PLA_BP_EN, 0x0000);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, PLA_BP_EN, 0x0000);
 		generic_ocp_write(tp, 0xf800, 0xff,
 				  sizeof(r8153_pla_patch_c),
 				  r8153_pla_patch_c, MCU_TYPE_PLA);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_pla_patch_c_bp); i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8153_pla_patch_c_bp[i],
 				       r8153_pla_patch_c_bp[i+1]);
 
-		ocp_write_word(tp, MCU_TYPE_PLA, 0xd388, 0x08ca);
+		r815x_ocp_write_word(tp, MCU_TYPE_PLA, 0xd388, 0x08ca);
 
-		ocp_data = ocp_read_word(tp, MCU_TYPE_USB, 0xcfca);
+		ocp_data = r815x_ocp_read_word(tp, MCU_TYPE_USB, 0xcfca);
 		ocp_data |= 0x4000;
-		ocp_write_word(tp, MCU_TYPE_USB, 0xcfca, ocp_data);
+		r815x_ocp_write_word(tp, MCU_TYPE_USB, 0xcfca, ocp_data);
 	} else if (tp->version == RTL_VER_06) {
 		r8153_pre_ram_code(tp, 0x7002);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_ram_code_d); i += 2)
-			ocp_write_word(tp, MCU_TYPE_PLA,
+			r815x_ocp_write_word(tp, MCU_TYPE_PLA,
 				       r8153_ram_code_d[i],
 				       r8153_ram_code_d[i+1]);
 
@@ -970,12 +970,12 @@ void r8153_firmware(struct r8152 *tp)
 
 		r8153_clear_bp(tp);
 
-		ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x0000);
+		r815x_ocp_write_word(tp, MCU_TYPE_USB, USB_BP_EN, 0x0000);
 		generic_ocp_write(tp, 0xf800, 0xff, sizeof(usb_patch_d),
 				  usb_patch_d, MCU_TYPE_USB);
 
 		for (i = 0; i < ARRAY_SIZE(r8153_usb_patch_d_bp); i += 2)
-			ocp_write_word(tp, MCU_TYPE_USB,
+			r815x_ocp_write_word(tp, MCU_TYPE_USB,
 				       r8153_usb_patch_d_bp[i],
 				       r8153_usb_patch_d_bp[i+1]);
 	}
