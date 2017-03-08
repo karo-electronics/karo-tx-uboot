@@ -949,7 +949,7 @@ void fdt_del_node_and_alias(void *blob, const char *alias)
 #define OF_MAX_ADDR_CELLS	4
 #define OF_BAD_ADDR	FDT_ADDR_T_NONE
 #define OF_CHECK_COUNTS(na, ns)	((na) > 0 && (na) <= OF_MAX_ADDR_CELLS && \
-			(ns) > 0)
+			(ns) >= 0)
 
 /* Debug utility */
 #ifdef DEBUG
