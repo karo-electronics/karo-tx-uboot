@@ -261,12 +261,16 @@ static int cread_line(const char *const prompt, char *buf, unsigned int *len,
 	while (1) {
 		if (bootretry_tstc_timeout())
 			return -2;	/* timed out */
-		if (first && timeout) {
+
+		if (first) {
 			uint64_t etime = endtick(timeout);
 
 			while (!tstc()) {	/* while no incoming data */
-				if (get_ticks() >= etime)
+				if (timeout && get_ticks() >= etime)
 					return -2;	/* timed out */
+#ifdef CONFIG_SHOW_ACTIVITY
+				show_activity(0);
+#endif
 				WATCHDOG_RESET();
 			}
 			first = 0;
