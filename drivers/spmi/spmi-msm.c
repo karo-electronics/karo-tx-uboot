@@ -26,8 +26,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SPMI_REG_CMD0			0x0
 #define SPMI_REG_CONFIG			0x4
 #define SPMI_REG_STATUS			0x8
-#define SPMI_REG_WDATA			0x10
-#define SPMI_REG_RDATA			0x18
+#define SPMI_REG_WDATA0			0x10
+#define SPMI_REG_WDATA1			0x14
+#define SPMI_REG_RDATA0			0x18
+#define SPMI_REG_RDATA1			0x1c
 
 #define SPMI_CMD_OPCODE_SHIFT		27
 #define SPMI_CMD_SLAVE_ID_SHIFT		20
@@ -47,6 +49,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SPMI_MAX_CHANNELS		128
 #define SPMI_MAX_SLAVES			16
 #define SPMI_MAX_PERIPH			256
+#define SPMI_MAX_ARB_TRANS_BYTES	8
 
 #define SPMI_READ_TIMEOUT		100
 #define SPMI_WRITE_TIMEOUT		100
@@ -67,17 +70,20 @@ struct msm_spmi_priv {
 	uint8_t channel_map[SPMI_MAX_SLAVES][SPMI_MAX_PERIPH];
 };
 
-static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
-			  uint8_t val)
+static int msm_spmi_write(struct udevice *dev, const void *buf, int usid,
+			  int pid, int off, uint8_t bc)
 {
 	struct msm_spmi_priv *priv = dev_get_priv(dev);
 	unsigned channel;
 	uint32_t reg = 0;
 	int timeout = SPMI_WRITE_TIMEOUT;
+	uint32_t val;
 
 	if (usid >= SPMI_MAX_SLAVES)
 		return -EINVAL;
 	if (pid >= SPMI_MAX_PERIPH)
+		return -EINVAL;
+	if (bc > SPMI_MAX_ARB_TRANS_BYTES)
 		return -EINVAL;
 
 	channel = priv->channel_map[usid][pid];
@@ -87,8 +93,12 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	       SPMI_REG_CONFIG);
 
 	/* Write single byte */
-	writel(val, priv->spmi_chnls + SPMI_CH_OFFSET(channel) + SPMI_REG_WDATA);
-
+	memcpy(&val, buf, min_t(uint8_t, bc, sizeof(val)));
+	writel(val, priv->spmi_chnls + SPMI_CH_OFFSET(channel) + SPMI_REG_WDATA0);
+	if (bc > sizeof(val)) {
+		memcpy(&val, buf + sizeof(val), bc - sizeof(val));
+		writel(val, priv->spmi_chnls + SPMI_CH_OFFSET(channel) + SPMI_REG_WDATA1);
+	}
 	/* Prepare write command */
 	if (pmic_arb_is_v1()) {
 		reg |= SPMI_CMD_EXT_REG_WRITE_LONG << SPMI_CMD_OPCODE_SHIFT;
@@ -99,7 +109,7 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	} else {
 		reg |= SPMI_CMD_EXT_REG_WRITE_LONG << SPMI_CMD_OPCODE_SHIFT;
 		reg |= ((off & 0xff) << SPMI_CMD_ADDR_OFFSET_SHIFT);
-		reg |= 0; /* byte count - 1 */
+		reg |= bc - 1; /* byte count - 1 */
 	}
 	/* Send write command */
 	writel(reg, priv->spmi_chnls + SPMI_CH_OFFSET(channel) + SPMI_REG_CMD0);
@@ -125,7 +135,8 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	return 0;
 }
 
-static int msm_spmi_read(struct udevice *dev, int usid, int pid, int off)
+static int msm_spmi_read(struct udevice *dev, void *buf, int usid, int pid, int off,
+			 uint8_t bc)
 {
 	struct msm_spmi_priv *priv = dev_get_priv(dev);
 	unsigned channel;
@@ -134,6 +145,8 @@ static int msm_spmi_read(struct udevice *dev, int usid, int pid, int off)
 	if (usid >= SPMI_MAX_SLAVES)
 		return -EINVAL;
 	if (pid >= SPMI_MAX_PERIPH)
+		return -EINVAL;
+	if (bc > SPMI_MAX_ARB_TRANS_BYTES)
 		return -EINVAL;
 
 	channel = priv->channel_map[usid][pid];
@@ -151,7 +164,7 @@ static int msm_spmi_read(struct udevice *dev, int usid, int pid, int off)
 	} else {
 		reg |= SPMI_CMD_EXT_REG_READ_LONG << SPMI_CMD_OPCODE_SHIFT;
 		reg |= ((off & 0xff) << SPMI_CMD_ADDR_OFFSET_SHIFT);
-		reg |= 0; /* byte count - 1 */
+		reg |= bc - 1; /* byte count - 1 */
 	}
 
 	/* Request read */
@@ -170,8 +183,16 @@ static int msm_spmi_read(struct udevice *dev, int usid, int pid, int off)
 	}
 
 	/* Read the data */
-	return readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
-		     SPMI_REG_RDATA) & 0xFF;
+	reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
+		     SPMI_REG_RDATA0);
+	memcpy(buf, &reg, min_t(uint8_t, bc, sizeof(reg)));
+	if (bc > sizeof(reg)) {
+		reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
+			SPMI_REG_RDATA1);
+		memcpy(buf + sizeof(reg), &reg, bc - sizeof(reg));
+	}
+
+	return 0;
 }
 
 static struct dm_spmi_ops msm_spmi_ops = {

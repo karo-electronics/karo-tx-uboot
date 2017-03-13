@@ -16,12 +16,15 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int spmi_reg_read(struct udevice *dev, int usid, int pid, int reg)
 {
+	int ret;
 	const struct dm_spmi_ops *ops = dev_get_driver_ops(dev);
+	uint8_t value;
 
 	if (!ops || !ops->read)
 		return -ENOSYS;
 
-	return ops->read(dev, usid, pid, reg);
+	ret = ops->read(dev, &value, usid, pid, reg, sizeof(value));
+	return ret < 0 ? ret : value;
 }
 
 int spmi_reg_write(struct udevice *dev, int usid, int pid, int reg,
@@ -32,7 +35,29 @@ int spmi_reg_write(struct udevice *dev, int usid, int pid, int reg,
 	if (!ops || !ops->write)
 		return -ENOSYS;
 
-	return ops->write(dev, usid, pid, reg, value);
+	return ops->write(dev, &value, usid, pid, reg, sizeof(value));
+}
+
+int spmi_read(struct udevice *dev, void *buf, int usid, int pid, int reg,
+	      uint8_t bc)
+{
+	const struct dm_spmi_ops *ops = dev_get_driver_ops(dev);
+
+	if (!ops || !ops->read)
+		return -ENOSYS;
+
+	return ops->read(dev, buf, usid, pid, reg, bc);
+}
+
+int spmi_write(struct udevice *dev, const void *buf, int usid, int pid,
+	       int reg, uint8_t bc)
+{
+	const struct dm_spmi_ops *ops = dev_get_driver_ops(dev);
+
+	if (!ops || !ops->write)
+		return -ENOSYS;
+
+	return ops->write(dev, buf, usid, pid, reg, bc);
 }
 
 UCLASS_DRIVER(spmi) = {

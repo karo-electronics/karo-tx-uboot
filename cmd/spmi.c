@@ -54,11 +54,13 @@ static int spmi_report_err(int ret, enum spmi_err_op op)
 static int do_spmi_read(cmd_tbl_t *cmdtp, int flag, int argc,
 			char *const argv[])
 {
-	uint sid, pid, reg;
+	uint sid, pid, reg, cnt = 1;
+	uint8_t buf[8];
 	int ret;
+	int i;
 	struct udevice *dev;
 
-	if (argc != 4)
+	if (argc < 4 || argc > 5)
 		return cmd_usage(cmdtp);
 
 	ret = uclass_get_device_by_name(UCLASS_SPMI, "spmi", &dev);
@@ -67,23 +69,46 @@ static int do_spmi_read(cmd_tbl_t *cmdtp, int flag, int argc,
 		return CMD_RET_FAILURE;
 	}
 
-	/*
-	 * SPMI chip address
-	 */
+	/* SPMI slave ID */
 	sid = simple_strtoul(argv[1], NULL, 16);
+	if (sid > 5) {
+		printf("SID %02x out of range 0..5\n", sid);
+		return CMD_RET_FAILURE;
+	}
 
-	/*
-	 * SPMI data address within the chip.  This can be 1 or
-	 * 2 bytes long.  Some day it might be 3 bytes long :-).
-	 */
+	/* SPMI peripheral ID */
 	pid = simple_strtoul(argv[2], NULL, 16);
-	reg = simple_strtoul(argv[3], NULL, 16);
+	if (pid > 255) {
+		printf("PID %02x out of range 0x00..0xff\n", pid);
+		return CMD_RET_FAILURE;
+	}
 
-	ret = spmi_reg_read(dev, sid, pid, reg);
+	/* SPMI register offset */
+	reg = simple_strtoul(argv[3], NULL, 16);
+	if (reg > 255) {
+		printf("REG offset %02x out of range 0x00..0xff\n", reg);
+		return CMD_RET_FAILURE;
+	}
+
+	/* SPMI byte count */
+	if (argc > 4) {
+		cnt = simple_strtoul(argv[4], NULL, 16);
+		if (cnt == 0 || cnt > sizeof(buf)) {
+			printf("Byte count %u out of range 1..%lu\n",
+				cnt, sizeof(buf));
+			return CMD_RET_FAILURE;
+		}
+	}
+
+	debug("%s@%d: Reading SID %02x PID %02x REG %02x\n", __func__, __LINE__,
+		sid, pid, reg);
+	ret = spmi_read(dev, buf, sid, pid, reg, cnt);
 	if (ret < 0)
 		return spmi_report_err(ret, SPMI_ERR_READ);
 
-	printf("%02x\n", ret);
+	for (i = 0; i < cnt; i++)
+		printf("%02x\n", buf[i]);
+
 	return CMD_RET_SUCCESS;
 }
 
@@ -115,6 +140,8 @@ static int do_spmi_write(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[
 		return CMD_RET_FAILURE;
 	}
 
+	debug("%s@%d: Writing SID %02x PID %02x REG %02x value %02x\n",
+		__func__, __LINE__, sid, pid, reg, val);
 	ret = spmi_reg_write(dev, sid, pid, reg, val);
 	if (ret)
 		return spmi_report_err(ret, SPMI_ERR_WRITE);

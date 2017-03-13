@@ -55,15 +55,17 @@ static bool check_address_valid(int usid, int pid, int off)
 	return true;
 }
 
-static int sandbox_spmi_write(struct udevice *dev, int usid, int pid, int off,
-			  uint8_t val)
+static int sandbox_spmi_write(struct udevice *dev, const void *buf, int usid,
+			  int pid, int off, uint8_t bc)
 {
 	struct sandbox_spmi_priv *priv = dev_get_priv(dev);
 	struct sandbox_emul_fake_regs *regs;
+	uint8_t val;
 
 	if (!check_address_valid(usid, pid, off))
 		return -EIO;
 
+	memcpy(&val, buf, 1);
 	regs = priv->gpios[pid & 0x3].r; /* Last 3 bits of pid are gpio # */
 
 	switch (off) {
@@ -82,7 +84,8 @@ static int sandbox_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	return 0;
 }
 
-static int sandbox_spmi_read(struct udevice *dev, int usid, int pid, int off)
+static int sandbox_spmi_read(struct udevice *dev, void *buf, int usid, int pid,
+			int off, uint8_t bc)
 {
 	struct sandbox_spmi_priv *priv = dev_get_priv(dev);
 	struct sandbox_emul_fake_regs *regs;
@@ -99,13 +102,13 @@ static int sandbox_spmi_read(struct udevice *dev, int usid, int pid, int off)
 	case 0x8: /* Status */
 		if (regs[0x46].value == 0) /* Block disabled */
 			return 0;
-		return regs[off].value;
+		memcpy(buf, &regs[off].value, 1);
+		break;
 	default:
 		if (regs[off].perms & EMUL_PERM_R)
-			return regs[off].value;
-		else
-			return 0;
+			memcpy(buf, &regs[off].value, 1);
 	}
+	return 0;
 }
 
 static struct dm_spmi_ops sandbox_spmi_ops = {

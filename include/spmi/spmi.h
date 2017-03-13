@@ -14,9 +14,10 @@
  * on error.
  */
 struct dm_spmi_ops {
-	int (*read)(struct udevice *dev, int usid, int pid, int reg);
-	int (*write)(struct udevice *dev, int usid, int pid, int reg,
-		     uint8_t value);
+	int (*read)(struct udevice *dev, void *buf, int usid, int pid, int reg,
+		    uint8_t bc);
+	int (*write)(struct udevice *dev, const void *buf, int usid, int pid,
+		     int reg, uint8_t bc);
 };
 
 /**
@@ -42,5 +43,32 @@ int spmi_reg_read(struct udevice *dev, int usid, int pid, int reg);
  */
 int spmi_reg_write(struct udevice *dev, int usid, int pid, int reg,
 		   uint8_t value);
+
+/**
+ * spmi_read() - read a range of registers from specific slave/peripheral
+ *
+ * @dev:	SPMI bus to read
+ * @usid	SlaveID
+ * @pid		Peripheral ID
+ * @reg:	Register to read
+ * @len:	Byte count to read
+ * @return value read on success or negative value of errno.
+ */
+int spmi_read(struct udevice *dev, void *buf, int usid, int pid, int reg,
+	      uint8_t len);
+
+/**
+ * spmi_write() - write to a range of registers of specific slave/peripheral
+ *
+ * @dev:	SPMI bus to write
+ * @usid	SlaveID
+ * @pid		Peripheral ID
+ * @reg:	Register to write
+ * @value:	Value to write
+ * @len:	Byte count to write
+ * @return 0 on success or negative value of errno.
+ */
+int spmi_write(struct udevice *dev, const void *buf, int usid, int pid,
+	       int reg, uint8_t len);
 
 #endif

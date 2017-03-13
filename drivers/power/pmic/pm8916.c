@@ -30,29 +30,18 @@ static int pm8916_write(struct udevice *dev, uint reg, const uint8_t *buff,
 {
 	struct pm8916_priv *priv = dev_get_priv(dev);
 
-	if (len != 1)
-		return -EINVAL;
-
-	return spmi_reg_write(dev->parent, priv->usid,
-			      (reg & PID_MASK) >> PID_SHIFT, reg & REG_MASK,
-			      *buff);
+	return spmi_write(dev->parent, buff, priv->usid,
+			  (reg & PID_MASK) >> PID_SHIFT, reg & REG_MASK,
+			  len);
 }
 
 static int pm8916_read(struct udevice *dev, uint reg, uint8_t *buff, int len)
 {
 	struct pm8916_priv *priv = dev_get_priv(dev);
-	int val;
 
-	if (len != 1)
-		return -EINVAL;
-
-	val = spmi_reg_read(dev->parent, priv->usid,
-			    (reg & PID_MASK) >> PID_SHIFT, reg & REG_MASK);
-
-	if (val < 0)
-		return val;
-	*buff = val;
-	return 0;
+	return spmi_read(dev->parent, buff, priv->usid,
+			(reg & PID_MASK) >> PID_SHIFT, reg & REG_MASK,
+			len);
 }
 
 static struct dm_pmic_ops pm8916_ops = {
