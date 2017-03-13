@@ -129,6 +129,9 @@ config PCA9551_I2C_ADDR
 	help
 	  The I2C address of the PCA9551 LED controller.
 
+config QCOM_SMEM
+	bool "Enable Qualcomm shared memory driver"
+
 config TEGRA_CAR
 	bool "Enable support for the Tegra CAR driver"
 	depends on TEGRA_NO_BPMP
