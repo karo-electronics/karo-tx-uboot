@@ -388,7 +388,7 @@ config CMD_SF
 	  SPI Flash support
 
 config CMD_SPI
-	bool "sspi"
+	bool "spi"
 	help
 	  SPI utility command.
 
@@ -430,6 +430,11 @@ config CMD_GPIO
 	bool "gpio"
 	help
 	  GPIO support.
+
+config CMD_SPMI
+	bool "spmi"
+	help
+	  SPMI bus utility command.
 
 endmenu
 
