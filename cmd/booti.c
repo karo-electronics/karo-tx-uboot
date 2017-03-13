@@ -11,6 +11,7 @@
 #include <image.h>
 #include <lmb.h>
 #include <mapmem.h>
+#include <malloc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -30,11 +31,49 @@ struct Image_header {
 
 #define LINUX_ARM64_IMAGE_MAGIC	0x644d5241
 
+static int booti_decompress(bootm_headers_t *images)
+{
+	int ret;
+	uint8_t *bp = (void *)images->ep;
+	size_t img_size = SZ_4M;
+	size_t max_len = img_size * 4;
+	ulong decomp_len;
+	void *dst;
+
+	/* check for gzip magic */
+	if (bp[0] != 0x1f || bp[1] != 0x8b)
+		return 0;
+
+	dst = memalign(max_len, 64);
+	if (dst == NULL) {
+		printf("Failed to allocate %zu byte for decompressed kernel image\n",
+			max_len);
+		return -ENOMEM;
+	}
+
+	printf("Uncompressing Image from 0x%08lx..0x%08lx to %p..%p\n",
+		images->ep, images->ep + img_size - 1,
+		dst, dst + max_len - 1);
+	ret = gunzip(dst, max_len, (void *)images->ep, &decomp_len);
+	if (ret) {
+		free(dst);
+		return ret;
+	}
+	debug("Changing EP address from %08lx to %p\n", images->ep, dst);
+	images->ep = (uint64_t)dst;
+	return 0;
+}
+
 static int booti_setup(bootm_headers_t *images)
 {
+	int ret;
 	struct Image_header *ih;
 	uint64_t dst;
 	uint64_t image_size;
+
+	ret = booti_decompress(images);
+	if (ret)
+		return ret;
 
 	ih = (struct Image_header *)map_sysmem(images->ep, 0);
 
@@ -42,7 +81,7 @@ static int booti_setup(bootm_headers_t *images)
 		puts("Bad Linux ARM64 Image magic!\n");
 		return 1;
 	}
-	
+
 	if (ih->image_size == 0) {
 		puts("Image lacks image_size field, assuming 16MiB\n");
 		image_size = 16 << 20;
