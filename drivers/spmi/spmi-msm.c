@@ -57,9 +57,9 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	uint32_t reg = 0;
 
 	if (usid >= SPMI_MAX_SLAVES)
-		return -EIO;
+		return -EINVAL;
 	if (pid >= SPMI_MAX_PERIPH)
-		return -EIO;
+		return -EINVAL;
 
 	channel = priv->channel_map[usid][pid];
 
@@ -102,9 +102,9 @@ static int msm_spmi_read(struct udevice *dev, int usid, int pid, int off)
 	uint32_t reg = 0;
 
 	if (usid >= SPMI_MAX_SLAVES)
-		return -EIO;
+		return -EINVAL;
 	if (pid >= SPMI_MAX_PERIPH)
-		return -EIO;
+		return -EINVAL;
 
 	channel = priv->channel_map[usid][pid];
 
