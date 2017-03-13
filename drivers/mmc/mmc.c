@@ -435,7 +435,7 @@ static int mmc_complete_op_cond(struct mmc *mmc)
 {
 	struct mmc_cmd cmd;
 	int timeout = 10 * CONFIG_SYS_HZ;
-	uint start;
+	unsigned long start;
 	int err;
 
 	mmc->op_cond_pending = 0;
@@ -1684,7 +1684,7 @@ static int mmc_complete_init(struct mmc *mmc)
 int mmc_init(struct mmc *mmc)
 {
 	int err = 0;
-	unsigned start;
+	unsigned long start;
 #ifdef CONFIG_DM_MMC
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(mmc->dev);
 
