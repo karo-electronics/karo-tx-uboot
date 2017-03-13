@@ -26,7 +26,7 @@
 #ifdef CONFIG_LCD_LOGO
 #include <bmp_logo.h>
 #include <bmp_logo_data.h>
-#if (CONSOLE_COLOR_WHITE >= BMP_LOGO_OFFSET) && (LCD_BPP != LCD_COLOR16)
+#if (CONSOLE_COLOR_WHITE >= BMP_LOGO_OFFSET) && (LCD_BPP < LCD_COLOR16)
 #error Default Color Map overlaps with Logo Color Map
 #endif
 #endif
@@ -96,7 +96,9 @@ static void lcd_stub_puts(struct stdio_dev *dev, const char *s)
 static int test_colors[N_BLK_HOR * N_BLK_VERT] = {
 	CONSOLE_COLOR_RED,	CONSOLE_COLOR_GREEN,	CONSOLE_COLOR_YELLOW,
 	CONSOLE_COLOR_BLUE,	CONSOLE_COLOR_MAGENTA,	CONSOLE_COLOR_CYAN,
-}; /*LCD_BPP == LCD_COLOR8 */
+};
+
+typedef uchar pix_t;
 
 #elif LCD_BPP == LCD_COLOR16
 #define	N_BLK_VERT	2
@@ -106,7 +108,21 @@ static int test_colors[N_BLK_HOR * N_BLK_VERT] = {
 	CONSOLE_COLOR_RED,	CONSOLE_COLOR_GREEN,	CONSOLE_COLOR_YELLOW,	CONSOLE_COLOR_BLUE,
 	CONSOLE_COLOR_MAGENTA,	CONSOLE_COLOR_CYAN,	CONSOLE_COLOR_GREY,	CONSOLE_COLOR_WHITE,
 };
-#endif /*LCD_BPP == LCD_COLOR16 */
+typedef ushort pix_t;
+
+#elif LCD_BPP == LCD_COLOR32
+#define	N_BLK_VERT	2
+#define	N_BLK_HOR	4
+
+static int test_colors[N_BLK_HOR * N_BLK_VERT] = {
+	CONSOLE_COLOR_RED,	CONSOLE_COLOR_GREEN,	CONSOLE_COLOR_YELLOW,	CONSOLE_COLOR_BLUE,
+	CONSOLE_COLOR_MAGENTA,	CONSOLE_COLOR_CYAN,	CONSOLE_COLOR_GREY,	CONSOLE_COLOR_WHITE,
+};
+typedef ulong pix_t;
+
+#else
+#error Unsupported pixelformat
+#endif
 
 static void test_pattern(void)
 {
@@ -115,11 +131,7 @@ static void test_pattern(void)
 	ushort v_step = (v_max + N_BLK_VERT - 1) / N_BLK_VERT;
 	ushort h_step = (h_max + N_BLK_HOR  - 1) / N_BLK_HOR;
 	ushort v, h;
-#if LCD_BPP == LCD_COLOR8
-	uchar *pix = (uchar *)lcd_base;
-#elif LCD_BPP == LCD_COLOR16
-	ushort *pix = (ushort *)lcd_base;
-#endif
+	pix_t *pix = lcd_base;
 
 	printf("[LCD] Test Pattern: %d x %d [%d x %d]\n",
 		h_max, v_max, h_step, v_step);
@@ -221,7 +233,7 @@ void lcd_clear(void)
 			 panel_info.vl_row,
 			 panel_info.vl_rot);
 	/* Paint the logo and retrieve LCD base address */
-	debug("[LCD] Drawing the logo...\n");
+	debug("[LCD] Drawing the logo @ %p...\n", lcd_base);
 	if (do_splash) {
 		s = getenv("splashimage");
 		if (s) {
@@ -253,7 +265,10 @@ U_BOOT_CMD(cls,	1, 1, do_lcd_clear, "clear screen", "");
 
 static int lcd_init(void *lcdbase)
 {
-	debug("[LCD] Initializing LCD frambuffer at %p\n", lcdbase);
+	debug("[LCD] Initializing %ux%ux%u LCD framebuffer at %p\n",
+		panel_info.vl_col, panel_info.vl_row, NBITS(panel_info.vl_bpix),
+		lcdbase);
+
 	lcd_ctrl_init(lcdbase);
 
 	/*
@@ -364,8 +379,7 @@ void lcd_logo_plot(int x, int y)
 			bmap += BMP_LOGO_WIDTH;
 			fb += panel_info.vl_col;
 		}
-	}
-	else { /* true color mode */
+	} else if (NBITS(panel_info.vl_bpix) == 16) {
 		u16 col16;
 		fb16 = (ushort *)fb;
 		for (i = 0; i < BMP_LOGO_HEIGHT; ++i) {
@@ -378,6 +392,21 @@ void lcd_logo_plot(int x, int y)
 				}
 			bmap += BMP_LOGO_WIDTH;
 			fb16 += panel_info.vl_col;
+		}
+	} else { /* true color mode */
+		u16 col16;
+		u32 *fb32 = lcd_base + y * lcd_line_length + x;
+
+		for (i = 0; i < BMP_LOGO_HEIGHT; i++) {
+			for (j = 0; j < BMP_LOGO_WIDTH; j++) {
+				col16 = bmp_logo_palette[bmap[j] - 16];
+				fb32[j] =
+					((col16 & 0x000F) << 4) |
+					((col16 & 0x00F0) << 8) |
+					((col16 & 0x0F00) << 12);
+				}
+			bmap += BMP_LOGO_WIDTH;
+			fb32 += panel_info.vl_col;
 		}
 	}
 
@@ -395,17 +424,18 @@ static inline void lcd_logo_plot(int x, int y) {}
 static void splash_align_axis(int *axis, unsigned long panel_size,
 					unsigned long picture_size)
 {
-	unsigned long panel_picture_delta = panel_size - picture_size;
-	unsigned long axis_alignment;
+	int panel_picture_delta = panel_size - picture_size;
+	int axis_alignment;
 
 	if (*axis == BMP_ALIGN_CENTER)
 		axis_alignment = panel_picture_delta / 2;
+	else if (abs(*axis) > (int)panel_size)
+		axis_alignment = panel_size;
 	else if (*axis < 0)
 		axis_alignment = panel_picture_delta + *axis + 1;
 	else
 		return;
-
-	*axis = max(0, (int)axis_alignment);
+	*axis = axis_alignment;
 }
 #endif
 
@@ -578,9 +608,10 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	struct bmp_image *bmp = (struct bmp_image *)map_sysmem(bmp_image, 0);
 	uchar *bmap;
 	ushort padded_width;
-	unsigned long width, height, byte_width;
+	unsigned long width, height;
 	unsigned long pwidth = panel_info.vl_col;
-	unsigned colors, bpix, bmp_bpix;
+	unsigned long long colors;
+	unsigned bpix, bmp_bpix;
 	int hdr_size;
 	struct bmp_color_table_entry *palette = bmp->color_table;
 
@@ -597,7 +628,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	hdr_size = get_unaligned_le16(&bmp->header.size);
 	debug("hdr_size=%d, bmp_bpix=%d\n", hdr_size, bmp_bpix);
 
-	colors = 1 << bmp_bpix;
+	colors = 1ULL << bmp_bpix;
 
 	bpix = NBITS(panel_info.vl_bpix);
 
@@ -612,33 +643,43 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	 * We support displaying 8bpp BMPs on 16bpp LCDs
 	 * and displaying 24bpp BMPs on 32bpp LCDs
 	 * */
-	if (bpix != bmp_bpix &&
-	    !(bmp_bpix == 8 && bpix == 16) &&
-	    !(bmp_bpix == 24 && bpix == 32)) {
+	if (bpix < bmp_bpix) {
 		printf ("Error: %d bit/pixel mode, but BMP has %d bit/pixel\n",
 			bpix, get_unaligned_le16(&bmp->header.bit_count));
 		return 1;
 	}
 
-	debug("Display-bmp: %d x %d  with %d colors, display %d\n",
-	      (int)width, (int)height, (int)colors, 1 << bpix);
+	debug("Display-bmp: %lu x %lu  with %llu colors, display %llu\n",
+		width, height, colors, 1ULL << bpix);
 
 	if (bmp_bpix == 8)
 		lcd_set_cmap(bmp, colors);
 
-	padded_width = (width & 0x3 ? (width & ~0x3) + 4 : width);
+	padded_width = ALIGN(width, 4);
 
 #ifdef CONFIG_SPLASH_SCREEN_ALIGN
 	splash_align_axis(&x, pwidth, width);
 	splash_align_axis(&y, panel_info.vl_row, height);
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
-
-	if ((x + width) > pwidth)
-		width = pwidth - x;
-	if ((y + height) > panel_info.vl_row)
-		height = panel_info.vl_row - y;
-
 	bmap = (uchar *)bmp + get_unaligned_le32(&bmp->header.data_offset);
+
+	if (x < 0) {
+		width += x;
+		bmap += -x * bmp_bpix / 8;
+		x = 0;
+	}
+	if ((x + width) > pwidth) {
+		width = pwidth - x;
+	}
+	if (y < 0) {
+		height += y;
+		y = 0;
+	}
+	if ((y + height) > panel_info.vl_row) {
+		bmap += (y + height - panel_info.vl_row) * bmp_bpix / 8 * padded_width;
+		height = panel_info.vl_row - y;
+	}
+
 	fb   = (uchar *)(lcd_base +
 		(y + height - 1) * lcd_line_length + x * bpix / 8);
 
@@ -660,17 +701,12 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		}
 #endif
 
-		if (bpix != 16)
-			byte_width = width;
-		else
-			byte_width = width * 2;
-
 		for (i = 0; i < height; ++i) {
 			WATCHDOG_RESET();
 			for (j = 0; j < width; j++) {
-				if (bpix != 16) {
+				if (bpix == 8) {
 					fb_put_byte(&fb, &bmap);
-				} else {
+				} else if (bpix == 16) {
 					struct bmp_color_table_entry *entry;
 					uint val;
 
@@ -683,12 +719,27 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 							entry->red >> 3 << 11;
 					}
 					*(uint16_t *)fb = val;
-					bmap++;
 					fb += sizeof(uint16_t) / sizeof(*fb);
+				} else if (bpix == 32) {
+					uint32_t *fb32 = (uint32_t *)fb;
+					struct bmp_color_table_entry *entry;
+					uint val;
+
+					if (cmap_base) {
+						val = cmap_base[*bmap];
+					} else {
+						entry = &palette[*bmap];
+						val = entry->blue |
+							entry->green << 8 |
+							entry->red << 16;
+					}
+					*fb32 = val;
+					fb += sizeof(uint32_t) / sizeof(*fb);
 				}
+				bmap++;
 			}
-			bmap += (padded_width - width);
-			fb -= byte_width + lcd_line_length;
+			bmap += padded_width - width;
+			fb   -= width * bpix / 8 + lcd_line_length;
 		}
 		break;
 	}
@@ -704,7 +755,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		}
 		break;
 #endif /* CONFIG_BMP_16BPP */
-#if defined(CONFIG_BMP_24BMP)
+#if defined(CONFIG_BMP_24BPP)
 	case 24:
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; j++) {
@@ -713,25 +764,30 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 				*(fb++) = *(bmap++);
 				*(fb++) = 0;
 			}
+			bmap += (padded_width - width) * 3;
 			fb -= lcd_line_length + width * (bpix / 8);
 		}
 		break;
-#endif /* CONFIG_BMP_24BMP */
+#endif /* CONFIG_BMP_24BPP */
 #if defined(CONFIG_BMP_32BPP)
 	case 32:
 		for (i = 0; i < height; ++i) {
+			WATCHDOG_RESET();
 			for (j = 0; j < width; j++) {
-				*(fb++) = *(bmap++);
-				*(fb++) = *(bmap++);
-				*(fb++) = *(bmap++);
-				*(fb++) = *(bmap++);
+				fb[3] = *bmap++; /* T */
+				fb[0] = *bmap++; /* B */
+				fb[1] = *bmap++; /* G */
+				fb[2] = *bmap++; /* R */
+				fb += 4;
 			}
+			bmap += (padded_width - width) * 4;
 			fb -= lcd_line_length + width * (bpix / 8);
 		}
 		break;
 #endif /* CONFIG_BMP_32BPP */
 	default:
-		break;
+		printf("Logo with %ubpp on %ubpp display not supported\n",
+			bmp_bpix, bpix);
 	};
 
 	lcd_sync();
