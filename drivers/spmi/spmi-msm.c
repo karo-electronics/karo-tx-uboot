@@ -73,6 +73,7 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	struct msm_spmi_priv *priv = dev_get_priv(dev);
 	unsigned channel;
 	uint32_t reg = 0;
+	int timeout = SPMI_WRITE_TIMEOUT;
 
 	if (usid >= SPMI_MAX_SLAVES)
 		return -EINVAL;
@@ -104,10 +105,16 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
 	writel(reg, priv->spmi_chnls + SPMI_CH_OFFSET(channel) + SPMI_REG_CMD0);
 
 	/* Wait till CMD DONE status */
-	reg = 0;
-	while (!reg) {
-		reg = readl(priv->spmi_core + SPMI_CH_OFFSET(channel) +
+	do {
+		reg = readl(priv->spmi_chnls + SPMI_CH_OFFSET(channel) +
 			    SPMI_REG_STATUS);
+		if (reg)
+			break;
+		udelay(1);
+	} while (timeout-- > 0);
+	if (!(reg & SPMI_STATUS_DONE)) {
+		printf("SPMI write timed out\n");
+		return -ETIMEDOUT;
 	}
 
 	if (reg ^ SPMI_STATUS_DONE) {
