@@ -27,6 +27,7 @@ obj-$(CONFIG_NUVOTON_NCT6102D) += nuvoton_nct6102d.o
 obj-$(CONFIG_NS87308) += ns87308.o
 obj-$(CONFIG_PDSP188x) += pdsp188x.o
 obj-$(CONFIG_$(SPL_)PWRSEQ) += pwrseq-uclass.o
+obj-$(CONFIG_QCOM_SMD) += qcom-smd.o
 obj-$(CONFIG_QCOM_SMEM) += qcom-smem.o
 ifdef CONFIG_DM_I2C
 ifndef CONFIG_SPL_BUILD

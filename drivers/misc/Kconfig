@@ -129,6 +129,14 @@ config PCA9551_I2C_ADDR
 	help
 	  The I2C address of the PCA9551 LED controller.
 
+config QCOM_SMD
+	bool "Enable Qualcomm SMD driver for communication with PMIC devices"
+	select QCOM_SMEM
+
+config QCOM_SMD_RPM
+	bool "Resource Power Manager (RPM) over SMD"
+	depends on QCOM_SMD
+
 config QCOM_SMEM
 	bool "Enable Qualcomm shared memory driver"
 

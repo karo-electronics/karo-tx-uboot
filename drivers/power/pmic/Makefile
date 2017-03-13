@@ -29,3 +29,4 @@ obj-$(CONFIG_POWER_TPS65218) += pmic_tps62362.o
 obj-$(CONFIG_POWER_TPS65218) += pmic_tps65218.o
 obj-$(CONFIG_POWER_TPS65910) += pmic_tps65910.o
 obj-$(CONFIG_POWER_HI6553) += pmic_hi6553.o
+obj-$(CONFIG_QCOM_SMD_RPM) += pmic-qcom-smd-rpm.o
