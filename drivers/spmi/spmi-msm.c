@@ -70,23 +70,63 @@ struct msm_spmi_priv {
 	uint8_t channel_map[SPMI_MAX_SLAVES][SPMI_MAX_PERIPH];
 };
 
-static int msm_spmi_write(struct udevice *dev, const void *buf, int usid,
-			  int pid, int off, uint8_t bc)
+static int __msm_spmi_read(struct msm_spmi_priv *priv, void *buf,
+			int usid, int pid, int off, uint8_t bc)
 {
-	struct msm_spmi_priv *priv = dev_get_priv(dev);
-	unsigned channel;
+	unsigned channel = priv->channel_map[usid][pid];
 	uint32_t reg = 0;
+
+	/* Disable IRQ mode for the current channel*/
+	writel(0x0, priv->spmi_obs + SPMI_CH_OFFSET(channel) + SPMI_REG_CONFIG);
+
+	/* Prepare read command */
+	if (pmic_arb_is_v1()) {
+		reg |= SPMI_CMD_EXT_REG_READ_LONG << SPMI_CMD_OPCODE_SHIFT;
+		reg |= (usid << SPMI_CMD_SLAVE_ID_SHIFT);
+		reg |= (pid << SPMI_CMD_ADDR_SHIFT);
+		reg |= (off << SPMI_CMD_ADDR_OFFSET_SHIFT);
+		reg |= 1; /* byte count */
+	} else {
+		reg |= SPMI_CMD_EXT_REG_READ_LONG << SPMI_CMD_OPCODE_SHIFT;
+		reg |= ((off & 0xff) << SPMI_CMD_ADDR_OFFSET_SHIFT);
+		reg |= bc - 1; /* byte count - 1 */
+	}
+
+	/* Request read */
+	writel(reg, priv->spmi_obs + SPMI_CH_OFFSET(channel) + SPMI_REG_CMD0);
+
+	/* Wait till CMD DONE status */
+	reg = 0;
+	while (!reg) {
+		reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
+			    SPMI_REG_STATUS);
+	}
+
+	if (reg ^ SPMI_STATUS_DONE) {
+		printf("SPMI read failure.\n");
+		return -EIO;
+	}
+
+	/* Read the data */
+	reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
+		     SPMI_REG_RDATA0);
+	memcpy(buf, &reg, min_t(uint8_t, bc, sizeof(reg)));
+	if (bc > sizeof(reg)) {
+		reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
+			SPMI_REG_RDATA1);
+		memcpy(buf + sizeof(reg), &reg, bc - sizeof(reg));
+	}
+
+	return 0;
+}
+
+static int __msm_spmi_write(struct msm_spmi_priv *priv, const void *buf,
+			int usid, int pid, int off, uint8_t bc)
+{
+	uint32_t reg = 0;
+	unsigned channel = priv->channel_map[usid][pid];
 	int timeout = SPMI_WRITE_TIMEOUT;
 	uint32_t val;
-
-	if (usid >= SPMI_MAX_SLAVES)
-		return -EINVAL;
-	if (pid >= SPMI_MAX_PERIPH)
-		return -EINVAL;
-	if (bc > SPMI_MAX_ARB_TRANS_BYTES)
-		return -EINVAL;
-
-	channel = priv->channel_map[usid][pid];
 
 	/* Disable IRQ mode for the current channel */
 	writel(0x0, priv->spmi_chnls + SPMI_CH_OFFSET(channel) +
@@ -135,12 +175,41 @@ static int msm_spmi_write(struct udevice *dev, const void *buf, int usid,
 	return 0;
 }
 
-static int msm_spmi_read(struct udevice *dev, void *buf, int usid, int pid, int off,
-			 uint8_t bc)
+int __check_pbl_status(struct msm_spmi_priv *priv, const char *whence,
+		const char *fn, int ln, int sid, int pid, int reg)
+{
+	uint8_t pbl_sts;
+	static unsigned int last = -1;
+	int ret;
+
+	ret = __msm_spmi_read(priv, &pbl_sts, 0, 8, 7, sizeof(pbl_sts));
+	if (ret < 0) {
+		printf("%s@%d(%02x, %02x, %02x): Failed to read PBL_STATUS\n",
+			fn, ln, sid, pid, reg);
+	} else if (pbl_sts != last) {
+		if (pbl_sts) {
+			printf("%s %s@%d(%02x, %02x, %02x): PBL_STATUS: %02x\n",
+				whence, fn, ln, sid, pid, reg, pbl_sts);
+			__msm_spmi_write(priv, &pbl_sts, 0, 8, 7,
+					sizeof(pbl_sts));
+		}
+		last = pbl_sts & 0xc0;
+	}
+	return 0;
+}
+
+#define C(func) ({\
+	int ret;							\
+	__check_pbl_status(priv, "before", __func__, __LINE__, usid, pid, off); \
+	ret = func;							\
+	__check_pbl_status(priv, "after", __func__, __LINE__, usid, pid, off); \
+	ret;								\
+})
+
+static int msm_spmi_write(struct udevice *dev, const void *buf, int usid,
+			  int pid, int off, uint8_t bc)
 {
 	struct msm_spmi_priv *priv = dev_get_priv(dev);
-	unsigned channel;
-	uint32_t reg = 0;
 
 	if (usid >= SPMI_MAX_SLAVES)
 		return -EINVAL;
@@ -149,50 +218,22 @@ static int msm_spmi_read(struct udevice *dev, void *buf, int usid, int pid, int 
 	if (bc > SPMI_MAX_ARB_TRANS_BYTES)
 		return -EINVAL;
 
-	channel = priv->channel_map[usid][pid];
+	return C(__msm_spmi_write(priv, buf, usid, pid, off, bc));
+}
 
-	/* Disable IRQ mode for the current channel*/
-	writel(0x0, priv->spmi_obs + SPMI_CH_OFFSET(channel) + SPMI_REG_CONFIG);
+static int msm_spmi_read(struct udevice *dev, void *buf, int usid, int pid, int off,
+			 uint8_t bc)
+{
+	struct msm_spmi_priv *priv = dev_get_priv(dev);
 
-	/* Prepare read command */
-	if (pmic_arb_is_v1()) {
-		reg |= SPMI_CMD_EXT_REG_READ_LONG << SPMI_CMD_OPCODE_SHIFT;
-		reg |= (usid << SPMI_CMD_SLAVE_ID_SHIFT);
-		reg |= (pid << SPMI_CMD_ADDR_SHIFT);
-		reg |= (off << SPMI_CMD_ADDR_OFFSET_SHIFT);
-		reg |= 1; /* byte count */
-	} else {
-		reg |= SPMI_CMD_EXT_REG_READ_LONG << SPMI_CMD_OPCODE_SHIFT;
-		reg |= ((off & 0xff) << SPMI_CMD_ADDR_OFFSET_SHIFT);
-		reg |= bc - 1; /* byte count - 1 */
-	}
+	if (usid >= SPMI_MAX_SLAVES)
+		return -EINVAL;
+	if (pid >= SPMI_MAX_PERIPH)
+		return -EINVAL;
+	if (bc > SPMI_MAX_ARB_TRANS_BYTES)
+		return -EINVAL;
 
-	/* Request read */
-	writel(reg, priv->spmi_obs + SPMI_CH_OFFSET(channel) + SPMI_REG_CMD0);
-
-	/* Wait till CMD DONE status */
-	reg = 0;
-	while (!reg) {
-		reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
-			    SPMI_REG_STATUS);
-	}
-
-	if (reg ^ SPMI_STATUS_DONE) {
-		printf("SPMI read failure.\n");
-		return -EIO;
-	}
-
-	/* Read the data */
-	reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
-		     SPMI_REG_RDATA0);
-	memcpy(buf, &reg, min_t(uint8_t, bc, sizeof(reg)));
-	if (bc > sizeof(reg)) {
-		reg = readl(priv->spmi_obs + SPMI_CH_OFFSET(channel) +
-			SPMI_REG_RDATA1);
-		memcpy(buf + sizeof(reg), &reg, bc - sizeof(reg));
-	}
-
-	return 0;
+	return C(__msm_spmi_read(priv, buf, usid, pid, off, bc));
 }
 
 static struct dm_spmi_ops msm_spmi_ops = {
