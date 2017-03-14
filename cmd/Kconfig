@@ -436,6 +436,11 @@ config CMD_SPMI
 	help
 	  SPMI bus utility command.
 
+config CMD_SMD
+	bool "smd-rpm support for Qualcomm PMIC access"
+	help
+	  Qualcomm PMIC access via SMD-RPM
+
 endmenu
 
 
