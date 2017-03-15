@@ -215,12 +215,12 @@
 #define EXT_CSD_PARTITION_ACCESS_ENABLE		(1 << 0)
 #define EXT_CSD_PARTITION_ACCESS_DISABLE	(0 << 0)
 
-#define EXT_CSD_BOOT_ACK(x)		(x << 6)
-#define EXT_CSD_BOOT_PART_NUM(x)	(x << 3)
-#define EXT_CSD_PARTITION_ACCESS(x)	(x << 0)
+#define EXT_CSD_BOOT_ACK(x)		((x) << 6)
+#define EXT_CSD_BOOT_PART_NUM(x)	((x) << 3)
+#define EXT_CSD_PARTITION_ACCESS(x)	((x) << 0)
 
-#define EXT_CSD_BOOT_BUS_WIDTH_MODE(x)	(x << 3)
-#define EXT_CSD_BOOT_BUS_WIDTH_RESET(x)	(x << 2)
+#define EXT_CSD_BOOT_BUS_WIDTH_MODE(x)	((x) << 3)
+#define EXT_CSD_BOOT_BUS_WIDTH_RESET(x)	((x) << 2)
 #define EXT_CSD_BOOT_BUS_WIDTH_WIDTH(x)	(x)
 
 #define EXT_CSD_PARTITION_SETTING_COMPLETED	(1 << 0)
@@ -266,7 +266,7 @@
  * boot partitions (2), general purpose partitions (4) in MMC v4.4.
  */
 #define MMC_NUM_BOOT_PARTITION	2
-#define MMC_PART_RPMB           3       /* RPMB partition number */
+#define MMC_PART_RPMB		3	/* RPMB partition number */
 
 /* Driver model support */
 

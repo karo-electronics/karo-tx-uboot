@@ -82,10 +82,11 @@ static void print_mmcinfo(struct mmc *mmc)
 		}
 	}
 }
+
 static struct mmc *init_mmc_device(int dev, bool force_init)
 {
-	struct mmc *mmc;
-	mmc = find_mmc_device(dev);
+	struct mmc *mmc = find_mmc_device(dev);
+
 	if (!mmc) {
 		printf("no mmc device at slot %x\n", dev);
 		return NULL;
@@ -97,14 +98,15 @@ static struct mmc *init_mmc_device(int dev, bool force_init)
 		return NULL;
 	return mmc;
 }
-static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+
+static int do_mmcinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
 	struct mmc *mmc;
 
 	if (curr_device < 0) {
-		if (get_mmc_num() > 0)
+		if (get_mmc_num() > 0) {
 			curr_device = 0;
-		else {
+		} else {
 			puts("No MMC device available\n");
 			return 1;
 		}
@@ -130,8 +132,9 @@ static int confirm_key_prog(void)
 	puts("Authentication key programming aborted\n");
 	return 0;
 }
+
 static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
-			  int argc, char * const argv[])
+			  int argc, char *const argv[])
 {
 	void *key_addr;
 	struct mmc *mmc = find_mmc_device(curr_device);
@@ -148,8 +151,9 @@ static int do_mmcrpmb_key(cmd_tbl_t *cmdtp, int flag,
 	}
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
-			   int argc, char * const argv[])
+			   int argc, char *const argv[])
 {
 	u16 blk, cnt;
 	void *addr;
@@ -176,8 +180,9 @@ static int do_mmcrpmb_read(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
-			    int argc, char * const argv[])
+			    int argc, char *const argv[])
 {
 	u16 blk, cnt;
 	void *addr;
@@ -202,14 +207,16 @@ static int do_mmcrpmb_write(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmcrpmb_counter(cmd_tbl_t *cmdtp, int flag,
-			      int argc, char * const argv[])
+			      int argc, char *const argv[])
 {
 	unsigned long counter;
 	struct mmc *mmc = find_mmc_device(curr_device);
 
 	if (mmc_rpmb_get_counter(mmc, &counter))
 		return CMD_RET_FAILURE;
+
 	printf("RPMB Write counter= %lx\n", counter);
 	return CMD_RET_SUCCESS;
 }
@@ -222,14 +229,12 @@ static cmd_tbl_t cmd_rpmb[] = {
 };
 
 static int do_mmcrpmb(cmd_tbl_t *cmdtp, int flag,
-		      int argc, char * const argv[])
+		      int argc, char *const argv[])
 {
-	cmd_tbl_t *cp;
+	cmd_tbl_t *cp = find_cmd_tbl(argv[1], cmd_rpmb, ARRAY_SIZE(cmd_rpmb));
 	struct mmc *mmc;
 	char original_part;
 	int ret;
-
-	cp = find_cmd_tbl(argv[1], cmd_rpmb, ARRAY_SIZE(cmd_rpmb));
 
 	/* Drop the rpmb subcommand */
 	argc--;
@@ -268,7 +273,7 @@ static int do_mmcrpmb(cmd_tbl_t *cmdtp, int flag,
 #endif
 
 static int do_mmc_read(cmd_tbl_t *cmdtp, int flag,
-		       int argc, char * const argv[])
+		       int argc, char *const argv[])
 {
 	struct mmc *mmc;
 	u32 blk, cnt, n;
@@ -295,8 +300,9 @@ static int do_mmc_read(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
-			int argc, char * const argv[])
+			int argc, char *const argv[])
 {
 	struct mmc *mmc;
 	u32 blk, cnt, n;
@@ -325,8 +331,9 @@ static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
+
 static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
-			int argc, char * const argv[])
+			int argc, char *const argv[])
 {
 	struct mmc *mmc;
 	u32 blk, cnt, n;
@@ -353,28 +360,30 @@ static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
 
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
-static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
-			 int argc, char * const argv[])
-{
-	struct mmc *mmc;
 
-	mmc = init_mmc_device(curr_device, true);
+static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
+			 int argc, char *const argv[])
+{
+	struct mmc *mmc = init_mmc_device(curr_device, true);
+
 	if (!mmc)
 		return CMD_RET_FAILURE;
 
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
-		       int argc, char * const argv[])
+		       int argc, char *const argv[])
 {
 	struct blk_desc *mmc_dev;
-	struct mmc *mmc;
+	struct mmc *mmc = init_mmc_device(curr_device, false);
 
-	mmc = init_mmc_device(curr_device, false);
 	if (!mmc)
 		return CMD_RET_FAILURE;
 
 	mmc_dev = blk_get_devnum_by_type(IF_TYPE_MMC, curr_device);
+printf("%s@%d: curr_device=%u mmc_dev=%p type=%08x\n", __func__, __LINE__,
+	curr_device, mmc_dev, mmc_dev ? mmc_dev->type : -1);
 	if (mmc_dev != NULL && mmc_dev->type != DEV_TYPE_UNKNOWN) {
 		part_print(mmc_dev);
 		return CMD_RET_SUCCESS;
@@ -383,8 +392,9 @@ static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 	puts("get mmc type error!\n");
 	return CMD_RET_FAILURE;
 }
+
 static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
-		      int argc, char * const argv[])
+		      int argc, char *const argv[])
 {
 	int dev, part = 0, ret;
 	struct mmc *mmc;
@@ -424,15 +434,16 @@ static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
-		       int argc, char * const argv[])
+		       int argc, char *const argv[])
 {
 	print_mmc_devices('\n');
 	return CMD_RET_SUCCESS;
 }
 
 static int parse_hwpart_user(struct mmc_hwpart_conf *pconf,
-			     int argc, char * const argv[])
+			     int argc, char *const argv[])
 {
 	int i = 0;
 
@@ -466,7 +477,7 @@ static int parse_hwpart_user(struct mmc_hwpart_conf *pconf,
 }
 
 static int parse_hwpart_gp(struct mmc_hwpart_conf *pconf, int pidx,
-			   int argc, char * const argv[])
+			   int argc, char *const argv[])
 {
 	int i;
 
@@ -474,6 +485,7 @@ static int parse_hwpart_gp(struct mmc_hwpart_conf *pconf, int pidx,
 
 	if (1 >= argc)
 		return -1;
+
 	pconf->gp_part[pidx].size = simple_strtoul(argv[0], NULL, 10);
 
 	i = 1;
@@ -500,7 +512,7 @@ static int parse_hwpart_gp(struct mmc_hwpart_conf *pconf, int pidx,
 }
 
 static int do_mmc_hwpartition(cmd_tbl_t *cmdtp, int flag,
-			      int argc, char * const argv[])
+			      int argc, char *const argv[])
 {
 	struct mmc *mmc;
 	struct mmc_hwpart_conf pconf = { };
@@ -583,7 +595,7 @@ static int do_mmc_hwpartition(cmd_tbl_t *cmdtp, int flag,
 
 #ifdef CONFIG_SUPPORT_EMMC_BOOT
 static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
-			  int argc, char * const argv[])
+			  int argc, char *const argv[])
 {
 	int dev;
 	struct mmc *mmc;
@@ -591,6 +603,7 @@ static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
 
 	if (argc != 5)
 		return CMD_RET_USAGE;
+
 	dev = simple_strtoul(argv[1], NULL, 10);
 	width = simple_strtoul(argv[2], NULL, 10);
 	reset = simple_strtoul(argv[3], NULL, 10);
@@ -608,8 +621,9 @@ static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
 	/* acknowledge to be sent during boot operation */
 	return mmc_set_boot_bus_width(mmc, width, reset, mode);
 }
+
 static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
-			      int argc, char * const argv[])
+			      int argc, char *const argv[])
 {
 	int dev;
 	struct mmc *mmc;
@@ -639,8 +653,9 @@ static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
 	printf("EMMC RPMB partition Size %d MB\n", rpmbsize);
 	return CMD_RET_SUCCESS;
 }
+
 static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
-			   int argc, char * const argv[])
+			   int argc, char *const argv[])
 {
 	int dev;
 	struct mmc *mmc;
@@ -666,8 +681,9 @@ static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
 	/* acknowledge to be sent during boot operation */
 	return mmc_set_part_conf(mmc, ack, part_num, access);
 }
+
 static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
-			   int argc, char * const argv[])
+			   int argc, char *const argv[])
 {
 	int dev;
 	struct mmc *mmc;
@@ -701,8 +717,9 @@ static int do_mmc_rst_func(cmd_tbl_t *cmdtp, int flag,
 	return mmc_set_rst_n_function(mmc, enable);
 }
 #endif
+
 static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
-			 int argc, char * const argv[])
+			 int argc, char *const argv[])
 {
 	struct mmc *mmc;
 	u32 val;
@@ -710,6 +727,7 @@ static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
 
 	if (argc != 2)
 		return CMD_RET_USAGE;
+
 	val = simple_strtoul(argv[2], NULL, 16);
 
 	mmc = find_mmc_device(curr_device);
@@ -751,11 +769,9 @@ static cmd_tbl_t cmd_mmc[] = {
 	U_BOOT_CMD_MKENT(setdsr, 2, 0, do_mmc_setdsr, "", ""),
 };
 
-static int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_mmcops(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 {
-	cmd_tbl_t *cp;
-
-	cp = find_cmd_tbl(argv[1], cmd_mmc, ARRAY_SIZE(cmd_mmc));
+	cmd_tbl_t *cp = find_cmd_tbl(argv[1], cmd_mmc, ARRAY_SIZE(cmd_mmc));
 
 	/* Drop the mmc command */
 	argc--;
