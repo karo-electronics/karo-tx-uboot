@@ -100,7 +100,7 @@ static int do_dump(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (!(reg % 16))
 			printf("\n0x%02x: ", reg);
 
-		printf("%2.2x ", value);
+		printf("%02x ", ret);
 	}
 	printf("\n");
 
@@ -137,7 +137,7 @@ static int do_read(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return failure(ret);
 	}
 
-	printf("0x%02x: 0x%2.2x\n", reg, value);
+	printf("0x%02x: 0x%02x\n", reg, ret);
 
 	return CMD_RET_SUCCESS;
 }
