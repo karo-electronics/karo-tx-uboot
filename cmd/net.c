@@ -445,3 +445,34 @@ U_BOOT_CMD(
 );
 
 #endif  /* CONFIG_CMD_LINK_LOCAL */
+
+static int do_netdev(cmd_tbl_t *cmdtp, int flag, int argc,
+			char *const argv[])
+{
+	const char *curdev = getenv("ethact");
+
+	if (argc > 1 || curdev)
+		printf("Current network device ");
+	else
+		printf("No network device selected\n");
+	if (curdev)
+		printf("%s\n", curdev);
+
+	if (argc <= 1)
+		return CMD_RET_SUCCESS;
+
+	setenv("ethact", argv[1]);
+	eth_set_current();
+	curdev = getenv("ethact");
+	if (strcmp(curdev, argv[1]) == 0)
+		printf("set to %s\n", getenv("ethact"));
+	else
+		printf("Could not set net device to '%s'\n", argv[1]);
+
+	return CMD_RET_SUCCESS;
+}
+U_BOOT_CMD(
+	netdev, 2, 0, do_netdev,
+	"select network device",
+	"<device name>"
+	);
