@@ -77,7 +77,6 @@ static int do_list(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 static int do_dump(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct udevice *dev;
-	uint8_t value;
 	uint reg;
 	int ret;
 
@@ -91,9 +90,9 @@ static int do_dump(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	printf("Dump pmic: %s registers\n", dev->name);
 
 	for (reg = 0; reg < pmic_reg_count(dev); reg++) {
-		ret = pmic_read(dev, reg, &value, 1);
-		if (ret) {
-			printf("Can't read register: %d\n", reg);
+		ret = pmic_reg_read(dev, reg);
+		if (ret < 0) {
+			printf("Can't read register: %04x!\n", reg);
 			return failure(ret);
 		}
 
@@ -111,7 +110,6 @@ static int do_read(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct udevice *dev;
 	int regs, ret;
-	uint8_t value;
 	uint reg;
 
 	if (!currdev) {
@@ -131,9 +129,9 @@ static int do_read(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return failure(-EFAULT);
 	}
 
-	ret = pmic_read(dev, reg, &value, 1);
-	if (ret) {
-		printf("Can't read PMIC register: %d!\n", reg);
+	ret = pmic_reg_read(dev, reg);
+	if (ret < 0) {
+		printf("Can't read PMIC register: %0x4!\n", reg);
 		return failure(ret);
 	}
 
@@ -146,7 +144,7 @@ static int do_write(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct udevice *dev;
 	int regs, ret;
-	uint8_t value;
+	uint value;
 	uint reg;
 
 	if (!currdev) {
@@ -167,10 +165,13 @@ static int do_write(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	value = simple_strtoul(argv[2], NULL, 16);
-
-	ret = pmic_write(dev, reg, &value, 1);
-	if (ret) {
-		printf("Can't write PMIC register: %d!\n", reg);
+	if (value > 255) {
+		printf("ERROR: value 0x%x out of range [0x00..0xff]\n", value);
+		return failure(-EINVAL);
+	}
+	ret = pmic_reg_write(dev, reg, value);
+	if (ret < 0) {
+		printf("Can't write PMIC register: %04x!\n", reg);
 		return failure(ret);
 	}
 
