@@ -1,0 +1,6 @@
+TXSD410E BOARD
+M:	Lothar Waßmann <LW@KARO-electronics.de>
+S:	Maintained
+F:	board/karo/txsd/
+F:	include/configs/txsd.h
+F:	configs/txsd-410e_defconfig

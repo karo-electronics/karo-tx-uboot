@@ -19,8 +19,17 @@ config TARGET_DRAGONBOARD410C
 	  - HDMI
 	  - 20-pin low speed and 40-pin high speed expanders, 4 LED, 3 buttons
 
+config TARGET_TXSD_410E
+	bool "Ka-Ro electronics TXSD-410E"
+	help
+	  Support for Ka-Ro electronics TXSD-410E module. This board
+	  is compatible with the Qualcomm Snapdragon 410C board and
+	  has a form factor like the TX-Series modules produced by
+	  Ka-Ro electronics GmbH.
+
 endchoice
 
 source "board/qualcomm/dragonboard410c/Kconfig"
+source "board/karo/txsd/Kconfig"
 
 endif

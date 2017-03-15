@@ -1,0 +1,255 @@
+/*
+ * Qualcomm APQ8016 based Ka-Ro TXSD-410E board device tree source
+ *
+ * (C) Copyright 2016 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
+
+/dts-v1/;
+
+#include "skeleton64.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	model = "Ka-Ro electronics GmbH TXSD-410E";
+	compatible = "qcom,dragonboard", "qcom,apq8016-sbc";
+	qcom,msm-id = <0xce 0x0 0xf8 0x0 0xf9 0x0 0xfa 0x0 0xf7 0x0>;
+	qcom,board-id = <0x10018 0x0>;
+	#address-cells = <0x2>;
+	#size-cells = <0x2>;
+
+	aliases {
+		serial0 = &uart1;
+		soc_gpios = &soc_gpios;
+		i2c0 = &i2c_gpio1;
+		i2c1 = &i2c_gpio2;
+		i2c2 = &i2c_gpio3;
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x90000000 0 0x2da00000>;
+	};
+
+	chosen {
+		stdout-path = "serial0";
+	};
+
+	psci {
+		compatible = "arm,psci-1.0";
+		method = "smc";
+	};
+
+	soc {
+		#address-cells = <0x1>;
+		#size-cells = <0x1>;
+		ranges = <0x0 0x0 0x0 0xffffffff>;
+		compatible = "simple-bus";
+
+		clkc: qcom,gcc@1800000 {
+			compatible = "qcom,gcc-apq8016";
+			reg = <0x1800000 0x80000>;
+			#address-cells = <0x1>;
+			#size-cells = <0x0>;
+		};
+
+		uart1: serial@78b0000 {
+			compatible = "qcom,msm-uartdm-v1.4";
+			reg = <0x78b0000 0x200>;
+			u-boot,dm-pre-reloc;
+			clock = <&clkc 4>;
+		};
+
+		restart@4ab000 {
+			compatible = "qcom,pshold";
+			reg = <0x4ab000 0x4>;
+		};
+
+		soc_gpios: pinctrl@1000000 {
+			compatible = "qcom,apq8016-pinctrl";
+			reg = <0x1000000 0x300000>;
+			gpio-controller;
+			gpio-count = <122>;
+			gpio-bank-name = "soc";
+			#gpio-cells = <2>;
+		};
+
+		ehci@78d9000 {
+			compatible = "qcom,ehci-host";
+			reg = <0x78d9000 0x400>;
+		};
+
+		sdhci@07824000 {
+			compatible = "qcom,sdhci-msm-v4";
+			reg = <0x7824900 0x11c 0x7824000 0x800>;
+			bus-width = <0x8>;
+			index = <0x0>;
+			non-removable;
+			clock = <&clkc 0>;
+			clock-frequency = <100000000>;
+		};
+
+		sdhci@07864000 {
+			compatible = "qcom,sdhci-msm-v4";
+			reg = <0x7864900 0x11c 0x7864000 0x800>;
+			index = <0x1>;
+			bus-width = <0x4>;
+			clock = <&clkc 1>;
+			clock-frequency = <200000000>;
+		};
+
+		spmi@200f000 {
+			compatible = "qcom,spmi-pmic-arb";
+			reg = <0x200f000 0x1000
+			       0x2400000 0x400000
+			       0x2c00000 0x400000
+			       >;
+			#address-cells = <0x1>;
+			#size-cells = <0x1>;
+
+			pmic0: pm8916@0 {
+				compatible = "qcom,spmi-pmic";
+				reg = <0x0 0x1>;
+				#address-cells = <0x1>;
+				#size-cells = <0x1>;
+
+				rtc@6000 {
+					compatible = "qcom,pm8941-rtc";
+					reg = <0x6000 0x4c>, <0x6100 0x49>;
+					reg-names = "rtc", "alarm";
+					interrupts = <0x0 0x61 0x1 IRQ_TYPE_EDGE_RISING>;
+				};
+
+				pm8916_gpios: pm8916_gpios@c000 {
+					compatible = "qcom,pm8916-gpio";
+					reg = <0xc000 0x400>;
+					gpio-controller;
+					gpio-count = <4>;
+					#gpio-cells = <2>;
+					gpio-bank-name = "pmic";
+				};
+			};
+
+			pmic1: pm8916@1 {
+				compatible = "qcom,spmi-pmic";
+				reg = <0x1 0x1>;
+			};
+		};
+	};
+
+	i2c_gpio1: i2c-gpio@0 {
+		compatible = "i2c-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c0_pinmux>;
+		gpios = <&soc_gpios 18 GPIO_ACTIVE_HIGH>, /* SDA */
+                      	<&soc_gpios 19 GPIO_ACTIVE_HIGH>; /* CLK */
+
+		tsc2007@48 {
+			compatible = "ti,tsc2007";
+			reg = <0x48>;
+		};
+	};
+
+	i2c_gpio2: i2c-gpio@1 {
+		compatible = "i2c-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c1_pinmux>;
+		gpios = <&soc_gpios 53 GPIO_ACTIVE_HIGH>, /* SDA */
+                      	<&soc_gpios 54 GPIO_ACTIVE_HIGH>; /* CLK */
+
+		dsi83@2c {
+			compatible = "ti,sn65dsi83";
+			reg = <0x2c>;
+		};
+	};
+
+	i2c_gpio3: i2c-gpio@2 {
+		compatible = "i2c-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c2_pinmux>;
+		gpios = <&soc_gpios 29 GPIO_ACTIVE_HIGH>, /* SDA */
+                      	<&soc_gpios 30 GPIO_ACTIVE_HIGH>; /* CLK */
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		user {
+			label = "user";
+			gpios = <&soc_gpios 71 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};
+
+&soc_gpios {
+	i2c0_pinmux: i2c0-pins {
+		pinmux {
+			function = "gpio";
+			pins = "gpio18", "gpio19";
+		};
+
+		pinconf {
+			pins = "gpio18", "gpio19";
+			drive-strength = <16>;
+			bias-pull-up;
+		};
+	};
+
+	i2c1_pinmux: i2c1-pins {
+		pinmux {
+			function = "gpio";
+			pins = "gpio53", "gpio54";
+		};
+
+		pinconf {
+			pins = "gpio53", "gpio54";
+			drive-strength = <16>;
+			bias-pull-up;
+		};
+	};
+
+	i2c2_pinmux: i2c2-pins {
+		pinmux {
+			function = "gpio";
+			pins = "gpio29", "gpio30";
+		};
+
+		pinconf {
+			pins = "gpio29", "gpio30";
+			drive-strength = <16>;
+			bias-pull-up;
+		};
+	};
+
+	led_pinmux: led-pins {
+		pinmux {
+			function = "gpio";
+			pins = "gpio71";
+	};
+
+		pinconf {
+			pins = "gpio71";
+			drive-strength = <16>;
+	};
+};
+
+	usb_vbus_pinmux: usb-vbus {
+		pinmux {
+			function = "gpio";
+			pins = "gpio56";
+	};
+
+		pinconf {
+			pins = "gpio56";
+			drive-strength = <16>;
+		};
+	};
+};

@@ -1,0 +1,15 @@
+if TARGET_TXSD_410E
+
+config SYS_BOARD
+	default "txsd"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_SOC
+	default "apq8016"
+
+config SYS_CONFIG_NAME
+	default "txsd"
+
+endif
