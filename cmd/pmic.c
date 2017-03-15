@@ -124,7 +124,7 @@ static int do_read(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc != 2)
 		return CMD_RET_USAGE;
 
-	reg = simple_strtoul(argv[1], NULL, 0);
+	reg = simple_strtoul(argv[1], NULL, 16);
 	regs = pmic_reg_count(dev);
 	if (reg > regs) {
 		printf("PMIC max reg: %d\n", regs);
@@ -159,14 +159,14 @@ static int do_write(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc != 3)
 		return CMD_RET_USAGE;
 
-	reg = simple_strtoul(argv[1], NULL, 0);
+	reg = simple_strtoul(argv[1], NULL, 16);
 	regs = pmic_reg_count(dev);
 	if (reg > regs) {
 		printf("PMIC max reg: %d\n", regs);
 		return failure(-EFAULT);
 	}
 
-	value = simple_strtoul(argv[2], NULL, 0);
+	value = simple_strtoul(argv[2], NULL, 16);
 
 	ret = pmic_write(dev, reg, &value, 1);
 	if (ret) {
