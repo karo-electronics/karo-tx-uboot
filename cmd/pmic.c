@@ -202,9 +202,9 @@ static int do_pmic(cmd_tbl_t *cmdtp, int flag, int argc,
 
 U_BOOT_CMD(pmic, CONFIG_SYS_MAXARGS, 1, do_pmic,
 	" operations",
-	"list          - list pmic devices\n"
-	"pmic dev [name]    - show or [set] operating PMIC device\n"
-	"pmic dump          - dump registers\n"
-	"pmic read address  - read byte of register at address\n"
-	"pmic write address - write byte to register at address\n"
+	"list                      - list pmic devices\n"
+	"pmic dev [name]           - show or [set] operating PMIC device\n"
+	"pmic dump                 - dump registers\n"
+	"pmic read address         - read byte of register at address\n"
+	"pmic write address value  - write value to register at address\n"
 );
