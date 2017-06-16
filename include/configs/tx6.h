@@ -149,6 +149,9 @@
 #else
 #define CONFIG_BOOTDELAY		0
 #endif
+#define CONFIG_BOOT_RETRY_TIME		-1
+#define CONFIG_BOOT_RETRY_MIN		3
+#define CONFIG_RESET_TO_RETRY
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_SYS_AUTOLOAD		"no"
 #define DEFAULT_BOOTCMD			"run bootcmd_${boot_mode} bootm_cmd"
