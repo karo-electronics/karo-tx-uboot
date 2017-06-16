@@ -233,6 +233,7 @@
 	"nfsroot=/tftpboot/rootfs\0"					\
 	"otg_mode=device\0"						\
 	ROOTPART_UUID_STR						\
+	"silent=1\0"							\
 	"touchpanel=tsc2007\0"						\
 	"video_mode=" DEFAULT_VIDEO_MODE "\0"
 #endif /*  CONFIG_ENV_IS_NOWHERE */
@@ -276,6 +277,12 @@
 #define CONFIG_BAUDRATE			115200		/* Default baud rate */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, }
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV
+#define CONFIG_SILENT_CONSOLE
+#define CONFIG_SILENT_CONSOLE_UPDATE_ON_SET
+#define CONFIG_SILENT_CONSOLE_UPDATE_ON_RELOC
+#define CONFIG_SILENT_U_BOOT_ONLY
+#define CONFIG_SYS_DEVICE_NULLDEV
 #define CONFIG_CONS_INDEX		1
 
 /*
