@@ -8,7 +8,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#ifndef CONFIG_SOC_MX6UL
+#ifndef CONFIG_BOARD_TX6UL
 #define CONFIG_ARM_ERRATA_743622
 #define CONFIG_ARM_ERRATA_751472
 #define CONFIG_ARM_ERRATA_794072
@@ -47,13 +47,13 @@
 #ifdef CONFIG_LCD
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
-#ifndef CONFIG_SOC_MX6UL
+#ifndef CONFIG_BOARD_TX6UL
 #define CONFIG_VIDEO_IPUV3
 #define CONFIG_IPUV3_CLK		(CONFIG_SYS_SDRAM_CLK * 1000000 / 2)
 #else
 #define CONFIG_VIDEO_MXS
 #define MXS_LCDIF_BASE			0x021c8000UL
-#endif /* CONFIG_SOC_MX6UL */
+#endif /* CONFIG_BOARD_TX6UL */
 #define CONFIG_LCD_LOGO
 #define LCD_BPP				LCD_COLOR32
 #define CONFIG_CMD_BMP
@@ -68,13 +68,19 @@
  * Memory configuration options
  */
 #define CONFIG_NR_DRAM_BANKS		0x1		/* # of SDRAM banks */
+#ifndef CONFIG_BOARD_TX6UL
+/* Base address of SDRAM bank 1 */
+#define PHYS_SDRAM_1			0x10000000
+#else
+#define PHYS_SDRAM_1			0x80000000
+#endif
+
 #ifndef CONFIG_SOC_MX6UL
-#define PHYS_SDRAM_1			0x10000000	/* Base address of bank 1 */
 #define CONFIG_SYS_MPU_CLK		792
 #else
-#define PHYS_SDRAM_1			0x80000000	/* Base address of bank 1 */
 #define CONFIG_SYS_MPU_CLK		528
 #endif
+
 #ifndef CONFIG_SYS_SDRAM_BUS_WIDTH
 #if defined(CONFIG_SYS_SDRAM_BUS_WIDTH_32)
 #define CONFIG_SYS_SDRAM_BUS_WIDTH	32
@@ -90,8 +96,9 @@
 #define _AC(x,s)			(x##s)
 #endif
 #define UL(x)				_AC(x,UL)
-#define PHYS_SDRAM_1_SIZE		(UL(CONFIG_SYS_SDRAM_CHIP_SIZE) * SZ_1M \
-				/ 32 * CONFIG_SYS_SDRAM_BUS_WIDTH)
+#define PHYS_SDRAM_1_SIZE		(UL(CONFIG_SYS_SDRAM_CHIP_SIZE) * \
+					 SZ_1M / 32 *			\
+					 CONFIG_SYS_SDRAM_BUS_WIDTH)
 #if PHYS_SDRAM_1_SIZE > SZ_1G
 #define FDT_HIGH_STR			"fdt_high=ffffffff\0"
 #else
@@ -117,6 +124,7 @@
 #elif defined(CONFIG_SOC_MX6DL)
 #elif defined(CONFIG_SOC_MX6S)
 #elif defined(CONFIG_SOC_MX6UL)
+#elif defined(CONFIG_SOC_MX6ULL)
 #else
 #error Unsupported i.MX6 processor variant
 #endif
@@ -159,14 +167,16 @@
 #else
 #define CONFIG_BOOTCOMMAND		"setenv bootcmd '" DEFAULT_BOOTCMD "';" \
 	"env import " xstr(CONFIG_BOOTCMD_MFG_LOADADDR) ";run bootcmd_mfg"
-#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6SL) ||	\
+	defined(CONFIG_BOARD_TX6UL))
 #define CONFIG_BOOTCMD_MFG_LOADADDR	80500000
 #else
 #define CONFIG_BOOTCMD_MFG_LOADADDR	10500000
 #endif
 #define CONFIG_DELAY_ENVIRONMENT
 #endif /* CONFIG_TX6_UBOOT_MFG */
-#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6SL) ||	\
+	defined(CONFIG_BOARD_TX6UL))
 #define CONFIG_LOADADDR			82000000
 #define CONFIG_FDTADDR			81000000
 #else
@@ -194,6 +204,7 @@
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"
 #else
+
 #define CONFIG_SYS_CPU_CLK_STR		xstr(CONFIG_SYS_MPU_CLK)
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
@@ -290,7 +301,7 @@
 /* This is required for the FEC driver to work with cache enabled */
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 
-#ifndef CONFIG_SOC_MX6UL
+#ifndef CONFIG_BOARD_TX6UL
 #define CONFIG_FEC_MXC_PHYADDR		0
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #else
@@ -315,7 +326,7 @@
 #error Unsupported TX6 module revision
 #endif
 #else /* CONFIG_TX6_REV */
-#ifdef CONFIG_SOC_MX6UL
+#ifdef CONFIG_BOARD_TX6UL
 #ifdef CONFIG_SYS_I2C_SOFT
 /* NOENV U-Boot is used for initial bootstrap.
  * Since the TAMPER_PIN_DISABLE fuses have to be programmed
@@ -328,10 +339,10 @@
 #define CONFIG_SOFT_I2C_GPIO_SDA	IMX_GPIO_NR(5, 1)
 #define CONFIG_SOFT_I2C_READ_REPEATED_START
 #endif /* CONFIG_SYS_I2C_SOFT */
-#else /* !CONFIG_SOC_MX6UL */
+#else /* !CONFIG_BOARD_TX6UL */
 /* autodetect which PMIC is present to derive TX6_REV */
 #define CONFIG_LTC3676			/* TX6_REV == 1 */
-#endif /*  CONFIG_SOC_MX6UL */
+#endif /*  CONFIG_BOARD_TX6UL */
 #define CONFIG_RN5T567			/* TX6_REV == 3 */
 #endif /* CONFIG_TX6_REV */
 

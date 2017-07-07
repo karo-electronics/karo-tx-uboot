@@ -7,7 +7,7 @@
 LDSCRIPT := $(BOARDDIR)/u-boot.lds
 
 obj-y				+= pmic.o
-ifeq ($(CONFIG_SOC_MX6UL),y)
+ifeq ($(CONFIG_BOARD_TX6UL),y)
 	obj-y += tx6ul_ll_init.o tx6ul.o
 else
 	obj-y += lowlevel_init.o tx6qdl.o

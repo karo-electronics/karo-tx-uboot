@@ -626,7 +626,11 @@ dcd_hdr:
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR0, CCGR(2)) /* default: 0xcfc03f0f APBH-DMA */
 //	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR1, CCGR()) /* default: 0xfcfc0000 */
 //	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR2, CCGR()) /* default: 0x0c3ff033 */
+#ifdef CONFIG_SOC_MX6ULL
+	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR0, CCGR(6)) /* default: 0xcfc03f0f ENET */
+#else
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR3, CCGR(2)) /* default: 0xffff3300 ENET */
+#endif
 #ifdef CONFIG_TX6_NAND
 	MXC_DCD_ITEM(CCM_BASE_ADDR + CCM_CCGR4,
 		CCGR(15) | CCGR(14) | CCGR(13) | CCGR(12)) /* default: 0x0000f3ff GPMI BCH */

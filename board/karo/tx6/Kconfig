@@ -51,12 +51,14 @@ config TX6_EMMC
 	select MMC
 	select SUPPORT_EMMC_BOOT
 
-config TX6UL
+config BOARD_TX6UL
 	bool
-	select SOC_MX6UL
 	select SYS_I2C
 	select SYS_I2C_SOFT
 	select SYS_SDRAM_BUS_WIDTH_16
+	help
+	  Common settings for TX6UL with i.MX6UL and i.MX6ULL.
+	  Selected by TARGET_TX6UL_EMMC or TARGET_TX6UL_NAND.
 
 config TX6QP
 	bool
@@ -120,11 +122,11 @@ config TARGET_TX6U_EMMC
 
 config TARGET_TX6UL_NAND
 	bool "TXUL (i.MX6UL) modules with NAND flash (TXUL-5010)"
-	select TX6UL
+	select BOARD_TX6UL
 
 config TARGET_TX6UL_EMMC
 	bool "TXUL (i.MX6UL) modules with eMMC (TXUL-5011)"
-	select TX6UL
+	select BOARD_TX6UL
 	select TX6_EMMC
 
 config TARGET_TX6QP_EMMC
@@ -136,6 +138,23 @@ config TARGET_TX6QP_EMMC
 	select TX6QP
 
 endchoice
+
+if BOARD_TX6UL
+
+choice
+	prompt "TX6UL SOC variant"
+
+config TX6UL
+	bool "i.MX6UL"
+	select SOC_MX6UL
+
+config TX6ULL
+	bool "i.MX6ULL"
+	select SOC_MX6ULL
+
+endchoice
+
+endif
 
 choice
 	prompt "U-Boot image variant"

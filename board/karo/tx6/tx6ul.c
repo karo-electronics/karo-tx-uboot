@@ -401,6 +401,8 @@ int checkboard(void)
 		cpu_str = "Q";
 	else if (is_cpu_type(MXC_CPU_MX6UL))
 		cpu_str = "UL";
+	else if (is_cpu_type(MXC_CPU_MX6ULL))
+		cpu_str = "ULL";
 
 	printf("CPU:   Freescale i.MX6%s rev%d.%d at %d MHz\n",
 		cpu_str,
@@ -431,11 +433,8 @@ static bool tx6ul_temp_check_enabled = true;
 
 static inline u8 tx6ul_mem_suffix(void)
 {
-#ifdef CONFIG_TX6_NAND
-	return CONFIG_SYS_SDRAM_CHIP_SIZE / 1024 * 2 + '0';
-#else
-	return '1';
-#endif
+	return '0' + CONFIG_SYS_SDRAM_CHIP_SIZE / 1024 * 2 +
+		IS_ENABLED(CONFIG_TX6_EMMC);
 }
 
 #ifdef CONFIG_RN5T567
@@ -490,12 +489,16 @@ int board_init(void)
 {
 	int ret;
 	u32 cpurev = get_cpu_rev();
+	char f = '?';
 
-	debug("%s@%d: \n", __func__, __LINE__);
+	if (is_cpu_type(MXC_CPU_MX6UL))
+		f = ((cpurev & 0xf0) > 0x10) ? '5' : '0';
+	else if (is_cpu_type(MXC_CPU_MX6ULL))
+		f = '8';
 
-	printf("Board: Ka-Ro TXUL-%c01%c\n",
-		((cpurev &0xff) > 0x10) ? '5' : '0',
-		tx6ul_mem_suffix());
+	debug("%s@%d: cpurev=%08x\n", __func__, __LINE__, cpurev);
+
+	printf("Board: Ka-Ro TXUL-%c01%c\n", f, tx6ul_mem_suffix());
 
 	get_hab_status();
 
@@ -534,7 +537,7 @@ int dram_init(void)
 
 	/* dram_init must store complete ramsize in gd->ram_size */
 	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
-				PHYS_SDRAM_1_SIZE * CONFIG_NR_DRAM_BANKS);
+				    PHYS_SDRAM_1_SIZE * CONFIG_NR_DRAM_BANKS);
 	return 0;
 }
 
@@ -1250,11 +1253,13 @@ static void stk5_board_init(void)
 		printf("Failed to request stk5_gpios: %d\n", ret);
 		return;
 	}
+
 	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
 	if (getenv_yesno("jtag_enable") != 0) {
 		/* true if unset or set to one of: 'yYtT1' */
 		imx_iomux_v3_setup_multiple_pads(stk5_jtag_pads, ARRAY_SIZE(stk5_jtag_pads));
 	}
+
 	debug("%s@%d: \n", __func__, __LINE__);
 }
 
