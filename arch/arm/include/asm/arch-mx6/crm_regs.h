@@ -279,15 +279,18 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CS2CDR_ENFC_CLK_SEL_DQ(v)		(((v) & 0x3) << 16)
 
 #define MXC_CCM_CS2CDR_ENFC_CLK_SEL_MASK		\
-	((is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL)) ?	\
+	((is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL) ||	\
+	  is_cpu_type(MXC_CPU_MX6ULL)) ?		\
 	 MXC_CCM_CS2CDR_ENFC_CLK_SEL_MASK_DQP :		\
 	 MXC_CCM_CS2CDR_ENFC_CLK_SEL_MASK_DQ)
 #define MXC_CCM_CS2CDR_ENFC_CLK_SEL_OFFSET		\
-	((is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL)) ?	\
+	((is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL) ||	\
+	  is_cpu_type(MXC_CPU_MX6ULL)) ?		\
 	 MXC_CCM_CS2CDR_ENFC_CLK_SEL_OFFSET_DQP :	\
 	 MXC_CCM_CS2CDR_ENFC_CLK_SEL_OFFSET_DQ)
 #define MXC_CCM_CS2CDR_ENFC_CLK_SEL(v)			\
-	((is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL)) ?	\
+	((is_mx6dqp() || is_cpu_type(MXC_CPU_MX6UL) ||	\
+	  is_cpu_type(MXC_CPU_MX6ULL)) ?		\
 	 MXC_CCM_CS2CDR_ENFC_CLK_SEL_DQP(v) :		\
 	 MXC_CCM_CS2CDR_ENFC_CLK_SEL_DQ(v))
 
@@ -558,14 +561,16 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR1_CANFD_MASK			(3 << MXC_CCM_CCGR1_CANFD_OFFSET)
 #endif
 
-#if defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL)
+#if defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) ||	\
+	defined(CONFIG_SOC_MX6ULL)
 #define MXC_CCM_CCGR2_CSI_OFFSET			2
 #define MXC_CCM_CCGR2_CSI_MASK				(3 << MXC_CCM_CCGR2_CSI_OFFSET)
 #else
 #define MXC_CCM_CCGR2_HDMI_TX_IAHBCLK_OFFSET		0
 #define MXC_CCM_CCGR2_HDMI_TX_IAHBCLK_MASK		(3 << MXC_CCM_CCGR2_HDMI_TX_IAHBCLK_OFFSET)
 #endif
-#if !defined(CONFIG_SOC_MX6SX) && !defined(CONFIG_SOC_MX6UL)
+#if !defined(CONFIG_SOC_MX6SX) && !(defined(CONFIG_SOC_MX6UL) ||	\
+				    defined(CONFIG_SOC_MX6ULL))
 #define MXC_CCM_CCGR2_HDMI_TX_ISFRCLK_OFFSET		4
 #define MXC_CCM_CCGR2_HDMI_TX_ISFRCLK_MASK		(3 << MXC_CCM_CCGR2_HDMI_TX_ISFRCLK_OFFSET)
 #endif
@@ -589,7 +594,8 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CCGR2_IPMUX3_MASK			(3 << MXC_CCM_CCGR2_IPMUX3_OFFSET)
 #define MXC_CCM_CCGR2_IPSYNC_IP2APB_TZASC1_IPGS_OFFSET	22
 #define MXC_CCM_CCGR2_IPSYNC_IP2APB_TZASC1_IPGS_MASK	(3 << MXC_CCM_CCGR2_IPSYNC_IP2APB_TZASC1_IPGS_OFFSET)
-#if defined(CONFIG_SOC_MX6SX) || (CONFIG_SOC_MX6UL)
+#if defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) ||	\
+	defined(CONFIG_SOC_MX6ULL)
 #define MXC_CCM_CCGR2_LCD_OFFSET			28
 #define MXC_CCM_CCGR2_LCD_MASK				(3 << MXC_CCM_CCGR2_LCD_OFFSET)
 #define MXC_CCM_CCGR2_PXP_OFFSET			30

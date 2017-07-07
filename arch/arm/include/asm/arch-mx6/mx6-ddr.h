@@ -13,7 +13,7 @@
 #include "mx6dl-ddr.h"
 #elif defined(CONFIG_SOC_MX6SX)
 #include "mx6sx-ddr.h"
-#elif defined(CONFIG_SOC_MX6UL)
+#elif defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL)
 #include "mx6ul-ddr.h"
 #else
 #error "Please select cpu"

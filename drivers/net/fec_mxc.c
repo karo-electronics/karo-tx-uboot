@@ -562,7 +562,7 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 	writel(0x00000000, &fec->eth->gaddr2);
 
 	/* Do not access reserved register for i.MX6UL */
-#ifndef CONFIG_SOC_MX6UL
+#if !(defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL))
 	/* FIFO receive start register */
 	writel(0x520, &fec->eth->r_fstart);
 #endif

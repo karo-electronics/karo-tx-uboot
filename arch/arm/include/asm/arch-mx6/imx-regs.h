@@ -11,7 +11,7 @@
 
 #define ARCH_MXC
 
-#ifdef CONFIG_SOC_MX6UL
+#if defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL)
 #define CONFIG_SYS_CACHELINE_SIZE	64
 #else
 #define CONFIG_SYS_CACHELINE_SIZE	32
@@ -25,14 +25,15 @@
 #define GPU_2D_ARB_END_ADDR		0x02203FFF
 #define OPENVG_ARB_BASE_ADDR		0x02204000
 #define OPENVG_ARB_END_ADDR		0x02207FFF
-#elif (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#elif (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) ||	\
+	defined(CONFIG_SOC_MX6ULL))
 #define CAAM_ARB_BASE_ADDR		0x00100000
 #define CAAM_ARB_END_ADDR		0x00107FFF
 #define GPU_ARB_BASE_ADDR		0x01800000
 #define GPU_ARB_END_ADDR		0x01803FFF
 #define APBH_DMA_ARB_BASE_ADDR		0x01804000
 #define APBH_DMA_ARB_END_ADDR		0x0180BFFF
-#define M4_BOOTROM_BASE_ADDR			0x007F8000
+#define M4_BOOTROM_BASE_ADDR		0x007F8000
 
 #else
 #define CAAM_ARB_BASE_ADDR		0x00100000
@@ -54,13 +55,15 @@
 #define MXS_BCH_BASE			(APBH_DMA_ARB_BASE_ADDR + 0x04000)
 
 /* GPV - PL301 configuration ports */
-#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX) ||	\
+	defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL))
 #define GPV2_BASE_ADDR			0x00D00000
 #else
 #define GPV2_BASE_ADDR			0x00200000
 #endif
 
-#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) || \
+	defined(CONFIG_SOC_MX6ULL))
 #define GPV3_BASE_ADDR			0x00E00000
 #define GPV4_BASE_ADDR			0x00F00000
 #define GPV5_BASE_ADDR			0x01000000
@@ -99,7 +102,7 @@
 #define QSPI0_AMBA_END			0x6FFFFFFF
 #define QSPI1_AMBA_BASE			0x70000000
 #define QSPI1_AMBA_END			0x7FFFFFFF
-#elif defined(CONFIG_SOC_MX6UL)
+#elif defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL)
 #define WEIM_ARB_BASE_ADDR		0x50000000
 #define WEIM_ARB_END_ADDR		0x57FFFFFF
 #define QSPI0_AMBA_BASE			0x60000000
@@ -119,7 +122,8 @@
 #define WEIM_ARB_END_ADDR		0x0FFFFFFF
 #endif
 
-#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6SX) ||	\
+	defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL))
 #define MMDC0_ARB_BASE_ADDR		0x80000000
 #define MMDC0_ARB_END_ADDR		0xFFFFFFFF
 #define MMDC1_ARB_BASE_ADDR		0xC0000000
@@ -248,7 +252,7 @@
 #define MMDC_P0_BASE_ADDR		(AIPS2_OFF_BASE_ADDR + 0x30000)
 /* i.MX6SL */
 #define RNGB_IPS_BASE_ADDR		(AIPS2_OFF_BASE_ADDR + 0x34000)
-#ifdef CONFIG_SOC_MX6UL
+#if defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL)
 #define ENET2_BASE_ADDR			(AIPS1_OFF_BASE_ADDR + 0x34000)
 #else
 /* i.MX6SX */
@@ -268,7 +272,7 @@
 #define IP2APB_PERFMON3_BASE_ADDR	(AIPS2_OFF_BASE_ADDR + 0x4C000)
 #endif
 #define IP2APB_TZASC1_BASE_ADDR		(AIPS2_OFF_BASE_ADDR + 0x50000)
-#ifdef CONFIG_SOC_MX6UL
+#if defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL)
 #define QSPI0_BASE_ADDR			(AIPS2_OFF_BASE_ADDR + 0x60000)
 #elif defined(CONFIG_SOC_MX6SX)
 #define SAI1_BASE_ADDR			(AIPS2_OFF_BASE_ADDR + 0x54000)
@@ -320,14 +324,16 @@
 #define MX6SX_WDOG3_BASE_ADDR		(AIPS3_ARB_BASE_ADDR + 0x88000)
 
 /* only for i.MX6SX/UL */
-#define WDOG3_BASE_ADDR (is_cpu_type(MXC_CPU_MX6UL) ?	\
-				MX6UL_WDOG3_BASE_ADDR :  MX6SX_WDOG3_BASE_ADDR)
+#define WDOG3_BASE_ADDR ((is_cpu_type(MXC_CPU_MX6UL) ||			\
+			  is_cpu_type(MXC_CPU_MX6ULL)) ?		\
+			 MX6UL_WDOG3_BASE_ADDR :  MX6SX_WDOG3_BASE_ADDR)
 
 #define CHIP_REV_1_0			0x10
 #define CHIP_REV_1_2			0x12
 #define CHIP_REV_1_5			0x15
 #define CHIP_REV_2_0			0x20
-#if !(defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#if !(defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) ||	\
+	defined(CONFIG_SOC_MX6ULL))
 #define IRAM_SIZE			0x00040000
 #else
 #define IRAM_SIZE			0x00020000
@@ -464,7 +470,8 @@ struct src {
 
 
 struct iomuxc {
-#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) || \
+	defined(CONFIG_SOC_MX6ULL))
 	u8 reserved[0x4000];
 #endif
 	u32 gpr[14];
@@ -590,7 +597,8 @@ struct cspi_regs {
 #define MXC_CSPICON_POL		4  /* SCLK polarity */
 #define MXC_CSPICON_SSPOL	12 /* SS polarity */
 #define MXC_CSPICON_CTL		20 /* inactive state of SCLK */
-#if defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6UL)
+#if defined(CONFIG_SOC_MX6SL) || defined(CONFIG_SOC_MX6DL) ||	\
+	defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL)
 #define MXC_SPI_BASE_ADDRESSES \
 	ECSPI1_BASE_ADDR, \
 	ECSPI2_BASE_ADDR, \
@@ -651,7 +659,8 @@ struct fuse_bank1_regs {
 	reg_32(ana2);
 };
 
-#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL))
+#if (defined(CONFIG_SOC_MX6SX) || defined(CONFIG_SOC_MX6UL) ||	\
+	defined(CONFIG_SOC_MX6ULL))
 struct fuse_bank4_regs {
 	reg_32(sjc_resp_low);
 	reg_32(sjc_resp_high);

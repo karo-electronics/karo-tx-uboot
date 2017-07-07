@@ -181,6 +181,7 @@ static inline void **hab_rvt_base(void)
 		break;
 	case MXC_CPU_MX6SX:
 	case MXC_CPU_MX6UL:
+	case MXC_CPU_MX6ULL:
 		base = 0x100UL;
 		break;
 	default:

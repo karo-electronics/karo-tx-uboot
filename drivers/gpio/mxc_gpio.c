@@ -50,7 +50,7 @@ static unsigned long gpio_ports[] = {
 #endif
 #endif
 #if defined(CONFIG_SOC_MX53) || defined(CONFIG_ARCH_MX6)
-#ifndef CONFIG_SOC_MX6UL
+#if !(defined(CONFIG_SOC_MX6UL) || defined(CONFIG_SOC_MX6ULL))
 	[6] = GPIO7_BASE_ADDR,
 #endif
 #endif

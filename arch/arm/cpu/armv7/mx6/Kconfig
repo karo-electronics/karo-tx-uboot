@@ -24,6 +24,9 @@ config SOC_MX6SX
 config SOC_MX6UL
 	bool
 
+config SOC_MX6ULL
+	bool
+
 choice
 	prompt "MX6 board select"
 	optional
