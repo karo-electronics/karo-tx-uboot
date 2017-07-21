@@ -99,10 +99,10 @@
 #define PHYS_SDRAM_1_SIZE		(UL(CONFIG_SYS_SDRAM_CHIP_SIZE) * \
 					 SZ_1M / 32 *			\
 					 CONFIG_SYS_SDRAM_BUS_WIDTH)
-#if PHYS_SDRAM_1_SIZE > SZ_1G
-#define FDT_HIGH_STR			"fdt_high=ffffffff\0"
+#ifndef CONFIG_BOARD_TX6UL
+#define FDT_HIGH_ADDR_STR		"20000000"
 #else
-#define FDT_HIGH_STR			""
+#define FDT_HIGH_ADDR_STR		"90000000"
 #endif
 
 #ifdef CONFIG_SOC_MX6Q
@@ -237,8 +237,8 @@
 	EMMC_BOOT_PART_STR						\
 	EMMC_BOOT_ACK_STR						\
 	"fdtaddr=" xstr(CONFIG_FDTADDR) "\0"				\
-	FDT_HIGH_STR							\
 	FDTSAVE_CMD_STR							\
+	"fdt_high=" FDT_HIGH_ADDR_STR "\0"				\
 	"mtdids=" MTDIDS_DEFAULT "\0"					\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
 	"nfsroot=/tftpboot/rootfs\0"					\
