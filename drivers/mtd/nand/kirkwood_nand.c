@@ -27,6 +27,7 @@
 #include <asm/arch/kirkwood.h>
 #include <nand.h>
 #include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/nand_bch.h>
 
 #ifndef CONFIG_NAND_ECC_ALGO
 #define CONFIG_NAND_ECC_ALGO	NAND_ECC_SOFT
@@ -89,6 +90,106 @@ static struct nand_ecclayout kw_nand_oob_rs = {
 		{ .offset = 2, .length = 22, },
 	},
 };
+
+static void kw_nand_switch_eccmode(struct mtd_info *mtd,
+				   nand_ecc_modes_t eccmode)
+{
+	struct nand_chip *nand = mtd->priv;
+
+	if (nand->ecc.mode == eccmode)
+		return;
+
+	switch (eccmode) {
+	case NAND_ECC_SOFT_RS:
+		nand->ecc.mode = NAND_ECC_SOFT_RS;
+		nand->ecc.layout = &kw_nand_oob_rs;
+		nand->ecc.size = 512;
+		nand->ecc.bytes = 10;
+		break;
+	case NAND_ECC_SOFT_BCH:
+		nand->ecc.layout = NULL;
+		nand->ecc.bytes = 0;
+		nand->ecc.size = 0;
+		break;
+	case NAND_ECC_SOFT:
+		nand->ecc.layout = NULL;
+		nand->ecc.size = 0;
+		break;
+	default:
+		printf("Unsupported ecc mode %u\n", eccmode);
+		return;
+	}
+	nand->ecc.mode = eccmode;
+	nand->options |= NAND_OWN_BUFFERS;
+	nand_scan_tail(mtd);
+	nand->options &= ~NAND_OWN_BUFFERS;
+}
+
+static int do_kw_nand_switch_eccmode(cmd_tbl_t *cmdtp, int flag, int argc,
+				     char *const argv[])
+{
+	nand_ecc_modes_t mode;
+	struct mtd_info *mtd;
+
+	if (argc > 2)
+		return CMD_RET_USAGE;
+	if (nand_curr_device < 0 ||
+	    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
+	    !nand_info[nand_curr_device].name) {
+		printf("Error: Can't switch ecc, no devices available\n");
+		return CMD_RET_FAILURE;
+	}
+	mtd = &nand_info[nand_curr_device];
+
+	if (argc < 2) {
+		struct nand_chip *nand = mtd->priv;
+		char *modestr;
+
+		switch (nand->ecc.mode) {
+		case NAND_ECC_SOFT:
+			modestr = "HAMMING";
+			break;
+		case NAND_ECC_SOFT_RS:
+			modestr = "RS";
+			break;
+		case NAND_ECC_SOFT_BCH:
+			if (mtd_nand_has_bch()) {
+				modestr = "BCH";
+				break;
+			}
+			// fallthru
+		default:
+			printf("Unsupported ECC mode %d in use\n", nand->ecc.mode);
+			return CMD_RET_FAILURE;
+		}
+		printf("NAND ECC mode: %s\n", modestr);
+		return CMD_RET_SUCCESS;
+	}
+	if (strcmp(argv[1], "hamming") == 0 ||
+	    strcmp(argv[1], "soft") == 0) {
+		mode = NAND_ECC_SOFT;
+	} else if (strcmp(argv[1], "rs") == 0) {
+		mode = NAND_ECC_SOFT_RS;
+	} else if (strcmp(argv[1], "bch") == 0) {
+		mode = NAND_ECC_SOFT_BCH;
+	} else {
+		printf("Unsupported ECC mode '%s'; supported modes are 'hamming', 'RS'%s\n",
+		       argv[1], mtd_nand_has_bch() ? ", 'BCH'" : "");
+		return CMD_RET_USAGE;
+	}
+
+	kw_nand_switch_eccmode(mtd, mode);
+	printf("ECC mode switched to %s\n", argv[1]);
+	return CMD_RET_SUCCESS;
+}
+U_BOOT_CMD(nandecc, 2, 0, do_kw_nand_switch_eccmode,
+	   "nandecc",
+	   "switch ecc mode\n"
+	   "\tvalid modes are:"
+	   "HAMMING (1 bit ECC; not suitable for Micron NAND)"
+	   "BCH 4 bit ECC; (default)"
+	   "RS 4 bit ECC; (write only! for compatibility with ROM code)"
+	   );
 #endif
 
 int board_nand_init(struct nand_chip *nand)
@@ -97,10 +198,7 @@ int board_nand_init(struct nand_chip *nand)
 #ifndef CONFIG_NAND_ECC_SOFT_RS
 	nand->ecc.mode = NAND_ECC_SOFT;
 #else
-	nand->ecc.mode = NAND_ECC_SOFT_RS;
-	nand->ecc.layout = &kw_nand_oob_rs;
-	nand->ecc.size = 512;
-	nand->ecc.bytes = 10;
+	nand->ecc.mode = NAND_ECC_SOFT_BCH;
 #endif
 	nand->cmd_ctrl = kw_nand_hwcontrol;
 	nand->chip_delay = 40;

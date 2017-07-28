@@ -30,6 +30,13 @@ int nand_correct_data(struct mtd_info *mtd, u_char *dat, u_char *read_ecc, u_cha
  * Calculate 10 byte RS ECC syndrome for 512 byte block
  */
 int nand_rs_calculate_ecc(struct mtd_info *mtd, const uint8_t *data, uint8_t *ecc);
+
+/*
+ * stub routine for unsupported RS-ECC decoding
+ */
+int nand_rs_correct_data(struct mtd_info *mtd, u_char *dat, u_char *read_ecc, u_char *calc_ecc);
+
+void kw_nand_ecc_switch(struct mtd_info *mtd, nand_ecc_modes_t eccmode);
 #endif
 
 #endif /* __MTD_NAND_ECC_H__ */
