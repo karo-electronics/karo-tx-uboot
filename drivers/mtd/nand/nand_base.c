@@ -3081,6 +3081,25 @@ int nand_scan_tail(struct mtd_info *mtd)
 
 		break;
 
+#ifdef CONFIG_NAND_ECC_SOFT_RS
+	case NAND_ECC_SOFT_RS:
+		chip->ecc.calculate = nand_rs_calculate_ecc;
+		chip->ecc.correct = nand_rs_correct_data;
+		chip->ecc.read_page = nand_read_page_swecc;
+		chip->ecc.read_subpage = nand_read_subpage;
+		chip->ecc.write_page = nand_write_page_swecc;
+		chip->ecc.read_page_raw = nand_read_page_raw;
+		chip->ecc.write_page_raw = nand_write_page_raw;
+		chip->ecc.read_oob = nand_read_oob_std;
+		chip->ecc.write_oob = nand_write_oob_std;
+		if (!chip->ecc.size && mtd->oobsize >= 64) {
+			chip->ecc.size = 512;
+			chip->ecc.bytes = 10;
+			printf("Using default ecc size %u and eccbytes %u for OOB size %u\n",
+			       chip->ecc.size, chip->ecc.bytes, mtd->oobsize);
+		}
+		break;
+#endif
 	case NAND_ECC_NONE:
 		printk(KERN_WARNING "NAND_ECC_NONE selected by board driver. "
 		       "This is not recommended !!\n");

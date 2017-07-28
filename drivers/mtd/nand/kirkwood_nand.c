@@ -26,6 +26,11 @@
 #include <asm/io.h>
 #include <asm/arch/kirkwood.h>
 #include <nand.h>
+#include <linux/mtd/nand_ecc.h>
+
+#ifndef CONFIG_NAND_ECC_ALGO
+#define CONFIG_NAND_ECC_ALGO	NAND_ECC_SOFT
+#endif
 
 /* NAND Flash Soc registers */
 struct kwnandf_registers {
@@ -71,10 +76,32 @@ void kw_nand_select_chip(struct mtd_info *mtd, int chip)
 	writel(data, &nf_reg->ctrl);
 }
 
+#ifdef CONFIG_NAND_ECC_SOFT_RS
+static struct nand_ecclayout kw_nand_oob_rs = {
+	.eccbytes = 40,
+	.eccpos = {
+		24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
+		34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+		44, 45, 46, 47, 48, 49, 50, 51, 52, 53,
+		54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+	},
+	.oobfree = {
+		{ .offset = 2, .length = 22, },
+	},
+};
+#endif
+
 int board_nand_init(struct nand_chip *nand)
 {
 	nand->options = NAND_COPYBACK | NAND_CACHEPRG | NAND_NO_PADDING;
+#ifndef CONFIG_NAND_ECC_SOFT_RS
 	nand->ecc.mode = NAND_ECC_SOFT;
+#else
+	nand->ecc.mode = NAND_ECC_SOFT_RS;
+	nand->ecc.layout = &kw_nand_oob_rs;
+	nand->ecc.size = 512;
+	nand->ecc.bytes = 10;
+#endif
 	nand->cmd_ctrl = kw_nand_hwcontrol;
 	nand->chip_delay = 40;
 	nand->select_chip = kw_nand_select_chip;

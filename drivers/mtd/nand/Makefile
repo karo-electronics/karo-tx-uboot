@@ -52,6 +52,9 @@ COBJS-$(CONFIG_NAND_FSL_UPM) += fsl_upm.o
 COBJS-$(CONFIG_NAND_JZ4740) += jz4740_nand.o
 COBJS-$(CONFIG_NAND_KB9202) += kb9202_nand.o
 COBJS-$(CONFIG_NAND_KIRKWOOD) += kirkwood_nand.o
+ifneq ($(CONFIG_NAND_KIRKWOOD),)
+	COBJS-$(CONFIG_NAND_ECC_SOFT_RS) += nand_ecc_rs.o
+endif
 COBJS-$(CONFIG_NAND_KMETER1) += kmeter1_nand.o
 COBJS-$(CONFIG_NAND_MPC5121_NFC) += mpc5121_nfc.o
 COBJS-$(CONFIG_NAND_MXC) += mxc_nand.o
