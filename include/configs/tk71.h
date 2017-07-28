@@ -127,6 +127,7 @@
 #define MTDIDS_DEFAULT			"nand0=orion_nand"
 #define MTDPARTS_DEFAULT		"mtdparts=orion_nand:"CONFIG_MTDPARTS
 
+#define CONFIG_SYS_BOARD_DRAM_INIT
 #define PHYS_SDRAM_1		0x00000000	/* Base address */
 #define PHYS_SDRAM_1_SIZE	0x20000000	/* Max 512 MB RAM */
 

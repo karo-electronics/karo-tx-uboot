@@ -105,6 +105,13 @@ int board_early_init_f(void)
 	return 0;
 }
 
+int dram_init(void)
+{
+	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
+				    PHYS_SDRAM_1_SIZE);
+	return 0;
+}
+
 int board_init(void)
 {
 	/*
