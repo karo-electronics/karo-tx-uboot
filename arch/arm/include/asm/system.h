@@ -194,7 +194,8 @@ void save_boot_params_ret(void);
 static inline unsigned int get_cr(void)
 {
 	unsigned int val;
-	asm("mrc p15, 0, %0, c1, c0, 0	@ get CR" : "=r" (val) : : "cc");
+	asm volatile("mrc p15, 0, %0, c1, c0, 0	@ get CR"
+	  : "=r" (val) : : "cc");
 	return val;
 }
 
@@ -208,7 +209,8 @@ static inline void set_cr(unsigned int val)
 static inline unsigned int get_dacr(void)
 {
 	unsigned int val;
-	asm("mrc p15, 0, %0, c3, c0, 0	@ get DACR" : "=r" (val) : : "cc");
+	asm volatile("mrc p15, 0, %0, c3, c0, 0	@ get DACR"
+	  : "=r" (val) : : "cc");
 	return val;
 }
 
