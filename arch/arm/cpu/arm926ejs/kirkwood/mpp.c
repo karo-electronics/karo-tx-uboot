@@ -50,8 +50,9 @@ void kirkwood_mpp_conf(u32 *mpp_list, u32 *mpp_save)
 
 
 	while (*mpp_list) {
-		unsigned int num = MPP_NUM(*mpp_list);
-		unsigned int sel = MPP_SEL(*mpp_list);
+		u32 mpp = *mpp_list++;
+		unsigned int num = MPP_NUM(mpp);
+		unsigned int sel = MPP_SEL(mpp);
 		unsigned int sel_save;
 		int shift;
 
@@ -60,7 +61,7 @@ void kirkwood_mpp_conf(u32 *mpp_list, u32 *mpp_save)
 					"number (%u)\n", num);
 			continue;
 		}
-		if (!(*mpp_list & variant_mask)) {
+		if (!(mpp & variant_mask)) {
 			debug("kirkwood_mpp_conf: requested MPP%u config "
 				"unavailable on this hardware\n", num);
 			continue;
@@ -76,8 +77,6 @@ void kirkwood_mpp_conf(u32 *mpp_list, u32 *mpp_save)
 
 		mpp_ctrl[num / 8] &= ~(0xf << shift);
 		mpp_ctrl[num / 8] |= sel << shift;
-
-		mpp_list++;
 	}
 
 	debug("  final MPP regs:");
