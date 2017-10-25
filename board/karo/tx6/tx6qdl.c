@@ -887,7 +887,6 @@ vidinfo_t panel_info = {
 };
 
 static struct fb_videomode tx6_fb_modes[] = {
-#ifndef CONFIG_SYS_LVDS_IF
 	{
 		/* Standard VGA timing */
 		.name		= "VGA",
@@ -922,6 +921,24 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
 	{
+		/* Emerging ETM0700G0DH6 800 x 480 display.
+		 * 152.4 mm x 91.44 mm display area.
+		 */
+		.name		= "ET0700",
+		.refresh	= 60,
+		.xres		= 800,
+		.yres		= 480,
+		.pixclock	= KHZ2PICOS(33260),
+		.left_margin	= 88,
+		.hsync_len	= 128,
+		.right_margin	= 40,
+		.upper_margin	= 33,
+		.vsync_len	= 2,
+		.lower_margin	= 10,
+		.sync		= FB_SYNC_CLK_LAT_FALL,
+	},
+#ifndef CONFIG_SYS_LVDS_IF
+	{
 		/* Emerging ET0350G0DH6 320 x 240 display.
 		 * 70.08 mm x 52.56 mm display area.
 		 */
@@ -930,10 +947,10 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.xres		= 320,
 		.yres		= 240,
 		.pixclock	= KHZ2PICOS(6500),
-		.left_margin	= 68 - 34,
+		.left_margin	= 34,
 		.hsync_len	= 34,
 		.right_margin	= 20,
-		.upper_margin	= 18 - 3,
+		.upper_margin	= 15,
 		.vsync_len	= 3,
 		.lower_margin	= 4,
 		.sync		= FB_SYNC_CLK_LAT_FALL,
@@ -963,12 +980,12 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.xres		= 800,
 		.yres		= 480,
 		.pixclock	= KHZ2PICOS(33260),
-		.left_margin	= 216 - 128,
+		.left_margin	= 88,
 		.hsync_len	= 128,
-		.right_margin	= 1056 - 800 - 216,
-		.upper_margin	= 35 - 2,
+		.right_margin	= 40,
+		.upper_margin	= 33,
 		.vsync_len	= 2,
-		.lower_margin	= 525 - 480 - 35,
+		.lower_margin	= 10,
 		.sync		= FB_SYNC_CLK_LAT_FALL,
 	},
 	{
@@ -987,40 +1004,6 @@ static struct fb_videomode tx6_fb_modes[] = {
 		.vsync_len	= 3, /* TVP -> 1>x>5 */
 		.lower_margin	= 4, /* 4.5 according to datasheet */
 		.sync		= FB_SYNC_CLK_LAT_FALL,
-	},
-	{
-		/* Emerging ET0700G0DH6 800 x 480 display.
-		 * 152.4 mm x 91.44 mm display area.
-		 */
-		.name		= "ET0700",
-		.refresh	= 60,
-		.xres		= 800,
-		.yres		= 480,
-		.pixclock	= KHZ2PICOS(33260),
-		.left_margin	= 216 - 128,
-		.hsync_len	= 128,
-		.right_margin	= 1056 - 800 - 216,
-		.upper_margin	= 35 - 2,
-		.vsync_len	= 2,
-		.lower_margin	= 525 - 480 - 35,
-		.sync		= FB_SYNC_CLK_LAT_FALL,
-	},
-	{
-		/* Emerging ET070001DM6 800 x 480 display.
-		 * 152.4 mm x 91.44 mm display area.
-		 */
-		.name		= "ET070001DM6",
-		.refresh	= 60,
-		.xres		= 800,
-		.yres		= 480,
-		.pixclock	= KHZ2PICOS(33260),
-		.left_margin	= 216 - 128,
-		.hsync_len	= 128,
-		.right_margin	= 1056 - 800 - 216,
-		.upper_margin	= 35 - 2,
-		.vsync_len	= 2,
-		.lower_margin	= 525 - 480 - 35,
-		.sync		= 0,
 	},
 #else
 	{
@@ -1565,8 +1548,12 @@ int ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
-	karo_fdt_update_fb_mode(blob, video_mode);
-
+#ifdef CONFIG_SYS_LVDS_IF
+	karo_fdt_update_fb_mode(blob, video_mode, "/lvds0-panel");
+	karo_fdt_update_fb_mode(blob, video_mode, "/lvds1-panel");
+#else
+	karo_fdt_update_fb_mode(blob, video_mode, "/lcd-panel");
+#endif
 	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

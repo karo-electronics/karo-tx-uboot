@@ -916,7 +916,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 	karo_fdt_fixup_usb_otg(blob, "usb0", "phys", "vcc-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
-	karo_fdt_update_fb_mode(blob, video_mode);
+	karo_fdt_update_fb_mode(blob, video_mode, "/lcd-panel");
 
 	tx48_disable_watchdog();
 

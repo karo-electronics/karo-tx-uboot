@@ -40,7 +40,8 @@ void karo_fdt_del_prop(void *blob, const char *compat, u32 offs,
 void karo_fdt_enable_node(void *blob, const char *node, int enable);
 int karo_fdt_get_fb_mode(void *blob, const char *name,
 		struct fb_videomode *fb_mode);
-int karo_fdt_update_fb_mode(void *blob, const char *name);
+int karo_fdt_update_fb_mode(void *blob, const char *name,
+			    const char *panel_name);
 int karo_fdt_create_fb_mode(void *blob, const char *name,
 			struct fb_videomode *mode);
 int karo_fdt_get_backlight_polarity(const void *blob);

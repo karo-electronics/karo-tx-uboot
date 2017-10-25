@@ -553,15 +553,27 @@ static int karo_fdt_find_video_timings(void *blob)
 	return off;
 }
 
-int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_mode)
+static int karo_fdt_check_panel_name(const char *pn, const char *name, int len)
 {
-	int off = karo_fdt_find_video_timings(blob);
+	const char *endp = pn + len;
 
-	if (off < 0)
-		return off;
+	if (len < 0)
+		return 0;
+	while (pn < endp) {
+		if (strcasecmp(pn, name) == 0)
+			return 1;
+		pn += strlen(pn) + 1;
+	}
+	return 0;
+}
+
+static int karo_fdt_find_panel(const void *blob, int off, const char *name)
+{
+	debug("Searching panel '%s'\n", name);
 	while (off > 0) {
-		const char *n, *endp;
-		int len, d = 1;
+		const char *pn;
+		int d = 1;
+		int len;
 
 		off = fdt_next_node(blob, off, &d);
 		if (off < 0)
@@ -574,28 +586,30 @@ int karo_fdt_get_fb_mode(void *blob, const char *name, struct fb_videomode *fb_m
 			continue;
 		}
 
-		n = fdt_getprop(blob, off, "panel-name", &len);
-		if (!n) {
-			n = fdt_get_name(blob, off, NULL);
-			if (strcasecmp(n, name) == 0) {
-				break;
-			}
-		} else {
-			int found = 0;
-
-			for (endp = n + len; n < endp; n += strlen(n) + 1) {
-				debug("Checking panel-name '%s'\n", n);
-				if (strcasecmp(n, name) == 0) {
-					debug("Using node %s @ %04x\n",
-						fdt_get_name(blob, off, NULL), off);
-					found = 1;
-					break;
-				}
-			}
-			if (found)
-				break;
-		}
+		pn = fdt_get_name(blob, off, NULL);
+		debug("Checking node name '%s'\n", pn);
+		if (strcasecmp(pn, name) == 0)
+			break;
+		pn = fdt_getprop(blob, off, "u-boot,panel-name", &len);
+		if (!pn)
+			continue;
+		if (karo_fdt_check_panel_name(pn, name, len))
+			break;
 	}
+	if (off > 0)
+		debug("Found LCD panel: '%s' @ off %03x\n",
+		      fdt_get_name(blob, off, NULL), off);
+	return off;
+}
+
+int karo_fdt_get_fb_mode(void *blob, const char *name,
+			 struct fb_videomode *fb_mode)
+{
+	int off = karo_fdt_find_video_timings(blob);
+
+	if (off < 0)
+		return off;
+	off = karo_fdt_find_panel(blob, off, name);
 	if (off > 0) {
 		return fdt_init_fb_mode(blob, off, fb_mode);
 	}
@@ -698,21 +712,36 @@ out:
 	return ret;
 }
 
-int karo_fdt_update_fb_mode(void *blob, const char *name)
+int karo_fdt_update_fb_mode(void *blob, const char *name,
+			    const char *panel_name)
 {
+	int ret;
 	int off = fdt_path_offset(blob, "display");
+	int panel_off = -1;
 	const char *subnode = "display-timings";
 
-	if (off < 0)
+	if (panel_name)
+		panel_off = fdt_path_offset(blob, panel_name);
+
+	if (off < 0 && panel_off < 0)
 		return off;
 
 	if (name == NULL) {
-		int ret;
-
 		debug("Disabling node '%s' at %03x\n",
 			fdt_get_name(blob, off, NULL), off);
 		ret = fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);
-		return ret;
+		if (ret)
+			printf("Failed to disable node '%s': %s\n",
+			       fdt_get_name(blob, off, NULL),
+			       fdt_strerror(ret));
+		if (!panel_name)
+			return ret;
+
+		panel_off = fdt_path_offset(blob, panel_name);
+		if (panel_off < 0)
+			return 0;
+		return fdt_set_node_status(blob, panel_off,
+					   FDT_STATUS_DISABLED, 0);
 	}
 
 	off = fdt_subnode_offset(blob, off, subnode);
@@ -721,46 +750,41 @@ int karo_fdt_update_fb_mode(void *blob, const char *name)
 			fdt_strerror(off));
 		return off;
 	}
-	while (off > 0) {
-		const char *n, *endp;
-		int len, d = 1;
-
-		off = fdt_next_node(blob, off, &d);
-		if (off < 0)
-			return off;
-		if (d < 1)
-			return -EINVAL;
-		if (d > 2) {
-			debug("Skipping node @ %04x %s depth %d\n", off,
-				fdt_get_name(blob, off, NULL), d);
-			continue;
-		}
-
-		n = fdt_getprop(blob, off, "panel-name", &len);
-		if (!n) {
-			n = fdt_get_name(blob, off, NULL);
-			if (strcasecmp(n, name) == 0) {
-				break;
-			}
-		} else {
-			int found = 0;
-
-			for (endp = n + len; n < endp; n += strlen(n) + 1) {
-				debug("Checking panel-name '%s'\n", n);
-				if (strcasecmp(n, name) == 0) {
-					debug("Using node %s @ %04x\n",
-						fdt_get_name(blob, off, NULL), off);
-					found = 1;
-					break;
-				}
-			}
-			if (found)
-				break;
-		}
-	}
+	off = karo_fdt_find_panel(blob, off, name);
 	if (off > 0)
-		return fdt_update_native_fb_mode(blob, off);
-	return off;
+		ret = fdt_update_native_fb_mode(blob, off);
+	else
+		ret = 0;
+	if (!panel_name)
+		return ret;
+
+	off = fdt_path_offset(blob, "display/display-timings");
+	off = karo_fdt_find_panel(blob, off, name);
+	panel_off = fdt_path_offset(blob, panel_name);
+	if (panel_off > 0) {
+		char *pn;
+
+		name = fdt_getprop(blob, off, "u-boot,panel-name",
+				   NULL);
+		if (!name)
+			return 0;
+		pn = strdup(name);
+		if (!pn)
+			return -ENOMEM;
+		debug("%s@%d: Updating 'compatible' property of '%s' from '%s' to '%s'\n",
+		      __func__, __LINE__, fdt_get_name(blob, panel_off, NULL),
+		      (char *)fdt_getprop(blob, panel_off, "compatible", NULL),
+		      pn);
+
+		ret = fdt_setprop_string(blob, panel_off, "compatible",
+					 pn);
+		if (ret)
+			printf("Failed to set 'compatible' property of node '%s': %s\n",
+			       fdt_get_name(blob, panel_off, NULL),
+			       fdt_strerror(off));
+		free(pn);
+	}
+	return ret;
 }
 
 #ifdef CONFIG_SYS_LVDS_IF
