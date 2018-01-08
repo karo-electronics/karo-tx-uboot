@@ -81,10 +81,6 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 					PAD_CTL_SPEED_LOW |		\
 					PAD_CTL_DSE_34ohm |		\
 					PAD_CTL_SRE_FAST)
-#define TX6UL_I2C_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
-					PAD_CTL_HYS |			\
-					PAD_CTL_DSE_34ohm |		\
-					PAD_CTL_SPEED_MED)
 #define TX6UL_ENET_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |	\
 					PAD_CTL_DSE_120ohm |		\
 					PAD_CTL_PUS_100K_UP |		\
@@ -163,14 +159,6 @@ static const iomux_v3_cfg_t const tx6ul_i2c_pads[] = {
 			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
 };
 
-static const iomux_v3_cfg_t const tx6ul_i2c_gpio_pads[] = {
-	/* internal I2C set up for I2C bus recovery */
-	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
-			TX6UL_I2C_PAD_CTRL, /* I2C SCL */
-	MX6_PAD_SNVS_TAMPER0__GPIO5_IO00 | MUX_CFG_SION |
-			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
-};
-
 static const struct gpio const tx6ul_gpios[] = {
 #ifdef CONFIG_SYS_I2C_SOFT
 	/* These two entries are used to forcefully reinitialize the I2C bus */
@@ -235,9 +223,6 @@ static void tx6ul_i2c_recover(void)
 		clrbits_le32(&sda_regs->gpio_dir, SDA_BIT);
 		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
 		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
-
-		imx_iomux_v3_setup_multiple_pads(tx6ul_i2c_gpio_pads,
-						 ARRAY_SIZE(tx6ul_i2c_gpio_pads));
 
 		udelay(5);
 
