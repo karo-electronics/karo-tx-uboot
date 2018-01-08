@@ -71,7 +71,7 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 #define TX6_FEC_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |	\
 					     PAD_CTL_SPEED_MED |	\
 					     PAD_CTL_DSE_40ohm |	\
-					     PAD_CTL_SRE_FAST)
+					     PAD_CTL_SRE_SLOW)
 #define TX6_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
 					     PAD_CTL_SPEED_MED |	\
 					     PAD_CTL_DSE_34ohm |	\
@@ -121,7 +121,10 @@ static const iomux_v3_cfg_t const tx6qdl_fec_pads[] = {
 	/* FEC functions */
 	MX6_PAD_ENET_MDC__ENET_MDC | TX6_FEC_PAD_CTRL,
 	MX6_PAD_ENET_MDIO__ENET_MDIO | TX6_FEC_PAD_CTRL,
-	MX6_PAD_GPIO_16__ENET_REF_CLK | TX6_FEC_PAD_CTRL,
+	MX6_PAD_GPIO_16__ENET_REF_CLK | MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |
+						     PAD_CTL_SPEED_LOW |
+						     PAD_CTL_DSE_80ohm |
+						     PAD_CTL_SRE_SLOW),
 	MX6_PAD_ENET_RX_ER__ENET_RX_ER | TX6_FEC_PAD_CTRL,
 	MX6_PAD_ENET_CRS_DV__ENET_RX_EN | TX6_FEC_PAD_CTRL,
 	MX6_PAD_ENET_RXD1__ENET_RX_DATA1 | TX6_FEC_PAD_CTRL,

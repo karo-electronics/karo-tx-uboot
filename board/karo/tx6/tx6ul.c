@@ -86,7 +86,7 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 					PAD_CTL_DSE_34ohm |		\
 					PAD_CTL_SPEED_MED)
 #define TX6UL_ENET_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |	\
-					PAD_CTL_DSE_48ohm |		\
+					PAD_CTL_DSE_120ohm |		\
 					PAD_CTL_PUS_100K_UP |		\
 					PAD_CTL_SRE_FAST)
 #define TX6UL_GPIO_OUT_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_SPEED_LOW |	\
@@ -124,15 +124,15 @@ static const iomux_v3_cfg_t const tx6ul_pads[] = {
 
 static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
 	/* FEC functions */
-	MX6_PAD_GPIO1_IO07__ENET1_MDC | MUX_PAD_CTRL(PAD_CTL_DSE_48ohm |
-						     PAD_CTL_SPEED_MED),
+	MX6_PAD_GPIO1_IO07__ENET1_MDC | MUX_PAD_CTRL(PAD_CTL_DSE_120ohm |
+						     PAD_CTL_SPEED_LOW),
 	MX6_PAD_GPIO1_IO06__ENET1_MDIO | MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |
-						      PAD_CTL_DSE_48ohm |
-						      PAD_CTL_SPEED_MED),
-	MX6_PAD_ENET1_TX_CLK__ENET1_REF_CLK1 | MUX_CFG_SION |
-					MUX_PAD_CTRL(PAD_CTL_SPEED_MED |
-						     PAD_CTL_DSE_40ohm |
-						     PAD_CTL_SRE_FAST),
+						      PAD_CTL_DSE_120ohm |
+						      PAD_CTL_SPEED_LOW),
+	MX6_PAD_ENET1_TX_CLK__ENET1_REF_CLK1 | MUX_PAD_CTRL(PAD_CTL_SPEED_LOW |
+						     PAD_CTL_DSE_80ohm |
+						     PAD_CTL_SRE_SLOW),
+
 	MX6_PAD_ENET1_RX_ER__ENET1_RX_ER | TX6UL_ENET_PAD_CTRL,
 	MX6_PAD_ENET1_RX_EN__ENET1_RX_EN | TX6UL_ENET_PAD_CTRL,
 	MX6_PAD_ENET1_RX_DATA1__ENET1_RDATA01 | TX6UL_ENET_PAD_CTRL,
@@ -143,10 +143,9 @@ static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
 };
 
 static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
-	MX6_PAD_ENET2_TX_CLK__ENET2_REF_CLK2 | MUX_CFG_SION |
-					MUX_PAD_CTRL(PAD_CTL_SPEED_HIGH |
-						     PAD_CTL_DSE_48ohm |
-						     PAD_CTL_SRE_FAST),
+	MX6_PAD_ENET2_TX_CLK__ENET2_REF_CLK2 | MUX_PAD_CTRL(PAD_CTL_SPEED_LOW |
+							    PAD_CTL_DSE_80ohm |
+							    PAD_CTL_SRE_SLOW),
 	MX6_PAD_ENET2_RX_ER__ENET2_RX_ER | TX6UL_ENET_PAD_CTRL,
 	MX6_PAD_ENET2_RX_EN__ENET2_RX_EN | TX6UL_ENET_PAD_CTRL,
 	MX6_PAD_ENET2_RX_DATA1__ENET2_RDATA01 | TX6UL_ENET_PAD_CTRL,
