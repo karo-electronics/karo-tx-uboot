@@ -57,7 +57,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define MUX_CFG_SION			IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
+#define MUX_CFG_SION		IOMUX_PAD(0, 0, IOMUX_CONFIG_SION, 0, 0, 0)
 
 char __uboot_img_end[0] __attribute__((section(".__uboot_img_end")));
 #ifdef CONFIG_SECURE_BOOT
@@ -65,22 +65,22 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 #endif
 
 #define TX6_DEFAULT_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |	\
-					PAD_CTL_SPEED_MED |		\
-					PAD_CTL_DSE_40ohm |		\
-					PAD_CTL_SRE_FAST)
+					     PAD_CTL_SPEED_MED |	\
+					     PAD_CTL_DSE_40ohm |	\
+					     PAD_CTL_SRE_FAST)
 #define TX6_FEC_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_100K_UP |	\
-					PAD_CTL_SPEED_MED |		\
-					PAD_CTL_DSE_40ohm |		\
-					PAD_CTL_SRE_FAST)
+					     PAD_CTL_SPEED_MED |	\
+					     PAD_CTL_DSE_40ohm |	\
+					     PAD_CTL_SRE_FAST)
 #define TX6_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
-					PAD_CTL_SPEED_MED |		\
-					PAD_CTL_DSE_34ohm |		\
-					PAD_CTL_SRE_FAST)
+					     PAD_CTL_SPEED_MED |	\
+					     PAD_CTL_DSE_34ohm |	\
+					     PAD_CTL_SRE_FAST)
 #define TX6_I2C_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PUS_22K_UP |	\
-					PAD_CTL_HYS |			\
-					PAD_CTL_SPEED_LOW |		\
-					PAD_CTL_DSE_40ohm |		\
-					PAD_CTL_SRE_SLOW)
+					     PAD_CTL_HYS |		\
+					     PAD_CTL_SPEED_LOW |	\
+					     PAD_CTL_DSE_40ohm |	\
+					     PAD_CTL_SRE_SLOW)
 
 static const iomux_v3_cfg_t const tx6qdl_pads[] = {
 	/* RESET_OUT */
@@ -111,9 +111,9 @@ static const iomux_v3_cfg_t const tx6qdl_pads[] = {
 
 	/* FEC PHY GPIO functions */
 	MX6_PAD_EIM_D20__GPIO3_IO20 | MUX_CFG_SION |
-			TX6_DEFAULT_PAD_CTRL, /* PHY POWER */
+	TX6_DEFAULT_PAD_CTRL, /* PHY POWER */
 	MX6_PAD_SD3_DAT2__GPIO7_IO06 | MUX_CFG_SION |
-			TX6_DEFAULT_PAD_CTRL, /* PHY RESET */
+	TX6_DEFAULT_PAD_CTRL, /* PHY RESET */
 	MX6_PAD_SD3_DAT4__GPIO7_IO01 | TX6_DEFAULT_PAD_CTRL, /* PHY INT */
 };
 
@@ -134,9 +134,9 @@ static const iomux_v3_cfg_t const tx6qdl_fec_pads[] = {
 static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
 	/* internal I2C */
 	MX6_PAD_EIM_D28__GPIO3_IO28 | MUX_CFG_SION |
-			TX6_GPIO_PAD_CTRL,
+	TX6_GPIO_PAD_CTRL,
 	MX6_PAD_EIM_D21__GPIO3_IO21 | MUX_CFG_SION |
-			TX6_GPIO_PAD_CTRL,
+	TX6_GPIO_PAD_CTRL,
 };
 
 static const iomux_v3_cfg_t const tx6_i2c_pads[] = {
@@ -378,10 +378,10 @@ int checkboard(void)
 	}
 
 	printf("CPU:         Freescale i.MX6%s rev%d.%d at %d MHz\n",
-		cpu_str,
-		(cpurev & 0x000F0) >> 4,
-		(cpurev & 0x0000F) >> 0,
-		mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	       cpu_str,
+	       (cpurev & 0x000F0) >> 4,
+	       (cpurev & 0x0000F) >> 0,
+	       mxc_get_clock(MXC_ARM_CLK) / 1000000);
 
 	print_temperature();
 	print_reset_cause();
@@ -494,7 +494,7 @@ static inline char tx6_mem_suffix(void)
 	size_t mem_idx = (TX6_FLASH_SZ * 3) + TX6_DDR_SZ;
 
 	debug("TX6_DDR_SZ=%d TX6_FLASH_SZ=%d idx=%d\n",
-		TX6_DDR_SZ, TX6_FLASH_SZ, mem_idx);
+	      TX6_DDR_SZ, TX6_FLASH_SZ, mem_idx);
 
 	if (mem_idx >= ARRAY_SIZE(tx6_mem_table))
 		return '?';
@@ -524,7 +524,8 @@ static int tx6_pmic_probe(void)
 		int ret = i2c_probe(i2c_addr);
 
 		if (ret == 0) {
-			debug("I2C probe succeeded for addr 0x%02x\n", i2c_addr);
+			debug("I2C probe succeeded for addr 0x%02x\n",
+			      i2c_addr);
 			return i;
 		}
 		debug("I2C probe returned %d for addr 0x%02x\n", ret, i2c_addr);
@@ -554,10 +555,10 @@ int board_init(void)
 		pmic_addr = tx6_mod_revs[pmic_id].addr;
 
 	printf("Board: Ka-Ro TX6%s-%d%d%d%c\n",
-		tx6_mod_suffix,
-		is_cpu_type(MXC_CPU_MX6Q) ? 1 : 8,
-		tx6_mipi() ? 2 : is_lvds(), tx6_get_mod_rev(pmic_id),
-		tx6_mem_suffix());
+	       tx6_mod_suffix,
+	       is_cpu_type(MXC_CPU_MX6Q) ? 1 : 8,
+	       tx6_mipi() ? 2 : is_lvds(), tx6_get_mod_rev(pmic_id),
+	       tx6_mem_suffix());
 
 	get_hab_status();
 
@@ -583,7 +584,7 @@ int board_init(void)
 	}
 
 	ret = tx6_pmic_init(pmic_addr, tx6_mod_revs[pmic_id].regs,
-			tx6_mod_revs[pmic_id].num_regs);
+			    tx6_mod_revs[pmic_id].num_regs);
 	if (ret) {
 		printf("Failed to setup PMIC voltages: %d\n", ret);
 		hang();
@@ -597,28 +598,29 @@ int dram_init(void)
 
 	/* dram_init must store complete ramsize in gd->ram_size */
 	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE,
-				PHYS_SDRAM_1_SIZE * CONFIG_NR_DRAM_BANKS);
+				    PHYS_SDRAM_1_SIZE * CONFIG_NR_DRAM_BANKS);
 	return 0;
 }
 
 void dram_init_banksize(void)
 {
 	debug("%s@%d: chip_size=%u (%u bit bus width)\n", __func__, __LINE__,
-		CONFIG_SYS_SDRAM_CHIP_SIZE, CONFIG_SYS_SDRAM_BUS_WIDTH);
+	      CONFIG_SYS_SDRAM_CHIP_SIZE, CONFIG_SYS_SDRAM_BUS_WIDTH);
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = get_ram_size((void *)PHYS_SDRAM_1,
-			PHYS_SDRAM_1_SIZE);
+					       PHYS_SDRAM_1_SIZE);
 #if CONFIG_NR_DRAM_BANKS > 1
 	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
 	gd->bd->bi_dram[1].size = get_ram_size((void *)PHYS_SDRAM_2,
-			PHYS_SDRAM_2_SIZE);
+					       PHYS_SDRAM_2_SIZE);
 #endif
 }
 
 #ifdef	CONFIG_FSL_ESDHC
 #define SD_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_PUS_47K_UP |	\
-				PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |	\
-				PAD_CTL_SRE_FAST)
+					     PAD_CTL_SPEED_MED |	\
+					     PAD_CTL_DSE_40ohm |	\
+					     PAD_CTL_SRE_FAST)
 
 static const iomux_v3_cfg_t mmc0_pads[] = {
 	MX6_PAD_SD1_CMD__SD1_CMD | SD_PAD_CTRL,
@@ -709,9 +711,9 @@ int board_mmc_getcd(struct mmc *mmc)
 		return 1;
 
 	debug("SD card %d is %spresent (GPIO %d)\n",
-		cfg - tx6qdl_esdhc_cfg,
-		gpio_get_value(cfg->cd_gpio) ? "NOT " : "",
-		cfg->cd_gpio);
+	      cfg - tx6qdl_esdhc_cfg,
+	      gpio_get_value(cfg->cd_gpio) ? "NOT " : "",
+	      cfg->cd_gpio);
 	return !gpio_get_value(cfg->cd_gpio);
 }
 
@@ -731,10 +733,11 @@ int board_mmc_init(bd_t *bis)
 
 		if (cfg->cd_gpio >= 0) {
 			ret = gpio_request_one(cfg->cd_gpio,
-					GPIOFLAG_INPUT, "MMC CD");
+					       GPIOFLAG_INPUT, "MMC CD");
 			if (ret) {
 				printf("Error %d requesting GPIO%d_%d\n",
-					ret, cfg->cd_gpio / 32, cfg->cd_gpio % 32);
+				       ret, cfg->cd_gpio / 32,
+				       cfg->cd_gpio % 32);
 				continue;
 			}
 		}
@@ -768,7 +771,7 @@ int board_eth_init(bd_t *bis)
 	udelay(22000);
 
 	imx_iomux_v3_setup_multiple_pads(tx6qdl_fec_pads,
-					ARRAY_SIZE(tx6qdl_fec_pads));
+					 ARRAY_SIZE(tx6qdl_fec_pads));
 
 	/* Deassert RESET to the external phy */
 	gpio_set_value(TX6_FEC_RST_GPIO, 1);
@@ -1061,7 +1064,7 @@ void lcd_enable(void)
 		gpio_set_value(TX6_LCD_RST_GPIO, 1);
 		udelay(300000);
 		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO,
-			lcd_backlight_polarity());
+			       lcd_backlight_polarity());
 	}
 }
 
@@ -1078,7 +1081,7 @@ void lcd_panel_disable(void)
 	if (lcd_enabled) {
 		debug("Switching LCD off\n");
 		gpio_set_value(TX6_LCD_BACKLIGHT_GPIO,
-			!lcd_backlight_polarity());
+			       !lcd_backlight_polarity());
 		gpio_set_value(TX6_LCD_RST_GPIO, 0);
 		gpio_set_value(TX6_LCD_PWR_GPIO, 0);
 	}
@@ -1171,10 +1174,10 @@ void lcd_ctrl_init(void *lcdbase)
 		debug("Using video mode from FDT\n");
 		vm += strlen(vm);
 		if (fb_mode.xres > panel_info.vl_col ||
-			fb_mode.yres > panel_info.vl_row) {
+		    fb_mode.yres > panel_info.vl_row) {
 			printf("video resolution from DT: %dx%d exceeds hardware limits: %dx%d\n",
-				fb_mode.xres, fb_mode.yres,
-				panel_info.vl_col, panel_info.vl_row);
+			       fb_mode.xres, fb_mode.yres,
+			       panel_info.vl_col, panel_info.vl_row);
 			lcd_enabled = 0;
 			goto disable;
 		}
@@ -1229,7 +1232,8 @@ void lcd_ctrl_init(void *lcdbase)
 						/* fallthru */
 					default:
 						printf("Invalid color depth: '%.*s' in video_mode; using default: '%u'\n",
-							end - vm, vm, color_depth);
+						       end - vm, vm,
+						       color_depth);
 					}
 					bpp_set = 1;
 				} else if (!refresh_set) {
@@ -1271,7 +1275,7 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 	if (p->xres > panel_info.vl_col || p->yres > panel_info.vl_row) {
 		printf("video resolution: %dx%d exceeds hardware limits: %dx%d\n",
-			p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
+		       p->xres, p->yres, panel_info.vl_col, panel_info.vl_row);
 		lcd_enabled = 0;
 		goto disable;
 	}
@@ -1294,22 +1298,22 @@ void lcd_ctrl_init(void *lcdbase)
 		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
 				1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
-		PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
+	      PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
 
 	if (p != &fb_mode) {
 		int ret;
 
 		debug("Creating new display-timing node from '%s'\n",
-			video_mode);
+		      video_mode);
 		ret = karo_fdt_create_fb_mode(working_fdt, video_mode, p);
 		if (ret)
 			printf("Failed to create new display-timing node from '%s': %d\n",
-				video_mode, ret);
+			       video_mode, ret);
 	}
 
 	gpio_request_array(stk5_lcd_gpios, ARRAY_SIZE(stk5_lcd_gpios));
 	imx_iomux_v3_setup_multiple_pads(stk5_lcd_pads,
-					ARRAY_SIZE(stk5_lcd_pads));
+					 ARRAY_SIZE(stk5_lcd_pads));
 
 	lcd_bus_width = karo_fdt_get_lcd_bus_width(working_fdt, 24);
 	switch (lcd_bus_width) {
@@ -1330,7 +1334,7 @@ void lcd_ctrl_init(void *lcdbase)
 	default:
 		lcd_enabled = 0;
 		printf("Invalid %s bus width: %d\n", is_lvds() ? "LVDS" : "LCD",
-			lcd_bus_width);
+		       lcd_bus_width);
 		goto disable;
 	}
 	if (is_lvds()) {
@@ -1350,7 +1354,8 @@ void lcd_ctrl_init(void *lcdbase)
 			gpr2 |= (1 << 5) | (1 << 7);
 		gpr2 |= (lvds_chan_mask & 1) ? 1 << 0 : 0;
 		gpr2 |= (lvds_chan_mask & 2) ? 3 << 2 : 0;
-		debug("writing %08x to GPR2[%08x]\n", gpr2, IOMUXC_BASE_ADDR + 8);
+		debug("writing %08x to GPR2[%08x]\n", gpr2,
+		      IOMUXC_BASE_ADDR + 8);
 		writel(gpr2, IOMUXC_BASE_ADDR + 8);
 
 		gpr3 = readl(IOMUXC_BASE_ADDR + 0xc);
@@ -1362,8 +1367,8 @@ void lcd_ctrl_init(void *lcdbase)
 
 		debug("Initializing LCD controller\n");
 		ret = ipuv3_fb_init(p, 0, pix_fmt,
-				is_lvds() ? DI_PCLK_LDB : DI_PCLK_PLL3,
-				di_clk_rate, -1);
+				    is_lvds() ? DI_PCLK_LDB : DI_PCLK_PLL3,
+				    di_clk_rate, -1);
 		if (ret) {
 			printf("Failed to initialize FB driver: %d\n", ret);
 			lcd_enabled = 0;
@@ -1373,11 +1378,10 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 	return;
 
-disable:
+ disable:
 	lcd_enabled = 0;
 	panel_info.vl_col = 0;
 	panel_info.vl_row = 0;
-
 }
 #else
 #define lcd_enabled 0
@@ -1407,14 +1411,14 @@ static void stk5v5_board_init(void)
 	stk5_board_init();
 
 	ret = gpio_request_one(IMX_GPIO_NR(4, 21), GPIOFLAG_OUTPUT_INIT_HIGH,
-			"Flexcan Transceiver");
+			       "Flexcan Transceiver");
 	if (ret) {
 		printf("Failed to request Flexcan Transceiver GPIO: %d\n", ret);
 		return;
 	}
 
 	imx_iomux_v3_setup_pad(MX6_PAD_DISP0_DAT0__GPIO4_IO21 |
-			TX6_GPIO_PAD_CTRL);
+			       TX6_GPIO_PAD_CTRL);
 }
 
 static void tx6qdl_set_cpu_clock(void)
@@ -1426,13 +1430,13 @@ static void tx6qdl_set_cpu_clock(void)
 
 	if (had_ctrlc() || (wrsr & WRSR_TOUT)) {
 		printf("%s detected; skipping cpu clock change\n",
-			(wrsr & WRSR_TOUT) ? "WDOG RESET" : "<CTRL-C>");
+		       (wrsr & WRSR_TOUT) ? "WDOG RESET" : "<CTRL-C>");
 		return;
 	}
 	if (mxc_set_clock(CONFIG_SYS_MX6_HCLK, cpu_clk, MXC_ARM_CLK) == 0) {
 		cpu_clk = mxc_get_clock(MXC_ARM_CLK);
 		printf("CPU clock set to %lu.%03lu MHz\n",
-			cpu_clk / 1000000, cpu_clk / 1000 % 1000);
+		       cpu_clk / 1000000, cpu_clk / 1000 % 1000);
 	} else {
 		printf("Error: Failed to set CPU clock to %lu MHz\n", cpu_clk);
 	}
@@ -1466,24 +1470,24 @@ int board_late_init(void)
 
 	if (strncmp(baseboard, "stk5", 4) == 0) {
 		if ((strlen(baseboard) == 4) ||
-			strcmp(baseboard, "stk5-v3") == 0) {
+		    strcmp(baseboard, "stk5-v3") == 0) {
 			stk5v3_board_init();
 		} else if (strcmp(baseboard, "stk5-v5") == 0) {
 			const char *otg_mode = getenv("otg_mode");
 
 			if (otg_mode && strcmp(otg_mode, "host") == 0) {
 				printf("otg_mode='%s' is incompatible with baseboard %s; setting to 'none'\n",
-					otg_mode, baseboard);
+				       otg_mode, baseboard);
 				setenv("otg_mode", "none");
 			}
 			stk5v5_board_init();
 		} else {
 			printf("WARNING: Unsupported STK5 board rev.: %s\n",
-				baseboard + 4);
+			       baseboard + 4);
 		}
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
-			baseboard);
+		       baseboard);
 		if (!had_ctrlc())
 			return -EINVAL;
 	}
@@ -1542,7 +1546,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 
 	karo_fdt_fixup_touchpanel(blob, tx6_touchpanels,
-				ARRAY_SIZE(tx6_touchpanels));
+				  ARRAY_SIZE(tx6_touchpanels));
 	karo_fdt_fixup_usb_otg(blob, "usbotg", "fsl,usbphy", "vbus-supply");
 	karo_fdt_fixup_flexcan(blob, stk5_v5);
 
