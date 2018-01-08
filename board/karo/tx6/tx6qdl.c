@@ -158,90 +158,88 @@ static const struct gpio const tx6qdl_gpios[] = {
 
 static int pmic_addr __data;
 
-#if defined(CONFIG_SOC_MX6Q)
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e00a4
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e00c4
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e03b8
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e03d8
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0898
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e089c
-#define I2C1_SEL_INPUT_VAL			0
-#endif
-#if defined(CONFIG_SOC_MX6DL) || defined(CONFIG_SOC_MX6S)
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA21	0x020e0158
-#define IOMUXC_SW_MUX_CTL_PAD_EIM_DATA28	0x020e0174
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA21	0x020e0528
-#define IOMUXC_SW_PAD_CTL_PAD_EIM_DATA28	0x020e0544
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA21	0x020e0868
-#define IOMUXC_SW_SEL_INPUT_PAD_EIM_DATA28	0x020e086c
-#define I2C1_SEL_INPUT_VAL			1
-#endif
+#if defined(TX6_I2C1_SCL_GPIO) && defined(TX6_I2C1_SDA_GPIO)
+#define SCL_BANK	(TX6_I2C1_SCL_GPIO / 32)
+#define SDA_BANK	(TX6_I2C1_SDA_GPIO / 32)
+#define SCL_BIT		(1 << (TX6_I2C1_SCL_GPIO % 32))
+#define SDA_BIT		(1 << (TX6_I2C1_SDA_GPIO % 32))
 
-#define GPIO_DR 0
-#define GPIO_DIR 4
-#define GPIO_PSR 8
+static void * const gpio_ports[] = {
+	(void *)GPIO1_BASE_ADDR,
+	(void *)GPIO2_BASE_ADDR,
+	(void *)GPIO3_BASE_ADDR,
+	(void *)GPIO4_BASE_ADDR,
+	(void *)GPIO5_BASE_ADDR,
+	(void *)GPIO6_BASE_ADDR,
+	(void *)GPIO7_BASE_ADDR,
+};
 
 static void tx6_i2c_recover(void)
 {
 	int i;
 	int bad = 0;
-#define SCL_BIT		(1 << (TX6_I2C1_SCL_GPIO % 32))
-#define SDA_BIT		(1 << (TX6_I2C1_SDA_GPIO % 32))
+	struct gpio_regs *scl_regs = gpio_ports[SCL_BANK];
+	struct gpio_regs *sda_regs = gpio_ports[SDA_BANK];
 
-	if ((readl(GPIO3_BASE_ADDR + GPIO_PSR) &
-			(SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT))
+	if ((readl(&scl_regs->gpio_psr) & SCL_BIT) &&
+	    (readl(&sda_regs->gpio_psr) & SDA_BIT))
 		return;
 
 	debug("Clearing I2C bus\n");
-	if (!(readl(GPIO3_BASE_ADDR + GPIO_PSR) & SCL_BIT)) {
+	if (!(readl(&scl_regs->gpio_psr) & SCL_BIT)) {
 		printf("I2C SCL stuck LOW\n");
 		bad++;
 
-		writel(readl(GPIO3_BASE_ADDR + GPIO_DR) | SCL_BIT,
-			GPIO3_BASE_ADDR + GPIO_DR);
-		writel(readl(GPIO3_BASE_ADDR + GPIO_DIR) | SCL_BIT,
-			GPIO3_BASE_ADDR + GPIO_DIR);
-	}
-	if (!(readl(GPIO3_BASE_ADDR + GPIO_PSR) & SDA_BIT)) {
-		printf("I2C SDA stuck LOW\n");
-		bad++;
-
-		writel(readl(GPIO3_BASE_ADDR + GPIO_DIR) & ~SDA_BIT,
-			GPIO3_BASE_ADDR + GPIO_DIR);
-		writel(readl(GPIO3_BASE_ADDR + GPIO_DR) | SCL_BIT,
-			GPIO3_BASE_ADDR + GPIO_DR);
-		writel(readl(GPIO3_BASE_ADDR + GPIO_DIR) | SCL_BIT,
-			GPIO3_BASE_ADDR + GPIO_DIR);
+		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
+		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
 
 		imx_iomux_v3_setup_multiple_pads(tx6_i2c_gpio_pads,
-						ARRAY_SIZE(tx6_i2c_gpio_pads));
+						 ARRAY_SIZE(tx6_i2c_gpio_pads));
+	}
+	if (!(readl(&sda_regs->gpio_psr) & SDA_BIT)) {
+		printf("I2C SDA stuck LOW\n");
+
+		clrbits_le32(&sda_regs->gpio_dir, SDA_BIT);
+		setbits_le32(&scl_regs->gpio_dr, SCL_BIT);
+		setbits_le32(&scl_regs->gpio_dir, SCL_BIT);
+
+		if (!bad++)
+			imx_iomux_v3_setup_multiple_pads(tx6_i2c_gpio_pads,
+							 ARRAY_SIZE(tx6_i2c_gpio_pads));
+
 		udelay(10);
 
 		for (i = 0; i < 18; i++) {
-			u32 reg = readl(GPIO3_BASE_ADDR + GPIO_DR) ^ SCL_BIT;
+			u32 reg = readl(&scl_regs->gpio_dr) ^ SCL_BIT;
 
-			debug("%sing SCL\n", (reg & SCL_BIT) ? "Sett" : "Clear");
-			writel(reg, GPIO3_BASE_ADDR + GPIO_DR);
-			udelay(10);
-			if (reg & SCL_BIT &&
-				readl(GPIO3_BASE_ADDR + GPIO_PSR) & SDA_BIT)
+			debug("%sing SCL\n",
+			      (reg & SCL_BIT) ? "Sett" : "Clear");
+			writel(reg, &scl_regs->gpio_dr);
+			udelay(5);
+			if (reg & SCL_BIT) {
+				if (readl(&sda_regs->gpio_psr) & SDA_BIT)
+					break;
+				if (!(readl(&scl_regs->gpio_psr) & SCL_BIT))
+					break;
 				break;
+			}
 		}
 	}
 	if (bad) {
-		u32 reg = readl(GPIO3_BASE_ADDR + GPIO_PSR);
+		bool scl = !!(readl(&scl_regs->gpio_psr) & SCL_BIT);
+		bool sda = !!(readl(&sda_regs->gpio_psr) & SDA_BIT);
 
-		if ((reg & (SCL_BIT | SDA_BIT)) == (SCL_BIT | SDA_BIT)) {
+		if (scl && sda) {
 			printf("I2C bus recovery succeeded\n");
 		} else {
-			printf("I2C bus recovery FAILED: %08x:%08x\n", reg,
-				SCL_BIT | SDA_BIT);
+			printf("I2C bus recovery FAILED: SCL: %d SDA: %d\n",
+			       scl, sda);
 		}
+		imx_iomux_v3_setup_multiple_pads(tx6_i2c_pads,
+						 ARRAY_SIZE(tx6_i2c_pads));
 	}
-	debug("Setting up I2C Pads\n");
-	imx_iomux_v3_setup_multiple_pads(tx6_i2c_pads,
-					ARRAY_SIZE(tx6_i2c_pads));
 }
+#endif
 
 /* placed in section '.data' to prevent overwriting relocation info
  * overlayed with bss
