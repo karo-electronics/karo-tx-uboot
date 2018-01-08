@@ -141,7 +141,8 @@ static void ce_setup_std_drv_globals(ce_std_driver_globals *std_drv_glb)
 		strncpy(std_drv_glb->mtdparts, mtdparts, max_len);
 		std_drv_glb->mtdparts[max_len - 1] = '\0';
 	} else {
-		printf("Failed to get mtdparts environment variable\n");
+		if (CONFIG_IS_ENABLED(CMD_MTDPARTS))
+			printf("Failed to get mtdparts environment variable\n");
 	}
 }
 
