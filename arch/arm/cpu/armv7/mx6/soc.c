@@ -152,7 +152,7 @@ u32 get_cpu_speed_grade_hz(void)
 	case OCOTP_CFG3_SPEED_850MHZ:
 		if (is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D))
 			return 852000000;
-	/* Valid for IMX6SX/IMX6SDL/IMX6DQ */
+	/* Valid for IMX6SX/IMX6SDL/IMX6DQ/IMX6ULL */
 	case OCOTP_CFG3_SPEED_800MHZ:
 		return 792000000;
 	}
@@ -214,13 +214,12 @@ u32 __weak get_board_rev(void)
 void init_aips(void)
 {
 	struct aipstz_regs *aips1, *aips2;
-#ifdef CONFIG_SOC_MX6SX
+#ifdef AIPS3_CONFIG_BASE_ADDR
 	struct aipstz_regs *aips3;
 #endif
-
 	aips1 = (struct aipstz_regs *)AIPS1_BASE_ADDR;
 	aips2 = (struct aipstz_regs *)AIPS2_BASE_ADDR;
-#ifdef CONFIG_SOC_MX6SX
+#ifdef AIPS3_CONFIG_BASE_ADDR
 	aips3 = (struct aipstz_regs *)AIPS3_CONFIG_BASE_ADDR;
 #endif
 
@@ -249,7 +248,7 @@ void init_aips(void)
 	writel(0x00000000, &aips2->opacr3);
 	writel(0x00000000, &aips2->opacr4);
 
-#ifdef CONFIG_SOC_MX6SX
+#ifdef AIPS3_CONFIG_BASE_ADDR
 	/*
 	 * Set all MPROTx to be non-bufferable, trusted for R/W,
 	 * not forced to user-mode.
@@ -404,7 +403,8 @@ static void imx_set_wdog_powerdown(bool enable)
 	struct wdog_regs *wdog2 = (struct wdog_regs *)WDOG2_BASE_ADDR;
 	struct wdog_regs *wdog3 = (struct wdog_regs *)WDOG3_BASE_ADDR;
 
-	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL))
+	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL) ||
+	    is_cpu_type(MXC_CPU_MX6ULL))
 		writew(enable, &wdog3->wmcr);
 
 	/* Write to the PDE (Power Down Enable) bit */
@@ -628,7 +628,8 @@ void s_init(void)
 	u32 mask528;
 	u32 reg, periph1, periph2;
 
-	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL))
+	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL) ||
+	    is_cpu_type(MXC_CPU_MX6ULL))
 		return;
 
 	/* Due to hardware limitation, on MX6Q we need to gate/ungate all PFDs
