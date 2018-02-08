@@ -762,6 +762,71 @@ static const struct gpio stk5_gpios[] = {
 	{ IMX_GPIO_NR(1, 26), GPIOFLAG_OUTPUT_INIT_LOW, "USBOTG VBUS enable", },
 };
 
+static const iomux_v3_cfg_t tx_tester_pads[] = {
+	/* SW controlled LEDs on TX-TESTER-V5 baseboard */
+	MX6_PAD_SNVS_TAMPER4__GPIO5_IO04, /* red LED */
+	MX6_PAD_SNVS_TAMPER9__GPIO5_IO09, /* yellow LED */
+	MX6_PAD_SNVS_TAMPER8__GPIO5_IO08, /* green LED */
+
+	MX6_PAD_LCD_DATA04__GPIO3_IO09, /* IO_RESET */
+
+	/* I2C bus on DIMM pins 40/41 */
+	MX6_PAD_GPIO1_IO01__I2C2_SDA | MUX_MODE_SION | TX6UL_I2C_PAD_CTRL,
+	MX6_PAD_GPIO1_IO00__I2C2_SCL | MUX_MODE_SION | TX6UL_I2C_PAD_CTRL,
+
+	/* USBH1 */
+	MX6_PAD_GPIO1_IO02__USB_OTG2_PWR | TX6UL_GPIO_OUT_PAD_CTRL, /* VBUSEN */
+	MX6_PAD_GPIO1_IO03__USB_OTG2_OC | TX6UL_GPIO_IN_PAD_CTRL, /* OC */
+
+	/* USBOTG */
+	MX6_PAD_UART3_CTS_B__GPIO1_IO26 | TX6UL_GPIO_OUT_PAD_CTRL, /* VBUSEN */
+	MX6_PAD_UART3_RTS_B__GPIO1_IO27 | TX6UL_GPIO_IN_PAD_CTRL, /* OC */
+
+	MX6_PAD_LCD_DATA08__GPIO3_IO13 | TX6UL_GPIO_OUT_PAD_CTRL,
+	MX6_PAD_LCD_DATA09__GPIO3_IO14 | TX6UL_GPIO_OUT_PAD_CTRL,
+	MX6_PAD_LCD_DATA10__GPIO3_IO15 | TX6UL_GPIO_OUT_PAD_CTRL,
+
+	/* USBH_VBUSEN */
+	MX6_PAD_LCD_DATA11__GPIO3_IO16 | TX6UL_GPIO_OUT_PAD_CTRL,
+
+	/*
+	 * no drive capability for DUT_ETN_LINKLED, DUT_ETN_ACTLED
+	 * to not interfere whith the DUT ETN PHY strap pins
+	 */
+	MX6_PAD_SNVS_TAMPER2__GPIO5_IO02, MUX_PAD_CTRL(PAD_CTL_HYS |
+						       PAD_CTL_DSE_DISABLE |
+						       PAD_CTL_SPEED_LOW),
+	MX6_PAD_SNVS_TAMPER3__GPIO5_IO03, MUX_PAD_CTRL(PAD_CTL_HYS |
+						       PAD_CTL_DSE_DISABLE |
+						       PAD_CTL_SPEED_LOW),
+};
+
+static const struct gpio tx_tester_gpios[] = {
+	{ TX6UL_LED_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "LEDGE#", },
+	{ IMX_GPIO_NR(5, 4), GPIOFLAG_OUTPUT_INIT_LOW, "LEDRT#", },
+	{ IMX_GPIO_NR(5, 8), GPIOFLAG_OUTPUT_INIT_LOW, "LEDGN#", },
+
+	{ IMX_GPIO_NR(1, 26), GPIOFLAG_OUTPUT_INIT_HIGH, "PMIC PWR_ON", },
+
+	{ IMX_GPIO_NR(3, 5), GPIOFLAG_INPUT, "TSTART#", },
+	{ IMX_GPIO_NR(3, 6), GPIOFLAG_INPUT, "STARTED", },
+	{ IMX_GPIO_NR(3, 7), GPIOFLAG_INPUT, "TSTOP#", },
+	{ IMX_GPIO_NR(3, 8), GPIOFLAG_OUTPUT_INIT_LOW, "STOP#", },
+
+	{ IMX_GPIO_NR(3, 10), GPIOFLAG_INPUT, "DUT_PGOOD", },
+
+	{ IMX_GPIO_NR(3, 11), GPIOFLAG_OUTPUT_INIT_HIGH, "VBACKUP_OFF", },
+	{ IMX_GPIO_NR(3, 12), GPIOFLAG_OUTPUT_INIT_LOW, "VBACKUP_LOAD", },
+
+	{ IMX_GPIO_NR(1, 10), GPIOFLAG_OUTPUT_INIT_LOW, "VOUTLOAD1", },
+	{ IMX_GPIO_NR(3, 30), GPIOFLAG_OUTPUT_INIT_LOW, "VOUTLOAD2", },
+	{ IMX_GPIO_NR(3, 31), GPIOFLAG_OUTPUT_INIT_LOW, "VOUTLOAD3", },
+
+	{ IMX_GPIO_NR(3, 13), GPIOFLAG_OUTPUT_INIT_LOW, "VIOLOAD1", },
+	{ IMX_GPIO_NR(3, 14), GPIOFLAG_OUTPUT_INIT_LOW, "VIOLOAD2", },
+	{ IMX_GPIO_NR(3, 15), GPIOFLAG_OUTPUT_INIT_LOW, "VIOLOAD3", },
+};
+
 #ifdef CONFIG_LCD
 vidinfo_t panel_info = {
 	/* set to max. size supported by SoC */
@@ -1278,6 +1343,34 @@ static void stk5v5_board_init(void)
 			       TX6UL_GPIO_OUT_PAD_CTRL);
 }
 
+static void tx_tester_board_init(void)
+{
+	int ret;
+
+	setenv("video_mode", NULL);
+	setenv("touchpanel", NULL);
+	if (getenv("eth1addr") && !getenv("ethprime"))
+		setenv("ethprime", "FEC1");
+
+	ret = gpio_request_array(tx_tester_gpios, ARRAY_SIZE(tx_tester_gpios));
+	if (ret) {
+		printf("Failed to request TX-Tester GPIOs: %d\n", ret);
+		return;
+	}
+	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
+
+	if (wrsr & WRSR_TOUT)
+		gpio_set_value(IMX_GPIO_NR(5, 4), 1);
+
+	if (getenv_yesno("jtag_enable") != 0) {
+		/* true if unset or set to one of: 'yYtT1' */
+		imx_iomux_v3_setup_multiple_pads(stk5_jtag_pads,
+						 ARRAY_SIZE(stk5_jtag_pads));
+	}
+
+	gpio_set_value(IMX_GPIO_NR(3, 8), 1);
+}
+
 static void tx6ul_set_cpu_clock(void)
 {
 	unsigned long cpu_clk = getenv_ulong("cpu_clk", 10, 0);
@@ -1351,9 +1444,16 @@ int board_late_init(void)
 				setenv("otg_mode", "none");
 			}
 			stk5_board_init();
+	} else if (strncmp(baseboard, "tx-tester-", 10) == 0) {
+			const char *otg_mode = getenv("otg_mode");
+
+			if (!otg_mode || strcmp(otg_mode, "none") != 0)
+				setenv("otg_mode", "device");
+			tx_tester_board_init();
 	} else {
 		printf("WARNING: Unsupported baseboard: '%s'\n",
 			baseboard);
+		printf("Reboot with <CTRL-C> pressed to fix this\n");
 		if (!had_ctrlc())
 			return -EINVAL;
 	}
