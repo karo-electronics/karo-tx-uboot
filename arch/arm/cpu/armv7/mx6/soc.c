@@ -555,7 +555,7 @@ void enable_caches(void)
 #endif
 
 #if defined(CONFIG_FEC_MXC)
-void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
+__weak void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 {
 	unsigned int mac0, mac1;
 
@@ -583,6 +583,8 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 		mac[5] = mac1 >> 16;
 	}
 }
+
+//void imx_get_mac_from_fuse(int dev_id, unsigned char *mac) __attribute__((weak("__imx_get_mac_from_fuse")));
 #endif
 
 void boot_mode_apply(unsigned cfg_val)

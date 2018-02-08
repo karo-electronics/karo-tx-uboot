@@ -1371,6 +1371,56 @@ exit:
 #define ETH_ALEN 6
 #endif
 
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
+{
+	unsigned int mac0, mac1, mac2;
+	unsigned int __maybe_unused fuse3_override, fuse4_override;
+
+	memset(mac, 0, 6);
+
+	switch (dev_id) {
+	case 0:
+		if (fuse_read(4, 2, &mac0)) {
+			printf("Failed to read MAC0 fuse\n");
+			return;
+		}
+		if (fuse_read(4, 3, &mac1)) {
+			printf("Failed to read MAC1 fuse\n");
+			return;
+		}
+		mac[0] = mac1 >> 8;
+		mac[1] = mac1;
+		mac[2] = mac0 >> 24;
+		mac[3] = mac0 >> 16;
+		mac[4] = mac0 >> 8;
+		mac[5] = mac0;
+		break;
+
+	case 1:
+		if (fuse_read(4, 3, &mac1)) {
+			printf("Failed to read MAC1 fuse\n");
+			return;
+		}
+		debug("read %08x from fuse 3\n", mac1);
+		if (fuse_read(4, 4, &mac2)) {
+			printf("Failed to read MAC2 fuse\n");
+			return;
+		}
+		debug("read %08x from fuse 4\n", mac2);
+		mac[0] = mac2 >> 24;
+		mac[1] = mac2 >> 16;
+		mac[2] = mac2 >> 8;
+		mac[3] = mac2;
+		mac[4] = mac1 >> 24;
+		mac[5] = mac1 >> 16;
+		break;
+
+	default:
+		return;
+	}
+	debug("%s@%d: Done %d %pM\n", __func__, __LINE__, dev_id, mac);
+}
+
 static void tx6ul_init_mac(void)
 {
 	u8 mac[ETH_ALEN];
@@ -1392,7 +1442,8 @@ static void tx6ul_init_mac(void)
 	if (getenv("eth1addr"))
 		return;
 	imx_get_mac_from_fuse(1, mac);
-	eth_setenv_enetaddr("eth1addr", mac);
+	if (is_valid_ethaddr(mac))
+		eth_setenv_enetaddr("eth1addr", mac);
 }
 
 int board_eth_init(bd_t *bis)
