@@ -31,6 +31,7 @@ config TX6
 	select MXC_OCOTP if CMD_FUSE
 	select OF_BOARD_SETUP
 	select OF_LIBFDT
+	select SYS_VSNPRINTF
 
 config TX6_NAND
 	bool
