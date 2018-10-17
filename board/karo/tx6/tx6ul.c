@@ -479,7 +479,7 @@ int board_init(void)
 	char f = '?';
 
 	if (is_cpu_type(MXC_CPU_MX6UL))
-		f = ((cpurev & 0xf0) > 0x10) ? '5' : '0';
+		f = ((cpurev & 0xff) > 0x10) ? '5' : '0';
 	else if (is_cpu_type(MXC_CPU_MX6ULL))
 		f = '8';
 
