@@ -439,8 +439,8 @@ static inline u8 tx6ul_mem_suffix(void)
 #define VDD_ADC_VAL_LP		rn5t_mV_to_regval2(3300)
 #define VDD_PMIC_VAL		rn5t_mV_to_regval2(2500)	/* LDO3 */
 #define VDD_PMIC_VAL_LP		rn5t_mV_to_regval2(2500)
-#define VDD_CSI_VAL		rn5t_mV_to_regval2(1800)	/* LDO4 */
-#define VDD_CSI_VAL_LP		rn5t_mV_to_regval2(1800)
+#define VDD_CSI_VAL		rn5t_mV_to_regval2(3300)	/* LDO4 */
+#define VDD_CSI_VAL_LP		rn5t_mV_to_regval2(3300)
 
 static struct pmic_regs rn5t567_regs[] = {
 	{ RN5T567_NOETIMSET, NOETIMSET_DIS_OFF_NOE_TIM | 0x5, },
@@ -460,6 +460,10 @@ static struct pmic_regs rn5t567_regs[] = {
 	{ RN5T567_LDO2DAC, VDD_ADC_VAL, },
 	{ RN5T567_LDO3DAC, VDD_PMIC_VAL, },
 	{ RN5T567_LDO4DAC, VDD_CSI_VAL, },
+	{ RN5T567_LDO1DAC_SLP, VDD_IO_INT_VAL_LP, },
+	{ RN5T567_LDO2DAC_SLP, VDD_ADC_VAL_LP, },
+	{ RN5T567_LDO3DAC_SLP, VDD_PMIC_VAL_LP, },
+	{ RN5T567_LDO4DAC_SLP, VDD_CSI_VAL_LP, },
 	{ RN5T567_LDOEN1, 0x0f, ~0x1f, },
 	{ RN5T567_LDOEN2, 0x10, ~0x30, },
 	{ RN5T567_LDODIS, 0x10, ~0x1f, },
