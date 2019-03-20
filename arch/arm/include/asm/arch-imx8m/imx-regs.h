@@ -16,4 +16,5 @@
 #error "Error no imx-regs.h"
 #endif
 
+#define FEC_QUIRK_ENET_MAC
 #endif
