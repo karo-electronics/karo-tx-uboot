@@ -154,13 +154,11 @@ static struct mm_region imx8m_mem_map[] = {
 #endif
 #endif
 	}, {
-		/* empty entrie to split table entry 5
-		* if needed when TEEs are used
-		*/
-		0,
+		/* empty entry to split table entry 5
+		 * if needed when TEEs are used
+		 */
 	}, {
 		/* List terminator */
-		0,
 	}
 };
 
@@ -170,17 +168,18 @@ void enable_caches(void)
 {
 	/* If OPTEE runs, remove OPTEE memory from MMU table to avoid speculative prefetch */
 	if (rom_pointer[1]) {
-
 		/* TEE are loaded, So the ddr bank structures
-		* have been modified update mmu table accordingly
-		*/
-		int i = 0;
+		 * have been modified update mmu table accordingly
+		 */
 		/* please make sure that entry initial value matches
-		* imx8m_mem_map for DRAM1
-		*/
+		 * imx8m_mem_map for DRAM1
+		 */
+		int i;
 		int entry = 5;
 		u64 attrs = imx8m_mem_map[entry].attrs;
-		while (i < CONFIG_NR_DRAM_BANKS && entry < 8) {
+
+		for (i = 0; i < CONFIG_NR_DRAM_BANKS && entry < 8;
+		     i++, entry++) {
 			if (gd->bd->bi_dram[i].start == 0)
 				break;
 			imx8m_mem_map[entry].phys = gd->bd->bi_dram[i].start;
@@ -189,7 +188,6 @@ void enable_caches(void)
 			imx8m_mem_map[entry].attrs = attrs;
 			debug("Added memory mapping (%d): %llx %llx\n", entry,
 				imx8m_mem_map[entry].phys, imx8m_mem_map[entry].size);
-			i++;entry++;
 		}
 	}
 
@@ -197,27 +195,18 @@ void enable_caches(void)
 	dcache_enable();
 }
 
-__weak int board_phys_sdram_size(phys_size_t *size)
+__weak phys_size_t board_phys_sdram_size(void)
 {
-	if (!size)
-		return -EINVAL;
-
-	*size = PHYS_SDRAM_SIZE;
-	return 0;
+	return PHYS_SDRAM_SIZE;
 }
 
 int dram_init(void)
 {
-	phys_size_t sdram_size;
-	int ret;
+	phys_size_t sdram_size = board_phys_sdram_size();
 
-	ret = board_phys_sdram_size(&sdram_size);
-	if (ret)
-		return ret;
-
-	/* rom_pointer[1] contains the size of TEE occupies */
+	/* rom_pointer[1] contains the size that TEE occupies */
 	if (rom_pointer[1])
-		gd->ram_size = sdram_size - rom_pointer[1];
+		gd->ram_size = sdram_size - ALIGN(rom_pointer[1], PAGE_SIZE);
 	else
 		gd->ram_size = sdram_size;
 
@@ -231,24 +220,19 @@ int dram_init(void)
 int dram_init_banksize(void)
 {
 	int bank = 0;
-	int ret;
-	phys_size_t sdram_size;
-
-	ret = board_phys_sdram_size(&sdram_size);
-	if (ret)
-		return ret;
+	phys_size_t sdram_size = board_phys_sdram_size();
 
 	gd->bd->bi_dram[bank].start = PHYS_SDRAM;
 	if (rom_pointer[1]) {
 		phys_addr_t optee_start = (phys_addr_t)rom_pointer[0];
-		phys_size_t optee_size = (size_t)rom_pointer[1];
+		phys_size_t optee_size = ALIGN((size_t)rom_pointer[1],
+					       PAGE_SIZE);
 
-		gd->bd->bi_dram[bank].size = optee_start -gd->bd->bi_dram[bank].start;
+		gd->bd->bi_dram[bank].size = optee_start -
+			gd->bd->bi_dram[bank].start;
 		if ((optee_start + optee_size) < (PHYS_SDRAM + sdram_size)) {
-			if ( ++bank >= CONFIG_NR_DRAM_BANKS) {
-				puts("CONFIG_NR_DRAM_BANKS is not enough\n");
-				return -1;
-			}
+			if (++bank >= CONFIG_NR_DRAM_BANKS)
+				goto badbank;
 
 			gd->bd->bi_dram[bank].start = optee_start + optee_size;
 			gd->bd->bi_dram[bank].size = PHYS_SDRAM +
@@ -259,15 +243,19 @@ int dram_init_banksize(void)
 	}
 
 #ifdef PHYS_SDRAM_2_SIZE
-	if ( ++bank >= CONFIG_NR_DRAM_BANKS) {
-		puts("CONFIG_NR_DRAM_BANKS is not enough for SDRAM_2\n");
-		return -1;
-	}
+	if (++bank >= CONFIG_NR_DRAM_BANKS)
+		goto badbank;
+
 	gd->bd->bi_dram[bank].start = PHYS_SDRAM_2;
 	gd->bd->bi_dram[bank].size = PHYS_SDRAM_2_SIZE;
 #endif
 
 	return 0;
+
+ badbank:
+	printf("OPTEE requires an extra memory bank; increase CONFIG_NR_DRAM_BANKS to %u\n",
+	       CONFIG_NR_DRAM_BANKS + 1);
+	return -EINVAL;
 }
 
 phys_size_t get_effective_memsize(void)
