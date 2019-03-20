@@ -317,8 +317,8 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
 		sdp->dnl_address = be32_to_cpu(cmd->addr);
 		sdp->dnl_bytes_remaining = be32_to_cpu(cmd->cnt);
 		sdp->next_state = SDP_STATE_TX_REGISTER;
-		printf("Reading %d registers at 0x%08x... ",
-		       sdp->dnl_bytes_remaining, sdp->dnl_address);
+		debug("Reading %d registers at 0x%08x... ",
+		      sdp->dnl_bytes_remaining, sdp->dnl_address);
 		break;
 	case SDP_WRITE_FILE:
 		sdp->always_send_status = true;
@@ -330,8 +330,8 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
 		sdp->dnl_bytes = sdp->dnl_bytes_remaining;
 		sdp->next_state = SDP_STATE_IDLE;
 
-		printf("Downloading file of size %d to 0x%08x... ",
-		       sdp->dnl_bytes_remaining, sdp->dnl_address);
+		debug("Downloading file of size %d to 0x%08x... ",
+		      sdp->dnl_bytes_remaining, sdp->dnl_address);
 
 		break;
 	case SDP_ERROR_STATUS:
@@ -412,7 +412,7 @@ static void sdp_rx_data_complete(struct usb_ep *ep, struct usb_request *req)
 #ifndef CONFIG_SPL_BUILD
 	env_set_hex("filesize", sdp->dnl_bytes);
 #endif
-	printf("done\n");
+	debug("done\n");
 
 	switch (sdp->state) {
 	case SDP_STATE_RX_FILE_DATA_BUSY:
@@ -703,7 +703,7 @@ static int sdp_bind_config(struct usb_configuration *c)
 
 int sdp_init(int controller_index)
 {
-	printf("SDP: initialize...\n");
+	debug("SDP: initialize...\n");
 	while (!sdp_func->configuration_done) {
 		if (ctrlc()) {
 			puts("\rCTRL+C - Operation aborted.\n");
@@ -723,11 +723,11 @@ static u32 sdp_jump_imxheader(void *address)
 	ulong (*entry)(void);
 
 	if (headerv2->header.tag != IVT_HEADER_TAG) {
-		printf("Header Tag is not an IMX image\n");
+		debug("Header Tag is not an IMX image\n");
 		return SDP_ERROR_IMXHEADER;
 	}
 
-	printf("Jumping to 0x%08x\n", headerv2->entry);
+	debug("Jumping to 0x%08x\n", headerv2->entry);
 	entry = sdp_ptr(headerv2->entry);
 	entry();
 
@@ -818,7 +818,7 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image)
 		sdp_func->state = SDP_STATE_TX_REGISTER_BUSY;
 		break;
 	case SDP_STATE_JUMP:
-		printf("Jumping to header at 0x%08x\n", sdp_func->jmp_address);
+		debug("Jumping to header at 0x%08x\n", sdp_func->jmp_address);
 		status = sdp_jump_imxheader(sdp_ptr(sdp_func->jmp_address));
 
 		/* If imx header fails, try some U-Boot specific headers */
