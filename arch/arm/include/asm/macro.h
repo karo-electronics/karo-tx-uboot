@@ -59,10 +59,12 @@
 .endm
 
 #ifdef CONFIG_ARM64
+#if __GNUC__ < 7
 /*
  * Register aliases.
  */
 lr	.req	x30
+#endif
 
 /*
  * Branch according to exception level
