@@ -38,16 +38,8 @@ u32 get_imx_reset_cause(void)
 {
 	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
 
-	if (reset_cause == -1) {
+	if (reset_cause == -1)
 		reset_cause = readl(&src_regs->srsr);
-/* preserve the value for U-Boot proper */
-#if !defined(CONFIG_SPL_BUILD) && !defined(CONFIG_ANDROID_BOOT_IMAGE)
-		/* We will read the ssrs states later for android so we don't
-		 * clear the states here.
-		 */
-		writel(reset_cause, &src_regs->srsr);
-#endif
-	}
 
 	return reset_cause;
 }
