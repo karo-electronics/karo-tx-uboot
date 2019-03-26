@@ -8,6 +8,7 @@
 
 #include <bootm.h>
 #include <common.h>
+#include <fsl_wdog.h>
 #include <netdev.h>
 #include <linux/errno.h>
 #include <asm/io.h>
@@ -54,45 +55,48 @@ u32 get_imx_reset_cause(void)
 #if defined(CONFIG_DISPLAY_CPUINFO) && !defined(CONFIG_SPL_BUILD)
 static char *get_reset_cause(void)
 {
-	switch (get_imx_reset_cause()) {
-	case 0x00001:
-	case 0x00011:
+	struct watchdog_regs *wdog = (struct watchdog_regs *)WDOG1_BASE_ADDR;
+	u16 wrsr = readw(&wdog->wrsr);
+	u32 cause = get_imx_reset_cause();
+
+debug("%s@%d: reset cause=%08x\n", __func__, __LINE__, cause);
+	if (cause == 1)
 		return "POR";
-	case 0x00004:
+	if (cause & 0x00004)
 		return "CSU";
-	case 0x00008:
+	if (cause & 0x00008)
 		return "IPP USER";
-	case 0x00010:
+	if (cause & 0x00010)
+		if (wrsr & WRSR_SFTW)
+			return "SOFT";
 #ifdef	CONFIG_MX7
 		return "WDOG1";
 #else
 		return "WDOG";
 #endif
-	case 0x00020:
+	if (cause & 0x00020)
 		return "JTAG HIGH-Z";
-	case 0x00040:
+	if (cause & 0x00040)
 		return "JTAG SW";
-	case 0x00080:
+	if (cause & 0x00080)
 		return "WDOG3";
 #ifdef CONFIG_MX7
-	case 0x00100:
+	if (cause & 0x00100)
 		return "WDOG4";
-	case 0x00200:
+	if (cause & 0x00200)
 		return "TEMPSENSE";
 #elif defined(CONFIG_IMX8M)
-	case 0x00100:
+	if (cause & 0x00100)
 		return "WDOG2";
-	case 0x00200:
+	if (cause & 0x00200)
 		return "TEMPSENSE";
 #else
-	case 0x00100:
+	if (cause & 0x00100)
 		return "TEMPSENSE";
-	case 0x10000:
+	if (cause & 0x10000)
 		return "WARM BOOT";
 #endif
-	default:
-		return "unknown reset";
-	}
+	return "unknown reset";
 }
 
 #ifdef CONFIG_ANDROID_BOOT_IMAGE
@@ -100,7 +104,7 @@ void get_reboot_reason(char *ret)
 {
 	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
 
-	strcpy(ret, (const char *)get_reset_cause());
+	strcpy(ret, get_reset_cause());
 	/* clear the srsr here, its state has been recorded in reset_cause */
 	writel(reset_cause, &src_regs->srsr);
 }
