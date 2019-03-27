@@ -347,7 +347,7 @@ const char *bootdelay_process(void)
 		printf("Boot from USB for uuu\n");
 		env_set("bootcmd", "fastboot 0");
 	} else {
-		printf("Normal Boot\n");
+		debug("Normal Boot\n");
 	}
 #endif
 
