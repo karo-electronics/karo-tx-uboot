@@ -28,8 +28,8 @@ static int rn5t567_setup_regs(uchar slave_addr, struct pmic_regs *r,
 	int i;
 
 	for (i = 0; i < count; i++, r++) {
-#ifdef DEBUG
 		unsigned char value;
+		unsigned char newval;
 
 		ret = i2c_read(slave_addr, r->addr, 1, &value, 1);
 		if (ret) {
@@ -37,12 +37,14 @@ static int rn5t567_setup_regs(uchar slave_addr, struct pmic_regs *r,
 				__func__, r->addr, ret);
 			return ret;
 		}
-		if ((value & ~r->mask) != r->val) {
+		newval = (value & ~r->mask) | r->val;
+#ifdef DEBUG
+		if (value != newval) {
 			printf("Changing PMIC reg %02x from %02x to %02x\n",
-				r->addr, value, r->val);
+			       r->addr, value, newval);
 		}
 #endif
-		ret = i2c_write(slave_addr, r->addr, 1, &r->val, 1);
+		ret = i2c_write(slave_addr, r->addr, 1, &newval, 1);
 		if (ret) {
 			printf("%s: failed to write PMIC register %02x: %d\n",
 				__func__, r->addr, ret);
@@ -55,9 +57,9 @@ static int rn5t567_setup_regs(uchar slave_addr, struct pmic_regs *r,
 				__func__, r->addr, ret);
 			return ret;
 		}
-		if (value != r->val) {
+		if (value != newval) {
 			printf("Failed to set PMIC reg %02x to %02x; actual value: %02x\n",
-				r->addr, r->val, value);
+				r->addr, newval, value);
 		}
 #endif
 	}

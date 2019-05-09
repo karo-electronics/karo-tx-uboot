@@ -15,7 +15,24 @@
  *
  */
 
+#define RN5T567_SLPCNT		0x0e
+#define RN5T567_REPCNT		0x0f
+#define RN5T567_PWRONTIMSET	0x10
 #define RN5T567_NOETIMSET	0x11
+#define RN5T567_PWRIRSEL	0x15
+#define RN5T567_DC1_SLOT	0x16
+#define RN5T567_DC2_SLOT	0x17
+#define RN5T567_DC3_SLOT	0x18
+#define RN5T567_DC4_SLOT	0x19
+#define RN5T567_LDO1_SLOT	0x1b
+#define RN5T567_LDO2_SLOT	0x1c
+#define RN5T567_LDO3_SLOT	0x1d
+#define RN5T567_LDO4_SLOT	0x1e
+#define RN5T567_LDO5_SLOT	0x1f
+#define RN5T567_PSO0_SLOT	0x25
+#define RN5T567_PSO1_SLOT	0x26
+#define RN5T567_PSO2_SLOT	0x27
+#define RN5T567_PSO3_SLOT	0x28
 #define RN5T567_LDORTC1_SLOT	0x2a
 #define RN5T567_DC1CTL		0x2c
 #define RN5T567_DC1CTL2		0x2d
@@ -33,7 +50,9 @@
 #define RN5T567_DC2DAC_SLP	0x3c
 #define RN5T567_DC3DAC_SLP	0x3d
 #define RN5T567_DC4DAC_SLP	0x3e
-#define RN5T567_IREN		0x40
+#define RN5T567_DCIREN		0x40
+#define RN5T567_DCIRQ		0x41
+#define RN5T567_DCIRMON		0x42
 #define RN5T567_LDOEN1		0x44
 #define RN5T567_LDOEN2		0x45
 #define RN5T567_LDODIS		0x46
@@ -43,6 +62,7 @@
 #define RN5T567_LDO4DAC		0x4f
 #define RN5T567_LDO5DAC		0x50
 #define RN5T567_LDORTC1DAC	0x56 /* VBACKUP */
+#define RN5T567_LDORTC2DAC	0x57
 #define RN5T567_LDO1DAC_SLP	0x58
 #define RN5T567_LDO2DAC_SLP	0x59
 #define RN5T567_LDO3DAC_SLP	0x5a
@@ -57,13 +77,25 @@
 
 #define NOETIMSET_DIS_OFF_NOE_TIM	(1 << 3)
 
-#define DCnCTL_DCnEN		(1 << 0)
-#define DCnCTL_DCnDIS		(1 << 1)
+#define DCnCTL_EN		(1 << 0)
+#define DCnCTL_DIS		(1 << 1)
 #define DCnMODE(m)		(((m) & 0x3) << 4)
 #define DCnMODE_SLP(m)		(((m) & 0x3) << 6)
-#define DCnMODE_AUTO		0
-#define DCnMODE_PWM		1
-#define DCnMODE_PSM		2
+#define MODE_AUTO		0
+#define MODE_PWM		1
+#define MODE_PSM		2
+
+#define DCnCTL2_LIMSDEN		(1 << 0)
+#define DCnCTL2_LIM_NONE	(0 << 1)
+#define DCnCTL2_LIM_LOW		(1 << 1)
+#define DCnCTL2_LIM_MED		(2 << 1)
+#define DCnCTL2_LIM_HIGH	(3 << 1)
+#define DCnCTL2_SR_LOW		(2 << 4)
+#define DCnCTL2_SR_MED		(1 << 4)
+#define DCnCTL2_SR_HIGH		(0 << 4)
+#define DCnCTL2_OSC_LOW		(0 << 6)
+#define DCnCTL2_OSC_MED		(1 << 6)
+#define DCnCTL2_OSC_HIGH	(2 << 6)
 
 /* calculate voltages in 10mV */
 #define rn5t_v2r(v,n,m)			DIV_ROUND(((((v) * 10 < (n)) ? (n) : (v) * 10) - (n)), m)
