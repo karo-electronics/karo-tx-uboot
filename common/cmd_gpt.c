@@ -141,7 +141,6 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	char *val, *p;
 	int p_count;
 	disk_partition_t *parts;
-	char *guid_str;
 	int errno = 0;
 	uint64_t size_ll, start_ll;
 
@@ -259,7 +258,6 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 		}
 	}
 
-	*str_disk_guid = guid_str;
 	*parts_count = p_count;
 	*partitions = parts;
 	free(str);
@@ -267,10 +265,8 @@ static int set_gpt_info(block_dev_desc_t *dev_desc,
 	return 0;
 
 err:
+	free(*str_disk_guid);
 	free(parts);
-free_guid:
-	free(guid_str);
-free_str:
 	free(str);
 
 	*str_disk_guid = NULL;
