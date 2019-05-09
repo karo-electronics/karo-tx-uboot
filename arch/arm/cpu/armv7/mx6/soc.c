@@ -116,6 +116,20 @@ u32 get_cpu_rev(void)
 			type = MXC_CPU_MX6DP;
 	}
 	reg &= 0xff;		/* mx6 silicon revision */
+	if (type == MXC_CPU_MX6Q) {
+		switch (reg) {
+		case 0x02:
+			break;
+		case 0x05:
+			reg = 0x03;
+			break;
+		case 0x06:
+			reg = 0x06;
+			break;
+		default:
+			printf("Unknown CPU Rev.: 0x%02x\n", reg);
+		}
+	}
 	return (type << 12) | (reg + (0x10 * (major + 1)));
 }
 
@@ -583,8 +597,6 @@ __weak void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 		mac[5] = mac1 >> 16;
 	}
 }
-
-//void imx_get_mac_from_fuse(int dev_id, unsigned char *mac) __attribute__((weak("__imx_get_mac_from_fuse")));
 #endif
 
 void boot_mode_apply(unsigned cfg_val)
