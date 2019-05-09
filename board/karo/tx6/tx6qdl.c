@@ -1296,10 +1296,13 @@ void lcd_ctrl_init(void *lcdbase)
 		panel_info.vl_bpix = LCD_COLOR32;
 	}
 
-	p->pixclock = KHZ2PICOS(refresh *
-		(p->xres + p->left_margin + p->right_margin + p->hsync_len) *
-		(p->yres + p->upper_margin + p->lower_margin + p->vsync_len) /
-				1000);
+	if (refresh_set || p->pixclock == 0)
+		p->pixclock = KHZ2PICOS(refresh *
+					(p->xres + p->left_margin +
+					 p->right_margin + p->hsync_len) *
+					(p->yres + p->upper_margin +
+					 p->lower_margin + p->vsync_len) /
+					1000);
 	debug("Pixel clock set to %lu.%03lu MHz\n",
 	      PICOS2KHZ(p->pixclock) / 1000, PICOS2KHZ(p->pixclock) % 1000);
 
