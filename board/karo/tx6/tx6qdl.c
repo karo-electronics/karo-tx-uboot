@@ -809,7 +809,10 @@ enum {
 	LED_STATE_INIT = -1,
 	LED_STATE_OFF,
 	LED_STATE_ON,
+	LED_STATE_DISABLED,
 };
+
+static int led_state = LED_STATE_INIT;
 
 static inline int calc_blink_rate(void)
 {
@@ -823,16 +826,20 @@ static inline int calc_blink_rate(void)
 
 void show_activity(int arg)
 {
-	static int led_state = LED_STATE_INIT;
 	static int blink_rate;
 	static ulong last;
+	int ret;
 
 	if (led_state == LED_STATE_INIT) {
 		last = get_timer(0);
-		gpio_set_value(TX6_LED_GPIO, 1);
+		ret = gpio_set_value(TX6_LED_GPIO, 1);
+		if (ret) {
+			led_state = LED_STATE_DISABLED;
+			return;
+		}
 		led_state = LED_STATE_ON;
 		blink_rate = calc_blink_rate();
-	} else {
+	} else if (led_state != LED_STATE_DISABLED) {
 		if (get_timer(last) > blink_rate) {
 			blink_rate = calc_blink_rate();
 			last = get_timer_masked();
@@ -1402,6 +1409,7 @@ static void stk5_board_init(void)
 		printf("Failed to request stk5_gpios: %d\n", ret);
 		return;
 	}
+	led_state = LED_STATE_INIT;
 	imx_iomux_v3_setup_multiple_pads(stk5_pads, ARRAY_SIZE(stk5_pads));
 }
 
