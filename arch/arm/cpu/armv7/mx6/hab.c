@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <fuse.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/arch/clock.h>
@@ -175,12 +176,13 @@ uint8_t hab_engines[ARRAY_SIZE(eng_str)] = {
 
 bool is_hab_enabled(void)
 {
-	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
-	struct fuse_bank *bank = &ocotp->bank[0];
-	struct fuse_bank0_regs *fuse =
-		(struct fuse_bank0_regs *)bank->fuse_regs;
-	uint32_t reg = readl(&fuse->cfg5);
+	uint32_t reg;
 	static int first = 1;
+
+	if (fuse_read(0, 6, &reg)) {
+		printf("Failed to read SECURE_BOOT fuse\n");
+		return 0;
+	}
 
 	if (first) {
 		debug("rvt_base=%p\n", hab_rvt_base());
@@ -253,8 +255,10 @@ int get_hab_status(void)
 		puts("Secure boot disabled\n");
 
 	/* Check HAB status */
+	enable_ocotp_clk(1);
 	config = state = 0; /* ROM code assumes short enums! */
 	ret = hab_rvt_report_status(&config, &state);
+	enable_ocotp_clk(0);
 	printf("HAB Configuration: 0x%02x, HAB State: 0x%02x\n",
 		config, state);
 	if (ret != HAB_SUCCESS) {
@@ -284,6 +288,7 @@ static inline enum hab_status hab_init(void)
 {
 	enum hab_status ret;
 
+	enable_ocotp_clk(1);
 	if (!is_hab_enabled()) {
 		puts("hab fuse not enabled\n");
 		return HAB_FAILURE;
@@ -310,6 +315,7 @@ static inline enum hab_status hab_exit(void)
 		printf("hab exit function failed: %02x\n", ret);
 
 	hab_caam_clock_enable(0);
+	enable_ocotp_clk(0);
 
 	return ret;
 }

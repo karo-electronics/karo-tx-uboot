@@ -138,6 +138,16 @@ static inline int wait_pll_lock(u32 *reg)
 void enable_ocotp_clk(unsigned char enable)
 {
 	u32 reg;
+	static int enabled __attribute__((section(".data")));
+
+	if (enabled < 0) {
+		printf("ERROR: unbalanced enable/disable ocotp_clk\n");
+		hang();
+	}
+	if (enable && enabled++)
+		return;
+	if (!enable && --enabled)
+		return;
 
 	reg = __raw_readl(&imx_ccm->CCGR2);
 	if (enable)
