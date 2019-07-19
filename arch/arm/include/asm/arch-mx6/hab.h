@@ -14,6 +14,39 @@
 #include <asm/arch/sys_proto.h>
 
 int get_hab_status(void);
+/*
+ * IVT header definitions
+ * Security Reference Manual for i.MX 7Dual and 7Solo Applications Processors,
+ * Rev. 0, 03/2017
+ * Section : 6.7.1.1
+ */
+#define IVT_HEADER_MAGIC	0xD1
+#define IVT_TOTAL_LENGTH	0x20
+#define IVT_HEADER_V1		0x40
+#define IVT_HEADER_V2		0x41
+
+struct __packed ivt_header {
+	uint8_t		magic;
+	uint16_t	length;
+	uint8_t		version;
+};
+
+struct ivt {
+	struct ivt_header hdr;	/* IVT header above */
+	uint32_t entry;		/* Absolute address of first instruction */
+	uint32_t reserved1;	/* Reserved should be zero */
+	uint32_t dcd;		/* Absolute address of the image DCD */
+	uint32_t boot;		/* Absolute address of the boot data */
+	uint32_t self;		/* Absolute address of the IVT */
+	uint32_t csf;		/* Absolute address of the CSF */
+	uint32_t reserved2;	/* Reserved should be zero */
+};
+
+struct __packed hab_hdr {
+	u8 tag;			/* Tag field */
+	u8 len[2];		/* Length field in bytes (big-endian) */
+	u8 par;			/* Parameters field */
+};
 
 /* -------- start of HAB API updates ------------*/
 /* The following are taken from HAB4 SIS */
@@ -200,6 +233,11 @@ static inline void **hab_rvt_base(void)
 #define HAB_CID_ROM 0 /**< ROM Caller ID */
 #define HAB_CID_UBOOT 1 /**< UBOOT Caller ID*/
 
+#define HAB_CMD_HDR          0xD4  /* CSF Header */
+#define HAB_CMD_WRT_DAT      0xCC  /* Write Data command tag */
+#define HAB_CMD_CHK_DAT      0xCF  /* Check Data command tag */
+#define HAB_CMD_SET          0xB1  /* Set command tag */
+#define HAB_PAR_MID          0x01  /* MID parameter value */
 /* ----------- end of HAB API updates ------------*/
 
 #define hab_rvt_entry_p						\
@@ -270,7 +308,7 @@ static inline rt hab_rvt_##n(t1 p1, t2 p2, t3 p3, t4 p4)		\
 }
 
 #define HAB_FUNC5(n, rt, t1, t2, t3, t4, t5)				\
-static inline rt hab_rvt_##n(t1 p1, t2 p2, t3 p3, t4 p4, t5 p5)		\
+static inline rt hab_rvt_##n(t1 p1, t2 p2, t3 p3, t4 p4, t5 p5)	\
 {									\
 	if (hab_rvt_base() == NULL)					\
 		return (rt)-1;						\
