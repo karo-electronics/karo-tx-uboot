@@ -76,7 +76,9 @@ void ddr_load_train_firmware(enum fw_type type)
 		tmp32 += ((readw(pr_to32) & 0x0000ffff) << 16);
 
 		if (tmp32 != readl(pr_from32)) {
-			debug("%lx %lx\n", pr_from32, pr_to32);
+			if (error < 256)
+				printf("memory error: %08lx %08lx\n",
+				       pr_from32, pr_to32);
 			error++;
 		}
 		pr_from32 += 4;
@@ -84,11 +86,12 @@ void ddr_load_train_firmware(enum fw_type type)
 		i += 4;
 	}
 	if (error)
-		printf("check ddr_pmu_train_imem code fail=%d\n", error);
+		debug("check ddr_pmu_train_imem code failed with %d errors\n",
+		      error);
 	else
 		debug("check ddr_pmu_train_imem code pass\n");
 
-	debug("check ddr4_pmu_train_dmem code\n");
+	debug("check ddr_pmu_train_dmem code\n");
 	pr_from32 = dmem_start;
 	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * DMEM_OFFSET_ADDR;
 	for (i = 0x0; i < DMEM_LEN;) {
@@ -96,7 +99,9 @@ void ddr_load_train_firmware(enum fw_type type)
 		pr_to32 += 4;
 		tmp32 += ((readw(pr_to32) & 0x0000ffff) << 16);
 		if (tmp32 != readl(pr_from32)) {
-			debug("%lx %lx\n", pr_from32, pr_to32);
+			if (error < 256)
+				printf("memory error: %08lx %08lx\n",
+				       pr_from32, pr_to32);
 			error++;
 		}
 		pr_from32 += 4;
@@ -105,7 +110,8 @@ void ddr_load_train_firmware(enum fw_type type)
 	}
 
 	if (error)
-		printf("check ddr_pmu_train_dmem code fail=%d", error);
+		printf("check ddr_pmu_train_dmem code failed with %d errors",
+		       error);
 	else
 		debug("check ddr_pmu_train_dmem code pass\n");
 }
