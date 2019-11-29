@@ -835,7 +835,7 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image)
 				panic("Error in search header, failed to jump\n");
 			}
 
-			printf("Found header at 0x%08x\n", sdp_func->jmp_address);
+			debug("Found header at 0x%08x\n", sdp_func->jmp_address);
 
 			image_header_t *header =
 				sdp_ptr(sdp_func->jmp_address);
