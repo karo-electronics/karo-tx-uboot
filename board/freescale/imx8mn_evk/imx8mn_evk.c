@@ -313,6 +313,40 @@ int board_ehci_usb_phy_mode(struct udevice *dev)
 
 #endif
 
+enum env_location env_get_location(enum env_operation op, int prio)
+{
+	enum boot_device dev = get_boot_device();
+
+	if (prio)
+		return ENVL_UNKNOWN;
+
+	switch (dev) {
+	case QSPI_BOOT:
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_SPI_FLASH))
+			return ENVL_SPI_FLASH;
+		return ENVL_NOWHERE;
+	case NAND_BOOT:
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_NAND))
+			return ENVL_NAND;
+		return ENVL_NOWHERE;
+	case SD1_BOOT:
+	case SD2_BOOT:
+	case SD3_BOOT:
+	case MMC1_BOOT:
+	case MMC2_BOOT:
+	case MMC3_BOOT:
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_MMC))
+			return ENVL_MMC;
+		else if (IS_ENABLED(CONFIG_ENV_IS_IN_EXT4))
+			return ENVL_EXT4;
+		else if (IS_ENABLED(CONFIG_ENV_IS_IN_FAT))
+			return ENVL_FAT;
+		return ENVL_NOWHERE;
+	default:
+		return ENVL_NOWHERE;
+	}
+}
+
 #define DISPMIX				9
 #define MIPI				10
 
