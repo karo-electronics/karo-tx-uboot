@@ -1397,7 +1397,7 @@ static int eqos_start(struct udevice *dev)
 		struct eqos_desc *rx_desc = &(eqos->rx_descs[i]);
 		rx_desc->des0 = (u32)(ulong)(eqos->rx_dma_buf +
 					     (i * EQOS_MAX_PACKET_SIZE));
-		rx_desc->des3 |= EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
+		rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
 		mb();
 		eqos->config->ops->eqos_flush_desc(rx_desc);
 	}
@@ -1551,7 +1551,7 @@ static int eqos_recv(struct udevice *dev, int flags, uchar **packetp)
 	}
 	dmabuf = eqos->rx_dma_buf + eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE;
 	length = rx_desc->des3 & 0x7fff;
-	rx_desc->des3 |= EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
+	rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
 	eqos->config->ops->eqos_flush_desc(rx_desc);
 
 	writel((ulong)rx_desc, &eqos->dma_regs->ch0_rxdesc_tail_pointer);
