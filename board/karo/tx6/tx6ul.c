@@ -418,10 +418,15 @@ static bool tx6ul_temp_check_enabled = true;
 #define tx6ul_temp_check_enabled	0
 #endif
 
+#ifndef CONFIG_SYS_NAND_BLOCKS
+#define CONFIG_SYS_NAND_BLOCKS 0
+#endif
+
 static inline u8 tx6ul_mem_suffix(void)
 {
 	return '0' + CONFIG_SYS_SDRAM_CHIP_SIZE / 1024 * 2 +
-		IS_ENABLED(CONFIG_TX6_EMMC);
+		IS_ENABLED(CONFIG_TX6_EMMC) +
+		CONFIG_SYS_NAND_BLOCKS / 2048 * 4;
 }
 
 #ifdef CONFIG_RN5T567
