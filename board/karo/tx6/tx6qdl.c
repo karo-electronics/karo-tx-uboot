@@ -82,7 +82,7 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 					     PAD_CTL_DSE_40ohm |	\
 					     PAD_CTL_SRE_SLOW)
 
-static const iomux_v3_cfg_t const tx6qdl_pads[] = {
+static const iomux_v3_cfg_t tx6qdl_pads[] = {
 	/* RESET_OUT */
 	MX6_PAD_GPIO_17__GPIO7_IO12 | TX6_DEFAULT_PAD_CTRL,
 
@@ -117,7 +117,7 @@ static const iomux_v3_cfg_t const tx6qdl_pads[] = {
 	MX6_PAD_SD3_DAT4__GPIO7_IO01 | TX6_DEFAULT_PAD_CTRL, /* PHY INT */
 };
 
-static const iomux_v3_cfg_t const tx6qdl_fec_pads[] = {
+static const iomux_v3_cfg_t tx6qdl_fec_pads[] = {
 	/* FEC functions */
 	MX6_PAD_ENET_MDC__ENET_MDC | TX6_FEC_PAD_CTRL,
 	MX6_PAD_ENET_MDIO__ENET_MDIO | TX6_FEC_PAD_CTRL,
@@ -134,7 +134,7 @@ static const iomux_v3_cfg_t const tx6qdl_fec_pads[] = {
 	MX6_PAD_ENET_TXD0__ENET_TX_DATA0 | TX6_FEC_PAD_CTRL,
 };
 
-static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
+static const iomux_v3_cfg_t tx6_i2c_gpio_pads[] = {
 	/* internal I2C */
 	MX6_PAD_EIM_D28__GPIO3_IO28 | MUX_CFG_SION |
 	TX6_GPIO_PAD_CTRL,
@@ -142,13 +142,13 @@ static const iomux_v3_cfg_t const tx6_i2c_gpio_pads[] = {
 	TX6_GPIO_PAD_CTRL,
 };
 
-static const iomux_v3_cfg_t const tx6_i2c_pads[] = {
+static const iomux_v3_cfg_t tx6_i2c_pads[] = {
 	/* internal I2C */
 	MX6_PAD_EIM_D28__I2C1_SDA | TX6_I2C_PAD_CTRL,
 	MX6_PAD_EIM_D21__I2C1_SCL | TX6_I2C_PAD_CTRL,
 };
 
-static const struct gpio const tx6qdl_gpios[] = {
+static const struct gpio tx6qdl_gpios[] = {
 	/* These two entries are used to forcefully reinitialize the I2C bus */
 	{ TX6_I2C1_SCL_GPIO, GPIOFLAG_INPUT, "I2C1 SCL", },
 	{ TX6_I2C1_SDA_GPIO, GPIOFLAG_INPUT, "I2C1 SDA", },

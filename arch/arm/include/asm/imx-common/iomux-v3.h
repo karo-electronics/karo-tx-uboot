@@ -187,7 +187,7 @@ typedef u64 iomux_v3_cfg_t;
 #define GPIO_PORTE		(4 << GPIO_PORT_SHIFT)
 #define GPIO_PORTF		(5 << GPIO_PORT_SHIFT)
 
-void imx_iomux_v3_setup_pad(const iomux_v3_cfg_t const pad);
+void imx_iomux_v3_setup_pad(const iomux_v3_cfg_t pad);
 void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 				     unsigned count);
 /*

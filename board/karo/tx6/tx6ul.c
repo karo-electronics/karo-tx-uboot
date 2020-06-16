@@ -92,7 +92,7 @@ char __csf_data[0] __attribute__((section(".__csf_data")));
 					PAD_CTL_PUS_47K_UP)
 
 
-static const iomux_v3_cfg_t const tx6ul_pads[] = {
+static const iomux_v3_cfg_t tx6ul_pads[] = {
 	/* UART pads */
 #if CONFIG_MXC_UART_BASE == UART1_BASE
 	MX6_PAD_UART1_TX_DATA__UART1_DCE_TX | TX6UL_DEFAULT_PAD_CTRL,
@@ -118,7 +118,7 @@ static const iomux_v3_cfg_t const tx6ul_pads[] = {
 	MX6_PAD_SNVS_TAMPER5__GPIO5_IO05 | TX6UL_GPIO_IN_PAD_CTRL, /* PHY INT */
 };
 
-static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
+static const iomux_v3_cfg_t tx6ul_enet1_pads[] = {
 	/* FEC functions */
 	MX6_PAD_GPIO1_IO07__ENET1_MDC | MUX_PAD_CTRL(PAD_CTL_DSE_120ohm |
 						     PAD_CTL_SPEED_LOW),
@@ -138,7 +138,7 @@ static const iomux_v3_cfg_t const tx6ul_enet1_pads[] = {
 	MX6_PAD_ENET1_TX_DATA0__ENET1_TDATA00 | TX6UL_ENET_PAD_CTRL,
 };
 
-static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
+static const iomux_v3_cfg_t tx6ul_enet2_pads[] = {
 	MX6_PAD_ENET2_TX_CLK__ENET2_REF_CLK2 | MUX_PAD_CTRL(PAD_CTL_SPEED_LOW |
 							    PAD_CTL_DSE_80ohm |
 							    PAD_CTL_SRE_SLOW),
@@ -151,7 +151,7 @@ static const iomux_v3_cfg_t const tx6ul_enet2_pads[] = {
 	MX6_PAD_ENET2_TX_DATA0__ENET2_TDATA00 | TX6UL_ENET_PAD_CTRL,
 };
 
-static const iomux_v3_cfg_t const tx6ul_i2c_pads[] = {
+static const iomux_v3_cfg_t tx6ul_i2c_pads[] = {
 	/* internal I2C */
 	MX6_PAD_SNVS_TAMPER1__GPIO5_IO01 | MUX_CFG_SION |
 			TX6UL_I2C_PAD_CTRL, /* I2C SCL */
@@ -159,7 +159,7 @@ static const iomux_v3_cfg_t const tx6ul_i2c_pads[] = {
 			TX6UL_I2C_PAD_CTRL, /* I2C SDA */
 };
 
-static const struct gpio const tx6ul_gpios[] = {
+static const struct gpio tx6ul_gpios[] = {
 #ifdef CONFIG_SYS_I2C_SOFT
 	/* These two entries are used to forcefully reinitialize the I2C bus */
 	{ TX6UL_I2C1_SCL_GPIO, GPIOFLAG_INPUT, "I2C1 SCL", },
@@ -170,7 +170,7 @@ static const struct gpio const tx6ul_gpios[] = {
 	{ TX6UL_FEC_INT_GPIO, GPIOFLAG_INPUT, "FEC PHY INT", },
 };
 
-static const struct gpio const tx6ul_fec2_gpios[] = {
+static const struct gpio tx6ul_fec2_gpios[] = {
 	{ TX6UL_FEC2_RST_GPIO, GPIOFLAG_OUTPUT_INIT_LOW, "FEC2 PHY RESET", },
 	{ TX6UL_FEC2_INT_GPIO, GPIOFLAG_INPUT, "FEC2 PHY INT", },
 };

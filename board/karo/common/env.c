@@ -31,7 +31,7 @@ void env_cleanup(void)
 	set_default_env(NULL);
 }
 #else
-static const char const *cleanup_vars[] = {
+static const char * const cleanup_vars[] = {
 	"bootargs",
 	"fileaddr",
 	"filesize",
