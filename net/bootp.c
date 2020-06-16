@@ -863,8 +863,8 @@ static void dhcp_process_options(uchar *popt, struct bootp_hdr *bp)
 			if (dhcp_vendorex_proc(popt))
 				break;
 #endif
-			printf("*** Unhandled DHCP Option in OFFER/ACK:"
-			       " %d\n", *popt);
+			debug("*** Unhandled DHCP Option in OFFER/ACK: %d\n",
+			      *popt);
 			break;
 		}
 		popt += oplen + 2;	/* Process next option */
