@@ -115,6 +115,7 @@
 #define CONFIG_SYS_MALLOC_LEN		SZ_8M
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1	/* Memtest start address */
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_4M)
+#define CONFIG_SYS_BOOTM_LEN		SZ_32M
 
 /*
  * U-Boot general configurations
