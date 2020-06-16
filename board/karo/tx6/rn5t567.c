@@ -37,7 +37,7 @@ static int rn5t567_setup_regs(uchar slave_addr, struct pmic_regs *r,
 				__func__, r->addr, ret);
 			return ret;
 		}
-		newval = (value & ~r->mask) | r->val;
+		newval = (value & r->mask) | r->val;
 #ifdef DEBUG
 		if (value != newval) {
 			printf("Changing PMIC reg %02x from %02x to %02x\n",
