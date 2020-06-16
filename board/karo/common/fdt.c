@@ -722,11 +722,39 @@ out:
 	return ret;
 }
 
+static void karo_fixup_panel_timing(void *fdt, int dest, int src)
+{
+	int prop;
+
+	printf("Copying video timing from %s\n", fdt_get_name(fdt, src, NULL));
+	for (prop = fdt_first_property_offset(fdt, src); prop >= 0;
+	     prop = fdt_next_property_offset(fdt, prop)) {
+		const char *name;
+		int len;
+		int ret;
+		const void *val;
+
+		val = fdt_getprop_by_offset(fdt, prop, &name, &len);
+		if (strcmp(name, "u-boot,panel-name") == 0)
+			continue;
+		debug("setting %s to <0x%08x>\n", name, be32_to_cpup(val));
+		ret = fdt_increase_size(fdt, len);
+		if (ret)
+			printf("Failed to increase FDT size by %u: %s\n", len,
+			       fdt_strerror(ret));
+		ret = fdt_setprop(fdt, dest, name, val, len);
+		if (ret)
+			printf("Failed to set %s property: %s\n", name,
+			       fdt_strerror(ret));
+	}
+}
+
 int karo_fdt_update_fb_mode(void *blob, const char *name,
 			    const char *panel_name)
 {
 	int ret;
 	int off = fdt_path_offset(blob, "display");
+	int dt_node;
 	int panel_off = -1;
 	const char *subnode = "display-timings";
 
@@ -768,31 +796,50 @@ int karo_fdt_update_fb_mode(void *blob, const char *name,
 	if (!panel_name)
 		return ret;
 
-	off = fdt_path_offset(blob, "display/display-timings");
-	off = karo_fdt_find_panel(blob, off, name);
+	dt_node = fdt_path_offset(blob, "display/display-timings");
+	off = karo_fdt_find_panel(blob, dt_node, name);
 	panel_off = fdt_path_offset(blob, panel_name);
 	if (panel_off > 0) {
-		char *pn;
+		int node = fdt_subnode_offset(blob, dt_node, name);
 
-		name = fdt_getprop(blob, off, "u-boot,panel-name",
-				   NULL);
-		if (!name)
-			return 0;
-		pn = strdup(name);
-		if (!pn)
-			return -ENOMEM;
-		debug("%s@%d: Updating 'compatible' property of '%s' from '%s' to '%s'\n",
-		      __func__, __LINE__, fdt_get_name(blob, panel_off, NULL),
-		      (char *)fdt_getprop(blob, panel_off, "compatible", NULL),
-		      pn);
+		if (node < 0) {
+			printf("Warning: No '%s' subnode found in 'display-timings'\n",
+			       name);
+			return -ENOENT;
+		}
+		if (fdt_node_check_compatible(blob, panel_off, "panel-dpi") == 0) {
+			int timing_node = fdt_subnode_offset(blob, panel_off,
+							     "panel-timing");
 
-		ret = fdt_setprop_string(blob, panel_off, "compatible",
-					 pn);
-		if (ret)
-			printf("Failed to set 'compatible' property of node '%s': %s\n",
-			       fdt_get_name(blob, panel_off, NULL),
-			       fdt_strerror(off));
-		free(pn);
+			if (timing_node < 0) {
+				printf("Warning: No 'panel-timing' subnode found\n");
+				return -ENOENT;
+			}
+			karo_fixup_panel_timing(blob, timing_node, node);
+		} else {
+			char *pn;
+
+			name = fdt_getprop(blob, off, "u-boot,panel-name",
+					   NULL);
+			if (!name)
+				return 0;
+
+			pn = strdup(name);
+			if (!pn)
+				return -ENOMEM;
+			debug("%s@%d: Updating 'compatible' property of '%s' from '%s' to '%s'\n",
+			      __func__, __LINE__, fdt_get_name(blob, panel_off, NULL),
+			      (char *)fdt_getprop(blob, panel_off, "compatible", NULL),
+			      pn);
+
+			ret = fdt_setprop_string(blob, panel_off, "compatible",
+						 pn);
+			if (ret)
+				printf("Failed to set 'compatible' property of node '%s': %s\n",
+				       fdt_get_name(blob, panel_off, NULL),
+				       fdt_strerror(off));
+			free(pn);
+		}
 	}
 	return ret;
 }
