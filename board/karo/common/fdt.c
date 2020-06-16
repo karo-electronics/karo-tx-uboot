@@ -418,10 +418,10 @@ void karo_fdt_fixup_flexcan(void *blob, int xcvr_present)
 		debug("Disabling CAN XCVR\n");
 		ret = fdt_find_and_setprop(blob, "reg-can-xcvr", "status",
 					xcvr_status, strlen(xcvr_status) + 1, 1);
-		if (ret == -FDT_ERR_NOTFOUND)
+		if (ret == -FDT_ERR_NOTFOUND || ret == -FDT_ERR_BADPATH)
 			ret = fdt_find_and_setprop(blob, "reg_can_xcvr", "status",
 						   xcvr_status, strlen(xcvr_status) + 1, 1);
-		if (ret != -FDT_ERR_NOTFOUND)
+		if (ret && ret != -FDT_ERR_NOTFOUND && ret != -FDT_ERR_BADPATH)
 			printf("Failed to disable CAN transceiver switch: %s\n",
 				fdt_strerror(ret));
 	}
