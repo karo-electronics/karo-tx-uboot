@@ -508,7 +508,7 @@ static int fdt_init_fb_mode(const void *blob, int off, struct fb_videomode *fb_m
 
 	prop = fdt_getprop(blob, off, "pixelclk-active", NULL);
 	if (prop)
-		fb_mode->sync |= *prop ? 0 : FB_SYNC_CLK_LAT_FALL;
+		fb_mode->sync |= *prop ? FB_SYNC_CLK_LAT_FALL : 0;
 
 	return 0;
 }
