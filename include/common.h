@@ -40,6 +40,11 @@
 #include <vsprintf.h>
 #include <net.h>
 #include <bootstage.h>
+
+#ifdef CONFIG_SHOW_ACTIVITY
+void show_activity(int arg);
+#endif
+
 #endif	/* __ASSEMBLY__ */
 
 /* Pull in stuff for the build system */
