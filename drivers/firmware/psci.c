@@ -21,8 +21,9 @@
 
 #define PSCI_METHOD_HVC 1
 #define PSCI_METHOD_SMC 2
+#define PSCI_METHOD_NONE -1
 
-int __efi_runtime_data psci_method;
+int __efi_runtime_data psci_method = PSCI_METHOD_NONE;
 
 unsigned long __efi_runtime invoke_psci_fn
 		(unsigned long function_id, unsigned long arg0,
