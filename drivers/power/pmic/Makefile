@@ -28,6 +28,7 @@ obj-$(CONFIG_$(SPL_)PMIC_LP873X) += lp873x.o
 obj-$(CONFIG_$(SPL_)PMIC_LP87565) += lp87565.o
 obj-$(CONFIG_PMIC_STPMIC1) += stpmic1.o
 
+obj-$(CONFIG_POWER_BD71837) += pmic_bd71837.o
 obj-$(CONFIG_POWER_LTC3676) += pmic_ltc3676.o
 obj-$(CONFIG_POWER_MAX77696) += pmic_max77696.o
 obj-$(CONFIG_POWER_MAX8998) += pmic_max8998.o

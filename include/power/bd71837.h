@@ -100,4 +100,8 @@ enum {
 #define BD71847_LDO5_RANGE_MASK		0x20
 #define BD71837_LDO7_MASK		0x0f
 
+#ifdef CONFIG_POWER
+int power_bd71837_init(unsigned char bus);
+#endif
+
 #endif
