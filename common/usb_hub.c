@@ -166,8 +166,9 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	int i;
 	struct usb_device *dev;
 	unsigned long pgood_delay = hub->desc.bPwrOn2PwrGood * 2;
+#if CONFIG_IS_ENABLED(ENV_SUPPORT)
 	const char *env;
-
+#endif
 	dev = hub->pusb_dev;
 
 	debug("enabling power on all ports\n");
@@ -191,10 +192,12 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	 * but allow this time to be increased via env variable as some
 	 * devices break the spec and require longer warm-up times
 	 */
+#if CONFIG_IS_ENABLED(ENV_SUPPORT)
 	env = env_get("usb_pgood_delay");
 	if (env)
 		pgood_delay = max(pgood_delay,
 				  simple_strtoul(env, NULL, 0));
+#endif
 	debug("pgood_delay=%ldms\n", pgood_delay);
 
 	/*
