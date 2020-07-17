@@ -757,12 +757,12 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 
 #ifdef CONFIG_OF_LIBFDT
 	/* load the dtb file */
-	u32 fdt_addr = 0;
+	uintptr_t fdt_addr = 0;
 	u32 fdt_size = 0;
 	struct dt_table_header *dt_img = NULL;
 
 	if (is_load_fdt_from_part()) {
-		fdt_addr = (ulong)((ulong)(hdr->kernel_addr) + MAX_KERNEL_LEN);
+		fdt_addr = (uintptr_t)((ulong)(hdr->kernel_addr) + MAX_KERNEL_LEN);
 #ifdef CONFIG_ANDROID_THINGS_SUPPORT
 		if (find_partition_data_by_name("oem_bootloader",
 					avb_out_data, &avb_loadpart)) {
@@ -810,11 +810,11 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		memcpy((void *)fdt_addr, (void *)((ulong)dt_img +
 				be32_to_cpu(dt_entry->dt_offset)), fdt_size);
 	} else {
-		fdt_addr = (ulong)(hdr->second_addr);
+		fdt_addr = (uintptr_t)(hdr->second_addr);
 		fdt_size = (ulong)(hdr->second_size);
 		if (fdt_size && fdt_addr) {
-			memcpy((void *)(ulong)fdt_addr,
-				(void *)(ulong)hdr + hdr->page_size
+			memcpy((void *)fdt_addr,
+				(void *)(uintptr_t)hdr + hdr->page_size
 				+ ALIGN(hdr->kernel_size, hdr->page_size)
 				+ ALIGN(hdr->ramdisk_size, hdr->page_size),
 				fdt_size);
@@ -832,7 +832,7 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	printf("ramdisk  @ %08x (%d)\n", hdr->ramdisk_addr, hdr->ramdisk_size);
 #ifdef CONFIG_OF_LIBFDT
 	if (fdt_size)
-		printf("fdt      @ %08x (%d)\n", fdt_addr, fdt_size);
+		printf("fdt      @ %08lx (%d)\n", fdt_addr, fdt_size);
 #endif /*CONFIG_OF_LIBFDT*/
 
 	char boot_addr_start[12];
@@ -846,8 +846,8 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		boot_args[0] = "bootm";
 
 	sprintf(boot_addr_start, "0x%lx", addr);
-	sprintf(ramdisk_addr, "0x%x:0x%x", hdr->ramdisk_addr, hdr->ramdisk_size);
-	sprintf(fdt_addr_start, "0x%x", fdt_addr);
+	sprintf(ramdisk_addr, "0x%x:0x%08x", hdr->ramdisk_addr, hdr->ramdisk_size);
+	sprintf(fdt_addr_start, "0x%lx", fdt_addr);
 
 /* when CONFIG_SYSTEM_RAMDISK_SUPPORT is enabled and it's for Android Auto, if it's not recovery mode
  * do not pass ramdisk addr*/
