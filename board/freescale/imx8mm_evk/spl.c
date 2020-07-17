@@ -195,24 +195,24 @@ int power_init_board(void)
 
 
 	/* decrease RESET key long push time from the default 10s to 10ms */
-	pmic_reg_write(p, BD71837_PWRONCONFIG1, 0x0);
+	pmic_reg_write(p, BD718XX_PWRONCONFIG1, 0x0);
 
 	/* unlock the PMIC regs */
-	pmic_reg_write(p, BD71837_REGLOCK, 0x1);
+	pmic_reg_write(p, BD718XX_REGLOCK, 0x1);
 
 	/* increase VDD_SOC to typical value 0.85v before first DRAM access */
-	pmic_reg_write(p, BD71837_BUCK1_VOLT_RUN, 0x0f);
+	pmic_reg_write(p, BD718XX_BUCK1_VOLT_RUN, 0x0f);
 
 	/* increase VDD_DRAM to 0.975v for 3Ghz DDR */
-	pmic_reg_write(p, BD71837_BUCK5_VOLT, 0x83);
+	pmic_reg_write(p, BD718XX_1ST_NODVS_BUCK_VOLT, 0x83);
 
 #ifndef CONFIG_IMX8M_LPDDR4
 	/* increase NVCC_DRAM_1V2 to 1.2v for DDR4 */
-	pmic_reg_write(p, BD71837_BUCK8_VOLT, 0x28);
+	pmic_reg_write(p, BD718XX_BUCK8_VOLT, 0x28);
 #endif
 
 	/* lock the PMIC regs */
-	pmic_reg_write(p, BD71837_REGLOCK, 0x11);
+	pmic_reg_write(p, BD718XX_REGLOCK, 0x11);
 
 	return 0;
 }
