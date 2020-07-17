@@ -44,7 +44,6 @@
 
 #ifdef CONFIG_NET
 #define NET_CALLBACKS \
-	"bootfile:bootfile," \
 	"ipaddr:ipaddr," \
 	"gatewayip:gatewayip," \
 	"netmask:netmask," \
