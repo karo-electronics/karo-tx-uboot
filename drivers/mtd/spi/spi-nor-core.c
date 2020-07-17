@@ -56,7 +56,7 @@ static int spi_nor_read_reg(struct spi_nor *nor, u8 code, u8 *val, int len)
 
 	ret = spi_nor_read_write_reg(nor, &op, val);
 	if (ret < 0)
-		dev_dbg(&flash->spimem->spi->dev, "error %d reading %x\n", ret,
+		dev_dbg(nor->dev, "error %d reading %x\n", ret,
 			code);
 
 	return ret;
@@ -2611,7 +2611,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	}
 
 	if (nor->addr_width > SPI_NOR_MAX_ADDR_WIDTH) {
-		dev_dbg(dev, "address width is too large: %u\n",
+		dev_dbg(nor->dev, "address width is too large: %u\n",
 			nor->addr_width);
 		return -EINVAL;
 	}
