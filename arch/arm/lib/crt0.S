@@ -130,6 +130,10 @@ ENTRY(_main)
 	ldr	r9, [r9, #GD_BD]		/* r9 = gd->bd */
 	sub	r9, r9, #GD_SIZE		/* new GD is below bd */
 
+	blx	check_rel_dyn
+	cmp	r0, #0
+	bne	hang
+
 	adr	lr, here
 	ldr	r0, [r9, #GD_RELOC_OFF]		/* r0 = gd->reloc_off */
 	add	lr, lr, r0
