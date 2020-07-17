@@ -571,6 +571,10 @@ static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
 static void do_exit_on_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	g_dnl_trigger_detach();
+	if (env_get(".bootcmd")) {
+		env_set("bootcmd", env_get(".bootcmd"));
+		env_set(".bootcmd", NULL);
+	}
 }
 
 static void do_bootm_on_complete(struct usb_ep *ep, struct usb_request *req)

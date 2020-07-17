@@ -345,6 +345,9 @@ const char *bootdelay_process(void)
 		env_set_default("Use default environment for mfgtools\n", 0);
 	} else if (is_boot_from_usb() && IS_ENABLED(CONFIG_CMD_FASTBOOT)) {
 		printf("Boot from USB for uuu\n");
+		bootdelay = 0;
+		/* save bootcmd for later restore on fastboot exit */
+		env_set(".bootcmd", env_get("bootcmd"));
 		env_set("bootcmd", "fastboot 0");
 	} else {
 		debug("Normal Boot\n");
