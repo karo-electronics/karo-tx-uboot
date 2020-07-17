@@ -398,7 +398,7 @@ static int __maybe_unused pinctrl_post_bind(struct udevice *dev)
 	const struct pinctrl_ops *ops = pinctrl_get_ops(dev);
 
 	if (!ops) {
-		dev_dbg(dev, "ops is not set.  Do not bind.\n");
+		dev_err(dev, "ops is not set.  Do not bind.\n");
 		return -EINVAL;
 	}
 
