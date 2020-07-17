@@ -24,7 +24,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int spl_board_boot_device(enum boot_device boot_dev_spl)
+enum boot_device spl_board_boot_device(enum boot_device boot_dev_spl)
 {
 	switch (boot_dev_spl) {
 	case SD2_BOOT:

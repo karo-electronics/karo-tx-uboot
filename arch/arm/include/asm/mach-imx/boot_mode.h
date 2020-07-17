@@ -47,5 +47,6 @@ struct boot_mode {
 
 void add_board_boot_modes(const struct boot_mode *p);
 void boot_mode_apply(unsigned cfg_val);
+enum boot_device spl_board_boot_device(enum boot_device boot_device);
 extern const struct boot_mode soc_boot_modes[];
 #endif
