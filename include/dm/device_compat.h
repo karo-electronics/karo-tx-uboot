@@ -38,6 +38,7 @@
  */
 #define dev_printk(dev, fmt, ...)				\
 ({								\
+	printk("%s: ", dev_read_name(dev));			\
 	printk(fmt, ##__VA_ARGS__);				\
 })
 

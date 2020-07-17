@@ -224,8 +224,8 @@ EXPORT_SYMBOL_GPL(usb_add_gadget_udc);
 
 static void usb_gadget_remove_driver(struct usb_udc *udc)
 {
-	dev_dbg(&udc->dev, "unregistering UDC driver [%s]\n",
-			udc->driver->function);
+	dev_dbg(NULL, "unregistering UDC driver [%s]\n",
+		udc->driver->function);
 
 	usb_gadget_disconnect(udc->gadget);
 	udc->driver->disconnect(udc->gadget);
@@ -251,13 +251,13 @@ void usb_del_gadget_udc(struct usb_gadget *gadget)
 		if (udc->gadget == gadget)
 			goto found;
 
-	dev_err(gadget->dev.parent, "gadget not registered.\n");
+	dev_err(NULL, "gadget not registered.\n");
 	mutex_unlock(&udc_lock);
 
 	return;
 
 found:
-	dev_vdbg(gadget->dev.parent, "unregistering gadget\n");
+	dev_vdbg(NULL, "unregistering gadget\n");
 
 	list_del(&udc->list);
 	mutex_unlock(&udc_lock);
@@ -294,8 +294,8 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 {
 	int ret;
 
-	dev_dbg(&udc->dev, "registering UDC driver [%s]\n",
-			driver->function);
+	dev_dbg(NULL, "registering UDC driver [%s]\n",
+		driver->function);
 
 	udc->driver = driver;
 
@@ -314,7 +314,7 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 	return 0;
 err1:
 	if (ret != -EISNAM)
-		dev_err(&udc->dev, "failed to start %s: %d\n",
+		dev_err(NULL, "failed to start %s: %d\n",
 			udc->driver->function, ret);
 	udc->driver = NULL;
 	return ret;
