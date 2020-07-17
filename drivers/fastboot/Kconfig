@@ -115,14 +115,6 @@ config FASTBOOT_LOCK
 	help
 	  This enables the lock support for android flashing command
 
-config FASTBOOT_USB_DEV
-	int "USB controller number"
-	default 0
-	help
-	  Some boards have USB OTG controller other than 0. Define this
-	  option so it can be used in compiled environment (e.g. in
-	  CONFIG_BOOTCOMMAND).
-
 choice
 	prompt "Flash provider for FASTBOOT"
 	depends on FASTBOOT_FLASH && !FSL_FASTBOOT
