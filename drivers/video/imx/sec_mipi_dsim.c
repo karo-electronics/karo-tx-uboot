@@ -891,7 +891,7 @@ static int sec_mipi_dsim_host_attach(struct mipi_dsi_host *host,
 	dsi->format	 = device->format;
 	dsi->mode_flags = device->mode_flags;
 
-	debug("lanes %u, channel %u, format 0x%x, mode_flags 0x%lx\n", dsi->lanes,
+	debug("lanes %u, channel %u, format 0x%x, mode_flags 0x%08lx\n", dsi->lanes,
 		dsi->channel, dsi->format, dsi->mode_flags);
 
 	sec_mipi_dsim_bridge_clk_set(dsi);
@@ -909,12 +909,12 @@ static ssize_t sec_mipi_dsi_host_transfer(struct mipi_dsi_host *host,
 	struct mipi_dsi_packet packet;
 
 #ifdef DEBUG
-	int i = 0;
-	u8 *p = msg->tx_buf;
+	int i;
+	const u8 *p = msg->tx_buf;
 
 	printf("sec_mipi_dsi_host_transfer\n");
-	for (i; i < msg->tx_len; i++) {
-		printf("0x%.2x ", *(u8 *)p);
+	for (i = 0; i < msg->tx_len; i++) {
+		printf("0x%.2x ", *p);
 		p++;
 	}
 	printf("\n");
