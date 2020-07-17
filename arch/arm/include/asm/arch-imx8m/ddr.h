@@ -12,8 +12,8 @@
 
 #define DDRC_DDR_SS_GPR0		0x3d000000
 #define DDRC_IPS_BASE_ADDR_0		0x3f400000
-#define IP2APB_DDRPHY_IPS_BASE_ADDR(X)	(0x3c000000 + (X * 0x2000000))
-#define DDRPHY_MEM(X)			(0x3c000000 + (X * 0x2000000) + 0x50000)
+#define IP2APB_DDRPHY_IPS_BASE_ADDR(X)	(0x3c000000 + ((X) * 0x2000000))
+#define DDRPHY_MEM(X)			(0x3c000000 + ((X) * 0x2000000) + 0x50000)
 
 struct ddrc_freq {
 	u32 res0[8];
