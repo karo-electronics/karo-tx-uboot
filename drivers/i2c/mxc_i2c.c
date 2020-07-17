@@ -474,7 +474,10 @@ static int i2c_write_data(struct mxc_i2c_bus *i2c_bus, u8 chip, const u8 *buf,
 	int i, ret = 0;
 
 	debug("i2c_write_data: chip=0x%x, len=0x%x\n", chip, len);
-	debug("write_data: ");
+	if (!len)
+		return 0;
+
+	debug("write_data:");
 	/* use rc for counter */
 	for (i = 0; i < len; ++i)
 		debug(" 0x%02x", buf[i]);
@@ -518,6 +521,8 @@ static int i2c_read_data(struct mxc_i2c_bus *i2c_bus, uchar chip, uchar *buf,
 	/* dummy read to clear ICF */
 	readb(base + (I2DR << reg_shift));
 
+	if (len)
+		debug("read_data:");
 	/* read data */
 	for (i = 0; i < len; i++) {
 		ret = wait_for_sr_state(i2c_bus, ST_IIF);
@@ -938,7 +943,8 @@ static int mxc_i2c_probe(struct udevice *bus)
 	 */
 	ret = fdt_stringlist_search(fdt, node, "pinctrl-names", "gpio");
 	if (ret < 0) {
-		debug("i2c bus %d at 0x%2lx, no gpio pinctrl state.\n", bus->seq, i2c_bus->base);
+		debug("i2c bus %d at 0x%08lx, no gpio pinctrl state.\n",
+		      bus->seq, i2c_bus->base);
 	} else {
 		ret = gpio_request_by_name_nodev(offset_to_ofnode(node),
 				"scl-gpios", 0, &i2c_bus->scl_gpio,
@@ -949,7 +955,8 @@ static int mxc_i2c_probe(struct udevice *bus)
 		if (!dm_gpio_is_valid(&i2c_bus->sda_gpio) ||
 		    !dm_gpio_is_valid(&i2c_bus->scl_gpio) ||
 		    ret || ret2) {
-			dev_err(bus, "i2c bus %d at %lu, fail to request scl/sda gpio\n", bus->seq, i2c_bus->base);
+			dev_err(bus, "i2c bus %d at %08lx, failed to request scl/sda gpios\n",
+				bus->seq, i2c_bus->base);
 			return -EINVAL;
 		}
 	}
