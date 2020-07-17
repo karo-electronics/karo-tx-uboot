@@ -354,6 +354,7 @@ static int ksz9031_phy_extwrite(struct phy_device *phydev, int addr,
 static int ksz9031_config(struct phy_device *phydev)
 {
 	int ret;
+	unsigned int features = phydev->drv->features;
 
 	ret = ksz9031_of_config(phydev);
 	if (ret)
@@ -364,11 +365,9 @@ static int ksz9031_config(struct phy_device *phydev)
 
 	/* add an option to disable the gigabit feature of this PHY */
 	if (env_get("disable_giga")) {
-		unsigned features;
 		unsigned bmcr;
 
 		/* disable speed 1000 in features supported by the PHY */
-		features = phydev->drv->features;
 		features &= ~(SUPPORTED_1000baseT_Half |
 				SUPPORTED_1000baseT_Full);
 		phydev->advertising = phydev->supported = features;
@@ -386,6 +385,18 @@ static int ksz9031_config(struct phy_device *phydev)
 		genphy_restart_aneg(phydev);
 
 		return 0;
+	} else {
+		/* force master mode for 1000BaseT due to chip errata */
+		uint16_t ctrl1000 = 0;
+		const uint16_t master = CTRL1000_PREFER_MASTER |
+			CTRL1000_CONFIG_MASTER | CTRL1000_MANUAL_CONFIG;
+
+		if (features & SUPPORTED_1000baseT_Half)
+			ctrl1000 |= ADVERTISE_1000HALF | master;
+		if (features & SUPPORTED_1000baseT_Full)
+			ctrl1000 |= ADVERTISE_1000FULL | master;
+
+		phy_write(phydev, MDIO_DEVAD_NONE, MII_CTRL1000, ctrl1000);
 	}
 
 	return genphy_config(phydev);
