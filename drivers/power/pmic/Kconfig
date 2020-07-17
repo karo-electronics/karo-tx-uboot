@@ -71,7 +71,7 @@ config DM_PMIC_BD71837
 
 config SPL_DM_PMIC_BD71837
 	bool "Enable Driver Model for PMIC BD71837 in SPL stage"
-	depends on DM_PMIC
+	depends on DM_PMIC && SPL
 	help
 	  This config enables implementation of driver-model pmic uclass
 	  features for PMIC BD71837. The driver implements read/write
@@ -94,6 +94,13 @@ config DM_PMIC_FAN53555
 config DM_PMIC_PCA9450
 	bool "Enable Driver Model for PMIC PCA9450"
 	depends on DM_PMIC
+	help
+	  This config enables implementation of driver-model pmic uclass features
+	  for PMIC PCA9450. The driver implements read/write operations.
+
+config SPL_DM_PMIC_PCA9450
+	bool "Enable Driver Model for PMIC PCA9450 in SPL stage"
+	depends on DM_PMIC && SPL
 	help
 	  This config enables implementation of driver-model pmic uclass features
 	  for PMIC PCA9450. The driver implements read/write operations.
