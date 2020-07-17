@@ -66,12 +66,14 @@ static void print_mmcinfo(struct mmc *mmc)
 			puts(" WRREL\n");
 		else
 			putc('\n');
+#ifndef CONFIG_SPL_BUILD
 		if (usr_enh) {
 			puts("User Enhanced Start: ");
 			print_size(mmc->enh_user_start, "\n");
 			puts("User Enhanced Size: ");
 			print_size(mmc->enh_user_size, "\n");
 		}
+#endif
 		puts("Boot Capacity: ");
 		print_size(mmc->capacity_boot, has_enh ? " ENH\n" : "\n");
 		puts("RPMB Capacity: ");
