@@ -139,7 +139,7 @@ struct fsl_esdhc_priv {
 	unsigned int clock;
 	unsigned int mode;
 	unsigned int bus_width;
-#if !CONFIG_IS_ENABLED(BLK)
+#if !CONFIG_IS_ENABLED(DM_MMC)
 	struct mmc *mmc;
 #endif
 	struct udevice *dev;
