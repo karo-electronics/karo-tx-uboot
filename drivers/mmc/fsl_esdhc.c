@@ -219,7 +219,7 @@ static int esdhc_setup_data(struct fsl_esdhc_priv *priv, struct mmc *mmc,
 		else
 			esdhc_write32(&regs->dsaddr, lower_32_bits(addr));
 #else
-		esdhc_write32(&regs->dsaddr, (u32)data->dest);
+		esdhc_write32(&regs->dsaddr, (uintptr_t)data->dest);
 #endif
 #endif
 	} else {
@@ -246,7 +246,7 @@ static int esdhc_setup_data(struct fsl_esdhc_priv *priv, struct mmc *mmc,
 		else
 			esdhc_write32(&regs->dsaddr, lower_32_bits(addr));
 #else
-		esdhc_write32(&regs->dsaddr, (u32)data->src);
+		esdhc_write32(&regs->dsaddr, (uintptr_t)data->src);
 #endif
 #endif
 	}
@@ -300,20 +300,21 @@ static int esdhc_setup_data(struct fsl_esdhc_priv *priv, struct mmc *mmc,
 static void check_and_invalidate_dcache_range
 	(struct mmc_cmd *cmd,
 	 struct mmc_data *data) {
-	unsigned start = 0;
-	unsigned end = 0;
-	unsigned size = roundup(ARCH_DMA_MINALIGN,
-				data->blocks*data->blocksize);
+	uintptr_t start;
+	uintptr_t end;
+	size_t size = roundup(ARCH_DMA_MINALIGN,
+			      data->blocks * data->blocksize);
 #if defined(CONFIG_FSL_LAYERSCAPE)
 	dma_addr_t addr;
 
 	addr = virt_to_phys((void *)(data->dest));
-	if (upper_32_bits(addr))
+	if (upper_32_bits(addr)) {
 		printf("Error found for upper 32 bits\n");
-	else
-		start = lower_32_bits(addr);
+		return;
+	}
+	start = lower_32_bits(addr);
 #else
-	start = (unsigned)data->dest;
+	start = (uintptr_t)data->dest;
 #endif
 	end = start + size;
 	invalidate_dcache_range(start, end);
