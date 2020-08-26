@@ -25,7 +25,7 @@ static void show_clks(struct udevice *dev, int depth, int last_flag)
 	if (device_get_uclass_id(dev) == UCLASS_CLK && clkp) {
 		rate = clk_get_rate(clkp);
 
-	printf(" %-12u  %8d        ", rate, clkp->enable_count);
+	printf(" %12u  %8d        ", rate, clkp->enable_count);
 
 	for (i = depth; i >= 0; i--) {
 		is_last = (last_flag >> i) & 1;
