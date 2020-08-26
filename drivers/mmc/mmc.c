@@ -11,6 +11,7 @@
 #include <command.h>
 #include <dm.h>
 #include <dm/device-internal.h>
+#include <dm/device_compat.h>
 #include <errno.h>
 #include <mmc.h>
 #include <part.h>
@@ -2858,7 +2859,11 @@ int mmc_start_init(struct mmc *mmc)
 	if (no_card) {
 		mmc->has_init = 0;
 #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
+#if CONFIG_IS_ENABLED(DM_MMC)
+		dev_err(mmc->dev, "no card present\n");
+#else
 		pr_err("MMC: no card present\n");
+#endif
 #endif
 		return -ENOMEDIUM;
 	}
@@ -2904,7 +2909,8 @@ int mmc_init(struct mmc *mmc)
 
 	if (!mmc->init_in_progress)
 		err = mmc_start_init(mmc);
-
+	if (err == -ENOMEDIUM)
+		return err;
 	if (!err)
 		err = mmc_complete_init(mmc);
 	if (err)
@@ -2967,9 +2973,14 @@ static int mmc_probe(bd_t *bis)
 {
 	int ret, i;
 	struct uclass *uc;
+	struct uclass *ub;
 	struct udevice *dev;
 
 	ret = uclass_get(UCLASS_MMC, &uc);
+	if (ret)
+		return ret;
+
+	ret = uclass_get(UCLASS_BLK, &ub);
 	if (ret)
 		return ret;
 
@@ -2979,14 +2990,40 @@ static int mmc_probe(bd_t *bis)
 	 * So if we request 0, 1, 3 we will get 0, 1, 2.
 	 */
 	for (i = 0; ; i++) {
+		struct udevice *blkdev;
+
 		ret = uclass_get_device_by_seq(UCLASS_MMC, i, &dev);
+
+		if (ret == -ENODEV)
+			debug("mmc%d device not found\n", i);
+		else
+			dev_dbg(dev, "Probing mmc%d %p...\n", i, dev);
 		if (ret == -ENODEV)
 			break;
-	}
-	uclass_foreach_dev(dev, uc) {
 		ret = device_probe(dev);
-		if (ret)
-			pr_err("%s - probe failed: %d\n", dev->name, ret);
+		if (ret) {
+			if (ret != -ENOMEDIUM)
+				dev_err(dev, "probe failed: %d\n", ret);
+			else
+				dev_info(dev, "no medium ");
+			continue;
+		}
+#ifdef CONFIG_BLK
+		for (device_find_first_child(dev, &blkdev); blkdev;
+		     device_find_next_child(&blkdev)) {
+			if (device_get_uclass_id(blkdev) == UCLASS_BLK)
+				break;
+		}
+		if (!blkdev) {
+			dev_err(dev, "mmc%d: no BLK device found\n", i);
+			continue;
+		}
+		ret = device_probe(blkdev);
+		if (ret) {
+			if (ret != -ENOMEDIUM)
+				dev_err(dev, "probe failed: %d\n", ret);
+		}
+#endif
 	}
 
 	return 0;
