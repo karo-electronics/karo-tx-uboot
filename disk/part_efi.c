@@ -12,10 +12,12 @@
 #include <asm/unaligned.h>
 #include <common.h>
 #include <command.h>
+#include <dm/device.h>
 #include <fdtdec.h>
 #include <ide.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <mmc.h>
 #include <part_efi.h>
 #include <linux/compiler.h>
 #include <linux/ctype.h>
@@ -434,6 +436,58 @@ int write_gpt_table(struct blk_desc *dev_desc,
 	return -1;
 }
 
+#if CONFIG_IS_ENABLED(MMC_WRITE)
+static int gpt_align_to_mmc_erasegrp(struct blk_desc *blkdev, gpt_entry *gpt_e)
+{
+	struct mmc *mmc = find_mmc_device(blkdev->devnum);
+
+	if (!mmc) {
+		printf("Failed to find mmc device for blkdev\n");
+		return -ENODEV;
+	}
+	gpt_e->ending_lba -= (gpt_e->ending_lba + 1) % mmc->erase_grp_size;
+	return 0;
+}
+
+static int gpt_check_alignment(struct blk_desc *blkdev,
+			       disk_partition_t *partitions, gpt_entry *gpt_e,
+			       int num_parts)
+{
+	int ret = 0;
+	struct mmc *mmc = find_mmc_device(blkdev->devnum);
+	int i;
+
+	if (!mmc) {
+		printf("Failed to find mmc device for blkdev\n");
+		return -ENODEV;
+	}
+	for (i = 0; i < num_parts; i++) {
+		if (gpt_e[i].starting_lba % mmc->erase_grp_size ||
+		    (gpt_e[i].ending_lba + 1) % mmc->erase_grp_size) {
+			printf("Partition %d (%s) 0x%llx..0x%llx is not aligned to an MMC erase block\n",
+			       i, partitions[i].name, gpt_e[i].starting_lba,
+			       gpt_e[i].ending_lba);
+			ret = -EINVAL;
+		}
+	}
+	return ret;
+}
+#else
+static inline int gpt_check_alignment(struct blk_desc *blkdev,
+				      disk_partition_t *partitions,
+				      gpt_entry *gpt_e,
+				      int num_parts)
+{
+	return 0;
+}
+
+static inline int gpt_align_to_mmc_erasegrp(struct blk_desc *blkdev,
+					    gpt_entry *gpt_e)
+{
+	return 0;
+}
+#endif
+
 int gpt_fill_pte(struct blk_desc *dev_desc,
 		 gpt_header *gpt_h, gpt_entry *gpt_e,
 		 disk_partition_t *partitions, int parts)
@@ -484,15 +538,23 @@ int gpt_fill_pte(struct blk_desc *dev_desc,
 		gpt_e[i].starting_lba = cpu_to_le64(start);
 
 		if (offset > (last_usable_lba + 1)) {
-			printf("Partitions layout exceds disk size\n");
+			printf("Partitions layout exceeds disk size\n");
 			return -1;
 		}
 		/* partition ending lba */
-		if ((i == parts - 1) && (size == 0))
-			/* extend the last partition to maximuim */
+		if ((i == parts - 1) && size == 0) {
+			/* extend the last partition to maximum */
 			gpt_e[i].ending_lba = gpt_h->last_usable_lba;
-		else
+			if (dev_desc->if_type == IF_TYPE_MMC) {
+				int ret = gpt_align_to_mmc_erasegrp(dev_desc,
+								    &gpt_e[i]);
+				if (ret)
+					return ret;
+			}
+			printf("MMC ending LBA=%08llx\n", gpt_e[i].ending_lba);
+		} else {
 			gpt_e[i].ending_lba = cpu_to_le64(offset - 1);
+		}
 
 #ifdef CONFIG_PARTITION_TYPE_GUID
 		str_type_guid = partitions[i].type_guid;
@@ -550,6 +612,8 @@ int gpt_fill_pte(struct blk_desc *dev_desc,
 		      __func__, partitions[i].name, i,
 		      offset, i, size);
 	}
+	if (dev_desc->if_type == IF_TYPE_MMC)
+		return gpt_check_alignment(dev_desc, partitions, gpt_e, parts);
 
 	return 0;
 }
@@ -576,7 +640,7 @@ static uint32_t partition_entries_offset(struct blk_desc *dev_desc)
 
 #if defined(CONFIG_OF_CONTROL)
 	/*
-	 * Allow the offset of the first partition entires (in bytes
+	 * Allow the offset of the first partition entry (in bytes
 	 * from the start of the device) to be specified as a property
 	 * of the device tree '/config' node.
 	 */
