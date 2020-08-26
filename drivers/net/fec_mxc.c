@@ -1304,7 +1304,7 @@ static int device_get_phy_addr(struct udevice *dev)
 
 	if (dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
 				       &phandle_args)) {
-		debug("Failed to find phy-handle");
+		dev_err(dev, "Failed to find phy-handle");
 		return -ENODEV;
 	}
 
@@ -1358,7 +1358,7 @@ static int fecmxc_probe(struct udevice *dev)
 
 #ifdef CONFIG_MX6
 	if (mx6_enet_fused((uint32_t)priv->eth)) {
-		printf("Ethernet@0x%x is fused, disable it\n", (uint32_t)priv->eth);
+		dev_info(dev, "disabled by eFuse\n");
 		return -ENODEV;
 	}
 #endif
@@ -1367,23 +1367,23 @@ static int fecmxc_probe(struct udevice *dev)
 		struct clk clk_2x_txclk;
 		ret = clk_get_by_name(dev, "ipg", &priv->ipg_clk);
 		if (ret < 0) {
-			debug("Can't get FEC ipg clk: %d\n", ret);
+			dev_err(dev, "Can't get FEC ipg clk: %d\n", ret);
 			return ret;
 		}
 		ret = clk_enable(&priv->ipg_clk);
 		if (ret < 0) {
-			debug("Can't enable FEC ipg clk: %d\n", ret);
+			dev_err(dev, "Can't enable FEC ipg clk: %d\n", ret);
 			return ret;
 		}
 
 		ret = clk_get_by_name(dev, "ahb", &priv->ahb_clk);
 		if (ret < 0) {
-			debug("Can't get FEC ahb clk: %d\n", ret);
+			dev_err(dev, "Can't get FEC ahb clk: %d\n", ret);
 			return ret;
 		}
 		ret = clk_enable(&priv->ahb_clk);
 		if (ret < 0) {
-			debug("Can't enable FEC ahb clk: %d\n", ret);
+			dev_err(dev, "Can't enable FEC ahb clk: %d\n", ret);
 			return ret;
 		}
 
@@ -1391,7 +1391,8 @@ static int fecmxc_probe(struct udevice *dev)
 		if (ret >= 0) {
 			ret = clk_enable(&priv->clk_ref);
 			if (ret < 0) {
-				debug("Can't enable FEC ref clk: %d\n", ret);
+				dev_err(dev, "Can't enable FEC ref clk: %d\n",
+					ret);
 				return ret;
 			}
 		}
@@ -1400,7 +1401,9 @@ static int fecmxc_probe(struct udevice *dev)
 		if (ret >= 0) {
 			ret = clk_enable(&clk_2x_txclk);
 			if (ret < 0) {
-				debug("Can't enable FEC 2x_tx clk: %d\n", ret);
+				dev_err(dev,
+					"Can't enable FEC 2x_tx clk: %d\n",
+					ret);
 				return ret;
 			}
 		}
@@ -1409,7 +1412,7 @@ static int fecmxc_probe(struct udevice *dev)
 	} else if (CONFIG_IS_ENABLED(CLK_CCF)) {
 		ret = clk_get_by_name(dev, "ipg", &priv->ipg_clk);
 		if (ret < 0) {
-			debug("Can't get FEC ipg clk: %d\n", ret);
+			dev_err(dev, "Can't get FEC ipg clk: %d\n", ret);
 			return ret;
 		}
 		ret = clk_enable(&priv->ipg_clk);
@@ -1418,7 +1421,7 @@ static int fecmxc_probe(struct udevice *dev)
 
 		ret = clk_get_by_name(dev, "ahb", &priv->ahb_clk);
 		if (ret < 0) {
-			debug("Can't get FEC ahb clk: %d\n", ret);
+			dev_err(dev, "Can't get FEC ahb clk: %d\n", ret);
 			return ret;
 		}
 		ret = clk_enable(&priv->ahb_clk);
@@ -1571,7 +1574,8 @@ static int fecmxc_ofdata_to_platdata(struct udevice *dev)
 	if (phy_mode)
 		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
 	if (pdata->phy_interface == -1) {
-		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
+		dev_err(dev, "%s: Invalid PHY interface '%s'\n", __func__,
+			phy_mode);
 		return -EINVAL;
 	}
 
