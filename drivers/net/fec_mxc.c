@@ -1577,9 +1577,10 @@ static int fecmxc_ofdata_to_platdata(struct udevice *dev)
 #if CONFIG_IS_ENABLED(DM_GPIO)
 	ret = gpio_request_by_name(dev, "phy-reset-gpios", 0,
 				   &priv->phy_reset_gpio, GPIOD_IS_OUT);
-	if (ret < 0)
+	if (ret == -ENOENT)
 		return 0; /* property is optional, don't return error! */
-
+	if (ret < 0)
+		return ret;
 	priv->reset_delay = dev_read_u32_default(dev, "phy-reset-duration", 1);
 	if (priv->reset_delay > 1000) {
 		printf("FEC MXC: phy reset duration should be <= 1000ms\n");
