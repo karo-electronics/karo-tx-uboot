@@ -152,6 +152,7 @@ config BCMGENET
 config DWC_ETH_QOS
 	bool "Synopsys DWC Ethernet QOS device support"
 	depends on DM_ETH
+	select REGMAP if ARCH_STM32MP
 	select PHYLIB
 	help
 	  This driver supports the Synopsys Designware Ethernet QOS (Quality
