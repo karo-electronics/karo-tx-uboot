@@ -953,7 +953,7 @@
 							 <&clk IMX8MP_SYS_PLL2_100M>,
 							 <&clk IMX8MP_SYS_PLL2_125M>;
 				assigned-clock-rates = <0>, <100000000>, <125000000>;
-				intf_mode = <&gpr 0x4>;
+				fsl,intf-mode = <&gpr 0x4 19 0x4 16>;
 				status = "disabled";
 			};
 		};
