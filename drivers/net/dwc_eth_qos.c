@@ -90,18 +90,18 @@ static struct eqos_desc *eqos_get_desc(struct eqos_priv *eqos,
 
 void eqos_inval_desc_generic(void *desc)
 {
-	unsigned long start = (unsigned long)desc & ~(ARCH_DMA_MINALIGN - 1);
-	unsigned long end = ALIGN(start + sizeof(struct eqos_desc),
-				  ARCH_DMA_MINALIGN);
+	unsigned long start = rounddown((unsigned long)desc, ARCH_DMA_MINALIGN);
+	unsigned long end = roundup((unsigned long)desc + sizeof(*desc),
+				    ARCH_DMA_MINALIGN);
 
 	invalidate_dcache_range(start, end);
 }
 
 void eqos_flush_desc_generic(void *desc)
 {
-	unsigned long start = (unsigned long)desc & ~(ARCH_DMA_MINALIGN - 1);
-	unsigned long end = ALIGN(start + sizeof(struct eqos_desc),
-				  ARCH_DMA_MINALIGN);
+	unsigned long start = rounddown((unsigned long)desc, ARCH_DMA_MINALIGN);
+	unsigned long end = roundup((unsigned long)desc + sizeof(*desc),
+				    ARCH_DMA_MINALIGN);
 
 	flush_dcache_range(start, end);
 }
@@ -170,7 +170,7 @@ static int eqos_mdio_read(struct mii_dev *bus, int mdio_addr, int mdio_devad,
 	u32 val;
 	int ret;
 
-	debug("%s(dev=%p, addr=%x, reg=%d):\n", __func__, eqos->dev, mdio_addr,
+	debug("%s(dev=%p, addr=%02x, reg=%02x):\n", __func__, eqos->dev, mdio_addr,
 	      mdio_reg);
 
 	ret = eqos_mdio_wait_idle(eqos);
@@ -204,7 +204,7 @@ static int eqos_mdio_read(struct mii_dev *bus, int mdio_addr, int mdio_devad,
 	val = readl(&eqos->mac_regs->mdio_data);
 	val &= EQOS_MAC_MDIO_DATA_GD_MASK;
 
-	debug("%s: val=%x\n", __func__, val);
+	debug("%s: val=%04x\n", __func__, val);
 
 	return val;
 }
@@ -217,7 +217,7 @@ static int eqos_mdio_write(struct mii_dev *bus, int mdio_addr, int mdio_devad,
 	u32 v_data;
 	int ret;
 
-	debug("%s(dev=%p, addr=%x, reg=%d, val=%x):\n", __func__, eqos->dev,
+	debug("%s(dev=%p, addr=%02x, reg=%02x, val=%04x):\n", __func__, eqos->dev,
 	      mdio_addr, mdio_reg, mdio_val);
 
 	ret = eqos_mdio_wait_idle(eqos);
@@ -1538,7 +1538,7 @@ static const struct eth_ops eqos_ops = {
 	.recv = eqos_recv,
 	.free_pkt = eqos_free_pkt,
 	.write_hwaddr = eqos_write_hwaddr,
-	.read_rom_hwaddr	= eqos_read_rom_hwaddr,
+	.read_rom_hwaddr = eqos_read_rom_hwaddr,
 };
 
 static struct eqos_ops eqos_tegra186_ops = {
