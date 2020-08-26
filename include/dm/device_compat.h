@@ -10,6 +10,7 @@
 #ifndef _DM_DEVICE_COMPAT_H
 #define _DM_DEVICE_COMPAT_H
 
+#include <dm/read.h>
 #include <linux/compat.h>
 
 /*

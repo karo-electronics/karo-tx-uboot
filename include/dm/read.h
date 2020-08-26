@@ -9,6 +9,7 @@
 #ifndef _DM_READ_H
 #define _DM_READ_H
 
+#include <dm/device.h>
 #include <dm/fdtaddr.h>
 #include <dm/ofnode.h>
 #include <dm/uclass.h>
