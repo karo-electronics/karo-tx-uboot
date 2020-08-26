@@ -596,6 +596,7 @@ static int dwc3_gadget_ep_enable(struct usb_ep *ep,
 		const struct usb_endpoint_descriptor *desc)
 {
 	struct dwc3_ep			*dep;
+	struct dwc3			*dwc;
 	unsigned long			flags;
 	int				ret;
 
@@ -616,6 +617,8 @@ static int dwc3_gadget_ep_enable(struct usb_ep *ep,
 				dep->name);
 		return 0;
 	}
+
+	dwc = dep->dwc;
 
 	switch (usb_endpoint_type(desc)) {
 	case USB_ENDPOINT_XFER_CONTROL:
@@ -705,11 +708,12 @@ static void dwc3_prepare_one_trb(struct dwc3_ep *dep,
 		unsigned length, unsigned last, unsigned chain, unsigned node)
 {
 	struct dwc3_trb		*trb;
+	struct dwc3 *dwc = dep->dwc;
 
 	dev_vdbg(dwc->dev, "%s: req %p dma %08llx length %d%s%s\n",
-			dep->name, req, (unsigned long long) dma,
-			length, last ? " last" : "",
-			chain ? " chain" : "");
+		 dep->name, req, (unsigned long long)dma,
+		 length, last ? " last" : "",
+		 chain ? " chain" : "");
 
 
 	trb = &dep->trb_pool[dep->free_slot & DWC3_TRB_MASK];
@@ -1065,9 +1069,8 @@ static int dwc3_gadget_ep_queue(struct usb_ep *ep, struct usb_request *request,
 {
 	struct dwc3_request		*req = to_dwc3_request(request);
 	struct dwc3_ep			*dep = to_dwc3_ep(ep);
-
+	struct dwc3			*dwc = dep->dwc;
 	unsigned long			flags;
-
 	int				ret;
 
 	spin_lock_irqsave(&dwc->lock, flags);
