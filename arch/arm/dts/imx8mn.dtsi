@@ -38,7 +38,6 @@
 		serial3 = &uart4;
 		spi0 = &flexspi;
 		usb0 = &usbotg1;
-		usb1 = &usbotg2;
 		video0 = &lcdif;
 	};
 
@@ -964,28 +963,6 @@
 				#index-cells = <1>;
 				reg = <0x32e40200 0x200>;
 			};
-
-			usbotg2: usb@32e50000 {
-				compatible = "fsl,imx8mn-usb", "fsl,imx7d-usb", "fsl,imx27-usb";
-				reg = <0x32e50000 0x200>;
-				interrupts = <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
-				clocks = <&clk IMX8MN_CLK_USB1_CTRL_ROOT>;
-				clock-names = "usb1_ctrl_root_clk";
-				assigned-clocks = <&clk IMX8MN_CLK_USB_BUS>,
-						  <&clk IMX8MN_CLK_USB_CORE_REF>;
-				assigned-clock-parents = <&clk IMX8MN_SYS_PLL2_500M>,
-							 <&clk IMX8MN_SYS_PLL1_100M>;
-				fsl,usbphy = <&usbphynop2>;
-				fsl,usbmisc = <&usbmisc2 0>;
-				status = "disabled";
-			};
-
-			usbmisc2: usbmisc@32e50200 {
-				compatible = "fsl,imx8mn-usbmisc", "fsl,imx7d-usbmisc";
-				#index-cells = <1>;
-				reg = <0x32e50200 0x200>;
-			};
-
 		};
 
 		dma_apbh: dma-controller@33000000 {
