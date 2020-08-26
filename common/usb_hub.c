@@ -165,7 +165,7 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 {
 	int i;
 	struct usb_device *dev;
-	unsigned pgood_delay = hub->desc.bPwrOn2PwrGood * 2;
+	unsigned long pgood_delay = hub->desc.bPwrOn2PwrGood * 2;
 	const char *env;
 
 	dev = hub->pusb_dev;
@@ -194,14 +194,14 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	env = env_get("usb_pgood_delay");
 	if (env)
 		pgood_delay = max(pgood_delay,
-			          (unsigned)simple_strtol(env, NULL, 0));
-	debug("pgood_delay=%dms\n", pgood_delay);
+				  simple_strtoul(env, NULL, 0));
+	debug("pgood_delay=%ldms\n", pgood_delay);
 
 	/*
 	 * Do a minimum delay of the larger value of 100ms or pgood_delay
 	 * so that the power can stablize before the devices are queried
 	 */
-	hub->query_delay = get_timer(0) + max(100, (int)pgood_delay);
+	hub->query_delay = get_timer(0) + max(100UL, pgood_delay);
 
 	/*
 	 * Record the power-on timeout here. The max. delay (timeout)
@@ -209,9 +209,9 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 	 * usb_hub_configure() later.
 	 */
 	hub->connect_timeout = hub->query_delay + 1000;
-	debug("devnum=%d poweron: query_delay=%d connect_timeout=%d\n",
-	      dev->devnum, max(100, (int)pgood_delay),
-	      max(100, (int)pgood_delay) + 1000);
+	debug("devnum=%d poweron: query_delay=%lu connect_timeout=%lu\n",
+	      dev->devnum, max(100UL, pgood_delay),
+	      max(100UL, pgood_delay) + 1000);
 }
 
 #if !CONFIG_IS_ENABLED(DM_USB)
