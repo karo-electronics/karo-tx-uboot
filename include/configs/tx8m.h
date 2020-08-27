@@ -43,7 +43,9 @@
 #if !IS_ENABLED(CONFIG_DM_PMIC)
 #define CONFIG_POWER
 #define CONFIG_POWER_I2C
+#if !defined(CONFIG_KARO_QS8M)
 #define CONFIG_POWER_BD71837
+#endif
 #endif /* CONFIG_DM_PMIC */
 
 #endif /* CONFIG_SPL_BUILD */
@@ -81,7 +83,9 @@
 #define FDTADDR_STR			__stringify(CONFIG_FDTADDR)
 #define LOADADDR_STR			__stringify(CONFIG_LOADADDR)
 
-#if defined(CONFIG_KARO_TX8MM_1620)
+#if defined(CONFIG_KARO_QS8M)
+#define TX8M_DEFAULT_BASEBOARD		"qsbase2"
+#elif defined(CONFIG_KARO_TX8MM_1620)
 #define TX8M_DEFAULT_BASEBOARD		"lvds-mb"
 #else
 #define TX8M_DEFAULT_BASEBOARD		"mipi-mb"

@@ -135,3 +135,39 @@ int power_init_board(void)
 	return 0;
 }
 #endif
+
+#ifdef CONFIG_KARO_QS8M
+#define I2C_PMIC		0x34
+
+static const struct {
+	u8 reg;
+	u8 val;
+	u8 mask;
+} qs8m_pmic_data[] = {
+	{ 0x50, 0, },
+	{ 0x5c, 0, },
+};
+
+int power_init_board(void)
+{
+	int ret;
+	size_t i;
+
+	ret = i2c_probe(I2C_PMIC);
+	if (ret) {
+		printf("Could not find PMIC @0x%02x: %d\n", I2C_PMIC, ret);
+		return ret;
+	}
+	for (i = 0; i < ARRAY_SIZE(qs8m_pmic_data); i++) {
+		printf("%s: setting reg 0x%02x to 0x%02x\n", __func__,
+		       qs8m_pmic_data[i].reg, qs8m_pmic_data[i].val);
+		ret = i2c_write(I2C_PMIC, qs8m_pmic_data[i].reg, 1,
+				(uchar *)&qs8m_pmic_data[i].val, 1);
+		if (ret)
+			printf("Failed to write 0x%02x to PMIC @0x%02x reg 0x%02x: %d\n",
+			       qs8m_pmic_data[i].val, I2C_PMIC,
+			       qs8m_pmic_data[i].reg, ret);
+	}
+	return ret;
+}
+#endif

@@ -51,18 +51,32 @@ int board_usb_init(int index, enum usb_init_type init)
 }
 #endif
 
+enum tx8m_boardtype {
+	TX8MM,
+	QS8M_QSBASE2,
+	NUM_BOARD_TYPES
+};
+
 #ifdef CONFIG_FEC_MXC
-static void tx8mm_setup_fec(void)
+static void tx8mm_setup_fec(enum tx8m_boardtype board)
 {
 	struct iomuxc_gpr_base_regs *iomuxc_gpr_regs =
 		(void *)IOMUXC_GPR_BASE_ADDR;
 	unsigned char mac[6];
 
-	set_clk_enet(ENET_50MHZ);
+	if (board == TX8MM) {
+		set_clk_enet(ENET_50MHZ);
 
-	/* Use 50M anatop REF_CLK1 for ENET1, not from external */
-	setbits_le32(&iomuxc_gpr_regs->gpr[1],
-		     IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_MASK);
+		/* Use 50M anatop REF_CLK1 for ENET1, not from external */
+		setbits_le32(&iomuxc_gpr_regs->gpr[1],
+			     IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_MASK);
+	} else {
+		set_clk_enet(ENET_125MHZ);
+
+		/* Use 125M anatop REF_CLK1 for ENET1, not from external */
+		setbits_le32(&iomuxc_gpr_regs->gpr[1],
+			     IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_MASK);
+	}
 
 	if (!env_get("ethaddr")) {
 		imx_get_mac_from_fuse(0, mac);
@@ -80,7 +94,7 @@ int board_phy_config(struct phy_device *phydev)
 	return 0;
 }
 #else
-static inline void tx8mm_setup_fec(void)
+static inline void tx8mm_setup_fec(enum tx8m_boardtype board)
 {
 }
 #endif /* FEX_MXC */
@@ -221,6 +235,8 @@ int checkboard(void)
 	printf("Board: Ka-Ro TX8M-1610\n");
 #elif defined(CONFIG_KARO_TX8MM_1620)
 	printf("Board: Ka-Ro TX8M-1620\n");
+#elif defined(CONFIG_KARO_QS8M_MQ00)
+	printf("Board: Ka-Ro QS8M-MQ00\n");
 #else
 #error Unsupported module variant
 #endif
@@ -439,6 +455,11 @@ int board_late_init(void)
 	u32 srsr = readl(&src_regs->srsr);
 	u16 wrsr = readw(&wdog->wrsr);
 	const char *fdt_file = env_get("fdt_file");
+	enum tx8m_boardtype board = TX8MM;
+	const char *baseboard = env_get("baseboard");
+
+	if (baseboard && strcmp(baseboard, "qsbase2") == 0)
+		board = QS8M_QSBASE2;
 
 	karo_env_cleanup();
 	if (srsr & 0x10 && !(wrsr & WRSR_SFTW)) {
@@ -456,7 +477,7 @@ int board_late_init(void)
 			       fdt_file, ret);
 	}
 
-	tx8mm_setup_fec();
+	tx8mm_setup_fec(board);
 
 	clear_ctrlc();
 	return 0;

@@ -18,8 +18,17 @@ config KARO_TX8M
 	select MXC_UART
 	select PHYLIB
 
+config KARO_QS8M
+	bool
+	select BOARD_LATE_INIT
+	imply FEC_MXC
+	select IMX8M_DDR3L
+	select MII
+	select MXC_UART
+	select PHYLIB
+
 choice
-	prompt "Ka-Ro TX8M module variant"
+	prompt "Ka-Ro TX8M/QS8M module variant"
 	default KARO_TX8MM_1610
 
 config KARO_TX8MM_1610
@@ -32,10 +41,20 @@ config KARO_TX8MM_1620
 	select IMX8MM
 	select KARO_TX8M
 
+config KARO_QS8M_MQ00
+	bool "Ka-Ro QS8M-MQ00 (TX8M-1610 compatible solder-in module)"
+	select IMX8MM
+	select KARO_QS8M
+
 config KARO_TX8MN
 	bool "Ka-Ro TX8M-ND00 module"
 	select IMX8MN
 	select KARO_TX8M
+
+config KARO_QS8M_ND00
+	bool "Ka-Ro QS8M-ND00 (TX8M-ND00 compatible solder-in module)"
+	select IMX8MN
+	select KARO_QS8M
 
 endchoice
 
