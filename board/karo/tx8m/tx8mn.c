@@ -52,18 +52,32 @@ int board_usb_init(int index, enum usb_init_type init)
 }
 #endif
 
+enum tx8m_boardtype {
+	TX8MN,
+	QS8M_QSBASE2,
+	NUM_BOARD_TYPES
+};
+
 #ifdef CONFIG_FEC_MXC
-static void tx8mn_setup_fec(void)
+static void tx8mn_setup_fec(enum tx8m_boardtype board)
 {
 	struct iomuxc_gpr_base_regs *iomuxc_gpr_regs =
 		(void *)IOMUXC_GPR_BASE_ADDR;
 	unsigned char mac[6];
 
-	set_clk_enet(ENET_50MHZ);
+	if (board == TX8MN) {
+		set_clk_enet(ENET_50MHZ);
 
-	/* Use 50M anatop REF_CLK1 for ENET1, not from external */
-	setbits_le32(&iomuxc_gpr_regs->gpr[1],
-		     IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_MASK);
+		/* Use 50M anatop REF_CLK1 for ENET1, not from external */
+		setbits_le32(&iomuxc_gpr_regs->gpr[1],
+			     IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_MASK);
+	} else {
+		set_clk_enet(ENET_125MHZ);
+
+		/* Use 125M anatop REF_CLK1 for ENET1, not from external */
+		setbits_le32(&iomuxc_gpr_regs->gpr[1],
+			     IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_MASK);
+	}
 
 	if (!env_get("ethaddr")) {
 		imx_get_mac_from_fuse(0, mac);
@@ -81,7 +95,7 @@ int board_phy_config(struct phy_device *phydev)
 	return 0;
 }
 #else
-static inline void tx8mn_setup_fec(void)
+static inline void tx8mn_setup_fec(enum tx8m_boardtype board)
 {
 }
 #endif /* FEX_MXC */
@@ -218,8 +232,13 @@ static inline void tx8m_led_init(void)
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
+#if defined(CONFIG_KARO_TX8MN)
 	printf("Board: Ka-Ro TX8M-ND00\n");
-
+#elif defined(CONFIG_KARO_QS8M_ND00)
+	printf("Board: Ka-Ro QS8M-ND00\n");
+#else
+#error Unsupported module variant
+#endif
 	ctrlc();
 	return 0;
 }
@@ -506,54 +525,6 @@ static struct display_info_t const panel_info[] = {
 		},
 	},
 };
-
-int board_video_skip(void)
-{
-	int ret;
-	const char *baseboard = env_get("baseboard");
-	const char *panel = env_get("panel");
-	size_t i;
-
-	debug("%s@%d: baseboard='%s' panel='%s'\n", __func__, __LINE__,
-	      baseboard, panel);
-
-	if (had_ctrlc()) {
-		printf("<CTRL-C> detected; disabling display\n");
-		return 1;
-	}
-
-	if (!panel) {
-		printf("No LCD panel configured\n");
-		return 1;
-	}
-
-	if (!baseboard ||
-	    strcmp(baseboard, "mipi-mb") != 0) {
-		printf("No Display support for '%s' baseboard\n",
-		       baseboard ?: "unspecified");
-		return 1;
-	}
-
-	for (i = 0; i < ARRAY_SIZE(panel_info); i++) {
-		const struct display_info_t *pi = &panel_info[i];
-
-		if (strcmp(panel, pi->mode.name) != 0)
-			continue;
-
-		ret = mxs_lcd_panel_setup(pi->mode,
-					  pi->pixfmt,
-					  pi->bus);
-		if (ret)
-			return ret;
-
-		if (pi->enable)
-			pi->enable(panel_info + i);
-
-		printf("Display: %s (%ux%u)\n", pi->mode.name,
-		       pi->mode.xres, pi->mode.yres);
-	}
-	return ret;
-}
 #else /* CONFIG_DM_VIDEO */
 static inline int dsi83_init(void)
 {
@@ -613,6 +584,11 @@ int board_late_init(void)
 	u32 srsr = readl(&src_regs->srsr);
 	u16 wrsr = readw(&wdog->wrsr);
 	const char *fdt_file = env_get("fdt_file");
+	enum tx8m_boardtype board = TX8MN;
+	const char *baseboard = env_get("baseboard");
+
+	if (baseboard && strcmp(baseboard, "qsbase2") == 0)
+		board = QS8M_QSBASE2;
 
 	karo_env_cleanup();
 	if (srsr & 0x10 && !(wrsr & WRSR_SFTW)) {
@@ -630,7 +606,7 @@ int board_late_init(void)
 			       fdt_file, ret);
 	}
 
-	tx8mn_setup_fec();
+	tx8mn_setup_fec(board);
 
 	clear_ctrlc();
 	return 0;
