@@ -123,6 +123,10 @@ config TARGET_IMX8MN_DDR4_AB2
 	select SUPPORT_SPL
 	select IMX8M_DDR4
 
+config TARGET_TX8M
+	bool "Ka-Ro electronics imx8m boards"
+	select SUPPORT_SPL
+
 config TARGET_VERDIN_IMX8MM
        bool "Support Toradex Verdin iMX8M Mini module"
        select IMX8MM
@@ -138,6 +142,7 @@ source "board/freescale/imx8mm_evk/Kconfig"
 source "board/freescale/imx8mm_val/Kconfig"
 source "board/freescale/imx8mn_evk/Kconfig"
 source "board/freescale/imx8mp_evk/Kconfig"
+source "board/karo/tx8m/Kconfig"
 source "board/toradex/verdin-imx8mm/Kconfig"
 
 endif

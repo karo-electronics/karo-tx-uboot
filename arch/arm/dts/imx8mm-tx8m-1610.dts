@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "imx8mm-tx8m-16xx.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TX8M-1610 (NXP i.MX8MM) module";
+
+	aliases {
+		usb-host = &usbotg2;
+	};
+
+	usbg2: usbg2 {
+		compatible = "fsl,imx27-usb-gadget";
+		dr_mode = "peripheral";
+		chipidea,usb = <&usbotg2>;
+		status = "disabled";
+	};
+};
+
+&usbotg2 {
+	dr_mode = "host";
+	status = "okay";
+};
