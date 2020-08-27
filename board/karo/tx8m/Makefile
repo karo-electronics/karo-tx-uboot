@@ -12,4 +12,5 @@ endif
 obj-$(CONFIG_IMX8M_DDR3L) += ddr3l_timing.o
 else
 obj-$(CONFIG_IMX8MM) += tx8mm.o
+obj-$(CONFIG_IMX8MN) += tx8mn.o
 endif
