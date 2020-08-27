@@ -1,0 +1,147 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright 2019 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#ifndef __TX8M_H
+#define __TX8M_H
+
+#include <linux/sizes.h>
+#include <asm/arch/imx-regs.h>
+
+#define CONFIG_SPL_MAX_SIZE		(148 * 1024)
+#define CONFIG_SYS_MONITOR_LEN		SZ_512K
+#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	0x1
+
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_ENABLE_DDR_TRAINING_DEBUG
+#define CONFIG_USBD_HS
+
+#define CONFIG_SPL_BSS_START_ADDR	0x00910000
+#define CONFIG_SYS_SPL_MALLOC_START	0x42200000
+#define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_512K
+#define CONFIG_SPL_STACK		0x00920000
+#define CONFIG_MALLOC_F_ADDR		0x00912000 /* malloc f used before GD_FLG_FULL_MALLOC_INIT set */
+
+#define CONFIG_SPL_BSS_MAX_SIZE		SZ_8K
+
+#if CONFIG_IS_ENABLED(USB_SUPPORT)
+#define CONFIG_SYS_USB_FAT_BOOT_PARTITION  1
+#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME "u-boot"
+#endif
+
+#if !IS_ENABLED(CONFIG_DM_PMIC)
+#define CONFIG_POWER
+#define CONFIG_POWER_I2C
+#define CONFIG_POWER_BD71837
+#endif /* CONFIG_DM_PMIC */
+
+#endif /* CONFIG_SPL_BUILD */
+
+#ifndef CONFIG_DM_I2C
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_SPEED		400000
+#endif
+
+#define CONFIG_SYS_INIT_RAM_ADDR	0x40000000
+#define CONFIG_SYS_INIT_RAM_SIZE	0x80000
+#define CONFIG_SYS_INIT_SP_OFFSET \
+	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_ADDR \
+	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
+
+#define CONFIG_SERIAL_TAG
+
+#define CONFIG_REMAKE_ELF
+
+#ifdef CONFIG_LED
+#define CONFIG_SHOW_ACTIVITY
+#endif
+
+/* ENET Config */
+#ifdef CONFIG_FEC_MXC
+#define IMX_FEC_BASE			0x30BE0000
+#define CONFIG_FEC_MXC_125M_REF_CLK
+#endif
+
+#define __pfx(p, v)			(p##v)
+#define _pfx(p, v)			__pfx(p, v)
+
+#define CONFIG_FDTADDR			43000000
+#define FDTADDR_STR			__stringify(CONFIG_FDTADDR)
+#define LOADADDR_STR			__stringify(CONFIG_LOADADDR)
+
+#if defined(CONFIG_KARO_TX8MM_1620)
+#define TX8M_DEFAULT_BASEBOARD		"lvds-mb"
+#else
+#define TX8M_DEFAULT_BASEBOARD		"mipi-mb"
+#endif
+
+#ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
+#define CONFIG_SYS_MEM_RESERVE_SECURE	0
+#endif
+
+/* Link Definitions */
+#define CONFIG_LOADADDR			40480000
+
+#define CONFIG_SYS_LOAD_ADDR		_pfx(0x, CONFIG_LOADADDR)
+
+#define CONFIG_ENV_OVERWRITE
+#if defined(CONFIG_ENV_IS_IN_MMC)
+#define CONFIG_SYS_MMC_ENV_DEV		0
+#define CONFIG_SYS_MMC_ENV_PART		1
+#elif defined(CONFIG_ENV_IS_IN_FAT)
+#else
+#error "No supported Environment location defined"
+#endif
+
+#ifndef CONFIG_UBOOT_IGNORE_ENV
+#define CONFIG_ENV_CALLBACK_LIST_DEFAULT "baseboard:baseboard"
+#endif
+
+/* Size of malloc() pool */
+#define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + SZ_2K + SZ_16K) * SZ_1K)
+
+#define CONFIG_SYS_SDRAM_BASE		0x40000000
+#define PHYS_SDRAM			CONFIG_SYS_SDRAM_BASE
+#if defined(CONFIG_KARO_TX8MM_1620)
+#define PHYS_SDRAM_SIZE			SZ_2G
+#else
+#define PHYS_SDRAM_SIZE			SZ_1G
+#endif
+
+#define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM
+#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + (PHYS_SDRAM_SIZE >> 1))
+
+#define CONFIG_MXC_UART_BASE		UART1_BASE_ADDR
+
+/* Monitor Command Prompt */
+#define CONFIG_SYS_CBSIZE		2048
+#define CONFIG_SYS_MAXARGS		256
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
+
+#define CONFIG_SYS_FSL_USDHC_NUM	3
+#define CONFIG_SYS_FSL_ESDHC_ADDR	0
+
+#ifdef CONFIG_USB_EHCI_MX7
+#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
+#define CONFIG_USB_MAX_CONTROLLER_COUNT	2
+#endif
+
+#ifdef CONFIG_DWC_ETH_QOS
+#define CONFIG_SYS_NONCACHED_MEMORY	SZ_1M
+#endif
+
+#if defined(CONFIG_VIDEO) || defined(CONFIG_DM_VIDEO)
+#define CONFIG_VIDEO_MXS
+#define CONFIG_VIDEO_LOGO
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN
+#define CONFIG_BMP_16BPP
+#define CONFIG_VIDEO_BMP_RLE8
+#define CONFIG_VIDEO_BMP_LOGO
+#endif
+
+#endif /* __TX8M_H */

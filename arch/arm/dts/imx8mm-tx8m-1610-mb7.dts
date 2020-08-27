@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2019 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "imx8mm-tx8m-1610.dts"
+
+/ {
+	model = "Ka-Ro electronics QS8M-MQ00 (NXP i.MX8MM) module on MB7 baseboard";
+
+	reg_3v3_etn: regulator-3v3-etn {
+		compatible = "regulator-fixed";
+		regulator-name = "3V3_ETN";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_etnphy_power>;
+		gpio = <&gpio1 23 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		power-supply = <&reg_3v3>;
+	};
+};
+
+&fec1 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&pinctrl_fec1 &pinctrl_etnphy_rst>;
+	pinctrl-1 = <&pinctrl_fec1_sleep>;
+	phy-mode = "rmii";
+	phy-handle = <&ethphy0>;
+	phy-supply = <&reg_3v3_etn>;
+	phy-reset-gpios = <&gpio1 29 GPIO_ACTIVE_LOW>;
+	phy-reset-duration = <10>;
+	assigned-clock-parents = <&clk IMX8MM_SYS_PLL1_266M>,
+				 <&clk IMX8MM_SYS_PLL2_100M>,
+				 <&clk IMX8MM_SYS_PLL2_50M>;
+	assigned-clock-rates = <0>, <0>, <50000000>, <100000000>;
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy0: ethernet-phy@0 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_etnphy_int>;
+			interrupt-parent = <&gpio1>;
+			interrupts = <28 IRQ_TYPE_EDGE_FALLING>;
+			smsc,disable-energy-detect;
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl_etnphy_int: etnphy-intgrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_ENET_RD2_GPIO1_IO28		0x90
+		>;
+	};
+
+	pinctrl_etnphy_power: etnphy-powergrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_ENET_TXC_GPIO1_IO23		0x142
+		>;
+	};
+
+	pinctrl_etnphy_rst: etnphy-rstgrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_ENET_RD3_GPIO1_IO29		0x140
+		>;
+	};
+
+	pinctrl_fec1: fec1grp {
+		fsl,pins = <
+			MX8MM_IOMUXC_ENET_MDC_ENET1_MDC			0x142
+			MX8MM_IOMUXC_ENET_MDIO_ENET1_MDIO		0x142
+			MX8MM_IOMUXC_ENET_TD2_ENET1_TX_CLK		0x40000016
+			MX8MM_IOMUXC_ENET_TD0_ENET1_RGMII_TD0		0x16
+			MX8MM_IOMUXC_ENET_TD1_ENET1_RGMII_TD1		0x16
+			MX8MM_IOMUXC_ENET_RD0_ENET1_RGMII_RD0		0x90
+			MX8MM_IOMUXC_ENET_RD1_ENET1_RGMII_RD1		0x90
+			MX8MM_IOMUXC_ENET_RXC_ENET1_RX_ER		0x16
+			MX8MM_IOMUXC_ENET_RX_CTL_ENET1_RGMII_RX_CTL	0x16
+			MX8MM_IOMUXC_ENET_TX_CTL_ENET1_RGMII_TX_CTL	0x16
+		>;
+	};
+
+	pinctrl_fec1_sleep: fec1-sleepgrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_ENET_MDC_ENET1_MDC			0x120
+			MX8MM_IOMUXC_ENET_MDIO_ENET1_MDIO		0x120
+			MX8MM_IOMUXC_ENET_TD2_ENET1_TX_CLK		0x40000120
+			MX8MM_IOMUXC_ENET_TD0_ENET1_RGMII_TD0		0x120
+			MX8MM_IOMUXC_ENET_TD1_ENET1_RGMII_TD1		0x120
+			MX8MM_IOMUXC_ENET_RD0_ENET1_RGMII_RD0		0x120
+			MX8MM_IOMUXC_ENET_RD1_ENET1_RGMII_RD1		0x120
+			MX8MM_IOMUXC_ENET_RXC_ENET1_RX_ER		0x120
+			MX8MM_IOMUXC_ENET_RX_CTL_ENET1_RGMII_RX_CTL	0x120
+			MX8MM_IOMUXC_ENET_TX_CTL_ENET1_RGMII_TX_CTL	0x120
+		>;
+	};
+};

@@ -790,6 +790,9 @@ dtb-$(CONFIG_ARCH_IMX8M) += \
 	imx8mm-ddr3l-val.dtb \
 	imx8mm-ddr4-val.dtb \
 	imx8mm-verdin.dtb \
+	imx8mm-tx8m-1610-mb7.dtb \
+	imx8mm-tx8m-1610.dtb \
+	imx8mm-tx8m-1620.dtb \
 	imx8mn-ddr3l-evk.dtb \
 	imx8mn-ddr4-evk.dtb \
 	imx8mn-evk.dtb \

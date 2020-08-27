@@ -1,0 +1,53 @@
+if TARGET_TX8M
+
+config SYS_BOARD
+	default "tx8m"
+
+config SYS_CONFIG_NAME
+	default "tx8m"
+
+config SYS_VENDOR
+	default "karo"
+
+config KARO_TX8M
+	bool
+	select BOARD_LATE_INIT
+	imply FEC_MXC
+	select IMX8M_DDR3L
+	select MII
+	select MXC_UART
+	select PHYLIB
+
+choice
+	prompt "Ka-Ro TX8M module variant"
+	default KARO_TX8MM_1610
+
+config KARO_TX8MM_1610
+	bool "Ka-Ro TX8M-1610 module"
+	select IMX8MM
+	select KARO_TX8M
+
+config KARO_TX8MM_1620
+	bool "Ka-Ro TX8M-1620 module"
+	select IMX8MM
+	select KARO_TX8M
+
+endchoice
+
+choice
+        prompt "U-Boot image variant"
+	default TX8M_UBOOT
+
+config TX8M_UBOOT
+        bool "Standard U-Boot image"
+
+config TX8M_UBOOT_MFG
+        bool "U-Boot image for use with Freescale's MfGTool"
+
+config TX8M_UBOOT_NOENV
+        bool "U-Boot using only built-in environment"
+        select UBOOT_IGNORE_ENV
+
+endchoice
+
+endif
