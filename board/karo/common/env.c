@@ -17,6 +17,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KARO_BOARD_NAME		"tx8m-1610"
 #elif defined(CONFIG_KARO_TX8MM_1620)
 #define KARO_BOARD_NAME		"tx8m-1620"
+#elif defined(CONFIG_KARO_TX8MN)
+#define KARO_BOARD_NAME		"tx8m-nd00"
 #else
 #error Unsupported module variant
 #endif

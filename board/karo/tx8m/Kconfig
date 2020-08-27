@@ -32,6 +32,11 @@ config KARO_TX8MM_1620
 	select IMX8MM
 	select KARO_TX8M
 
+config KARO_TX8MN
+	bool "Ka-Ro TX8M-ND00 module"
+	select IMX8MN
+	select KARO_TX8M
+
 endchoice
 
 choice

@@ -14,7 +14,13 @@
 #include <spl.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
+#if defined(CONFIG_IMX8MM)
 #include <asm/arch/imx8mm_pins.h>
+#elif defined(CONFIG_IMX8MN)
+#include <asm/arch/imx8mn_pins.h>
+#else
+#error Invalid SOC type selection
+#endif
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/gpio.h>
@@ -32,10 +38,17 @@ DECLARE_GLOBAL_DATA_PTR;
 #define UART_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_FSEL1 |	\
 					     PAD_CTL_DSE6)
 
+#if defined(CONFIG_IMX8MM)
 static const iomux_v3_cfg_t uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | UART_PAD_CTRL,
 	IMX8MM_PAD_UART1_TXD_UART1_TX | UART_PAD_CTRL,
 };
+#elif defined(CONFIG_IMX8MN)
+static const iomux_v3_cfg_t uart_pads[] = {
+	IMX8MN_PAD_UART1_RXD__UART1_DCE_RX | UART_PAD_CTRL,
+	IMX8MN_PAD_UART1_TXD__UART1_DCE_TX | UART_PAD_CTRL,
+};
+#endif
 
 /* called before debug_uart is initialized */
 int board_early_init_f(void)
@@ -97,6 +110,7 @@ void spl_board_init(void)
 					     PAD_CTL_PUE |	\
 					     PAD_CTL_DSE6)
 
+#if defined(CONFIG_IMX8MM)
 struct i2c_pads_info i2c_pad_info[] = {
 	{
 		.scl = {
@@ -111,6 +125,22 @@ struct i2c_pads_info i2c_pad_info[] = {
 		},
 	},
 };
+#elif defined(CONFIG_IMX8MN)
+struct i2c_pads_info i2c_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = IMX8MN_PAD_I2C1_SCL__I2C1_SCL | I2C_PAD_CTRL,
+			.gpio_mode = IMX8MN_PAD_I2C1_SCL__GPIO5_IO14 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 14),
+		},
+		.sda = {
+			.i2c_mode = IMX8MN_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
+			.gpio_mode = IMX8MN_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 15),
+		},
+	},
+};
+#endif
 
 #if !CONFIG_IS_ENABLED(DM_MMC) && CONFIG_IS_ENABLED(MMC_SUPPORT)
 #define USDHC_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PE |	\
@@ -124,6 +154,7 @@ struct i2c_pads_info i2c_pad_info[] = {
 					     PAD_CTL_FSEL2 |	\
 					     PAD_CTL_DSE0)
 
+#if defined(CONFIG_IMX8MM)
 static const iomux_v3_cfg_t tx8m_usdhc1_pads[] = {
 	IMX8MM_PAD_SD1_CLK_USDHC1_CLK | USDHC_PAD_CTRL,
 	IMX8MM_PAD_SD1_CMD_USDHC1_CMD | USDHC_PAD_CTRL,
@@ -158,6 +189,42 @@ static const iomux_v3_cfg_t tx8m_usdhc3_pads[] = {
 	IMX8MM_PAD_NAND_DATA07_USDHC3_DATA3 | USDHC_PAD_CTRL,
 	IMX8MM_PAD_NAND_DATA02_GPIO3_IO8 | USDHC_GPIO_PAD_CTRL,
 };
+#elif defined(CONFIG_IMX8MN)
+static const iomux_v3_cfg_t tx8m_usdhc1_pads[] = {
+	IMX8MN_PAD_SD1_CLK__USDHC1_CLK | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_CMD__USDHC1_CMD | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA0__USDHC1_DATA0 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA1__USDHC1_DATA1 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA2__USDHC1_DATA2 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA3__USDHC1_DATA3 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA4__USDHC1_DATA4 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA5__USDHC1_DATA5 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA6__USDHC1_DATA6 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_DATA7__USDHC1_DATA7 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD1_STROBE__USDHC1_STROBE | USDHC_GPIO_PAD_CTRL,
+	IMX8MN_PAD_SD1_RESET_B__USDHC1_RESET_B | USDHC_GPIO_PAD_CTRL,
+};
+
+static const iomux_v3_cfg_t tx8m_usdhc2_pads[] = {
+	IMX8MN_PAD_SD2_CLK__USDHC2_CLK | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD2_CMD__USDHC2_CMD | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD2_DATA0__USDHC2_DATA0 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD2_DATA1__USDHC2_DATA1 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD2_DATA2__USDHC2_DATA2 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD2_DATA3__USDHC2_DATA3 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_SD2_CD_B__GPIO2_IO12 | USDHC_GPIO_PAD_CTRL,
+};
+
+static const iomux_v3_cfg_t tx8m_usdhc3_pads[] = {
+	IMX8MN_PAD_NAND_WE_B__USDHC3_CLK | USDHC_PAD_CTRL,
+	IMX8MN_PAD_NAND_WP_B__USDHC3_CMD | USDHC_PAD_CTRL,
+	IMX8MN_PAD_NAND_DATA04__USDHC3_DATA0 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_NAND_DATA05__USDHC3_DATA1 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_NAND_DATA06__USDHC3_DATA2 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_NAND_DATA07__USDHC3_DATA3 | USDHC_PAD_CTRL,
+	IMX8MN_PAD_NAND_DATA02__GPIO3_IO8 | USDHC_GPIO_PAD_CTRL,
+};
+#endif /* CONFIG_IMX8MM */
 
 static struct tx8m_esdhc_cfg {
 	struct fsl_esdhc_cfg cfg;
