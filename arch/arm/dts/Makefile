@@ -789,6 +789,8 @@ dtb-$(CONFIG_ARCH_IMX8M) += \
 	imx8mm-verdin.dtb \
 	imx8mm-qs8m-mq00.dtb \
 	imx8mm-qs8m-mq00-qsbase2.dtb \
+	imx8mm-qsxm-mm60.dtb \
+	imx8mm-qsxm-mm60-qsbase3.dtb \
 	imx8mm-tx8m-1610-mb7.dtb \
 	imx8mm-tx8m-1610.dtb \
 	imx8mm-tx8m-1620.dtb \

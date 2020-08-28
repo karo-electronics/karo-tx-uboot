@@ -180,6 +180,7 @@ static const iomux_v3_cfg_t tx8m_usdhc2_pads[] = {
 	IMX8MM_PAD_SD2_CD_B_GPIO2_IO12 | USDHC_GPIO_PAD_CTRL,
 };
 
+#ifndef CONFIG_KARO_QSXM
 static const iomux_v3_cfg_t tx8m_usdhc3_pads[] = {
 	IMX8MM_PAD_NAND_WE_B_USDHC3_CLK | USDHC_PAD_CTRL,
 	IMX8MM_PAD_NAND_WP_B_USDHC3_CMD | USDHC_PAD_CTRL,
@@ -189,6 +190,7 @@ static const iomux_v3_cfg_t tx8m_usdhc3_pads[] = {
 	IMX8MM_PAD_NAND_DATA07_USDHC3_DATA3 | USDHC_PAD_CTRL,
 	IMX8MM_PAD_NAND_DATA02_GPIO3_IO8 | USDHC_GPIO_PAD_CTRL,
 };
+#endif
 #elif defined(CONFIG_IMX8MN)
 static const iomux_v3_cfg_t tx8m_usdhc1_pads[] = {
 	IMX8MN_PAD_SD1_CLK__USDHC1_CLK | USDHC_PAD_CTRL,
@@ -253,6 +255,7 @@ static struct tx8m_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(tx8m_usdhc2_pads),
 		.cd_gpio = IMX_GPIO_NR(2, 12),
 	},
+#ifndef CONFIG_KARO_QSXM
 	{
 		.cfg = {
 			.esdhc_base = USDHC3_BASE_ADDR,
@@ -263,6 +266,7 @@ static struct tx8m_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(tx8m_usdhc3_pads),
 		.cd_gpio = IMX_GPIO_NR(3, 8),
 	},
+#endif
 };
 
 int board_mmc_init(bd_t *bis)

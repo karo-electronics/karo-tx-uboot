@@ -237,6 +237,8 @@ int checkboard(void)
 	printf("Board: Ka-Ro TX8M-1620\n");
 #elif defined(CONFIG_KARO_QS8M_MQ00)
 	printf("Board: Ka-Ro QS8M-MQ00\n");
+#elif defined(CONFIG_KARO_QSXM_MM60)
+	printf("Board: Ka-Ro QSXM-MM60\n");
 #else
 #error Unsupported module variant
 #endif
