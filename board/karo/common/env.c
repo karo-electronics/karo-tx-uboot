@@ -23,6 +23,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KARO_BOARD_NAME		"qs8m-mq00"
 #elif defined(CONFIG_KARO_QS8M_ND00)
 #define KARO_BOARD_NAME		"qs8m-nd00"
+#elif defined(CONFIG_KARO_QSXM_MM60)
+#define KARO_BOARD_NAME		"qsxm-mm60"
 #else
 #error Unsupported module variant
 #endif
