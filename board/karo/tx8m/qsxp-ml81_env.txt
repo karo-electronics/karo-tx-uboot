@@ -1,0 +1,30 @@
+# default environment for QSXP-ML81
+append_bootargs=clk_ignore_unused debug
+autoload=no
+baseboard=qsbase3
+boot_mode=mmc
+bootargs_mmc=run default_bootargs; setenv bootargs ${bootargs} root=PARTUUID=${uuid_rootfs} ${append_bootargs}
+bootargs_nfs=run default_bootargs; setenv bootargs ${bootargs} root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock,v3 ip=dhcp ${append_bootargs}
+bootcmd=run bootcmd_${boot_mode} bootm_cmd
+bootcmd_mmc=run loadkernel bootargs_mmc
+bootcmd_nfs=run loadkernel bootargs_nfs
+bootm_cmd=booti ${loadaddr} ${initrd_addr} ${fdt_addr}
+console=ttymxc1,115200 earlycon=ec_imx6q,0x30890000,115200
+default_bootargs=setenv bootargs console=${console} panic=-1 ro
+emmc_boot_ack=1
+emmc_boot_part=1
+emmc_dev=0
+fastboot_dev=mmc
+fdtaddr=43000000
+fdtsave=save mmc ${mmcdev} ${fdt_addr} ${fdt_file} ${fdt_size}
+fdt_addr=43000000
+fdt_file=imx8mp-qsxp-ml81-qsbase3.dtb
+fdt_high=63000000
+initrd_addr=-
+initrd_high=63800000
+linux_image=Image-qsxp-ml81.bin
+loadaddr=40480000
+loadfdt=load mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}
+loadkernel=load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${linux_image}
+mmcdev=0
+mmcpart=1

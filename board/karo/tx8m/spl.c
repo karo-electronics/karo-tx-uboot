@@ -18,6 +18,8 @@
 #include <asm/arch/imx8mm_pins.h>
 #elif defined(CONFIG_IMX8MN)
 #include <asm/arch/imx8mn_pins.h>
+#elif defined(CONFIG_IMX8MP)
+#include <asm/arch/imx8mp_pins.h>
 #else
 #error Invalid SOC type selection
 #endif
@@ -39,22 +41,43 @@ DECLARE_GLOBAL_DATA_PTR;
 					     PAD_CTL_DSE6)
 
 #if defined(CONFIG_IMX8MM)
+#define UART_IDX 0
 static const iomux_v3_cfg_t uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | UART_PAD_CTRL,
 	IMX8MM_PAD_UART1_TXD_UART1_TX | UART_PAD_CTRL,
 };
 #elif defined(CONFIG_IMX8MN)
+#define UART_IDX 0
 static const iomux_v3_cfg_t uart_pads[] = {
 	IMX8MN_PAD_UART1_RXD__UART1_DCE_RX | UART_PAD_CTRL,
 	IMX8MN_PAD_UART1_TXD__UART1_DCE_TX | UART_PAD_CTRL,
+};
+#elif defined(CONFIG_IMX8MP)
+#define UART_IDX 1
+static const iomux_v3_cfg_t uart_pads[] = {
+	MX8MP_PAD_UART2_RXD__UART2_DCE_RX | UART_PAD_CTRL,
+	MX8MP_PAD_UART2_TXD__UART2_DCE_TX | UART_PAD_CTRL,
+};
+
+#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
+
+static iomux_v3_cfg_t const wdog_pads[] = {
+	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
 };
 #endif
 
 /* called before debug_uart is initialized */
 int board_early_init_f(void)
 {
+#ifdef CONFIG_IMX8MP
+	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
+
+	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
+
+	set_wdog_reset(wdog);
+#endif
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
-	init_uart_clk(0);
+	init_uart_clk(UART_IDX);
 
 	return 0;
 }
@@ -66,7 +89,9 @@ enum boot_device spl_board_boot_device(enum boot_device boot_device_spl)
 
 	debug("%s@%d: boot_device_spl=%d ", __func__, __LINE__,
 	      boot_device_spl);
-
+#ifdef CONFIG_SPL_BOOTROM_SUPPORT
+	ret = BOOT_DEVICE_BOOTROM; // 15
+#else
 	switch (boot_device_spl) {
 	case SD1_BOOT: // 6
 	case MMC1_BOOT: // 10
@@ -86,7 +111,7 @@ enum boot_device spl_board_boot_device(enum boot_device boot_device_spl)
 	default:
 		ret = BOOT_DEVICE_NONE; // 16
 	}
-
+#endif
 	debug("-> %d\n", ret);
 	return ret;
 }
@@ -136,6 +161,21 @@ struct i2c_pads_info i2c_pad_info[] = {
 		.sda = {
 			.i2c_mode = IMX8MN_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
 			.gpio_mode = IMX8MN_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 15),
+		},
+	},
+};
+#elif defined(CONFIG_IMX8MP)
+struct i2c_pads_info i2c_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = MX8MP_PAD_I2C1_SCL__I2C1_SCL | I2C_PAD_CTRL,
+			.gpio_mode = MX8MP_PAD_I2C1_SCL__GPIO5_IO14 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 14),
+		},
+		.sda = {
+			.i2c_mode = MX8MP_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
+			.gpio_mode = MX8MP_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
 			.gp = IMX_GPIO_NR(5, 15),
 		},
 	},
@@ -226,6 +266,30 @@ static const iomux_v3_cfg_t tx8m_usdhc3_pads[] = {
 	IMX8MN_PAD_NAND_DATA07__USDHC3_DATA3 | USDHC_PAD_CTRL,
 	IMX8MN_PAD_NAND_DATA02__GPIO3_IO8 | USDHC_GPIO_PAD_CTRL,
 };
+#elif defined(CONFIG_IMX8MP)
+static const iomux_v3_cfg_t tx8m_usdhc2_pads[] = {
+	MX8MP_PAD_SD2_CLK__USDHC2_CLK | USDHC_PAD_CTRL,
+	MX8MP_PAD_SD2_CMD__USDHC2_CMD | USDHC_PAD_CTRL,
+	MX8MP_PAD_SD2_DATA0__USDHC2_DATA0 | USDHC_PAD_CTRL,
+	MX8MP_PAD_SD2_DATA1__USDHC2_DATA1 | USDHC_PAD_CTRL,
+	MX8MP_PAD_SD2_DATA2__USDHC2_DATA2 | USDHC_PAD_CTRL,
+	MX8MP_PAD_SD2_DATA3__USDHC2_DATA3 | USDHC_PAD_CTRL,
+	MX8MP_PAD_SD2_CD_B__GPIO2_IO12 | USDHC_GPIO_PAD_CTRL,
+};
+
+static const iomux_v3_cfg_t tx8m_usdhc3_pads[] = {
+	MX8MP_PAD_NAND_WE_B__USDHC3_CLK | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_WP_B__USDHC3_CMD | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_DATA04__USDHC3_DATA0 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_DATA05__USDHC3_DATA1 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_DATA06__USDHC3_DATA2 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_DATA07__USDHC3_DATA3 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_RE_B__USDHC3_DATA4 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_CE2_B__USDHC3_DATA5 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_CE3_B__USDHC3_DATA6 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_CLE__USDHC3_DATA7 | USDHC_PAD_CTRL,
+	MX8MP_PAD_NAND_CE1_B__USDHC3_STROBE | USDHC_PAD_CTRL,
+};
 #endif /* CONFIG_IMX8MM */
 
 static struct tx8m_esdhc_cfg {
@@ -235,6 +299,7 @@ static struct tx8m_esdhc_cfg {
 	size_t num_pads;
 	int cd_gpio;
 } tx8m_sdhc_cfgs[] = {
+#ifndef CONFIG_KARO_QSXP_ML81
 	{
 		.cfg = {
 			.esdhc_base = USDHC1_BASE_ADDR,
@@ -245,6 +310,17 @@ static struct tx8m_esdhc_cfg {
 		.num_pads = ARRAY_SIZE(tx8m_usdhc1_pads),
 		.cd_gpio = -EINVAL,
 	},
+#else
+	{
+		.cfg = {
+			.esdhc_base = USDHC3_BASE_ADDR,
+			.max_bus_width = 8,
+		},
+		.clk = MXC_ESDHC3_CLK,
+		.pads = tx8m_usdhc3_pads,
+		.num_pads = ARRAY_SIZE(tx8m_usdhc3_pads),
+	},
+#endif
 	{
 		.cfg = {
 			.esdhc_base = USDHC2_BASE_ADDR,
