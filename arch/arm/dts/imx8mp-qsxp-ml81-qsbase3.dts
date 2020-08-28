@@ -1,0 +1,163 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "imx8mp-qsxp-ml81.dts"
+
+/ {
+	model = "Ka-Ro electronics QSXP-ML81 (NXP i.MX8MP) module on QSBASE3 baseboard";
+
+	reg_usbh_vbus: regulator-usbh-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "USBH-VBUS";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio2 12 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+};
+
+&eqos {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_eqos>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&ethphy0>;
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_etnphy_rst_b>;
+		reset-gpios = <&gpio4 22 GPIO_ACTIVE_LOW>;
+
+		ethphy0: ethernet-phy@3 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <3>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_etnphy_int_b>;
+			interrupt-parent = <&gpio4>;
+			interrupts = <21 IRQ_TYPE_EDGE_FALLING>;
+/*
+signal    QSXP   QSBASE3 TOTAL
+TXC	   54	    106	  160
+TDX0	   69	    136	  205
+TDX1	   63	    129	  192
+TDX2	   76	    121	  197
+TDX3	   54	    115	  169
+TXCTL	   64	    106	  170
+RXC	   24	    119	  143
+RDX0	   11	    101	  112
+RDX1	   22	    103	  125
+RDX2	   21	    102	  123
+RDX3	   30	    105	  135
+RXCTL	   33	    107	  140
+*/
+			rxd0-skew-ps = <(420 + 112)>;
+			rxd1-skew-ps = <(420 + 125)>;
+			rxd2-skew-ps = <(420 + 123)>;
+			rxd3-skew-ps = <(420 + 135)>;
+			txd0-skew-ps = <(420 + 205)>;
+			txd1-skew-ps = <(420 + 192)>;
+			txd2-skew-ps = <(420 + 197)>;
+			txd3-skew-ps = <(420 + 169)>;
+			rxdv-skew-ps = <(420 + 140)>;
+			txen-skew-ps = <(420 + 170)>;
+			rxc-skew-ps = <(900 + 143)>;
+			txc-skew-ps = <(900 + 160)>;
+		};
+	};
+};
+
+&usdhc2 {
+	status = "disabled";
+};
+
+&usb_dwc3_0 {
+	dr_mode = "peripheral";
+	hnp-disable;
+	srp-disable;
+	adp-disable;
+	status = "okay";
+};
+
+&usb_dwc3_1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usbh_vbus>;
+	dr_mode = "host";
+	vbus-supply = <&reg_usbh_vbus>;
+	status = "okay";
+};
+
+&usb3_phy0 {
+	status = "okay";
+};
+
+&usb3_phy1 {
+	status = "okay";
+};
+
+&iomuxc {
+	pinctrl_etnphy_int_b: etnphy-int-bgrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_SAI2_RXFS__GPIO4_IO21		0x90
+		>;
+	};
+
+	pinctrl_etnphy_rst_b: etnphy-rst-bgrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22		0x140
+		>;
+	};
+
+	pinctrl_eqos: eqosgrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_GPIO1_IO00__CCM_ENET_PHY_REF_CLK_ROOT 0x110
+			    MX8MP_IOMUXC_ENET_MDC__ENET_QOS_MDC		0x142
+			    MX8MP_IOMUXC_ENET_MDIO__ENET_QOS_MDIO	0x142
+			    MX8MP_IOMUXC_ENET_TXC__CCM_ENET_QOS_CLOCK_GENERATE_TX_CLK 0x40000016
+			    MX8MP_IOMUXC_ENET_TD0__ENET_QOS_RGMII_TD0	0x016
+			    MX8MP_IOMUXC_ENET_TD1__ENET_QOS_RGMII_TD1	0x016
+			    MX8MP_IOMUXC_ENET_TD2__ENET_QOS_RGMII_TD2	0x016
+			    MX8MP_IOMUXC_ENET_TD3__ENET_QOS_RGMII_TD3	0x016
+			    MX8MP_IOMUXC_ENET_RD0__ENET_QOS_RGMII_RD0	0x150
+			    MX8MP_IOMUXC_ENET_RD1__ENET_QOS_RGMII_RD1	0x150
+			    MX8MP_IOMUXC_ENET_RD2__ENET_QOS_RGMII_RD2	0x150
+			    MX8MP_IOMUXC_ENET_RD3__ENET_QOS_RGMII_RD3	0x150
+			    MX8MP_IOMUXC_ENET_RXC__CCM_ENET_QOS_CLOCK_GENERATE_RX_CLK 0x156
+			    MX8MP_IOMUXC_ENET_RX_CTL__ENET_QOS_RGMII_RX_CTL 0x116
+			    MX8MP_IOMUXC_ENET_TX_CTL__ENET_QOS_RGMII_TX_CTL 0x016
+		>;
+	};
+
+	pinctrl_fec_sleep: fec-sleep-grp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_GPIO1_IO00__GPIO1_IO00		0x120
+			    MX8MP_IOMUXC_ENET_MDC__GPIO1_IO16		0x120
+			    MX8MP_IOMUXC_ENET_MDIO__GPIO1_IO17		0x120
+			    MX8MP_IOMUXC_ENET_TXC__GPIO1_IO23		0x40000120
+			    MX8MP_IOMUXC_ENET_TD0__GPIO1_IO21		0x120
+			    MX8MP_IOMUXC_ENET_TD1__GPIO1_IO20		0x120
+			    MX8MP_IOMUXC_ENET_TD2__GPIO1_IO19		0x120
+			    MX8MP_IOMUXC_ENET_TD3__GPIO1_IO18		0x120
+			    MX8MP_IOMUXC_ENET_RD0__GPIO1_IO26		0x120
+			    MX8MP_IOMUXC_ENET_RD1__GPIO1_IO27		0x120
+			    MX8MP_IOMUXC_ENET_RD2__GPIO1_IO28		0x120
+			    MX8MP_IOMUXC_ENET_RD3__GPIO1_IO29		0x120
+			    MX8MP_IOMUXC_ENET_RXC__GPIO1_IO25		0x120
+			    MX8MP_IOMUXC_ENET_RX_CTL__GPIO1_IO24	0x120
+			    MX8MP_IOMUXC_ENET_TX_CTL__GPIO1_IO22	0x120
+		>;
+	};
+
+	pinctrl_usbh_vbus: usbh-vbusgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_SD2_CD_B__GPIO2_IO12		0x06
+		>;
+	};
+};
