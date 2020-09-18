@@ -13,7 +13,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
-*/
+ */
 
 #include <common.h>
 #include <errno.h>
@@ -722,31 +722,73 @@ out:
 	return ret;
 }
 
-static void karo_fixup_panel_timing(void *fdt, int dest, int src)
-{
-	int prop;
+static const char *karo_panel_timing_props[] = {
+	"clock-frequency",
+	"hactive",
+	"vactive",
+	"hback-porch",
+	"hsync-len",
+	"hfront-porch",
+	"vback-porch",
+	"vsync-len",
+	"vfront-porch",
+	"hsync-active",
+	"vsync-active",
+	"de-active",
+	"pixelclk-active",
+};
 
-	printf("Copying video timing from %s\n", fdt_get_name(fdt, src, NULL));
-	for (prop = fdt_first_property_offset(fdt, src); prop >= 0;
-	     prop = fdt_next_property_offset(fdt, prop)) {
-		const char *name;
+static int karo_fixup_panel_timing(void *fdt, int dest, int src)
+{
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(karo_panel_timing_props); i++) {
+		const char *name = karo_panel_timing_props[i];
 		int len;
 		int ret;
 		const void *val;
+		bool restart;
 
-		val = fdt_getprop_by_offset(fdt, prop, &name, &len);
-		if (strcmp(name, "u-boot,panel-name") == 0)
+		val = fdt_getprop(fdt, src, name, &len);
+		if (!val) {
+			if (fdt_getprop(fdt, dest, name, NULL)) {
+				printf("Removing '%s' from '%s'\n", name,
+				       fdt_get_name(fdt, dest, NULL));
+				fdt_delprop(fdt, dest, name);
+				return -EAGAIN;
+			}
 			continue;
-		debug("setting %s to <0x%08x>\n", name, be32_to_cpup(val));
-		ret = fdt_increase_size(fdt, len);
-		if (ret)
-			printf("Failed to increase FDT size by %u: %s\n", len,
-			       fdt_strerror(ret));
-		ret = fdt_setprop(fdt, dest, name, val, len);
-		if (ret)
+		}
+		if (len != sizeof(u32)) {
+			printf("Property '%s' has invalid size %u\n",
+			       name, len);
+			return -EINVAL;
+		}
+		debug("setting '%s' to <0x%08x>\n", name, be32_to_cpup(val));
+
+		restart = !fdt_getprop(fdt, dest, name, &len);
+		restart |= len != sizeof(u32);
+		/* DTB offsets will change when adding a new property */
+		if (restart) {
+			ret = fdt_increase_size(fdt, len);
+			if (ret) {
+				printf("Failed to increase FDT size by %u: %s\n", len,
+				       fdt_strerror(ret));
+				return -ENOMEM;
+			}
+			printf("Adding new property '%s' to '%s'\n",
+			       name, fdt_get_name(fdt, dest, NULL));
+		}
+		ret = fdt_setprop_u32(fdt, dest, name, be32_to_cpup(val));
+		if (ret) {
 			printf("Failed to set %s property: %s\n", name,
 			       fdt_strerror(ret));
+			return -EINVAL;
+		}
+		if (restart)
+			return -EAGAIN;
 	}
+	return 0;
 }
 
 int karo_fdt_update_fb_mode(void *blob, const char *name,
@@ -757,6 +799,7 @@ int karo_fdt_update_fb_mode(void *blob, const char *name,
 	int dt_node;
 	int panel_off = -1;
 	const char *subnode = "display-timings";
+	size_t i = 0;
 
 	if (panel_name)
 		panel_off = fdt_path_offset(blob, panel_name);
@@ -795,7 +838,7 @@ int karo_fdt_update_fb_mode(void *blob, const char *name,
 		ret = 0;
 	if (!panel_name)
 		return ret;
-
+ restart:
 	dt_node = fdt_path_offset(blob, "display/display-timings");
 	off = karo_fdt_find_panel(blob, dt_node, name);
 	panel_off = fdt_path_offset(blob, panel_name);
@@ -815,7 +858,17 @@ int karo_fdt_update_fb_mode(void *blob, const char *name,
 				printf("Warning: No 'panel-timing' subnode found\n");
 				return -ENOENT;
 			}
-			karo_fixup_panel_timing(blob, timing_node, node);
+
+			if (i == 0)
+				printf("Copying video timing from %s\n", name);
+			ret = karo_fixup_panel_timing(blob,
+						      timing_node,
+						      node);
+			if (ret == -EAGAIN) {
+				if (i++ > ARRAY_SIZE(karo_panel_timing_props))
+					return -EINVAL;
+				goto restart;
+			}
 		} else {
 			char *pn;
 
