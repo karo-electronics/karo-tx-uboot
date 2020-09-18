@@ -244,6 +244,7 @@
 #include <malloc.h>
 #include <common.h>
 #include <g_dnl.h>
+#include <watchdog.h>
 
 #include <linux/err.h>
 #include <linux/usb/ch9.h>
@@ -681,6 +682,8 @@ static int sleep_thread(struct fsg_common *common)
 			/* Handle CTRL+C */
 			if (ctrlc())
 				return -EPIPE;
+
+			WATCHDOG_RESET();
 
 			/* Check cable connection */
 			if (!g_dnl_board_usb_cable_connected())
