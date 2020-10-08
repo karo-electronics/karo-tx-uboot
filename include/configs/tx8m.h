@@ -48,12 +48,14 @@
 
 #if !IS_ENABLED(CONFIG_DM_PMIC)
 #define CONFIG_POWER
+#if !defined(CONFIG_KARO_QS8M)
 #define CONFIG_POWER_I2C
 #if defined(CONFIG_KARO_QSXM)
 #define CONFIG_POWER_PCA9450
-#elif !defined(CONFIG_KARO_QS8M)
+#else
 #define CONFIG_POWER_BD71837
 #endif /* CONFIG_KARO_QSXM */
+#endif /* CONFIG_KARO_QS8M */
 #endif /* CONFIG_DM_PMIC */
 
 #endif /* CONFIG_SPL_BUILD */
