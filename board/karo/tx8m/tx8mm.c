@@ -266,8 +266,8 @@ static inline int tx8mm_i2c_init(void)
 
 			ret = dm_i2c_probe(i2c_dev, i2c_addr, 0x0, &chip);
 			if (ret == 0) {
-				printf("Found an I2C device @ %u:%02x\n",
-				       i, i2c_addr);
+				debug("Found an I2C device @ %u:%02x\n",
+				      i, i2c_addr);
 			} else if (ret != -EREMOTEIO) {
 				printf("Error %d accessing device %u:%02x\n",
 				       ret, i, i2c_addr);

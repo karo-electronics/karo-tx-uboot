@@ -166,10 +166,7 @@ int checkboard(void)
 	printf("Board: Ka-Ro QSXP-ML81\n");
 
 	ctrlc();
-	if (gd->flags & GD_FLG_RELOC)
-		printf("post-reloc\n");
-	else
-		printf("PRE-RELOC!\n");
+
 	qsxp_show_temp();
 	return 0;
 }
