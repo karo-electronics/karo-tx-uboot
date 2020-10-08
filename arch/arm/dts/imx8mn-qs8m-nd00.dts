@@ -98,6 +98,75 @@
 	scl-gpios = <&gpio5 14 GPIO_ACTIVE_HIGH>;
 	sda-gpios = <&gpio5 15 GPIO_ACTIVE_HIGH>;
 	status = "okay";
+
+	pmic@33 {
+		compatible = "ricoh,rn5t567";
+		reg = <0x33>;
+
+		regulators {
+			reg_DCDC1: DCDC1 {  /* V1.0_SOC */
+				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_DCDC2: DCDC2 { /* V1.1_ARM */
+				regulator-min-microvolt = <975000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_DCDC3: DCDC3 { /* V1.8 */
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_DCDC4: DCDC4 { /* V1.35_DRAM */
+				regulator-min-microvolt = <1350000>;
+				regulator-max-microvolt = <1350000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_LDO1: LDO1 { /* PWR_EN_+V3.3_ETH */
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+			};
+
+			reg_LDO2: LDO2 { /* +V1.8_SD */
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_LDO3: LDO3 { /* PWR_EN_+V3.3_LPSR */
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_LDO4: LDO4 { /* V1.8_LPSR */
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_LDO5: LDO5 { /* PWR_EN_+V3.3 */
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
 };
 
 &i2c2 {
