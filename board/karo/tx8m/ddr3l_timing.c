@@ -9,7 +9,8 @@
 #include <linux/kernel.h>
 #include <asm/arch/ddr.h>
 
-#ifdef CONFIG_KARO_TX8MN
+#ifdef CONFIG_IMX8MN
+/* TX8M-ND00 and QS8M-ND00 have the same DDR3L memory */
 struct dram_cfg_param ddr_ddrc_cfg[] = {
 	/** Initialize DDRC registers **/
 	{ 0x3d400304, 0x1 },
