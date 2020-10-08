@@ -26,6 +26,12 @@ config ENV_DEFAULT_NOWHERE
 	  Define this when multiple ENV locations are defined and use nowhere as
 	  default when no storage medium is matched.
 
+config UBOOT_IGNORE_ENV
+       bool
+       help
+	 Ignore non-volatile environment settings and use default
+	 environment only.
+
 config ENV_IS_IN_EEPROM
 	bool "Environment in EEPROM"
 	depends on !CHAIN_OF_TRUST

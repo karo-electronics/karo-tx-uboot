@@ -52,7 +52,7 @@ static inline void karo_env_set_uboot_vars(void)
 void karo_env_cleanup(void)
 {
 	printf("Using default environment\n");
-	set_default_env(NULL);
+	env_set_default(NULL, 0);
 	karo_env_set_uboot_vars();
 }
 #else
