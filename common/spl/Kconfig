@@ -1183,6 +1183,7 @@ endchoice
 
 config SPL_USB_SDP_SUPPORT
 	bool "Support SDP (Serial Download Protocol)"
+	imply SPL_USB_HOST_SUPPORT if CI_UDC
 	help
 	  Enable Serial Download Protocol (SDP) device support in SPL. This
 	  allows to download images into memory and execute (jump to) them
