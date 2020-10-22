@@ -1,7 +1,7 @@
 # default environment for TX8M-1610
 append_bootargs=clk_ignore_unused debug
 autoload=no
-baseboard=mb7
+baseboard=mipi-mb
 boot_mode=mmc
 bootargs_mmc=run default_bootargs; setenv bootargs ${bootargs} root=PARTUUID=${uuid_rootfs} ${append_bootargs}
 bootargs_nfs=run default_bootargs; setenv bootargs ${bootargs} root=/dev/nfs nfsroot=${nfs_server}:${nfsroot},nolock,v3 ip=dhcp ${append_bootargs}
@@ -18,7 +18,7 @@ fastboot_dev=mmc
 fdtaddr=43000000
 fdtsave=save mmc ${mmcdev} ${fdt_addr} ${fdt_file} ${fdt_size}
 fdt_addr=43000000
-fdt_file=imx8mm-tx8m-1610.dtb
+fdt_file=imx8mm-tx8m-1610-mipi-mb.dtb
 fdt_high=63000000
 initrd_addr=-
 initrd_high=63800000
