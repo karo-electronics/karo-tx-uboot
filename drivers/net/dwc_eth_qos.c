@@ -744,6 +744,39 @@ static int eqos_start_resets_tegra186(struct udevice *dev)
 	return 0;
 }
 
+static int eqos_start_resets_stm32(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	int ret;
+
+	debug("%s(dev=%p):\n", __func__, dev);
+	if (dm_gpio_is_valid(&eqos->phy_reset_gpio)) {
+		ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+		if (ret < 0) {
+			pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n",
+			       ret);
+			return ret;
+		}
+
+		udelay(2);
+
+		ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 0);
+		if (ret < 0) {
+			pr_err("dm_gpio_set_value(phy_reset, deassert) failed: %d\n",
+			       ret);
+			return ret;
+		}
+	}
+	debug("%s: OK\n", __func__);
+
+	return 0;
+}
+
+static int eqos_start_resets_imx(struct udevice *dev)
+{
+	return 0;
+}
+
 static int eqos_stop_resets_tegra186(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
@@ -751,6 +784,28 @@ static int eqos_stop_resets_tegra186(struct udevice *dev)
 	reset_assert(&eqos->reset_ctl);
 	dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
 
+	return 0;
+}
+
+static int eqos_stop_resets_stm32(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	int ret;
+
+	if (dm_gpio_is_valid(&eqos->phy_reset_gpio)) {
+		ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+		if (ret < 0) {
+			pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n",
+			       ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int eqos_stop_resets_imx(struct udevice *dev)
+{
 	return 0;
 }
 
@@ -840,6 +895,16 @@ __weak int imx_eqos_txclk_set_rate(unsigned long rate)
 static ulong eqos_get_tick_clk_rate_imx(struct udevice *dev)
 {
 	return imx_get_eqos_csr_clk();
+}
+
+static int eqos_calibrate_pads_stm32(struct udevice *dev)
+{
+	return 0;
+}
+
+static int eqos_disable_calibration_stm32(struct udevice *dev)
+{
+	return 0;
 }
 
 static int eqos_set_full_duplex(struct udevice *dev)
@@ -935,6 +1000,11 @@ static int eqos_set_tx_clk_speed_tegra186(struct udevice *dev)
 	}
 #endif
 
+	return 0;
+}
+
+static int eqos_set_tx_clk_speed_stm32(struct udevice *dev)
+{
 	return 0;
 }
 
@@ -2049,14 +2119,13 @@ static struct eqos_ops eqos_stm32_ops = {
 	.eqos_flush_buffer = eqos_flush_buffer_generic,
 	.eqos_probe_resources = eqos_probe_resources_stm32,
 	.eqos_remove_resources = eqos_remove_resources_stm32,
-	.eqos_stop_resets = eqos_null_ops,
-	.eqos_start_resets = eqos_null_ops,
+	.eqos_stop_resets = eqos_stop_resets_stm32,
+	.eqos_start_resets = eqos_start_resets_stm32,
 	.eqos_stop_clks = eqos_stop_clks_stm32,
 	.eqos_start_clks = eqos_start_clks_stm32,
-	.eqos_calibrate_pads = eqos_null_ops,
-	.eqos_phy_power_on = eqos_phy_power_on_stm32,
-	.eqos_disable_calibration = eqos_null_ops,
-	.eqos_set_tx_clk_speed = eqos_null_ops,
+	.eqos_calibrate_pads = eqos_calibrate_pads_stm32,
+	.eqos_disable_calibration = eqos_disable_calibration_stm32,
+	.eqos_set_tx_clk_speed = eqos_set_tx_clk_speed_stm32,
 	.eqos_get_tick_clk_rate = eqos_get_tick_clk_rate_stm32
 };
 
