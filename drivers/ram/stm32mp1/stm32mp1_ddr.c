@@ -315,7 +315,7 @@ static void set_reg(const struct ddr_info *priv,
 	for (i = 0; i < ddr_registers[type].size; i++) {
 		ptr = (unsigned int *)(base_addr + desc[i].offset);
 		if (desc[i].par_offset == INVALID_OFFSET) {
-			pr_err("invalid parameter offset for %s", desc[i].name);
+			pr_err("invalid parameter offset for %s\n", desc[i].name);
 		} else {
 			value = *((u32 *)((u32)param +
 					       desc[i].par_offset));

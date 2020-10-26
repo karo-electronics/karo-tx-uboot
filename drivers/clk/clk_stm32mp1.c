@@ -1123,7 +1123,7 @@ static ulong stm32mp1_clk_get(struct stm32mp1_clk_priv *priv, int p)
 		if (!uclass_get_device_by_name(UCLASS_CLK, "ck_dsi_phy",
 					       &dev)) {
 			if (clk_request(dev, &clk)) {
-				pr_err("ck_dsi_phy request");
+				pr_err("ck_dsi_phy request failed\n");
 			} else {
 				clk.id = 0;
 				clock = clk_get_rate(&clk);
@@ -1549,7 +1549,7 @@ static int stm32mp1_hsidiv(fdt_addr_t rcc, ulong hsifreq)
 			break;
 
 	if (hsidiv == 4) {
-		pr_err("clk-hsi frequency invalid");
+		pr_err("clk-hsi frequency invalid\n");
 		return -1;
 	}
 
@@ -1739,7 +1739,7 @@ static  __maybe_unused int pll_set_rate(struct udevice *dev,
 	divn = (value >> 13) - 1;
 	if (divn < DIVN_MIN ||
 	    divn > stm32mp1_pll[type].divn_max) {
-		pr_err("divn invalid = %d", divn);
+		pr_err("divn invalid = %d\n", divn);
 		return -EINVAL;
 	}
 	fracv = value - ((divn + 1) << 13);
@@ -2150,7 +2150,7 @@ static ulong stm32mp1_clk_set_rate(struct clk *clk, unsigned long clk_rate)
 	case DSI_PX:
 		break;
 	default:
-		pr_err("not supported");
+		pr_err("not supported\n");
 		return -EINVAL;
 	}
 
@@ -2195,7 +2195,7 @@ static void stm32mp1_osc_clk_init(const char *name,
 	clk.id = 0;
 	if (!uclass_get_device_by_name(UCLASS_CLK, name, &dev)) {
 		if (clk_request(dev, &clk))
-			pr_err("%s request", name);
+			pr_err("%s request failed\n", name);
 		else
 			priv->osc[index] = clk_get_rate(&clk);
 	}
