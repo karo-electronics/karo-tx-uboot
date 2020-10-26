@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-2.0+ OR BSD-3-Clause
+/*
+ * Copyright : STMicroelectronics 2018
+ */
+
+/ {
+	aliases {
+		gpio25 = &gpioz;
+		pinctrl1 = &pinctrl_z;
+	};
+};
+
+&gpioz {
+	u-boot,dm-pre-reloc;
+};
+
+&pinctrl_z {
+	u-boot,dm-pre-reloc;
+};
+

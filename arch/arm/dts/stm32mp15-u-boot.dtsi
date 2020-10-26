@@ -16,9 +16,7 @@
 		gpio8 = &gpioi;
 		gpio9 = &gpioj;
 		gpio10 = &gpiok;
-		gpio25 = &gpioz;
 		pinctrl0 = &pinctrl;
-		pinctrl1 = &pinctrl_z;
 	};
 
 	clocks {
@@ -94,9 +92,11 @@
 
 &cpu0_opp_table {
 	u-boot,dm-spl;
+
 	opp-650000000 {
 		u-boot,dm-spl;
 	};
+
 	opp-800000000 {
 		u-boot,dm-spl;
 	};
@@ -146,10 +146,6 @@
 	u-boot,dm-pre-reloc;
 };
 
-&gpioz {
-	u-boot,dm-pre-reloc;
-};
-
 &iwdg2 {
 	u-boot,dm-pre-reloc;
 };
@@ -160,10 +156,6 @@
 };
 
 &pinctrl {
-	u-boot,dm-pre-reloc;
-};
-
-&pinctrl_z {
 	u-boot,dm-pre-reloc;
 };
 
