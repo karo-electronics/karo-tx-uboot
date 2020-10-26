@@ -757,8 +757,7 @@ static int self_check_volume(struct ubi_device *ubi, int vol_id)
 			ubi_err(ubi, "bad used_ebs");
 			goto fail;
 		}
-		if (vol->last_eb_bytes < 0 ||
-		    vol->last_eb_bytes > vol->usable_leb_size) {
+		if (vol->last_eb_bytes > vol->usable_leb_size) {
 			ubi_err(ubi, "bad last_eb_bytes");
 			goto fail;
 		}
