@@ -27,12 +27,6 @@ config SPL
 config SYS_SOC
 	default "stm32mp"
 
-config SYS_MALLOC_LEN
-	default 0x2000000
-
-config ENV_SIZE
-	default 0x2000
-
 config STM32MP15x
 	bool "Support STMicroelectronics STM32MP15x Soc"
 	select ARCH_SUPPORT_PSCI if !TFABOOT
@@ -59,10 +53,10 @@ config STM32MP15x
 choice
 	prompt "STM32MP15x board select"
 	optional
+	depends on STM32MP15x
 
 config TARGET_ST_STM32MP15x
 	bool "STMicroelectronics STM32MP15x boards"
-	select STM32MP15x
 	imply BOOTCOUNT_LIMIT
 	imply BOOTSTAGE
 	imply CMD_BOOTCOUNT
@@ -79,7 +73,6 @@ config TARGET_ST_STM32MP15x
 
 config TARGET_DH_STM32MP1_PDK2
 	bool "DH STM32MP1 PDK2"
-	select STM32MP15x
 	imply BOOTCOUNT_LIMIT
 	imply CMD_BOOTCOUNT
 	help
