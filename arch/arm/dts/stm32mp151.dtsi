@@ -1991,6 +1991,12 @@
 		};
 	};
 
+	stmmac_axi_config_0: stmmac-axi-config {
+		snps,wr_osr_lmt = <0x7>;
+		snps,rd_osr_lmt = <0x7>;
+		snps,blen = <0 0 0 0 16 8 4>;
+	};
+
 	mlahb: ahb {
 		compatible = "st,mlahb", "simple-bus";
 		#address-cells = <1>;
