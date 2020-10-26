@@ -55,6 +55,7 @@ u32 spl_boot_device(void)
 	return BOOT_DEVICE_MMC1;
 }
 
+#if CONFIG_IS_ENABLED(MMC_SUPPORT)
 u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 {
 	return MMCSD_MODE_RAW;
