@@ -677,7 +677,7 @@ static int mmc_send_op_cond(struct mmc *mmc)
 	mmc_go_idle(mmc);
 
 	start = get_timer(0);
- 	/* Asking to the card its capabilities */
+	/* Asking to the card its capabilities */
 	for (i = 0; ; i++) {
 		err = mmc_send_op_cond_iter(mmc, i != 0);
 		if (err)
@@ -926,7 +926,7 @@ static int mmc_get_capabilities(struct mmc *mmc)
 		return 0;
 
 	if (!ext_csd) {
-		pr_err("No ext_csd found!\n"); /* this should enver happen */
+		pr_err("No ext_csd found!\n"); /* this should never happen */
 		return -ENOTSUPP;
 	}
 
@@ -1412,8 +1412,10 @@ static int sd_set_card_speed(struct mmc *mmc, enum bus_mode mode)
 	if (err)
 		return err;
 
-	if (((__be32_to_cpu(switch_status[4]) >> 24) & 0xF) != speed)
+	if (((__be32_to_cpu(switch_status[4]) >> 24) & 0xF) != speed) {
+		pr_err("SD/MMC speed %u not supported\n", speed);
 		return -ENOTSUPP;
+	}
 
 	return 0;
 }
@@ -2095,7 +2097,7 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
 		return 0;
 
 	if (!mmc->ext_csd) {
-		pr_debug("No ext_csd found!\n"); /* this should enver happen */
+		pr_err("No ext_csd found!\n"); /* this should never happen */
 		return -ENOTSUPP;
 	}
 

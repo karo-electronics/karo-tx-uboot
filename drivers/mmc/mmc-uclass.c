@@ -460,7 +460,7 @@ static int mmc_blk_probe(struct udevice *dev)
 
 	ret = mmc_init(mmc);
 	if (ret) {
-		debug("%s: mmc_init() failed (err=%d)\n", __func__, ret);
+		pr_err("%s: mmc_init() failed (err=%d)\n", __func__, ret);
 		return ret;
 	}
 
