@@ -82,8 +82,7 @@ static int spinand_get_cfg(struct spinand_device *spinand, u8 *cfg)
 {
 	struct nand_device *nand = spinand_to_nand(spinand);
 
-	if (WARN_ON(spinand->cur_target < 0 ||
-		    spinand->cur_target >= nand->memorg.ntargets))
+	if (WARN_ON(spinand->cur_target >= nand->memorg.ntargets))
 		return -EINVAL;
 
 	*cfg = spinand->cfg_cache[spinand->cur_target];
@@ -95,8 +94,7 @@ static int spinand_set_cfg(struct spinand_device *spinand, u8 cfg)
 	struct nand_device *nand = spinand_to_nand(spinand);
 	int ret;
 
-	if (WARN_ON(spinand->cur_target < 0 ||
-		    spinand->cur_target >= nand->memorg.ntargets))
+	if (WARN_ON(spinand->cur_target >= nand->memorg.ntargets))
 		return -EINVAL;
 
 	if (spinand->cfg_cache[spinand->cur_target] == cfg)
