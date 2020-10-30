@@ -94,7 +94,7 @@ int video_reserve(ulong *addrp)
 	     dev;
 	     uclass_find_next_device(&dev)) {
 		size = alloc_fb(dev, addrp);
-		debug("%s: Reserving %lx bytes at %lx for video device '%s'\n",
+		debug("%s: Reserving %08lx bytes at %08lx for video device '%s'\n",
 		      __func__, size, *addrp, dev->name);
 	}
 
@@ -104,7 +104,7 @@ int video_reserve(ulong *addrp)
 
 	gd->video_bottom = *addrp;
 	gd->fb_base = *addrp;
-	debug("Video frame buffers from %lx to %lx\n", gd->video_bottom,
+	debug("Video frame buffers from %08lx to %08lx\n", gd->video_bottom,
 	      gd->video_top);
 
 	return 0;
@@ -393,7 +393,7 @@ static int video_post_bind(struct udevice *dev)
 		       dev->name);
 		return -ENOSPC;
 	}
-	debug("%s: Claiming %lx bytes at %lx for video device '%s'\n",
+	debug("%s: Claiming %08lx bytes at %08lx for video device '%s'\n",
 	      __func__, size, addr, dev->name);
 	uc_priv->video_ptr = addr;
 
