@@ -393,8 +393,10 @@ static int stm32_ltdc_probe(struct udevice *dev)
 
 	if (IS_ENABLED(CONFIG_VIDEO_BRIDGE)) {
 		ret = uclass_get_device(UCLASS_VIDEO_BRIDGE, 0, &bridge);
-		if (ret)
-			debug("No video bridge, or no backlight on bridge\n");
+		if (ret) {
+			dev_err(dev, "No video bridge, or no backlight on bridge\n");
+			return ret;
+		}
 
 		if (bridge) {
 			ret = video_bridge_attach(bridge);
