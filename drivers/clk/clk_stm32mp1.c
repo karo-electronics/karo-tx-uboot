@@ -1354,27 +1354,31 @@ static int stm32mp1_pll1_opp(struct stm32mp1_clk_priv *priv, int clksrc,
 	pllcfg[PLLCFG_R] = 0;
 	pllcfg[PLLCFG_O] = PQR(1, 0, 0);
 
-	for (divm = DIVM_MAX; divm >= DIVM_MIN; divm--)	{
-		post_divm = (u32)(input_freq / (divm + 1));
+	/*
+	 * Since divm is unsigned and DIVM_MIN is zero divm >= DIVM_MIN
+	 * will never be true; thus check for divm wraparound with
+	 * divm <= DIVM_MAX
+	 */
+	for (divm = DIVM_MAX; divm <= DIVM_MAX; divm--)	{
+		post_divm = input_freq / (divm + 1);
 		if (post_divm < POST_DIVM_MIN || post_divm > POST_DIVM_MAX)
 			continue;
 
 		for (divp = DIVP_MIN; divp <= DIVP_MAX; divp++) {
 			freq = output_freq * (divm + 1) * (divp + 1);
-			divn = (u32)((freq / input_freq) - 1);
+			divn = lldiv(freq, input_freq) - 1;
 			if (divn < DIVN_MIN || divn > DIVN_MAX)
 				continue;
 
-			frac = (u32)(((freq * FRAC_MAX) / input_freq) -
-				     ((divn + 1) * FRAC_MAX));
+			frac = lldiv(freq * FRAC_MAX, input_freq) -
+				((divn + 1) * FRAC_MAX);
 			/* 2 loops to refine the fractional part */
 			for (i = 2; i != 0; i--) {
 				if (frac > FRAC_MAX)
 					break;
-
 				vco = (post_divm * (divn + 1)) +
-				      ((post_divm * (u64)frac) /
-				       FRAC_MAX);
+					lldiv((post_divm * (u64)frac),
+					      FRAC_MAX);
 				if (vco < (PLL1600_VCO_MIN / 2) ||
 				    vco > (PLL1600_VCO_MAX / 2)) {
 					frac++;
