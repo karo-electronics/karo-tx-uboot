@@ -263,7 +263,7 @@ int rproc_elf_load_image(struct udevice *dev, ulong addr, ulong size)
 	Elf32_Ehdr *ehdr = (Elf32_Ehdr *)addr;
 
 	if (!addr) {
-		dev_err(dev, "Invalid firmware address\n");
+		pr_err("Invalid firmware address\n");
 		return -EFAULT;
 	}
 
