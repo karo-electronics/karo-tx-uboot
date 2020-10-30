@@ -75,7 +75,8 @@ void spl_display_print(void)
 	DECLARE_GLOBAL_DATA_PTR;
 	const char *model;
 
-	/* same code than show_board_info() but not compiled for SPL
+	/*
+	 * same code as show_board_info() but that is not compiled for SPL
 	 * see CONFIG_DISPLAY_BOARDINFO & common/board_info.c
 	 */
 	model = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
@@ -98,25 +99,26 @@ void board_init_f(ulong dummy)
 
 	ret = spl_early_init();
 	if (ret) {
-		debug("spl_early_init() failed: %d\n", ret);
+		pr_err("%s: spl_early_init() failed: %d\n", __func__, ret);
 		hang();
 	}
 
 	ret = uclass_get_device(UCLASS_CLK, 0, &dev);
 	if (ret) {
-		debug("Clock init failed: %d\n", ret);
+		pr_err("%s: Clock init failed: %d\n", __func__, ret);
 		hang();
 	}
 
 	ret = uclass_get_device(UCLASS_RESET, 0, &dev);
 	if (ret) {
-		debug("Reset init failed: %d\n", ret);
+		pr_err("%s: Reset init failed: %d\n", __func__, ret);
 		hang();
 	}
 
 	ret = uclass_get_device(UCLASS_PINCTRL, 0, &dev);
 	if (ret) {
-		debug("%s: Cannot find pinctrl device\n", __func__);
+		pr_err("%s: Cannot find pinctrl device: %d\n",
+		       __func__, ret);
 		hang();
 	}
 
@@ -131,7 +133,7 @@ void board_init_f(ulong dummy)
 
 	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
 	if (ret) {
-		printf("DRAM init failed: %d\n", ret);
+		pr_err("DRAM init failed: %d\n", ret);
 		hang();
 	}
 
