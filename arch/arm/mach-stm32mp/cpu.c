@@ -502,6 +502,7 @@ static void setup_boot_mode(void)
 		env_set("boot_instance", "0");
 		break;
 	case BOOT_FLASH_SPINAND:
+	case BOOT_FLASH_SPINAND_1:
 		env_set("boot_device", "spi-nand");
 		env_set("boot_instance", "0");
 		break;

@@ -742,6 +742,28 @@ config SPL_MTD_SPI_NAND
 	help
 	  Enable the framework for the SPI NAND device drivers in SPL.
 
+menuconfig SPL_MTD_BOOT
+	bool "Support booting from MTD devices"
+
+if SPL_MTD_BOOT
+
+config SPL_MTD_BOOT_DEVICE
+	string "MTD boot device"
+	help
+	  Defines the MTD device name from which to load the final
+	  U-Boot stage. This may be an MTD partition name or the
+	  name of the root MTD device.
+
+config SPL_MTD_BOOT_OFFSET
+	hex "MTD boot offset"
+	default 0
+	help
+	  Defines the offset within the SPL_MTD_BOOT_DEVICE from
+	  where to start loading the U-Boot image.
+
+endif
+
+
 config SPL_MUSB_NEW_SUPPORT
 	bool "Support new Mentor Graphics USB"
 	help
