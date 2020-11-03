@@ -44,7 +44,7 @@ u32 spl_boot_device(void)
 	case BOOT_FLASH_NOR_QSPI:
 		return BOOT_DEVICE_SPI;
 	case BOOT_FLASH_SPINAND_1:
-		return BOOT_DEVICE_NONE; /* SPINAND not supported in SPL */
+		return BOOT_DEVICE_MTD;
 	}
 
 	return BOOT_DEVICE_MMC1;
