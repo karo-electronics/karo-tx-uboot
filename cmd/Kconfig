@@ -1474,6 +1474,11 @@ config BOOTP_VCI_STRING
 	default "U-Boot.arm" if ARM
 	default "U-Boot"
 
+config BOOTP_RANDOM_ID
+	bool "Use a random BOOTP ID"
+	depends on CMD_BOOTP
+	select LIB_RAND
+
 config CMD_TFTPBOOT
 	bool "tftpboot"
 	default y
