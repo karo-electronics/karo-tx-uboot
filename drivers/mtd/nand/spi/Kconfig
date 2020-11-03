@@ -5,3 +5,37 @@ menuconfig MTD_SPI_NAND
 	select SPI_MEM
 	help
 	  This is the framework for the SPI NAND device drivers.
+
+if MTD_SPI_NAND
+
+config MTD_SPI_NAND_GIGADEVICE
+	bool "Gigadevice SPI NAND support"
+	help
+	  Add support for Gigadevice GD5F1GQ4UExxG SPI NAND devices.
+
+config MTD_SPI_NAND_MACRONIX
+	bool "Macronix SPI NAND support"
+	help
+	  Add support for Macronix MX35LFxGE4AB SPI NAND devices.
+
+config MTD_SPI_NAND_MICRON
+	bool "Micron SPI NAND support"
+	help
+	  Add support for Micron MT29F2G01 SPI NAND devices.
+
+config MTD_SPI_NAND_NETSOL
+	bool "Netsol SPI NAND support"
+	help
+	  Add support for Netsol STF1GE4U00M SPI NAND devices.
+
+config MTD_SPI_NAND_TOSHIBA
+	bool "Toshiba SPI NAND support"
+	help
+	  Add support for Toshiba SPI NAND devices.
+
+config MTD_SPI_NAND_WINBOND
+	bool "Winbond SPI NAND support"
+	help
+	  Add support for Winbond W25[MN] SPI NAND devices.
+
+endif
