@@ -244,7 +244,8 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
 {
 	bool dump, read, raw, woob, write_empty_pages, has_pages = false;
-	u64 start_off, off, len, remaining, default_len;
+	static u64 start_off, len;
+	u64 off, remaining, default_len;
 	struct mtd_oob_ops io_op = {};
 	uint user_addr = 0, npages;
 	const char *cmd = argv[0];
@@ -283,20 +284,24 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 		argv++;
 	}
 
-	start_off = argc > 0 ? simple_strtoul(argv[0], NULL, 16) : 0;
-	if (!mtd_is_aligned_with_min_io_size(mtd, start_off)) {
-		printf("Offset not aligned with a page (0x%x)\n",
-		       mtd->writesize);
-		ret = CMD_RET_FAILURE;
-		goto out_put_mtd;
-	}
+	if (!(flag & CMD_FLAG_REPEAT)) {
+		start_off = argc > 0 ? simple_strtoul(argv[0], NULL, 16) : 0;
+		if (!mtd_is_aligned_with_min_io_size(mtd, start_off)) {
+			printf("Offset not aligned with a page (0x%x)\n",
+			       mtd->writesize);
+			ret = CMD_RET_FAILURE;
+			goto out_put_mtd;
+		}
 
-	default_len = dump ? mtd->writesize : mtd->size;
-	len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : default_len;
-	if (!mtd_is_aligned_with_min_io_size(mtd, len)) {
-		len = round_up(len, mtd->writesize);
-		printf("Size not on a page boundary (0x%x), rounding to 0x%llx\n",
-		       mtd->writesize, len);
+		default_len = dump ? mtd->writesize : mtd->size;
+		len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : default_len;
+		if (!mtd_is_aligned_with_min_io_size(mtd, len)) {
+			len = round_up(len, mtd->writesize);
+			printf("Size not on a page boundary (0x%x), rounding to 0x%llx\n",
+			       mtd->writesize, len);
+		}
+	} else {
+		start_off += len;
 	}
 
 	remaining = len;
@@ -555,9 +560,9 @@ U_BOOT_CMD_WITH_SUBCMDS(mtd, "MTD utils", mtd_help_text,
 					     mtd_name_complete),
 		U_BOOT_SUBCMD_MKENT_COMPLETE(write, 5, 0, do_mtd_io,
 					     mtd_name_complete),
-		U_BOOT_SUBCMD_MKENT_COMPLETE(dump, 4, 0, do_mtd_io,
+		U_BOOT_SUBCMD_MKENT_COMPLETE(dump, 4, 1, do_mtd_io,
 					     mtd_name_complete),
 		U_BOOT_SUBCMD_MKENT_COMPLETE(erase, 4, 0, do_mtd_erase,
 					     mtd_name_complete),
-		U_BOOT_SUBCMD_MKENT_COMPLETE(bad, 2, 1, do_mtd_bad,
+		U_BOOT_SUBCMD_MKENT_COMPLETE(bad, 2, 0, do_mtd_bad,
 					     mtd_name_complete));
