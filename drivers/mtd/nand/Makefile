@@ -7,4 +7,9 @@ obj-$(CONFIG_MTD_RAW_NAND) += raw/
 obj-$(CONFIG_MTD_SPI_NAND) += spi/
 else
 obj-$(CONFIG_$(SPL_TPL_)NAND_SUPPORT) += raw/
+ifneq ($(CONFIG_$(SPL_TPL_)MTD_SPI_NAND),)
+obj-y += spi/
+nandcore-objs := core.o bbt.o
+obj-$(CONFIG_MTD_NAND_CORE) += nandcore.o
+endif
 endif

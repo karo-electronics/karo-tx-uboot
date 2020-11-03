@@ -736,6 +736,12 @@ config SPL_MTD_SUPPORT
 	  devices. See SPL_NAND_SUPPORT and SPL_ONENAND_SUPPORT for how
 	  to enable specific MTD drivers.
 
+config SPL_MTD_SPI_NAND
+	bool "Support SPI NAND in SPL"
+	depends on MTD_SPI_NAND && SPL_MTD_SUPPORT
+	help
+	  Enable the framework for the SPI NAND device drivers in SPL.
+
 config SPL_MUSB_NEW_SUPPORT
 	bool "Support new Mentor Graphics USB"
 	help
@@ -798,6 +804,7 @@ config SPL_DM_SPI
 
 config SPL_DM_SPI_FLASH
 	bool "Support SPI DM FLASH drivers in SPL"
+	depends on SPL_DM_SPI
 	help
 	  Enable support for SPI DM flash drivers in SPL.
 

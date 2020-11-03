@@ -35,7 +35,9 @@ else
 ifneq ($(mtd-y),)
 obj-$(CONFIG_SPL_MTD_SUPPORT) += mtd.o
 endif
-obj-$(CONFIG_$(SPL_TPL_)NAND_SUPPORT) += nand/
+ifneq ($(CONFIG_$(SPL_TPL_)NAND_SUPPORT),$(CONFIG_$(SPL_TPL_)MTD_SPI_NAND),)
+obj-y += nand/
+endif
 obj-$(CONFIG_SPL_ONENAND_SUPPORT) += onenand/
 obj-$(CONFIG_$(SPL_TPL_)SPI_FLASH_SUPPORT) += spi/
 obj-$(CONFIG_SPL_UBI) += ubispl/
