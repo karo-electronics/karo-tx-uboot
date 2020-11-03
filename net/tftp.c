@@ -246,7 +246,6 @@ static int load_block(unsigned block, uchar *dst, unsigned len)
 }
 #endif
 
-static void tftp_send(void);
 static void tftp_timeout_handler(void);
 
 /**********************************************************************/
@@ -857,7 +856,7 @@ void tftp_start(enum proto_t protocol)
 	tftp_remote_port = WELL_KNOWN_PORT;
 	timeout_count = 0;
 	/* Use a pseudo-random port unless a specific port is set */
-	tftp_our_port = 1024 + (get_timer(0) % 3072);
+	tftp_our_port = 1024 + (rand() % 3072);
 
 #ifdef CONFIG_TFTP_PORT
 	ep = env_get("tftpdstp");
