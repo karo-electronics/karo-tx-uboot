@@ -176,8 +176,8 @@ static int ubi_create_vol(char *volume, int64_t size, int dynamic, int vol_id,
 		printf("verify_mkvol_req failed %d\n", err);
 		return err;
 	}
-	printf("Creating %s volume %s of size %lld\n",
-		dynamic ? "dynamic" : "static", volume, size);
+	printf("Creating %s volume %s of size %llu\n",
+	       dynamic ? "dynamic" : "static", volume, size);
 	/* Call real ubi create volume */
 	return ubi_create_volume(ubi, &req);
 }
@@ -375,7 +375,7 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 		return 0;
 
 	if (size == 0) {
-		printf("No size specified -> Using max size (%lld)\n", vol->used_bytes);
+		printf("No size specified -> Using max size (%llu)\n", vol->used_bytes);
 		size = vol->used_bytes;
 	}
 
@@ -622,7 +622,7 @@ static int do_ubi(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		/* Use maximum available size */
 		if (!size) {
 			size = (int64_t)ubi->avail_pebs * ubi->leb_size;
-			printf("No size specified -> Using max size (%lld)\n", size);
+			printf("No size specified -> Using max size (%llu)\n", size);
 		}
 		/* E.g., create volume */
 		if (argc == 3) {
@@ -651,10 +651,8 @@ static int do_ubi(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	if (strncmp(argv[1], "write", 5) == 0) {
 		int ret;
 
-		if (argc < 5) {
-			printf("Please see usage\n");
-			return 1;
-		}
+		if (argc < 5)
+			return CMD_RET_USAGE;
 
 		addr = simple_strtoul(argv[2], NULL, 16);
 		size = simple_strtoul(argv[4], NULL, 16);
@@ -674,7 +672,7 @@ static int do_ubi(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 			ret = ubi_volume_write(argv[3], (void *)addr, size);
 		}
 		if (!ret) {
-			printf("%lld bytes written to volume %s\n", size,
+			printf("%llu bytes written to volume %s\n", size,
 			       argv[3]);
 		}
 
@@ -701,8 +699,7 @@ static int do_ubi(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		}
 	}
 
-	printf("Please see usage\n");
-	return 1;
+	return CMD_RET_USAGE;
 }
 
 U_BOOT_CMD(
