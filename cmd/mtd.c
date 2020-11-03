@@ -126,13 +126,6 @@ static void mtd_show_device(struct mtd_info *mtd)
 		printf("  - driver: %s\n", mtd->dev->driver->name);
 	}
 #endif
-	if (IS_ENABLED(CONFIG_OF_CONTROL) && mtd->dev) {
-		char buf[256];
-		int res;
-
-		res = ofnode_get_path(mtd_get_ofnode(mtd), buf, 256);
-		printf("  - path: %s\n", res == 0 ? buf : "unavailable");
-	}
 
 	/* MTD device information */
 	printf("  - type: ");
@@ -251,7 +244,8 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
 {
 	bool dump, read, raw, woob, write_empty_pages, has_pages = false;
-	u64 start_off, off, len, remaining, default_len;
+	static u64 start_off, len;
+	u64 off, remaining, default_len;
 	struct mtd_oob_ops io_op = {};
 	uint user_addr = 0, npages;
 	const char *cmd = argv[0];
@@ -285,25 +279,29 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 			goto out_put_mtd;
 		}
 
-		user_addr = hextoul(argv[0], NULL);
+		user_addr = simple_strtoul(argv[0], NULL, 16);
 		argc--;
 		argv++;
 	}
 
-	start_off = argc > 0 ? hextoul(argv[0], NULL) : 0;
-	if (!mtd_is_aligned_with_min_io_size(mtd, start_off)) {
-		printf("Offset not aligned with a page (0x%x)\n",
-		       mtd->writesize);
-		ret = CMD_RET_FAILURE;
-		goto out_put_mtd;
-	}
+	if (!(flag & CMD_FLAG_REPEAT)) {
+		start_off = argc > 0 ? simple_strtoul(argv[0], NULL, 16) : 0;
+		if (!mtd_is_aligned_with_min_io_size(mtd, start_off)) {
+			printf("Offset not aligned with a page (0x%x)\n",
+			       mtd->writesize);
+			ret = CMD_RET_FAILURE;
+			goto out_put_mtd;
+		}
 
-	default_len = dump ? mtd->writesize : mtd->size;
-	len = argc > 1 ? hextoul(argv[1], NULL) : default_len;
-	if (!mtd_is_aligned_with_min_io_size(mtd, len)) {
-		len = round_up(len, mtd->writesize);
-		printf("Size not on a page boundary (0x%x), rounding to 0x%llx\n",
-		       mtd->writesize, len);
+		default_len = dump ? mtd->writesize : mtd->size;
+		len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : default_len;
+		if (!mtd_is_aligned_with_min_io_size(mtd, len)) {
+			len = round_up(len, mtd->writesize);
+			printf("Size not on a page boundary (0x%x), rounding to 0x%llx\n",
+			       mtd->writesize, len);
+		}
+	} else {
+		start_off += len;
 	}
 
 	remaining = len;
@@ -413,8 +411,8 @@ static int do_mtd_erase(struct cmd_tbl *cmdtp, int flag, int argc,
 	argc -= 2;
 	argv += 2;
 
-	off = argc > 0 ? hextoul(argv[0], NULL) : 0;
-	len = argc > 1 ? hextoul(argv[1], NULL) : mtd->size;
+	off = argc > 0 ? simple_strtoul(argv[0], NULL, 16) : 0;
+	len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : mtd->size;
 
 	if (!mtd_is_aligned_with_block_size(mtd, off)) {
 		printf("Offset not aligned with a block (0x%x)\n",
@@ -544,7 +542,7 @@ static char mtd_help_text[] =
 	"mtd bad                               <name>\n"
 	"\n"
 	"With:\n"
-	"\t<name>: NAND partition/chip name (or corresponding DM device name or OF path)\n"
+	"\t<name>: NAND partition/chip name\n"
 	"\t<addr>: user address from/to which data will be retrieved/stored\n"
 	"\t<off>: offset in <name> in bytes (default: start of the part)\n"
 	"\t\t* must be block-aligned for erase\n"
@@ -562,9 +560,9 @@ U_BOOT_CMD_WITH_SUBCMDS(mtd, "MTD utils", mtd_help_text,
 					     mtd_name_complete),
 		U_BOOT_SUBCMD_MKENT_COMPLETE(write, 5, 0, do_mtd_io,
 					     mtd_name_complete),
-		U_BOOT_SUBCMD_MKENT_COMPLETE(dump, 4, 0, do_mtd_io,
+		U_BOOT_SUBCMD_MKENT_COMPLETE(dump, 4, 1, do_mtd_io,
 					     mtd_name_complete),
 		U_BOOT_SUBCMD_MKENT_COMPLETE(erase, 4, 0, do_mtd_erase,
 					     mtd_name_complete),
-		U_BOOT_SUBCMD_MKENT_COMPLETE(bad, 2, 1, do_mtd_bad,
+		U_BOOT_SUBCMD_MKENT_COMPLETE(bad, 2, 0, do_mtd_bad,
 					     mtd_name_complete));
