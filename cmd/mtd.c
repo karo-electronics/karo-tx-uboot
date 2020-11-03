@@ -79,6 +79,9 @@ static void mtd_dump_device_buf(struct mtd_info *mtd, u64 start_off,
 		for (page = 0; page < npages; page++) {
 			u64 data_off = page * mtd->writesize;
 
+			if (ctrlc())
+				break;
+
 			printf("\nDump %d data bytes from 0x%08llx:\n",
 			       mtd->writesize, start_off + data_off);
 			mtd_dump_buf(&buf[data_off],
@@ -387,7 +390,7 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 out_put_mtd:
 	put_mtd_device(mtd);
 
-	return ret;
+	return had_ctrlc() ? CMD_RET_FAILURE : ret;
 }
 
 static int do_mtd_erase(struct cmd_tbl *cmdtp, int flag, int argc,
