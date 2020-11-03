@@ -126,6 +126,8 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
 	stm32prog_data = NULL;
 
 	puts("Download done\n");
+	env_set("bootcmd", env_get(".bootcmd"));
+	env_set(".bootcmd", NULL);
 
 	if (uimage) {
 		char boot_addr_start[20];
