@@ -24,6 +24,10 @@
 #include <linux/kernel.h>
 #include <asm/u-boot.h> /* boot information for Linux kernel */
 #include <vsprintf.h>
+
+#ifdef CONFIG_SHOW_ACTIVITY
+void show_activity(int arg);
+#endif
 #endif	/* __ASSEMBLY__ */
 
 /* Pull in stuff for the build system */
