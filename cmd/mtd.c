@@ -249,6 +249,7 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 	bool dump, read, raw, woob, write_empty_pages, has_pages = false;
 	static u64 start_off, len;
 	u64 off, remaining, default_len;
+	bool len_set = false;
 	struct mtd_oob_ops io_op = {};
 	uint user_addr = 0, npages;
 	const char *cmd = argv[0];
@@ -295,9 +296,26 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 			ret = CMD_RET_FAILURE;
 			goto out_put_mtd;
 		}
+		if (start_off >= mtd->size) {
+			printf("Offset exceeds partition/device size %08llx\n",
+			       mtd->size);
+			ret = CMD_RET_FAILURE;
+			goto out_put_mtd;
+		}
+		default_len = dump ? mtd->writesize : mtd->size - start_off;
+		len_set = argc > 1;
+		if (len_set) {
+			len = simple_strtoul(argv[1], NULL, 16);
+			if (len > mtd->size || start_off + len >= mtd->size) {
+				printf("Offset+size exceeds partition/device size %llx\n",
+				       mtd->size);
+				ret = CMD_RET_FAILURE;
+				goto out_put_mtd;
+			}
+		} else {
+			len = default_len;
+		}
 
-		default_len = dump ? mtd->writesize : mtd->size;
-		len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : default_len;
 		if (!mtd_is_aligned_with_min_io_size(mtd, len)) {
 			len = round_up(len, mtd->writesize);
 			printf("Size not on a page boundary (0x%x), rounding to 0x%llx\n",
@@ -340,16 +358,29 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 	/* Search for the first good block after the given offset */
 	off = start_off;
 	if (!dump) {
-		while (mtd_block_isbad(mtd, off) > 0)
+		while (mtd_block_isbad(mtd, off) > 0) {
+			printf("Skipping bad block at %08llx\n", off);
 			off += mtd->erasesize;
+			if (!len_set)
+				remaining -= mtd->erasesize;
+		}
 	}
 
+	if (off + remaining > mtd->size) {
+		printf("Offset+size exceeds partition/device size %08llx\n",
+		       mtd->size);
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
 	/* Loop over the pages to do the actual read/write */
 	while (remaining) {
 		/* Skip the block if it is bad */
 		if (!dump && mtd_is_aligned_with_block_size(mtd, off) &&
 		    mtd_block_isbad(mtd, off)) {
+			printf("Skipping bad block at %08llx\n", off);
 			off += mtd->erasesize;
+			if (!len_set)
+				remaining -= mtd->erasesize;
 			continue;
 		}
 
@@ -415,7 +446,20 @@ static int do_mtd_erase(struct cmd_tbl *cmdtp, int flag, int argc,
 	argv += 2;
 
 	off = argc > 0 ? simple_strtoul(argv[0], NULL, 16) : 0;
-	len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : mtd->size;
+	len = argc > 1 ? simple_strtoul(argv[1], NULL, 16) : mtd->size - off;
+
+	if (off >= mtd->size) {
+		printf("Offset exceeds partition/device size %08llx\n",
+		       mtd->size);
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
+	if (len > mtd->size || off + len >= mtd->size) {
+		printf("Size exceeds partition/device size %08llx\n",
+		       mtd->size);
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
 
 	if (!mtd_is_aligned_with_block_size(mtd, off)) {
 		printf("Offset not aligned with a block (0x%x)\n",
