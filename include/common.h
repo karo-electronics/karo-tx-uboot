@@ -26,6 +26,10 @@
 #include <asm/global_data.h>	/* global data used for startup functions */
 #include <display_options.h>
 #include <vsprintf.h>
+
+#ifdef CONFIG_SHOW_ACTIVITY
+void show_activity(int arg);
+#endif
 #endif	/* __ASSEMBLY__ */
 
 /* Pull in stuff for the build system */
