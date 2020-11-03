@@ -331,13 +331,15 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	/* Search for the first good block after the given offset */
 	off = start_off;
-	while (mtd_block_isbad(mtd, off))
-		off += mtd->erasesize;
+	if (!dump) {
+		while (mtd_block_isbad(mtd, off) > 0)
+			off += mtd->erasesize;
+	}
 
 	/* Loop over the pages to do the actual read/write */
 	while (remaining) {
 		/* Skip the block if it is bad */
-		if (mtd_is_aligned_with_block_size(mtd, off) &&
+		if (!dump && mtd_is_aligned_with_block_size(mtd, off) &&
 		    mtd_block_isbad(mtd, off)) {
 			off += mtd->erasesize;
 			continue;
