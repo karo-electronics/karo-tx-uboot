@@ -11,6 +11,7 @@
 #include <command.h>
 #include <common.h>
 #include <console.h>
+#include <env.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <mtd.h>
@@ -279,13 +280,18 @@ static int do_mtd_io(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	if (!dump) {
 		if (!argc) {
-			ret = CMD_RET_USAGE;
-			goto out_put_mtd;
-		}
+			const char *loadaddr = env_get("loadaddr");
 
-		user_addr = simple_strtoul(argv[0], NULL, 16);
-		argc--;
-		argv++;
+			if (!loadaddr) {
+				ret = CMD_RET_USAGE;
+				goto out_put_mtd;
+			}
+			user_addr = env_get_hex("loadaddr", 0);
+		} else {
+			user_addr = simple_strtoul(argv[0], NULL, 16);
+			argc--;
+			argv++;
+		}
 	}
 
 	if (!(flag & CMD_FLAG_REPEAT)) {
@@ -580,9 +586,9 @@ static int mtd_name_complete(int argc, char *const argv[], char last_char,
 static char mtd_help_text[] =
 	"- generic operations on memory technology devices\n\n"
 	"mtd list\n"
-	"mtd read[.raw][.oob]                  <name> <addr> [<off> [<size>]]\n"
+	"mtd read[.raw][.oob]                  <name> [<addr>] [<off> [<size>]]\n"
 	"mtd dump[.raw][.oob]                  <name>        [<off> [<size>]]\n"
-	"mtd write[.raw][.oob][.dontskipff]    <name> <addr> [<off> [<size>]]\n"
+	"mtd write[.raw][.oob][.dontskipff]    <name> [<addr>] [<off> [<size>]]\n"
 	"mtd erase[.dontskipbad]               <name>        [<off> [<size>]]\n"
 	"\n"
 	"Specific functions:\n"
@@ -591,6 +597,7 @@ static char mtd_help_text[] =
 	"With:\n"
 	"\t<name>: NAND partition/chip name\n"
 	"\t<addr>: user address from/to which data will be retrieved/stored\n"
+	"\t        defaults to ${loadaddr}\n"
 	"\t<off>: offset in <name> in bytes (default: start of the part)\n"
 	"\t\t* must be block-aligned for erase\n"
 	"\t\t* must be page-aligned otherwise\n"
