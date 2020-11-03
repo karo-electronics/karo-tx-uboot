@@ -460,7 +460,7 @@ static int do_mtd_erase(struct cmd_tbl *cmdtp, int flag, int argc,
 		ret = CMD_RET_FAILURE;
 		goto out_put_mtd;
 	}
-	if (len > mtd->size || off + len >= mtd->size) {
+	if (len > mtd->size - off) {
 		printf("Size exceeds partition/device size %08llx\n",
 		       mtd->size);
 		ret = CMD_RET_FAILURE;
@@ -485,11 +485,20 @@ static int do_mtd_erase(struct cmd_tbl *cmdtp, int flag, int argc,
 	       off, off + len - 1, mtd_div_by_eb(len, mtd));
 
 	erase_op.mtd = mtd;
-	erase_op.addr = off;
 	erase_op.len = mtd->erasesize;
 	erase_op.scrub = scrub;
 
 	while (len) {
+		/*
+		 * If the given mtd device represents an MTD partition,
+		 * the part_erase() function called by mtd_erase() will
+		 * replace erase_op.addr with the block offset within
+		 * the parent mtd device. Thus we need to initialize this
+		 * parameter before each call to mtd_erase().
+		 */
+		erase_op.addr = off;
+		debug("Erasing %08llx..%08llx\n", erase_op.addr,
+		      erase_op.addr + erase_op.len - 1);
 		ret = mtd_erase(mtd, &erase_op);
 
 		if (ret) {
@@ -501,7 +510,7 @@ static int do_mtd_erase(struct cmd_tbl *cmdtp, int flag, int argc,
 		}
 
 		len -= mtd->erasesize;
-		erase_op.addr += mtd->erasesize;
+		off += mtd->erasesize;
 	}
 
 	if (ret && ret != -EIO)
