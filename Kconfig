@@ -123,6 +123,16 @@ config XEN
 
 	  [1] - https://xenproject.org/
 
+config CHECK_REL_DYN
+	bool "Enable checking of rel.dyn section"
+	help
+	  Enabling this option will perform a consistency check of
+	  the relocation table (.rel.dyn ELF section) to catch possible
+	  corruptions of the relocation table.
+	  Since the .bss section overlays the .rel.dyn section, writing
+	  to variables residing in the .bss section (zero-initialized
+	  static variables) prior to relocation will corrupt the relocation table.
+
 config DISTRO_DEFAULTS
 	bool "Select defaults suitable for booting general purpose Linux distributions"
 	select AUTO_COMPLETE

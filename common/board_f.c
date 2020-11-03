@@ -17,6 +17,7 @@
 #include <cpu.h>
 #include <cpu_func.h>
 #include <dm.h>
+#include <elf.h>
 #include <env.h>
 #include <env_internal.h>
 #include <fdtdec.h>
@@ -706,6 +707,37 @@ static int fix_fdt(void)
 }
 #endif
 
+#if CONFIG_IS_ENABLED(CHECK_REL_DYN)
+int check_rel_dyn(void)
+{
+	unsigned long img_start = (unsigned long)__image_copy_start;
+	unsigned long img_end = (unsigned long)_image_binary_end;
+	struct reloc_entry {
+		unsigned long addr;
+		unsigned int code;
+	};
+	struct reloc_entry *rel_start = (void *)__rel_dyn_start;
+	struct reloc_entry *rel_end = (void *)__rel_dyn_end;
+	struct reloc_entry *p;
+	int errors = 0;
+
+	debug("Checking rel.dyn section from %p..%p\n", rel_start, rel_end);
+	for (p = rel_start; p < rel_end; p++) {
+		if (p->addr < img_start || p->addr > img_end) {
+			if (errors == 0)
+				pr_err("Relocation table has been corrupted! Fix your U-Boot sourcecode!\n");
+			pr_err("Entry at %p in relocation table points outside the code to be relocated: %08lx, %08x\n",
+			       p, p->addr, p->code);
+			errors++;
+		}
+		if (p->code != R_ARM_RELATIVE)
+			pr_warn("Entry at %p in relocation table has unsupported relocation type: %08lx, %08x\n",
+				p, p->addr, p->code);
+	}
+	return errors;
+}
+#endif
+
 /* ARM calls relocate_code from its crt0.S */
 #if !defined(CONFIG_ARM) && !defined(CONFIG_SANDBOX) && \
 		!CONFIG_IS_ENABLED(X86_64)
@@ -938,6 +970,9 @@ static const init_fnc_t init_sequence_f[] = {
 	reloc_fdt,
 	reloc_bootstage,
 	reloc_bloblist,
+#if CONFIG_IS_ENABLED(CHECK_REL_DYN)
+	check_rel_dyn,
+#endif
 	setup_reloc,
 #if defined(CONFIG_X86) || defined(CONFIG_ARC)
 	copy_uboot_to_ram,
