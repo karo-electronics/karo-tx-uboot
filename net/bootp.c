@@ -749,7 +749,7 @@ void bootp_request(void)
 	else		/* After 3rd BOOTP request max 8192 * 1ms */
 		rand_ms = rand() >> 19;
 
-	printf("Random delay: %ld ms...\n", rand_ms);
+	debug("Random delay: %ld ms...\n", rand_ms);
 	mdelay(rand_ms);
 
 #endif	/* CONFIG_BOOTP_RANDOM_DELAY */
@@ -798,7 +798,7 @@ void bootp_request(void)
 #else
 	extlen = bootp_extended((u8 *)bp->bp_vend);
 #endif
-
+#ifndef CONFIG_BOOTP_RANDOM_ID
 	/*
 	 *	Bootp ID is the lower 4 bytes of our ethernet address
 	 *	plus the current time in ms.
@@ -808,6 +808,10 @@ void bootp_request(void)
 		| ((u32)net_ethaddr[4] << 8)
 		| (u32)net_ethaddr[5];
 	bootp_id += get_timer(0);
+#else
+	bootp_id = rand();
+#endif
+	debug("Using BOOTP ID: %08x\n", bootp_id);
 	bootp_id = htonl(bootp_id);
 	bootp_add_id(bootp_id);
 	net_copy_u32(&bp->bp_id, &bootp_id);
