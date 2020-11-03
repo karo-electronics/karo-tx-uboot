@@ -70,7 +70,7 @@
 		   SPI_MEM_OP_NO_DATA)
 
 #define SPINAND_PAGE_READ_FROM_CACHE_OP(fast, addr, ndummy, buf, len)	\
-	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
+	SPI_MEM_OP(SPI_MEM_OP_CMD((fast) ? 0x0b : 0x03, 1),		\
 		   SPI_MEM_OP_ADDR(2, addr, 1),				\
 		   SPI_MEM_OP_DUMMY(ndummy, 1),				\
 		   SPI_MEM_OP_DATA_IN(len, buf, 1))
@@ -106,13 +106,13 @@
 		   SPI_MEM_OP_NO_DATA)
 
 #define SPINAND_PROG_LOAD(reset, addr, buf, len)			\
-	SPI_MEM_OP(SPI_MEM_OP_CMD(reset ? 0x02 : 0x84, 1),		\
+	SPI_MEM_OP(SPI_MEM_OP_CMD((reset) ? 0x02 : 0x84, 1),		\
 		   SPI_MEM_OP_ADDR(2, addr, 1),				\
 		   SPI_MEM_OP_NO_DUMMY,					\
 		   SPI_MEM_OP_DATA_OUT(len, buf, 1))
 
 #define SPINAND_PROG_LOAD_X4(reset, addr, buf, len)			\
-	SPI_MEM_OP(SPI_MEM_OP_CMD(reset ? 0x32 : 0x34, 1),		\
+	SPI_MEM_OP(SPI_MEM_OP_CMD((reset) ? 0x32 : 0x34, 1),		\
 		   SPI_MEM_OP_ADDR(2, addr, 1),				\
 		   SPI_MEM_OP_NO_DUMMY,					\
 		   SPI_MEM_OP_DATA_OUT(len, buf, 4))
@@ -206,6 +206,7 @@ extern const struct spinand_manufacturer macronix_spinand_manufacturer;
 extern const struct spinand_manufacturer micron_spinand_manufacturer;
 extern const struct spinand_manufacturer toshiba_spinand_manufacturer;
 extern const struct spinand_manufacturer winbond_spinand_manufacturer;
+extern const struct spinand_manufacturer netsol_spinand_manufacturer;
 
 /**
  * struct spinand_op_variants - SPI NAND operation variants

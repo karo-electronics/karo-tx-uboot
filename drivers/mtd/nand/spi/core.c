@@ -831,12 +831,16 @@ static const struct nand_ops spinand_ops = {
 	.isbad = spinand_isbad,
 };
 
+#define spinand_manf_entry(conf, name) \
+	(IS_ENABLED(CONFIG_##conf) ? &name##_spinand_manufacturer : NULL)
+
 static const struct spinand_manufacturer *spinand_manufacturers[] = {
-	&gigadevice_spinand_manufacturer,
-	&macronix_spinand_manufacturer,
-	&micron_spinand_manufacturer,
-	&toshiba_spinand_manufacturer,
-	&winbond_spinand_manufacturer,
+	spinand_manf_entry(MTD_SPI_NAND_GIGADEVICE, gigadevice),
+	spinand_manf_entry(MTD_SPI_NAND_MACRONIX, macronix),
+	spinand_manf_entry(MTD_SPI_NAND_MICRON, micron),
+	spinand_manf_entry(MTD_SPI_NAND_NETSOL, netsol),
+	spinand_manf_entry(MTD_SPI_NAND_TOSHIBA, toshiba),
+	spinand_manf_entry(MTD_SPI_NAND_WINBOND, winbond),
 };
 
 static int spinand_manufacturer_detect(struct spinand_device *spinand)
@@ -845,6 +849,10 @@ static int spinand_manufacturer_detect(struct spinand_device *spinand)
 	int ret;
 
 	for (i = 0; i < ARRAY_SIZE(spinand_manufacturers); i++) {
+		if (!spinand_manufacturers[i]) {
+			debug("Skipping empty manf entry %u\n", i);
+			continue;
+		}
 		ret = spinand_manufacturers[i]->ops->detect(spinand);
 		if (ret > 0) {
 			spinand->manufacturer = spinand_manufacturers[i];
