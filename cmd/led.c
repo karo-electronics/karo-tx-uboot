@@ -128,7 +128,7 @@ int do_led(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 }
 
 #ifdef CONFIG_LED_BLINK
-#define BLINK "|blink [blink-freq in ms]"
+#define BLINK "|blink <blink-freq in ms>"
 #else
 #define BLINK ""
 #endif
