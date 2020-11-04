@@ -9,6 +9,7 @@
 #include <console.h>
 #include <div64.h>
 #include <version.h>
+#include <watchdog.h>
 #include <linux/ctype.h>
 #include <asm/io.h>
 
@@ -199,6 +200,8 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 #ifndef CONFIG_SPL_BUILD
 		if (ctrlc())
 			return -1;
+
+		WATCHDOG_RESET();
 #endif
 	}
 
