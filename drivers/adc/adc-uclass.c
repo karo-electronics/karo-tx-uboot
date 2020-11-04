@@ -40,8 +40,8 @@ static int check_channel(struct udevice *dev, int value, bool number_or_mask,
 	if ((uc_pdata->channel_mask >= mask) && (uc_pdata->channel_mask & mask))
 		return 0;
 
-	printf("Error in %s/%s().\nWrong channel selection for device: %s\n",
-	       __FILE__, caller_function, dev->name);
+	pr_err("Wrong channel selection %08x for device: %s\nAvailable channels: %08x\n",
+	       mask, dev->name, uc_pdata->channel_mask);
 
 	return -EINVAL;
 }
