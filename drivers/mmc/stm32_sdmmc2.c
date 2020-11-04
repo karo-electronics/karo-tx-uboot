@@ -14,12 +14,14 @@
 #include <asm/bitops.h>
 #include <asm/cache.h>
 #include <linux/bitops.h>
+#include <linux/compat.h>
 #include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <mmc.h>
 #include <reset.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
+#include <dm/device_compat.h>
 #include <linux/iopoll.h>
 #include <watchdog.h>
 
@@ -83,9 +85,9 @@ struct stm32_sdmmc2_ctx {
 #define SDMMC_CLKCR_DDR			BIT(18)
 #define SDMMC_CLKCR_BUSSPEED		BIT(19)
 #define SDMMC_CLKCR_SELCLKRX_MASK	GENMASK(21, 20)
-#define SDMMC_CLKCR_SELCLKRX_CK		0
-#define SDMMC_CLKCR_SELCLKRX_CKIN	BIT(20)
-#define SDMMC_CLKCR_SELCLKRX_FBCK	BIT(21)
+#define SDMMC_CLKCR_SELCLKRX_CK		(0x0 << 20)
+#define SDMMC_CLKCR_SELCLKRX_CKIN	(0x1 << 20)
+#define SDMMC_CLKCR_SELCLKRX_FBCK	(0x2 << 20)
 
 /* SDMMC_CMD register */
 #define SDMMC_CMD_CMDINDEX		GENMASK(5, 0)
@@ -614,13 +616,24 @@ static int stm32_sdmmc2_set_ios(struct udevice *dev)
 
 static int stm32_sdmmc2_getcd(struct udevice *dev)
 {
+	int ret;
 	struct stm32_sdmmc2_priv *priv = dev_get_priv(dev);
 
-	debug("stm32_sdmmc2_getcd called\n");
+	debug("%s() called\n", __func__);
 
-	if (dm_gpio_is_valid(&priv->cd_gpio))
-		return dm_gpio_get_value(&priv->cd_gpio);
+	ret = dm_gpio_is_valid(&priv->cd_gpio);
+	if (ret) {
+		int cd = dm_gpio_get_value(&priv->cd_gpio);
 
+		if (cd < 0) {
+			dev_err(dev, "Failed to read CD GPIO: %d\n", cd);
+			return 1;
+		}
+		dev_dbg(dev, "CD gpio is %sactive (%d)\n", cd ? "" : "in",
+			!cd ^ !(priv->cd_gpio.flags & GPIOD_ACTIVE_LOW));
+		return cd;
+	}
+	dev_dbg(dev, "CD GPIO is not valid\n");
 	return 1;
 }
 
@@ -672,9 +685,14 @@ static int stm32_sdmmc2_probe(struct udevice *dev)
 	if (ret)
 		goto clk_disable;
 
-	gpio_request_by_name(dev, "cd-gpios", 0, &priv->cd_gpio,
-			     GPIOD_IS_IN);
-
+	ret = gpio_request_by_name(dev, "cd-gpios", 0, &priv->cd_gpio,
+				   GPIOD_IS_IN);
+	if (ret) {
+		if (ret == -ENOENT)
+			dev_dbg(dev, "No CD gpio\n");
+		else
+			dev_err(dev, "Failed to get CD gpio: %d\n", ret);
+	}
 	cfg->f_min = 400000;
 	cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
