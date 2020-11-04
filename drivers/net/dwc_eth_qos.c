@@ -32,6 +32,7 @@
 #include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
+#include <eth_phy.h>
 #include <log.h>
 #include <malloc.h>
 #include <memalign.h>
@@ -44,7 +45,7 @@
 #include <asm/cache.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <eth_phy.h>
+#include <dm/device_compat.h>
 #ifdef CONFIG_ARCH_IMX8M
 #include <asm/arch/clock.h>
 #include <asm/mach-imx/sys_proto.h>
@@ -1166,82 +1167,19 @@ static int eqos_start(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret, i;
-	ulong rate;
 	u32 val, tx_fifo_sz, rx_fifo_sz, tqs, rqs, pbl;
 	ulong last_rx_desc;
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
-	eqos->tx_desc_idx = 0;
-	eqos->rx_desc_idx = 0;
-
-	ret = eqos->config->ops->eqos_start_clks(dev);
-	if (ret < 0) {
-		pr_err("eqos_start_clks() failed: %d\n", ret);
+	if (!eqos->phy) {
+		dev_err(dev, "No PHY attached\n");
+		ret = -ENODEV;
 		goto err;
 	}
 
-	ret = eqos->config->ops->eqos_start_resets(dev);
-	if (ret < 0) {
-		pr_err("eqos_start_resets() failed: %d\n", ret);
-		goto err_stop_clks;
-	}
-
-	udelay(10);
-
-	eqos->reg_access_ok = true;
-
-	ret = wait_for_bit_le32(&eqos->dma_regs->mode,
-				EQOS_DMA_MODE_SWR, false,
-				eqos->config->swr_wait, false);
-	if (ret) {
-		pr_err("EQOS_DMA_MODE_SWR stuck\n");
-		goto err_stop_resets;
-	}
-
-	ret = eqos->config->ops->eqos_calibrate_pads(dev);
-	if (ret < 0) {
-		pr_err("eqos_calibrate_pads() failed: %d\n", ret);
-		goto err_stop_resets;
-	}
-	rate = eqos->config->ops->eqos_get_tick_clk_rate(dev);
-
-	val = (rate / 1000000) - 1;
-	writel(val, &eqos->mac_regs->us_tic_counter);
-
-	/*
-	 * if PHY was already connected and configured,
-	 * don't need to reconnect/reconfigure again
-	 */
-	if (!eqos->phy) {
-		int addr = -1;
-#ifdef CONFIG_DM_ETH_PHY
-		addr = eth_phy_get_addr(dev);
-#endif
-#ifdef DWC_NET_PHYADDR
-		addr = DWC_NET_PHYADDR;
-#endif
-		eqos->phy = phy_connect(eqos->mii, addr, dev,
-					eqos->config->interface(dev));
-		if (!eqos->phy) {
-			pr_err("phy_connect() failed\n");
-			goto err_stop_resets;
-		}
-
-		if (eqos->max_speed) {
-			ret = phy_set_supported(eqos->phy, eqos->max_speed);
-			if (ret) {
-				pr_err("phy_set_supported() failed: %d\n", ret);
-				goto err_shutdown_phy;
-			}
-		}
-
-		ret = phy_config(eqos->phy);
-		if (ret < 0) {
-			pr_err("phy_config() failed: %d\n", ret);
-			goto err_shutdown_phy;
-		}
-	}
+	eqos->tx_desc_idx = 0;
+	eqos->rx_desc_idx = 0;
 
 	ret = phy_startup(eqos->phy);
 	if (ret < 0) {
@@ -1251,6 +1189,7 @@ static int eqos_start(struct udevice *dev)
 
 	if (!eqos->phy->link) {
 		pr_err("No link\n");
+		ret = -ENOTCONN;
 		goto err_shutdown_phy;
 	}
 
@@ -1439,7 +1378,8 @@ static int eqos_start(struct udevice *dev)
 
 	memset(eqos->descs, 0, EQOS_DESCRIPTORS_SIZE);
 	for (i = 0; i < EQOS_DESCRIPTORS_RX; i++) {
-		struct eqos_desc *rx_desc = &(eqos->rx_descs[i]);
+		struct eqos_desc *rx_desc = &eqos->rx_descs[i];
+
 		rx_desc->des0 = (u32)(ulong)(eqos->rx_dma_buf +
 					     (i * EQOS_MAX_PACKET_SIZE));
 		rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
@@ -1475,7 +1415,7 @@ static int eqos_start(struct udevice *dev)
 	 * that's not distinguishable from none of the descriptors being
 	 * available.
 	 */
-	last_rx_desc = (ulong)&(eqos->rx_descs[(EQOS_DESCRIPTORS_RX - 1)]);
+	last_rx_desc = (ulong)&eqos->rx_descs[(EQOS_DESCRIPTORS_RX - 1)];
 	writel(last_rx_desc, &eqos->dma_regs->ch0_rxdesc_tail_pointer);
 
 	eqos->started = true;
@@ -1485,12 +1425,8 @@ static int eqos_start(struct udevice *dev)
 
 err_shutdown_phy:
 	phy_shutdown(eqos->phy);
-err_stop_resets:
-	eqos->config->ops->eqos_stop_resets(dev);
-err_stop_clks:
-	eqos->config->ops->eqos_stop_clks(dev);
 err:
-	pr_err("FAILED: %d\n", ret);
+	pr_err("%s() FAILED: %d\n", __func__, ret);
 	return ret;
 }
 
@@ -1504,7 +1440,6 @@ static void eqos_stop(struct udevice *dev)
 	if (!eqos->started)
 		return;
 	eqos->started = false;
-	eqos->reg_access_ok = false;
 
 	/* Disable TX DMA */
 	clrbits_le32(&eqos->dma_regs->ch0_tx_control,
@@ -1542,8 +1477,6 @@ static void eqos_stop(struct udevice *dev)
 	if (eqos->phy) {
 		phy_shutdown(eqos->phy);
 	}
-	eqos->config->ops->eqos_stop_resets(dev);
-	eqos->config->ops->eqos_stop_clks(dev);
 
 	debug("%s: OK\n", __func__);
 }
@@ -1560,7 +1493,7 @@ static int eqos_send(struct udevice *dev, void *packet, int length)
 	memcpy(eqos->tx_dma_buf, packet, length);
 	eqos->config->ops->eqos_flush_buffer(eqos->tx_dma_buf, length);
 
-	tx_desc = &(eqos->tx_descs[eqos->tx_desc_idx]);
+	tx_desc = &eqos->tx_descs[eqos->tx_desc_idx];
 	eqos->tx_desc_idx++;
 	eqos->tx_desc_idx %= EQOS_DESCRIPTORS_TX;
 
@@ -1575,8 +1508,8 @@ static int eqos_send(struct udevice *dev, void *packet, int length)
 	tx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_FD | EQOS_DESC3_LD | length;
 	eqos->config->ops->eqos_flush_desc(tx_desc);
 
-	writel((ulong)(&(eqos->tx_descs[eqos->tx_desc_idx])),
-		&eqos->dma_regs->ch0_txdesc_tail_pointer);
+	writel((ulong)(&eqos->tx_descs[eqos->tx_desc_idx]),
+	       &eqos->dma_regs->ch0_txdesc_tail_pointer);
 
 	for (i = 0; i < 1000000; i++) {
 		eqos->config->ops->eqos_inval_desc(tx_desc);
@@ -1594,59 +1527,19 @@ static int eqos_recv(struct udevice *dev, int flags, uchar **packetp)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	struct eqos_desc *rx_desc;
+	void *dmabuf;
 	int length;
 
 	debug("%s(dev=%p, flags=%x):\n", __func__, dev, flags);
 
-	rx_desc = &(eqos->rx_descs[eqos->rx_desc_idx]);
+	rx_desc = &eqos->rx_descs[eqos->rx_desc_idx];
 	eqos->config->ops->eqos_inval_desc(rx_desc);
 	if (rx_desc->des3 & EQOS_DESC3_OWN) {
 		debug("%s: RX packet not available\n", __func__);
 		return -EAGAIN;
 	}
-
-	*packetp = eqos->rx_dma_buf +
-		(eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE);
+	dmabuf = eqos->rx_dma_buf + eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE;
 	length = rx_desc->des3 & 0x7fff;
-	debug("%s: *packetp=%p, length=%d\n", __func__, *packetp, length);
-
-	eqos->config->ops->eqos_inval_buffer(*packetp, length);
-
-	return length;
-}
-
-static int eqos_free_pkt(struct udevice *dev, uchar *packet, int length)
-{
-	struct eqos_priv *eqos = dev_get_priv(dev);
-	uchar *packet_expected;
-	struct eqos_desc *rx_desc;
-
-	debug("%s(packet=%p, length=%d)\n", __func__, packet, length);
-
-	packet_expected = eqos->rx_dma_buf +
-		(eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE);
-	if (packet != packet_expected) {
-		debug("%s: Unexpected packet (expected %p)\n", __func__,
-		      packet_expected);
-		return -EINVAL;
-	}
-
-	eqos->config->ops->eqos_inval_buffer(packet, length);
-
-	rx_desc = &(eqos->rx_descs[eqos->rx_desc_idx]);
-
-	rx_desc->des0 = 0;
-	mb();
-	eqos->config->ops->eqos_flush_desc(rx_desc);
-	eqos->config->ops->eqos_inval_buffer(packet, length);
-	rx_desc->des0 = (u32)(ulong)packet;
-	rx_desc->des1 = 0;
-	rx_desc->des2 = 0;
-	/*
-	 * Make sure that if HW sees the _OWN write below, it will see all the
-	 * writes to the rest of the descriptor too.
-	 */
-	mb();
 	rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
 	eqos->config->ops->eqos_flush_desc(rx_desc);
 
@@ -1655,6 +1548,20 @@ static int eqos_free_pkt(struct udevice *dev, uchar *packet, int length)
 	eqos->rx_desc_idx++;
 	eqos->rx_desc_idx %= EQOS_DESCRIPTORS_RX;
 
+	*packetp = memalign(ARCH_DMA_MINALIGN, length);
+	if (!*packetp)
+		return -ENOMEM;
+
+	eqos->config->ops->eqos_inval_buffer(dmabuf, length);
+	memcpy(*packetp, dmabuf, length);
+
+	return length;
+}
+
+int eqos_free_pkt(struct udevice *dev, uchar *packet, int length)
+{
+	debug("%s(packet=%p, length=%d)\n", __func__, packet, length);
+	free(packet);
 	return 0;
 }
 
@@ -1831,7 +1738,7 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 
 	ret = board_interface_eth_init(dev, interface);
 	if (ret)
-		return -EINVAL;
+		return ret;
 
 	eqos->max_speed = dev_read_u32_default(dev, "max-speed", 0);
 
@@ -1889,14 +1796,14 @@ err_probe:
 	return ret;
 }
 
-static phy_interface_t eqos_get_interface_stm32(struct udevice *dev)
+static phy_interface_t eqos_get_interface_generic(struct udevice *dev)
 {
 	const char *phy_mode;
 	phy_interface_t interface = PHY_INTERFACE_MODE_NONE;
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
-	phy_mode = dev_read_prop(dev, "phy-mode", NULL);
+	phy_mode = dev_read_string(dev, "phy-mode");
 	if (phy_mode)
 		interface = phy_get_interface_by_name(phy_mode);
 
@@ -1924,20 +1831,6 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 
 	debug("%s: OK\n", __func__);
 	return 0;
-}
-
-static phy_interface_t eqos_get_interface_imx(struct udevice *dev)
-{
-	const char *phy_mode;
-	phy_interface_t interface = PHY_INTERFACE_MODE_NONE;
-
-	debug("%s(dev=%p):\n", __func__, dev);
-
-	phy_mode = dev_read_prop(dev, "phy-mode", NULL);
-	if (phy_mode)
-		interface = phy_get_interface_by_name(phy_mode);
-
-	return interface;
 }
 
 static int eqos_remove_resources_tegra186(struct udevice *dev)
@@ -1990,6 +1883,8 @@ static int eqos_probe(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret;
+	ulong rate;
+	u32 val;
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
@@ -2044,9 +1939,73 @@ static int eqos_probe(struct udevice *dev)
 	eth_phy_set_mdio_bus(dev, eqos->mii);
 #endif
 
+	ret = eqos->config->ops->eqos_start_clks(dev);
+	if (ret < 0) {
+		pr_err("eqos_start_clks() failed: %d\n", ret);
+		goto err_unregister_mdio;
+	}
+
+	ret = eqos->config->ops->eqos_start_resets(dev);
+	if (ret < 0) {
+		pr_err("eqos_start_resets() failed: %d\n", ret);
+		goto err_stop_clks;
+	}
+
+	udelay(10);
+
+	eqos->reg_access_ok = true;
+
+	ret = wait_for_bit_le32(&eqos->dma_regs->mode,
+				EQOS_DMA_MODE_SWR, false,
+				eqos->config->swr_wait, false);
+	if (ret) {
+		pr_err("EQOS_DMA_MODE_SWR stuck\n");
+		goto err_stop_resets;
+	}
+
+	ret = eqos->config->ops->eqos_calibrate_pads(dev);
+	if (ret < 0) {
+		pr_err("eqos_calibrate_pads() failed: %d\n", ret);
+		goto err_stop_resets;
+	}
+	rate = eqos->config->ops->eqos_get_tick_clk_rate(dev);
+
+	val = (rate / 1000000) - 1;
+	writel(val, &eqos->mac_regs->us_tic_counter);
+
+	eqos->phy = phy_connect(eqos->mii, eqos->phyaddr, dev,
+				eqos->config->interface(dev));
+	if (!eqos->phy) {
+		pr_err("phy_connect() failed\n");
+		ret = -EIO;
+		goto err_stop_resets;
+	}
+
+	if (eqos->max_speed) {
+		ret = phy_set_supported(eqos->phy, eqos->max_speed);
+		if (ret) {
+			pr_err("phy_set_supported() failed: %d\n", ret);
+			goto err_shutdown_phy;
+		}
+	}
+
+	ret = phy_config(eqos->phy);
+	if (ret < 0) {
+		pr_err("phy_config() failed: %d\n", ret);
+		goto err_shutdown_phy;
+	}
+
 	debug("%s: OK\n", __func__);
 	return 0;
 
+err_shutdown_phy:
+	phy_shutdown(eqos->phy);
+err_stop_resets:
+	eqos->config->ops->eqos_stop_resets(dev);
+err_stop_clks:
+	eqos->config->ops->eqos_stop_clks(dev);
+err_unregister_mdio:
+	mdio_unregister(eqos->mii);
 err_free_mdio:
 	mdio_free(eqos->mii);
 err_remove_resources_tegra:
@@ -2064,11 +2023,11 @@ static int eqos_remove(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
+	eqos->config->ops->eqos_stop_resets(dev);
+	eqos->config->ops->eqos_stop_clks(dev);
 	mdio_unregister(eqos->mii);
 	mdio_free(eqos->mii);
 	eqos->config->ops->eqos_remove_resources(dev);
-
-	eqos_probe_resources_core(dev);
 
 	debug("%s: OK\n", __func__);
 	return 0;
@@ -2134,7 +2093,7 @@ static const struct eqos_config __maybe_unused eqos_stm32_config = {
 	.swr_wait = 50,
 	.config_mac = EQOS_MAC_RXQ_CTRL0_RXQ0EN_ENABLED_AV,
 	.config_mac_mdio = EQOS_MAC_MDIO_ADDRESS_CR_250_300,
-	.interface = eqos_get_interface_stm32,
+	.interface = eqos_get_interface_generic,
 	.ops = &eqos_stm32_ops
 };
 
@@ -2161,7 +2120,7 @@ struct eqos_config __maybe_unused eqos_imx_config = {
 	.swr_wait = 50,
 	.config_mac = EQOS_MAC_RXQ_CTRL0_RXQ0EN_ENABLED_DCB,
 	.config_mac_mdio = EQOS_MAC_MDIO_ADDRESS_CR_250_300,
-	.interface = eqos_get_interface_imx,
+	.interface = eqos_get_interface_generic,
 	.ops = &eqos_imx_ops
 };
 
@@ -2169,19 +2128,19 @@ static const struct udevice_id eqos_ids[] = {
 #if IS_ENABLED(CONFIG_DWC_ETH_QOS_TEGRA186)
 	{
 		.compatible = "nvidia,tegra186-eqos",
-		.data = (ulong)&eqos_tegra186_config
+		.data = (ulong)&eqos_tegra186_config,
 	},
 #endif
 #if IS_ENABLED(CONFIG_DWC_ETH_QOS_STM32)
 	{
 		.compatible = "st,stm32mp1-dwmac",
-		.data = (ulong)&eqos_stm32_config
+		.data = (ulong)&eqos_stm32_config,
 	},
 #endif
 #if IS_ENABLED(CONFIG_DWC_ETH_QOS_IMX)
 	{
 		.compatible = "fsl,imx-eqos",
-		.data = (ulong)&eqos_imx_config
+		.data = (ulong)&eqos_imx_config,
 	},
 #endif
 
