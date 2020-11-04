@@ -7,6 +7,7 @@
 #include <common.h>
 #include <env.h>
 #include <env_internal.h>
+#include <malloc.h>
 
 #if defined(CONFIG_NEEDS_MANUAL_RELOC)
 DECLARE_GLOBAL_DATA_PTR;
@@ -36,7 +37,7 @@ static struct env_clbk_tbl *find_env_callback(const char *name)
 }
 
 static int first_call = 1;
-static const char *callback_list;
+static char *callback_list;
 
 /*
  * Look for a possible callback for a newly added variable
@@ -51,7 +52,7 @@ void env_callback_init(struct env_entry *var_entry)
 	int ret = 1;
 
 	if (first_call) {
-		callback_list = env_get(ENV_CALLBACK_VAR);
+		callback_list = strdup(env_get(ENV_CALLBACK_VAR));
 		first_call = 0;
 	}
 
@@ -104,10 +105,10 @@ static int set_callback(const char *name, const char *value, void *priv)
 
 	/* does the env variable actually exist? */
 	if (ep != NULL) {
-		/* the assocaition delares no callback, so remove the pointer */
-		if (value == NULL || strlen(value) == 0)
+		/* the association declares no callback, so remove the pointer */
+		if (!value || strlen(value) == 0) {
 			ep->callback = NULL;
-		else {
+		} else {
 			/* assign the requested callback */
 			clbkp = find_env_callback(value);
 			if (clbkp != NULL)
@@ -132,6 +133,9 @@ static int on_callbacks(const char *name, const char *value, enum env_op op,
 	env_attr_walk(ENV_CALLBACK_LIST_STATIC, set_callback, NULL);
 	/* configure any dynamic callback bindings */
 	env_attr_walk(value, set_callback, NULL);
+
+	free(callback_list);
+	callback_list = strdup(value);
 
 	return 0;
 }
