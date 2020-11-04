@@ -200,10 +200,10 @@ static int stm32_serial_probe(struct udevice *dev)
 	}
 
 	plat->clock_rate = clk_get_rate(&clk);
-	if (!plat->clock_rate) {
+	if (!plat->clock_rate || IS_ERR_VALUE(plat->clock_rate)) {
 		clk_disable(&clk);
-		return -EINVAL;
-	};
+		return plat->clock_rate ?: -EINVAL;
+	}
 
 	_stm32_serial_init(plat->base, plat->uart_info);
 
