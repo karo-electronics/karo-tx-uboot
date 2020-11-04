@@ -37,7 +37,8 @@ static inline unsigned int seed_mac(void)
  */
 static inline void srand_mac(void)
 {
-	srand(seed_mac());
+	/* don't throw away entropy that may have been gathered already */
+	srand(seed_mac() | rand());
 }
 
 #endif /* __NET_RAND_H__ */
