@@ -514,18 +514,23 @@ int ofnode_decode_display_timing(ofnode parent, int index,
 				 struct display_timing *dt)
 {
 	int i;
-	ofnode timings, node;
+	ofnode timings, node = ofnode_null();
 	u32 val = 0;
 	int ret = 0;
 
 	timings = ofnode_find_subnode(parent, "display-timings");
-	if (!ofnode_valid(timings))
-		return -EINVAL;
+	if (!ofnode_valid(timings)) {
+		node = ofnode_find_subnode(parent, "panel-timing");
+		if (!ofnode_valid(node))
+			return -EINVAL;
+	}
 
-	i = 0;
-	ofnode_for_each_subnode(node, timings) {
-		if (i++ == index)
-			break;
+	if (!ofnode_valid(node)) {
+		i = 0;
+		ofnode_for_each_subnode(node, timings) {
+			if (i++ == index)
+				break;
+		}
 	}
 
 	if (!ofnode_valid(node))
