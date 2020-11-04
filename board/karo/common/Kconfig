@@ -1,0 +1,12 @@
+config UBOOT_IGNORE_ENV
+	bool
+	help
+	  Ignore non-volatile environment settings and use default
+	  environment only but allow saving the environment to mass
+	  storage.
+
+config SYS_FDT_ADDR
+	hex "FDT load address"
+	default 0xc4000000
+	help
+	  The address the FDT file should be loaded to.

@@ -945,12 +945,17 @@ dtb-$(CONFIG_ASPEED_AST2500) += ast2500-evb.dtb
 dtb-$(CONFIG_ARCH_STI) += stih410-b2260.dtb
 
 dtb-$(CONFIG_STM32MP15x) += \
+	stm32mp151a-qsmp-1510.dtb \
+	stm32mp153a-qsmp-1530.dtb \
+	stm32mp153a-txmp-1530.dtb \
 	stm32mp157a-dk1.dtb \
 	stm32mp157a-avenger96.dtb \
 	stm32mp157c-dk2.dtb \
 	stm32mp157c-ed1.dtb \
 	stm32mp157c-ev1.dtb \
 	stm32mp157c-odyssey.dtb \
+	stm32mp157c-qsmp-1570.dtb \
+	stm32mp157c-txmp-1570.dtb \
 	stm32mp15xx-dhcom-drc02.dtb \
 	stm32mp15xx-dhcom-pdk2.dtb \
 	stm32mp15xx-dhcor-avenger96.dtb

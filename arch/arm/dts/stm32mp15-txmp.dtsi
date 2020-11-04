@@ -1,0 +1,153 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * Copyright (C) Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+#include "stm32mp151.dtsi"
+#include "stm32mp15-pinctrl.dtsi"
+#include "stm32mp15xxab-pinctrl.dtsi"
+#include "stm32mp15-karo.dtsi"
+
+&adc {
+	status = "disabled";
+};
+
+&adc2 {
+	status = "disabled";
+};
+
+&ethernet0 {
+	pinctrl-0 = <&ethernet0_rmii_pins>;
+	pinctrl-1 = <&ethernet0_rmii_pins_sleep>;
+	phy-mode = "rmii";
+	max-speed = <100>;
+	phy-reset-gpios = <&gpioa 14 GPIO_ACTIVE_LOW>;
+	st,eth-ref-clk-sel;
+};
+
+&lcd_backlight {
+	gpios = <&gpioa 10 GPIO_ACTIVE_LOW>;
+};
+
+&lcd_panel {
+	pinctrl-0 = <&txmp_ltdc_pins>;
+	pinctrl-1 = <&txmp_ltdc_pins_sleep>;
+	enable-gpios = <&gpiod 15 GPIO_ACTIVE_HIGH>;
+	reset-gpios = <&gpioe 1 GPIO_ACTIVE_HIGH>;
+};
+
+&mdio0 {
+	phy0: ethernet-phy@0 {
+		reg = <0>;
+		interrupt-parent = <&gpioa>;
+		interrupts = <13 IRQ_TYPE_EDGE_FALLING>;
+		smsc,disable-energy-detect;
+	};
+};
+
+&module_led {
+	pinctrl-0 = <&txmp_led_pins>;
+	pinctrl-1 = <&txmp_led_sleep_pins>;
+	gpios = <&gpioe 4 GPIO_ACTIVE_HIGH>;
+};
+
+&sai2 {
+	status = "okay";
+
+	sai2a: audio-controller@4400b004 {
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&sai2a_pins>;
+		pinctrl-1 = <&sai2a_sleep_pins>;
+		status = "okay";
+	};
+};
+
+&sdmmc3 {
+	/* SD card slot */
+	pinctrl-names = "default", "opendrain", "sleep";
+	pinctrl-0 = <&sdmmc3_pins>;
+	pinctrl-1 = <&sdmmc3_opendrain_pins>;
+	pinctrl-2 = <&sdmmc3_sleep_pins>;
+	cd-gpios = <&gpioc 11 GPIO_ACTIVE_LOW>;
+	bus-width = <4>;
+	no-1-8-v;
+	st,neg-edge;
+	status = "okay";
+};
+
+&spi2 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&spi2_pins>;
+	pinctrl-1 = <&spi2_sleep_pins>;
+	status = "okay";
+};
+
+&vrefbuf {
+	status = "disabled";
+};
+
+&pinctrl {
+	sdmmc3_pins: sdmmc3-pins {
+		pins1 {
+			pinmux = <
+				  STM32_PINMUX('D', 0, AF10)	/* SDMMC3_CMD */
+				  STM32_PINMUX('D', 1, AF10)	/* SDMMC3_D0 */
+				  STM32_PINMUX('D', 4, AF10)	/* SDMMC3_D1 */
+				  STM32_PINMUX('D', 5, AF10)	/* SDMMC3_D2 */
+				  STM32_PINMUX('D', 7, AF10)	/* SDMMC3_D3 */
+			>;
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <0>;
+		};
+
+		pins2 {
+			pinmux = <STM32_PINMUX('G', 15, AF10)>; /* SDMMC3_CK */
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <0>;
+		};
+	};
+
+	sdmmc3_opendrain_pins: sdmmc3_opendrain-mx {
+		pins1 {
+			pinmux = <
+				  STM32_PINMUX('D', 1, AF10) /* SDMMC3_D0 */
+				  STM32_PINMUX('D', 4, AF10) /* SDMMC3_D1 */
+				  STM32_PINMUX('D', 5, AF10) /* SDMMC3_D2 */
+				  STM32_PINMUX('D', 7, AF10) /* SDMMC3_D3 */
+			>;
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <0>;
+		};
+
+		pins2 {
+			pinmux = <STM32_PINMUX('G', 15, AF10)>; /* SDMMC3_CK */
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <0>;
+		};
+
+		pins3 {
+			pinmux = <STM32_PINMUX('D', 0, AF10)>; /* SDMMC3_CMD */
+			bias-pull-up;
+			drive-open-drain;
+			slew-rate = <0>;
+		};
+	};
+
+	sdmmc3_sleep_pins: sdmmc3-sleep-mx {
+		pins {
+			pinmux = <
+				  STM32_PINMUX('D', 0, ANALOG) /* SDMMC3_CMD */
+				  STM32_PINMUX('D', 1, ANALOG) /* SDMMC3_D0 */
+				  STM32_PINMUX('D', 4, ANALOG) /* SDMMC3_D1 */
+				  STM32_PINMUX('D', 5, ANALOG) /* SDMMC3_D2 */
+				  STM32_PINMUX('D', 7, ANALOG) /* SDMMC3_D3 */
+				  STM32_PINMUX('G', 15, ANALOG) /* SDMMC3_CK */
+			>;
+		};
+	};
+
+};
