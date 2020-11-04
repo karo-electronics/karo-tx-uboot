@@ -392,8 +392,8 @@ static int set_gpt_info(struct blk_desc *dev_desc,
 	lbaint_t offset = 0;
 	int max_str_part = calc_parts_list_len(MAX_SEARCH_PARTITIONS);
 
-	debug("%s:  lba num: 0x%x %d\n", __func__,
-	      (unsigned int)dev_desc->lba, (unsigned int)dev_desc->lba);
+	debug("%s:  lba num: 0x" LBAF " " LBAFU "\n", __func__,
+	      dev_desc->lba, dev_desc->lba);
 
 	if (str_part == NULL)
 		return -1;
@@ -853,18 +853,18 @@ U_BOOT_CMD(gpt, CONFIG_SYS_MAXARGS, 1, do_gpt,
 	"GUID Partition Table",
 	"<command> <interface> <dev> <partitions_list>\n"
 	" - GUID partition table restoration and validity check\n"
-	" Restore or verify GPT information on a device connected\n"
-	" to interface\n"
+	"   Restore or verify GPT information on a device connected\n"
+	"   to interface\n"
 	" Example usage:\n"
-	" gpt write mmc 0 $partitions\n"
-	" gpt verify mmc 0 $partitions\n"
+	"   gpt write mmc 0 $partitions\n"
+	"   gpt verify mmc 0 $partitions\n"
 	" gpt guid <interface> <dev>\n"
 	"    - print disk GUID\n"
 	" gpt guid <interface> <dev> <varname>\n"
 	"    - set environment variable to disk GUID\n"
 	" Example usage:\n"
-	" gpt guid mmc 0\n"
-	" gpt guid mmc 0 varname\n"
+	"   gpt guid mmc 0\n"
+	"   gpt guid mmc 0 varname\n"
 #ifdef CONFIG_CMD_GPT_RENAME
 	"gpt partition renaming commands:\n"
 	" gpt read <interface> <dev>\n"
@@ -875,7 +875,7 @@ U_BOOT_CMD(gpt, CONFIG_SYS_MAXARGS, 1, do_gpt,
 	" gpt rename <interface> <dev> <part> <name>\n"
 	"    - rename the specified partition\n"
 	" Example usage:\n"
-	" gpt swap mmc 0 foo bar\n"
-	" gpt rename mmc 0 3 foo\n"
+	"   gpt swap mmc 0 foo bar\n"
+	"   gpt rename mmc 0 3 foo\n"
 #endif
 );
