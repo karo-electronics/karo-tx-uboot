@@ -116,15 +116,22 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 	int i, changed = 0, offset, max;
 	u16 regval = 0;
 	ofnode node;
+	struct ofnode_phandle_args phandle_args;
+	int ret;
 
 	if (!drv || !drv->writeext)
 		return -EOPNOTSUPP;
 
-	/* Look for a PHY node under the Ethernet node */
-	node = dev_read_subnode(dev, "ethernet-phy");
-	if (!ofnode_valid(node)) {
-		/* No node found, look in the Ethernet node */
-		node = dev_ofnode(dev);
+	ret = dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
+					 &phandle_args);
+	if (!ret) {
+		node = phandle_args.node;
+	} else {
+		/* Look for a PHY node under the Ethernet node */
+		node = dev_read_subnode(dev, "ethernet-phy");
+		if (!ofnode_valid(node))
+			/* No node found, look in the Ethernet node */
+			node = dev_ofnode(dev);
 	}
 
 	for (i = 0; i < ofcfg->grpsz; i++) {
