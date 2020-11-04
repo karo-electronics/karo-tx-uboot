@@ -1,0 +1,100 @@
+source "board/karo/common/Kconfig"
+
+if TARGET_KARO_TXMP
+
+config SYS_BOARD
+	default "txmp"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_CONFIG_NAME
+	default "txmp"
+
+config KARO_STM32
+	bool
+
+choice
+	prompt "Ka-Ro STM32 module variant"
+
+config KARO_TXMP_1530
+	bool "Ka-Ro TXMP-1530 module"
+	select KARO_STM32
+	imply TXMP_EMMC
+	help
+	  Enable support for the Ka-Ro electronics TXMP-1530 module featuring
+	  an STM32MP153A SOC, 256MiB of SDRAM and 4GiB or 8GiB eMMC.
+
+config KARO_TXMP_1570
+	bool "Ka-Ro TXMP-1570 module"
+	select KARO_STM32
+	imply TXMP_EMMC
+	help
+	  Enable support for the Ka-Ro electronics TXMP-1570 module featuring
+	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB or 8GiB eMMC.
+
+config KARO_QSMP_1510
+	bool "Ka-Ro QSMP-1510 solder-in module"
+	select KARO_STM32
+	select TXMP_NAND
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1510 module featuring
+	  an STM32MP151A SOC, 256MiB of SDRAM and 128MiB NAND flash on a
+	  solder-in module.
+
+config KARO_QSMP_1530
+	bool "Ka-Ro QSMP-1530 solder-in module"
+	select KARO_STM32
+	imply TXMP_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1530 module featuring
+	  an STM32MP153A SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
+	  module.
+
+config KARO_QSMP_1570
+	bool "Ka-Ro QSMP-1570 solder-in module"
+	select KARO_STM32
+	imply TXMP_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1570 module featuring
+	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB eMMC on a solder-in
+	  module.
+
+endchoice
+
+choice
+	prompt "Ka-Ro TXMP/QSMP boot device"
+	default TXMP_EMMC
+
+config TXMP_EMMC
+	bool "eMMC device"
+
+config TXMP_NAND
+	bool "SPI NAND device"
+	depends on STM32_QSPI
+	select DM_MTD
+
+config TXMP_SPI
+	bool "SPI NOR device"
+	depends on STM32_QSPI
+	select DM_MTD
+
+endchoice
+
+choice
+        prompt "U-Boot image variant"
+        default KARO_UBOOT
+
+config KARO_UBOOT
+        bool "Standard U-Boot image"
+
+config KARO_UBOOT_MFG
+        bool "U-Boot image for use with stm32prog"
+
+config KARO_UBOOT_NOENV
+        bool "U-Boot using only built-in environment"
+        select UBOOT_IGNORE_ENV
+
+endchoice
+
+endif
