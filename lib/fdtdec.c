@@ -983,23 +983,28 @@ int fdtdec_decode_display_timing(const void *blob, int parent, int index,
 				 struct display_timing *dt)
 {
 	int i, node, timings_node;
-	u32 val = 0;
-	int ret = 0;
+	u32 val;
+	int ret;
 
 	timings_node = fdt_subnode_offset(blob, parent, "display-timings");
 	if (timings_node < 0)
 		return timings_node;
 
-	for (i = 0, node = fdt_first_subnode(blob, timings_node);
-	     node > 0 && i != index;
-	     node = fdt_next_subnode(blob, node))
-		i++;
-
+	ret = fdtdec_lookup_phandle(blob, timings_node, "native-mode");
+	if (ret > 0) {
+		node = ret;
+	} else {
+		for (i = 0, node = fdt_first_subnode(blob, timings_node);
+		     node > 0 && i != index;
+		     node = fdt_next_subnode(blob, node))
+			i++;
+	}
 	if (node < 0)
 		return node;
 
 	memset(dt, 0, sizeof(*dt));
 
+	ret = 0;
 	ret |= decode_timing_property(blob, node, "hback-porch",
 				      &dt->hback_porch);
 	ret |= decode_timing_property(blob, node, "hfront-porch",
