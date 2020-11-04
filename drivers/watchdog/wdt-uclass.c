@@ -58,14 +58,16 @@ int initr_watchdog(void)
 		return 0;
 	}
 
-	ret = wdt_start(gd->watchdog_dev, timeout * 1000, 0);
-	if (ret != 0) {
-		printf("WDT:   Failed to start\n");
-		return 0;
-	}
+	if (timeout) {
+		ret = wdt_start(gd->watchdog_dev, timeout * 1000, 0);
+		if (ret != 0) {
+			printf("WDT:   Failed to start\n");
+			return 0;
+		}
 
-	printf("WDT:   Started with%s servicing (%ds timeout)\n",
-	       IS_ENABLED(CONFIG_WATCHDOG) ? "" : "out", timeout);
+		printf("WDT:   Started with%s servicing (%ds timeout)\n",
+		       (IS_ENABLED(CONFIG_WATCHDOG) && timeout) ? "" : "out", timeout);
+	}
 
 	return 0;
 }
