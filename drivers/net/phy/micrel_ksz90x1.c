@@ -112,7 +112,7 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 {
 	struct udevice *dev = phydev->dev;
 	struct phy_driver *drv = phydev->drv;
-	int val[4];
+	int val;
 	int i, changed = 0, offset, max;
 	u16 regval = 0;
 	ofnode node;
@@ -128,20 +128,19 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 	}
 
 	for (i = 0; i < ofcfg->grpsz; i++) {
-		val[i] = ofnode_read_u32_default(node, ofcfg->grp[i].name, ~0);
+		val = ofnode_read_u32_default(node, ofcfg->grp[i].name, ~0);
 		offset = ofcfg->grp[i].off;
-		if (val[i] == -1) {
+		if (val == -1) {
 			/* Default register value for KSZ9021 */
 			regval |= ofcfg->grp[i].dflt << offset;
 		} else {
 			changed = 1;	/* Value was changed in OF */
 			/* Calculate the register value and fix corner cases */
 			max = (1 << ofcfg->grp[i].size) - 1;
-			if (val[i] > ps_to_regval * max) {
+			if (val > ps_to_regval * max)
 				regval |= max << offset;
-			} else {
-				regval |= (val[i] / ps_to_regval) << offset;
-			}
+			else
+				regval |= (val / ps_to_regval) << offset;
 		}
 	}
 
@@ -301,16 +300,16 @@ static struct phy_driver ksz9021_driver = {
 int ksz9031_phy_extended_write(struct phy_device *phydev,
 			       int devaddr, int regnum, u16 mode, u16 val)
 {
-	/*select register addr for mmd*/
+	/* select register addr for mmd */
 	phy_write(phydev, MDIO_DEVAD_NONE,
 		  MII_KSZ9031_MMD_ACCES_CTRL, devaddr);
-	/*select register for mmd*/
+	/* select register for mmd */
 	phy_write(phydev, MDIO_DEVAD_NONE,
 		  MII_KSZ9031_MMD_REG_DATA, regnum);
-	/*setup mode*/
+	/* setup mode */
 	phy_write(phydev, MDIO_DEVAD_NONE,
 		  MII_KSZ9031_MMD_ACCES_CTRL, (mode | devaddr));
-	/*write the value*/
+	/* write the value */
 	return	phy_write(phydev, MDIO_DEVAD_NONE,
 			  MII_KSZ9031_MMD_REG_DATA, val);
 }
