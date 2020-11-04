@@ -112,7 +112,6 @@ dm_gpio_lookup_label(const char *name, struct gpio_dev_priv *uc_priv,
 
 int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc)
 {
-	struct gpio_dev_priv *uc_priv = NULL;
 	struct udevice *dev;
 	ulong offset;
 	int numeric;
@@ -122,9 +121,9 @@ int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc)
 	for (ret = uclass_first_device(UCLASS_GPIO, &dev);
 	     dev;
 	     ret = uclass_next_device(&dev)) {
+		struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 		int len;
 
-		uc_priv = dev_get_uclass_priv(dev);
 		if (numeric != -1) {
 			offset = numeric - uc_priv->gpio_base;
 			/* Allow GPIOs to be numbered from 0 */
@@ -135,8 +134,11 @@ int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc)
 		len = uc_priv->bank_name ? strlen(uc_priv->bank_name) : 0;
 
 		if (!strncasecmp(name, uc_priv->bank_name, len)) {
-			if (!strict_strtoul(name + len, 10, &offset))
+			if (!strict_strtoul(name + len, 10, &offset)) {
+				if (offset >= uc_priv->gpio_count)
+					return -EINVAL;
 				break;
+			}
 		}
 
 		/*
@@ -358,6 +360,11 @@ int dm_gpio_request(struct gpio_desc *desc, const char *label)
 	int ret;
 
 	uc_priv = dev_get_uclass_priv(dev);
+	if (desc->offset >= uc_priv->gpio_count) {
+		printf("GPIO %s offset %u is larger than GPIO count %u\n",
+		       label, desc->offset, uc_priv->gpio_count);
+		return -EINVAL;
+	}
 	if (uc_priv->name[desc->offset])
 		return -EBUSY;
 	str = strdup(label);
