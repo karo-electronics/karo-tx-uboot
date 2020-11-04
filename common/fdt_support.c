@@ -667,6 +667,10 @@ int fdt_shrink_to_minimum(void *blob, uint extrasize)
 	/* Change the fdt header to reflect the correct size */
 	fdt_set_totalsize(blob, actualsize);
 
+#if CONFIG_IS_ENABLED(ENV_SUPPORT)
+	if (env_get("fdtsize"))
+		env_set_hex("fdtsize", actualsize);
+#endif
 	if (fdt_memrsv) {
 		/* Add the new reservation */
 		ret = fdt_add_mem_rsv(blob, map_to_sysmem(blob), actualsize);
