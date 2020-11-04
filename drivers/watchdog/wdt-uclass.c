@@ -59,14 +59,16 @@ static void init_watchdog_dev(struct udevice *dev)
 		return;
 	}
 
-	ret = wdt_start(dev, priv->timeout * 1000, 0);
-	if (ret != 0) {
-		printf("WDT:   Failed to start %s\n", dev->name);
-		return;
-	}
+	if (priv->timeout) {
+		ret = wdt_start(dev, priv->timeout * 1000, 0);
+		if (ret != 0) {
+			printf("WDT:   Failed to start %s\n", dev->name);
+			return;
+		}
 
-	printf("WDT:   Started %s with%s servicing (%ds timeout)\n", dev->name,
-	       IS_ENABLED(CONFIG_WATCHDOG) ? "" : "out", priv->timeout);
+		printf("WDT:   Started %s with%s servicing (%ds timeout)\n", dev->name,
+		       IS_ENABLED(CONFIG_WATCHDOG) ? "" : "out", priv->timeout);
+	}
 }
 
 int initr_watchdog(void)
