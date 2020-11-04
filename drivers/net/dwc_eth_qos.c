@@ -339,6 +339,8 @@ struct eqos_priv {
 	void *rx_pkt;
 	bool started;
 	bool reg_access_ok;
+	int phy_reset_duration;
+	int phy_reset_post_delay;
 };
 
 /*
@@ -740,36 +742,34 @@ static int eqos_start_resets_tegra186(struct udevice *dev)
 	return 0;
 }
 
-static int eqos_start_resets_stm32(struct udevice *dev)
+static int eqos_start_resets_generic(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret;
 
 	debug("%s(dev=%p):\n", __func__, dev);
-	if (dm_gpio_is_valid(&eqos->phy_reset_gpio)) {
-		ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
-		if (ret < 0) {
-			pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n",
-			       ret);
-			return ret;
-		}
 
-		udelay(2);
+	if (!dm_gpio_is_valid(&eqos->phy_reset_gpio))
+		return 0;
 
-		ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 0);
-		if (ret < 0) {
-			pr_err("dm_gpio_set_value(phy_reset, deassert) failed: %d\n",
-			       ret);
-			return ret;
-		}
+	debug("%s@%d: Asserting PHY reset\n", __func__, __LINE__);
+	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	if (ret < 0) {
+		dev_err(dev, "failed to assert phy-reset: %d\n", ret);
+		return ret;
 	}
-	debug("%s: OK\n", __func__);
 
-	return 0;
-}
+	udelay(eqos->phy_reset_duration);
 
-static int eqos_start_resets_imx(struct udevice *dev)
-{
+	debug("%s@%d: Deasserting PHY reset\n", __func__, __LINE__);
+	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 0);
+	if (ret < 0) {
+		dev_err(dev, "failed to deassert phy-reset: %d\n", ret);
+		return ret;
+	}
+
+	udelay(eqos->phy_reset_post_delay);
+
 	return 0;
 }
 
@@ -783,25 +783,20 @@ static int eqos_stop_resets_tegra186(struct udevice *dev)
 	return 0;
 }
 
-static int eqos_stop_resets_stm32(struct udevice *dev)
+static int eqos_stop_resets_generic(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret;
 
-	if (dm_gpio_is_valid(&eqos->phy_reset_gpio)) {
-		ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
-		if (ret < 0) {
-			pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n",
-			       ret);
-			return ret;
-		}
+	if (!dm_gpio_is_valid(&eqos->phy_reset_gpio))
+		return 0;
+
+	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	if (ret < 0) {
+		dev_err(dev, "failed to assert phy-reset: %d\n", ret);
+		return ret;
 	}
 
-	return 0;
-}
-
-static int eqos_stop_resets_imx(struct udevice *dev)
-{
 	return 0;
 }
 
@@ -1661,6 +1656,7 @@ static int eqos_probe_resources_tegra186(struct udevice *dev)
 		pr_err("gpio_request_by_name(phy reset) failed: %d\n", ret);
 		goto err_free_reset_eqos;
 	}
+	eqos->phy_reset_duration = 2;
 
 	ret = clk_get_by_name(dev, "slave_bus", &eqos->clk_slave_bus);
 	if (ret) {
@@ -1783,9 +1779,26 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 							"reg", -1);
 	}
 
+	ret = gpio_request_by_name(dev, "phy-reset-gpios", 0,
+				   &eqos->phy_reset_gpio,
+				   GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
+	if (ret && ret != -ENOENT) {
+		pr_err("requesting phy-reset-gpio failed: %d\n", ret);
+		goto err_free_clk_tx;
+	}
+
+	eqos->phy_reset_duration = dev_read_u32_default(dev,
+							"phy-reset-duration-us",
+							2);
+	eqos->phy_reset_post_delay = dev_read_u32_default(dev,
+							  "phy-reset-post-delay-us",
+							  20000);
+
 	debug("%s: OK\n", __func__);
 	return 0;
 
+err_free_clk_tx:
+	clk_free(&eqos->clk_tx);
 err_free_clk_rx:
 	clk_free(&eqos->clk_rx);
 err_free_clk_master_bus:
@@ -2077,8 +2090,8 @@ static struct eqos_ops eqos_stm32_ops = {
 	.eqos_flush_buffer = eqos_flush_buffer_generic,
 	.eqos_probe_resources = eqos_probe_resources_stm32,
 	.eqos_remove_resources = eqos_remove_resources_stm32,
-	.eqos_stop_resets = eqos_stop_resets_stm32,
-	.eqos_start_resets = eqos_start_resets_stm32,
+	.eqos_stop_resets = eqos_stop_resets_generic,
+	.eqos_start_resets = eqos_start_resets_generic,
 	.eqos_stop_clks = eqos_stop_clks_stm32,
 	.eqos_start_clks = eqos_start_clks_stm32,
 	.eqos_calibrate_pads = eqos_calibrate_pads_stm32,
@@ -2104,8 +2117,8 @@ static struct eqos_ops eqos_imx_ops = {
 	.eqos_flush_buffer = eqos_flush_buffer_generic,
 	.eqos_probe_resources = eqos_probe_resources_imx,
 	.eqos_remove_resources = eqos_remove_resources_imx,
-	.eqos_stop_resets = eqos_stop_resets_imx,
-	.eqos_start_resets = eqos_start_resets_imx,
+	.eqos_stop_resets = eqos_stop_resets_generic,
+	.eqos_start_resets = eqos_start_resets_generic,
 	.eqos_stop_clks = eqos_stop_clks_imx,
 	.eqos_start_clks = eqos_start_clks_imx,
 	.eqos_calibrate_pads = eqos_calibrate_pads_imx,
