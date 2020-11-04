@@ -12,6 +12,7 @@
 #include <malloc.h>
 #include <ram.h>
 #include <reset.h>
+#include <watchdog.h>
 #include "stm32mp1_ddr.h"
 #include "stm32mp1_tests.h"
 
@@ -394,6 +395,7 @@ bool stm32mp1_ddr_interactive(void *priv,
 		unsigned long start = get_timer(0);
 
 		while (1) {
+			WATCHDOG_RESET();
 			if (tstc() && (getchar() == 'd')) {
 				next_step = STEP_DDR_RESET;
 				break;
