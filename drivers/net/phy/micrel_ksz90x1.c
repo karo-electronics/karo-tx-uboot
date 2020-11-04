@@ -350,6 +350,7 @@ static int ksz9031_phy_extwrite(struct phy_device *phydev, int addr,
 static int ksz9031_config(struct phy_device *phydev)
 {
 	int ret;
+	unsigned int features = phydev->drv->features;
 
 	ret = ksz9031_of_config(phydev);
 	if (ret)
@@ -360,11 +361,9 @@ static int ksz9031_config(struct phy_device *phydev)
 
 	/* add an option to disable the gigabit feature of this PHY */
 	if (env_get("disable_giga")) {
-		unsigned features;
 		unsigned bmcr;
 
 		/* disable speed 1000 in features supported by the PHY */
-		features = phydev->drv->features;
 		features &= ~(SUPPORTED_1000baseT_Half |
 				SUPPORTED_1000baseT_Full);
 		phydev->advertising = phydev->supported = features;
@@ -382,6 +381,34 @@ static int ksz9031_config(struct phy_device *phydev)
 		genphy_restart_aneg(phydev);
 
 		return 0;
+	} else {
+		ofnode node;
+		struct ofnode_phandle_args phandle_args;
+		struct udevice *dev = phydev->dev;
+
+		ret = dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
+						 &phandle_args);
+		if (ret)
+			node = dev_read_subnode(dev, "ethernet-phy");
+		else
+			node = phandle_args.node;
+
+		if (ofnode_read_bool(node, "micrel,force-master")) {
+			/* force master mode for 1000BaseT due to chip errata */
+			u16 ctrl1000 = 0;
+			const u16 master = CTRL1000_PREFER_MASTER |
+				CTRL1000_CONFIG_MASTER |
+				CTRL1000_MANUAL_CONFIG;
+
+			debug("Forcing RGMII clk master mode due to chip erratum\n");
+			if (features & SUPPORTED_1000baseT_Half)
+				ctrl1000 |= ADVERTISE_1000HALF | master;
+			if (features & SUPPORTED_1000baseT_Full)
+				ctrl1000 |= ADVERTISE_1000FULL | master;
+
+			phy_write(phydev, MDIO_DEVAD_NONE, MII_CTRL1000,
+				  ctrl1000);
+		}
 	}
 
 	return genphy_config(phydev);
