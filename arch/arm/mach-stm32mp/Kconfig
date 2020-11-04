@@ -128,4 +128,5 @@ source "arch/arm/mach-stm32mp/Kconfig.13x"
 source "arch/arm/mach-stm32mp/Kconfig.15x"
 
 source "arch/arm/mach-stm32mp/cmd_stm32prog/Kconfig"
+source "board/karo/txmp/Kconfig"
 endif
