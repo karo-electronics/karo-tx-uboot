@@ -1568,15 +1568,15 @@ struct dram_cfg_param ddr_phy_pie[] = {
 
 struct dram_fsp_msg ddr_dram_fsp_msg[] = {
 	{
-		/* P0 4000mts 1D */
-		.drate = 4000,
+		/* P0 3733mts 1D */
+		.drate = 3733,
 		.fw_type = FW_1D_IMAGE,
 		.fsp_cfg = ddr_fsp0_cfg,
 		.fsp_cfg_num = ARRAY_SIZE(ddr_fsp0_cfg),
 	},
 	{
-		/* P0 4000mts 2D */
-		.drate = 4000,
+		/* P0 3733mts 2D */
+		.drate = 3733,
 		.fw_type = FW_2D_IMAGE,
 		.fsp_cfg = ddr_fsp0_2d_cfg,
 		.fsp_cfg_num = ARRAY_SIZE(ddr_fsp0_2d_cfg),
@@ -1595,5 +1595,5 @@ struct dram_timing_info dram_timing = {
 	.ddrphy_trained_csr_num = ARRAY_SIZE(ddr_ddrphy_trained_csr),
 	.ddrphy_pie = ddr_phy_pie,
 	.ddrphy_pie_num = ARRAY_SIZE(ddr_phy_pie),
-	.fsp_table = { 4000, },
+	.fsp_table = { 3733, },
 };
