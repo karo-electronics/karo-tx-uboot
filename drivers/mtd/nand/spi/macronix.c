@@ -16,7 +16,6 @@
 #define SPINAND_MFR_MACRONIX		0xC2
 #define MACRONIX_ECCSR_MASK		0x0F
 
-
 static SPINAND_OP_VARIANTS(read_cache_variants,
 		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
 		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
@@ -59,14 +58,16 @@ static int mx35lf1ge4ab_get_eccsr(struct spinand_device *spinand, u8 *eccsr)
 	struct spi_mem_op op = SPI_MEM_OP(SPI_MEM_OP_CMD(0x7c, 1),
 					  SPI_MEM_OP_NO_ADDR,
 					  SPI_MEM_OP_DUMMY(1, 1),
-					  SPI_MEM_OP_DATA_IN(1, eccsr, 1));
+					  SPI_MEM_OP_DATA_IN(1,
+							spinand->scratchbuf,
+							1));
 
 	int ret = spi_mem_exec_op(spinand->slave, &op);
 
 	if (ret)
 		return ret;
 
-	*eccsr &= MACRONIX_ECCSR_MASK;
+	*eccsr = *spinand->scratchbuf & MACRONIX_ECCSR_MASK;
 	return 0;
 }
 
@@ -92,9 +93,11 @@ static int mx35lf1ge4ab_ecc_get_status(struct spinand_device *spinand,
 		if (mx35lf1ge4ab_get_eccsr(spinand, &eccsr))
 			return nand->eccreq.strength;
 
-		if (WARN_ON(eccsr > nand->eccreq.strength || !eccsr))
+		if (WARN_ON(eccsr > nand->eccreq.strength || !eccsr)) {
+			printf("eccsr=%u(0x%08x) ecc.strength=%u\n",
+			       eccsr, eccsr, nand->eccreq.strength);
 			return nand->eccreq.strength;
-
+		}
 		return eccsr;
 
 	default:
