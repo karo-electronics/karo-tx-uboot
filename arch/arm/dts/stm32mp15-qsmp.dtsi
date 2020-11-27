@@ -243,6 +243,11 @@
 			drive-push-pull;
 			slew-rate = <2>;
 		};
+
+		pins3 {
+			pinmux = <STM32_PINMUX('B', 7, GPIO)>; /* CD */
+			bias-pull-up;
+		};
 	};
 
 	sdmmc2_pins: sdmmc2-pins {

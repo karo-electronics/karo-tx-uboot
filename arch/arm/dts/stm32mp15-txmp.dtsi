@@ -107,6 +107,11 @@
 			drive-push-pull;
 			slew-rate = <0>;
 		};
+
+		pins3 {
+			pinmux = <STM32_PINMUX('C', 11, GPIO)>; /* CD */
+			bias-pull-up;
+		};
 	};
 
 	sdmmc3_opendrain_pins: sdmmc3_opendrain-mx {
