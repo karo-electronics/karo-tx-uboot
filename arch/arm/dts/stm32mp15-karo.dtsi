@@ -3,6 +3,8 @@
  * Copyright (C) 2020: Lothar Waßmann <LW@KARO-electronics.de>
  */
 
+#include "stm32mp151.dtsi"
+#include "stm32mp15-pinctrl.dtsi"
 #include <dt-bindings/clock/stm32mp1-clksrc.h>
 #include <dt-bindings/gpio/gpio.h>
 

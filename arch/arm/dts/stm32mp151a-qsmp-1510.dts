@@ -6,7 +6,7 @@
 /dts-v1/;
 
 #include "stm32mp151a-qsmp.h"
-#include "stm32mp151.dtsi"
+#include "stm32mp15-karo.dtsi"
 #include "stm32mp15-qsmp.dtsi"
 
 / {

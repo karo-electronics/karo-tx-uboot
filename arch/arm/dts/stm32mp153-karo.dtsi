@@ -3,6 +3,7 @@
  * Copyright 2020 (C) Lothar Waßmann <LW@KARO-electronics.de>
  */
 
+#include "stm32mp153.dtsi"
 #include "stm32mp15-karo.dtsi"
 
 &m_can1 {

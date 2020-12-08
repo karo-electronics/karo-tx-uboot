@@ -6,7 +6,7 @@
 /dts-v1/;
 
 #include "stm32mp153a-txmp.h"
-#include "stm32mp153.dtsi"
+#include "stm32mp153-karo.dtsi"
 #include "stm32mp153-txmp.dtsi"
 
 / {
