@@ -396,8 +396,7 @@ void init_uart_clk(u32 index)
 		clock_enable(CCGR_UART4, 1);
 		return;
 	default:
-		printf("Invalid uart index\n");
-		return;
+		printf("%s: Invalid uart index %d\n", __func__, index);
 	}
 }
 
@@ -439,8 +438,7 @@ void init_clk_usdhc(u32 index)
 		clock_enable(CCGR_USDHC3, 1);
 		return;
 	default:
-		printf("Invalid usdhc index\n");
-		return;
+		printf("%s: Invalid usdhc index %d\n", __func__, index);
 	}
 }
 
@@ -463,8 +461,7 @@ void init_clk_ecspi(u32 index)
 		clock_enable(CCGR_ECSPI3, 1);
 		return;
 	default:
-		printf("Invalid ecspi index\n");
-		return;
+		printf("%s: Invalid ecspi index %d\n", __func__, index);
 	}
 }
 
