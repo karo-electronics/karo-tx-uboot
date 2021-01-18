@@ -351,12 +351,28 @@ static int mxc_serial_probe(struct udevice *dev)
 	int ret;
 
 	ret = clk_get_bulk(dev, &plat->clks);
-	if (ret)
+	if (ret) {
+		if (CONFIG_IS_ENABLED(DEBUG_UART)) {
+			debug_uart_init();
+			printascii("Failed to request clocks: -");
+			printdec(-ret);
+			printch('\n');
+		}
 		return ret;
+	}
 
 	ret = clk_enable_bulk(&plat->clks);
-	if (ret)
+	if (ret) {
+		if (CONFIG_IS_ENABLED(DEBUG_UART)) {
+			debug_uart_init();
+			printascii("Failed to enable clocks: -");
+			printdec(-ret);
+			printch('\n');
+		}
 		return ret;
+	}
+#else
+	debug("%s@%d: No clk support\n", __func__, __LINE__);
 #endif
 	_mxc_serial_init(plat->reg, plat->use_dte);
 
