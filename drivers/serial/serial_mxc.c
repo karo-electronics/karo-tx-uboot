@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <debug_uart.h>
 #include <dm.h>
 #include <errno.h>
 #include <watchdog.h>
@@ -178,6 +179,39 @@ static void _mxc_serial_setbrg(struct mxc_uart *base, unsigned long clk,
 	       &base->cr2);
 	writel(UCR1_UARTEN, &base->cr1);
 }
+
+#ifdef CONFIG_DEBUG_UART_MXC
+static int init_needed = 1;
+
+static inline void _debug_uart_init(void)
+{
+	struct mxc_uart *base = (struct mxc_uart *)CONFIG_DEBUG_UART_BASE;
+
+	if (init_needed) {
+		_mxc_serial_init(base, false);
+		_mxc_serial_setbrg(base, CONFIG_DEBUG_UART_CLOCK,
+				   CONFIG_BAUDRATE, false);
+
+		init_needed = 0;
+	}
+}
+
+static inline void _debug_uart_putc(int ch)
+{
+	struct mxc_uart *base = (struct mxc_uart *)CONFIG_DEBUG_UART_BASE;
+
+	if (init_needed)
+		return;
+
+	while (!(readl(&base->ts) & UTS_TXEMPTY))
+		WATCHDOG_RESET();
+
+	writel(ch, &base->txd);
+}
+
+DEBUG_UART_FUNCS
+
+#endif
 
 #if !CONFIG_IS_ENABLED(DM_SERIAL)
 
@@ -384,28 +418,3 @@ U_BOOT_DRIVER(serial_mxc) = {
 };
 #endif
 
-#ifdef CONFIG_DEBUG_UART_MXC
-#include <debug_uart.h>
-
-static inline void _debug_uart_init(void)
-{
-	struct mxc_uart *base = (struct mxc_uart *)CONFIG_DEBUG_UART_BASE;
-
-	_mxc_serial_init(base, false);
-	_mxc_serial_setbrg(base, CONFIG_DEBUG_UART_CLOCK,
-			   CONFIG_BAUDRATE, false);
-}
-
-static inline void _debug_uart_putc(int ch)
-{
-	struct mxc_uart *base = (struct mxc_uart *)CONFIG_DEBUG_UART_BASE;
-
-	while (!(readl(&base->ts) & UTS_TXEMPTY))
-		WATCHDOG_RESET();
-
-	writel(ch, &base->txd);
-}
-
-DEBUG_UART_FUNCS
-
-#endif
