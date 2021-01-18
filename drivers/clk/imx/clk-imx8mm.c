@@ -115,6 +115,22 @@ static const char *imx8mm_i2c3_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_
 static const char *imx8mm_i2c4_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m", "sys_pll3_out", "audio_pll1_out",
 					 "video_pll1_out", "audio_pll2_out", "sys_pll1_133m", };
 
+static const char *imx8mm_uart1_sels[] = {"clock-osc-24m", "sys_pll1_80m", "sys_pll2_200m",
+					  "sys_pll2_100m", "sys_pll3_out", "clk_ext2",
+					  "clk_ext4", "audio_pll2_out", };
+
+static const char *imx8mm_uart2_sels[] = {"clock-osc-24m", "sys_pll1_80m", "sys_pll2_200m",
+					  "sys_pll2_100m", "sys_pll3_out", "clk_ext2",
+					  "clk_ext3", "audio_pll2_out", };
+
+static const char *imx8mm_uart3_sels[] = {"clock-osc-24m", "sys_pll1_80m", "sys_pll2_200m",
+					  "sys_pll2_100m", "sys_pll3_out", "clk_ext2",
+					  "clk_ext4", "audio_pll2_out", };
+
+static const char *imx8mm_uart4_sels[] = {"clock-osc-24m", "sys_pll1_80m", "sys_pll2_200m",
+					  "sys_pll2_100m", "sys_pll3_out", "clk_ext2",
+					  "clk_ext3", "audio_pll2_out", };
+
 static const char *imx8mm_wdog_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_160m", "vpu_pll_out",
 					 "sys_pll2_125m", "sys_pll3_out", "sys_pll1_80m", "sys_pll2_166m", };
 
@@ -381,6 +397,14 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	       imx8m_clk_composite("i2c3", imx8mm_i2c3_sels, base + 0xae00));
 	clk_dm(IMX8MM_CLK_I2C4,
 	       imx8m_clk_composite("i2c4", imx8mm_i2c4_sels, base + 0xae80));
+	clk_dm(IMX8MM_CLK_UART1,
+	       imx8m_clk_composite("uart1", imx8mm_uart1_sels, base + 0xaf00));
+	clk_dm(IMX8MM_CLK_UART2,
+	       imx8m_clk_composite("uart2", imx8mm_uart2_sels, base + 0xaf80));
+	clk_dm(IMX8MM_CLK_UART3,
+	       imx8m_clk_composite("uart3", imx8mm_uart3_sels, base + 0xb000));
+	clk_dm(IMX8MM_CLK_UART4,
+	       imx8m_clk_composite("uart4", imx8mm_uart4_sels, base + 0xb080));
 	clk_dm(IMX8MM_CLK_WDOG,
 	       imx8m_clk_composite("wdog", imx8mm_wdog_sels, base + 0xb900));
 	clk_dm(IMX8MM_CLK_USDHC3,
@@ -403,6 +427,14 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	       imx_clk_gate4("i2c4_root_clk", "i2c4", base + 0x41a0, 0));
 	clk_dm(IMX8MM_CLK_OCOTP_ROOT,
 	       imx_clk_gate4("ocotp_root_clk", "ipg_root", base + 0x4220, 0));
+	clk_dm(IMX8MM_CLK_UART1_ROOT,
+	       imx_clk_gate4("uart1_root_clk", "uart1", base + 0x4490, 0));
+	clk_dm(IMX8MM_CLK_UART2_ROOT,
+	       imx_clk_gate4("uart2_root_clk", "uart2", base + 0x44a0, 0));
+	clk_dm(IMX8MM_CLK_UART3_ROOT,
+	       imx_clk_gate4("uart3_root_clk", "uart3", base + 0x44b0, 0));
+	clk_dm(IMX8MM_CLK_UART4_ROOT,
+	       imx_clk_gate4("uart4_root_clk", "uart4", base + 0x44c0, 0));
 	clk_dm(IMX8MM_CLK_USDHC1_ROOT,
 	       imx_clk_gate4("usdhc1_root_clk", "usdhc1", base + 0x4510, 0));
 	clk_dm(IMX8MM_CLK_USDHC2_ROOT,
