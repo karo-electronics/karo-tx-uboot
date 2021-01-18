@@ -1128,8 +1128,8 @@ static int dwc3_gadget_ep_dequeue(struct usb_ep *ep,
 			dwc3_stop_active_transfer(dwc, dep->number, true);
 			goto out1;
 		}
-		dev_err(dwc->dev, "request %p was not queued to %s\n",
-				request, ep->name);
+		dev_dbg(dwc->dev, "request %p was not queued to %s\n",
+			request, ep->name);
 		ret = -EINVAL;
 		goto out0;
 	}
@@ -1769,7 +1769,7 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 	req = next_request(&dep->req_queued);
 	if (!req) {
 		WARN_ON_ONCE(1);
-		return 1;
+		return 0;
 	}
 
 	slot = req->start_slot;
