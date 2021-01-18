@@ -12,6 +12,7 @@
 #include <dm/platform_data/serial_mxc.h>
 #include <serial.h>
 #include <linux/compiler.h>
+#include <linux/err.h>
 
 /* UART Control Register Bit Fields.*/
 #define URXD_CHARRDY	BIT(15)
@@ -346,8 +347,10 @@ static int mxc_serial_ofdata_to_platdata(struct udevice *dev)
 	fdt_addr_t addr;
 
 	addr = devfdt_get_addr(dev);
-	if (addr == FDT_ADDR_T_NONE)
+	if (IS_ERR_VALUE(addr))
 		return -EINVAL;
+	if (addr == FDT_ADDR_T_NONE)
+		return -ENODEV;
 
 	plat->reg = (struct mxc_uart *)addr;
 
