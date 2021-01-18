@@ -795,6 +795,8 @@ static int eqos_start_resets_generic(struct udevice *dev)
 
 	udelay(eqos->phy_reset_post_delay);
 
+	setbits_le32(&eqos->dma_regs->mode, EQOS_DMA_MODE_SWR);
+
 	return 0;
 }
 
