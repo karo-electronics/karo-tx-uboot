@@ -240,8 +240,8 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 		 * just completed (not the LINK TRB).
 		 */
 		if (((dep->busy_slot & DWC3_TRB_MASK) ==
-			DWC3_TRB_NUM- 1) &&
-			usb_endpoint_xfer_isoc(dep->endpoint.desc))
+		     DWC3_TRB_NUM- 1) &&
+		    usb_endpoint_xfer_isoc(dep->endpoint.desc))
 			dep->busy_slot++;
 		req->queued = false;
 	}
@@ -258,11 +258,11 @@ void dwc3_gadget_giveback(struct dwc3_ep *dep, struct dwc3_request *req,
 		dwc->ep0_bounced = false;
 	else if (req->request.dma)
 		usb_gadget_unmap_request(&dwc->gadget, &req->request,
-				req->direction);
+					 req->direction);
 
 	dev_dbg(dwc->dev, "request %p from %s completed %d/%d ===> %d\n",
-			req, dep->name, req->request.actual,
-			req->request.length, status);
+		req, dep->name, req->request.actual,
+		req->request.length, status);
 
 	spin_unlock(&dwc->lock);
 	usb_gadget_giveback_request(&dep->endpoint, &req->request);
@@ -281,7 +281,7 @@ int dwc3_send_gadget_generic_command(struct dwc3 *dwc, unsigned cmd, u32 param)
 		reg = dwc3_readl(dwc->regs, DWC3_DGCMD);
 		if (!(reg & DWC3_DGCMD_CMDACT)) {
 			dev_vdbg(dwc->dev, "Command Complete --> %d\n",
-					DWC3_DGCMD_STATUS(reg));
+				 DWC3_DGCMD_STATUS(reg));
 			return 0;
 		}
 
@@ -1168,8 +1168,8 @@ static int dwc3_gadget_ep_dequeue(struct usb_ep *ep,
 			dwc3_stop_active_transfer(dwc, dep->number, true);
 			goto out1;
 		}
-		dev_err(dwc->dev, "request %p was not queued to %s\n",
-				request, ep->name);
+		dev_dbg(dwc->dev, "request %p was not queued to %s\n",
+			request, ep->name);
 		ret = -EINVAL;
 		goto out0;
 	}
@@ -1854,7 +1854,7 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 	req = next_request(&dep->req_queued);
 	if (!req) {
 		WARN_ON_ONCE(1);
-		return 1;
+		return 0;
 	}
 
 	slot = req->start_slot;
