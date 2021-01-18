@@ -350,6 +350,15 @@ static struct clk_ref imx8_clks[] = {
 #endif
 };
 
+static struct clk_ref imx8m_clks[] = {
+#if IS_ENABLED(CONFIG_IMX8M)
+	{ "stmmaceth", offsetof(struct eqos_priv, clk_master_bus), },
+	{ "pclk", offsetof(struct eqos_priv, clk_slave_bus), },
+	{ "ptp_ref", offsetof(struct eqos_priv, clk_ptp_ref), },
+	{ "tx", offsetof(struct eqos_priv, clk_tx), },
+#endif
+};
+
 /*
  * TX and RX descriptors are 16 bytes. This causes problems with the cache
  * maintenance on CPUs where the cache-line size exceeds the size of these
@@ -1880,6 +1889,9 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 	} else if (of_machine_is_compatible("fsl,imx8")) {
 		eqos->clkrefs = imx8_clks;
 		eqos->num_clks = ARRAY_SIZE(imx8_clks);
+	} else if (CONFIG_IS_ENABLED(IMX8M)) {
+		eqos->clkrefs = imx8m_clks;
+		eqos->num_clks = ARRAY_SIZE(imx8m_clks);
 	}
 
 	interface = eqos->config->interface(dev);
