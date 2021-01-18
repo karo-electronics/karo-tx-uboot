@@ -99,9 +99,6 @@ ENTRY(_main)
 	bic	sp, x0, #0xf	/* 16-byte alignment for ABI compliance */
 	ldr	x18, [x18, #GD_NEW_GD]		/* x18 <- gd->new_gd */
 
-	bl	check_rel_dyn
-	cbnz	x0, hang
-
 	adr	lr, relocation_return
 #if CONFIG_POSITION_INDEPENDENT
 	/* Add in link-vs-runtime offset */
