@@ -125,6 +125,7 @@ config USB_GADGET_VBUS_DRAW
 
 config SDP_LOADADDR
 	hex "Default load address at SDP_WRITE and SDP_JUMP"
+	depends on SPL_USB_SDP_SUPPORT || USB_FUNCTION_SDP
 	default 0
 
 # Selected by UDC drivers that support high-speed operation.
