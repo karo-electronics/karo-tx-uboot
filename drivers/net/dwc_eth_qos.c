@@ -39,9 +39,7 @@
 #include <net.h>
 #include <netdev.h>
 #include <phy.h>
-#include <regmap.h>
 #include <reset.h>
-#include <syscon.h>
 #include <wait_bit.h>
 #include <asm/arch/clock.h>
 #include <asm/gpio.h>
@@ -338,14 +336,6 @@ struct eqos_priv {
 	u32 phy_addr;
 	int phy_reset_duration;
 	int phy_reset_post_delay;
-#if IS_ENABLED(CONFIG_REGMAP)
-	struct regmap *gpr;
-	u32 gpr_reg:8;
-	u32 rgmii_bit:5;
-	u32 intf_sel_bit:5;
-#else
-	void *gpr;
-#endif
 };
 
 /*
@@ -787,7 +777,6 @@ static int eqos_start_resets_generic(struct udevice *dev)
 	if (!dm_gpio_is_valid(&eqos->phy_reset_gpio))
 		return 0;
 
-	dev_dbg(dev, "%s@%d: Asserting PHY reset\n", __func__, __LINE__);
 	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
 	if (ret < 0) {
 		dev_err(dev, "failed to assert phy_reset GPIO: %d\n",
@@ -797,7 +786,6 @@ static int eqos_start_resets_generic(struct udevice *dev)
 
 	udelay(eqos->phy_reset_duration);
 
-	dev_dbg(dev, "%s@%d: Deasserting PHY reset\n", __func__, __LINE__);
 	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 0);
 	if (ret < 0) {
 		dev_err(dev, "failed to deassert phy_reset GPIO: %d\n",
@@ -823,11 +811,17 @@ static int eqos_stop_resets_tegra186(struct udevice *dev)
 static int eqos_stop_resets_generic(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
+	int ret;
 
 	if (!dm_gpio_is_valid(&eqos->phy_reset_gpio))
 		return 0;
 
-	dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	if (ret < 0) {
+		dev_err(dev, "failed to assert phy-reset: %d\n", ret);
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -899,8 +893,7 @@ static ulong eqos_get_tick_clk_rate_stm32(struct udevice *dev)
 
 static ulong eqos_get_tick_clk_rate_imx(struct udevice *dev)
 {
-	struct eqos_priv *eqos = dev_get_priv(dev);
-	return clk_get_rate(&eqos->clk_slave_bus);
+	return imx_get_eqos_csr_clk();
 }
 
 static int eqos_calibrate_pads_stm32(struct udevice *dev)
@@ -1317,7 +1310,7 @@ static int eqos_start(struct udevice *dev)
 	/* Multicast and Broadcast Queue Enable */
 	setbits_le32(&eqos->mac_regs->unused_0a4,
 			0x00100000);
-	/* enable promise mode */
+	/* enable promisc mode */
 	setbits_le32(&eqos->mac_regs->unused_004[1],
 			0x1);
 
@@ -1401,6 +1394,8 @@ static int eqos_start(struct udevice *dev)
 		mb();
 		eqos->config->ops->eqos_flush_desc(rx_desc);
 	}
+	eqos->config->ops->eqos_inval_buffer(eqos->rx_dma_buf,
+					     i * EQOS_MAX_PACKET_SIZE);
 
 	writel(0, &eqos->dma_regs->ch0_txdesc_list_haddress);
 	writel((ulong)eqos->tx_descs, &eqos->dma_regs->ch0_txdesc_list_address);
@@ -1542,6 +1537,8 @@ static int eqos_recv(struct udevice *dev, int flags, uchar **packetp)
 	void *dmabuf;
 	int length;
 
+	if (!(flags & ETH_RECV_CHECK_DEVICE))
+		return -EAGAIN;
 	debug("%s(dev=%p, flags=%x):\n", __func__, dev, flags);
 
 	rx_desc = &eqos->rx_descs[eqos->rx_desc_idx];
@@ -1561,8 +1558,10 @@ static int eqos_recv(struct udevice *dev, int flags, uchar **packetp)
 	eqos->rx_desc_idx %= EQOS_DESCRIPTORS_RX;
 
 	*packetp = memalign(ARCH_DMA_MINALIGN, length);
-	if (!*packetp)
+	if (!*packetp) {
+		dev_err(dev, "Failed to allocate packet buffer\n");
 		return -ENOMEM;
+	}
 
 	eqos->config->ops->eqos_inval_buffer(dmabuf, length);
 	memcpy(*packetp, dmabuf, length);
@@ -1736,37 +1735,11 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret;
 	phy_interface_t interface;
-#if IS_ENABLED(CONFIG_REGMAP)
-	const uint rgmii_mask = BIT(eqos->rgmii_bit);
-	const uint intf_sel_mask = (7 << eqos->intf_sel_bit);
-#endif
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
 	interface = eqos->config->interface(dev);
 
-#if IS_ENABLED(CONFIG_REGMAP)
-	switch (interface) {
-	case PHY_INTERFACE_MODE_MII:
-		regmap_update_bits(eqos->gpr, eqos->gpr_reg,
-				   rgmii_mask | intf_sel_mask, 0);
-		break;
-	case PHY_INTERFACE_MODE_RMII:
-		regmap_update_bits(eqos->gpr, eqos->gpr_reg,
-				   rgmii_mask | intf_sel_mask,
-				   4 << eqos->intf_sel_bit);
-		break;
-	case PHY_INTERFACE_MODE_RGMII:
-		regmap_update_bits(eqos->gpr, eqos->gpr_reg,
-				   rgmii_mask | intf_sel_mask,
-				   rgmii_mask | (1 << eqos->intf_sel_bit));
-		break;
-	default:
-		dev_err(dev, "Invalid PHY interface '%s'\n",
-			phy_string_for_interface(interface));
-		return -EINVAL;
-	}
-#endif
 	ret = board_interface_eth_init(dev, interface);
 	if (ret)
 		return ret;
@@ -1834,6 +1807,8 @@ static phy_interface_t eqos_get_interface_generic(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
+	eqos->phy_addr = -1;
+
 	phy_mode = dev_read_string(dev, "phy-mode");
 	if (phy_mode)
 		interface = phy_get_interface_by_name(phy_mode);
@@ -1878,7 +1853,7 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 				   GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
 
 	if (ret == -ENOENT) {
-		pr_debug("failed to request phy-reset-gpios: %d\n", ret);
+		pr_debug("no phy-reset-gpio defined\n");
 	} else if (ret < 0) {
 		pr_err("failed to request phy-reset-gpios: %d\n", ret);
 		return ret;
@@ -1886,8 +1861,8 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 	if (dm_gpio_is_valid(&eqos->phy_reset_gpio)) {
 		eqos->phy_reset_duration =
 			dev_read_u32_default(dev, "phy-reset-duration", 1);
-		dev_info(dev, "phy-reset-duration=%d\n",
-			 eqos->phy_reset_duration);
+		dev_dbg(dev, "phy-reset-duration=%d\n",
+			eqos->phy_reset_duration);
 		if (eqos->phy_reset_duration > 1000) {
 			dev_warn(dev,
 				 "phy reset duration should be <= 1000ms\n");
@@ -1897,8 +1872,8 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 
 		eqos->phy_reset_post_delay =
 			dev_read_u32_default(dev, "phy-reset-post-delay", 0);
-		dev_info(dev, "phy-reset-post-delay=%d\n",
-			 eqos->phy_reset_post_delay);
+		dev_dbg(dev, "phy-reset-post-delay=%d\n",
+			eqos->phy_reset_post_delay);
 		if (eqos->phy_reset_post_delay > 1000) {
 			dev_warn(dev,
 				 "phy reset post delay should be <= 1000ms\n");
@@ -1910,13 +1885,13 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 	if (IS_ENABLED(CONFIG_IMX8)) {
 		ret = clk_get_by_name(dev, "aclk", &eqos->clk_master_bus);
 		if (ret) {
-			pr_err("clk_get_by_name(csr) failed: %d\n", ret);
+			pr_err("clk_get_by_name(aclk) failed: %d\n", ret);
 			goto err_free_gpio_phy_reset;
 		}
 
 		ret = clk_get_by_name(dev, "csr", &eqos->clk_slave_bus);
 		if (ret) {
-			pr_err("clk_get_by_name(aclk) failed: %d\n", ret);
+			pr_err("clk_get_by_name(csr) failed: %d\n", ret);
 			goto err_free_clk_master_bus;
 		}
 
@@ -1925,36 +1900,34 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 			pr_err("clk_get_by_name(tx) failed: %d\n", ret);
 			goto err_free_clk_slave_bus;
 		}
-	}
-
-	if (IS_ENABLED(CONFIG_REGMAP)) {
-		ofnode gpr_np;
-		phandle phandle;
-		u32 out_val[5];
-
-		/* stop mode property format is:
-		 * <&gpr req_gpr req_bit ack_gpr ack_bit>.
-		 */
-		ret = ofnode_read_u32_array(dev_ofnode(dev), "fsl,intf-mode",
-					    out_val, ARRAY_SIZE(out_val));
-		if (ret == 0) {
-			phandle = *out_val;
-
-			gpr_np = ofnode_get_by_phandle(phandle);
-			if (!ofnode_valid(gpr_np)) {
-				dev_dbg(dev,
-					"could not find gpr node by phandle\n");
-				return -ENODEV;
-			}
-			eqos->gpr = syscon_node_to_regmap(gpr_np);
-		} else {
-			dev_dbg(dev, "no fsl,intf-mode property\n");
+	} else if (of_machine_is_compatible("fsl,imx8mp")) {
+		ret = clk_get_by_name(dev, "stmmaceth", &eqos->clk_master_bus);
+		if (ret) {
+			pr_err("clk_get_by_name(stmmaceth) failed: %d\n", ret);
+			goto err_free_gpio_phy_reset;
+		}
+		ret = clk_get_by_name(dev, "pclk", &eqos->clk_slave_bus);
+		if (ret) {
+			pr_err("clk_get_by_name(pclk) failed: %d\n", ret);
+			goto err_free_clk_master_bus;
+		}
+		ret = clk_get_by_name(dev, "ptp_ref", &eqos->clk_ptp_ref);
+		if (ret) {
+			dev_err(dev, "clk_get_by_name(ptp_ref) failed: %d\n", ret);
+			goto err_free_clk_slave_bus;
+		}
+		ret = clk_get_by_name(dev, "tx", &eqos->clk_tx);
+		if (ret) {
+			pr_err("clk_get_by_name(tx) failed: %d\n", ret);
+			goto err_free_clk_ptp_ref;
 		}
 	}
 
 	debug("%s: OK\n", __func__);
 	return 0;
 
+err_free_clk_ptp_ref:
+	clk_free(&eqos->clk_ptp_ref);
 err_free_clk_slave_bus:
 	clk_free(&eqos->clk_slave_bus);
 err_free_clk_master_bus:
@@ -2010,7 +1983,8 @@ static int eqos_remove_resources_imx(struct udevice *dev)
 	debug("%s(dev=%p):\n", __func__, dev);
 
 	clk_free(&eqos->clk_tx);
-	clk_free(&eqos->clk_slave_bus);
+	if (clk_valid(&eqos->clk_slave_bus))
+		clk_free(&eqos->clk_slave_bus);
 	clk_free(&eqos->clk_master_bus);
 
 	if (dm_gpio_is_valid(&eqos->phy_reset_gpio))
@@ -2099,7 +2073,7 @@ static int eqos_probe(struct udevice *dev)
 				EQOS_DMA_MODE_SWR, false,
 				eqos->config->swr_wait, false);
 	if (ret) {
-		dev_err(dev, "EQOS_DMA_MODE_SWR stuck\n");
+		dev_err(dev, "Timeout waiting for soft reset to finish\n");
 		goto err_stop_resets;
 	}
 
