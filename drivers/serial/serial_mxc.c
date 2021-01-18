@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <clk.h>
 #include <debug_uart.h>
 #include <dm.h>
 #include <errno.h>
@@ -325,7 +326,36 @@ int mxc_serial_setbrg(struct udevice *dev, int baudrate)
 static int mxc_serial_probe(struct udevice *dev)
 {
 	struct mxc_serial_platdata *plat = dev->platdata;
+#if CONFIG_IS_ENABLED(CLK_CCF)
+	struct clk *reg_clk = devm_clk_get(dev, "ipg");
+	int ret;
 
+	if (IS_ERR(reg_clk)) {
+		ret = PTR_ERR(reg_clk);
+		if (CONFIG_IS_ENABLED(DEBUG_UART)) {
+			debug_uart_init();
+			printascii("Failed to get register clock: -");
+			printdec(-ret);
+			printch('\n');
+		}
+		dev_err(dev, "Failed to get register clock: %d\n", ret);
+		return ret;
+	}
+	ret = clk_enable(reg_clk);
+	if (ret) {
+		if (CONFIG_IS_ENABLED(DEBUG_UART)) {
+			debug_uart_init();
+			printascii("Failed to enable register clock: -");
+			printdec(-ret);
+			printch('\n');
+		}
+		dev_err(dev, "%s@%d: Failed to enable register clock: %d\n",
+			__func__, __LINE__, ret);
+		return ret;
+	}
+#else
+	debug("%s@%d: No clk support\n", __func__, __LINE__);
+#endif
 	_mxc_serial_init(plat->reg, plat->use_dte);
 
 	return 0;
