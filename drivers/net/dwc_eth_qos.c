@@ -1027,6 +1027,11 @@ static int eqos_set_tx_clk_speed_imx(struct udevice *dev)
 	if (is_imx8dxl())
 		return 0;
 
+	if (eqos->config->interface(dev) == PHY_INTERFACE_MODE_RMII) {
+		dev_dbg(dev, "%s not necessary in RMII mode\n",
+			__func__);
+		return 0;
+	}
 	debug("%s(dev=%p):\n", __func__, dev);
 
 	switch (eqos->phy->speed) {
