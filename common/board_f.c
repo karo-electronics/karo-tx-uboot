@@ -478,7 +478,7 @@ static int reserve_noncached(void)
 {
 	/*
 	 * The value of gd->start_addr_sp must match the value of malloc_start
-	 * calculated in boatrd_f.c:initr_malloc(), which is passed to
+	 * calculated in board_f.c:initr_malloc(), which is passed to
 	 * board_r.c:mem_malloc_init() and then used by
 	 * cache.c:noncached_init()
 	 *
@@ -764,8 +764,8 @@ static int fix_fdt(void)
 }
 #endif
 
-#ifdef CONFIG_ARM
-int check_rel_dyn(void)
+#if CONFIG_IS_ENABLED(CHECK_REL_DYN)
+static int check_rel_dyn(void)
 {
 	unsigned long img_start = (unsigned long)__image_copy_start;
 #ifndef CONFIG_ARM64
@@ -1050,6 +1050,9 @@ static const init_fnc_t init_sequence_f[] = {
 	reloc_fdt,
 	reloc_bootstage,
 	reloc_bloblist,
+#if CONFIG_IS_ENABLED(CHECK_REL_DYN)
+	check_rel_dyn,
+#endif
 	setup_reloc,
 #if defined(CONFIG_X86) || defined(CONFIG_ARC)
 	copy_uboot_to_ram,
