@@ -4,6 +4,7 @@
  */
 
 #include <asm/mach-imx/sys_proto.h>
+#include <cpu_func.h>
 #include <fb_fsl.h>
 #include <fastboot.h>
 #include <mmc.h>
@@ -19,6 +20,10 @@
 #include <asm/setup.h>
 #include <env.h>
 #include "../lib/avb/fsl/utils.h"
+
+#ifdef CONFIG_LZ4
+#include <lz4.h>
+#endif
 
 #ifdef CONFIG_AVB_SUPPORT
 #include <dt_table.h>
