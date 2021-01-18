@@ -460,7 +460,7 @@ static int eqos_mdio_read(struct mii_dev *bus, int mdio_addr, int mdio_devad,
 	u32 val;
 	int ret;
 
-	debug("%s(dev=%p, addr=%x, reg=%d):\n", __func__, eqos->dev, mdio_addr,
+	debug("%s(dev=%p, addr=%02x, reg=%02x):\n", __func__, eqos->dev, mdio_addr,
 	      mdio_reg);
 
 	ret = eqos_mdio_wait_idle(eqos);
@@ -492,7 +492,7 @@ static int eqos_mdio_read(struct mii_dev *bus, int mdio_addr, int mdio_devad,
 	val = readl(&eqos->mac_regs->mdio_data);
 	val &= EQOS_MAC_MDIO_DATA_GD_MASK;
 
-	debug("%s: val=%x\n", __func__, val);
+	debug("%s: val=%04x\n", __func__, val);
 
 	return val;
 }
@@ -504,7 +504,7 @@ static int eqos_mdio_write(struct mii_dev *bus, int mdio_addr, int mdio_devad,
 	u32 val;
 	int ret;
 
-	debug("%s(dev=%p, addr=%x, reg=%d, val=%x):\n", __func__, eqos->dev,
+	debug("%s(dev=%p, addr=%02x, reg=%02x, val=%04x):\n", __func__, eqos->dev,
 	      mdio_addr, mdio_reg, mdio_val);
 
 	ret = eqos_mdio_wait_idle(eqos);
@@ -1044,6 +1044,8 @@ static int eqos_set_tx_clk_speed_imx(struct udevice *dev)
 		return -EINVAL;
 	}
 
+	dev_dbg(dev, "setting tx_clk speed to %lu.%03luMHz for %uMbit/s\n",
+		rate / 1000000, rate / 1000 % 1000, eqos->phy->speed);
 #if IS_ENABLED(CONFIG_IMX8)
 	ret = clk_set_rate(&eqos->clk_tx, rate);
 #else
@@ -1538,17 +1540,23 @@ static int eqos_recv(struct udevice *dev, int flags, uchar **packetp)
 	struct eqos_desc *rx_desc;
 	void *dmabuf;
 	int length;
+	static int idle;
 
 	if (!(flags & ETH_RECV_CHECK_DEVICE))
 		return -EAGAIN;
-	debug("%s(dev=%p, flags=%x):\n", __func__, dev, flags);
 
 	rx_desc = &eqos->rx_descs[eqos->rx_desc_idx];
 	eqos->config->ops->eqos_inval_desc(rx_desc);
 	if (rx_desc->des3 & EQOS_DESC3_OWN) {
-		debug("%s: RX packet not available\n", __func__);
+		if (!idle)
+			debug("%s: No RX packet available rx_desc=%p dma_buf=%p\n",
+			      __func__, rx_desc, eqos->rx_dma_buf);
+		idle = 1;
 		return -EAGAIN;
 	}
+	dev_dbg(dev, "%s(dev=%p, flags=%08x):\n", __func__, dev, flags);
+
+	idle = 0;
 	dmabuf = eqos->rx_dma_buf + eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE;
 	length = rx_desc->des3 & 0x7fff;
 	rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
