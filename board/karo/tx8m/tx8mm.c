@@ -54,7 +54,7 @@ int board_usb_init(int index, enum usb_init_type init)
 
 enum tx8m_boardtype {
 	TX8MM,
-	QS8M_QSBASE2,
+	QS8M_QSBASE,
 	NUM_BOARD_TYPES
 };
 
@@ -342,8 +342,8 @@ int board_late_init(void)
 	enum tx8m_boardtype board = TX8MM;
 	const char *baseboard = env_get("baseboard");
 
-	if (baseboard && strcmp(baseboard, "qsbase2") == 0)
-		board = QS8M_QSBASE2;
+	if (baseboard && strncmp(baseboard, "qsbase", 6) == 0)
+		board = QS8M_QSBASE;
 
 	karo_env_cleanup();
 	if (srsr & 0x10 && !(wrsr & WRSR_SFTW)) {
