@@ -3,7 +3,7 @@
  * Copyright (C) 2020 Lothar Waßmann <LW@KARO-electronics.de>
  *
  */
-#include "imx8m-tx8m-u-boot.dtsi"
+#include "imx8mn-tx8mn-u-boot.dtsi"
 
 &lcdif {
 	enable_polarity_low;

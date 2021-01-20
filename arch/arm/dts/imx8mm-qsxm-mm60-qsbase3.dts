@@ -13,11 +13,20 @@
 
 	reg_usbh_vbus: regulator-usbh-vbus {
 		compatible = "regulator-fixed";
-		regulator-name = "USBH-VBUS";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbh_vbus>;
+		regulator-name = "usbh-vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		gpio = <&gpio2 12 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
+	};
+
+	reg_usbotg_vbus: regulator-usbotg-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "usbotg-vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
 	};
 };
 
@@ -63,9 +72,12 @@
 	status = "disabled";
 };
 
+&usbotg1 {
+//	dr_mode = "host";
+	vbus-supply = <&reg_usbotg_vbus>;
+};
+
 &usbotg2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usbh_vbus>;
 	dr_mode = "host";
 	vbus-supply = <&reg_usbh_vbus>;
 	status = "okay";

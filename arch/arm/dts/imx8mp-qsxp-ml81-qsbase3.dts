@@ -13,7 +13,9 @@
 
 	reg_usbh_vbus: regulator-usbh-vbus {
 		compatible = "regulator-fixed";
-		regulator-name = "USBH-VBUS";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usbh_vbus>;
+		regulator-name = "usbh-vbus";
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		gpio = <&gpio2 12 GPIO_ACTIVE_HIGH>;
@@ -74,10 +76,6 @@ RXCTL	   33	    107	  140
 	};
 };
 
-&usdhc2 {
-	status = "disabled";
-};
-
 &usb_dwc3_0 {
 	dr_mode = "peripheral";
 	hnp-disable;
@@ -87,8 +85,6 @@ RXCTL	   33	    107	  140
 };
 
 &usb_dwc3_1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usbh_vbus>;
 	dr_mode = "host";
 	vbus-supply = <&reg_usbh_vbus>;
 	status = "okay";
@@ -100,6 +96,10 @@ RXCTL	   33	    107	  140
 
 &usb3_phy1 {
 	status = "okay";
+};
+
+&usdhc2 {
+	status = "disabled";
 };
 
 &iomuxc {
@@ -132,26 +132,6 @@ RXCTL	   33	    107	  140
 			    MX8MP_IOMUXC_ENET_RXC__CCM_ENET_QOS_CLOCK_GENERATE_RX_CLK 0x156
 			    MX8MP_IOMUXC_ENET_RX_CTL__ENET_QOS_RGMII_RX_CTL 0x116
 			    MX8MP_IOMUXC_ENET_TX_CTL__ENET_QOS_RGMII_TX_CTL 0x016
-		>;
-	};
-
-	pinctrl_fec_sleep: fec-sleep-grp {
-		fsl,pins = <
-			    MX8MP_IOMUXC_GPIO1_IO00__GPIO1_IO00		0x120
-			    MX8MP_IOMUXC_ENET_MDC__GPIO1_IO16		0x120
-			    MX8MP_IOMUXC_ENET_MDIO__GPIO1_IO17		0x120
-			    MX8MP_IOMUXC_ENET_TXC__GPIO1_IO23		0x40000120
-			    MX8MP_IOMUXC_ENET_TD0__GPIO1_IO21		0x120
-			    MX8MP_IOMUXC_ENET_TD1__GPIO1_IO20		0x120
-			    MX8MP_IOMUXC_ENET_TD2__GPIO1_IO19		0x120
-			    MX8MP_IOMUXC_ENET_TD3__GPIO1_IO18		0x120
-			    MX8MP_IOMUXC_ENET_RD0__GPIO1_IO26		0x120
-			    MX8MP_IOMUXC_ENET_RD1__GPIO1_IO27		0x120
-			    MX8MP_IOMUXC_ENET_RD2__GPIO1_IO28		0x120
-			    MX8MP_IOMUXC_ENET_RD3__GPIO1_IO29		0x120
-			    MX8MP_IOMUXC_ENET_RXC__GPIO1_IO25		0x120
-			    MX8MP_IOMUXC_ENET_RX_CTL__GPIO1_IO24	0x120
-			    MX8MP_IOMUXC_ENET_TX_CTL__GPIO1_IO22	0x120
 		>;
 	};
 

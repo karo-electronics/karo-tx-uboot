@@ -10,6 +10,18 @@
 
 / {
 	model = "Ka-Ro electronics QS8M-MQ00 (NXP i.MX8MM) module on QSBASE2 baseboard";
+
+	leds {
+		compatible = "gpio-leds";
+
+		led {
+			label = "Heartbeat";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_led>;
+			gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
 };
 
 &fec1 {
