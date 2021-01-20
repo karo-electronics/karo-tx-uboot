@@ -33,8 +33,6 @@
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/mxc_i2c.h>
 #include <asm/mach-imx/video.h>
-#include <asm/setup.h>
-#include <asm/bootm.h>
 #include <dm/uclass.h>
 #include "../common/karo.h"
 
@@ -369,21 +367,3 @@ int mmc_map_to_kernel_blk(int devno)
 {
 	return devno + 1;
 }
-
-#ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
-{
-	struct tag_serialnr serno;
-	char serno_str[64 / 4 + 1];
-
-	get_board_serial(&serno);
-	snprintf(serno_str, sizeof(serno_str), "%08x%08x",
-		 serno.high, serno.low);
-
-	printf("serial-number: %s\n", serno_str);
-
-	fdt_setprop(blob, 0, "serial-number", serno_str, strlen(serno_str));
-	fsl_fdt_fixup_dr_usb(blob, bd);
-	return 0;
-}
-#endif /* OF_BOARD_SETUP */

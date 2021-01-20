@@ -9,6 +9,8 @@
 #include <fs.h>
 #include <mmc.h>
 #include <mtd_node.h>
+#include <asm/bootm.h>
+#include <asm/setup.h>
 #include "karo.h"
 
 static void karo_set_fdtsize(void *fdt)
@@ -77,3 +79,23 @@ void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
 	}
 }
 #endif
+
+#ifdef CONFIG_OF_BOARD_SETUP
+int ft_board_setup(void *blob, bd_t *bd)
+{
+	struct tag_serialnr serno;
+	char serno_str[64 / 4 + 1];
+
+	get_board_serial(&serno);
+	snprintf(serno_str, sizeof(serno_str), "%08x%08x",
+		 serno.high, serno.low);
+
+	printf("serial-number: %s\n", serno_str);
+
+	fdt_setprop(blob, 0, "serial-number", serno_str, strlen(serno_str));
+	fsl_fdt_fixup_dr_usb(blob, bd);
+
+	fdt_fixup_ethernet(blob);
+	return 0;
+}
+#endif /* OF_BOARD_SETUP */

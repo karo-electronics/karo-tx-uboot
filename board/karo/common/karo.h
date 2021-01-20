@@ -17,3 +17,5 @@ static inline void tx8m_led_init(void)
 {
 }
 #endif
+
+int ft_karo_common_setup(void *blob, bd_t *bd);
