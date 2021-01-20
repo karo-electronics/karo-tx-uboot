@@ -10,10 +10,12 @@
 #include <i2c.h>
 #include <spl.h>
 #include <asm/io.h>
+#include <dm/uclass.h>
 #include <power/pmic.h>
 #include <power/rn5t567_pmic.h>
 #include "pmic.h"
 
+#define PMIC_I2C_BUS			0
 #define PMIC_I2C_ADDR			0x34
 #define PMIC_NAME			"RN5T567"
 
@@ -185,15 +187,22 @@ int power_init_board(void)
 	int ret;
 	size_t i;
 	u8 ver[2];
-	struct udevice *dev;
+	struct udevice *busdev;
+	struct udevice *i2cdev;
 
-	ret = dm_i2c_probe(0, PMIC_I2C_ADDR, 0, &dev);
+	ret = uclass_get_device(UCLASS_I2C, PMIC_I2C_BUS, &busdev);
+	if (ret) {
+		printf("Failed to get I2C bus %d\n", PMIC_I2C_BUS);
+		return ret;
+	}
+
+	ret = dm_i2c_probe(busdev, PMIC_I2C_ADDR, 0, &i2cdev);
 	if (ret) {
 		printf("Could not find PMIC @0x%02x: %d\n", PMIC_I2C_ADDR, ret);
 		return ret;
 	}
 
-	ret = dm_i2c_read(dev, RN5T567_LSIVER, ver, ARRAY_SIZE(ver));
+	ret = dm_i2c_read(i2cdev, RN5T567_LSIVER, ver, ARRAY_SIZE(ver));
 	if (ret) {
 		printf("Failed to read %s version registers: %d\n",
 		       PMIC_NAME, ret);
@@ -203,7 +212,7 @@ int power_init_board(void)
 	for (i = 0; ret == 0 && i < ARRAY_SIZE(pmic_vals); i++) {
 		const struct pmic_val *p = &pmic_vals[i];
 
-		ret = pmic_update_reg(dev, p->addr, p->val, p->name);
+		ret = pmic_update_reg(i2cdev, p->addr, p->val, p->mask, p->name);
 	}
 
 	if (CONFIG_IS_ENABLED(BANNER_PRINT))
