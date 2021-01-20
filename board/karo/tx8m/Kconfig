@@ -36,6 +36,15 @@ config KARO_QSXM
 	select MXC_UART
 	select PHYLIB
 
+config KARO_TX8P
+	bool
+	select BOARD_LATE_INIT
+	imply FEC_MXC
+	select IMX8M_LPDDR4
+	select MII
+	select MXC_UART
+	select PHYLIB
+
 choice
 	prompt "Ka-Ro TX8M/QS8M module variant"
 	default KARO_TX8MM_1610
@@ -74,6 +83,11 @@ config KARO_QSXP_ML81
 	bool "Ka-Ro QSXP-ML81 solder-in module with LPDDR4"
 	select IMX8MP
 	select KARO_QSXM
+
+config KARO_TX8P_ML81
+	bool "Ka-Ro TX8P-ML81 module with LPDDR4"
+	select IMX8MP
+	select KARO_TX8P
 
 endchoice
 

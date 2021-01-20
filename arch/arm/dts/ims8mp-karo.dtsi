@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2021 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx8mp.dtsi"
+
+/ {
+	aliases {
+		ethernet0 = &eqos;
+		/delete-property/ ethernet1;
+		i2c0 = &i2c1;
+		i2c1 = &i2c2;
+		i2c2 = &i2c3;
+		mmc0 = &usdhc3;
+		mmc1 = &usdhc2;
+		/delete-property/ mmc2;
+		serial0 = &uart2;
+		serial1 = &uart4;
+		serial2 = &uart1;
+		usb-host = &usb_dwc3_1;
+		usbotg = &usb_dwc3_0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	owire {
+		compatible = "w1-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_owire>;
+		gpios = <&gpio3 25 GPIO_ACTIVE_HIGH>;
+		linux,open-drain;
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x0 0x40000000 0 0x40000000>,
+		      <0x1 0x00000000 0 0x40000000>;
+	};
+
+	reg_3v3: regulator-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "3V3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	reg_vdd_core: regulator-vdd-core {
+		compatible = "regulator-fixed";
+		regulator-name = "VDD-CORE";
+		regulator-min-microvolt = <900000>;
+		regulator-max-microvolt = <900000>;
+		regulator-always-on;
+	};
+};

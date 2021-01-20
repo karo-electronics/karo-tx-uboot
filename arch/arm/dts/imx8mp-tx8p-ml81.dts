@@ -1,0 +1,389 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "imx8mp-karo.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TX8P-ML81 (NXP i.MX8MP) module";
+	compatible = "karo,imx8mp-tx8m", "fsl,imx8mp";
+
+	aliases {
+		serial0 = &uart1;
+		serial1 = &uart2;
+		serial2 = &uart4;
+	};
+
+	reg_3v3_etn: regulator-3v3-etn {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_reg_3v3_etn>;
+		regulator-name = "3v3-etn";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		gpio = <&gpio1 23 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	reg_nvcc_dram: regulator-nvcc-dram {
+		compatible = "regulator-fixed";
+		regulator-name = "nvcc-dram";
+		regulator-min-microvolt = <1100000>;
+		regulator-max-microvolt = <1100000>;
+		vin-supply = <&buck6_reg>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	reg_nvcc_nand: regulator-nvcc-nand {
+		compatible = "regulator-fixed";
+		regulator-name = "nvcc-nand";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		vin-supply = <&buck5_reg>;
+		regulator-boot-on;
+	};
+
+	reg_usb1_vbus: regulator-usb1-vbus {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usb1_vbus>;
+		regulator-name = "usb1-vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	reg_usb2_vbus: regulator-usb2-vbus {
+		compatible = "regulator-fixed";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_usb2_vbus>;
+		regulator-name = "usb2-vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+};
+
+&A53_0 {
+	cpu-supply = <&reg_vdd_core>;
+};
+
+&eqos {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&pinctrl_eqos &pinctrl_etnphy_rst_b>;
+	pinctrl-1 = <&pinctrl_eqos_sleep>;
+	assigned-clock-parents = <&clk IMX8MP_SYS_PLL1_266M>,
+				 <&clk IMX8MP_SYS_PLL2_100M>,
+				 <&clk IMX8MP_SYS_PLL2_50M>;
+	assigned-clock-rates = <0>, <100000000>, <50000000>;
+	phy-mode = "rmii";
+	phy-handle = <&ethphy0>;
+	phy-reset-gpios = <&gpio4 22 GPIO_ACTIVE_LOW>;
+	phy-reset-duration-us = <25000>;
+	phy-reset-post-delay-us = <1>;
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "snps,dwmac-mdio";
+
+		ethphy0: ethernet-phy@0 {
+			reg = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_etnphy_int_b>;
+			interrupt-parent = <&gpio4>;
+			interrupts = <21 IRQ_TYPE_EDGE_FALLING>;
+		};
+	};
+};
+
+&i2c1 {
+	pinctrl-names = "default", "gpio";
+	pinctrl-0 = <&pinctrl_i2c1>;
+	pinctrl-1 = <&pinctrl_i2c1_gpio>;
+	clock-frequency = <400000>;
+	scl-gpios = <&gpio5 14 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio5 15 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+
+	pmic: pmic@25 {
+		reg = <0x25>;
+		compatible = "nxp,pca9450b";
+		status = "okay";
+
+		regulators {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			buck1_reg: regulator@0 {
+				reg = <0>;
+				regulator-compatible = "buck1";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <2187500>;
+				regulator-boot-on;
+				regulator-always-on;
+				regulator-ramp-delay = <3125>;
+			};
+
+			buck2_reg: regulator@1 {
+				reg = <1>;
+				regulator-compatible = "buck2";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <2187500>;
+				regulator-boot-on;
+				regulator-always-on;
+				regulator-ramp-delay = <3125>;
+			};
+
+			buck3_reg: regulator@2 {
+				reg = <2>;
+				regulator-compatible = "buck3";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <2187500>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			buck4_reg: regulator@3 {
+				reg = <3>;
+				regulator-compatible = "buck4";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <3400000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			buck5_reg: regulator@4 {
+				reg = <4>;
+				regulator-compatible = "buck5";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <3400000>;
+			};
+
+			buck6_reg: regulator@5 {
+				reg = <5>;
+				regulator-compatible = "buck6";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <3400000>;
+			};
+
+			ldo1_reg: regulator@6 {
+				reg = <6>;
+				regulator-compatible = "ldo1";
+				regulator-min-microvolt = <1600000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo2_reg: regulator@7 {
+				reg = <7>;
+				regulator-compatible = "ldo2";
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <1150000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo3_reg: regulator@8 {
+				reg = <8>;
+				regulator-compatible = "ldo3";
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo4_reg: regulator@9 {
+				reg = <9>;
+				regulator-compatible = "ldo4";
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo5_reg: regulator@10 {
+				reg = <10>;
+				regulator-compatible = "ldo5";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+			};
+		};
+	};
+};
+
+&reg_vdd_core {
+	vin-supply = <&buck2_reg>;
+};
+
+&uart1 { /* console */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1 &pinctrl_uart1_rtscts>;
+	uart-has-rtscts;
+	status = "okay";
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2 &pinctrl_uart2_rtscts>;
+	uart-has-rtscts;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart4 &pinctrl_uart4_rtscts>;
+	uart-has-rtscts;
+	status = "okay";
+};
+
+&usb_dwc3_0 {
+	dr_mode = "host";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usb1_oc>;
+	hnp-disable;
+	srp-disable;
+	adp-disable;
+	vbus-supply = <&reg_usb1_vbus>;
+	status = "okay";
+};
+
+&usb_dwc3_1 {
+	dr_mode = "host";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usb2_oc>;
+	hnp-disable;
+	srp-disable;
+	adp-disable;
+	vbus-supply = <&reg_usb2_vbus>;
+	status = "okay";
+};
+
+&usdhc3 { /* eMMC */
+	vqmmc-supply = <&reg_nvcc_nand>;
+};
+
+&iomuxc {
+	pinctrl_etnphy_int_b: etnphy-int-bgrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_SAI2_RXFS__GPIO4_IO21		0x00
+		>;
+	};
+
+	pinctrl_etnphy_rst_b: etnphy-rst-bgrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22		0x00
+		>;
+	};
+
+	pinctrl_reg_3v3_etn: reg-3v3-etngrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_ENET_TXC__GPIO1_IO23		0x40000140
+		>;
+	};
+
+	pinctrl_eqos: eqosgrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_ENET_MDC__ENET_QOS_MDC		0x142
+			    MX8MP_IOMUXC_ENET_MDIO__ENET_QOS_MDIO	0x142
+			    MX8MP_IOMUXC_ENET_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK 0x40000142
+			    MX8MP_IOMUXC_ENET_TD0__ENET_QOS_RGMII_TD0	0x016
+			    MX8MP_IOMUXC_ENET_TD1__ENET_QOS_RGMII_TD1	0x016
+			    MX8MP_IOMUXC_ENET_RD0__ENET_QOS_RGMII_RD0	0x150
+			    MX8MP_IOMUXC_ENET_RD1__ENET_QOS_RGMII_RD1	0x150
+			    MX8MP_IOMUXC_ENET_RXC__ENET_QOS_RX_ER	0x110
+			    MX8MP_IOMUXC_ENET_RX_CTL__ENET_QOS_RGMII_RX_CTL 0x156
+			    MX8MP_IOMUXC_ENET_TX_CTL__ENET_QOS_RGMII_TX_CTL 0x016
+		>;
+	};
+
+	pinctrl_eqos_sleep: eqos-sleep-grp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_ENET_MDC__GPIO1_IO16		0x120
+			    MX8MP_IOMUXC_ENET_MDIO__GPIO1_IO17		0x120
+			    MX8MP_IOMUXC_ENET_TD2__GPIO1_IO19		0x120
+			    MX8MP_IOMUXC_ENET_TD0__GPIO1_IO21		0x120
+			    MX8MP_IOMUXC_ENET_TD1__GPIO1_IO20		0x120
+			    MX8MP_IOMUXC_ENET_RD0__GPIO1_IO26		0x120
+			    MX8MP_IOMUXC_ENET_RD1__GPIO1_IO27		0x120
+			    MX8MP_IOMUXC_ENET_RXC__GPIO1_IO25		0x120
+			    MX8MP_IOMUXC_ENET_RX_CTL__GPIO1_IO24	0x120
+			    MX8MP_IOMUXC_ENET_TX_CTL__GPIO1_IO22	0x120
+		>;
+	};
+
+	pinctrl_uart1: uart1grp {
+		fsl,pins = <
+			MX8MP_IOMUXC_UART1_RXD__UART1_DCE_RX		0x140
+			MX8MP_IOMUXC_UART1_TXD__UART1_DCE_TX		0x140
+		>;
+	};
+
+	pinctrl_uart1_rtscts: uart1-rtsctsgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_UART3_TXD__UART1_DCE_RTS		0x140
+			MX8MP_IOMUXC_UART3_RXD__UART1_DCE_CTS		0x140
+		>;
+	};
+
+	pinctrl_uart2: uart2grp {
+		fsl,pins = <
+			MX8MP_IOMUXC_UART2_RXD__UART2_DCE_RX		0x140
+			MX8MP_IOMUXC_UART2_TXD__UART2_DCE_TX		0x140
+		>;
+	};
+
+	pinctrl_uart2_rtscts: uart2-rtsctsgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_SAI3_RXD__UART2_DCE_RTS		0x140
+			MX8MP_IOMUXC_SAI3_RXC__UART2_DCE_CTS		0x140
+		>;
+	};
+
+	pinctrl_uart4: uart4grp {
+		fsl,pins = <
+			MX8MP_IOMUXC_UART4_RXD__UART4_DCE_RX		0x140
+			MX8MP_IOMUXC_UART4_TXD__UART4_DCE_TX		0x140
+		>;
+	};
+
+	pinctrl_uart4_rtscts: uart4-rtsctsgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_ECSPI2_SS0__UART4_DCE_RTS		0x140
+			MX8MP_IOMUXC_ECSPI2_MISO__UART4_DCE_CTS		0x140
+		>;
+	};
+
+	pinctrl_usb1_vbus: usb1-vbusgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12		0x100
+		>;
+	};
+
+	pinctrl_usb1_oc: usb1-ocgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO13__USB1_OTG_OC		0x140
+		>;
+	};
+
+	pinctrl_usb2_vbus: usb2-vbusgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO14__GPIO1_IO14		0x100
+		>;
+	};
+
+	pinctrl_usb2_oc: usb2-ocgrp {
+		fsl,pins = <
+			MX8MP_IOMUXC_GPIO1_IO15__USB2_OTG_OC		0x140
+		>;
+	};
+};
