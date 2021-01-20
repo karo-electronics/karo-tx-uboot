@@ -468,3 +468,38 @@ int mmc_map_to_kernel_blk(int devno)
 {
 	return devno;
 }
+
+static const char * const usb_aliases[] = {
+					   "usbotg",
+					   "usb-host",
+};
+
+int ft_board_setup(void *blob, bd_t *bd)
+{
+	int ret;
+	struct udevice *dev;
+	size_t i;
+
+	ret = ft_karo_common_setup(blob, bd);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < ARRAY_SIZE(usb_aliases); i++) {
+		int node = fdt_path_offset(blob, usb_aliases[i]);
+
+		ret = uclass_get_device_by_of_offset(UCLASS_USB, node, &dev);
+		if (ret)
+			ret = uclass_get_device_by_of_offset(UCLASS_USB_GADGET_GENERIC,
+							     node, &dev);
+		if (ret) {
+			printf("Failed to get 'usbotg' device: %d\n", ret);
+			return 0;
+		}
+		if (dev_read_enabled(dev))
+			tx8mp_set_usb_ctl(dev);
+		else
+			printf("%s: '%s' device is not enabled\n", __func__,
+			       usb_aliases[i]);
+	}
+	return 0;
+}
