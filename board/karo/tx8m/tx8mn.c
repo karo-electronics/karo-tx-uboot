@@ -87,14 +87,6 @@ static void tx8mn_setup_fec(enum tx8m_boardtype board)
 		printf("MAC addr: %s\n", env_get("ethaddr"));
 	}
 }
-
-int board_phy_config(struct phy_device *phydev)
-{
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-
-	return 0;
-}
 #else
 static inline void tx8mn_setup_fec(enum tx8m_boardtype board)
 {
