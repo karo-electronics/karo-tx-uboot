@@ -215,58 +215,6 @@ void spl_board_init(void)
 }
 #endif
 
-#define I2C_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_PE |	\
-					     PAD_CTL_HYS |	\
-					     PAD_CTL_PUE |	\
-					     PAD_CTL_DSE6)
-
-#if defined(CONFIG_IMX8MM)
-struct i2c_pads_info i2c_pad_info[] = {
-	{
-		.scl = {
-			.i2c_mode = IMX8MM_PAD_I2C1_SCL_I2C1_SCL | I2C_PAD_CTRL,
-			.gpio_mode = IMX8MM_PAD_I2C1_SCL_GPIO5_IO14 | I2C_PAD_CTRL,
-			.gp = IMX_GPIO_NR(5, 14),
-		},
-		.sda = {
-			.i2c_mode = IMX8MM_PAD_I2C1_SDA_I2C1_SDA | I2C_PAD_CTRL,
-			.gpio_mode = IMX8MM_PAD_I2C1_SDA_GPIO5_IO15 | I2C_PAD_CTRL,
-			.gp = IMX_GPIO_NR(5, 15),
-		},
-	},
-};
-#elif defined(CONFIG_IMX8MN)
-struct i2c_pads_info i2c_pad_info[] = {
-	{
-		.scl = {
-			.i2c_mode = IMX8MN_PAD_I2C1_SCL__I2C1_SCL | I2C_PAD_CTRL,
-			.gpio_mode = IMX8MN_PAD_I2C1_SCL__GPIO5_IO14 | I2C_PAD_CTRL,
-			.gp = IMX_GPIO_NR(5, 14),
-		},
-		.sda = {
-			.i2c_mode = IMX8MN_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
-			.gpio_mode = IMX8MN_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
-			.gp = IMX_GPIO_NR(5, 15),
-		},
-	},
-};
-#elif defined(CONFIG_IMX8MP)
-struct i2c_pads_info i2c_pad_info[] = {
-	{
-		.scl = {
-			.i2c_mode = MX8MP_PAD_I2C1_SCL__I2C1_SCL | I2C_PAD_CTRL,
-			.gpio_mode = MX8MP_PAD_I2C1_SCL__GPIO5_IO14 | I2C_PAD_CTRL,
-			.gp = IMX_GPIO_NR(5, 14),
-		},
-		.sda = {
-			.i2c_mode = MX8MP_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
-			.gpio_mode = MX8MP_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
-			.gp = IMX_GPIO_NR(5, 15),
-		},
-	},
-};
-#endif
-
 #if !CONFIG_IS_ENABLED(DM_MMC) && CONFIG_IS_ENABLED(MMC_SUPPORT)
 #define USDHC_GPIO_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_PE |	\
 					     PAD_CTL_PUE |	\
@@ -517,13 +465,78 @@ int board_fit_config_name_match(const char *name)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_SYS_I2C_MXC)
+#define I2C_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_PE |	\
+					     PAD_CTL_HYS |	\
+					     PAD_CTL_PUE |	\
+					     PAD_CTL_DSE6)
+
+struct karo_spl_i2c_info {
+	int bus;
+	int speed;
+	struct i2c_pads_info *pad_info;
+};
+
+#if defined(CONFIG_IMX8MM)
+struct i2c_pads_info i2c1_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = IMX8MM_PAD_I2C1_SCL_I2C1_SCL | I2C_PAD_CTRL,
+			.gpio_mode = IMX8MM_PAD_I2C1_SCL_GPIO5_IO14 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 14),
+		},
+		.sda = {
+			.i2c_mode = IMX8MM_PAD_I2C1_SDA_I2C1_SDA | I2C_PAD_CTRL,
+			.gpio_mode = IMX8MM_PAD_I2C1_SDA_GPIO5_IO15 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 15),
+		},
+	},
+};
+#elif defined(CONFIG_IMX8MN)
+struct i2c_pads_info i2c1_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = IMX8MN_PAD_I2C1_SCL__I2C1_SCL | I2C_PAD_CTRL,
+			.gpio_mode = IMX8MN_PAD_I2C1_SCL__GPIO5_IO14 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 14),
+		},
+		.sda = {
+			.i2c_mode = IMX8MN_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
+			.gpio_mode = IMX8MN_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 15),
+		},
+	},
+};
+#elif defined(CONFIG_IMX8MP)
+struct i2c_pads_info i2c1_pad_info[] = {
+	{
+		.scl = {
+			.i2c_mode = MX8MP_PAD_I2C1_SCL__I2C1_SCL | I2C_PAD_CTRL,
+			.gpio_mode = MX8MP_PAD_I2C1_SCL__GPIO5_IO14 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 14),
+		},
+		.sda = {
+			.i2c_mode = MX8MP_PAD_I2C1_SDA__I2C1_SDA | I2C_PAD_CTRL,
+			.gpio_mode = MX8MP_PAD_I2C1_SDA__GPIO5_IO15 | I2C_PAD_CTRL,
+			.gp = IMX_GPIO_NR(5, 15),
+		},
+	},
+};
+#endif
+
+struct karo_spl_i2c_info i2c_cfg[] = {
+	{
+		.bus = 0,
+		.speed = CONFIG_SYS_MXC_I2C1_SPEED,
+		.pad_info = i2c1_pad_info,
+	},
+};
+
 #if !IS_ENABLED(CONFIG_DM_I2C)
 static void scan_i2c(int bus)
 {
 	int addr;
 	int ret;
-
-return;
 
 	ret = i2c_set_bus_num(bus);
 	if (ret) {
@@ -533,16 +546,44 @@ return;
 	for (addr = 3; addr < 0x7c; addr++) {
 		ret = i2c_probe(addr);
 		if (ret != -EREMOTEIO)
-			printf("I2C probe(%02x) returned %d\n", addr, ret);
+			debug("i2c_probe(%02x) returned %d\n", addr, ret);
+		else
+			debug("No I2C chip on bus %u at address %02x\n",
+			      bus, addr);
 	}
 }
+#else
+static void scan_i2c(int bus)
+{
+	int addr;
+	struct udevice *busdev;
+	struct udevice *i2cdev;
+	int ret;
+
+	ret = uclass_get_device(UCLASS_I2C, bus, &busdev);
+	if (ret) {
+		printf("Failed to get I2C bus %d\n", bus);
+		return;
+	}
+	for (addr = 3; addr < 0x7c; addr++) {
+		ret = dm_i2c_probe(busdev, addr, 0, &i2cdev);
+		if (ret != -EREMOTEIO)
+			debug("dm_i2c_probe(%02x) returned %d\n", addr, ret);
+		else
+			debug("No I2C chip on bus %u at address %02x\n",
+			      bus, addr);
+	}
+}
+#endif
 
 static void tx8m_spl_i2c_setup(void)
 {
 	size_t i;
 
-	for (i = 0; i < ARRAY_SIZE(i2c_pad_info); i++) {
-		setup_i2c(i, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info[i]);
+	for (i = 0; i < ARRAY_SIZE(i2c_cfg); i++) {
+		enable_i2c_clk(1, i);
+		setup_i2c(i2c_cfg[i].bus, i2c_cfg[i].speed, 0x7f,
+			  i2c_cfg[i].pad_info);
 		scan_i2c(i);
 	}
 }
