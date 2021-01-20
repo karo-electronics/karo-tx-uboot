@@ -10,6 +10,7 @@
 #include <fsl_esdhc_imx.h>
 #include <hang.h>
 #include <i2c.h>
+#include <malloc.h>
 #include <mmc.h>
 #include <spl.h>
 #include <asm/io.h>
@@ -36,6 +37,31 @@
 #include <asm/arch/ddr.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
+{
+	typedef void __noreturn (*image_entry_noargs_t)(void);
+	const void *fdt_addr = gd->fdt_blob;
+	image_entry_noargs_t image_entry =
+		(image_entry_noargs_t)spl_image->entry_point;
+#ifdef DEBUG
+	uintptr_t sp;
+
+	asm("\tmov	%0, sp\n" : "=r"(sp));
+	debug("image entry point: 0x%lx sp=%08lx\n",
+	      spl_image->entry_point, sp);
+	debug("fdtaddr=%p\n", fdt_addr);
+#if CONFIG_IS_ENABLED(SYS_MALLOC_SIMPLE)
+	malloc_simple_info();
+	printf("@%08lx..%08lx\n", gd->malloc_base,
+	       gd->malloc_base + gd->malloc_ptr - 1);
+#endif /* SPL_SYS_MALLOC_SIMPLE */
+#endif /* DEBUG */
+
+	asm("\tmov x1, %0\n"
+	    :: "r"(fdt_addr) : "x0", "x1", "x2", "x3");
+	image_entry();
+}
 
 #define UART_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_FSEL1 |	\
 					     PAD_CTL_DSE6)
