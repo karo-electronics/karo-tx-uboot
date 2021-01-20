@@ -26,7 +26,7 @@
 &eqos {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_eqos>;
-	phy-mode = "rgmii-id";
+	phy-mode = "rgmii";
 	phy-handle = <&ethphy0>;
 	status = "okay";
 
@@ -45,21 +45,6 @@
 			pinctrl-0 = <&pinctrl_etnphy_int_b>;
 			interrupt-parent = <&gpio4>;
 			interrupts = <21 IRQ_TYPE_EDGE_FALLING>;
-/*
-signal    QSXP   QSBASE3 TOTAL
-TXC	   54	    106	  160
-TDX0	   69	    136	  205
-TDX1	   63	    129	  192
-TDX2	   76	    121	  197
-TDX3	   54	    115	  169
-TXCTL	   64	    106	  170
-RXC	   24	    119	  143
-RDX0	   11	    101	  112
-RDX1	   22	    103	  125
-RDX2	   21	    102	  123
-RDX3	   30	    105	  135
-RXCTL	   33	    107	  140
-*/
 			rxd0-skew-ps = <(420 + 112)>;
 			rxd1-skew-ps = <(420 + 125)>;
 			rxd2-skew-ps = <(420 + 123)>;
@@ -105,39 +90,47 @@ RXCTL	   33	    107	  140
 &iomuxc {
 	pinctrl_etnphy_int_b: etnphy-int-bgrp {
 		fsl,pins = <
-			    MX8MP_IOMUXC_SAI2_RXFS__GPIO4_IO21		0x90
+			    MX8MP_IOMUXC_SAI2_RXFS__GPIO4_IO21			0x90
 		>;
 	};
 
 	pinctrl_etnphy_rst_b: etnphy-rst-bgrp {
 		fsl,pins = <
-			    MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22		0x140
+			    MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22			0x140
 		>;
 	};
 
 	pinctrl_eqos: eqosgrp {
 		fsl,pins = <
-			    MX8MP_IOMUXC_GPIO1_IO00__CCM_ENET_PHY_REF_CLK_ROOT 0x110
-			    MX8MP_IOMUXC_ENET_MDC__ENET_QOS_MDC		0x142
-			    MX8MP_IOMUXC_ENET_MDIO__ENET_QOS_MDIO	0x142
+			    MX8MP_IOMUXC_ENET_MDC__ENET_QOS_MDC			0x142
+			    MX8MP_IOMUXC_ENET_MDIO__ENET_QOS_MDIO		0x142
 			    MX8MP_IOMUXC_ENET_TXC__CCM_ENET_QOS_CLOCK_GENERATE_TX_CLK 0x40000016
-			    MX8MP_IOMUXC_ENET_TD0__ENET_QOS_RGMII_TD0	0x016
-			    MX8MP_IOMUXC_ENET_TD1__ENET_QOS_RGMII_TD1	0x016
-			    MX8MP_IOMUXC_ENET_TD2__ENET_QOS_RGMII_TD2	0x016
-			    MX8MP_IOMUXC_ENET_TD3__ENET_QOS_RGMII_TD3	0x016
-			    MX8MP_IOMUXC_ENET_RD0__ENET_QOS_RGMII_RD0	0x150
-			    MX8MP_IOMUXC_ENET_RD1__ENET_QOS_RGMII_RD1	0x150
-			    MX8MP_IOMUXC_ENET_RD2__ENET_QOS_RGMII_RD2	0x150
-			    MX8MP_IOMUXC_ENET_RD3__ENET_QOS_RGMII_RD3	0x150
-			    MX8MP_IOMUXC_ENET_RXC__CCM_ENET_QOS_CLOCK_GENERATE_RX_CLK 0x156
-			    MX8MP_IOMUXC_ENET_RX_CTL__ENET_QOS_RGMII_RX_CTL 0x116
-			    MX8MP_IOMUXC_ENET_TX_CTL__ENET_QOS_RGMII_TX_CTL 0x016
+			    MX8MP_IOMUXC_ENET_TD0__ENET_QOS_RGMII_TD0		0x016
+			    MX8MP_IOMUXC_ENET_TD1__ENET_QOS_RGMII_TD1		0x016
+			    MX8MP_IOMUXC_ENET_TD2__ENET_QOS_RGMII_TD2		0x016
+			    MX8MP_IOMUXC_ENET_TD3__ENET_QOS_RGMII_TD3		0x016
+			    MX8MP_IOMUXC_ENET_TX_CTL__ENET_QOS_RGMII_TX_CTL	0x016
+			    /* KSZ9031 strap pins: 0x116 => 0; 0x156 => 1 */
+			    /* MODE0: 1: 0x150 0: 0x110 */
+			    MX8MP_IOMUXC_ENET_RD0__ENET_QOS_RGMII_RD0		0x150
+			    /* MODE1: 1: 0x150 0: 0x110 */
+			    MX8MP_IOMUXC_ENET_RD1__ENET_QOS_RGMII_RD1		0x150
+			    /* MODE2: 1: 0x150 0: 0x110 */
+			    MX8MP_IOMUXC_ENET_RD2__ENET_QOS_RGMII_RD2		0x150
+			    /* MODE3: 1: 0x150 0: 0x110 */
+			    MX8MP_IOMUXC_ENET_RD3__ENET_QOS_RGMII_RD3		0x150
+			    /* PHYAD2: 0: 0x116, 1: 0x156 */
+			    MX8MP_IOMUXC_ENET_RXC__CCM_ENET_QOS_CLOCK_GENERATE_RX_CLK 0x116
+			    /* CLK125_NDO: disable: 0x116, enable: 0x156 */
+			    MX8MP_IOMUXC_ENET_RX_CTL__ENET_QOS_RGMII_RX_CTL	0x116
+			    /* LED_MODE: dual-led/tri-color: 0x110 single LED: 0x150 */
+			    MX8MP_IOMUXC_GPIO1_IO00__GPIO1_IO00			0x110
 		>;
 	};
 
 	pinctrl_usbh_vbus: usbh-vbusgrp {
 		fsl,pins = <
-			MX8MP_IOMUXC_SD2_CD_B__GPIO2_IO12		0x06
+			MX8MP_IOMUXC_SD2_CD_B__GPIO2_IO12			0x06
 		>;
 	};
 };
