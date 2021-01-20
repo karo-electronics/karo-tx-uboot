@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <console.h>
+#include <debug_uart.h>
 #include <errno.h>
 #include <fdt_support.h>
 #include <fsl_esdhc_imx.h>
@@ -107,6 +108,11 @@ int board_fix_fdt(void *blob)
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
+	if (IS_ENABLED(CONFIG_DEBUG_UART)) {
+		debug_uart_init();
+		printascii("enabled\n");
+	}
+
 #if defined(CONFIG_KARO_TX8MM_1610)
 	printf("Board: Ka-Ro TX8M-1610\n");
 #elif defined(CONFIG_KARO_TX8MM_1620)
