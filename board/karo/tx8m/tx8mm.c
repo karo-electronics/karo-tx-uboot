@@ -100,11 +100,6 @@ static inline void tx8mm_setup_fec(enum tx8m_boardtype board)
 }
 #endif /* FEX_MXC */
 
-int board_fix_fdt(void *blob)
-{
-	return 0;
-}
-
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
@@ -124,7 +119,13 @@ int checkboard(void)
 #else
 #error Unsupported module variant
 #endif
-	ctrlc();
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_OF_BOARD_FIXUP
+int board_fix_fdt(void *blob)
+{
 	return 0;
 }
 #endif
@@ -291,6 +292,9 @@ static inline int dsi83_init(void)
 
 int board_init(void)
 {
+	if (ctrlc())
+		printf("<CTRL-C> detected; safeboot enabled\n");
+
 	if (IS_ENABLED(CONFIG_KARO_TX8M)) {
 		int ret;
 		struct gpio_desc reset_out;
@@ -325,8 +329,6 @@ int board_init(void)
 #ifdef CONFIG_BOARD_EARLY_INIT_R
 int board_early_init_r(void)
 {
-	if (ctrlc())
-		printf("<CTRL-C> detected; safeboot enabled\n");
 	return 0;
 }
 #endif
