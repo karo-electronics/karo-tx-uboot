@@ -384,9 +384,9 @@ int board_usb_init(int index, enum usb_init_type init)
 
 int board_usb_cleanup(int index, enum usb_init_type init)
 {
-	if (index == 0 && init == USB_INIT_DEVICE)
+	if (init == USB_INIT_DEVICE)
 		dwc3_uboot_exit(index);
-	else if (index == 1 && init == USB_INIT_HOST)
+	else if (init == USB_INIT_HOST)
 		tx8mp_enable_vbus(index, false);
 
 	imx8m_usb_power(index, false);

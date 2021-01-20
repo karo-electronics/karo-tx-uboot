@@ -51,6 +51,12 @@ int board_usb_init(int index, enum usb_init_type init)
 	imx8m_usb_power(index, true);
 	return 0;
 }
+
+int board_usb_cleanup(int index, enum usb_init_type init)
+{
+	imx8m_usb_power(index, false);
+	return 0;
+}
 #endif
 
 enum tx8m_boardtype {
