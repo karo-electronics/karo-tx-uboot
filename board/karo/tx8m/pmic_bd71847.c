@@ -95,6 +95,7 @@ static const struct pmic_val pmic_vals[] = {
 };
 
 #define PMIC_I2C_BUS			0
+#define PMIC_I2C_ADDR			0x4b
 #define PMIC_NAME			"BD71837"
 
 int power_init_board(void)
