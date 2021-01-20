@@ -465,14 +465,16 @@ int board_late_init(void)
 	struct watchdog_regs *wdog = (void *)WDOG1_BASE_ADDR;
 	u32 srsr = readl(&src_regs->srsr);
 	u16 wrsr = readw(&wdog->wrsr);
-	const char *fdt_file = env_get("fdt_file");
 	enum tx8m_boardtype board = TX8MN;
-	const char *baseboard = env_get("baseboard");
+	const char *fdt_file;
+	const char *baseboard;
 
+	karo_env_cleanup();
+
+	baseboard = env_get("baseboard");
 	if (baseboard && strncmp(baseboard, "qsbase", 6) == 0)
 		board = QS8M_QSBASE;
 
-	karo_env_cleanup();
 	if (srsr & 0x10 && !(wrsr & WRSR_SFTW)) {
 		printf("Watchog reset detected; reboot required!\n");
 		env_set("wdreset", "1");
@@ -480,6 +482,8 @@ int board_late_init(void)
 	if (had_ctrlc()) {
 		env_set("safeboot", "1");
 		fdt_file = NULL;
+	} else {
+		fdt_file = env_get("fdt_file");
 	}
 	if (fdt_file) {
 		ret = karo_load_fdt(fdt_file);
