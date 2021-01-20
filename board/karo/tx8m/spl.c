@@ -63,9 +63,23 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 	image_entry();
 }
 
+#ifdef CONFIG_DEBUG_UART
+#include <debug_uart.h>
+#ifdef CONFIG_DEBUG_UART_BOARD_INIT
+#define debug_uart_init() do {} while (0)
+#endif
+#else
+#define debug_uart_init() do {} while (0)
+#define printascii(v) do {} while (0)
+#define printhex2(v) do {} while (0)
+#endif
+
+#if CONFIG_IS_ENABLED(SERIAL_SUPPORT) || defined(CONFIG_DEBUG_UART)
 #define UART_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_FSEL1 |	\
 					     PAD_CTL_DSE6)
-
+/*
+ * changing the UART setup here requires changes to the ATF too!
+ */
 #if defined(CONFIG_IMX8MM)
 #define UART_IDX 0
 static const iomux_v3_cfg_t uart_pads[] = {
@@ -79,34 +93,78 @@ static const iomux_v3_cfg_t uart_pads[] = {
 	IMX8MN_PAD_UART1_TXD__UART1_DCE_TX | UART_PAD_CTRL,
 };
 #elif defined(CONFIG_IMX8MP)
+#if CONFIG_MXC_UART_BASE == UART1_BASE_ADDR
+#define UART_IDX 0
+static const iomux_v3_cfg_t uart_pads[] = {
+	MX8MP_PAD_UART1_RXD__UART1_DCE_RX | UART_PAD_CTRL,
+	MX8MP_PAD_UART1_TXD__UART1_DCE_TX | UART_PAD_CTRL,
+};
+#elif CONFIG_MXC_UART_BASE == UART2_BASE_ADDR
 #define UART_IDX 1
 static const iomux_v3_cfg_t uart_pads[] = {
 	MX8MP_PAD_UART2_RXD__UART2_DCE_RX | UART_PAD_CTRL,
 	MX8MP_PAD_UART2_TXD__UART2_DCE_TX | UART_PAD_CTRL,
 };
+#else
+#error unsupported UART selected with CONFIG_MXC_UART_BASE
+#endif /* CONFIG_MXC_UART_BASE == */
+#else
+#error Unsupported SoC
+#endif /* CONFIG_IMX8MM */
+#endif /* CONFIG_SERIAL_SUPPORT || CONFIG_DEBUG_UART */
 
+/* called before debug_uart is initialized */
+#ifdef CONFIG_IMX8MP
 #define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
 
 static iomux_v3_cfg_t const wdog_pads[] = {
 	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
 };
-#endif
 
-/* called before debug_uart is initialized */
-int board_early_init_f(void)
+static void spl_wdog_init(void)
 {
-#ifdef CONFIG_IMX8MP
 	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
 
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
 
 	set_wdog_reset(wdog);
+}
+#else
+static inline void spl_wdog_init(void)
+{
+}
 #endif
+
+#if CONFIG_IS_ENABLED(SERIAL_SUPPORT) || IS_ENABLED(CONFIG_DEBUG_UART)
+static void spl_uart_init(void)
+{
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
 	init_uart_clk(UART_IDX);
+	if (IS_ENABLED(CONFIG_DEBUG_UART)) {
+		debug_uart_init();
+		printascii("enabled\n");
+	}
+}
+#else
+static inline void spl_uart_init(void)
+{
+}
+#endif
+
+int board_early_init_f(void)
+{
+	spl_wdog_init();
+	spl_uart_init();
 
 	return 0;
 }
+
+#ifdef CONFIG_DEBUG_UART_BOARD_INIT
+void board_debug_uart_init(void)
+{
+	spl_uart_init();
+}
+#endif
 
 /* called after debug_uart initialization */
 enum boot_device spl_board_boot_device(enum boot_device boot_device_spl)
@@ -146,6 +204,7 @@ void spl_dram_init(void)
 {
 	debug("%s@%d:\n", __func__, __LINE__);
 	ddr_init(&dram_timing);
+	debug("%s@%d: dram_init done\n", __func__, __LINE__);
 }
 
 #ifdef CONFIG_SPL_BOARD_INIT
@@ -507,13 +566,12 @@ void board_init_f(ulong dummy)
 
 	timer_init();
 
-	preloader_console_init();
-
 	ret = spl_init();
 	if (ret) {
 		debug("spl_init() failed: %d\n", ret);
 		hang();
 	}
+	preloader_console_init();
 
 	enable_tzc380();
 
