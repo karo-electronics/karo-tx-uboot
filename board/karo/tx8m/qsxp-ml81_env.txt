@@ -9,7 +9,7 @@ bootcmd=run bootcmd_${boot_mode} bootm_cmd
 bootcmd_mmc=run loadkernel bootargs_mmc
 bootcmd_nfs=run loadkernel bootargs_nfs
 bootm_cmd=booti ${loadaddr} ${initrd_addr} ${fdt_addr}
-console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200
+console=ttymxc0,115200 earlycon=ec_imx6q,0x30890000,115200
 default_bootargs=setenv bootargs console=${console} panic=-1 ro
 emmc_boot_ack=1
 emmc_boot_part=1
