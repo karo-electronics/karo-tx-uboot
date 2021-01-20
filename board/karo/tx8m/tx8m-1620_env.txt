@@ -28,3 +28,4 @@ loadfdt=load mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}
 loadkernel=load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${linux_image}
 mmcdev=0
 mmcpart=1
+otg_mode=peripheral
