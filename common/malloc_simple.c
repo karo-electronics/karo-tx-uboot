@@ -24,7 +24,12 @@ static void *alloc_simple(size_t bytes, int align)
 	log_debug("size=%zx, ptr=%lx, limit=%lx: ", bytes, new_ptr,
 		  gd->malloc_limit);
 	if (new_ptr > gd->malloc_limit) {
-		log_err("failed to allocate %zu bytes of memory\n", bytes);
+		if (IS_ENABLED(CONFIG_LOG))
+			log_err("failed to allocate %zu bytes of memory\n",
+				bytes);
+		else
+			printf("failed to allocate %zu bytes of memory\n",
+			       bytes);
 		return NULL;
 	}
 
@@ -76,6 +81,12 @@ void *calloc(size_t nmemb, size_t elem_size)
 
 void malloc_simple_info(void)
 {
-	log_info("malloc_simple: %lx bytes used, %lx remain\n", gd->malloc_ptr,
-		 CONFIG_VAL(SYS_MALLOC_F_LEN) - gd->malloc_ptr);
+	if (IS_ENABLED(CONFIG_LOG))
+		log_info("malloc_simple: %lx bytes used, %lx remain\n",
+			 gd->malloc_ptr, CONFIG_VAL(SYS_MALLOC_F_LEN) -
+			 gd->malloc_ptr);
+	else
+		printf("malloc_simple: %lx bytes used, %lx remain\n",
+		       gd->malloc_ptr, CONFIG_VAL(SYS_MALLOC_F_LEN) -
+		       gd->malloc_ptr);
 }
