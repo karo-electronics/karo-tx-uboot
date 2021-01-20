@@ -651,6 +651,7 @@ err_clk:
 
 int ehci_usb_remove(struct udevice *dev)
 {
+	int ret;
 	struct ehci_mx6_priv_data *priv = dev_get_priv(dev);
 	struct usb_plat *plat = dev_get_plat(dev);
 
@@ -675,7 +676,15 @@ int ehci_usb_remove(struct udevice *dev)
 
 	plat->init_type = 0; /* Clean the requested usb type to host mode */
 
-	return board_usb_cleanup(dev_seq(dev), priv->init_type);
+	ret = board_usb_cleanup(dev_seq(dev), priv->init_type);
+	if (ret)
+		return ret;
+
+#if CONFIG_IS_ENABLED(DM_REGULATOR)
+	if (priv->vbus_supply && priv->init_type == USB_INIT_HOST)
+		regulator_set_enable(priv->vbus_supply, false);
+#endif
+	return 0;
 }
 
 static const struct udevice_id mx6_usb_ids[] = {
