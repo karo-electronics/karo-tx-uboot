@@ -3,20 +3,68 @@
  * Copyright (C) 2019 Lothar Waßmann <LW@KARO-electronics.de>
  *
  */
-#include "config.h"
+#include <config.h>
 
 / {
 	config {
 		u-boot,mmc-env-offset = <CONFIG_ENV_OFFSET>;
 	};
+
+	soc@0 {
+		u-boot,dm-spl;
+	};
+};
+
+&aips1 {
+	u-boot,dm-spl;
+};
+
+&aips2 {
+	u-boot,dm-spl;
+};
+
+&aips3 {
+	u-boot,dm-spl;
+};
+
+&aips4 {
+	u-boot,dm-spl;
 };
 
 &clk {
 	u-boot,dm-spl;
-	u-boot,dm-pre-reloc;
-	/delete-property/ assigned-clocks;
-	/delete-property/ assigned-clock-parents;
-	/delete-property/ assigned-clock-rates;
+};
+
+&gpio1 {
+	u-boot,dm-spl;
+};
+
+&gpio2 {
+	u-boot,dm-spl;
+};
+
+&gpio3 {
+	u-boot,dm-spl;
+};
+
+&gpio4 {
+	u-boot,dm-spl;
+};
+
+&gpio5 {
+	u-boot,dm-spl;
+};
+
+&i2c1 {
+	u-boot,dm-spl;
+	pinctrl-names = "default";
+	/delete-property/ pinctrl-1;
+	/delete-property/ sda-gpios;
+	/delete-property/ scl-gpios;
+};
+
+&iomuxc {
+	u-boot,dm-spl;
 };
 
 &mipi_dsi {
@@ -26,5 +74,17 @@
 };
 
 &osc_24m {
+	u-boot,dm-spl;
+};
+
+&osc_32k {
+	u-boot,dm-spl;
+};
+
+&pinctrl_i2c1 {
+	u-boot,dm-spl;
+};
+
+&uart1 {
 	u-boot,dm-spl;
 };

@@ -3,4 +3,4 @@
  * Copyright (C) 2020 Lothar Waßmann <LW@KARO-electronics.de>
  *
  */
-#include "imx8mn-tx8m-nd00-u-boot.dtsi"
+#include "imx8mn-qs8m-nd00-u-boot.dtsi"

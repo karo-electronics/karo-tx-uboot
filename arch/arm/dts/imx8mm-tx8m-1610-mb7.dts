@@ -13,7 +13,7 @@
 
 	reg_3v3_etn: regulator-3v3-etn {
 		compatible = "regulator-fixed";
-		regulator-name = "3V3_ETN";
+		regulator-name = "3v3_etn";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		pinctrl-names = "default";
