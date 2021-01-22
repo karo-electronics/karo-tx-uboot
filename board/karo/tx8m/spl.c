@@ -115,7 +115,7 @@ static const iomux_v3_cfg_t uart_pads[] = {
 
 /* called before debug_uart is initialized */
 #ifdef CONFIG_IMX8MP
-#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
+#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE)
 
 static iomux_v3_cfg_t const wdog_pads[] = {
 	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
