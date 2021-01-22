@@ -309,24 +309,6 @@ static int tx8mp_enable_vbus(unsigned int index, bool enable)
 	if (index >= ARRAY_SIZE(reg_vbus))
 		return -EINVAL;
 
-	if (!reg_vbus[index]) {
-		debug("Looking for USB%d VBUS regulator\n", index);
-		ret = uclass_get_device(UCLASS_USB, index, &usbdev[index]);
-		if (ret) {
-			printf("Failed to get usb%u device: %d\n",
-			       index, ret);
-			return ret;
-		}
-		ret = uclass_get_device_by_phandle(UCLASS_REGULATOR,
-						   usbdev[index],
-						   "vbus-supply",
-						   &reg_vbus[index]);
-		if (ret) {
-			dev_err(usbdev[index], "Failed to find VBUS regulator: %d\n",
-				ret);
-			return ret;
-		}
-	}
 	dev_dbg(reg_vbus[index], "%sabling USB%d VBUS regulator\n",
 		enable ? "En" : "Dis", index);
 	ret = regulator_set_enable(reg_vbus[index], enable);
@@ -336,22 +318,8 @@ static int tx8mp_enable_vbus(unsigned int index, bool enable)
 	return ret;
 }
 
-static inline void tx8mp_set_usb_ctl(struct udevice *dev)
+static inline void tx8mp_set_usb_ctl(fdt_addr_t addr, bool ocpol, bool pwrpol)
 {
-	fdt_addr_t addr;
-	bool ocpol, pwrpol;
-
-	addr = dev_read_addr(dev);
-	if (IS_ERR_VALUE(addr)) {
-		dev_err(dev, "Failed to get address: %lld\n", addr);
-		return;
-	}
-
-	ocpol = dev_read_bool(dev, "oc-active-low");
-	pwrpol = dev_read_bool(dev, "pwr-active-low");
-	dev_dbg(dev, "OC is active %s\n", ocpol ? "LOW" : "HIGH");
-	dev_dbg(dev, "PWR is active %s\n", pwrpol ? "LOW" : "HIGH");
-
 	debug("USB[%08llx]: ocpol: %d pwrpol: %d\n", addr, ocpol, pwrpol);
 	debug("USB_CTL1[%08llx] changed from %08x", addr + USB_CTL1_ADDR,
 	      readl(addr + USB_CTL1_ADDR));
@@ -374,8 +342,43 @@ int board_usb_init(int index, enum usb_init_type init)
 		dwc3_nxp_usb_phy_init(&dwc3_device_data[index]);
 		ret = dwc3_uboot_init(&dwc3_device_data[index]);
 	} else if (init == USB_INIT_HOST) {
+		struct udevice *dev;
+		fdt_addr_t addr;
+		bool ocpol, pwrpol;
+
+		if (!usbdev[index]) {
+			debug("Looking for USB%d VBUS regulator\n", index);
+			ret = uclass_get_device(UCLASS_USB, index, &dev);
+			if (ret) {
+				printf("Failed to get usb%u device: %d\n",
+				       index, ret);
+				usbdev[index] = ERR_PTR(ret);
+				return ret;
+			}
+			ret = uclass_get_device_by_phandle(UCLASS_REGULATOR,
+							   dev, "vbus-supply",
+							   &reg_vbus[index]);
+			if (ret) {
+				dev_err(dev,
+					"Failed to find VBUS regulator: %d\n",
+					ret);
+				usbdev[index] = ERR_PTR(ret);
+				return ret;
+			}
+		} else if (IS_ERR(usbdev[index])) {
+			return PTR_ERR(usbdev[index]);
+		}
+		addr = dev_read_addr(dev);
+		if (IS_ERR_VALUE(addr)) {
+			printf("Failed to get address: %lld\n", addr);
+			return -ENODEV;
+		}
+		ocpol = dev_read_bool(dev, "oc-active-low");
+		pwrpol = dev_read_bool(dev, "pwr-active-low");
+		dev_dbg(dev, "OC is active %s\n", ocpol ? "LOW" : "HIGH");
+		dev_dbg(dev, "PWR is active %s\n", pwrpol ? "LOW" : "HIGH");
+		tx8mp_set_usb_ctl(addr, ocpol, pwrpol);
 		ret = tx8mp_enable_vbus(index, true);
-		tx8mp_set_usb_ctl(usbdev[index]);
 	}
 	if (ret)
 		imx8m_usb_power(index, false);
@@ -477,7 +480,6 @@ static const char * const usb_aliases[] = {
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	int ret;
-	struct udevice *dev;
 	size_t i;
 
 	ret = ft_karo_common_setup(blob, bd);
@@ -486,20 +488,23 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	for (i = 0; i < ARRAY_SIZE(usb_aliases); i++) {
 		int node = fdt_path_offset(blob, usb_aliases[i]);
+		fdt_addr_t addr;
+		bool ocpol, pwrpol;
 
-		ret = uclass_get_device_by_of_offset(UCLASS_USB, node, &dev);
-		if (ret)
-			ret = uclass_get_device_by_of_offset(UCLASS_USB_GADGET_GENERIC,
-							     node, &dev);
-		if (ret) {
-			printf("Failed to get 'usbotg' device: %d\n", ret);
-			return 0;
-		}
-		if (dev_read_enabled(dev))
-			tx8mp_set_usb_ctl(dev);
-		else
+		if (!fdtdec_get_is_enabled(blob, node)) {
 			printf("%s: '%s' device is not enabled\n", __func__,
 			       usb_aliases[i]);
+			continue;
+		}
+		addr = fdtdec_get_addr(blob, node, "reg");
+		if (IS_ERR_VALUE(addr)) {
+			printf("Failed to get address of '%s' device: %d\n",
+			       usb_aliases[i], ret);
+			continue;
+		}
+		ocpol = fdtdec_get_bool(blob, node, "oc-active-low");
+		pwrpol = fdtdec_get_bool(blob, node, "pwr-active-low");
+		tx8mp_set_usb_ctl(addr, ocpol, pwrpol);
 	}
 	return 0;
 }
