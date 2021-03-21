@@ -24,10 +24,10 @@ extern u64 rcar_atf_boot_args[];
 int fdtdec_board_setup(const void *fdt_blob)
 {
 	void *atf_fdt_blob = (void *)(rcar_atf_boot_args[1]);
-
+#ifndef CONFIG_TARGET_RZG2L_DEV
 	if (fdt_magic(atf_fdt_blob) == FDT_MAGIC)
 		fdt_overlay_apply_node((void *)fdt_blob, 0, atf_fdt_blob, 0);
-
+#endif
 	return 0;
 }
 
