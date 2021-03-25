@@ -21,15 +21,15 @@ DECLARE_GLOBAL_DATA_PTR;
 /* If the firmware passed a device tree use it for U-Boot DRAM setup. */
 extern u64 rcar_atf_boot_args[];
 
+#if !defined(CONFIG_R9A07G044L)
 int fdtdec_board_setup(const void *fdt_blob)
 {
 	void *atf_fdt_blob = (void *)(rcar_atf_boot_args[1]);
-#ifndef CONFIG_TARGET_RZG2L_DEV
 	if (fdt_magic(atf_fdt_blob) == FDT_MAGIC)
 		fdt_overlay_apply_node((void *)fdt_blob, 0, atf_fdt_blob, 0);
-#endif
 	return 0;
 }
+#endif
 
 int dram_init(void)
 {
