@@ -105,6 +105,11 @@ config TARGET_RZG2L_DEV
 	help
           Support for Renesas RZ/G2L Dev Platform
 
+config TARGET_SMARC_RZG2L
+	bool "RZ/G2L Dev board"
+	help
+          Support for Renesas RZ/G2L Dev Platform
+
 endchoice
 
 config SYS_SOC
