@@ -393,6 +393,28 @@ static struct phy_driver ksz9031_driver = {
 	.readext = &ksz9031_phy_extread,
 };
 
+#define KSZ9131RN_MMD_COMMON_CTRL_REG   2
+#define MII_KSZ9031RN_CONTROL_PAD_SKEW  4
+#define MII_KSZ9031RN_RX_DATA_PAD_SKEW  5
+#define MII_KSZ9031RN_TX_DATA_PAD_SKEW  6
+#define MII_KSZ9031RN_CLK_PAD_SKEW      8
+
+static int ksz9131_clock_skew(struct phy_device *phydev)
+{
+	int val;
+
+	val = phy_read_mmd(phydev, KSZ9131RN_MMD_COMMON_CTRL_REG, MII_KSZ9031RN_CLK_PAD_SKEW);
+
+	if (val < 0)
+		return val;
+
+	val |= 0xffff;
+
+	phy_write_mmd(phydev, KSZ9131RN_MMD_COMMON_CTRL_REG, MII_KSZ9031RN_CLK_PAD_SKEW, val);
+
+	return 0;
+}
+
 /*
  * KSZ9131
  */
@@ -425,8 +447,8 @@ static int ksz9131_config(struct phy_device *phydev)
 
 		return 0;
 	}
-
-	return genphy_config(phydev);
+//	return genphy_config(phydev);
+	return ksz9131_clock_skew(phydev);
 }
 
 static struct phy_driver ksz9131_driver = {
