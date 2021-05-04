@@ -17,14 +17,6 @@ config KARO_STM32
 choice
 	prompt "Ka-Ro STM32 module variant"
 
-config KARO_TXMP_1530
-	bool "Ka-Ro TXMP-1530 module"
-	select KARO_STM32
-	imply TXMP_EMMC
-	help
-	  Enable support for the Ka-Ro electronics TXMP-1530 module featuring
-	  an STM32MP153A SOC, 256MiB of SDRAM and 4GiB or 8GiB eMMC.
-
 config KARO_TXMP_1570
 	bool "Ka-Ro TXMP-1570 module"
 	select KARO_STM32
