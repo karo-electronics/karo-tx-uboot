@@ -124,9 +124,7 @@ int checkboard(void)
 	else
 		mode = "basic";
 
-#if defined(CONFIG_KARO_TXMP_1530)
-	printf("Board: TXMP-1530 in %s mode", mode);
-#elif defined(CONFIG_KARO_TXMP_1570)
+#if defined(CONFIG_KARO_TXMP_1570)
 	printf("Board: TXMP-1570 in %s mode", mode);
 #elif defined(CONFIG_KARO_QSMP_1510)
 	printf("Board: QSMP-1510 in %s mode", mode);

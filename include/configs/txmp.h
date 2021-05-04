@@ -115,9 +115,7 @@
 
 #define FDT_ADDR_STR			"c4000000"
 
-#if defined(CONFIG_KARO_TXMP_1530)
-#define TXMP_BASEBOARD			"mb7"
-#elif defined(CONFIG_KARO_TXMP_1570)
+#if defined(CONFIG_KARO_TXMP_1570)
 #define TXMP_BASEBOARD			"mb7"
 #elif defined(CONFIG_KARO_QSMP_1510)
 #define TXMP_BASEBOARD			"qsbase1"
