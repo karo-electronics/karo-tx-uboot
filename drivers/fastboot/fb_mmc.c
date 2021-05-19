@@ -460,7 +460,7 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 			      u32 download_bytes, char *response)
 {
 	struct blk_desc *dev_desc;
-	struct disk_partition info;
+	struct disk_partition info = {0};
 	int mmcpart = 0;
 
 	dev_desc = blk_get_dev("mmc", CONFIG_FASTBOOT_FLASH_MMC_DEV);
@@ -484,12 +484,7 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 #endif
 
 #if CONFIG_IS_ENABLED(EFI_PARTITION)
-#ifndef CONFIG_FASTBOOT_MMC_USER_SUPPORT
 	if (strcmp(cmd, CONFIG_FASTBOOT_GPT_NAME) == 0) {
-#else
-	if (strcmp(cmd, CONFIG_FASTBOOT_GPT_NAME) == 0 ||
-	    strcmp(cmd, CONFIG_FASTBOOT_MMC_USER_NAME) == 0) {
-#endif
 		printf("%s: updating MBR, Primary and Backup GPT(s)\n",
 		       __func__);
 		if (is_valid_gpt_buf(dev_desc, download_buffer)) {
@@ -541,16 +536,26 @@ void fastboot_mmc_flash_write(const char *cmd, void *download_buffer,
 	}
 #endif
 
-	if (raw_part_get_info_by_name(dev_desc, cmd, &info, &mmcpart) == 0) {
-		if (blk_dselect_hwpart(dev_desc, mmcpart)) {
-			pr_err("Failed to select hwpart\n");
-			fastboot_fail("Failed to select hwpart", response);
+#if CONFIG_IS_ENABLED(FASTBOOT_MMC_USER_SUPPORT)
+	if (strcmp(cmd, CONFIG_FASTBOOT_MMC_USER_NAME) == 0) {
+		strlcpy((char *)&info.name, cmd, sizeof(info.name));
+		info.size	= dev_desc->lba;
+		info.blksz	= dev_desc->blksz;
+	}
+#endif
+
+	if (!info.name[0]) {
+		if (raw_part_get_info_by_name(dev_desc, cmd, &info, &mmcpart) == 0) {
+			if (blk_dselect_hwpart(dev_desc, mmcpart)) {
+				pr_err("Failed to select hwpart\n");
+				fastboot_fail("Failed to select hwpart", response);
+				return;
+			}
+		} else if (part_get_info_by_name_or_alias(dev_desc, cmd, &info) < 0) {
+			pr_err("cannot find partition: '%s'\n", cmd);
+			fastboot_fail("cannot find partition", response);
 			return;
 		}
-	} else if (part_get_info_by_name_or_alias(dev_desc, cmd, &info) < 0) {
-		pr_err("cannot find partition: '%s'\n", cmd);
-		fastboot_fail("cannot find partition", response);
-		return;
 	}
 
 	if (is_sparse_image(download_buffer)) {
