@@ -42,7 +42,7 @@
 	u-boot,dm-spl;
 };
 
-&sdmmc2_pins {
+&qsmp_sdmmc2_pins {
 	u-boot,dm-spl;
 
 	pins1 {

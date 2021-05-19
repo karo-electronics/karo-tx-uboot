@@ -20,6 +20,7 @@
 
 &qspi {
 	/delete-node/ spi-flash@0;
+
 	flash0: spi-nand@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
