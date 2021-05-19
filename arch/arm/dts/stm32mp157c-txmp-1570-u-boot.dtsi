@@ -26,7 +26,7 @@
 	u-boot,dm-spl;
 };
 
-&sdmmc2_pins {
+&txmp_sdmmc2_pins {
 	u-boot,dm-spl;
 
 	pins1 {

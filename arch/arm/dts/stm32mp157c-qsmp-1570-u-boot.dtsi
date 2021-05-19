@@ -12,22 +12,6 @@
 	config {
 		u-boot,boot-led = "Heartbeat";
 	};
-
-	pll@1 {
-		u-boot,dm-pre-reloc;
-	};
-
-	pll@2 {
-		u-boot,dm-pre-reloc;
-	};
-
-	pll@3 {
-		u-boot,dm-pre-reloc;
-	};
-
-	pll@4 {
-		u-boot,dm-pre-reloc;
-	};
 };
 
 &ddr {
@@ -62,7 +46,7 @@
 	u-boot,dm-spl;
 };
 
-&sdmmc2_pins {
+&qsmp_sdmmc2_pins {
 	u-boot,dm-spl;
 
 	pins1 {
