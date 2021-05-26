@@ -560,11 +560,10 @@ static void vidconsole_putc(struct stdio_dev *sdev, const char ch)
 	int ret;
 
 	ret = vidconsole_put_char(dev, ch);
-	if (ret) {
 #ifdef DEBUG
+	if (ret && CONFIG_IS_ENABLED(CONSOLE_MUX))
 		console_puts_select_stderr(true, "[vc err: putc]");
 #endif
-	}
 	video_sync(dev->parent, false);
 }
 
@@ -574,14 +573,14 @@ static void vidconsole_puts(struct stdio_dev *sdev, const char *s)
 	int ret;
 
 	ret = vidconsole_put_string(dev, s);
-	if (ret) {
 #ifdef DEBUG
+	if (ret && CONFIG_IS_ENABLED(CONSOLE_MUX)) {
 		char str[30];
 
 		snprintf(str, sizeof(str), "[vc err: puts %d]", ret);
 		console_puts_select_stderr(true, str);
-#endif
 	}
+#endif
 	video_sync(dev->parent, false);
 }
 
