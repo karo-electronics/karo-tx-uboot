@@ -20,6 +20,8 @@
 		serial1 = &usart2;
 		serial2 = &usart3;
 		spinor0 = &flash0;
+		usbh = &usbh_ehci;
+		usbotg = &usbotg_hs;
 	};
 
 	chosen {
