@@ -247,16 +247,6 @@
 	};
 };
 
-&adc {
-	vref-supply = <&vrefbuf>;
-	status = "okay";
-};
-
-&adc2 {
-	st,adc-channels = <12>;
-	status = "okay";
-};
-
 &bsec {
 	status = "okay";
 };
@@ -324,6 +314,10 @@
 	};
 };
 
+&rng1 {
+	status = "okay";
+};
+
 &rtc {
 	status = "okay";
 };
@@ -365,12 +359,6 @@
 
 &usbphyc_port1 {
 	phy-supply = <&reg_3v3>;
-};
-
-&vrefbuf {
-	regulator-min-microvolt = <2500000>;
-	regulator-max-microvolt = <2500000>;
-	status = "okay";
 };
 
 &pinctrl {

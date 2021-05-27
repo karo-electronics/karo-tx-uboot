@@ -12,11 +12,6 @@
 	};
 };
 
-&adc {
-	vdd-microvolts = <3300000>;
-	vss-microvolts = <0>;
-};
-
 &ethernet0 {
 	pinctrl-0 = <&qsmp_ethernet0_rgmii_pins_b>;
 	pinctrl-1 = <&qsmp_ethernet0_rgmii_pins_sleep_b>;

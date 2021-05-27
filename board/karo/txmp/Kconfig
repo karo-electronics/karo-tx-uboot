@@ -13,6 +13,10 @@ config SYS_CONFIG_NAME
 
 config KARO_STM32
 	bool
+	imply DM_RNG
+	imply DM_USB
+	imply DM_USB_GADGET
+	imply RNG_STM32MP1
 
 choice
 	prompt "Ka-Ro STM32 module variant"
