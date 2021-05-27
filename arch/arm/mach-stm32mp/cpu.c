@@ -198,10 +198,15 @@ static void update_bootmode(void)
 			TAMP_BOOT_MODE_MASK,
 			boot_mode << TAMP_BOOT_MODE_SHIFT);
 }
+#else
+static inline void update_bootmode(void)
+{
+}
 #endif
 
 u32 get_bootmode(void)
 {
+	update_bootmode();
 	/* read bootmode from TAMP backup register */
 	return (readl(TAMP_BOOT_CONTEXT) & TAMP_BOOT_MODE_MASK) >>
 		    TAMP_BOOT_MODE_SHIFT;

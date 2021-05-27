@@ -169,6 +169,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define RCC_BDCR_RTCCKEN	BIT(20)
 #define RCC_BDCR_RTCSRC_MASK	GENMASK(17, 16)
 #define RCC_BDCR_RTCSRC_SHIFT	16
+#define RCC_BDCR_VSWRST		BIT(31)
 
 /* Fields of RCC_RDLSICR register */
 #define RCC_RDLSICR_LSION	BIT(0)
@@ -1845,20 +1846,21 @@ static void set_rtcsrc(struct stm32mp1_clk_priv *priv,
 		       int lse_css)
 {
 	u32 address = priv->base + RCC_BDCR;
+	u32 bdcr = readl(address);
 
-	if (readl(address) & RCC_BDCR_RTCCKEN)
-		goto skip_rtc;
+	if (clksrc != CLK_RTC_DISABLED)
+		bdcr |= RCC_BDCR_RTCCKEN;
+	else
+		bdcr &= ~RCC_BDCR_RTCCKEN;
 
-	if (clksrc == CLK_RTC_DISABLED)
-		goto skip_rtc;
+	clksrc &= RCC_SELR_SRC_MASK;
+	if (clksrc << RCC_BDCR_RTCSRC_SHIFT != (bdcr & RCC_BDCR_RTCSRC_MASK)) {
+		setbits_le32(address, RCC_BDCR_VSWRST);
+		bdcr &= ~RCC_BDCR_RTCSRC_MASK;
+		bdcr |= clksrc << RCC_BDCR_RTCSRC_SHIFT;
+	}
+	writel(bdcr, address);
 
-	clrsetbits_le32(address,
-			RCC_BDCR_RTCSRC_MASK,
-			clksrc << RCC_BDCR_RTCSRC_SHIFT);
-
-	setbits_le32(address, RCC_BDCR_RTCCKEN);
-
-skip_rtc:
 	if (lse_css)
 		setbits_le32(address, RCC_BDCR_LSECSSON);
 }
