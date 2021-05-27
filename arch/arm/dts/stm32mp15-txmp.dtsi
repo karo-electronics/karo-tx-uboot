@@ -5,14 +5,6 @@
 
 #include "stm32mp15xxab-pinctrl.dtsi"
 
-&adc {
-	status = "disabled";
-};
-
-&adc2 {
-	status = "disabled";
-};
-
 &ethernet0 {
 	pinctrl-0 = <&ethernet0_rmii_pins>;
 	pinctrl-1 = <&ethernet0_rmii_pins_sleep>;
@@ -102,10 +94,6 @@
 		pinctrl-1 = <&tim1_pwm_sleep_pins>;
 		status = "okay";
 	};
-};
-
-&vrefbuf {
-	status = "disabled";
 };
 
 &pinctrl {

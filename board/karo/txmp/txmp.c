@@ -7,7 +7,6 @@
 
 #include <config.h>
 #include <common.h>
-#include <adc.h>
 #include <clk.h>
 #include <console.h>
 #include <dm.h>
@@ -27,6 +26,7 @@
 #include <rand.h>
 #include <remoteproc.h>
 #include <reset.h>
+#include <rng.h>
 #include <syscon.h>
 #include <usb.h>
 #include <asm/io.h>
@@ -110,16 +110,13 @@ static inline void show_bmp_logo(void)
 
 int checkboard(void)
 {
-	int ret;
 	char *mode;
-	u32 otp;
-	struct udevice *dev;
 	const char *fdt_compat;
 	int fdt_compat_len;
 
 	debug("%s@%d:\n", __func__, __LINE__);
 
-	if (IS_ENABLED(CONFIG_STM32MP1_TRUSTED))
+	if (IS_ENABLED(CONFIG_TFABOOT))
 		mode = "trusted";
 	else
 		mode = "basic";
@@ -140,21 +137,6 @@ int checkboard(void)
 	if (fdt_compat && fdt_compat_len)
 		printf(" (%s)", fdt_compat);
 	puts("\n");
-
-	ret = uclass_get_device_by_driver(UCLASS_MISC,
-					  DM_GET_DRIVER(stm32mp_bsec),
-					  &dev);
-
-	if (!ret)
-		ret = misc_read(dev, STM32_BSEC_SHADOW(BSEC_OTP_BOARD),
-				&otp, sizeof(otp));
-	if (!ret && otp) {
-		printf("Board: MB%04x Var%d Rev.%c-%02d\n",
-		       otp >> 16,
-		       (otp >> 12) & 0xF,
-		       ((otp >> 8) & 0xF) - 1 + 'A',
-		       otp & 0xF);
-	}
 
 	return 0;
 }
@@ -212,7 +194,6 @@ static void board_key_check(void)
 
 static void sysconf_init(void)
 {
-#ifndef CONFIG_STM32MP1_TRUSTED
 	void *syscfg;
 #ifdef CONFIG_DM_REGULATOR
 	struct udevice *pwr_dev;
@@ -314,7 +295,6 @@ static void sysconf_init(void)
 
 	debug("[%p] SYSCFG.cmpcr = 0x%08x\n",
 	      syscfg + SYSCFG_CMPCR, readl(syscfg + SYSCFG_CMPCR));
-#endif
 }
 
 static void print_mac_from_fuse(void)
@@ -404,9 +384,6 @@ int board_interface_eth_init(struct udevice *dev,
 }
 
 #if defined(CONFIG_LED)
-#define TEMPERATURE_MIN			(-40)
-#define TEMPERATURE_HOT			80
-
 enum {
 	LED_STATE_INIT = -1,
 	LED_STATE_OFF,
@@ -441,117 +418,13 @@ static int txmp_get_led(struct udevice **dev, char *led_string)
 }
 
 #ifdef CONFIG_SHOW_ACTIVITY
-#ifdef CONFIG_ADC
-
-#ifndef CONFIG_TFABOOT
-static int ts_calib_read(void)
-{
-	int ret;
-	struct udevice *dev;
-	u32 ts_cal;
-
-	ret = uclass_get_device_by_name(UCLASS_MISC,
-					"efuse@5c005000", &dev);
-	if (ret) {
-		printf("Failed to get efuse@5c005000: %d\n", ret);
-		return ret;
-	}
-
-	ret = misc_read(dev, 0x5c, &ts_cal, 4);
-	if (ret < 0)
-		return ret;
-	debug("ts_cal1=%u[%04x] ts_cal2=%u[%04x]\n",
-	      ts_cal & 0xffff, ts_cal & 0xffff,
-	      ts_cal >> 16, ts_cal >> 16);
-	return ts_cal;
-}
-#else
-static inline int ts_calib_read(void)
-{
-	return readl(0x5c00525c);
-}
-#endif /* CONFIG_TFABOOT */
-
-static int txmp_read_temp(void)
-{
-	int ret;
-	static unsigned int last_temp = ~0;
-	unsigned int temp, raw;
-	static union {
-		int i;
-		struct {
-			u16 cal1;
-			u16 cal2;
-		};
-	} ts_cal;
-
-	if (ts_cal.i == 0) {
-		ret = ts_calib_read();
-		if (ret < 0) {
-			printf("ts_calib_read() returned %d\n", ret);
-			return ret;
-		}
-
-		ts_cal.i = ret;
-		debug("ts_cal=%04x %04x\n", ts_cal.cal1, ts_cal.cal2);
-	}
-
-	ret = adc_channel_single_shot("adc@100", 12, &raw);
-	if (ret) {
-		if (ret != -ENODEV)
-			printf("Failed to read ADC: %d\n", ret);
-		return ret;
-	}
-	/*
-	 *                          110 °C – 30 °C
-	 * Temperature ( in °C ) = ----------------- × ( TS_DATA – TS_CAL1 ) + 30 °C
-	 *                         TS_CAL2 – TS_CAL1
-	 */
-	temp = raw + ts_cal.cal1;
-	if (temp < ts_cal.cal1 || temp > ts_cal.cal2) {
-		printf("measured temp raw value %u out of range [%u..%u]\n",
-		       temp, ts_cal.cal1, ts_cal.cal2);
-		return -EINVAL;
-	}
-	temp = (80000000 / (ts_cal.cal2 - ts_cal.cal1) * (temp - ts_cal.cal1) +
-		50000) / 100000 + 300;
-	if (abs(temp - last_temp) > 10) {
-		debug("Temperature=%4d.%d raw=%08x\n", temp / 10, temp % 10,
-		      raw);
-		last_temp = temp;
-	}
-	return temp / 10 + 1000;
-}
-#else
-static inline int txmp_read_temp(void)
-{
-	return -ENOTSUPP;
-}
-#endif /* CONFIG_ADC */
-
-static inline int calc_blink_rate(void)
-{
-	static int temp;
-
-	if (temp >= 0)
-		temp = txmp_read_temp();
-
-	if (temp < 0)
-		return CONFIG_SYS_HZ;
-
-	temp -= 1000;
-	return CONFIG_SYS_HZ + CONFIG_SYS_HZ / 10 -
-		(temp - TEMPERATURE_MIN) * CONFIG_SYS_HZ /
-		(TEMPERATURE_HOT - TEMPERATURE_MIN);
-}
-
 void show_activity(int arg)
 {
-	static int blink_rate;
+	static int blink_rate = CONFIG_SYS_HZ / 2;
 	static ulong last;
 	int ret;
 
-	if (arg || !led_dev || led_state == LED_STATE_DISABLED)
+	if (!led_dev || led_state == LED_STATE_DISABLED)
 		return;
 
 	if (led_state == LED_STATE_INIT) {
@@ -562,10 +435,8 @@ void show_activity(int arg)
 			return;
 		}
 		led_state = LED_STATE_ON;
-		blink_rate = calc_blink_rate();
 	}
 	if (get_timer(last) > blink_rate) {
-		blink_rate = calc_blink_rate();
 		last = get_timer(0);
 		if (led_state == LED_STATE_ON) {
 			led_set_state(led_dev, LEDST_OFF);
@@ -600,21 +471,9 @@ static inline void txmp_setup_led(void)
 #endif /* CONFIG_LED */
 
 #ifdef CONFIG_USB_GADGET_DWC2_OTG
-/*
- * DWC2 registers should be defined in drivers
- * OTG: drivers/usb/gadget/dwc2_udc_otg_regs.h
- * HOST: ./drivers/usb/host/dwc2.h
- */
-#define DWC2_GOTGCTL_OFFSET		0x00
+
 #define DWC2_GGPIO_OFFSET		0x38
-
 #define DWC2_GGPIO_VBUS_SENSING		BIT(21)
-
-#define DWC2_GOTGCTL_AVALIDOVEN		BIT(4)
-#define DWC2_GOTGCTL_AVALIDOVVAL	BIT(5)
-#define DWC2_GOTGCTL_BVALIDOVEN		BIT(6)
-#define DWC2_GOTGCTL_BVALIDOVVAL	BIT(7)
-#define DWC2_GOTGCTL_BSVLD		BIT(19)
 
 #define STM32MP_GUSBCFG			0x40002407
 
@@ -732,11 +591,14 @@ static void board_usbotg_init(void)
 	if (!(ofnode_parse_phandle_with_args(node, "usb33d-supply",
 					     NULL, 0, 0, &args)))
 		if (!uclass_get_device_by_ofnode(UCLASS_REGULATOR,
-						 args.node, &dev))
-			if (regulator_set_enable(dev, true)) {
-				pr_err("Failed to enable usb33d\n");
+						 args.node, &dev)) {
+			int ret = regulator_set_enable(dev, true);
+
+			if (ret) {
+				pr_err("Failed to enable usb33d: %d\n", ret);
 				goto clk_err;
 			}
+		}
 
 	return;
 
@@ -744,41 +606,20 @@ clk_err:
 	clk_disable(&clk);
 }
 
-int board_usb_init(int index, enum usb_init_type init)
-{
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	if (init == USB_INIT_HOST)
-		return 0;
-
-	if (stm32mp_otg_data.regs_otg == FDT_ADDR_T_NONE)
-		return -EINVAL;
-
-	/* Reset usbotg */
-	reset_assert(&usbotg_reset);
-	udelay(2);
-	reset_deassert(&usbotg_reset);
-
-	/* Enable vbus sensing */
-	setbits_le32(stm32mp_otg_data.regs_otg + DWC2_GGPIO_OFFSET,
-		     DWC2_GGPIO_VBUS_SENSING);
-
-	return dwc2_udc_probe(&stm32mp_otg_data);
-}
-
 int g_dnl_board_usb_cable_connected(void)
 {
-	static int last;
-	int conn = readl(stm32mp_otg_data.regs_otg + DWC2_GOTGCTL_OFFSET);
+	int ret;
+	struct udevice *dwc2_udc_otg;
 
-	if (conn != last) {
-		printf("%s@%d: USB cable%s connected (GOTGCTL@%08lx=%08x)\n",
-		       __func__, __LINE__,
-		      (conn & DWC2_GOTGCTL_BSVLD) ? "" : " NOT",
-		      stm32mp_otg_data.regs_otg, conn);
-		last = conn;
+	ret = uclass_get_device_by_driver(UCLASS_USB_GADGET_GENERIC,
+					  DM_GET_DRIVER(dwc2_udc_otg),
+					  &dwc2_udc_otg);
+	if (ret) {
+		printf("failed to get UDC device: %d\n", ret);
+		return 0;
 	}
-	return conn & DWC2_GOTGCTL_BSVLD;
+
+	return !!dwc2_udc_B_session_valid(dwc2_udc_otg);
 }
 
 #define STM32MP1_G_DNL_DFU_PRODUCT_NUM 0xdf11
@@ -797,33 +638,7 @@ int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 static inline void board_usbotg_init(void)
 {
 }
-#endif /* CONFIG_USB_GADGET */
-
-static inline u32 txmp_rng_init(void)
-{
-	unsigned int seed;
-	unsigned int loop = 0;
-
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	writel(0x40, 0x50000190);
-	writel(0x40, 0x50000210);
-	writel(0x40, 0x50000290);
-	writel(0x40, 0x50000194);
-	writel(0x4, 0x54003000);
-	debug("Waiting for RNG to initialize\n");
-	while (!(readl(0x54003004) & 0x1)) {
-		loop++;
-		if (loop > 100000) {
-			printf("Timeout waiting for RNG to initialize\n");
-			break;
-		}
-		udelay(1);
-	}
-	debug("RNG ready after %u loops\n", loop);
-	seed = readl(0x54003008);
-	return seed;
-}
+#endif /* CONFIG_USB_GADGET_DWC2_OTG */
 
 #include <linux/mtd/mtd.h>
 
@@ -846,7 +661,8 @@ int board_init(void)
 		debug("probe pincontrol = %s\n", dev->name);
 	}
 
-	sysconf_init();
+	if (!IS_ENABLED(CONFIG_TFABOOT))
+		sysconf_init();
 
 	if (ctrlc())
 		printf("<CTRL-C> detected; safeboot enabled\n");
@@ -892,18 +708,19 @@ static inline void txmp_set_bootdevice(void)
 static inline void rand_init(void)
 {
 	unsigned int seed;
+	int ret;
+	struct udevice *dev;
 
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	if (readl(0x50000000) & 1) {
-		u64 ticks = get_ticks();
-		u32 r = rand();
-
-		seed = r ^ ticks;
-		debug("RAND=%08x ticks=%08llx seed=%08x\n", r, ticks, seed);
-	} else {
-		seed = txmp_rng_init();
+	ret = uclass_get_device(UCLASS_RNG, 0, &dev);
+	if (ret) {
+		printf("Failed to get RNG device: %d\n", ret);
+		return;
 	}
+
+	ret = dm_rng_read(dev, &seed, sizeof(seed));
+	if (ret)
+		printf("Failed to read RNG: %d\n", ret);
+
 	debug("RANDOM seed: %08x\n", seed);
 	srand(seed);
 }
@@ -913,10 +730,6 @@ int board_late_init(void)
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 	const void *fdt_compat;
 	ofnode root = ofnode_path("/");
-
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	rand_init();
 
 	fdt_compat = ofnode_read_string(root, "compatible");
 
@@ -929,11 +742,12 @@ int board_late_init(void)
 #endif
 	env_cleanup();
 
-	if (had_ctrlc())
+	if (had_ctrlc()) {
 		env_set_hex("safeboot", 1);
-	else if (!IS_ENABLED(CONFIG_KARO_UBOOT_MFG))
+	} else if (!IS_ENABLED(CONFIG_KARO_UBOOT_MFG)) {
 		karo_fdt_move_fdt();
-
+		rand_init();
+	}
 	txmp_set_bootdevice();
 
 	clear_ctrlc();
