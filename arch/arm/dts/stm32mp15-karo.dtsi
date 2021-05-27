@@ -23,21 +23,7 @@
 	};
 
 	chosen {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
 		stdout-path = "serial0:115200n8";
-
-		simplefb@cfd00000 {
-			compatible = "simple-framebuffer";
-			reg = <0xcfd00000 (640 * 480 * 2)>;
-			width = <640>;
-			height = <480>;
-			stride = <(640 * 2)>;
-			format = "r5g6b5";
-			display = <&ltdc>;
-			status = "okay";
-		};
 	};
 
 	config {
@@ -220,17 +206,6 @@
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
 		gpio = <&gpioc 0 GPIO_ACTIVE_HIGH>;
-	};
-
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
-
-		framebuffer@cfd00000 {
-			reg = <0xcfd00000 (640 * 480 * 4)>;
-			no-map;
-		};
 	};
 
 	sram: sram@10050000 {
