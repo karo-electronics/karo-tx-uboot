@@ -271,7 +271,7 @@
 };
 
 &usb33 {
-	usb33-supply = <&reg18>;
+	usb33d-supply = <&reg18>;
 };
 
 &qspi {
