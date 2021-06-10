@@ -179,8 +179,6 @@ static int karo_fixup_panel_timing(void *fdt, int dest, int src)
 		const void *old;
 
 		prop = fdt_getprop(fdt, src, name, &len);
-		printf("%s@%d: %s=%p\n", __func__, __LINE__,
-		       name, prop);
 
 		if (!prop) {
 			debug("Removing %s from %s\n",
