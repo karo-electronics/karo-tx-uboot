@@ -28,11 +28,6 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-	config {
-		u-boot,mmc-env-partition = <1>;
-		u-boot,mmc-env-offset = <0x1ff000>;
-	};
-
 	lcd_backlight: lcd-backlight {
 		compatible = "gpio-backlight";
 		default-on;
