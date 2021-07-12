@@ -9,6 +9,7 @@
 #include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <env.h>
 #include <malloc.h>
 #include <memalign.h>
