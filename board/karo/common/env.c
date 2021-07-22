@@ -8,6 +8,8 @@
 #include <env.h>
 #include <env_internal.h>
 #include <malloc.h>
+#include <asm/bootm.h>
+#include <asm/setup.h>
 #include "karo.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -43,6 +45,15 @@ static void karo_env_set_uboot_vars(void)
 #else
 	env_set("board_rev", "default");
 #endif
+	if (!env_get("serial#")) {
+		struct tag_serialnr serno;
+		char serno_str[sizeof(serno) * 2 + 1];
+
+		get_board_serial(&serno);
+		snprintf(serno_str, sizeof(serno_str), "%08x%08x",
+			 serno.high, serno.low);
+		env_set("serial#", serno_str);
+	}
 }
 #else
 static inline void karo_env_set_uboot_vars(void)

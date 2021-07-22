@@ -94,19 +94,16 @@ static int karo_fdt_set_dr_mode(void *blob, int node, const char *mode)
 
 int ft_karo_common_setup(void *blob, bd_t *bd)
 {
-	struct tag_serialnr serno;
-	char serno_str[64 / 4 + 1];
 	int node;
+	const char *serno_str;
 
-	get_board_serial(&serno);
-	snprintf(serno_str, sizeof(serno_str), "%08x%08x",
-		 serno.high, serno.low);
-
-	printf("serial-number: %s\n", serno_str);
-
-	fdt_increase_size(blob, 512);
-
-	fdt_setprop(blob, 0, "serial-number", serno_str, strlen(serno_str));
+	serno_str = env_get("serial#");
+	if (serno_str) {
+		printf("serial-number: %s\n", serno_str);
+		fdt_increase_size(blob, 512);
+		fdt_setprop(blob, 0, "serial-number", serno_str,
+			    strlen(serno_str));
+	}
 
 	fdt_fixup_ethernet(blob);
 
