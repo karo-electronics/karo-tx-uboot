@@ -491,12 +491,16 @@ int ft_board_setup(void *blob, bd_t *bd)
 		fdt_addr_t addr;
 		bool ocpol, pwrpol;
 
-		if (!fdtdec_get_is_enabled(blob, node)) {
-			printf("%s: '%s' device is not enabled\n", __func__,
-			       usb_aliases[i]);
+		if (node <= 0) {
+			debug("alias '%s' not found\n", usb_aliases[i]);
 			continue;
 		}
-		addr = fdtdec_get_addr(blob, node, "reg");
+		if (!fdtdec_get_is_enabled(blob, node)) {
+			debug("'%s' device is disabled\n", usb_aliases[i]);
+			continue;
+		}
+		addr = fdtdec_get_addr_size_auto_noparent(blob, node,
+							  "reg", 0, NULL, true);
 		if (IS_ERR_VALUE(addr)) {
 			printf("Failed to get address of '%s' device: %d\n",
 			       usb_aliases[i], ret);
