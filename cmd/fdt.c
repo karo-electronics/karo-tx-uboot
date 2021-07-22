@@ -854,6 +854,8 @@ static int is_printable_string(const void *data, int len)
 				return 1;
 			if (s[1] == '\0')
 				return 0;
+		} else if (iscntrl(*s)) {
+			return 0;
 		}
 		s++;
 		len--;
