@@ -365,7 +365,7 @@
 
 	pinctrl_usb1_vbus: usb1-vbusgrp {
 		fsl,pins = <
-			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12		0x100
+			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12		0x000
 		>;
 	};
 
@@ -377,7 +377,7 @@
 
 	pinctrl_usb2_vbus: usb2-vbusgrp {
 		fsl,pins = <
-			MX8MP_IOMUXC_GPIO1_IO14__GPIO1_IO14		0x100
+			MX8MP_IOMUXC_GPIO1_IO14__GPIO1_IO14		0x000
 		>;
 	};
 
