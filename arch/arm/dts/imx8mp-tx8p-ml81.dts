@@ -116,7 +116,7 @@
 
 	pmic: pmic@25 {
 		reg = <0x25>;
-		compatible = "nxp,pca9450b";
+		compatible = "nxp,pca9450c", "nxp,pca9450b";
 		status = "okay";
 
 		regulators {

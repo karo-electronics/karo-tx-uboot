@@ -42,7 +42,7 @@
 &i2c1 {
 	pmic@25 {
 		reg = <0x25>;
-		compatible = "nxp,pca9450b";
+		compatible = "nxp,pca9450a";
 		status = "okay";
 
 		regulators {
