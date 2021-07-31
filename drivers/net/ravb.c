@@ -371,7 +371,7 @@ static int ravb_write_hwaddr(struct udevice *dev)
 /* E-MAC init function */
 static int ravb_mac_init(struct ravb_priv *eth)
 {
-#if defined(CONFIG_R9A07G044L)
+#if defined(CONFIG_R9A07G044L) || defined(CONFIG_R9A07G054L) 
 	struct phy_device *phy = eth->phydev;
 	u32 ecmr;
 
@@ -412,7 +412,7 @@ static int ravb_dmac_init(struct udevice *dev)
 	writel(0, eth->iobase + RAVB_REG_RIC0);
 	writel(0, eth->iobase + RAVB_REG_RIC1);
 	writel(0, eth->iobase + RAVB_REG_RIC2);
-#if defined(CONFIG_R9A07G044L)
+#if defined(CONFIG_R9A07G044L) || defined(CONFIG_R9A07G054L) 
 	writel(0, eth->iobase + RAVB_REG_RIC3);
 #endif
 	writel(0, eth->iobase + RAVB_REG_TIC);
@@ -420,7 +420,7 @@ static int ravb_dmac_init(struct udevice *dev)
 	/* Set little endian */
 	clrbits_le32(eth->iobase + RAVB_REG_CCC, CCC_BOC);
 
-#if defined(CONFIG_R9A07G044L)
+#if defined(CONFIG_R9A07G044L) || defined(CONFIG_R9A07G054L) 
 	/* AVB rx set */
 	writel(0x60000000, eth->iobase + RAVB_REG_RCR);
 
@@ -455,7 +455,7 @@ static int ravb_config(struct udevice *dev)
 {
 	struct ravb_priv *eth = dev_get_priv(dev);
 	struct phy_device *phy = eth->phydev;
-#if !defined(CONFIG_R9A07G044L)
+#if !defined(CONFIG_R9A07G044L) || !defined(CONFIG_R9A07G054L) 
 	u32 mask = ECMR_CHG_DM | ECMR_RE | ECMR_TE;
 #endif
 	int ret;
@@ -467,7 +467,7 @@ static int ravb_config(struct udevice *dev)
 	ravb_mac_init(eth);
 	ravb_write_hwaddr(dev);
 
-#if defined(CONFIG_R9A07G044L)
+#if defined(CONFIG_R9A07G044L) || defined(CONFIG_R9A07G054L) 
 	/* Configure TOE registers */
 	writel(CSR0_TPE | CSR0_RPE, eth->iobase + CSR0);
 #endif
@@ -477,7 +477,7 @@ static int ravb_config(struct udevice *dev)
 		return ret;
 
 	/* Set the transfer speed */
-#if defined(CONFIG_R9A07G044L)
+#if defined(CONFIG_R9A07G044L) || defined(CONFIG_R9A07G054L) 
 	if (phy->speed == 10)
 		writel(0, eth->iobase + RAVB_REG_GECMR);
 	else if (phy->speed == 100)
@@ -740,6 +740,7 @@ static const struct udevice_id ravb_ids[] = {
 	{ .compatible = "renesas,etheravb-r8a77995" },
 	{ .compatible = "renesas,etheravb-rcar-gen3" },
 	{ .compatible = "renesas,etheravb-r9a07g044l" },
+	{ .compatible = "renesas,etheravb-r9a07g054l" },
 	{ }
 };
 
