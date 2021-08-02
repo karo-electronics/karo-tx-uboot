@@ -64,12 +64,15 @@
 
 #define buck8_mV_to_regval(mV)		(((mV) - 800) / 10)
 
+#define R1				499
+#define R2				2200
+
 #define VDD_SOC_0V8_VAL			buck1_4_mV_to_regval(900)
 #define VDD_ARM_0V9_VAL			buck1_4_mV_to_regval(900)
 #define VDD_DRAM_PU_0V9_VAL		buck5_mV_to_regval(900)
 #define VDD_3V3_VAL			buck6_mV_to_regval(3300)
 #define VDD_1V8_VAL			buck7_mV_to_regval(1800)
-#define NVCC_DRAM_VAL			buck8_mV_to_regval(1350)
+#define NVCC_DRAM_VAL			buck8_mV_to_regval(1350 * R2 / (R1 + R2))
 
 static const struct pmic_val pmic_vals[] = {
 	/* decrease RESET key long push time from the default 10s to 10ms */
