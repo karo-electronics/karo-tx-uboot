@@ -98,16 +98,6 @@
 #define FDTADDR_STR			__stringify(CONFIG_FDTADDR)
 #define LOADADDR_STR			__stringify(CONFIG_LOADADDR)
 
-#if defined(CONFIG_KARO_QS8M)
-#define TX8M_DEFAULT_BASEBOARD		"qsbase2"
-#elif defined(CONFIG_KARO_QSXM)
-#define TX8M_DEFAULT_BASEBOARD		"qsbase3"
-#elif defined(CONFIG_KARO_TX8MM_1620)
-#define TX8M_DEFAULT_BASEBOARD		"lvds-mb"
-#else
-#define TX8M_DEFAULT_BASEBOARD		"mipi-mb"
-#endif
-
 #ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
 #define CONFIG_SYS_MEM_RESERVE_SECURE	0
 #endif
@@ -136,7 +126,7 @@
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 #define PHYS_SDRAM			CONFIG_SYS_SDRAM_BASE
 #if defined(CONFIG_KARO_TX8MM_1620) || defined(CONFIG_KARO_QSXM) || \
-	defined(CONFIG_KARO_TX8P)
+	defined(CONFIG_KARO_TX8P) || defined(CONFIG_KARO_TX8MM_1622)
 #define PHYS_SDRAM_SIZE			SZ_2G
 #elif defined(CONFIG_IMX8MN)
 #define PHYS_SDRAM_SIZE			SZ_512M

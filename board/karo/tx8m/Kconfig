@@ -59,6 +59,11 @@ config KARO_TX8MM_1620
 	select IMX8MM
 	select KARO_TX8M
 
+config KARO_TX8MM_1622
+	bool "Ka-Ro TX8M-1622 module"
+	select IMX8MM
+	select KARO_TX8M
+
 config KARO_QS8M_MQ00
 	bool "Ka-Ro QS8M-MQ00 (TX8M-1610 compatible solder-in module)"
 	select IMX8MM

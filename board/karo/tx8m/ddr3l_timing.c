@@ -1910,7 +1910,7 @@ struct dram_cfg_param ddr_phy_pie[] = {
 	{ 0xc0080, 0x0 },
 	{ 0xd0000, 0x1 }
 };
-#elif defined(CONFIG_KARO_TX8MM_1620)
+#elif defined(CONFIG_KARO_TX8MM_1620) || defined(CONFIG_KARO_TX8MM_1622)
 struct dram_cfg_param ddr_ddrc_cfg[] = {
 	/** Initialize DDRC registers **/
 	{ 0x3d400304, 0x1 },
