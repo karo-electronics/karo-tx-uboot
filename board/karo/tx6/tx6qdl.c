@@ -430,7 +430,7 @@ static char tx6_mem_table[] = {
 	'5', /* TX6S-8035 512MiB SDRAM 32bit; 4GiB eMMC */
 	'3', /* TX6U-8033 1GiB SDRAM 64bit; 4GiB eMMC */
 	'?', /* N/A 256MiB SDRAM 16bit; 8GiB eMMC */
-	'?', /* N/A 512MiB SDRAM 32bit; 8GiB eMMC */
+	'6', /* TX6S-8136 512MiB SDRAM 32bit; 8GiB eMMC */
 	'6', /* TX6Q-1036 1GiB SDRAM 64bit; 8GiB eMMC */
 };
 
