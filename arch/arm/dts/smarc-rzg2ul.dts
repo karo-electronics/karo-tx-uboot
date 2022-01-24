@@ -50,6 +50,12 @@
 				<RZG2L_PINMUX(10, 3, 1)>,
 				<RZG2L_PINMUX(10, 4, 1)>;
 	};
+
+	i2c0_pins: i2c0 {
+		pinmux = <RZG2L_PINMUX(14, 0, 1)>,
+				<RZG2L_PINMUX(14, 1, 1)>;
+	};
+
 };
 
 &xinclk {
@@ -87,4 +93,10 @@
 	phy1: ethernet-phy@7 {
 		reg = <7>;
 	};
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c0_pins>;
+	status = "okay";
 };
