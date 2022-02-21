@@ -1,5 +1,6 @@
 #include <common.h>
 #include <cpu_func.h>
+#include <hang.h>
 #include <image.h>
 #include <init.h>
 #include <malloc.h>
@@ -142,6 +143,29 @@ int board_mmc_init(struct bd_info *bis)
 
 int board_init(void)
 {
+#if CONFIG_TARGET_SMARC_RZG2UL
+	struct udevice *dev;
+	const u8 pmic_bus = 0;
+	const u8 pmic_addr = 0x58;
+	u8 data;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(pmic_bus, pmic_addr, 1, &dev);
+	if (ret)
+		hang();
+
+	ret = dm_i2c_read(dev, 0x2, &data, 1);
+	if (ret)
+		hang();
+
+	if ((data & 0x08) == 0) {
+		printf("SW_ET0_EN: ON\n");
+		*(volatile u32 *)(ETH_CH0) = (*(volatile u32 *)(ETH_CH0) & 0xFFFFFFFC) | ETH_PVDD_1800;
+	} else {
+		printf("SW_ET0_EN: OFF\n");
+		*(volatile u32 *)(ETH_CH0) = (*(volatile u32 *)(ETH_CH0) & 0xFFFFFFFC) | ETH_PVDD_3300;
+	}
+#endif
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = CONFIG_SYS_TEXT_BASE + 0x50000;
 
