@@ -24,6 +24,10 @@
 #include <asm/io.h>
 #include <asm/gpio.h>
 
+/* ETH */
+#define ETH_BASE 		0x11c20000
+#define CXR35 			(ETH_BASE + 0x540)
+
 /* Registers */
 #define RAVB_REG_CCC		0x000
 #define RAVB_REG_DBAT		0x004
@@ -533,6 +537,30 @@ static void ravb_stop(struct udevice *dev)
 	ravb_reset(dev);
 }
 
+static int ravb_mode_config(struct udevice *dev, phy_interface_t mode)
+{
+	printf("Phy mode = %s\n", phy_interface_strings[mode]);
+	switch (mode)
+	{
+	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		writel(0x03e80000, CXR35);
+		break;
+
+	case PHY_INTERFACE_MODE_MII:
+		/* ETH MII MODE */
+		writel(0x03e80002, CXR35);
+		break;
+
+	default:
+		printf("%s: ERROR: Phy interface mode %d not supported.\n", dev->name, mode);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int ravb_probe(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
@@ -583,6 +611,11 @@ static int ravb_probe(struct udevice *dev)
 		goto err_mdio_register;
 
 	ret = ravb_reset(dev);
+	if (ret)
+		goto err_mdio_reset;
+
+	// set mii / rgmii
+	ret = ravb_mode_config(dev, pdata->phy_interface);
 	if (ret)
 		goto err_mdio_reset;
 
