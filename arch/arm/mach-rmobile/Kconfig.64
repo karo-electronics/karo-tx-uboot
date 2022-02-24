@@ -136,6 +136,11 @@ config TARGET_SMARC_RZG2LC
 	help
           Support for Renesas RZ/G2LC Dev Platform
 
+config TARGET_TXRZ
+        bool "TXRZ"
+        help
+          Ka-Ro electronics GmbH RZ/G2L based TXRZ CoM
+
 endchoice
 
 config SYS_SOC
@@ -151,6 +156,7 @@ source "board/beacon/beacon-rzg2m/Kconfig"
 source "board/renesas/rzg2l-dev/Kconfig"
 source "board/renesas/rzv2l-dev/Kconfig"
 source "board/renesas/rzg2lc-dev/Kconfig"
+source "board/karo/txrz/Kconfig"
 
 config MULTI_DTB_FIT_UNCOMPRESS_SZ
 	default 0x80000 if TARGET_SALVATOR_X

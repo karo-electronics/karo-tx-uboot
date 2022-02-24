@@ -1,0 +1,32 @@
+if TARGET_TXRZ
+
+config SYS_SOC
+	default "rmobile"
+
+config SYS_BOARD
+	default "txrz"
+
+config SYS_VENDOR
+	default "karo"
+
+config SYS_CONFIG_NAME
+	default "txrz"
+
+endif
+
+if TARGET_SMARC_RZG2L
+
+config SYS_SOC
+	default "rmobile"
+
+config SYS_BOARD
+	default "rzg2l-dev"
+
+config SYS_VENDOR
+	default "renesas"
+
+config SYS_CONFIG_NAME
+	default "smarc-rzg2l"
+
+endif
+
