@@ -1,4 +1,5 @@
 #include <common.h>
+#include <console.h>
 #include <cpu_func.h>
 #include <image.h>
 #include <init.h>
@@ -19,6 +20,8 @@
 #include <asm/arch/sh_sdhi.h>
 #include <i2c.h>
 #include <mmc.h>
+
+#include "../common/karo.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -67,7 +70,6 @@ void s_init(void)
 
 int board_early_init_f(void)
 {
-
 	return 0;
 }
 
@@ -108,6 +110,33 @@ int board_init(void)
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = CONFIG_SYS_TEXT_BASE + 0x50000;
 
+	return 0;
+}
+
+int board_late_init(void)
+{
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	const void *fdt_compat;
+	ofnode root = ofnode_path("/");
+
+	fdt_compat = ofnode_read_string(root, "compatible");
+
+	if (fdt_compat) {
+		if (strncmp(fdt_compat, "karo,", 5) != 0)
+			env_set("board_name", fdt_compat);
+		else
+			env_set("board_name", fdt_compat + 5);
+	}
+#endif
+	env_cleanup();
+
+	if (had_ctrlc()) {
+		env_set_hex("safeboot", 1);
+	} else if (!IS_ENABLED(CONFIG_KARO_UBOOT_MFG)) {
+		karo_fdt_move_fdt();
+	}
+
+	clear_ctrlc();
 	return 0;
 }
 

@@ -1,3 +1,5 @@
+source "board/karo/common/Kconfig"
+
 if TARGET_TXRZ
 
 config SYS_SOC
@@ -12,21 +14,16 @@ config SYS_VENDOR
 config SYS_CONFIG_NAME
 	default "txrz"
 
-endif
+choice
+	prompt "Ka-Ro STM32 module variant"
 
-if TARGET_SMARC_RZG2L
+config KARO_TXRZ_G2L0
+	bool "Ka-Ro TXRZ-G2L0 module"
+	select BOARD_LATE_INIT
+	help
+	  Enable support for the Ka-Ro electronics TXRZ-G2L0 module featuring
+	  an RZ/G2L SOC, 1024MiB of SDRAM and 4GiB eMMC.
 
-config SYS_SOC
-	default "rmobile"
-
-config SYS_BOARD
-	default "rzg2l-dev"
-
-config SYS_VENDOR
-	default "renesas"
-
-config SYS_CONFIG_NAME
-	default "smarc-rzg2l"
+endchoice
 
 endif
-
