@@ -47,6 +47,7 @@
 	 * A HIGH signal on SD0_PWR_EN will enable supply voltage for SD card.
 	*/
 	bus-width = <8>;
+	non-removable;
 	status = "okay";
 };
 
