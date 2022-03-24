@@ -32,6 +32,7 @@ static u32 fastboot_bytes_expected;
 static void okay(char *, char *);
 static void getvar(char *, char *);
 static void download(char *, char *);
+static void oem_ucmd(char *, char *);
 #if CONFIG_IS_ENABLED(FASTBOOT_FLASH)
 static void flash(char *, char *);
 static void erase(char *, char *);
@@ -98,6 +99,12 @@ static const struct {
 		.command = "oem format",
 		.dispatch = oem_format,
 	},
+#endif
+#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_UCMD)
+	[FASTBOOT_COMMAND_OEM_UCMD] = {
+                .command = "oem ucmd",
+                .dispatch = oem_ucmd
+        },
 #endif
 };
 
@@ -192,6 +199,29 @@ static void download(char *cmd_parameter, char *response)
 		printf("Starting download of %d bytes\n",
 		       fastboot_bytes_expected);
 		fastboot_response("DATA", response, "%s", cmd_parameter);
+	}
+}
+
+/**
+ * ucmd() - Execute the ucmd command
+ *
+ * @cmd_parameter: Pointer to command parameter
+ * @response: Pointer to fastboot response buffer
+ */
+static void oem_ucmd(char *cmd_parameter, char *response)
+{
+	if (!cmd_parameter) {
+		pr_err("missing slot suffix\n");
+		fastboot_fail("missing command", response);
+		return;
+	}
+	if(run_command(cmd_parameter, 0)) {
+		fastboot_fail("", response);
+	} else {
+		fastboot_okay(NULL, response);
+		/* cmd may impact fastboot related environment*/
+                // TODO
+		// fastboot_setup();
 	}
 }
 
