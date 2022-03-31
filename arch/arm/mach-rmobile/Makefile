@@ -5,6 +5,7 @@
 
 obj-y = cpu_info.o
 obj-y += emac.o
+obj-y += sip.o
 
 obj-$(CONFIG_DISPLAY_BOARDINFO) += board.o
 obj-$(CONFIG_GLOBAL_TIMER) += timer.o

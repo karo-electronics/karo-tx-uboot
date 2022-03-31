@@ -315,6 +315,15 @@ config STM32MP_FUSE
 	  for STM32MP architecture.
 	  This API is needed for CMD_FUSE.
 
+config RZG2L_FUSE
+	bool "Enable RZ/G2L fuse wrapper providing the fuse API"
+	depends on MISC
+	default y if CMD_FUSE
+	help
+	  If you say Y here, you will get support for the fuse API (OTP)
+	  for RZ/G2L architecture.
+	  This API is needed for CMD_FUSE.
+
 config STM32_RCC
 	bool "Enable RCC driver for the STM32 SoC's family"
 	depends on (ARCH_STM32 || ARCH_STM32MP) && MISC
