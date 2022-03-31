@@ -147,8 +147,3 @@ int board_late_init(void)
 	clear_ctrlc();
 	return 0;
 }
-
-void reset_cpu(ulong addr)
-{
-
-}
