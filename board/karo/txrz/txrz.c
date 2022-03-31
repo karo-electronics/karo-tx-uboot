@@ -1,9 +1,11 @@
 #include <common.h>
 #include <console.h>
 #include <cpu_func.h>
+#include <fuse.h>
 #include <image.h>
 #include <init.h>
 #include <malloc.h>
+#include <net.h>
 #include <netdev.h>
 #include <dm.h>
 #include <dm/platform_data/serial_sh.h>
@@ -12,6 +14,7 @@
 #include <asm/io.h>
 #include <linux/bitops.h>
 #include <linux/errno.h>
+#include <linux/if_ether.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
 #include <asm/arch/gpio.h>
@@ -51,7 +54,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void s_init(void)
 {
-	/* can go in board_eht_init() once enabled */
+	/* can go in board_eth_init() once enabled */
 	writel(ETH_PVDD_1800, ETH_CH0);
 	writel(ETH_PVDD_1800, ETH_CH1);
 	/* Enable MII for both ETH{0,1} */
@@ -81,6 +84,41 @@ int board_init(void)
 	return 0;
 }
 
+int rzg2_init_mac(void)
+{
+	u32 fuse[2];
+	uchar enetaddr[6];
+	uchar env_ethaddr[6];
+	int ret;
+
+	ret = fuse_read(0, 0, &fuse[0]);
+	if (ret < 0)
+		return ret;
+
+	ret = fuse_read(0, 1, &fuse[1]);
+	if (ret < 0)
+		return ret;
+
+	for (int i = 0; i < 6; i++)
+		enetaddr[i] = ((uint8_t *)&fuse)[i];
+
+	if (is_valid_ethaddr(enetaddr)) {
+		printf("MAC addr from fuse: %pM\n", enetaddr);
+	} else {
+		pr_err("No valid MAC in fuse: %pM\n", enetaddr);
+	}
+
+	/* If MAC not already in environment set from fuse */
+	if (!eth_env_get_enetaddr("ethaddr", env_ethaddr)) {
+		ret = eth_env_set_enetaddr("ethaddr", enetaddr);
+		if (ret)
+			pr_err("Failed to set mac address %pM from OTP: %d\n",
+			       enetaddr, ret);
+	}
+
+	return ret;
+}
+
 int board_late_init(void)
 {
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
@@ -103,6 +141,8 @@ int board_late_init(void)
 	} else if (!IS_ENABLED(CONFIG_KARO_UBOOT_MFG)) {
 		karo_fdt_move_fdt();
 	}
+
+	rzg2_init_mac();
 
 	clear_ctrlc();
 	return 0;
