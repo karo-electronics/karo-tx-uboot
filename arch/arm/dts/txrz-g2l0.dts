@@ -30,8 +30,48 @@
 	};
 };
 
-&xinclk {
-        clock-frequency = <24000000>;
+&ehci0 {
+	/* pinctrl placeholder
+	 * If HCD, the following pins must be defined.
+	 *  VBUSEN  - P4_0 pin.
+	 *  OVERCUR - P5_0 pin.
+	*/
+	status = "okay";
+};
+
+&ehci1 {
+	/* pinctrl placeholder
+	 * If HCD, the following pins must be defined.
+	 *  VBUSEN  - P42_0 pin.
+	 *  OVERCUR - P42_1 pin.
+	*/
+	status = "okay";
+};
+
+&eth0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&eth0_pins>;
+	status = "okay";
+
+	phy-handle = <&phy0>;
+	phy-mode = "mii";
+	phy0: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pins>;
+	status = "okay";
+};
+
+&ohci0 {
+	status = "okay";
+};
+
+&ohci1 {
+	status = "okay";
 };
 
 &scif0 {
@@ -62,22 +102,16 @@
 	status = "okay";
 };
 
-&eth0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&eth0_pins>;
+&usb2_phy0 {
 	status = "okay";
-
-	phy-handle = <&phy0>;
-	phy-mode = "mii";
-	phy0: ethernet-phy@0 {
-		reg = <0>;
-	};
 };
 
-&i2c1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c1_pins>;
+&usb2_phy1 {
 	status = "okay";
+};
+
+&xinclk {
+        clock-frequency = <24000000>;
 };
 
 &pinctrl {
@@ -107,5 +141,4 @@
 		pinmux = <RZG2L_PINMUX(14, 2, 1)>,
 				<RZG2L_PINMUX(14, 3, 1)>;
 	};
-
 };

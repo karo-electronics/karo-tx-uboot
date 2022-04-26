@@ -22,6 +22,7 @@
 #include <linux/usb/composite.h>
 #include <linux/compiler.h>
 #include <g_dnl.h>
+#include <linux/delay.h>
 
 #define FASTBOOT_INTERFACE_CLASS	0xff
 #define FASTBOOT_INTERFACE_SUB_CLASS	0x42

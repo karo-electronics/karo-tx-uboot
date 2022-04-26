@@ -37,6 +37,7 @@ static void oem_ucmd(char *, char *);
 static void flash(char *, char *);
 static void erase(char *, char *);
 #endif
+static void reboot(char *, char *);
 static void reboot_bootloader(char *, char *);
 static void reboot_fastbootd(char *, char *);
 static void reboot_recovery(char *, char *);

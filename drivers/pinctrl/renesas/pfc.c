@@ -815,7 +815,9 @@ static int sh_pfc_map_pins(struct sh_pfc *pfc, struct sh_pfc_pinctrl *pmx)
 static int sh_pfc_pinctrl_probe(struct udevice *dev)
 {
 	struct sh_pfc_pinctrl_priv *priv = dev_get_priv(dev);
+#if !defined(CONFIG_R9A07G044L)
 	enum sh_pfc_model model = dev_get_driver_data(dev);
+#endif
 	fdt_addr_t base;
 
 	base = dev_read_addr(dev);

@@ -58,8 +58,8 @@ struct rcar_gen3_phy {
 
 static int rcar_gen3_phy_phy_init(struct phy *phy)
 {
+#if 0
 	struct rcar_gen3_phy *priv = dev_get_priv(phy->dev);
-
 	/* Initialize USB2 part */
 	writel(0, priv->regs + USB2_INT_ENABLE);
 	writel(USB2_SPD_RSM_TIMSET_INIT, priv->regs + USB2_SPD_RSM_TIMSET);
@@ -71,12 +71,13 @@ static int rcar_gen3_phy_phy_init(struct phy *phy)
 	clrbits_le32(priv->regs + USB2_COMMCTRL, USB2_COMMCTRL_OTG_PERI);
 
 	setbits_le32(priv->regs + USB2_ADPCTRL, USB2_ADPCTRL_DRVVBUS);
-
+#endif
 	return 0;
 }
 
 static int rcar_gen3_phy_phy_power_on(struct phy *phy)
 {
+#if 0
 	struct rcar_gen3_phy *priv = dev_get_priv(phy->dev);
 	int ret;
 
@@ -88,18 +89,22 @@ static int rcar_gen3_phy_phy_power_on(struct phy *phy)
 
 	setbits_le32(priv->regs + USB2_USBCTR, USB2_USBCTR_PLL_RST);
 	clrbits_le32(priv->regs + USB2_USBCTR, USB2_USBCTR_PLL_RST);
-
+#endif
 	return 0;
 }
 
 static int rcar_gen3_phy_phy_power_off(struct phy *phy)
 {
+#if 0
 	struct rcar_gen3_phy *priv = dev_get_priv(phy->dev);
 
 	if (!priv->vbus_supply)
 		return 0;
 
 	return regulator_set_enable(priv->vbus_supply, false);
+#else
+	return 0;
+#endif
 }
 
 static const struct phy_ops rcar_gen3_phy_phy_ops = {
@@ -111,12 +116,14 @@ static const struct phy_ops rcar_gen3_phy_phy_ops = {
 static int rcar_gen3_phy_probe(struct udevice *dev)
 {
 	struct rcar_gen3_phy *priv = dev_get_priv(dev);
+#if 0
 	int ret;
-
+#endif
 	priv->regs = dev_read_addr(dev);
 	if (priv->regs == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
+#if 0
 	ret = device_get_supply_regulator(dev, "vbus-supply",
 					  &priv->vbus_supply);
 	if (ret && ret != -ENOENT) {
@@ -132,7 +139,7 @@ static int rcar_gen3_phy_probe(struct udevice *dev)
 	ret = clk_enable(&priv->clk);
 	if (ret)
 		return ret;
-
+#endif
 	return 0;
 }
 

@@ -210,9 +210,9 @@ static const struct udevice_id sh_serial_id[] ={
 static int sh_serial_ofdata_to_platdata(struct udevice *dev)
 {
 	struct sh_serial_platdata *plat = dev_get_platdata(dev);
-	struct clk sh_serial_clk;
+	struct clk __maybe_unused sh_serial_clk;
 	fdt_addr_t addr;
-	int ret;
+	int __maybe_unused ret;
 
 	addr = dev_read_addr(dev);
 	if (!addr)

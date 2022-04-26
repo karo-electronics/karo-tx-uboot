@@ -98,3 +98,37 @@
 		reg = <7>;
 	};
 };
+
+&usb2_phy0 {
+	status = "okay";
+};
+
+&ohci0 {
+	status = "okay";
+};
+
+&ehci0 {
+	/* pinctrl placeholder
+	 * If HCD, the following pins must be defined.
+	 *  VBUSEN  - P4_0 pin.
+	 *  OVERCUR - P5_0 pin.
+	*/
+	status = "okay";
+};
+
+&usb2_phy1 {
+	status = "okay";
+};
+
+&ohci1 {
+	status = "okay";
+};
+
+&ehci1 {
+	/* pinctrl placeholder
+	 * If HCD, the following pins must be defined.
+	 *  VBUSEN  - P42_0 pin.
+	 *  OVERCUR - P42_1 pin.
+	*/
+	status = "okay";
+};

@@ -12,6 +12,7 @@
 #include <part.h>
 #include <tee.h>
 #include <tee/optee_ta_avb.h>
+#include <fastboot.h>
 
 static const unsigned char avb_root_pub[1032] = {
 	0x0, 0x0, 0x10, 0x0, 0x55, 0xd9, 0x4, 0xad, 0xd8, 0x4,

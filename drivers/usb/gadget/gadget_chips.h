@@ -161,6 +161,12 @@
 #define gadget_is_max3420(g)        0
 #endif
 
+#ifdef CONFIG_USB_RENESAS_USBHS
+#define gadget_is_rcar3(g)        (!strcmp("renesas_usbhs_udc", (g)->name))
+#else
+#define gadget_is_rcar3(g)        0
+#endif
+
 /**
  * usb_gadget_controller_number - support bcdDevice id convention
  * @gadget: the controller being driven
@@ -224,5 +230,7 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x24;
 	else if (gadget_is_max3420(gadget))
 		return 0x25;
+	else if (gadget_is_rcar3(gadget))
+		return 0x26;
 	return -ENOENT;
 }

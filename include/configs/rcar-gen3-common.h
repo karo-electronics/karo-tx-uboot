@@ -25,7 +25,9 @@
 
 /* Generic Interrupt Controller Definitions */
 #define CONFIG_GICV2
+#if !defined(CONFIG_R9A07G044L)
 #define GICD_BASE	0xF1010000
+#endif
 #define GICC_BASE	0xF1020000
 
 /* console */
@@ -50,7 +52,9 @@
 
 #define CONFIG_SYS_MONITOR_BASE		0x00000000
 #define CONFIG_SYS_MONITOR_LEN		(1 * 1024 * 1024)
+#if !defined(CONFIG_R9A07G044L)
 #define CONFIG_SYS_MALLOC_LEN		(64 * 1024 * 1024)
+#endif
 #define CONFIG_SYS_BOOTM_LEN		(64 << 20)
 
 /* The HF/QSPI layout permits up to 1 MiB large bootloader blob */
@@ -58,6 +62,7 @@
 
 /* ENV setting */
 
+#if !defined(CONFIG_R9A07G044L)
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 	"bootm_size=0x10000000\0"
 
@@ -65,6 +70,7 @@
 	"tftp 0x48080000 Image; " \
 	"tftp 0x48000000 Image-"CONFIG_DEFAULT_FDT_FILE"; " \
 	"booti 0x48080000 - 0x48000000"
+#endif
 
 /* SPL support */
 #if defined(CONFIG_R8A7795) || defined(CONFIG_R8A7796) || defined(CONFIG_R8A77965)
