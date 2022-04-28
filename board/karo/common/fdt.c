@@ -44,7 +44,7 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 	int ret;
 	void *fdt = (void *)fdtaddr;
 	loff_t fdtsize;
-	char *dtbfile;
+	char *fdt_file;
 
 	/* clear FDT header in memory */
 	memset(fdt, 0, 4);
@@ -59,39 +59,39 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 		const char *bootdev = env_get("bootdev");
 		const char *bootpart = env_get("bootpart");
 
-		dtbfile = env_get("dtbfile");
+		fdt_file = env_get("fdt_file");
 		debug("%s@%d:\n", __func__, __LINE__);
 
-		if (!dtbfile) {
-			debug("'dtbfile' not set; cannot load DTB\n");
+		if (!fdt_file) {
+			debug("'fdt_file' not set; cannot load DTB\n");
 			return NULL;
 		}
 
 		if (fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY))
 			return NULL;
 
-		ret = fs_read(dtbfile, fdtaddr, 0, MAX_DTB_SIZE, &fdtsize);
+		ret = fs_read(fdt_file, fdtaddr, 0, MAX_DTB_SIZE, &fdtsize);
 		if (ret) {
 			printf("Failed to load dtb from '%s': %d\n",
-			       dtbfile, ret);
+			       fdt_file, ret);
 			return NULL;
 		}
 	}
 #endif
 #if CONFIG_IS_ENABLED(ENV_IS_IN_UBI)
 	{
-		dtbfile = "dtb";
+		fdt_file = "dtb";
 
-		ret = ubi_volume_read(dtbfile, fdt, 0);
+		ret = ubi_volume_read(fdt_file, fdt, 0);
 		if (ret) {
 			printf("Failed to read UBI volume '%s': %d\n",
-			       dtbfile, ret);
+			       fdt_file, ret);
 			return NULL;
 		}
 		fdtsize = env_get_hex("filesize", 0);
 	}
 #endif
-	debug("FDT loaded from %s (%llu bytes)\n", dtbfile, fdtsize);
+	debug("FDT loaded from %s (%llu bytes)\n", fdt_file, fdtsize);
 	if (fdt_check_header(fdt)) {
 		debug("No valid DTB in flash\n");
 		return NULL;

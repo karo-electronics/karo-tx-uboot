@@ -79,7 +79,7 @@ static void karo_set_part_uuids(void)
 		ret = snprintf(part_uuid_name, sizeof(part_uuid_name),
 			       "uuid_%s", info.name);
 		if (ret >= sizeof(part_uuid_name)) {
-			printf("buffer overflow for variable name 'uuid_%s'; need %u characters, got only %u\n",
+			printf("buffer overflow for variable name 'uuid_%s'; need %u characters, got only %lu\n",
 			       info.name, ret, sizeof(part_uuid_name));
 			continue;
 		}
@@ -122,15 +122,15 @@ void env_cleanup(void)
 
 /*
  * Callback function to insert/remove the 'baseboard' name into/from
- * the 'dtbfile' variable whenever the 'baseboard' variable is changed.
+ * the 'fdt_file' variable whenever the 'baseboard' variable is changed.
  */
 static int karo_env_baseboard(const char *name, const char *value,
 			      enum env_op op, int flags)
 {
-	const char *dtbfile;
+	const char *fdt_file;
 	char *dlm;
 	int len;
-	char *new_dtbfile;
+	char *new_fdt_file;
 	size_t alloc_len;
 	const char *ext = ".dtb";
 	size_t ext_len = strlen(ext);
@@ -139,21 +139,21 @@ static int karo_env_baseboard(const char *name, const char *value,
 	if (!(flags & H_INTERACTIVE))
 		return 0;
 
-	dtbfile = env_get("dtbfile");
-	if (!dtbfile)
+	fdt_file = env_get("fdt_file");
+	if (!fdt_file)
 		return 0;
 
-	if (strcmp(dtbfile + strlen(dtbfile) - ext_len, ext) != 0)
+	if (strcmp(fdt_file + strlen(fdt_file) - ext_len, ext) != 0)
 		ext_len = 0;
 
 	/*
-	 * Skip over the first two dashes in dtbfile name:
+	 * Skip over the first two dashes in fdt_file name:
 	 * "<soc>-<module>-<version>[-<baseboard>][.dtb]"
 	 *                           ^
-	 * If the dtbfile name does not match the above
+	 * If the fdt_file name does not match the above
 	 * pattern it won't be changed.
 	 */
-	dlm = strchr(dtbfile, '-');
+	dlm = strchr(fdt_file, '-');
 	if (!dlm)
 		return 0;
 	dlm = strchr(dlm + 1, '-');
@@ -161,9 +161,9 @@ static int karo_env_baseboard(const char *name, const char *value,
 		return 0;
 	dlm = strchr(dlm + 1, '-');
 	if (dlm)
-		len = dlm - dtbfile;
+		len = dlm - fdt_file;
 	else
-		len = strlen(dtbfile) - ext_len;
+		len = strlen(fdt_file) - ext_len;
 
 	if (op == env_op_delete) {
 		char *olddtb;
@@ -171,39 +171,39 @@ static int karo_env_baseboard(const char *name, const char *value,
 		if (!dlm)
 			return 0;
 
-		olddtb = strdup(dtbfile);
+		olddtb = strdup(fdt_file);
 		if (ext_len)
 			strcpy(dlm, ext);
 		else
 			*dlm = '\0';
 
-		pr_notice("Notice: 'dtbfile' changed from '%s' to '%s'\n",
-			  olddtb, dtbfile);
-		env_set("dtbfile", dtbfile);
+		pr_notice("Notice: 'fdt_file' changed from '%s' to '%s'\n",
+			  olddtb, fdt_file);
+		env_set("fdt_file", fdt_file);
 		free(olddtb);
 		return 0;
 	}
 
 	alloc_len = len + strlen(value) + ext_len + 2;
-	new_dtbfile = malloc(alloc_len);
-	if (!new_dtbfile)
+	new_fdt_file = malloc(alloc_len);
+	if (!new_fdt_file)
 		return 0;
 
-	strncpy(new_dtbfile, dtbfile, len);
-	new_dtbfile[len] = '-';
+	strncpy(new_fdt_file, fdt_file, len);
+	new_fdt_file[len] = '-';
 	/* append new 'baseboard' value */
-	strncpy(new_dtbfile + len + 1, value, strlen(value));
+	strncpy(new_fdt_file + len + 1, value, strlen(value));
 	if (ext_len)
-		strcpy(new_dtbfile + alloc_len - 1 - ext_len, ext);
+		strcpy(new_fdt_file + alloc_len - 1 - ext_len, ext);
 	else
-		new_dtbfile[alloc_len - 1 - ext_len] = '\0';
+		new_fdt_file[alloc_len - 1 - ext_len] = '\0';
 
-	if (strcmp(dtbfile, new_dtbfile) != 0) {
-		printf("Notice: 'dtbfile' changed from '%s' to '%s'\n",
-		       dtbfile, new_dtbfile);
-		env_set("dtbfile", new_dtbfile);
+	if (strcmp(fdt_file, new_fdt_file) != 0) {
+		printf("Notice: 'fdt_file' changed from '%s' to '%s'\n",
+		       fdt_file, new_fdt_file);
+		env_set("fdt_file", new_fdt_file);
 	}
-	free(new_dtbfile);
+	free(new_fdt_file);
 	return 0;
 }
 
