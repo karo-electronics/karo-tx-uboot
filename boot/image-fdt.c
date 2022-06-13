@@ -338,7 +338,11 @@ static int select_fdt(bootm_headers_t *images, const char *select, u8 arch,
 			       fdt_addr);
 			fdt_hdr = image_get_fdt(fdt_addr);
 			if (!fdt_hdr)
-				return -ENOPKG;
+				/*
+				 * allow booting when no explicit fdt address
+				 * was given on the cmdline, but fail otherwise
+				 */
+				return select ? -ENOENT : -ENOPKG;
 
 			/*
 			 * move image data to the load address,
@@ -411,7 +415,7 @@ static int select_fdt(bootm_headers_t *images, const char *select, u8 arch,
 		break;
 	default:
 		puts("ERROR: Did not find a cmdline Flattened Device Tree\n");
-		return -ENOENT;
+		return select ? -ENOENT : -ENOPKG;
 	}
 	*fdt_addrp = fdt_addr;
 
