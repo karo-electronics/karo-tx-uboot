@@ -354,8 +354,16 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			printf("## Flattened Device Tree from Legacy Image at %08lx\n",
 			       fdt_addr);
 			fdt_hdr = image_get_fdt(fdt_addr);
-			if (!fdt_hdr)
-				goto no_fdt;
+			if (!fdt_hdr) {
+				/*
+				 * allow booting when no explicit fdt address
+				 * was given on the cmdline, but fail otherwise
+				 */
+				if (!select)
+					goto no_fdt;
+				else
+					goto error;
+			}
 
 			/*
 			 * move image data to the load address,
@@ -424,7 +432,14 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			break;
 		default:
 			puts("ERROR: Did not find a cmdline Flattened Device Tree\n");
-			goto no_fdt;
+			/*
+			 * allow booting when no explicit fdt address
+			 * was given on the cmdline, but fail otherwise
+			 */
+			if (!select)
+				goto no_fdt;
+			else
+				goto error;
 		}
 
 		printf("   Booting using the fdt blob at %#08lx\n", fdt_addr);
