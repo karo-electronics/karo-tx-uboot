@@ -4,7 +4,6 @@
  *
  */
 
-#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/pwm/pwm.h>
 
 / {
@@ -93,25 +92,6 @@
 	};
 };
 
-&ecspi2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ecspi2>;
-	spi-max-frequency = <25000000>;
-	cs-gpios = <&gpio5 13 GPIO_ACTIVE_LOW>;
-	status = "disabled";
-
-	can0: can@0 {
-		compatible = "microchip,mcp2515";
-		reg = <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_can0>;
-		clocks = <&mcp_clock>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
-		spi-max-frequency = <10000000>;
-	};
-};
-
 &gpu {
 	status = "okay";
 };
@@ -169,25 +149,6 @@
 		};
 	};
 
-};
-
-&iomuxc {
-	pinctrl_can0: can0grp {
-		fsl,pins = <
-			MX8MM_IOMUXC_NAND_CLE_GPIO3_IO5		0x156
-			MX8MM_IOMUXC_ECSPI2_SS0_GPIO5_IO13	0x156
-		>;
-
-	};
-
-	pinctrl_ecspi2: ecspi2grp {
-		fsl,pins = <
-			MX8MM_IOMUXC_ECSPI2_SCLK_ECSPI2_SCLK	0x156
-			MX8MM_IOMUXC_ECSPI2_MOSI_ECSPI2_MOSI	0x156
-			MX8MM_IOMUXC_ECSPI2_MISO_ECSPI2_MISO	0x156
-		>;
-
-	};
 };
 
 &lcdif {

@@ -4,7 +4,6 @@
  *
  */
 
-#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/pwm/pwm.h>
 
 / {
@@ -28,31 +27,6 @@
 				     90 91 92 93 94 95 96 97 98 99
 				    100>;
 		default-brightness-level = <50>;
-	};
-
-	mcp_clock: mcp-clock {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <16000000>;
-	};
-};
-
-&ecspi1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_ecspi1>;
-	spi-max-frequency = <25000000>;
-	cs-gpios = <&gpio5 9 GPIO_ACTIVE_LOW>;
-	status = "disabled";
-
-	can0: can@0 {
-		compatible = "microchip,mcp2515";
-		reg = <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_can0>;
-		clocks = <&mcp_clock>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
-		spi-max-frequency = <10000000>;
 	};
 };
 
@@ -98,25 +72,6 @@
 				remote-endpoint = <&mipi_dsi_out>;
 			};
 		};
-	};
-};
-
-&iomuxc {
-	pinctrl_can0: can0grp {
-		fsl,pins = <
-			MX8MP_IOMUXC_SAI1_TXD3__GPIO4_IO15	0x156
-			MX8MP_IOMUXC_ECSPI1_SS0__GPIO5_IO09	0x156
-		>;
-
-	};
-
-	pinctrl_ecspi1: ecspi1grp {
-		fsl,pins = <
-			MX8MP_IOMUXC_ECSPI1_SCLK__ECSPI1_SCLK	0x156
-			MX8MP_IOMUXC_ECSPI1_MOSI__ECSPI1_MOSI	0x156
-			MX8MP_IOMUXC_ECSPI1_MISO__ECSPI1_MISO	0x156
-		>;
-
 	};
 };
 
