@@ -4,3 +4,21 @@
  *
  */
 #include "imx8m-tx8m-u-boot.dtsi"
+
+&pinctrl_usdhc3 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc3_100mhz {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc3_200mhz {
+	u-boot,dm-spl;
+};
+
+&usdhc3 {
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	u-boot,dm-spl;
+};

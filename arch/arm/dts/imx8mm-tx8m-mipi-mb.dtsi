@@ -181,10 +181,9 @@
 
 &usdhc2 {
 	pinctrl-0 = <&pinctrl_usdhc2>;
-	pinctrl-1 = <&pinctrl_usdhc2_100mhz>;
-	pinctrl-2 = <&pinctrl_usdhc2_200mhz>;
 	/delete-property/ cd-gpios;
 	no-mmc;
+	broken-cd;
 };
 
 &vpu_g1 {

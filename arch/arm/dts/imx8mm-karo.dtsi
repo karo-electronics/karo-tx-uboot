@@ -31,6 +31,14 @@
 		linux,open-drain;
 	};
 
+	reg_1v8: regulator-1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "1v8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
 	reg_3v3: regulator-3v3 {
 		compatible = "regulator-fixed";
 		regulator-name = "3v3";
@@ -109,19 +117,23 @@
 };
 
 &usdhc1 { /* eMMC */
-	pinctrl-names = "default";
+	pinctrl-names = "default", "state_100mhz", "state_200mhz";
 	pinctrl-0 = <&pinctrl_usdhc1>;
+	pinctrl-1 = <&pinctrl_usdhc1_100mhz>;
+	pinctrl-2 = <&pinctrl_usdhc1_200mhz>;
 	bus-width = <8>;
+	vqmmc-supply = <&reg_1v8>;
+	vmmc-supply = <&reg_3v3>;
 	non-removable;
 	status = "okay";
 };
 
 &usdhc2 {
-	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2 &pinctrl_usdhc2_cd>;
-	pinctrl-1 = <&pinctrl_usdhc2_100mhz &pinctrl_usdhc2_cd>;
-	pinctrl-2 = <&pinctrl_usdhc2_200mhz &pinctrl_usdhc2_cd>;
 	bus-width = <4>;
+	vqmmc-supply = <&reg_3v3>;
+	vmmc-supply = <&reg_3v3>;
 	cd-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>;
 	no-1-8-v;
 	fsl,wp-controller;
@@ -253,6 +265,40 @@
 		>;
 	};
 
+	pinctrl_usdhc1_100mhz: usdhc1grp100mhz {
+		fsl,pins = <
+			MX8MM_IOMUXC_SD1_CLK_USDHC1_CLK			0x114
+			MX8MM_IOMUXC_SD1_CMD_USDHC1_CMD			0x154
+			MX8MM_IOMUXC_SD1_DATA0_USDHC1_DATA0		0x154
+			MX8MM_IOMUXC_SD1_DATA1_USDHC1_DATA1		0x154
+			MX8MM_IOMUXC_SD1_DATA2_USDHC1_DATA2		0x154
+			MX8MM_IOMUXC_SD1_DATA3_USDHC1_DATA3		0x154
+			MX8MM_IOMUXC_SD1_DATA4_USDHC1_DATA4		0x154
+			MX8MM_IOMUXC_SD1_DATA5_USDHC1_DATA5		0x154
+			MX8MM_IOMUXC_SD1_DATA6_USDHC1_DATA6		0x154
+			MX8MM_IOMUXC_SD1_DATA7_USDHC1_DATA7		0x154
+			MX8MM_IOMUXC_SD1_STROBE_USDHC1_STROBE		0x156
+			MX8MM_IOMUXC_SD1_RESET_B_USDHC1_RESET_B		0x156
+		>;
+	};
+
+	pinctrl_usdhc1_200mhz: usdhc1grp200mhz {
+		fsl,pins = <
+			MX8MM_IOMUXC_SD1_CLK_USDHC1_CLK			0x116
+			MX8MM_IOMUXC_SD1_CMD_USDHC1_CMD			0x156
+			MX8MM_IOMUXC_SD1_DATA0_USDHC1_DATA0		0x156
+			MX8MM_IOMUXC_SD1_DATA1_USDHC1_DATA1		0x156
+			MX8MM_IOMUXC_SD1_DATA2_USDHC1_DATA2		0x156
+			MX8MM_IOMUXC_SD1_DATA3_USDHC1_DATA3		0x156
+			MX8MM_IOMUXC_SD1_DATA4_USDHC1_DATA4		0x156
+			MX8MM_IOMUXC_SD1_DATA5_USDHC1_DATA5		0x156
+			MX8MM_IOMUXC_SD1_DATA6_USDHC1_DATA6		0x156
+			MX8MM_IOMUXC_SD1_DATA7_USDHC1_DATA7		0x156
+			MX8MM_IOMUXC_SD1_STROBE_USDHC1_STROBE		0x156
+			MX8MM_IOMUXC_SD1_RESET_B_USDHC1_RESET_B		0x156
+		>;
+	};
+
 	pinctrl_usdhc2: usdhc2grp {
 		fsl,pins = <
 			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK			0x110
@@ -261,28 +307,6 @@
 			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1		0x150
 			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2		0x150
 			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3		0x150
-		>;
-	};
-
-	pinctrl_usdhc2_100mhz: usdhc2grp100mhz {
-		fsl,pins = <
-			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK			0x114
-			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD			0x154
-			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0		0x154
-			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1		0x154
-			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2		0x154
-			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3		0x154
-		>;
-	};
-
-	pinctrl_usdhc2_200mhz: usdhc2grp200mhz {
-		fsl,pins = <
-			MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK			0x116
-			MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD			0x156
-			MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0		0x156
-			MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1		0x156
-			MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2		0x156
-			MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3		0x156
 		>;
 	};
 

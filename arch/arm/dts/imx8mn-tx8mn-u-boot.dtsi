@@ -9,6 +9,16 @@
 	u-boot,dm-spl;
 };
 
+&pinctrl_usdhc1_100mhz {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc1_200mhz {
+	u-boot,dm-spl;
+};
+
 &usdhc1 {
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
 	u-boot,dm-spl;
 };
