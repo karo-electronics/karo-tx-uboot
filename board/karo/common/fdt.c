@@ -29,10 +29,32 @@ int karo_load_fdt(const char *fdt_file)
 {
 	int ret;
 	const char *dev_type = "mmc";
-	const char *dev_part = "0";
+	const char *envstr = env_get("mmcdev");
+	char *eos;
+	int mmcdev = 0;
+	int mmcpart = 1;
+	char dev_part[8];
 	ulong fdt_addr = env_get_hex("fdt_addr", _pfx(0x, CONFIG_FDTADDR));
 	loff_t size;
 	void *fdt;
+
+	if (envstr) {
+		mmcdev = simple_strtoul(envstr, &eos, 10);
+		if (*eos != '\0' || mmcdev > 9) {
+			printf("Invalid mmcdev: '%s'\n", envstr);
+			return -EINVAL;
+		}
+	}
+
+	envstr = env_get("mmcpart");
+	if (envstr) {
+		mmcpart = simple_strtoul(envstr, &eos, 10);
+		if (*eos != '\0' || mmcpart < 1 || mmcpart > 32) {
+			printf("Invalid mmcpart: '%s'\n", envstr);
+			return -EINVAL;
+		}
+	}
+	snprintf(dev_part, sizeof(dev_part), "%u:%u", mmcdev, mmcpart);
 
 	printf("loading FDT from %s %s '%s'\n", dev_type, dev_part, fdt_file);
 
