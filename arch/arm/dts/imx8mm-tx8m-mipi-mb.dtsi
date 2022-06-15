@@ -166,14 +166,6 @@
 	};
 };
 
-&pcie0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcie_reset>;
-	hard-wired;
-	reset-gpio = <&gpio2 19 GPIO_ACTIVE_LOW>;
-	status = "okay";
-};
-
 &pwm1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm1>;
@@ -208,12 +200,6 @@
 };
 
 &iomuxc {
-	pinctrl_pcie_reset: pcie-resetgrp {
-		fsl,pins = <
-			MX8MM_IOMUXC_SD2_RESET_B_GPIO2_IO19		0x06
-		>;
-	};
-
 	pinctrl_pwm1: pwm1grp {
 		fsl,pins = <
 			MX8MM_IOMUXC_GPIO1_IO01_PWM1_OUT		0x06
