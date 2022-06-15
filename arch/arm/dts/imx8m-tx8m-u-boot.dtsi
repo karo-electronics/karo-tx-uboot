@@ -88,3 +88,11 @@
 &uart1 {
 	u-boot,dm-spl;
 };
+
+&uart2 {
+	u-boot,dm-spl;
+};
+
+&uart3 {
+	u-boot,dm-spl;
+};

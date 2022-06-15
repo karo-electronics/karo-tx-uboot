@@ -16,7 +16,3 @@
 &uart1 {
 	/delete-property/ u-boot,dm-spl;
 };
-
-&uart2 {
-	u-boot,dm-spl;
-};
