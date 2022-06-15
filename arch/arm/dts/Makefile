@@ -807,7 +807,7 @@ dtb-$(CONFIG_ARCH_IMX8M) += \
 	imx8mp-qsxp-ml81.dtb \
 	imx8mp-qsxp-ml81-qsbase3.dtb \
 	imx8mp-tx8p-ml81.dtb \
-	imx8mp-tx8p-ml81-mipi-mb.dtb \
+	imx8mp-tx8p-ml81-lvds-mb.dtb \
 	imx8mq-ddr3l-val.dtb \
 	imx8mq-ddr4-val.dtb \
 	imx8mq-evk.dtb \

@@ -5,8 +5,8 @@
  */
 
 #include "imx8mp-tx8p-ml81.dts"
-#include "imx8mp-tx8m-mipi-mb.dtsi"
+#include "imx8mp-tx8p-lvds-mb.dtsi"
 
 / {
-	model = "Ka-Ro TX8P-ML81 module on TX-MIPI-LVDS Mainboard";
+	model = "Ka-Ro TX8P-ML81 module on TX-MIPI-LVDS baseboard";
 };
