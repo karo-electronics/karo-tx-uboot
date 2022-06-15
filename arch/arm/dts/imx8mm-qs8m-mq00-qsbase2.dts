@@ -42,10 +42,6 @@
 
 		ethphy0: ethernet-phy@3 {
 			reg = <3>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_etnphy_int_b>;
-			interrupt-parent = <&gpio1>;
-			interrupts = <10 IRQ_TYPE_EDGE_FALLING>;
 			rxd0-skew-ps = <(420 + 104)>;
 			rxd1-skew-ps = <(420 + 98)>;
 			rxd2-skew-ps = <(420 + 98)>;
@@ -63,12 +59,6 @@
 };
 
 &iomuxc {
-	pinctrl_etnphy_int_b: etnphy-int-bgrp {
-		fsl,pins = <
-			    MX8MM_IOMUXC_GPIO1_IO10_GPIO1_IO10		0x90
-		>;
-	};
-
 	pinctrl_etnphy_rst_b: etnphy-rst-bgrp {
 		fsl,pins = <
 			    MX8MM_IOMUXC_SAI2_RXC_GPIO4_IO22		0x140

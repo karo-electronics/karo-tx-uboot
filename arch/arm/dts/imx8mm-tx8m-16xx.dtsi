@@ -92,10 +92,6 @@
 		ethphy0: ethernet-phy@0 {
 			compatible = "ethernet-phy-ieee802.3-c22";
 			reg = <0>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_etnphy_int>;
-			interrupt-parent = <&gpio1>;
-			interrupts = <28 IRQ_TYPE_EDGE_FALLING>;
 			smsc,disable-energy-detect;
 		};
 	};
@@ -280,12 +276,6 @@
 };
 
 &iomuxc {
-	pinctrl_etnphy_int: etnphy-intgrp {
-		fsl,pins = <
-			MX8MM_IOMUXC_ENET_RD2_GPIO1_IO28		0x90
-		>;
-	};
-
 	pinctrl_etnphy_power: etnphy-powergrp {
 		fsl,pins = <
 			MX8MM_IOMUXC_ENET_TXC_GPIO1_IO23		0x142
