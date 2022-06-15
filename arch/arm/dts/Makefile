@@ -792,8 +792,10 @@ dtb-$(CONFIG_ARCH_IMX8M) += \
 	imx8mm-verdin.dtb \
 	imx8mm-qs8m-mq00.dtb \
 	imx8mm-qs8m-mq00-qsbase2.dtb \
+	imx8mm-qs8m-mq00-qsbase4.dtb \
 	imx8mm-qsxm-mm60.dtb \
 	imx8mm-qsxm-mm60-qsbase3.dtb \
+	imx8mm-qsxm-mm60-qsbase4.dtb \
 	imx8mm-tx8m-1610.dtb \
 	imx8mm-tx8m-1610-mipi-mb.dtb \
 	imx8mm-tx8m-1620.dtb \
@@ -804,10 +806,12 @@ dtb-$(CONFIG_ARCH_IMX8M) += \
 	imx8mn-evk.dtb \
 	imx8mn-qs8m-nd00.dtb \
 	imx8mn-qs8m-nd00-qsbase2.dtb \
+	imx8mn-qs8m-nd00-qsbase4.dtb \
 	imx8mn-tx8m-nd00.dtb \
 	imx8mn-tx8m-nd00-mipi-mb.dtb \
 	imx8mp-qsxp-ml81.dtb \
 	imx8mp-qsxp-ml81-qsbase3.dtb \
+	imx8mp-qsxp-ml81-qsbase4.dtb \
 	imx8mp-tx8p-ml81.dtb \
 	imx8mp-tx8p-ml81-lvds-mb.dtb \
 	imx8mq-ddr3l-val.dtb \
