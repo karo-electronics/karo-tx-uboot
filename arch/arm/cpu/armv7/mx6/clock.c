@@ -360,7 +360,7 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 		post_div = 1 << (2 - post_div);
 		div &= BM_ANADIG_PLL_AUDIO_DIV_SELECT;
 
-		freq = (u64)infreq * pll_num / pll_denom;
+		freq = lldiv((u64)infreq * pll_num, pll_denom);
 		freq += infreq * div;
 		return lldiv(freq, post_div);
 	case PLL_VIDEO:
@@ -381,7 +381,7 @@ static u32 decode_pll(enum pll_clocks pll, u32 infreq)
 		post_div = 1 << (2 - post_div);
 		div &= BM_ANADIG_PLL_VIDEO_DIV_SELECT;
 
-		freq = (u64)infreq * pll_num / pll_denom;
+		freq = lldiv((u64)infreq * pll_num, pll_denom);
 		freq += infreq * div;
 		return lldiv(freq, post_div);
 	case PLL_ENET:
