@@ -794,13 +794,14 @@ dtb-$(CONFIG_RCAR_GEN3) += \
 	r8a77980-condor-u-boot.dtb \
 	r8a77990-ebisu-u-boot.dtb \
 	r8a77995-draak-u-boot.dtb \
+	r9a07g044l2-txrz-g2l0.dtb \
+	r9a07g044l2-qsrz-g2l0.dtb \
 	rzg2l-dev.dtb \
 	smarc-rzg2l.dtb \
 	rzv2l-dev.dtb \
 	smarc-rzv2l.dtb \
 	rzg2lc-dev.dtb \
-	smarc-rzg2lc.dtb \
-	txrz-g2l0.dtb
+	smarc-rzg2lc.dtb
 
 ifdef CONFIG_RCAR_GEN3
 DTC_FLAGS += -R 4 -p 0x1000

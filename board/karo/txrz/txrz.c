@@ -39,6 +39,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ETH_PVDD_2500	0x02
 #define ETH_MII_RGMII	(PFC_BASE + 0x3018)
 #define ENABLE_MII	0x03
+#define ENABLE_RGMII	0x0C
 
 #define PFC_PWPR		(PFC_BASE + 0x3014)	/* [7] BOWI, [6] PFCWE */
 #define PFC_PMC14		(PFC_BASE + 0x214)	/* [0] P4_0 */
@@ -220,8 +221,12 @@ void s_init(void)
 	/* can go in board_eth_init() once enabled */
 	writel(ETH_PVDD_1800, ETH_CH0);
 	writel(ETH_PVDD_1800, ETH_CH1);
-	/* Enable MII for both ETH{0,1} */
+	/* Enable RGMII or MII for ETH{0,1} */
+#if defined(CONFIG_KARO_QSRZ_G2L0)
+	writel(ENABLE_RGMII, ETH_MII_RGMII);
+#elif defined(CONFIG_KARO_TXRZ_G2L0)
 	writel(ENABLE_MII, ETH_MII_RGMII);
+#endif
 	/* ETH RST */
 	writel(0x30003, CPG_RST_ETH);
 	/* I2C CLK */
