@@ -146,12 +146,30 @@ static int rzg2l_gpio_probe(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	uc_priv->bank_name = dev->name;
 
 	ret = ofnode_parse_phandle_with_args(dev_ofnode(dev), "gpio-ranges",
 					     NULL, 3, 0, &args);
 	priv->bank = ret == 0 ? (args.args[1] / RZG2L_MAX_GPIO_PER_BANK) : -1;
 	uc_priv->gpio_count = ret == 0 ? args.args[2] : RZG2L_MAX_GPIO_PER_BANK;
+
+	if (ret) {
+		uc_priv->bank_name = dev->name;
+	} else {
+		char *buf;
+
+		ret = snprintf(NULL, 0, "P%u_", priv->bank);
+		if (ret < 0)
+			return ret;
+		buf = malloc(ret + 1);
+		if (!buf)
+			return -ENOMEM;
+
+		snprintf(buf, ret + 1, "P%u_", priv->bank);
+		uc_priv->bank_name = buf;
+	}
+	debug("Registering GPIO dev '%s' bank: %2u %u..%u\n",
+	      uc_priv->bank_name, priv->bank, uc_priv->gpio_base,
+	      uc_priv->gpio_base + uc_priv->gpio_count - 1);
 
 	return 0;
 }
