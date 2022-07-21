@@ -222,9 +222,9 @@ void s_init(void)
 	writel(ETH_PVDD_1800, ETH_CH0);
 	writel(ETH_PVDD_1800, ETH_CH1);
 	/* Enable RGMII or MII for ETH{0,1} */
-#if defined(CONFIG_KARO_QSRZ_G2L0)
+#if defined(CONFIG_KARO_QSRZ_G2L0) || defined(CONFIG_KARO_QSRZ_G2L1)
 	writel(ENABLE_RGMII, ETH_MII_RGMII);
-#elif defined(CONFIG_KARO_TXRZ_G2L0)
+#elif defined(CONFIG_KARO_TXRZ_G2L0) || defined(CONFIG_KARO_TXRZ_G2L1)
 	writel(ENABLE_MII, ETH_MII_RGMII);
 #endif
 	/* ETH RST */

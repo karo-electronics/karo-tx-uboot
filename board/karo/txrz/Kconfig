@@ -24,12 +24,26 @@ config KARO_TXRZ_G2L0
 	  Enable support for the Ka-Ro electronics TXRZ-G2L0 module featuring
 	  an RZ/G2L SOC, 1024MiB of SDRAM and 4GiB eMMC.
 
+config KARO_TXRZ_G2L1
+	bool "Ka-Ro TXRZ-G2L1 module"
+	select BOARD_LATE_INIT
+	help
+	  Enable support for the Ka-Ro electronics TXRZ-G2L1 module featuring
+	  an RZ/G2L SOC, 512MiB of SDRAM and 4GiB eMMC.
+
 config KARO_QSRZ_G2L0
 	bool "Ka-Ro QSRZ-G2L0 module"
 	select BOARD_LATE_INIT
 	help
 	  Enable support for the Ka-Ro electronics QSRZ-G2L0 module featuring
 	  an RZ/G2L SOC, 1024MiB of SDRAM and 4GiB eMMC.
+
+config KARO_QSRZ_G2L1
+	bool "Ka-Ro QSRZ-G2L1 module"
+	select BOARD_LATE_INIT
+	help
+	  Enable support for the Ka-Ro electronics QSRZ-G2L1 module featuring
+	  an RZ/G2L SOC, 512MiB of SDRAM and 4GiB eMMC.
 
 endchoice
 

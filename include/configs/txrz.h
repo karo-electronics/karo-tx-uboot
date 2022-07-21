@@ -44,7 +44,12 @@
 
 #define DRAM_RSV_SIZE			SZ_128M
 #define CONFIG_SYS_SDRAM_BASE		(0x40000000 + DRAM_RSV_SIZE)
+
+#if defined(CONFIG_KARO_TXRZ_G2L0) || defined(CONFIG_KARO_QSRZ_G2L0)
 #define CONFIG_SYS_SDRAM_SIZE		(SZ_1G - DRAM_RSV_SIZE) //total 1GB
+#elif defined(CONFIG_KARO_TXRZ_G2L1) || defined(CONFIG_KARO_QSRZ_G2L1)
+#define CONFIG_SYS_SDRAM_SIZE		(SZ_512M - DRAM_RSV_SIZE) //total 512MB
+#endif
 #define CONFIG_SYS_LOAD_ADDR		0x58000000
 #define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR // Default load address for tfpt,bootp...
 #define CONFIG_VERY_BIG_RAM
