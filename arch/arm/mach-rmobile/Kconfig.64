@@ -136,15 +136,10 @@ config TARGET_SMARC_RZG2LC
 	help
           Support for Renesas RZ/G2LC Dev Platform
 
-config TARGET_QSRZ
-        bool "QSRZ"
-        help
-          Ka-Ro electronics GmbH RZ/G2L based QSRZ CoM
-
 config TARGET_TXRZ
         bool "TXRZ"
         help
-          Ka-Ro electronics GmbH RZ/G2L based TXRZ CoM
+          Ka-Ro electronics GmbH RZ/G2L based CoMs
 
 endchoice
 
