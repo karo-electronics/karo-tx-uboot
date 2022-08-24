@@ -90,7 +90,12 @@ config KARO_QSXP_ML81
 	select KARO_QSXM
 
 config KARO_TX8P_ML81
-	bool "Ka-Ro TX8P-ML81 module with LPDDR4"
+	bool "Ka-Ro TX8P-ML81 module with 2GiB LPDDR4"
+	select IMX8MP
+	select KARO_TX8P
+
+config KARO_TX8P_ML82
+	bool "Ka-Ro TX8P-ML82 module with 4GiB LPDDR4"
 	select IMX8MP
 	select KARO_TX8P
 

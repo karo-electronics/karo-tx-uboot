@@ -191,6 +191,8 @@ int checkboard(void)
 
 #if defined(CONFIG_KARO_TX8P_ML81)
 	printf("Board: Ka-Ro TX8P-ML81\n");
+#elif defined(CONFIG_KARO_TX8P_ML82)
+	printf("Board: Ka-Ro TX8P-ML82\n");
 #elif defined(CONFIG_KARO_QSXP_ML81)
 	printf("Board: Ka-Ro QSXP-ML81\n");
 #else
