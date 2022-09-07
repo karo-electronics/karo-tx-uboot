@@ -1200,6 +1200,7 @@ dtb-$(CONFIG_STM32MP15X) += \
 	stm32mp157c-odyssey.dtb \
 	stm32mp157c-qsmp-1570.dtb \
 	stm32mp157c-txmp-1570.dtb \
+	stm32mp157c-txmp-1571.dtb \
 	stm32mp15xx-dhcom-drc02.dtb \
 	stm32mp157d-dk1.dtb \
 	stm32mp157d-ed1.dtb \
