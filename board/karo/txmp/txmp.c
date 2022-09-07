@@ -123,6 +123,8 @@ int checkboard(void)
 
 #if defined(CONFIG_KARO_TXMP_1570)
 	printf("Board: TXMP-1570 in %s mode", mode);
+#elif defined(CONFIG_KARO_TXMP_1571)
+	printf("Board: TXMP-1571 in %s mode", mode);
 #elif defined(CONFIG_KARO_QSMP_1510)
 	printf("Board: QSMP-1510 in %s mode", mode);
 #elif defined(CONFIG_KARO_QSMP_1530)
