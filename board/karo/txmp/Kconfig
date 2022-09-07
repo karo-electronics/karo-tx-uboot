@@ -29,6 +29,14 @@ config KARO_TXMP_1570
 	  Enable support for the Ka-Ro electronics TXMP-1570 module featuring
 	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB or 8GiB eMMC.
 
+config KARO_TXMP_1571
+	bool "Ka-Ro TXMP-1571 module"
+	select KARO_STM32
+	imply TXMP_EMMC
+	help
+	  TXMP-1570 with corrected pinout compatible with the rest of the
+	  TX module family
+
 config KARO_QSMP_1510
 	bool "Ka-Ro QSMP-1510 solder-in module"
 	select KARO_STM32
