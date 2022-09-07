@@ -198,6 +198,13 @@ config FASTBOOT_CMD_OEM_FORMAT
 	  relies on the env variable partitions to contain the list of
 	  partitions as required by the gpt command.
 
+config FASTBOOT_CMD_OEM_UCMD
+	bool "Enable the 'oem ucmd' command"
+	depends on FASTBOOT
+	help
+	  Add support for the "oem ucmd" command from a client. This
+	  will allow you to send over u-boot commands from fastboot util.
+
 config FASTBOOT_CMD_OEM_PARTCONF
 	bool "Enable the 'oem partconf' command"
 	depends on FASTBOOT_FLASH_MMC && SUPPORT_EMMC_BOOT
