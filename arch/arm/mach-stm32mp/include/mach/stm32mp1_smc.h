@@ -8,19 +8,53 @@
 
 #include <linux/arm-smccc.h>
 
+/* SMC service generic return codes */
+#define STM32_SMC_OK			0x00000000U
+#define STM32_SMC_NOT_SUPPORTED		0xFFFFFFFFU
+#define STM32_SMC_FAILED		0xFFFFFFFEU
+#define STM32_SMC_INVALID_PARAMS	0xFFFFFFFDU
+
 /*
- * SMC function IDs for STM32 Service queries
+ * SMC function IDs for STM32 Service queries.
  * STM32 SMC services use the space between 0x82000000 and 0x8200FFFF
  * like this is defined in SMC calling Convention by ARM
- * for SiP (silicon Partner)
- * http://infocenter.arm.com/help/topic/com.arm.doc.den0028a/index.html
+ * for SiP (silicon Partner).
+ * https://developer.arm.com/docs/den0028/latest
  */
-#define STM32_SMC_VERSION		0x82000000
 
 /* Secure Service access from Non-secure */
+
+/*
+ * SMC function STM32_SMC_PWR.
+ *
+ * Argument a0: (input) SMCC ID.
+ *		(output) Status return code.
+ * Argument a1: (input) Service ID (STM32_SMC_REG_xxx).
+ * Argument a2: (input) Register offset or physical address.
+ *		(output) Register read value, if applicable.
+ * Argument a3: (input) Register target value if applicable.
+ */
+#define STM32_SMC_PWR			0x82001001
+
+/*
+ * SMC functions STM32_SMC_BSEC.
+ *
+ * Argument a0: (input) SMCC ID.
+ *		(output) Status return code.
+ * Argument a1: (input) Service ID (STM32_SMC_READ_xxx/_PROG_xxx/_WRITE_xxx).
+ *		(output) OTP read value, if applicable.
+ * Argument a2: (input) OTP index.
+ * Argument a3: (input) OTP value if applicable.
+ */
 #define STM32_SMC_BSEC			0x82001003
 
-/* Service for BSEC */
+/* Service ID for STM32_SMC_PWR */
+#define STM32_SMC_REG_READ		0x0
+#define STM32_SMC_REG_WRITE		0x1
+#define STM32_SMC_REG_SET		0x2
+#define STM32_SMC_REG_CLEAR		0x3
+
+/* Service ID for STM32_SMC_BSEC */
 #define STM32_SMC_READ_SHADOW		0x01
 #define STM32_SMC_PROG_OTP		0x02
 #define STM32_SMC_WRITE_SHADOW		0x03
@@ -28,12 +62,6 @@
 #define STM32_SMC_READ_ALL		0x05
 #define STM32_SMC_WRITE_ALL		0x06
 #define STM32_SMC_WRLOCK_OTP		0x07
-
-/* SMC error codes */
-#define STM32_SMC_OK			0x0
-#define STM32_SMC_NOT_SUPPORTED		-1
-#define STM32_SMC_FAILED		-2
-#define STM32_SMC_INVALID_PARAMS	-3
 
 #define stm32_smc_exec(svc, op, data1, data2) \
 	stm32_smc(svc, op, data1, data2, NULL)

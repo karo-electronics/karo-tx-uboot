@@ -21,7 +21,6 @@
 #include <asm/io.h>
 #include <asm/armv7m.h>
 #include <asm/arch/stm32.h>
-#include <asm/arch/gpio.h>
 #include <asm/arch/syscfg.h>
 #include <asm/gpio.h>
 #include <linux/delay.h>
@@ -122,8 +121,6 @@ int board_late_init(void)
 
 int board_init(void)
 {
-	gd->bd->bi_boot_params = gd->bd->bi_dram[0].start + 0x100;
-
 #ifdef CONFIG_ETH_DESIGNWARE
 	const char *phy_mode;
 	int node;

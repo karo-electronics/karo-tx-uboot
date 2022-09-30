@@ -32,11 +32,19 @@ struct stm32_vrefbuf {
 	void __iomem *base;
 	struct clk clk;
 	struct udevice *vdda_supply;
+	const int *voltages;
 };
 
-static const int stm32_vrefbuf_voltages[] = {
+#define STM32_VOLTAGE_TABLE_SIZE 4
+
+static const int stm32_vrefbuf_voltages[STM32_VOLTAGE_TABLE_SIZE] = {
 	/* Matches resp. VRS = 000b, 001b, 010b, 011b */
 	2500000, 2048000, 1800000, 1500000,
+};
+
+static const int stm32mp13_vrefbuf_voltages[STM32_VOLTAGE_TABLE_SIZE] = {
+	/* Matches resp. VRS = 000b, 001b, 010b, 011b */
+	2500000, 2048000, 1800000, 1650000,
 };
 
 static int stm32_vrefbuf_set_enable(struct udevice *dev, bool enable)
@@ -92,8 +100,8 @@ static int stm32_vrefbuf_set_value(struct udevice *dev, int uV)
 	struct stm32_vrefbuf *priv = dev_get_priv(dev);
 	unsigned int i;
 
-	for (i = 0; i < ARRAY_SIZE(stm32_vrefbuf_voltages); i++) {
-		if (uV == stm32_vrefbuf_voltages[i]) {
+	for (i = 0; i < STM32_VOLTAGE_TABLE_SIZE; i++) {
+		if (uV == priv->voltages[i]) {
 			clrsetbits_le32(priv->base + STM32_VREFBUF_CSR,
 					STM32_VRS, i << STM32_VRS_SHIFT);
 			return 0;
@@ -111,7 +119,7 @@ static int stm32_vrefbuf_get_value(struct udevice *dev)
 	val = readl(priv->base + STM32_VREFBUF_CSR) & STM32_VRS;
 	val >>= STM32_VRS_SHIFT;
 
-	return stm32_vrefbuf_voltages[val];
+	return priv->voltages[val];
 }
 
 static const struct dm_regulator_ops stm32_vrefbuf_ops = {
@@ -127,6 +135,12 @@ static int stm32_vrefbuf_probe(struct udevice *dev)
 	int ret;
 
 	priv->base = dev_read_addr_ptr(dev);
+
+	priv->voltages = (const int *)dev_get_driver_data(dev);
+	if (!priv->voltages) {
+		debug("Cannot find driver data\n");
+		return -EINVAL;
+	}
 
 	ret = clk_get_by_index(dev, 0, &priv->clk);
 	if (ret) {
@@ -157,7 +171,8 @@ static int stm32_vrefbuf_probe(struct udevice *dev)
 }
 
 static const struct udevice_id stm32_vrefbuf_ids[] = {
-	{ .compatible = "st,stm32-vrefbuf" },
+	{ .compatible = "st,stm32-vrefbuf", .data = (ulong)&stm32_vrefbuf_voltages },
+	{ .compatible = "st,stm32mp13-vrefbuf", .data = (ulong)&stm32mp13_vrefbuf_voltages },
 	{ }
 };
 

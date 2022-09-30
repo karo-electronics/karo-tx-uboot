@@ -3,7 +3,7 @@
 VERSION = 2021
 PATCHLEVEL = 10
 SUBLEVEL =
-EXTRAVERSION =
+EXTRAVERSION = -stm32mp-r1
 NAME =
 
 # *DOCUMENTATION*
@@ -843,6 +843,7 @@ libs-y += drivers/usb/mtu3/
 libs-y += drivers/usb/musb/
 libs-y += drivers/usb/musb-new/
 libs-y += drivers/usb/phy/
+libs-y += drivers/usb/typec/
 libs-y += drivers/usb/ulpi/
 ifdef CONFIG_POST
 libs-y += post/
@@ -1122,6 +1123,13 @@ ifneq ($(CONFIG_DM),y)
 	@echo >&2 "compulsory starting with the v2020.01 release."
 	@echo >&2 "Failure to update may result in board removal."
 	@echo >&2 "See doc/driver-model/migration.rst for more info."
+	@echo >&2 "===================================================="
+endif
+ifeq ($(CONFIG_STM32MP15x_STM32IMAGE),y)
+	@echo >&2 "===================== WARNING ======================"
+	@echo >&2 "This board uses CONFIG_STM32MP15x_STM32IMAGE for STM32 image"
+	@echo >&2 "support in TF-A and these configuration is deprecated."
+	@echo >&2 "Please migrate to FIP support in TF-A instead."
 	@echo >&2 "===================================================="
 endif
 	$(call deprecated,CONFIG_WDT,DM watchdog,v2019.10,\

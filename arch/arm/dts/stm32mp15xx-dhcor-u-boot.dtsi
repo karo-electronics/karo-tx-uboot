@@ -25,15 +25,6 @@
 	u-boot,dm-spl;
 };
 
-&gpiof {
-	snor-nwp {
-		gpio-hog;
-		gpios = <7 0>;
-		output-high;
-		line-name = "spi-nor-nwp";
-	};
-};
-
 &i2c4 {
 	u-boot,dm-pre-reloc;
 };
@@ -70,6 +61,7 @@
 	};
 };
 
+#ifndef CONFIG_TFABOOT
 &rcc {
 	st,clksrc = <
 		CLK_MPU_PLL1P
@@ -161,3 +153,4 @@
 		u-boot,dm-pre-reloc;
 	};
 };
+#endif

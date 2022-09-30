@@ -13,11 +13,13 @@
 #include <dm.h>
 #include <env.h>
 #include <env_internal.h>
+#include <fdt_simplefb.h>
 #include <fdt_support.h>
 #include <g_dnl.h>
 #include <generic-phy.h>
 #include <hang.h>
 #include <i2c.h>
+#include <regmap.h>
 #include <init.h>
 #include <led.h>
 #include <log.h>
@@ -30,6 +32,7 @@
 #include <remoteproc.h>
 #include <reset.h>
 #include <syscon.h>
+#include <typec.h>
 #include <usb.h>
 #include <watchdog.h>
 #include <asm/global_data.h>
@@ -37,15 +40,16 @@
 #include <asm/gpio.h>
 #include <asm/arch/stm32.h>
 #include <asm/arch/sys_proto.h>
+#include <dm/device.h>
+#include <dm/device-internal.h>
 #include <jffs2/load_kernel.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/iopoll.h>
 #include <power/regulator.h>
+#include <tee/optee.h>
 #include <usb/dwc2_udc.h>
-
-#include "../../st/common/stusb160x.h"
 
 /* SYSCFG registers */
 #define SYSCFG_BOOTR		0x00
@@ -54,7 +58,8 @@
 #define SYSCFG_ICNR		0x1C
 #define SYSCFG_CMPCR		0x20
 #define SYSCFG_CMPENSETR	0x24
-#define SYSCFG_PMCCLRR		0x44
+#define SYSCFG_PMCCLRR		0x08
+#define SYSCFG_MP13_PMCCLRR	0x44
 
 #define SYSCFG_BOOTR_BOOT_MASK		GENMASK(2, 0)
 #define SYSCFG_BOOTR_BOOTPD_SHIFT	4
@@ -70,15 +75,8 @@
 
 #define SYSCFG_CMPENSETR_MPU_EN		BIT(0)
 
-#define SYSCFG_PMCSETR_ETH_CLK_SEL	BIT(16)
-#define SYSCFG_PMCSETR_ETH_REF_CLK_SEL	BIT(17)
-
-#define SYSCFG_PMCSETR_ETH_SELMII	BIT(20)
-
-#define SYSCFG_PMCSETR_ETH_SEL_MASK	GENMASK(23, 21)
-#define SYSCFG_PMCSETR_ETH_SEL_GMII_MII	0
-#define SYSCFG_PMCSETR_ETH_SEL_RGMII	BIT(21)
-#define SYSCFG_PMCSETR_ETH_SEL_RMII	BIT(23)
+#define GOODIX_REG_ID		0x8140
+#define GOODIX_ID_LEN		4
 
 /*
  * Get a global data pointer
@@ -189,6 +187,20 @@ static void board_key_check(void)
 	}
 }
 
+static int typec_usb_cable_connected(void)
+{
+	struct udevice *dev;
+	int ret;
+	u8 connector = 0;
+
+	ret = uclass_get_device(UCLASS_USB_TYPEC, 0, &dev);
+	if (ret < 0)
+		return ret;
+
+	return (typec_is_attached(dev, connector) == TYPEC_ATTACHED) &&
+	       (typec_get_data_role(dev, connector) == TYPEC_DEVICE);
+}
+
 int g_dnl_board_usb_cable_connected(void)
 {
 	struct udevice *dwc2_udc_otg;
@@ -197,8 +209,15 @@ int g_dnl_board_usb_cable_connected(void)
 	if (!IS_ENABLED(CONFIG_USB_GADGET_DWC2_OTG))
 		return -ENODEV;
 
-	/* if typec stusb160x is present, means DK1 or DK2 board */
-	ret = stusb160x_cable_connected();
+	/*
+	 * In case of USB boot device is detected, consider USB cable is
+	 * connected
+	 */
+	if ((get_bootmode() & TAMP_BOOT_DEVICE_MASK) == BOOT_SERIAL_USB)
+		return true;
+
+	/* if Type-C is present, it means DK1 or DK2 board */
+	ret = typec_usb_cable_connected();
 	if (ret >= 0)
 		return ret;
 
@@ -352,9 +371,6 @@ static int board_check_usb_power(void)
 	int adc_count, ret;
 	u32 nb_blink;
 	u8 i;
-
-	if (!IS_ENABLED(CONFIG_ADC))
-		return -ENODEV;
 
 	node = ofnode_path("/config");
 	if (!ofnode_valid(node)) {
@@ -545,8 +561,7 @@ static void sysconf_init(void)
 	clrbits_le32(syscfg + SYSCFG_CMPCR, SYSCFG_CMPCR_SW_CTRL);
 }
 
-/* Fix to make I2C1 usable on DK2 for touchscreen usage in kernel */
-static int dk2_i2c1_fix(void)
+static int board_stm32mp15x_dk2_init(void)
 {
 	ofnode node;
 	struct gpio_desc hdmi, audio;
@@ -555,6 +570,7 @@ static int dk2_i2c1_fix(void)
 	if (!IS_ENABLED(CONFIG_DM_REGULATOR))
 		return -ENODEV;
 
+	/* Fix to make I2C1 usable on DK2 for touchscreen usage in kernel */
 	node = ofnode_path("/soc/i2c@40012000/hdmi-transmitter@39");
 	if (!ofnode_valid(node)) {
 		log_debug("no hdmi-transmitter@39 ?\n");
@@ -602,16 +618,27 @@ error:
 	return ret;
 }
 
-static bool board_is_dk2(void)
+static bool board_is_stm32mp13x_dk(void)
 {
-	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15x) &&
-	    of_machine_is_compatible("st,stm32mp157c-dk2"))
+	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP13x) &&
+	    (of_machine_is_compatible("st,stm32mp135d-dk") ||
+	     of_machine_is_compatible("st,stm32mp135f-dk")))
 		return true;
 
 	return false;
 }
 
-static bool board_is_ev1(void)
+static bool board_is_stm32mp15x_dk2(void)
+{
+	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15x) &&
+	    (of_machine_is_compatible("st,stm32mp157c-dk2") ||
+	     of_machine_is_compatible("st,stm32mp157f-dk2")))
+		return true;
+
+	return false;
+}
+
+static bool board_is_stm32mp15x_ev1(void)
 {
 	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15x) &&
 	    (of_machine_is_compatible("st,stm32mp157a-ev1") ||
@@ -623,47 +650,224 @@ static bool board_is_ev1(void)
 	return false;
 }
 
+/* touchscreen driver: used for focaltech touchscreen detection */
+static const struct udevice_id edt_ft6236_ids[] = {
+	{ .compatible = "focaltech,ft6236", },
+	{ }
+};
+
+U_BOOT_DRIVER(edt_ft6236) = {
+	.name		= "edt_ft6236",
+	.id		= UCLASS_I2C_GENERIC,
+	.of_match	= edt_ft6236_ids,
+};
+
 /* touchscreen driver: only used for pincontrol configuration */
 static const struct udevice_id goodix_ids[] = {
+	{ .compatible = "goodix,gt911", },
 	{ .compatible = "goodix,gt9147", },
 	{ }
 };
 
 U_BOOT_DRIVER(goodix) = {
 	.name		= "goodix",
-	.id		= UCLASS_NOP,
+	.id		= UCLASS_I2C_GENERIC,
 	.of_match	= goodix_ids,
 };
 
-static void board_ev1_init(void)
+static int goodix_i2c_read(struct udevice *dev, u16 reg, u8 *buf, int len)
+{
+	struct i2c_msg msgs[2];
+	__be16 wbuf = cpu_to_be16(reg);
+	int ret;
+
+	msgs[0].flags = 0;
+	msgs[0].addr  = 0x5d;
+	msgs[0].len   = 2;
+	msgs[0].buf   = (u8 *)&wbuf;
+
+	msgs[1].flags = I2C_M_RD;
+	msgs[1].addr  = 0x5d;
+	msgs[1].len   = len;
+	msgs[1].buf   = buf;
+
+	ret = dm_i2c_xfer(dev, msgs, 2);
+
+	return ret;
+}
+
+/* HELPER: search detected driver */
+struct detect_info_t {
+	bool (*detect)(void);
+	struct driver *drv;
+};
+
+static struct driver *detect_device(struct detect_info_t *info, u8 size)
+{
+	struct driver *drv = NULL;
+	u8 i;
+
+	for (i = 0; i < size && !drv; i++)
+		if (info[i].detect())
+			drv = info[i].drv;
+
+	return drv;
+}
+
+/* HELPER: force new driver binding, replace the existing one */
+static void bind_driver(struct driver *drv, const char *path)
+{
+	ofnode node;
+	struct udevice *dev;
+	struct udevice *parent;
+	int ret;
+
+	node = ofnode_path(path);
+	if (!ofnode_valid(node))
+		return;
+	if (!ofnode_is_enabled(node))
+		return;
+
+	ret = device_find_global_by_ofnode(ofnode_get_parent(node), &parent);
+	if (!parent || ret) {
+		log_debug("Unable to found parent. err:%d\n", ret);
+		return;
+	}
+
+	ret = device_find_global_by_ofnode(node, &dev);
+	/* remove the driver previously binded */
+	if (dev && !ret) {
+		if (dev->driver == drv) {
+			log_debug("nothing to do, %s already binded.\n", drv->name);
+			return;
+		}
+		log_debug("%s unbind\n", dev->driver->name);
+		device_remove(dev, DM_REMOVE_NORMAL);
+		device_unbind(dev);
+	}
+	/* bind the new driver */
+	ret = device_bind_with_driver_data(parent, drv, ofnode_get_name(node),
+					   0, node, &dev);
+	if (ret)
+		log_debug("Unable to bind %s, err:%d\n", drv->name, ret);
+}
+
+bool stm32mp15x_ev1_rm68200(void)
+{
+	struct udevice *dev;
+	struct udevice *bus;
+	struct dm_i2c_chip *chip;
+	char id[GOODIX_ID_LEN];
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(goodix), &dev);
+	if (ret)
+		return false;
+
+	bus = dev_get_parent(dev);
+	chip = dev_get_parent_plat(dev);
+	ret = dm_i2c_probe(bus, chip->chip_addr, 0, &dev);
+	if (ret)
+		return false;
+
+	ret = goodix_i2c_read(dev, GOODIX_REG_ID, id, sizeof(id));
+	if (ret)
+		return false;
+
+	if (!strncmp(id, "9147", sizeof(id)))
+		return true;
+
+	return false;
+}
+
+bool stm32mp15x_ev1_hx8394(void)
+{
+	return true;
+}
+
+extern U_BOOT_DRIVER(rm68200_panel);
+extern U_BOOT_DRIVER(hx8394_panel);
+
+struct detect_info_t stm32mp15x_ev1_panels[] = {
+	CONFIG_IS_ENABLED(VIDEO_LCD_RAYDIUM_RM68200,
+			  ({ .detect = stm32mp15x_ev1_rm68200,
+			   .drv = DM_DRIVER_REF(rm68200_panel)
+			   },
+			   ))
+	CONFIG_IS_ENABLED(VIDEO_LCD_ROCKTECH_HX8394,
+			  ({ .detect = stm32mp15x_ev1_hx8394,
+			   .drv = DM_DRIVER_REF(hx8394_panel)
+			   },
+			   ))
+};
+
+static void board_stm32mp15x_ev1_init(void)
+{
+	struct udevice *dev;
+	struct driver *drv;
+	struct gpio_desc reset_gpio;
+	char path[40];
+
+	/* configure IRQ line on EV1 for touchscreen before LCD reset */
+	uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(goodix), &dev);
+
+	/* get & set reset gpio for panel */
+	uclass_get_device_by_driver(UCLASS_PANEL, DM_DRIVER_GET(rm68200_panel), &dev);
+
+	gpio_request_by_name(dev, "reset-gpios", 0, &reset_gpio, GPIOD_IS_OUT);
+
+	if (!dm_gpio_is_valid(&reset_gpio))
+		return;
+
+	dm_gpio_set_value(&reset_gpio, true);
+	mdelay(1);
+	dm_gpio_set_value(&reset_gpio, false);
+	mdelay(10);
+
+	/* auto detection of connected panel-dsi */
+	drv = detect_device(stm32mp15x_ev1_panels, ARRAY_SIZE(stm32mp15x_ev1_panels));
+	if (!drv)
+		return;
+	/* save the detected compatible in environment */
+	env_set("panel-dsi", drv->of_match->compatible);
+
+	dm_gpio_free(NULL, &reset_gpio);
+
+	/* select the driver for the detected PANEL */
+	ofnode_get_path(dev_ofnode(dev), path, sizeof(path));
+	bind_driver(drv, path);
+}
+
+static void board_stm32mp13x_dk_init(void)
 {
 	struct udevice *dev;
 
-	/* configure IRQ line on EV1 for touchscreen before LCD reset */
+	/* configure IRQ line on DK for touchscreen before LCD reset */
 	uclass_get_device_by_driver(UCLASS_NOP, DM_DRIVER_GET(goodix), &dev);
 }
 
 /* board dependent setup after realloc */
 int board_init(void)
 {
-	/* address of boot parameters */
-	gd->bd->bi_boot_params = STM32_DDR_BASE + 0x100;
+	struct udevice *dev;
+	int ret;
 
-	if (CONFIG_IS_ENABLED(DM_GPIO_HOG))
-		gpio_hog_probe_all();
+	/* probe RCC to avoid circular access with usbphyc probe as clk provider */
+	if (IS_ENABLED(CONFIG_CLK_STM32MP13)) {
+		ret = uclass_get_device_by_driver(UCLASS_CLK, DM_DRIVER_GET(stm32mp1_clock), &dev);
+		log_debug("Clock init failed: %d\n", ret);
+	}
 
 	board_key_check();
-
-	if (board_is_ev1())
-		board_ev1_init();
-
-	if (board_is_dk2())
-		dk2_i2c1_fix();
 
 	if (IS_ENABLED(CONFIG_DM_REGULATOR))
 		regulators_enable_boot_on(_DEBUG);
 
-	if (!IS_ENABLED(CONFIG_TFABOOT))
+	/*
+	 * sysconf initialisation done only when U-Boot is running in secure
+	 * done in TF-A for TFABOOT.
+	 */
+	if (IS_ENABLED(CONFIG_ARMV7_NONSEC))
 		sysconf_init();
 
 	if (CONFIG_IS_ENABLED(LED))
@@ -684,6 +888,15 @@ int board_late_init(void)
 	char buf[10];
 	char dtb_name[256];
 	int buf_len;
+
+	if (board_is_stm32mp13x_dk())
+		board_stm32mp13x_dk_init();
+
+	if (board_is_stm32mp15x_ev1())
+		board_stm32mp15x_ev1_init();
+
+	if (board_is_stm32mp15x_dk2())
+		board_stm32mp15x_dk2_init();
 
 	if (IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)) {
 		fdt_compat = fdt_getprop(gd->fdt_blob, 0, "compatible",
@@ -718,8 +931,14 @@ int board_late_init(void)
 		}
 	}
 
-	/* for DK1/DK2 boards */
-	board_check_usb_power();
+	if (IS_ENABLED(CONFIG_ADC)) {
+		/* probe all ADC for calibration */
+		uclass_foreach_dev_probe(UCLASS_ADC, dev) {
+			log_debug("ACD probe for calibration: %s\n", dev->name);
+		}
+		/* for DK1/DK2 boards */
+		board_check_usb_power();
+	}
 
 	return 0;
 }
@@ -729,58 +948,114 @@ void board_quiesce_devices(void)
 	setup_led(LEDST_OFF);
 }
 
+/* CLOCK feed to PHY*/
+#define ETH_CK_F_25M	25000000
+#define ETH_CK_F_50M	50000000
+#define ETH_CK_F_125M	125000000
+
+struct stm32_syscfg_pmcsetr {
+	u32 syscfg_clr_off;
+	u32 eth1_clk_sel;
+	u32 eth1_ref_clk_sel;
+	u32 eth1_sel_mii;
+	u32 eth1_sel_rgmii;
+	u32 eth1_sel_rmii;
+	u32 eth2_clk_sel;
+	u32 eth2_ref_clk_sel;
+	u32 eth2_sel_rgmii;
+	u32 eth2_sel_rmii;
+};
+
+const struct stm32_syscfg_pmcsetr stm32mp15_syscfg_pmcsetr = {
+	.syscfg_clr_off		= 0x44,
+	.eth1_clk_sel		= BIT(16),
+	.eth1_ref_clk_sel	= BIT(17),
+	.eth1_sel_mii		= BIT(20),
+	.eth1_sel_rgmii		= BIT(21),
+	.eth1_sel_rmii		= BIT(23),
+	.eth2_clk_sel		= 0,
+	.eth2_ref_clk_sel	= 0,
+	.eth2_sel_rgmii		= 0,
+	.eth2_sel_rmii		= 0
+};
+
+const struct stm32_syscfg_pmcsetr stm32mp13_syscfg_pmcsetr = {
+	.syscfg_clr_off		= 0x08,
+	.eth1_clk_sel		= BIT(16),
+	.eth1_ref_clk_sel	= BIT(17),
+	.eth1_sel_mii		= 0,
+	.eth1_sel_rgmii		= BIT(21),
+	.eth1_sel_rmii		= BIT(23),
+	.eth2_clk_sel		= BIT(24),
+	.eth2_ref_clk_sel	= BIT(25),
+	.eth2_sel_rgmii		= BIT(29),
+	.eth2_sel_rmii		= BIT(31)
+};
+
+#define SYSCFG_PMCSETR_ETH_MASK		GENMASK(23, 16)
+#define SYSCFG_PMCR_ETH_SEL_GMII	0
+
 /* eth init function : weak called in eqos driver */
 int board_interface_eth_init(struct udevice *dev,
-			     phy_interface_t interface_type)
+			     phy_interface_t interface_type, ulong rate)
 {
-	u8 *syscfg;
+	struct regmap *regmap;
+	uint regmap_mask;
+	int ret;
 	u32 value;
-	bool eth_clk_sel_reg = false;
-	bool eth_ref_clk_sel_reg = false;
+	bool ext_phyclk, eth_clk_sel_reg, eth_ref_clk_sel_reg;
+	const struct stm32_syscfg_pmcsetr *pmcsetr;
+
+	/* Ethernet PHY have no crystal */
+	ext_phyclk = dev_read_bool(dev, "st,ext-phyclk");
 
 	/* Gigabit Ethernet 125MHz clock selection. */
 	eth_clk_sel_reg = dev_read_bool(dev, "st,eth-clk-sel");
 
 	/* Ethernet 50Mhz RMII clock selection */
-	eth_ref_clk_sel_reg =
-		dev_read_bool(dev, "st,eth-ref-clk-sel");
+	eth_ref_clk_sel_reg = dev_read_bool(dev, "st,eth-ref-clk-sel");
 
-	syscfg = (u8 *)syscon_get_first_range(STM32MP_SYSCON_SYSCFG);
+	if (device_is_compatible(dev, "st,stm32mp13-dwmac"))
+		pmcsetr = &stm32mp13_syscfg_pmcsetr;
+	else
+		pmcsetr = &stm32mp15_syscfg_pmcsetr;
 
-	if (!syscfg)
+	regmap = syscon_regmap_lookup_by_phandle(dev, "st,syscon");
+	if (!IS_ERR(regmap)) {
+		u32 fmp[3];
+
+		ret = dev_read_u32_array(dev, "st,syscon", fmp, 3);
+		if (ret)
+			/*  If no mask in DT, it is MP15 (backward compatibility) */
+			regmap_mask = SYSCFG_PMCSETR_ETH_MASK;
+		else
+			regmap_mask = fmp[2];
+	} else {
 		return -ENODEV;
+	}
 
 	switch (interface_type) {
 	case PHY_INTERFACE_MODE_MII:
-		value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII |
-			SYSCFG_PMCSETR_ETH_REF_CLK_SEL;
+		value = pmcsetr->eth1_sel_mii;
 		log_debug("PHY_INTERFACE_MODE_MII\n");
 		break;
 	case PHY_INTERFACE_MODE_GMII:
-		if (eth_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII |
-				SYSCFG_PMCSETR_ETH_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII;
+		value = SYSCFG_PMCR_ETH_SEL_GMII;
 		log_debug("PHY_INTERFACE_MODE_GMII\n");
 		break;
 	case PHY_INTERFACE_MODE_RMII:
-		if (eth_ref_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_RMII |
-				SYSCFG_PMCSETR_ETH_REF_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_RMII;
+		value = pmcsetr->eth1_sel_rmii | pmcsetr->eth2_sel_rmii;
+		if (rate == ETH_CK_F_50M && (eth_clk_sel_reg || ext_phyclk))
+			value |= pmcsetr->eth1_ref_clk_sel | pmcsetr->eth2_ref_clk_sel;
 		log_debug("PHY_INTERFACE_MODE_RMII\n");
 		break;
 	case PHY_INTERFACE_MODE_RGMII:
 	case PHY_INTERFACE_MODE_RGMII_ID:
 	case PHY_INTERFACE_MODE_RGMII_RXID:
 	case PHY_INTERFACE_MODE_RGMII_TXID:
-		if (eth_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_RGMII |
-				SYSCFG_PMCSETR_ETH_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_RGMII;
+		value = pmcsetr->eth1_sel_rgmii | pmcsetr->eth2_sel_rgmii;
+		if (rate == ETH_CK_F_125M && (eth_clk_sel_reg || ext_phyclk))
+			value |= pmcsetr->eth1_clk_sel | pmcsetr->eth2_clk_sel;
 		log_debug("PHY_INTERFACE_MODE_RGMII\n");
 		break;
 	default:
@@ -790,13 +1065,12 @@ int board_interface_eth_init(struct udevice *dev,
 		return -EINVAL;
 	}
 
-	/* clear and set ETH configuration bits */
-	writel(SYSCFG_PMCSETR_ETH_SEL_MASK | SYSCFG_PMCSETR_ETH_SELMII |
-	       SYSCFG_PMCSETR_ETH_REF_CLK_SEL | SYSCFG_PMCSETR_ETH_CLK_SEL,
-	       syscfg + SYSCFG_PMCCLRR);
-	writel(value, syscfg + SYSCFG_PMCSETR);
+	/* Need to update PMCCLRR (clear register) */
+	regmap_write(regmap, pmcsetr->syscfg_clr_off, regmap_mask);
 
-	return 0;
+	ret = regmap_update_bits(regmap, SYSCFG_PMCSETR, regmap_mask, value);
+
+	return ret;
 }
 
 enum env_location env_get_location(enum env_operation op, int prio)
@@ -890,14 +1164,277 @@ const char *env_ext4_get_dev_part(void)
 
 int mmc_get_env_dev(void)
 {
-	if (CONFIG_SYS_MMC_ENV_DEV >= 0)
-		return CONFIG_SYS_MMC_ENV_DEV;
+	const int mmc_env_dev = CONFIG_IS_ENABLED(ENV_IS_IN_MMC, (CONFIG_SYS_MMC_ENV_DEV), (-1));
+
+	if (mmc_env_dev >= 0)
+		return mmc_env_dev;
 
 	/* use boot instance to select the correct mmc device identifier */
 	return mmc_get_boot();
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
+
+/* update scmi nodes with information provided by SP-MIN */
+void stm32mp15_fdt_update_scmi_node(void *new_blob)
+{
+	ofnode node;
+	int nodeoff = 0;
+	const char *name;
+	u32 val;
+	int ret;
+
+	nodeoff = fdt_path_offset(new_blob, "/firmware/scmi");
+	if (nodeoff < 0)
+		return;
+
+	/* search scmi node in U-Boot device tree */
+	node = ofnode_path("/firmware/scmi");
+	if (!ofnode_valid(node)) {
+		log_warning("node not found");
+		return;
+	}
+	if (!ofnode_device_is_compatible(node, "arm,scmi-smc")) {
+		name = ofnode_get_property(node, "compatible", NULL);
+		log_warning("invalid compatible %s", name);
+		return;
+	}
+
+	/* read values updated by TF-A SP-MIN */
+	ret = ofnode_read_u32(node, "arm,smc-id", &val);
+	if (ret) {
+		log_warning("arm,smc-id missing");
+		return;
+	}
+	/* update kernel node */
+	fdt_setprop_string(new_blob, nodeoff, "compatible", "arm,scmi-smc");
+	fdt_delprop(new_blob, nodeoff, "linaro,optee-channel-id");
+	fdt_setprop_u32(new_blob, nodeoff, "arm,smc-id", val);
+}
+
+/*
+ * update the device tree to support boot with SP-MIN, using a device tree
+ * containing OPTE nodes:
+ * 1/ remove the OP-TEE related nodes
+ * 2/ copy SCMI nodes to kernel device tree to replace the OP-TEE agent
+ *
+ * SP-MIN boot is supported for STM32MP15 and it uses the SCMI SMC agent
+ * whereas Linux device tree defines an SCMI OP-TEE agent.
+ *
+ * This function allows to temporary support this legacy boot mode,
+ * with SP-MIN and without OP-TEE.
+ */
+void stm32mp15_fdt_update_optee_nodes(void *new_blob)
+{
+	ofnode node;
+	int nodeoff = 0, subnodeoff;
+
+	/* only proceed if /firmware/optee node is not present in U-Boot DT */
+	node = ofnode_path("/firmware/optee");
+	if (ofnode_valid(node)) {
+		log_debug("OP-TEE firmware found, nothing to do");
+		return;
+	}
+
+	/* remove OP-TEE memory regions in reserved-memory node */
+	nodeoff = fdt_path_offset(new_blob, "/reserved-memory");
+	if (nodeoff >= 0) {
+		fdt_for_each_subnode(subnodeoff, new_blob, nodeoff) {
+			const char *name = fdt_get_name(new_blob, subnodeoff, NULL);
+
+			/* only handle "optee" reservations */
+			if (name && !strncmp(name, "optee", 5))
+				fdt_del_node(new_blob, subnodeoff);
+		}
+	}
+
+	/* remove OP-TEE node  */
+	nodeoff = fdt_path_offset(new_blob, "/firmware/optee");
+	if (nodeoff >= 0)
+		fdt_del_node(new_blob, nodeoff);
+
+	/* update the scmi node */
+	stm32mp15_fdt_update_scmi_node(new_blob);
+}
+
+/* Galaxycore GC2145 sensor detection */
+static const struct udevice_id galaxycore_gc2145_ids[] = {
+	{ .compatible = "galaxycore,gc2145", },
+	{ }
+};
+
+U_BOOT_DRIVER(galaxycore_gc2145) = {
+	.name		= "galaxycore_gc2145",
+	.id		= UCLASS_I2C_GENERIC,
+	.of_match	= galaxycore_gc2145_ids,
+};
+
+#define GC2145_ID_REG_OFF	0xF0
+#define GC2145_ID	0x2145
+static bool stm32mp13x_is_gc2145_detected(void)
+{
+	struct udevice *dev, *bus, *supply;
+	struct dm_i2c_chip *chip;
+	struct gpio_desc gpio;
+	bool gpio_found = false;
+	bool gc2145_detected = false;
+	u16 id;
+	int ret;
+
+	/* Check if the GC2145 sensor is found */
+	ret = uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(galaxycore_gc2145),
+					  &dev);
+	if (ret)
+		return false;
+
+	/*
+	 * In order to get access to the sensor we need to enable regulators
+	 * and disable powerdown GPIO
+	 */
+	ret = device_get_supply_regulator(dev, "IOVDD-supply", &supply);
+	if (!ret && supply)
+		regulator_autoset(supply);
+
+	/* Request the powerdown GPIO */
+	ret = gpio_request_by_name(dev, "powerdown-gpios", 0, &gpio, GPIOD_IS_OUT);
+	if (!ret) {
+		gpio_found = true;
+		dm_gpio_set_value(&gpio, 0);
+	}
+
+	/* Wait a bit so that the device become visible on I2C */
+	mdelay(10);
+
+	bus = dev_get_parent(dev);
+
+	/* Probe the i2c device */
+	chip = dev_get_parent_plat(dev);
+	ret = dm_i2c_probe(bus, chip->chip_addr, 0, &dev);
+	if (ret)
+		goto out;
+
+	/* Read the value at 0xF0 - 0xF1 */
+	ret = dm_i2c_read(dev, GC2145_ID_REG_OFF, (uint8_t *)&id, sizeof(id));
+	if (ret)
+		goto out;
+
+	/* Check ID values - if GC2145 then nothing to do */
+	gc2145_detected = (be16_to_cpu(id) == GC2145_ID);
+
+out:
+	if (gpio_found) {
+		dm_gpio_set_value(&gpio, 1);
+		dm_gpio_free(NULL, &gpio);
+	}
+
+	return gc2145_detected;
+}
+
+void stm32mp13x_dk_fdt_update(void *new_blob)
+{
+	int nodeoff_gc2145 = 0, nodeoff_ov5640 = 0;
+	int nodeoff_ov5640_ep = 0, nodeoff_stmipi_ep = 0;
+	int phandle_ov5640_ep, phandle_stmipi_ep;
+
+	if (stm32mp13x_is_gc2145_detected())
+		return;
+
+	/*
+	 * By default the DT is written with GC2145 enabled.  If it isn't
+	 * detected, disable it within the DT and instead enable the OV5640
+	 */
+	nodeoff_gc2145 = fdt_path_offset(new_blob, "/soc/i2c@4c006000/gc2145@3c");
+	if (nodeoff_gc2145 < 0) {
+		log_err("gc2145@3c node not found - DT update aborted\n");
+		return;
+	}
+	fdt_setprop_string(new_blob, nodeoff_gc2145, "status", "disabled");
+
+	nodeoff_ov5640 = fdt_path_offset(new_blob, "/soc/i2c@4c006000/camera@3c");
+	if (nodeoff_ov5640 < 0) {
+		log_err("camera@3c node not found - DT update aborted\n");
+		return;
+	}
+	fdt_setprop_string(new_blob, nodeoff_ov5640, "status", "okay");
+
+	nodeoff_ov5640_ep = fdt_path_offset(new_blob, "/soc/i2c@4c006000/camera@3c/port/endpoint");
+	if (nodeoff_ov5640_ep < 0) {
+		log_err("camera@3c/port/endpoint node not found - DT update aborted\n");
+		return;
+	}
+
+	phandle_ov5640_ep = fdt_get_phandle(new_blob, nodeoff_ov5640_ep);
+
+	nodeoff_stmipi_ep =
+		fdt_path_offset(new_blob, "/soc/i2c@4c006000/stmipi@14/ports/port@0/endpoint");
+	if (nodeoff_stmipi_ep < 0) {
+		log_err("stmipi@14/ports/port@0/endpoint node not found - DT update aborted\n");
+		return;
+	}
+
+	fdt_setprop_u32(new_blob, nodeoff_stmipi_ep, "remote-endpoint", phandle_ov5640_ep);
+
+	/*
+	 * The OV5640 endpoint doesn't have remote-endpoint property in order to avoid
+	 * a device-tree warning due to non birectionnal graph connection.
+	 * When enabling the OV5640, add the remote-endpoint property as well, pointing
+	 * to the stmipi endpoint
+	 */
+	phandle_stmipi_ep = fdt_get_phandle(new_blob, nodeoff_stmipi_ep);
+	fdt_setprop_u32(new_blob, nodeoff_ov5640_ep, "remote-endpoint", phandle_stmipi_ep);
+}
+
+void stm32mp15x_dk2_fdt_update(void *new_blob)
+{
+	struct udevice *dev;
+	struct udevice *bus;
+	int nodeoff = 0;
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(edt_ft6236), &dev);
+	if (ret)
+		return;
+
+	bus = dev_get_parent(dev);
+
+	ret = dm_i2c_probe(bus, 0x38, 0, &dev);
+	if (ret < 0) {
+		nodeoff = fdt_path_offset(new_blob, "/soc/i2c@40012000/touchscreen@38");
+		if (nodeoff < 0) {
+			log_warning("touchscreen@2a node not found\n");
+		} else {
+			fdt_set_name(new_blob, nodeoff, "touchscreen@2a");
+			fdt_setprop_u32(new_blob, nodeoff, "reg", 0x2a);
+			log_debug("touchscreen@38 node updated to @2a\n");
+		}
+	}
+}
+
+void fdt_update_panel_dsi(void *new_blob)
+{
+	char const *panel = env_get("panel-dsi");
+	int nodeoff = 0;
+
+	if (!panel)
+		return;
+
+	if (!strcmp(panel, "rocktech,hx8394")) {
+		nodeoff = fdt_node_offset_by_compatible(new_blob, -1, "raydium,rm68200");
+		if (nodeoff < 0) {
+			log_warning("panel-dsi node not found");
+			return;
+		}
+		fdt_setprop_string(new_blob, nodeoff, "compatible", panel);
+
+		nodeoff = fdt_node_offset_by_compatible(new_blob, -1, "goodix,gt9147");
+		if (nodeoff < 0) {
+			log_warning("touchscreen node not found");
+			return;
+		}
+		fdt_setprop_string(new_blob, nodeoff, "compatible", "goodix,gt911");
+	}
+}
+
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	static const struct node_info nodes[] = {
@@ -914,6 +1451,21 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	    (strcmp(boot_device, "serial") && strcmp(boot_device, "usb")))
 		if (IS_ENABLED(CONFIG_FDT_FIXUP_PARTITIONS))
 			fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+
+	if (CONFIG_IS_ENABLED(FDT_SIMPLEFB))
+		fdt_simplefb_enable_and_mem_rsv(blob);
+
+	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15x))
+		stm32mp15_fdt_update_optee_nodes(blob);
+
+	if (board_is_stm32mp13x_dk())
+		stm32mp13x_dk_fdt_update(blob);
+
+	if (board_is_stm32mp15x_dk2())
+		stm32mp15x_dk2_fdt_update(blob);
+
+	if (board_is_stm32mp15x_ev1())
+		fdt_update_panel_dsi(blob);
 
 	return 0;
 }

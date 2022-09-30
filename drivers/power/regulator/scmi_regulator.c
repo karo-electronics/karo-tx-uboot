@@ -2,6 +2,9 @@
 /*
  * Copyright (C) 2020-2021 Linaro Limited
  */
+
+#define LOG_CATEGORY UCLASS_REGULATOR
+
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
@@ -14,12 +17,19 @@
 #include <linux/kernel.h>
 #include <power/regulator.h>
 
+/* Voltage domain IDs must fit in 16bit */
+#define VOLTD_INVALID_DOMAIN_ID		UINT32_MAX
+
 /**
  * struct scmi_regulator_platdata - Platform data for a scmi voltage domain regulator
  * @domain_id: ID representing the regulator for the related SCMI agent
+ * @voltd_name: String ID representing the regulator in the SCMI server
+ * @supply: Regulator supply or NULL
  */
 struct scmi_regulator_platdata {
 	u32 domain_id;
+	const char *voltd_name;
+	struct udevice *supply;
 };
 
 static int scmi_voltd_set_enable(struct udevice *dev, bool enable)
@@ -35,7 +45,13 @@ static int scmi_voltd_set_enable(struct udevice *dev, bool enable)
 					  in, out);
 	int ret;
 
-	ret = devm_scmi_process_msg(dev->parent->parent, &msg);
+	if (pdata->supply && enable) {
+		ret = regulator_set_enable(pdata->supply, true);
+		if (ret)
+			return ret;
+	}
+
+	ret = devm_scmi_process_msg(dev, &msg);
 	if (ret)
 		return ret;
 
@@ -58,7 +74,7 @@ static int scmi_voltd_get_enable(struct udevice *dev)
 					  in, out);
 	int ret;
 
-	ret = devm_scmi_process_msg(dev->parent->parent, &msg);
+	ret = devm_scmi_process_msg(dev, &msg);
 	if (ret < 0)
 		return ret;
 
@@ -82,7 +98,7 @@ static int scmi_voltd_set_voltage_level(struct udevice *dev, int uV)
 					  in, out);
 	int ret;
 
-	ret = devm_scmi_process_msg(dev->parent->parent, &msg);
+	ret = devm_scmi_process_msg(dev, &msg);
 	if (ret < 0)
 		return ret;
 
@@ -101,7 +117,7 @@ static int scmi_voltd_get_voltage_level(struct udevice *dev)
 					  in, out);
 	int ret;
 
-	ret = devm_scmi_process_msg(dev->parent->parent, &msg);
+	ret = devm_scmi_process_msg(dev, &msg);
 	if (ret < 0)
 		return ret;
 
@@ -112,6 +128,11 @@ static int scmi_voltd_get_voltage_level(struct udevice *dev)
 	return out.voltage_level;
 }
 
+static bool voltd_name_is_valid(char *name)
+{
+	return strnlen(name, SCMI_VOLTD_NAME_LEN) < SCMI_VOLTD_NAME_LEN;
+}
+
 static int scmi_regulator_of_to_plat(struct udevice *dev)
 {
 	struct scmi_regulator_platdata *pdata = dev_get_plat(dev);
@@ -119,11 +140,79 @@ static int scmi_regulator_of_to_plat(struct udevice *dev)
 
 	reg = dev_read_addr(dev);
 	if (reg == FDT_ADDR_T_NONE)
-		return -EINVAL;
+		pdata->domain_id = VOLTD_INVALID_DOMAIN_ID;
+	else
+		pdata->domain_id = (u32)reg;
 
-	pdata->domain_id = (u32)reg;
+	pdata->voltd_name = dev_read_string(dev, "voltd-name");
+	if (pdata->voltd_name &&
+	    !voltd_name_is_valid((char *)pdata->voltd_name)) {
+		dev_dbg(dev, "oversized voltd-name\n");
+		return -EINVAL;
+	}
+
+	if (!pdata->voltd_name && pdata->domain_id == VOLTD_INVALID_DOMAIN_ID) {
+		dev_dbg(dev, "OF node %s: missing reg or voltd-name property\n",
+			dev->name);
+		return -EINVAL;
+	}
 
 	return 0;
+}
+
+static int voltd_count(struct udevice *dev, size_t *count)
+{
+	struct scmi_voltd_protocol_attr_out out = { 0 };
+	struct scmi_msg scmi_msg = {
+		.protocol_id = SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN,
+		.message_id = SCMI_PROTOCOL_ATTRIBUTES,
+		.out_msg = (u8 *)&out,
+		.out_msg_sz = sizeof(out),
+	};
+	int ret;
+
+	ret = devm_scmi_process_msg(dev, &scmi_msg);
+	if (ret < 0)
+		return ret;
+
+	*count = out.attributes;
+
+	return 0;
+}
+
+static int voltd_name_to_domain_id(struct udevice *dev,
+				   struct scmi_regulator_platdata *pdata)
+{
+	struct scmi_voltd_attr_in in = { 0 };
+	struct scmi_voltd_attr_out out = { 0 };
+	struct scmi_msg scmi_msg = {
+		.protocol_id = SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN,
+		.message_id = SCMI_VOLTAGE_DOMAIN_ATTRIBUTES,
+		.in_msg = (u8 *)&in,
+		.in_msg_sz = sizeof(in),
+		.out_msg = (u8 *)&out,
+		.out_msg_sz = sizeof(out),
+	};
+	int ret;
+	size_t count, n;
+
+	ret = voltd_count(dev, &count);
+	if (ret)
+		return ret;
+
+	for (n = 0; n < count; n++) {
+		in.domain_id = n;
+		scmi_msg.out_msg_sz = sizeof(out);
+
+		ret = devm_scmi_process_msg(dev, &scmi_msg);
+		if (!ret && voltd_name_is_valid(out.name) &&
+		    !strcmp(pdata->voltd_name, out.name)) {
+			pdata->domain_id = n;
+			return 0;
+		}
+	}
+
+	return -ENOENT;
 }
 
 static int scmi_regulator_probe(struct udevice *dev)
@@ -139,19 +228,41 @@ static int scmi_regulator_probe(struct udevice *dev)
 		.out_msg = (u8 *)&out,
 		.out_msg_sz = sizeof(out),
 	};
+	struct udevice *supply;
 	int ret;
+
+	if (pdata->domain_id == VOLTD_INVALID_DOMAIN_ID) {
+		ret = voltd_name_to_domain_id(dev, pdata);
+		if (ret)
+			return ret;
+	}
 
 	/* Check voltage domain is known from SCMI server */
 	in.domain_id = pdata->domain_id;
 
-	ret = devm_scmi_process_msg(dev->parent->parent, &scmi_msg);
+	ret = devm_scmi_process_msg(dev, &scmi_msg);
 	if (ret) {
 		dev_err(dev, "Failed to query voltage domain %u: %d\n",
 			pdata->domain_id, ret);
 		return -ENXIO;
 	}
 
-	return 0;
+	if (!pdata->voltd_name) {
+		if (!voltd_name_is_valid(out.name))
+			return -EINVAL;
+
+		pdata->voltd_name = strdup(out.name);
+	}
+
+	dev_dbg(dev, "voltd %u: \"%s\"\n", pdata->domain_id, pdata->voltd_name);
+
+	ret = device_get_supply_regulator(dev, "regulator-supply", &supply);
+	if (!ret)
+		pdata->supply = supply;
+	if (ret == -ENOENT)
+		ret = 0;
+
+	return ret;
 }
 
 static const struct dm_regulator_ops scmi_voltd_ops = {

@@ -50,15 +50,6 @@
 	};
 };
 
-&gpiof {
-	snor-nwp {
-		gpio-hog;
-		gpios = <7 0>;
-		output-high;
-		line-name = "spi-nor-nwp";
-	};
-};
-
 &i2c4 {
 	u-boot,dm-pre-reloc;
 };
@@ -131,6 +122,7 @@
 	};
 };
 
+#ifndef CONFIG_TFABOOT
 &rcc {
 	st,clksrc = <
 		CLK_MPU_PLL1P
@@ -222,9 +214,14 @@
 		u-boot,dm-pre-reloc;
 	};
 };
+#endif
 
 &sdmmc1 {
 	u-boot,dm-spl;
+	st,use-ckin;
+	st,cmd-gpios = <&gpiod 2 0>;
+	st,ck-gpios = <&gpioc 12 0>;
+	st,ckin-gpios = <&gpioe 4 0>;
 };
 
 &sdmmc1_b4_pins_a {

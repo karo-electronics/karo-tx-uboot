@@ -5,12 +5,12 @@
  * Configuration settings for the STM32MP15x CPU
  */
 
-#ifndef __CONFIG_H
-#define __CONFIG_H
+#ifndef __CONFIG_STM32MP15_COMMMON_H
+#define __CONFIG_STM32MP15_COMMMON_H
 #include <linux/sizes.h>
 #include <asm/arch/stm32.h>
 
-#ifndef CONFIG_TFABOOT
+#ifdef CONFIG_ARMV7_PSCI
 /* PSCI support */
 #define CONFIG_ARMV7_SECURE_BASE		STM32_SYSRAM_BASE
 #define CONFIG_ARMV7_SECURE_MAX_SIZE		STM32_SYSRAM_SIZE
@@ -20,7 +20,7 @@
  * Configuration of the external SRAM memory used by U-Boot
  */
 #define CONFIG_SYS_SDRAM_BASE			STM32_DDR_BASE
-#define CONFIG_SYS_INIT_SP_ADDR			CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
 
 /*
  * Console I/O buffer size
@@ -32,11 +32,6 @@
  */
 #define CONFIG_LOADADDR			0xc2000000
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-/* ATAGs */
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
 
 /*
  * For booting Linux, use the first 256 MB of memory, since this is
@@ -116,11 +111,11 @@
 	BOOT_TARGET_PXE(func)
 
 /*
- * bootcmd for stm32mp1:
+ * default bootcmd for stm32mp15:
  * for serial/usb: execute the stm32prog command
- * for mmc boot (eMMC, SD card), boot only on the same device
- * for nand or spi-nand boot, boot with on ubifs partition on UBI partition
- * for nor boot, use SD card = mmc0
+ * for mmc boot (eMMC, SD card), distro boot on the same mmc device
+ * for nand or spi-nand boot, distro boot with ubifs on UBI partition
+ * for nor boot, use the default distro order in ${boot_targets}
  */
 #define STM32MP_BOOTCMD "bootcmd_stm32mp=" \
 	"echo \"Boot over ${boot_device}${boot_instance}!\";" \
@@ -133,14 +128,12 @@
 		"if test ${boot_device} = nand ||" \
 		  " test ${boot_device} = spi-nand ;" \
 		"then env set boot_targets ubifs0; fi;" \
-		"if test ${boot_device} = nor;" \
-		"then env set boot_targets mmc0; fi;" \
 		"run distro_bootcmd;" \
 	"fi;\0"
 
 #ifdef CONFIG_FASTBOOT_CMD_OEM_FORMAT
 /* eMMC default partitions for fastboot command: oem format */
-#define PARTS_DEFAULT \
+#define STM32MP_PARTS_DEFAULT \
 	"partitions=" \
 	"name=ssbl,size=2M;" \
 	"name=bootfs,size=64MB,bootable;" \
@@ -148,7 +141,15 @@
 	"name=rootfs,size=746M;" \
 	"name=userfs,size=-\0"
 #else
-#define PARTS_DEFAULT
+#define STM32MP_PARTS_DEFAULT
+#endif
+
+#define STM32MP_EXTRA \
+	"env_check=if env info -p -d -q; then env save; fi\0" \
+	"boot_net_usb_start=true\0"
+
+#ifndef STM32MP_BOARD_EXTRA_ENV
+#define STM32MP_BOARD_EXTRA_ENV
 #endif
 
 #include <config_distro_bootcmd.h>
@@ -158,21 +159,30 @@
  * 1M fdt, 1M script, 1M pxe and 1M for overlay
  * and the ramdisk at the end.
  */
+#define __KERNEL_ADDR_R     __stringify(0xc2000000)
+#define __FDT_ADDR_R        __stringify(0xc4000000)
+#define __SCRIPT_ADDR_R     __stringify(0xc4100000)
+#define __PXEFILE_ADDR_R    __stringify(0xc4200000)
+#define __FDTOVERLAY_ADDR_R __stringify(0xc4300000)
+#define __RAMDISK_ADDR_R    __stringify(0xc4400000)
+
+#define STM32MP_MEM_LAYOUT \
+	"kernel_addr_r=" __KERNEL_ADDR_R "\0" \
+	"fdt_addr_r=" __FDT_ADDR_R "\0" \
+	"scriptaddr=" __SCRIPT_ADDR_R "\0" \
+	"pxefile_addr_r=" __PXEFILE_ADDR_R "\0" \
+	"fdtoverlay_addr_r=" __FDTOVERLAY_ADDR_R "\0" \
+	"ramdisk_addr_r=" __RAMDISK_ADDR_R "\0"
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"kernel_addr_r=0xc2000000\0" \
-	"fdt_addr_r=0xc4000000\0" \
-	"scriptaddr=0xc4100000\0" \
-	"pxefile_addr_r=0xc4200000\0" \
-	"fdtoverlay_addr_r=0xc4300000\0" \
-	"ramdisk_addr_r=0xc4400000\0" \
-	"altbootcmd=run bootcmd\0" \
-	"env_check=if env info -p -d -q; then env save; fi\0" \
+	STM32MP_MEM_LAYOUT \
 	STM32MP_BOOTCMD \
-	PARTS_DEFAULT \
+	STM32MP_PARTS_DEFAULT \
 	BOOTENV \
-	"boot_net_usb_start=true\0"
+	STM32MP_EXTRA \
+	STM32MP_BOARD_EXTRA_ENV
 
 #endif /* ifndef CONFIG_SPL_BUILD */
 #endif /* ifdef CONFIG_DISTRO_DEFAULTS*/
 
-#endif /* __CONFIG_H */
+#endif /* __CONFIG_STM32MP15_COMMMON_H */

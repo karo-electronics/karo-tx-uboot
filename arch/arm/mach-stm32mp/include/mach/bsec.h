@@ -5,3 +5,11 @@
 
 /* check self hosted debug status = BSEC_DENABLE.DBGSWENABLE */
 bool bsec_dbgswenable(void);
+
+/* Bitfield definition for LOCK status */
+/* warning: bit 31 is reserved in PTA NVEM for OTP_UPDATE_REQ */
+#define BSEC_LOCK_PERM			BIT(30)
+#define BSEC_LOCK_SHADOW_R		BIT(29)
+#define BSEC_LOCK_SHADOW_W		BIT(28)
+#define BSEC_LOCK_SHADOW_P		BIT(27)
+#define BSEC_LOCK_ERROR			BIT(26)

@@ -41,20 +41,63 @@ enum scmi_status_code {
 };
 
 /*
+ * Generic message IDs
+ */
+enum scmi_discovery_id {
+	SCMI_PROTOCOL_VERSION = 0x0,
+	SCMI_PROTOCOL_ATTRIBUTES = 0x1,
+	SCMI_PROTOCOL_MESSAGE_ATTRIBUTES = 0x2,
+};
+
+/*
  * SCMI Clock Protocol
  */
 
 enum scmi_clock_message_id {
+	SCMI_CLOCK_ATTRIBUTES = 0x3,
 	SCMI_CLOCK_RATE_SET = 0x5,
 	SCMI_CLOCK_RATE_GET = 0x6,
 	SCMI_CLOCK_CONFIG_SET = 0x7,
 };
 
+#define SCMI_CLK_PROTO_ATTR_COUNT_MASK	GENMASK(15, 0)
 #define SCMI_CLK_RATE_ASYNC_NOTIFY	BIT(0)
 #define SCMI_CLK_RATE_ASYNC_NORESP	(BIT(0) | BIT(1))
 #define SCMI_CLK_RATE_ROUND_DOWN	0
 #define SCMI_CLK_RATE_ROUND_UP		BIT(2)
 #define SCMI_CLK_RATE_ROUND_CLOSEST	BIT(3)
+
+#define SCMI_CLOCK_NAME_LENGTH_MAX 16
+
+/**
+ * struct scmi_clk_get_nb_out - Response for SCMI_PROTOCOL_ATTRIBUTES command
+ * @status:	SCMI command status
+ * @attributes:	Attributes of the clock protocol, mainly number of clocks exposed
+ */
+struct scmi_clk_protocol_attr_out {
+	s32 status;
+	u32 attributes;
+};
+
+/**
+ * struct scmi_clk_attribute_in - Message payload for SCMI_CLOCK_ATTRIBUTES command
+ * @clock_id:	SCMI clock ID
+ */
+struct scmi_clk_attribute_in {
+	u32 clock_id;
+};
+
+/**
+ * struct scmi_clk_get_nb_out - Response payload for SCMI_CLOCK_ATTRIBUTES command
+ * @status:	SCMI command status
+ * @attributes:	clock attributes
+ * @clock_name:	name of the clock
+ */
+struct scmi_clk_attribute_out {
+	s32 status;
+	u32 attributes;
+	char clock_name[SCMI_CLOCK_NAME_LENGTH_MAX];
+};
 
 /**
  * struct scmi_clk_state_in - Message payload for CLOCK_CONFIG_SET command
@@ -97,14 +140,14 @@ struct scmi_clk_rate_get_out {
 
 /**
  * struct scmi_clk_state_in - Message payload for CLOCK_RATE_SET command
- * @clock_id:	SCMI clock ID
  * @flags:	Flags for the clock rate set request
+ * @clock_id:	SCMI clock ID
  * @rate_lsb:	32bit LSB of the clock rate in Hertz
  * @rate_msb:	32bit MSB of the clock rate in Hertz
  */
 struct scmi_clk_rate_set_in {
-	u32 clock_id;
 	u32 flags;
+	u32 clock_id;
 	u32 rate_lsb;
 	u32 rate_msb;
 };
@@ -194,6 +237,16 @@ enum scmi_voltage_domain_message_id {
 #define SCMI_VOLTD_CONFIG_MASK		GENMASK(3, 0)
 #define SCMI_VOLTD_CONFIG_OFF		0
 #define SCMI_VOLTD_CONFIG_ON		0x7
+
+/**
+ * struct scmi_clk_state_in - Message payload for CLOCK_CONFIG_SET command
+ * @status:	SCMI command status
+ * @attributes:	Attributes of the voltage domain protocol
+ */
+struct scmi_voltd_protocol_attr_out {
+	s32 status;
+	u32 attributes;
+};
 
 /**
  * struct scmi_voltd_attr_in - Payload for VOLTAGE_DOMAIN_ATTRIBUTES message

@@ -10,9 +10,9 @@
 #include <hwspinlock.h>
 #include <log.h>
 #include <malloc.h>
-#include <asm/arch/gpio.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <dm/device-internal.h>
 #include <dm/device_compat.h>
 #include <dm/lists.h>
 #include <dm/pinctrl.h>
@@ -20,12 +20,15 @@
 #include <linux/err.h>
 #include <linux/libfdt.h>
 
+#include "../gpio/stm32_gpio_priv.h"
+
 #define MAX_PINS_ONE_IP			70
 #define MODE_BITS_MASK			3
 #define OSPEED_MASK			3
 #define PUPD_MASK			3
 #define OTYPE_MSK			1
 #define AFR_MASK			0xF
+#define SECCFG_MSK			1
 
 struct stm32_pinctrl_priv {
 	struct hwspinlock hws;
@@ -38,16 +41,21 @@ struct stm32_gpio_bank {
 	struct list_head list;
 };
 
+struct stm32_pinctrl_data {
+	bool secure_control;
+};
+
+static int stm32_pinctrl_get_access(struct udevice *gpio_dev, unsigned int gpio_idx);
+
 #ifndef CONFIG_SPL_BUILD
 
 static char pin_name[PINNAME_SIZE];
-#define PINMUX_MODE_COUNT		5
-static const char * const pinmux_mode[PINMUX_MODE_COUNT] = {
-	"gpio input",
-	"gpio output",
-	"analog",
-	"unknown",
-	"alt function",
+static const char * const pinmux_mode[GPIOF_COUNT] = {
+	[GPIOF_INPUT] = "gpio input",
+	[GPIOF_OUTPUT] = "gpio output",
+	[GPIOF_UNUSED] = "analog",
+	[GPIOF_UNKNOWN] = "unknown",
+	[GPIOF_FUNC] = "alt function",
 };
 
 static const char * const pinmux_bias[] = {
@@ -157,10 +165,7 @@ static struct udevice *stm32_pinctrl_get_gpio_dev(struct udevice *dev,
 			 * we found the bank, convert pin selector to
 			 * gpio bank index
 			 */
-			*idx = stm32_offset_to_index(gpio_bank->gpio_dev,
-						     selector - pin_count);
-			if (IS_ERR_VALUE(*idx))
-				return NULL;
+			*idx = selector - pin_count;
 
 			return gpio_bank->gpio_dev;
 		}
@@ -211,6 +216,12 @@ static int stm32_pinctrl_get_pin_muxing(struct udevice *dev,
 	if (!gpio_dev)
 		return -ENODEV;
 
+	/* Check access protection */
+	if (stm32_pinctrl_get_access(gpio_dev, gpio_idx)) {
+		snprintf(buf, size, "NO ACCESS");
+		return 0;
+	}
+
 	mode = gpio_get_raw_function(gpio_dev, gpio_idx, &label);
 	dev_dbg(dev, "selector = %d gpio_idx = %d mode = %d\n",
 		selector, gpio_idx, mode);
@@ -220,8 +231,6 @@ static int stm32_pinctrl_get_pin_muxing(struct udevice *dev,
 
 	switch (mode) {
 	case GPIOF_UNKNOWN:
-		/* should never happen */
-		return -EINVAL;
 	case GPIOF_UNUSED:
 		snprintf(buf, size, "%s", pinmux_mode[mode]);
 		break;
@@ -246,6 +255,20 @@ static int stm32_pinctrl_get_pin_muxing(struct udevice *dev,
 
 #endif
 
+static int stm32_pinctrl_get_access(struct udevice *gpio_dev, unsigned int gpio_idx)
+{
+	struct stm32_gpio_priv *priv = dev_get_priv(gpio_dev);
+	struct stm32_gpio_regs *regs = priv->regs;
+	ulong drv_data = dev_get_driver_data(gpio_dev);
+
+	/* Deny request access if IO is secured */
+	if ((drv_data & STM32_GPIO_FLAG_SEC_CTRL) &&
+	    ((readl(&regs->seccfgr) >> gpio_idx) & SECCFG_MSK))
+		return -EACCES;
+
+	return 0;
+}
+
 static int stm32_pinctrl_probe(struct udevice *dev)
 {
 	struct stm32_pinctrl_priv *priv = dev_get_priv(dev);
@@ -266,10 +289,19 @@ static int stm32_gpio_config(struct gpio_desc *desc,
 			     const struct stm32_gpio_ctl *ctl)
 {
 	struct stm32_gpio_priv *priv = dev_get_priv(desc->dev);
+	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(desc->dev);
 	struct stm32_gpio_regs *regs = priv->regs;
 	struct stm32_pinctrl_priv *ctrl_priv;
 	int ret;
 	u32 index;
+
+	/* Check access protection */
+	ret = stm32_pinctrl_get_access(desc->dev, desc->offset);
+	if (ret) {
+		dev_err(desc->dev, "Failed to get secure IO %s %d @ %p\n",
+			uc_priv->bank_name, desc->offset, regs);
+		return ret;
+	}
 
 	if (!ctl || ctl->af > 15 || ctl->mode > 3 || ctl->otype > 1 ||
 	    ctl->pupd > 2 || ctl->speed > 3)
@@ -404,7 +436,24 @@ static int stm32_pinctrl_bind(struct udevice *dev)
 {
 	ofnode node;
 	const char *name;
+	struct driver *drv;
+	const struct stm32_pinctrl_data *drv_data;
+	ulong gpio_data = 0;
 	int ret;
+
+	drv = lists_driver_lookup_name("gpio_stm32");
+	if (!drv) {
+		debug("Cannot find driver 'gpio_stm32'\n");
+		return -ENOENT;
+	}
+
+	drv_data = (const struct stm32_pinctrl_data *)dev_get_driver_data(dev);
+	if (!drv_data) {
+		debug("Cannot find driver data\n");
+		return -EINVAL;
+	}
+	if (drv_data->secure_control)
+		gpio_data = STM32_GPIO_FLAG_SEC_CTRL;
 
 	dev_for_each_subnode(node, dev) {
 		dev_dbg(dev, "bind %s\n", ofnode_get_name(node));
@@ -421,8 +470,7 @@ static int stm32_pinctrl_bind(struct udevice *dev)
 			return -EINVAL;
 
 		/* Bind each gpio node */
-		ret = device_bind_driver_to_node(dev, "gpio_stm32",
-						 name, node, NULL);
+		ret = device_bind_with_driver_data(dev, drv, name, gpio_data, node, NULL);
 		if (ret)
 			return ret;
 
@@ -485,14 +533,23 @@ static struct pinctrl_ops stm32_pinctrl_ops = {
 #endif
 };
 
+static const struct stm32_pinctrl_data stm32_pinctrl_no_sec = {
+	.secure_control = false,
+};
+
+static const struct stm32_pinctrl_data stm32_pinctrl_with_sec = {
+	.secure_control = true,
+};
+
 static const struct udevice_id stm32_pinctrl_ids[] = {
-	{ .compatible = "st,stm32f429-pinctrl" },
-	{ .compatible = "st,stm32f469-pinctrl" },
-	{ .compatible = "st,stm32f746-pinctrl" },
-	{ .compatible = "st,stm32f769-pinctrl" },
-	{ .compatible = "st,stm32h743-pinctrl" },
-	{ .compatible = "st,stm32mp157-pinctrl" },
-	{ .compatible = "st,stm32mp157-z-pinctrl" },
+	{ .compatible = "st,stm32f429-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32f469-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32f746-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32f769-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32h743-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32mp157-pinctrl",   .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32mp157-z-pinctrl", .data = (ulong)&stm32_pinctrl_no_sec },
+	{ .compatible = "st,stm32mp135-pinctrl",   .data = (ulong)&stm32_pinctrl_with_sec },
 	{ }
 };
 

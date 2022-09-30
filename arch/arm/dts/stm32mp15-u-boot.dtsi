@@ -21,21 +21,19 @@
 		pinctrl1 = &pinctrl_z;
 	};
 
-	clocks {
-		u-boot,dm-pre-reloc;
+	binman: binman {
+		multiple-images;
+	};
+
+	firmware {
+		optee {
+			u-boot,dm-pre-reloc;
+		};
 	};
 
 	/* need PSCI for sysreset during board_f */
 	psci {
 		u-boot,dm-pre-proper;
-	};
-
-	reboot {
-		u-boot,dm-pre-reloc;
-		compatible = "syscon-reboot";
-		regmap = <&rcc>;
-		offset = <0x404>;
-		mask = <0x1>;
 	};
 
 	soc {
@@ -49,20 +47,6 @@
 			reg = <0x5A003000 0x550
 			       0x5A004000 0x234>;
 
-			clocks = <&rcc AXIDCG>,
-				 <&rcc DDRC1>,
-				 <&rcc DDRC2>,
-				 <&rcc DDRPHYC>,
-				 <&rcc DDRCAPB>,
-				 <&rcc DDRPHYCAPB>;
-
-			clock-names = "axidcg",
-				      "ddrc1",
-				      "ddrc2",
-				      "ddrphyc",
-				      "ddrcapb",
-				      "ddrphycapb";
-
 			status = "okay";
 		};
 	};
@@ -70,36 +54,6 @@
 
 &bsec {
 	u-boot,dm-pre-reloc;
-};
-
-&clk_csi {
-	u-boot,dm-pre-reloc;
-};
-
-&clk_hsi {
-	u-boot,dm-pre-reloc;
-};
-
-&clk_hse {
-	u-boot,dm-pre-reloc;
-};
-
-&clk_lsi {
-	u-boot,dm-pre-reloc;
-};
-
-&clk_lse {
-	u-boot,dm-pre-reloc;
-};
-
-&cpu0_opp_table {
-	u-boot,dm-spl;
-	opp-650000000 {
-		u-boot,dm-spl;
-	};
-	opp-800000000 {
-		u-boot,dm-spl;
-	};
 };
 
 &gpioa {
@@ -159,13 +113,6 @@
 	u-boot,dm-pre-proper;
 };
 
-/* temp = waiting kernel update */
-&m4_rproc {
-	resets = <&rcc MCU_R>,
-		 <&rcc MCU_HOLD_BOOT_R>;
-	reset-names = "mcu_rst", "hold_boot";
-};
-
 &pinctrl {
 	u-boot,dm-pre-reloc;
 };
@@ -174,30 +121,34 @@
 	u-boot,dm-pre-reloc;
 };
 
-&pwr_regulators {
-	u-boot,dm-pre-reloc;
-};
-
 &rcc {
 	u-boot,dm-pre-reloc;
-	#address-cells = <1>;
-	#size-cells = <0>;
 };
 
-&sdmmc1 {
-	compatible = "st,stm32-sdmmc2", "arm,pl18x", "arm,primecell";
+#ifdef CONFIG_TFABOOT
+&scmi {
+	u-boot,dm-pre-reloc;
 };
 
-&sdmmc2 {
-	compatible = "st,stm32-sdmmc2", "arm,pl18x", "arm,primecell";
+&scmi_clk {
+	u-boot,dm-pre-reloc;
 };
 
-&sdmmc3 {
-	compatible = "st,stm32-sdmmc2", "arm,pl18x", "arm,primecell";
+&scmi_reset {
+	u-boot,dm-pre-reloc;
 };
+
+&scmi_shm {
+	u-boot,dm-pre-reloc;
+};
+
+&scmi_sram {
+	u-boot,dm-pre-reloc;
+};
+#endif
 
 &usart1 {
-	resets = <&rcc USART1_R>;
+	resets = <&scmi_reset RST_SCMI_USART1>;
 };
 
 &usart2 {
@@ -228,3 +179,89 @@
 	resets = <&rcc UART8_R>;
 };
 
+#if defined(CONFIG_STM32MP15x_STM32IMAGE)
+&binman {
+	u-boot-stm32 {
+		filename = "u-boot.stm32";
+		mkimage {
+			args = "-T stm32image -a 0xC0100000 -e 0xC0100000";
+			u-boot {
+			};
+		};
+	};
+};
+#endif
+
+#if defined(CONFIG_SPL)
+&binman {
+	spl-stm32 {
+		filename = "u-boot-spl.stm32";
+		mkimage {
+			args = "-T stm32image -a 0x2FFC2500 -e 0x2FFC2500";
+			u-boot-spl {
+			};
+		};
+	};
+};
+#endif
+
+/* NO MORE USE SCMI SUPPORT for BASIC boot chain */
+#ifndef CONFIG_TFABOOT
+
+#include "stm32mp15-no-scmi.dtsi"
+
+/ {
+	clocks {
+		u-boot,dm-pre-reloc;
+
+		clk_hse: clk-hse {
+			u-boot,dm-pre-reloc;
+		};
+
+		clk_hsi: clk-hsi {
+			u-boot,dm-pre-reloc;
+		};
+
+		clk_lse: clk-lse {
+			u-boot,dm-pre-reloc;
+		};
+
+		clk_lsi: clk-lsi {
+			u-boot,dm-pre-reloc;
+		};
+
+		clk_csi: clk-csi {
+			u-boot,dm-pre-reloc;
+		};
+	};
+
+	reboot {
+		u-boot,dm-pre-reloc;
+	};
+};
+
+&cpu0_opp_table {
+	u-boot,dm-spl;
+	opp-650000000 {
+		u-boot,dm-spl;
+	};
+	opp-800000000 {
+		u-boot,dm-spl;
+	};
+};
+
+/* only for vdd-supply in sysconf_init() */
+&pwr_regulators {
+	u-boot,dm-pre-reloc;
+};
+
+&rcc {
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&usart1 {
+	resets = <&rcc USART1_R>;
+};
+
+#endif /* CONFIG_TFABOOT */

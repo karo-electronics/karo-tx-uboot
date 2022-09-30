@@ -27,6 +27,7 @@ obj-$(CONFIG_CMD_BOOTZ) += bootm.o bootm_os.o
 obj-$(CONFIG_CMD_BOOTI) += bootm.o bootm_os.o
 
 obj-$(CONFIG_CMD_BEDBUG) += bedbug.o
+obj-$(CONFIG_FDT_SIMPLEFB) += fdt_simplefb.o
 obj-$(CONFIG_$(SPL_TPL_)OF_LIBFDT) += fdt_support.o
 obj-$(CONFIG_MII) += miiphyutil.o
 obj-$(CONFIG_CMD_MII) += miiphyutil.o
@@ -49,7 +50,6 @@ ifndef CONFIG_DM_VIDEO
 obj-$(CONFIG_LCD) += lcd.o lcd_console.o
 endif
 obj-$(CONFIG_LCD_ROTATION) += lcd_console_rotation.o
-obj-$(CONFIG_LCD_DT_SIMPLEFB) += lcd_simplefb.o
 obj-$(CONFIG_LYNXKDI) += lynxkdi.o
 obj-$(CONFIG_MENU) += menu.o
 obj-$(CONFIG_UPDATE_COMMON) += update.o
