@@ -179,7 +179,7 @@
 		};
 
 		pins3 {
-			/* Micrel KSZ92031 strap pins */
+			/* Micrel KSZ9031 strap pins */
 			pinmux = <
 				  STM32_PINMUX('A', 7, AF11) /* RX_CTL | CLK125_EN */
 				  STM32_PINMUX('C', 4, AF11) /* RXD0 | MODE0 */

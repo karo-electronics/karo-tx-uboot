@@ -204,19 +204,6 @@
 		enable-active-high;
 		gpio = <&gpioc 0 GPIO_ACTIVE_HIGH>;
 	};
-
-	sram: sram@10050000 {
-		compatible = "mmio-sram";
-		reg = <0x10050000 0x10000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x10050000 0x10000>;
-
-		dma_pool: dma_pool@0 {
-			reg = <0x0 0x10000>;
-			pool;
-		};
-	};
 };
 
 &bsec {
@@ -237,6 +224,11 @@
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
 	};
+};
+
+&rcc{
+	u-boot,dm-pre-reloc;
+	status = "okay";
 };
 
 &i2c6 {
@@ -286,9 +278,11 @@
 	};
 };
 
+#if 0
 &rng1 {
 	status = "okay";
 };
+#endif
 
 &rtc {
 	status = "okay";

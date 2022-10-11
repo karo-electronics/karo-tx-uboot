@@ -1086,6 +1086,7 @@ dtb-$(CONFIG_STM32MP13x) += \
 
 dtb-$(CONFIG_STM32MP15x) += \
 	stm32mp151a-qsmp-1510.dtb \
+	stm32mp151a-qsmp-1510-qsbase4.dtb \
 	stm32mp153a-qsmp-1530.dtb \
 	stm32mp157a-avenger96.dtb \
 	stm32mp157a-dk1.dtb \
