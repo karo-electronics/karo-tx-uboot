@@ -9,7 +9,9 @@
 #include <fs.h>
 #include <mmc.h>
 #include <mtd_node.h>
+#include <malloc.h>
 #include <asm/bootm.h>
+#include <asm/cache.h>
 #include <asm/setup.h>
 #include "karo.h"
 
@@ -24,6 +26,177 @@ static void karo_set_fdtsize(void *fdt)
 	      fdtsize, fdt_totalsize(fdt));
 	env_set_hex("fdt_size", fdt_totalsize(fdt));
 }
+
+#ifdef CONFIG_TX8M_UBOOT
+static char *karo_fdt_overlay_filename(const char *prefix,
+				       const char *overlay)
+{
+	size_t malloc_size = strlen(prefix) + strlen(overlay) + 6;
+	char *fdtfile = malloc(malloc_size);
+	const char *pfx_end;
+	size_t pos;
+
+	if (!fdtfile)
+		return NULL;
+
+	strcpy(fdtfile, prefix);
+	pfx_end = strchrnul(fdtfile, '-');
+	pos = pfx_end - fdtfile;
+	snprintf(&fdtfile[pos], malloc_size - pos, "%s%s.dtb",
+		 *pfx_end == '-' ? "" : "-", overlay);
+
+	return fdtfile;
+}
+
+static bool fdt_overlay_debug = IS_ENABLED(DEBUG);
+
+int karo_load_fdt_overlay(void *fdt, const char *dev_type, const char *dev_part,
+			  const char *overlay)
+{
+	int ret;
+	loff_t size;
+	void *fdto;
+	const char *soc_prefix = env_get("soc_prefix");
+	const char *soc_family = env_get("soc_family");
+	char *filename = karo_fdt_overlay_filename(soc_family, overlay);
+
+	if (!filename)
+		return -ENOMEM;
+
+	if (!file_exists(dev_type, dev_part, filename, FS_TYPE_ANY)) {
+		free(filename);
+		filename = karo_fdt_overlay_filename(soc_prefix, overlay);
+		if (!filename)
+			return -ENOMEM;
+	}
+	if (fdt_overlay_debug)
+		printf("loading FDT overlay for '%s' from %s %s '%s'\n",
+		       overlay, dev_type, dev_part, filename);
+
+	if (!file_exists(dev_type, dev_part, filename, FS_TYPE_ANY)) {
+		printf("'%s' does not exist\n", filename);
+		ret = -ENOENT;
+		goto free_fn;
+	}
+
+	if (fs_set_blk_dev(dev_type, dev_part, FS_TYPE_ANY)) {
+		ret = -ENOENT;
+		goto free_fn;
+	}
+
+	ret = fs_size(filename, &size);
+	if (ret) {
+		printf("Failed to get size of '%s': %d\n", filename, errno);
+		goto free_fn;
+	}
+
+	fdto = memalign(ARCH_DMA_MINALIGN, size);
+	if (!fdto) {
+		printf("%s@%d: failed to allocate %llu bytes for '%s'\n",
+		       __func__, __LINE__, size, filename);
+		ret = -ENOMEM;
+		goto free_fn;
+	}
+
+	debug("%s@%d: reading %llu bytes from '%s'\n", __func__, __LINE__,
+	      size, filename);
+
+	if (fs_set_blk_dev(dev_type, dev_part, FS_TYPE_ANY)) {
+		ret = -ENOENT;
+		goto free_buf;
+	}
+
+	ret = fs_read(filename, (ulong)fdto, 0, 0, &size);
+	if (ret)
+		goto free_buf;
+
+	debug("Read %llu byte from '%s'\n", size, filename);
+	fdt_shrink_to_minimum(fdt, size);
+	ret = fdt_overlay_apply_verbose(fdt, fdto);
+	if (ret) {
+		printf("Failed to load FDT overlay from '%s': %s\n",
+		       filename, fdt_strerror(ret));
+		ret = -EINVAL;
+	}
+
+ free_buf:
+	free(fdto);
+
+ free_fn:
+	free((void *)filename);
+	return ret;
+}
+
+int karo_fdt_get_overlays(const char *baseboard, char **overlays)
+{
+	int ret;
+
+	if (baseboard) {
+		const char *prefix = "overlays_";
+		size_t malloc_size = strlen(prefix) + strlen(baseboard) + 1;
+		char *overlay_var = malloc(malloc_size);
+
+		if (!overlay_var)
+			return -ENOMEM;
+		ret = snprintf(overlay_var, malloc_size, "%s%s",
+			       prefix, baseboard);
+		if (ret < 0 || ret >= malloc_size) {
+			free(overlay_var);
+			return ret < 0 ? ret : -ENOMEM;
+		}
+		*overlays = env_get(overlay_var);
+		free(overlay_var);
+		if (strstr(*overlays, "setenv overlays"))
+			*overlays += strlen("setenv overlays ");
+	} else {
+		*overlays = env_get("overlays");
+	}
+	return 0;
+}
+
+void karo_fdt_apply_overlays(unsigned long fdt_addr)
+{
+	int ret;
+	const char *baseboard = env_get("baseboard");
+	const char *dev_type = "mmc";
+	const char *dev_part = "0:1";
+	char *overlays;
+
+	fdt_overlay_debug |= env_get_yesno("debug_overlays") == 1;
+
+	ret = karo_fdt_get_overlays(baseboard, &overlays);
+	if (ret == 0 && overlays) {
+		char *overlay_list = strdup(overlays);
+		const char *overlay_listp = overlay_list;
+		char *overlay;
+
+		debug("loading FDT overlays for '%s': %s\n",
+		      baseboard, overlays);
+		while ((overlay = strsep(&overlay_list, ", "))) {
+			if (!strlen(overlay))
+				continue;
+			ret = karo_load_fdt_overlay((void *)fdt_addr, dev_type,
+						    dev_part, overlay);
+			if (ret) {
+				printf("Failed to load FDT overlay '%s': %d\n",
+				       overlay, ret);
+				break;
+			}
+		}
+		free((void *)overlay_listp);
+	} else if (ret) {
+		printf("Failed to load FDT overlays: %d\n", ret);
+	} else {
+		printf("No FDT overlays to be loaded\n");
+	}
+	if (ret)
+		memset((void *)fdt_addr, 0, sizeof(fdt_addr));
+}
+#else
+static inline void karo_fdt_apply_overlays(unsigned long fdt_addr)
+{
+}
+#endif
 
 int karo_load_fdt(const char *fdt_file)
 {
@@ -76,6 +249,7 @@ int karo_load_fdt(const char *fdt_file)
 		printf("ERROR: No valid DTB found at %p\n", fdt);
 		return -EINVAL;
 	}
+	karo_fdt_apply_overlays(fdt_addr);
 	fdt_shrink_to_minimum(fdt, 4096);
 	karo_set_fdtsize(fdt);
 	set_working_fdt_addr(fdt_addr);

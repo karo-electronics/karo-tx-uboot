@@ -17,24 +17,34 @@ DECLARE_GLOBAL_DATA_PTR;
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #if defined(CONFIG_KARO_TX8MM_1610)
 #define KARO_BOARD_NAME		"tx8m-1610"
+#define SOC_FAMILY		"imx8mm"
 #elif defined(CONFIG_KARO_TX8MM_1620)
 #define KARO_BOARD_NAME		"tx8m-1620"
+#define SOC_FAMILY		"imx8mm"
 #elif defined(CONFIG_KARO_TX8MM_1622)
 #define KARO_BOARD_NAME		"tx8m-1622"
+#define SOC_FAMILY		"imx8mm"
 #elif defined(CONFIG_KARO_TX8MN)
 #define KARO_BOARD_NAME		"tx8m-nd00"
+#define SOC_FAMILY		"imx8mn"
 #elif defined(CONFIG_KARO_QS8M_MQ00)
 #define KARO_BOARD_NAME		"qs8m-mq00"
+#define SOC_FAMILY		"imx8mm"
 #elif defined(CONFIG_KARO_QS8M_ND00)
 #define KARO_BOARD_NAME		"qs8m-nd00"
+#define SOC_FAMILY		"imx8mn"
 #elif defined(CONFIG_KARO_QSXM_MM60)
 #define KARO_BOARD_NAME		"qsxm-mm60"
+#define SOC_FAMILY		"imx8mm"
 #elif defined(CONFIG_KARO_QSXP_ML81)
 #define KARO_BOARD_NAME		"qsxp-ml81"
+#define SOC_FAMILY		"imx8mp"
 #elif defined(CONFIG_KARO_TX8P_ML81)
 #define KARO_BOARD_NAME		"tx8p-ml81"
+#define SOC_FAMILY		"imx8mp"
 #elif defined(CONFIG_KARO_TX8P_ML82)
 #define KARO_BOARD_NAME		"tx8p-ml82"
+#define SOC_FAMILY		"imx8mp"
 #else
 #error Unsupported module variant
 #endif
@@ -49,6 +59,11 @@ static void karo_env_set_uboot_vars(void)
 #else
 	env_set("board_rev", "default");
 #endif
+	if (!env_get("soc_prefix"))
+		env_set("soc_prefix", "imx8m");
+	if (!env_get("soc_family"))
+		env_set("soc_family", SOC_FAMILY);
+
 	if (!env_get("serial#")) {
 		struct tag_serialnr serno;
 		char serno_str[sizeof(serno) * 2 + 1];
