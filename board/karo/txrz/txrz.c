@@ -320,3 +320,23 @@ int board_late_init(void)
 	clear_ctrlc();
 	return 0;
 }
+
+#if defined(CONFIG_OF_BOARD_SETUP)
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	int ret;
+	ofnode node;
+
+	debug("%s@%d:\n", __func__, __LINE__);
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Warning: Failed to increase FDT size: %s\n",
+		       fdt_strerror(ret));
+
+	karo_fixup_lcd_panel(env_get("videomode"));
+
+	return 0;
+}
+#endif

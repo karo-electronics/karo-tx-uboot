@@ -149,21 +149,183 @@ void karo_fdt_move_fdt(void)
 	karo_set_fdtsize(fdt);
 }
 
-#ifndef CONFIG_MTD
-void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
+#ifdef CONFIG_DM_VIDEO
+static const char * const karo_panel_timing_props[] = {
+	"clock-frequency",
+	"hactive",
+	"vactive",
+	"hback-porch",
+	"hsync-len",
+	"hfront-porch",
+	"vback-porch",
+	"vsync-len",
+	"vfront-porch",
+	"hsync-active",
+	"vsync-active",
+	"de-active",
+	"pixelclk-active",
+};
+
+static int karo_fixup_panel_timing(void *fdt, int dest, int src)
 {
-	int root = fdt_path_offset(blob, "/soc");
+	size_t i;
 
-	if (root <= 0)
-		return;
+	printf("Copying video timing from '%s'\n", fdt_get_name(fdt, src, NULL));
+	for (i = 0; i < ARRAY_SIZE(karo_panel_timing_props); i++) {
+		int ret;
+		int len;
+		const void *prop;
+		const char *name = karo_panel_timing_props[i];
+		const void *old;
 
-	for (size_t i = 0; i < count; i++) {
-		int node = fdt_node_offset_by_compatible(blob, root,
-							 info[i].compat);
+		prop = fdt_getprop(fdt, src, name, &len);
 
-		if (!fdtdec_get_is_enabled(blob, node))
+		if (!prop) {
+			debug("Removing %s from %s\n",
+			      name, fdt_get_name(fdt, dest, NULL));
+			fdt_delprop(fdt, dest, name);
 			continue;
-		fdt_fixup_mtdparts(blob, &info[i], 1);
+		}
+
+		old = fdt_getprop(fdt, dest, name, NULL);
+		if (prop && old == prop) {
+			debug("leaving %s at <%u>\n", name, be32_to_cpup(old));
+		} else if (old && prop && old != prop) {
+			debug("changing %s from <%u> to <%u>\n", name,
+			      be32_to_cpup(old), be32_to_cpup(prop));
+		} else if (!old) {
+			debug("adding %s = <%u>\n", name,
+			      be32_to_cpup(prop));
+			old = prop;
+			ret = fdt_setprop(fdt, dest, name, old, len);
+			return ret < 0 ? ret : 1;
+		} else if (!prop) {
+			debug("Removing %s from %s\n",
+			      name, fdt_get_name(fdt, dest, NULL));
+			fdt_delprop(fdt, dest, name);
+			return 1;
+		} else {
+			debug("old=%p prop=%p\n", old, prop);
+			continue;
+		}
+		ret = fdt_setprop_inplace(fdt, dest, name, prop, len);
+		if (ret)
+			printf("Failed to set %s property: %s\n", name,
+			       fdt_strerror(ret));
 	}
+	return 0;
+}
+
+void karo_fixup_lcd_panel(const char *videomode)
+{
+	int ret;
+	void *fdt = working_fdt;
+	int panel_node = fdt_path_offset(fdt, "display");
+	int dt_node;
+	const char *compat = NULL;
+
+	if (!fdt) {
+		printf("No FDT loaded\n");
+		return;
+	}
+
+	if (panel_node <= 0) {
+		printf("No 'display' node found\n");
+		return;
+	}
+	if (!videomode) {
+		int ret;
+		int parent;
+		int pparent;
+		struct fdtdec_phandle_args args;
+
+		debug("Disabling LCD panel\n");
+		debug("%s@%d: Disabling '%s' node\n", __func__, __LINE__,
+		      fdt_get_name(fdt, panel_node, NULL));
+		fdt_set_node_status(fdt, panel_node, FDT_STATUS_DISABLED, 0);
+		parent = fdt_subnode_offset(fdt, panel_node, "port");
+		if (parent <= 0) {
+			debug("%s@%d: No 'port' node found in '%s'\n",
+			      __func__, __LINE__, fdt_get_name(fdt, panel_node, NULL));
+			return;
+		}
+		parent = fdt_subnode_offset(fdt, parent, "endpoint");
+		if (parent <= 0) {
+			debug("%s@%d: No 'endpoint' node found in '%s'\n",
+			      __func__, __LINE__, fdt_get_name(fdt, parent, NULL));
+			return;
+		}
+		ret = fdtdec_parse_phandle_with_args(fdt, parent,
+						     "remote-endpoint",
+						     NULL, 0, 0, &args);
+		if (ret) {
+			debug("%s@%d: Could not parse 'remote-endpoint' in '%s'\n",
+			      __func__, __LINE__, fdt_get_name(fdt, parent, NULL));
+			return;
+		}
+		parent = fdt_parent_offset(fdt, args.node);
+		if (parent <= 0) {
+			debug("%s@%d: No parent found for '%s'\n",
+			      __func__, __LINE__, fdt_get_name(fdt, args.node, NULL));
+			return;
+		}
+
+		pparent = fdt_parent_offset(fdt, parent);
+		if (pparent <= 0) {
+			debug("%s@%d: No parent found for '%s'\n",
+			      __func__, __LINE__, fdt_get_name(fdt, parent, NULL));
+			return;
+		}
+		debug("%s@%d: Disabling '%s' node\n", __func__, __LINE__,
+		      fdt_get_name(fdt, pparent, NULL));
+		fdt_set_node_status(fdt, panel_node, FDT_STATUS_DISABLED, 0);
+		return;
+	}
+	dt_node = fdt_subnode_offset(fdt, panel_node, "display-timings");
+	if (dt_node > 0) {
+		int node = fdt_subnode_offset(fdt, dt_node, videomode);
+		const char *pn;
+
+		if (node <= 0) {
+			printf("Warning: No '%s' subnode found in 'display-timings'\n",
+			       videomode);
+			return;
+		}
+
+		if (fdt_node_check_compatible(fdt, panel_node, "panel-dpi") == 0) {
+			int timing_node = fdt_subnode_offset(fdt, panel_node,
+							     "panel-timing");
+
+			if (timing_node <= 0) {
+				printf("Warning: No 'panel-timing' subnode found in '%s'\n",
+				       fdt_get_name(fdt, panel_node, NULL));
+				return;
+			}
+			while (karo_fixup_panel_timing(fdt, timing_node, node) == 1) {
+				panel_node = fdt_path_offset(fdt, "display");
+				dt_node = fdt_subnode_offset(fdt, panel_node, "display-timings");
+				node = fdt_subnode_offset(fdt, dt_node, videomode);
+				timing_node = fdt_subnode_offset(fdt, panel_node,
+								 "panel-timing");
+			}
+			return;
+		}
+
+		pn = fdt_getprop(fdt, node, "u-boot,panel-name", NULL);
+		debug("%s@%d: panel-name='%s'\n", __func__, __LINE__,
+		      pn ?: "<N/A>");
+		if (pn)
+			compat = pn;
+		else
+			printf("Property 'u-boot,panel-name' not found in '%s'\n",
+			       fdt_get_name(fdt, node, NULL));
+	}
+	if (!compat)
+		compat = videomode;
+
+	ret = fdt_setprop_string(fdt, panel_node, "compatible", compat);
+	if (ret)
+		printf("Warning: Failed to set 'compatible' property for '%s': %s\n",
+		       fdt_get_name(fdt, panel_node, NULL), fdt_strerror(ret));
 }
 #endif
