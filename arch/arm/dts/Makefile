@@ -796,6 +796,7 @@ dtb-$(CONFIG_RCAR_GEN3) += \
 	r8a77995-draak-u-boot.dtb \
 	r9a07g044l2-txrz-g2l0.dtb \
 	r9a07g044l2-txrz-g2l1.dtb \
+	r9a07g044l2-txrz-g2l2.dtb \
 	r9a07g044l2-qsrz-g2l0.dtb \
 	r9a07g044l2-qsrz-g2l1.dtb \
 	rzg2l-dev.dtb \
