@@ -75,11 +75,13 @@
 #include <env.h>
 #include <log.h>
 #include <malloc.h>
+#include <mtd.h>
 #include <asm/global_data.h>
 #include <jffs2/load_kernel.h>
 #include <linux/list.h>
 #include <linux/ctype.h>
 #include <linux/err.h>
+#include <linux/sizes.h>
 #include <linux/mtd/mtd.h>
 
 #if defined(CONFIG_CMD_NAND)
@@ -130,6 +132,10 @@ extern void board_mtdparts_default(const char **mtdids, const char **mtdparts);
 #endif
 static const char *mtdids_default = MTDIDS_DEFAULT;
 static const char *mtdparts_default = MTDPARTS_DEFAULT;
+
+/* default 'mtdids' and 'mtdparts' build from device tree */
+static char *mtdids_dyn;
+static char *mtdparts_dyn;
 
 /* copies of last seen 'mtdids', 'mtdparts' and 'partition' env variables */
 #define MTDIDS_MAXLEN		128
@@ -1325,8 +1331,9 @@ static void list_partitions(void)
 	}
 
 	printf("\ndefaults:\n");
-	printf("mtdids  : %s\n",
-		mtdids_default ? mtdids_default : "none");
+	printf("mtdids  : %s%s\n",
+	       mtdids_default ? mtdids_default : "none",
+	       mtdids_default == mtdids_dyn ? "(build from DT)" : "");
 	/*
 	 * Using printf() here results in printbuffer overflow
 	 * if default mtdparts string is greater than console
@@ -1334,7 +1341,7 @@ static void list_partitions(void)
 	 */
 	puts("mtdparts: ");
 	puts(mtdparts_default ? mtdparts_default : "none");
-	puts("\n");
+	puts(mtdparts_default == mtdparts_dyn ? "(build from DT)\n" : "\n");
 }
 
 /**
@@ -1713,6 +1720,55 @@ static int parse_mtdids(const char *const ids)
 	return 0;
 }
 
+/*
+ * update the variables "mtdids" and "mtdparts" for MTD device
+ */
+static void mtdparts_default_build(struct mtd_info *mtd, char *mtdids, char *mtdparts)
+{
+	struct mtd_info *part;
+	char multiplier;
+	u32 size;
+	char partition[PARTITION_MAXLEN + 20]; /* name + size + mutiliplier */
+	bool first_part;
+
+	/* mtdids: "<dev>=<dev>, ...." */
+	if (mtdids[0] != '\0')
+		strcat(mtdids, ",");
+	strcat(mtdids, mtd->name);
+	strcat(mtdids, "=");
+	strcat(mtdids, mtd->name);
+
+	/* mtdparts: "<dev>:<part1>,<part2>...,<partN>;..." */
+	if (mtdparts[0] != '\0')
+		strlcat(mtdparts, ";", MTDPARTS_MAXLEN);
+
+	strlcat(mtdparts, mtd->name, MTDPARTS_MAXLEN);
+	strlcat(mtdparts, ":", MTDPARTS_MAXLEN);
+
+	first_part = true;
+	list_for_each_entry(part, &mtd->partitions, node) {
+		if (!(part->size % SZ_1G)) {
+			size = (u32)(part->size / SZ_1G);
+			multiplier = 'g';
+		} else if (!(part->size % SZ_1M)) {
+			size = (u32)(part->size / SZ_1M);
+			multiplier = 'm';
+		} else if (!(part->size % SZ_1K)) {
+			size = (u32)(part->size / SZ_1K);
+			multiplier = 'k';
+		} else {
+			size = (u32)part->size;
+		}
+		snprintf(partition, sizeof(partition), "%d%c(%s)", size, multiplier, part->name);
+
+		if (first_part)
+			first_part = false;
+		else
+			strlcat(mtdparts, ",", MTDPARTS_MAXLEN);
+
+		strlcat(mtdparts, partition, MTDPARTS_MAXLEN);
+	}
+}
 
 /**
  * Parse and initialize global mtdids mapping and create global
@@ -1741,6 +1797,34 @@ int mtdparts_init(void)
 #endif
 		use_defaults = 1;
 		initialized = 1;
+
+		if ((!mtdids_default || !strlen(mtdids_default)) &&
+		    (!mtdparts_default || !strlen(mtdparts_default))) {
+			struct mtd_info *mtd;
+
+			mtdids_dyn = malloc(MTDIDS_MAXLEN);
+			mtdparts_dyn = malloc(MTDPARTS_MAXLEN);
+			if (!mtdids_dyn || !mtdparts_dyn) {
+				free(mtdparts_dyn);
+				printf("out of memory\n");
+				return 1;
+			}
+
+			/* used new default */
+			mtdids_dyn[0] = '\0';
+			mtdparts_dyn[0] = '\0';
+			mtdids_default = mtdids_dyn;
+			mtdparts_default = mtdparts_dyn;
+
+			/* register partitions with OF fallback */
+			mtd_probe_devices();
+
+			/* build default variable value with MTD partitions */
+			mtd_for_each_device(mtd) {
+				if (!mtd_is_partition(mtd) && mtd_has_partitions(mtd))
+					mtdparts_default_build(mtd, mtdids_dyn, mtdparts_dyn);
+			}
+		}
 	}
 
 	/* get variables */

@@ -315,34 +315,11 @@ static int gpio_hog_probe(struct udevice *dev)
 	return 0;
 }
 
-int gpio_hog_probe_all(void)
-{
-	struct udevice *dev;
-	int ret;
-	int retval = 0;
-
-	for (uclass_first_device(UCLASS_NOP, &dev);
-	     dev;
-	     uclass_find_next_device(&dev)) {
-		if (dev->driver == DM_DRIVER_GET(gpio_hog)) {
-			ret = device_probe(dev);
-			if (ret) {
-				printf("Failed to probe device %s err: %d\n",
-				       dev->name, ret);
-				retval = ret;
-			}
-		}
-	}
-
-	return retval;
-}
-
 int gpio_hog_lookup_name(const char *name, struct gpio_desc **desc)
 {
 	struct udevice *dev;
 
 	*desc = NULL;
-	gpio_hog_probe_all();
 	if (!uclass_get_device_by_name(UCLASS_NOP, name, &dev)) {
 		struct gpio_hog_priv *priv = dev_get_priv(dev);
 
@@ -838,6 +815,7 @@ static const char * const gpio_function[GPIOF_COUNT] = {
 	"unused",
 	"unknown",
 	"func",
+	"protected",
 };
 
 static int get_function(struct udevice *dev, int offset, bool skip_unused,
@@ -884,26 +862,31 @@ int gpio_get_status(struct udevice *dev, int offset, char *buf, int buffsize)
 	const struct dm_gpio_ops *ops = gpio_get_ops(dev);
 	struct gpio_dev_priv *priv;
 	char *str = buf;
+	const char *label;
 	int func;
 	int ret;
 	int len;
+	bool used;
 
 	BUILD_BUG_ON(GPIOF_COUNT != ARRAY_SIZE(gpio_function));
 
 	*buf = 0;
 	priv = dev_get_uclass_priv(dev);
-	ret = gpio_get_raw_function(dev, offset, NULL);
+	ret = gpio_get_raw_function(dev, offset, &label);
 	if (ret < 0)
 		return ret;
 	func = ret;
 	len = snprintf(str, buffsize, "%s%d: %s",
 		       priv->bank_name ? priv->bank_name : "",
 		       offset, gpio_function[func]);
-	if (func == GPIOF_INPUT || func == GPIOF_OUTPUT ||
-	    func == GPIOF_UNUSED) {
-		const char *label;
-		bool used;
 
+	switch (func) {
+	case GPIOF_FUNC:
+		snprintf(str + len, buffsize - len, " %s", label ? label : "");
+		break;
+	case GPIOF_INPUT:
+	case GPIOF_OUTPUT:
+	case GPIOF_UNUSED:
 		ret = ops->get_value(dev, offset);
 		if (ret < 0)
 			return ret;
@@ -911,8 +894,9 @@ int gpio_get_status(struct udevice *dev, int offset, char *buf, int buffsize)
 		snprintf(str + len, buffsize - len, ": %d [%c]%s%s",
 			 ret,
 			 used ? 'x' : ' ',
-			 used ? " " : "",
+			 label ? " " : "",
 			 label ? label : "");
+		break;
 	}
 
 	return 0;
@@ -1503,9 +1487,17 @@ static int gpio_post_bind(struct udevice *dev)
 								 &child);
 				if (ret)
 					return ret;
+
+				/*
+				 * Make sure gpio-hogs are probed after bind
+				 * since hogs can be essential to the hardware
+				 * system.
+				 */
+				dev_or_flags(child, DM_FLAG_PROBE_AFTER_BIND);
 			}
 		}
 	}
+
 	return 0;
 }
 

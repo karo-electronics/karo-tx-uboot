@@ -6,7 +6,7 @@
 #ifndef __PINCTRL_H
 #define __PINCTRL_H
 
-#define PINNAME_SIZE	10
+#define PINNAME_SIZE	16
 #define PINMUX_SIZE	80
 
 /**

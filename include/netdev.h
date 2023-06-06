@@ -25,7 +25,7 @@ struct udevice;
 
 int board_eth_init(struct bd_info *bis);
 int board_interface_eth_init(struct udevice *dev,
-			     phy_interface_t interface_type);
+			     phy_interface_t interface_type, ulong rate);
 int cpu_eth_init(struct bd_info *bis);
 
 /* Driver initialization prototypes */

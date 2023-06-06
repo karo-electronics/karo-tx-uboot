@@ -19,6 +19,7 @@
 #include <asm/io.h>
 #include <dm/device-internal.h>
 #include <dm/device_compat.h>
+#include <dm/pinctrl.h>
 #include <linux/bitops.h>
 
 struct stm32_ltdc_priv {
@@ -592,6 +593,9 @@ static int stm32_ltdc_probe(struct udevice *dev)
 				dev_err(bridge, "fail to attach bridge\n");
 				return ret;
 			}
+
+			/* set state the pinctrl to sleep to avoid noise */
+			pinctrl_select_state(dev, "sleep");
 		}
 	}
 

@@ -210,6 +210,14 @@ config PINCTRL_INTEL
 	  driver which must be separately enabled. The driver supports setting
 	  pins on start-up and changing the GPIO attributes.
 
+config PINCTRL_MCP23017
+	bool "Microchip MCP23017 pinctrl driver"
+	help
+	  I2C driver for Microchip MCP23017 16-Bit I/O Expander.
+	  The driver is controlled by a device tree node which contains both
+	  the GPIO definitions and pin control functions for each available
+	  multiplex function.
+
 config PINCTRL_PIC32
 	bool "Microchip PIC32 pin-control and pin-mux driver"
 	depends on DM && MACH_PIC32

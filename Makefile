@@ -3,7 +3,7 @@
 VERSION = 2022
 PATCHLEVEL = 10
 SUBLEVEL =
-EXTRAVERSION =
+EXTRAVERSION = -stm32mp-r1
 NAME =
 
 # *DOCUMENTATION*
@@ -799,6 +799,9 @@ KBUILD_CPPFLAGS += $(KCPPFLAGS)
 KBUILD_AFLAGS += $(KAFLAGS)
 KBUILD_CFLAGS += $(KCFLAGS)
 
+KBUILD_LDFLAGS  += -z noexecstack
+KBUILD_LDFLAGS  += $(call ld-option,--no-warn-rwx-segments)
+
 KBUILD_HOSTCFLAGS += $(if $(CONFIG_TOOLS_DEBUG),-g)
 
 # Use UBOOTINCLUDE when you must reference the include/ directory.
@@ -855,6 +858,7 @@ libs-y += drivers/usb/musb/
 libs-y += drivers/usb/musb-new/
 libs-y += drivers/usb/isp1760/
 libs-y += drivers/usb/phy/
+libs-y += drivers/usb/typec/
 libs-y += drivers/usb/ulpi/
 ifdef CONFIG_POST
 libs-y += post/

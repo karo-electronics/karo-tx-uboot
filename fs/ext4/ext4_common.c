@@ -2368,6 +2368,10 @@ int ext4fs_mount(unsigned part_length)
 	struct ext2_data *data;
 	int status;
 	struct ext_filesystem *fs = get_fs();
+
+	if (part_length < SUPERBLOCK_SIZE)
+		return 0;
+
 	data = zalloc(SUPERBLOCK_SIZE);
 	if (!data)
 		return 0;
@@ -2415,7 +2419,7 @@ int ext4fs_mount(unsigned part_length)
 
 	return 1;
 fail:
-	printf("Failed to mount ext2 filesystem...\n");
+	log_debug("Failed to mount ext2 filesystem...\n");
 fail_noerr:
 	free(data);
 	ext4fs_root = NULL;

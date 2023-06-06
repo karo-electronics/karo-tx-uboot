@@ -126,10 +126,12 @@ enum uclass_id {
 	UCLASS_TIMER,		/* Timer device */
 	UCLASS_TPM,		/* Trusted Platform Module TIS interface */
 	UCLASS_UFS,		/* Universal Flash Storage */
+	UCLASS_UCSI,		/* USB Type-C Connector System Software Interface */
 	UCLASS_USB,		/* USB bus */
 	UCLASS_USB_DEV_GENERIC,	/* USB generic device */
 	UCLASS_USB_HUB,		/* USB hub */
 	UCLASS_USB_GADGET_GENERIC,	/* USB generic device */
+	UCLASS_USB_TYPEC,	/* USB Type-C */
 	UCLASS_VIDEO,		/* Video or LCD device */
 	UCLASS_VIDEO_BRIDGE,	/* Video bridge, e.g. DisplayPort to LVDS */
 	UCLASS_VIDEO_CONSOLE,	/* Text console driver for video device */

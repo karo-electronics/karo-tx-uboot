@@ -267,7 +267,13 @@ HOSTCFLAGS_sha512.o := -pedantic -DCONFIG_SHA512 -DCONFIG_SHA384
 quiet_cmd_wrap = WRAP    $@
 cmd_wrap = echo "\#include <../$(patsubst $(obj)/%,%,$@)>" >$@
 
-$(obj)/boot/%.c $(obj)/common/%.c $(obj)/env/%.c $(obj)/lib/%.c:
+$(obj)/boot/%.c :
+	$(call cmd,wrap)
+$(obj)/common/%.c :
+	$(call cmd,wrap)
+$(obj)/env/%.c :
+	$(call cmd,wrap)
+$(obj)/lib/%.c :
 	$(call cmd,wrap)
 
 clean-dirs := lib common

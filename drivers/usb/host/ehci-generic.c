@@ -66,6 +66,7 @@ static int ehci_usb_probe(struct udevice *dev)
 	struct ehci_hccr *hccr;
 	struct ehci_hcor *hcor;
 	int err, ret;
+	struct udevice *companion_dev;
 
 	err = 0;
 	ret = clk_get_bulk(dev, &priv->clocks);
@@ -96,13 +97,36 @@ static int ehci_usb_probe(struct udevice *dev)
 	if (err)
 		goto reset_err;
 
-	err = ehci_setup_phy(dev, &priv->phy, 0);
+	err = generic_setup_phy(dev, &priv->phy, 0);
 	if (err)
 		goto regulator_err;
 
 	hccr = map_physmem(dev_read_addr(dev), 0x100, MAP_NOCACHE);
 	hcor = (struct ehci_hcor *)((uintptr_t)hccr +
 				    HC_LENGTH(ehci_readl(&hccr->cr_capbase)));
+
+	/*
+	 * Enforce optional companion controller is marked as such. This allows
+	 * the bus scan in usb-uclass to 1st scan the primary controller,
+	 * before the companion controller (ownership is given to companion
+	 * when low or full speed devices have been detected).
+	 */
+	err = uclass_get_device_by_phandle(UCLASS_USB, dev, "companion", &companion_dev);
+	if (!err) {
+		struct usb_bus_priv *companion_bus_priv;
+
+		dev_dbg(companion_dev, "companion of %s\n", dev->name);
+		companion_bus_priv = dev_get_uclass_priv(companion_dev);
+		companion_bus_priv->companion = true;
+	} else if (err && err != -ENOENT && err != -ENODEV) {
+		/*
+		 * Treat everything else than no companion or disabled
+		 * companion as an error. (It may not be enabled on boards
+		 * that have a High-Speed HUB to handle FS and LS traffic).
+		 */
+		dev_err(dev, "Failed to get companion (err=%d)\n", err);
+		goto phy_err;
+	}
 
 	err = ehci_register(dev, hccr, hcor, NULL, 0, USB_INIT_HOST);
 	if (err)
@@ -111,7 +135,7 @@ static int ehci_usb_probe(struct udevice *dev)
 	return 0;
 
 phy_err:
-	ret = ehci_shutdown_phy(dev, &priv->phy);
+	ret = generic_shutdown_phy(&priv->phy);
 	if (ret)
 		dev_err(dev, "failed to shutdown usb phy (ret=%d)\n", ret);
 
@@ -141,7 +165,7 @@ static int ehci_usb_remove(struct udevice *dev)
 	if (ret)
 		return ret;
 
-	ret = ehci_shutdown_phy(dev, &priv->phy);
+	ret = generic_shutdown_phy(&priv->phy);
 	if (ret)
 		return ret;
 
