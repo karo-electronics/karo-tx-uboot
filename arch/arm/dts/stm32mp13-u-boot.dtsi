@@ -17,6 +17,12 @@
 		pinctrl0 = &pinctrl;
 	};
 
+	firmware {
+		optee {
+			u-boot,dm-pre-reloc;
+		};
+	};
+
 	/* need PSCI for sysreset during board_f */
 	psci {
 		u-boot,dm-pre-proper;
@@ -39,6 +45,10 @@
 };
 
 &bsec {
+	u-boot,dm-pre-reloc;
+};
+
+&etzpc {
 	u-boot,dm-pre-reloc;
 };
 
@@ -82,11 +92,16 @@
 	u-boot,dm-pre-reloc;
 };
 
-&optee {
-	u-boot,dm-pre-reloc;
+/* pre-reloc probe = reserve video frame buffer in video_reserve() */
+&ltdc {
+	u-boot,dm-pre-proper;
 };
 
 &pinctrl {
+	u-boot,dm-pre-reloc;
+};
+
+&rcc {
 	u-boot,dm-pre-reloc;
 };
 
@@ -102,14 +117,11 @@
 	u-boot,dm-pre-reloc;
 };
 
-&scmi_shm {
-	u-boot,dm-pre-reloc;
-};
-
-&scmi_sram {
-	u-boot,dm-pre-reloc;
-};
-
 &syscfg {
+	u-boot,dm-pre-reloc;
+};
+
+&usbphyc {
+	/* stm32-usbphyc-clk = ck_usbo_48m is a source clock of RCC CCF */
 	u-boot,dm-pre-reloc;
 };

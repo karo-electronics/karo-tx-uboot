@@ -1,21 +1,15 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 /*
  * Copyright (C) STMicroelectronics 2022 - All Rights Reserved
  * Author: Alexandre Torgue <alexandre.torgue@foss.st.com> for STMicroelectronics.
  */
 
-/dts-v1/;
-
-#include "stm32mp157c-dk2.dts"
 #include "stm32mp15-scmi.dtsi"
 
 / {
-	model = "STMicroelectronics STM32MP157C-DK2 SCMI Discovery Board";
-	compatible = "st,stm32mp157c-dk2-scmi", "st,stm32mp157c-dk2", "st,stm32mp157";
-
 	reserved-memory {
-		optee@de000000 {
-			reg = <0xde000000 0x2000000>;
+		optee@fe000000 {
+			reg = <0xfe000000 0x2000000>;
 			no-map;
 		};
 	};
@@ -29,13 +23,7 @@
 	clocks = <&scmi_clk CK_SCMI_MPU>;
 };
 
-&cryp1 {
-	clocks = <&scmi_clk CK_SCMI_CRYP1>;
-	resets = <&scmi_reset RST_SCMI_CRYP1>;
-};
-
 &dsi {
-	phy-dsi-supply = <&scmi_reg18>;
 	clocks = <&rcc DSI_K>, <&scmi_clk CK_SCMI_HSE>, <&rcc DSI_PX>;
 };
 
@@ -55,6 +43,13 @@
 
 &iwdg2 {
 	clocks = <&rcc IWDG2>, <&scmi_clk CK_SCMI_LSI>;
+};
+
+&m4_rproc {
+	resets = <&scmi_reset RST_SCMI_MCU>,
+		 <&scmi_reset RST_SCMI_MCU_HOLD_BOOT>;
+	reset-names = "mcu_rst", "hold_boot";
+	/delete-property/ st,syscfg-holdboot;
 };
 
 &mdma1 {
@@ -82,4 +77,8 @@
 
 &rtc {
 	clocks = <&scmi_clk CK_SCMI_RTCAPB>, <&scmi_clk CK_SCMI_RTC>;
+};
+
+&usart1 {
+	clocks = <&scmi_clk CK_SCMI_USART1>;
 };
