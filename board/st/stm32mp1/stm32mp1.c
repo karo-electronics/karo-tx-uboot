@@ -19,18 +19,19 @@
 #include <generic-phy.h>
 #include <hang.h>
 #include <i2c.h>
+#include <regmap.h>
 #include <init.h>
 #include <led.h>
 #include <log.h>
 #include <malloc.h>
 #include <misc.h>
-#include <mtd_node.h>
 #include <net.h>
 #include <netdev.h>
 #include <phy.h>
 #include <remoteproc.h>
 #include <reset.h>
 #include <syscon.h>
+#include <typec.h>
 #include <usb.h>
 #include <watchdog.h>
 #include <asm/global_data.h>
@@ -38,6 +39,8 @@
 #include <asm/gpio.h>
 #include <asm/arch/stm32.h>
 #include <asm/arch/sys_proto.h>
+#include <dm/device.h>
+#include <dm/device-internal.h>
 #include <dm/ofnode.h>
 #include <jffs2/load_kernel.h>
 #include <linux/bitops.h>
@@ -47,8 +50,6 @@
 #include <power/regulator.h>
 #include <usb/dwc2_udc.h>
 
-#include "../../st/common/stusb160x.h"
-
 /* SYSCFG registers */
 #define SYSCFG_BOOTR		0x00
 #define SYSCFG_PMCSETR		0x04
@@ -56,7 +57,8 @@
 #define SYSCFG_ICNR		0x1C
 #define SYSCFG_CMPCR		0x20
 #define SYSCFG_CMPENSETR	0x24
-#define SYSCFG_PMCCLRR		0x44
+#define SYSCFG_PMCCLRR		0x08
+#define SYSCFG_MP13_PMCCLRR	0x44
 
 #define SYSCFG_BOOTR_BOOT_MASK		GENMASK(2, 0)
 #define SYSCFG_BOOTR_BOOTPD_SHIFT	4
@@ -72,15 +74,8 @@
 
 #define SYSCFG_CMPENSETR_MPU_EN		BIT(0)
 
-#define SYSCFG_PMCSETR_ETH_CLK_SEL	BIT(16)
-#define SYSCFG_PMCSETR_ETH_REF_CLK_SEL	BIT(17)
-
-#define SYSCFG_PMCSETR_ETH_SELMII	BIT(20)
-
-#define SYSCFG_PMCSETR_ETH_SEL_MASK	GENMASK(23, 21)
-#define SYSCFG_PMCSETR_ETH_SEL_GMII_MII	0
-#define SYSCFG_PMCSETR_ETH_SEL_RGMII	BIT(21)
-#define SYSCFG_PMCSETR_ETH_SEL_RMII	BIT(23)
+#define GOODIX_REG_ID		0x8140
+#define GOODIX_ID_LEN		4
 
 #define USB_LOW_THRESHOLD_UV		200000
 #define USB_WARNING_LOW_THRESHOLD_UV	660000
@@ -103,7 +98,7 @@ int checkboard(void)
 	int fdt_compat_len;
 
 	if (IS_ENABLED(CONFIG_TFABOOT)) {
-		if (IS_ENABLED(CONFIG_STM32MP15x_STM32IMAGE))
+		if (IS_ENABLED(CONFIG_STM32MP15X_STM32IMAGE))
 			mode = "trusted - stm32image";
 		else
 			mode = "trusted";
@@ -186,6 +181,20 @@ static void board_key_check(void)
 	}
 }
 
+static int typec_usb_cable_connected(void)
+{
+	struct udevice *dev;
+	int ret;
+	u8 connector = 0;
+
+	ret = uclass_get_device(UCLASS_USB_TYPEC, 0, &dev);
+	if (ret < 0)
+		return ret;
+
+	return (typec_is_attached(dev, connector) == TYPEC_ATTACHED) &&
+	       (typec_get_data_role(dev, connector) == TYPEC_DEVICE);
+}
+
 int g_dnl_board_usb_cable_connected(void)
 {
 	struct udevice *dwc2_udc_otg;
@@ -201,8 +210,8 @@ int g_dnl_board_usb_cable_connected(void)
 	if ((get_bootmode() & TAMP_BOOT_DEVICE_MASK) == BOOT_SERIAL_USB)
 		return true;
 
-	/* if typec stusb160x is present, means DK1 or DK2 board */
-	ret = stusb160x_cable_connected();
+	/* if Type-C is present, it means DK1 or DK2 board */
+	ret = typec_usb_cable_connected();
 	if (ret >= 0)
 		return ret;
 
@@ -356,9 +365,6 @@ static int board_check_usb_power(void)
 	int adc_count, ret;
 	u32 nb_blink;
 	u8 i;
-
-	if (!IS_ENABLED(CONFIG_ADC))
-		return -ENODEV;
 
 	node = ofnode_path("/config");
 	if (!ofnode_valid(node)) {
@@ -605,8 +611,9 @@ error:
 
 static bool board_is_stm32mp15x_dk2(void)
 {
-	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15x) &&
-	    of_machine_is_compatible("st,stm32mp157c-dk2"))
+	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15X) &&
+	    (of_machine_is_compatible("st,stm32mp157c-dk2") ||
+	     of_machine_is_compatible("st,stm32mp157f-dk2")))
 		return true;
 
 	return false;
@@ -614,7 +621,7 @@ static bool board_is_stm32mp15x_dk2(void)
 
 static bool board_is_stm32mp15x_ev1(void)
 {
-	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15x) &&
+	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15X) &&
 	    (of_machine_is_compatible("st,stm32mp157a-ev1") ||
 	     of_machine_is_compatible("st,stm32mp157c-ev1") ||
 	     of_machine_is_compatible("st,stm32mp157d-ev1") ||
@@ -624,36 +631,198 @@ static bool board_is_stm32mp15x_ev1(void)
 	return false;
 }
 
+/* touchscreen driver: used for focaltech touchscreen detection */
+static const struct udevice_id edt_ft6236_ids[] = {
+	{ .compatible = "focaltech,ft6236", },
+	{ }
+};
+
+U_BOOT_DRIVER(edt_ft6236) = {
+	.name		= "edt_ft6236",
+	.id		= UCLASS_I2C_GENERIC,
+	.of_match	= edt_ft6236_ids,
+};
+
 /* touchscreen driver: only used for pincontrol configuration */
 static const struct udevice_id goodix_ids[] = {
+	{ .compatible = "goodix,gt911", },
 	{ .compatible = "goodix,gt9147", },
 	{ }
 };
 
 U_BOOT_DRIVER(goodix) = {
 	.name		= "goodix",
-	.id		= UCLASS_NOP,
+	.id		= UCLASS_I2C_GENERIC,
 	.of_match	= goodix_ids,
+};
+
+static int goodix_i2c_read(struct udevice *dev, u16 reg, u8 *buf, int len)
+{
+	struct i2c_msg msgs[2];
+	__be16 wbuf = cpu_to_be16(reg);
+	int ret;
+
+	msgs[0].flags = 0;
+	msgs[0].addr  = 0x5d;
+	msgs[0].len   = 2;
+	msgs[0].buf   = (u8 *)&wbuf;
+
+	msgs[1].flags = I2C_M_RD;
+	msgs[1].addr  = 0x5d;
+	msgs[1].len   = len;
+	msgs[1].buf   = buf;
+
+	ret = dm_i2c_xfer(dev, msgs, 2);
+
+	return ret;
+}
+
+/* HELPER: search detected driver */
+struct detect_info_t {
+	bool (*detect)(void);
+	struct driver *drv;
+};
+
+static struct driver *detect_device(struct detect_info_t *info, u8 size)
+{
+	struct driver *drv = NULL;
+	u8 i;
+
+	for (i = 0; i < size && !drv; i++)
+		if (info[i].detect())
+			drv = info[i].drv;
+
+	return drv;
+}
+
+/* HELPER: force new driver binding, replace the existing one */
+static void bind_driver(struct driver *drv, const char *path)
+{
+	ofnode node;
+	struct udevice *dev;
+	struct udevice *parent;
+	int ret;
+
+	node = ofnode_path(path);
+	if (!ofnode_valid(node))
+		return;
+	if (!ofnode_is_enabled(node))
+		return;
+
+	ret = device_find_global_by_ofnode(ofnode_get_parent(node), &parent);
+	if (!parent || ret) {
+		log_debug("Unable to found parent. err:%d\n", ret);
+		return;
+	}
+
+	ret = device_find_global_by_ofnode(node, &dev);
+	/* remove the driver previously binded */
+	if (dev && !ret) {
+		if (dev->driver == drv) {
+			log_debug("nothing to do, %s already binded.\n", drv->name);
+			return;
+		}
+		log_debug("%s unbind\n", dev->driver->name);
+		device_remove(dev, DM_REMOVE_NORMAL);
+		device_unbind(dev);
+	}
+	/* bind the new driver */
+	ret = device_bind_with_driver_data(parent, drv, ofnode_get_name(node),
+					   0, node, &dev);
+	if (ret)
+		log_debug("Unable to bind %s, err:%d\n", drv->name, ret);
+}
+
+bool stm32mp15x_ev1_rm68200(void)
+{
+	struct udevice *dev;
+	struct udevice *bus;
+	struct dm_i2c_chip *chip;
+	char id[GOODIX_ID_LEN];
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(goodix), &dev);
+	if (ret)
+		return false;
+
+	bus = dev_get_parent(dev);
+	chip = dev_get_parent_plat(dev);
+	ret = dm_i2c_probe(bus, chip->chip_addr, 0, &dev);
+	if (ret)
+		return false;
+
+	ret = goodix_i2c_read(dev, GOODIX_REG_ID, id, sizeof(id));
+	if (ret)
+		return false;
+
+	if (!strncmp(id, "9147", sizeof(id)))
+		return true;
+
+	return false;
+}
+
+bool stm32mp15x_ev1_hx8394(void)
+{
+	return true;
+}
+
+extern U_BOOT_DRIVER(rm68200_panel);
+extern U_BOOT_DRIVER(hx8394_panel);
+
+struct detect_info_t stm32mp15x_ev1_panels[] = {
+	CONFIG_IS_ENABLED(VIDEO_LCD_RAYDIUM_RM68200,
+			  ({ .detect = stm32mp15x_ev1_rm68200,
+			   .drv = DM_DRIVER_REF(rm68200_panel)
+			   },
+			   ))
+	CONFIG_IS_ENABLED(VIDEO_LCD_ROCKTECH_HX8394,
+			  ({ .detect = stm32mp15x_ev1_hx8394,
+			   .drv = DM_DRIVER_REF(hx8394_panel)
+			   },
+			   ))
 };
 
 static void board_stm32mp15x_ev1_init(void)
 {
 	struct udevice *dev;
+	struct driver *drv;
+	struct gpio_desc reset_gpio;
+	char path[40];
 
 	/* configure IRQ line on EV1 for touchscreen before LCD reset */
-	uclass_get_device_by_driver(UCLASS_NOP, DM_DRIVER_GET(goodix), &dev);
+	uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(goodix), &dev);
+
+	/* get & set reset gpio for panel */
+	uclass_get_device_by_driver(UCLASS_PANEL, DM_DRIVER_GET(rm68200_panel), &dev);
+
+	gpio_request_by_name(dev, "reset-gpios", 0, &reset_gpio, GPIOD_IS_OUT);
+
+	if (!dm_gpio_is_valid(&reset_gpio))
+		return;
+
+	dm_gpio_set_value(&reset_gpio, true);
+	mdelay(1);
+	dm_gpio_set_value(&reset_gpio, false);
+	mdelay(10);
+
+	/* auto detection of connected panel-dsi */
+	drv = detect_device(stm32mp15x_ev1_panels, ARRAY_SIZE(stm32mp15x_ev1_panels));
+	if (!drv)
+		return;
+	/* save the detected compatible in environment */
+	env_set("panel-dsi", drv->of_match->compatible);
+
+	dm_gpio_free(NULL, &reset_gpio);
+
+	/* select the driver for the detected PANEL */
+	ofnode_get_path(dev_ofnode(dev), path, sizeof(path));
+	bind_driver(drv, path);
 }
 
 /* board dependent setup after realloc */
 int board_init(void)
 {
 	board_key_check();
-
-	if (board_is_stm32mp15x_ev1())
-		board_stm32mp15x_ev1_init();
-
-	if (board_is_stm32mp15x_dk2())
-		board_stm32mp15x_dk2_init();
 
 	regulators_enable_boot_on(_DEBUG);
 
@@ -679,6 +848,12 @@ int board_late_init(void)
 	char buf[10];
 	char dtb_name[256];
 	int buf_len;
+
+	if (board_is_stm32mp15x_ev1())
+		board_stm32mp15x_ev1_init();
+
+	if (board_is_stm32mp15x_dk2())
+		board_stm32mp15x_dk2_init();
 
 	if (IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)) {
 		fdt_compat = ofnode_get_property(ofnode_root(), "compatible",
@@ -713,8 +888,14 @@ int board_late_init(void)
 		}
 	}
 
-	/* for DK1/DK2 boards */
-	board_check_usb_power();
+	if (IS_ENABLED(CONFIG_ADC)) {
+		/* probe all ADC for calibration */
+		uclass_foreach_dev_probe(UCLASS_ADC, dev) {
+			log_debug("ACD probe for calibration: %s\n", dev->name);
+		}
+		/* for DK1/DK2 boards */
+		board_check_usb_power();
+	}
 
 	return 0;
 }
@@ -724,58 +905,114 @@ void board_quiesce_devices(void)
 	setup_led(LEDST_OFF);
 }
 
+/* CLOCK feed to PHY*/
+#define ETH_CK_F_25M	25000000
+#define ETH_CK_F_50M	50000000
+#define ETH_CK_F_125M	125000000
+
+struct stm32_syscfg_pmcsetr {
+	u32 syscfg_clr_off;
+	u32 eth1_clk_sel;
+	u32 eth1_ref_clk_sel;
+	u32 eth1_sel_mii;
+	u32 eth1_sel_rgmii;
+	u32 eth1_sel_rmii;
+	u32 eth2_clk_sel;
+	u32 eth2_ref_clk_sel;
+	u32 eth2_sel_rgmii;
+	u32 eth2_sel_rmii;
+};
+
+const struct stm32_syscfg_pmcsetr stm32mp15_syscfg_pmcsetr = {
+	.syscfg_clr_off		= 0x44,
+	.eth1_clk_sel		= BIT(16),
+	.eth1_ref_clk_sel	= BIT(17),
+	.eth1_sel_mii		= BIT(20),
+	.eth1_sel_rgmii		= BIT(21),
+	.eth1_sel_rmii		= BIT(23),
+	.eth2_clk_sel		= 0,
+	.eth2_ref_clk_sel	= 0,
+	.eth2_sel_rgmii		= 0,
+	.eth2_sel_rmii		= 0
+};
+
+const struct stm32_syscfg_pmcsetr stm32mp13_syscfg_pmcsetr = {
+	.syscfg_clr_off		= 0x08,
+	.eth1_clk_sel		= BIT(16),
+	.eth1_ref_clk_sel	= BIT(17),
+	.eth1_sel_mii		= 0,
+	.eth1_sel_rgmii		= BIT(21),
+	.eth1_sel_rmii		= BIT(23),
+	.eth2_clk_sel		= BIT(24),
+	.eth2_ref_clk_sel	= BIT(25),
+	.eth2_sel_rgmii		= BIT(29),
+	.eth2_sel_rmii		= BIT(31)
+};
+
+#define SYSCFG_PMCSETR_ETH_MASK		GENMASK(23, 16)
+#define SYSCFG_PMCR_ETH_SEL_GMII	0
+
 /* eth init function : weak called in eqos driver */
 int board_interface_eth_init(struct udevice *dev,
-			     phy_interface_t interface_type)
+			     phy_interface_t interface_type, ulong rate)
 {
-	u8 *syscfg;
+	struct regmap *regmap;
+	uint regmap_mask;
+	int ret;
 	u32 value;
-	bool eth_clk_sel_reg = false;
-	bool eth_ref_clk_sel_reg = false;
+	bool ext_phyclk, eth_clk_sel_reg, eth_ref_clk_sel_reg;
+	const struct stm32_syscfg_pmcsetr *pmcsetr;
+
+	/* Ethernet PHY have no crystal */
+	ext_phyclk = dev_read_bool(dev, "st,ext-phyclk");
 
 	/* Gigabit Ethernet 125MHz clock selection. */
 	eth_clk_sel_reg = dev_read_bool(dev, "st,eth-clk-sel");
 
 	/* Ethernet 50Mhz RMII clock selection */
-	eth_ref_clk_sel_reg =
-		dev_read_bool(dev, "st,eth-ref-clk-sel");
+	eth_ref_clk_sel_reg = dev_read_bool(dev, "st,eth-ref-clk-sel");
 
-	syscfg = (u8 *)syscon_get_first_range(STM32MP_SYSCON_SYSCFG);
+	if (device_is_compatible(dev, "st,stm32mp13-dwmac"))
+		pmcsetr = &stm32mp13_syscfg_pmcsetr;
+	else
+		pmcsetr = &stm32mp15_syscfg_pmcsetr;
 
-	if (!syscfg)
+	regmap = syscon_regmap_lookup_by_phandle(dev, "st,syscon");
+	if (!IS_ERR(regmap)) {
+		u32 fmp[3];
+
+		ret = dev_read_u32_array(dev, "st,syscon", fmp, 3);
+		if (ret)
+			/*  If no mask in DT, it is MP15 (backward compatibility) */
+			regmap_mask = SYSCFG_PMCSETR_ETH_MASK;
+		else
+			regmap_mask = fmp[2];
+	} else {
 		return -ENODEV;
+	}
 
 	switch (interface_type) {
 	case PHY_INTERFACE_MODE_MII:
-		value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII |
-			SYSCFG_PMCSETR_ETH_REF_CLK_SEL;
+		value = pmcsetr->eth1_sel_mii;
 		log_debug("PHY_INTERFACE_MODE_MII\n");
 		break;
 	case PHY_INTERFACE_MODE_GMII:
-		if (eth_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII |
-				SYSCFG_PMCSETR_ETH_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII;
+		value = SYSCFG_PMCR_ETH_SEL_GMII;
 		log_debug("PHY_INTERFACE_MODE_GMII\n");
 		break;
 	case PHY_INTERFACE_MODE_RMII:
-		if (eth_ref_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_RMII |
-				SYSCFG_PMCSETR_ETH_REF_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_RMII;
+		value = pmcsetr->eth1_sel_rmii | pmcsetr->eth2_sel_rmii;
+		if (rate == ETH_CK_F_50M && (eth_clk_sel_reg || ext_phyclk))
+			value |= pmcsetr->eth1_ref_clk_sel | pmcsetr->eth2_ref_clk_sel;
 		log_debug("PHY_INTERFACE_MODE_RMII\n");
 		break;
 	case PHY_INTERFACE_MODE_RGMII:
 	case PHY_INTERFACE_MODE_RGMII_ID:
 	case PHY_INTERFACE_MODE_RGMII_RXID:
 	case PHY_INTERFACE_MODE_RGMII_TXID:
-		if (eth_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_RGMII |
-				SYSCFG_PMCSETR_ETH_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_RGMII;
+		value = pmcsetr->eth1_sel_rgmii | pmcsetr->eth2_sel_rgmii;
+		if (rate == ETH_CK_F_125M && (eth_clk_sel_reg || ext_phyclk))
+			value |= pmcsetr->eth1_clk_sel | pmcsetr->eth2_clk_sel;
 		log_debug("PHY_INTERFACE_MODE_RGMII\n");
 		break;
 	default:
@@ -785,13 +1022,12 @@ int board_interface_eth_init(struct udevice *dev,
 		return -EINVAL;
 	}
 
-	/* clear and set ETH configuration bits */
-	writel(SYSCFG_PMCSETR_ETH_SEL_MASK | SYSCFG_PMCSETR_ETH_SELMII |
-	       SYSCFG_PMCSETR_ETH_REF_CLK_SEL | SYSCFG_PMCSETR_ETH_CLK_SEL,
-	       syscfg + SYSCFG_PMCCLRR);
-	writel(value, syscfg + SYSCFG_PMCSETR);
+	/* Need to update PMCCLRR (clear register) */
+	regmap_write(regmap, pmcsetr->syscfg_clr_off, regmap_mask);
 
-	return 0;
+	ret = regmap_update_bits(regmap, SYSCFG_PMCSETR, regmap_mask, value);
+
+	return ret;
 }
 
 enum env_location env_get_location(enum env_operation op, int prio)
@@ -895,25 +1131,69 @@ int mmc_get_env_dev(void)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
+void stm32mp15x_dk2_fdt_update(void *new_blob)
+{
+	struct udevice *dev;
+	struct udevice *bus;
+	int nodeoff = 0;
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_I2C_GENERIC, DM_DRIVER_GET(edt_ft6236), &dev);
+	if (ret)
+		return;
+
+	bus = dev_get_parent(dev);
+
+	ret = dm_i2c_probe(bus, 0x38, 0, &dev);
+	if (ret < 0) {
+		nodeoff = fdt_node_offset_by_compatible(new_blob, -1, "focaltech,ft6236");
+		if (nodeoff < 0) {
+			log_warning("touchscreen@38 node not found\n");
+		} else {
+			fdt_set_name(new_blob, nodeoff, "touchscreen@2a");
+			fdt_setprop_u32(new_blob, nodeoff, "reg", 0x2a);
+			log_debug("touchscreen@38 node updated to @2a\n");
+		}
+	}
+}
+
+void fdt_update_panel_dsi(void *new_blob)
+{
+	char const *panel = env_get("panel-dsi");
+	int nodeoff = 0;
+
+	if (!panel)
+		return;
+
+	if (!strcmp(panel, "rocktech,hx8394")) {
+		nodeoff = fdt_node_offset_by_compatible(new_blob, -1, "raydium,rm68200");
+		if (nodeoff < 0) {
+			log_warning("panel-dsi node not found");
+			return;
+		}
+		fdt_setprop_string(new_blob, nodeoff, "compatible", panel);
+
+		nodeoff = fdt_node_offset_by_compatible(new_blob, -1, "goodix,gt9147");
+		if (nodeoff < 0) {
+			log_warning("touchscreen node not found");
+			return;
+		}
+		fdt_setprop_string(new_blob, nodeoff, "compatible", "goodix,gt911");
+	}
+}
+
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
-	static const struct node_info nodes[] = {
-		{ "st,stm32f469-qspi",		MTD_DEV_TYPE_NOR,  },
-		{ "st,stm32f469-qspi",		MTD_DEV_TYPE_SPINAND},
-		{ "st,stm32mp15-fmc2",		MTD_DEV_TYPE_NAND, },
-		{ "st,stm32mp1-fmc2-nfc",	MTD_DEV_TYPE_NAND, },
-	};
-	char *boot_device;
-
-	/* Check the boot-source and don't update MTD for serial or usb boot */
-	boot_device = env_get("boot_device");
-	if (!boot_device ||
-	    (strcmp(boot_device, "serial") && strcmp(boot_device, "usb")))
-		if (IS_ENABLED(CONFIG_FDT_FIXUP_PARTITIONS))
-			fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+	fdt_copy_fixed_partitions(blob);
 
 	if (CONFIG_IS_ENABLED(FDT_SIMPLEFB))
 		fdt_simplefb_enable_and_mem_rsv(blob);
+
+	if (board_is_stm32mp15x_dk2())
+		stm32mp15x_dk2_fdt_update(blob);
+
+	if (board_is_stm32mp15x_ev1())
+		fdt_update_panel_dsi(blob);
 
 	return 0;
 }

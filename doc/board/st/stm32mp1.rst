@@ -69,23 +69,29 @@ a Cortex-A frequency option:
  - D : Cortex-A7 @ 800 MHz
  - F : Secure Boot + HW Crypto + Cortex-A7 @ 800 MHz
 
-Currently the following boards are supported:
+Currently the following STMIcroelectronics boards are supported:
 
  + stm32mp157a-dk1.dts
+ + stm32mp157a-ed1.dts
+ + stm32mp157a-ev1.dts
  + stm32mp157c-dk2.dts
  + stm32mp157c-ed1.dts
  + stm32mp157c-ev1.dts
+ + stm32mp157d-dk1.dts
+ + stm32mp157d-ed1.dts
+ + stm32mp157d-ev1.dts
+ + stm32mp157f-dk2.dts
+ + stm32mp157f-ed1.dts
+ + stm32mp157f-ev1.dts
+
+These board with SCMI support are only managed with stm32mp15_defconfig,
+when the resources are secured with RCC_TZCR.TZEN=1 in OP-TEE. The access to
+these reset and clock resources are provided by OP-TEE and the associated SCMI
+services.
+
+Currently the following customer boards are supported:
+
  + stm32mp15xx-dhcor-avenger96.dts
-
-The SCMI variant of each board is supported by a specific "scmi" device tree:
- + stm32mp157a-dk1-scmi.dts
- + stm32mp157c-dk2-scmi.dts
- + stm32mp157c-ed1-scmi.dts
- + stm32mp157c-ev1-scmi.dts
-
-SCMI variant is used only with stm32mp15_defconfig, when the resources are
-secured with RCC_TZCR.TZEN=1 in OP-TEE. The access to these reset and clock
-resources are provided by OP-TEE and the associated SCMI services.
 
 STM32MP13x
 ``````````
@@ -146,7 +152,7 @@ TF-A_ (BL2) initialize the DDR and loads the next stage binaries from a FIP file
      the secure monitor to access to secure resources.
    + HW_CONFIG: The hardware configuration file = the U-Boot device tree
 
-The scmi variant of each device tree is only support with OP-TEE as secure
+The SCMI variant of each device tree is only support with OP-TEE as secure
 monitor, with stm32mp15_defconfig.
 
 The **Basic** boot chain with SPL (for STM32MP15x)
@@ -184,19 +190,27 @@ The supported device trees for STM32MP15x (stm32mp15_trusted_defconfig and stm32
 
 + ev1: eval board with pmic stpmic1 (ev1 = mother board + daughter ed1)
 
+   + stm32mp157a-ev1
    + stm32mp157c-ev1
+   + stm32mp157d-ev1
+   + stm32mp157f-ev1
 
 + ed1: daughter board with pmic stpmic1
 
+   + stm32mp157a-ed1
    + stm32mp157c-ed1
+   + stm32mp157d-ed1
+   + stm32mp157f-ed1
 
 + dk1: Discovery board
 
    + stm32mp157a-dk1
+   + stm32mp157d-dk1
 
 + dk2: Discovery board = dk1 with a BT/WiFI combo and a DSI panel
 
    + stm32mp157c-dk2
+   + stm32mp157f-dk2
 
 + avenger96: Avenger96 board from Arrow Electronics based on DH Elec. DHCOR SoM
 
@@ -260,12 +274,6 @@ Build Procedure
    Examples:
 
   a) trusted boot with FIP on STM32MP15x ev1::
-
-     # export KBUILD_OUTPUT=stm32mp15
-     # make stm32mp15_defconfig
-     # make DEVICE_TREE=stm32mp157c-ev1-scmi all
-
-    or without SCMI support
 
      # export KBUILD_OUTPUT=stm32mp15
      # make stm32mp15_defconfig
@@ -478,7 +486,8 @@ or:
   +-------+--------+---------+------------------------+------------------------+
 
 And the 4th partition (Rootfs) is marked bootable with a file extlinux.conf
-following the Generic Distribution feature (doc/README.distro for use).
+following the Generic Distribution feature (see :doc:`../../develop/distro` for
+use).
 
 The size of fip or ssbl partition must be enough for the associated binary file,
 4MB and 2MB are default values.
@@ -620,7 +629,7 @@ Prerequisite: check if a MAC address isn't yet programmed in OTP
     STM32MP> env print ethaddr
     ## Error: "ethaddr" not defined
 
-3) check lock status of fuse 57 & 58 (at 0x39, 0=unlocked, 1=locked)::
+3) check lock status of fuse 57 & 58 (at 0x39, 0=unlocked, 0x40000000=locked)::
 
     STM32MP> fuse sense 0 0x10000039 2
     Sensing bank 0:
@@ -640,11 +649,11 @@ Example to set mac address "12:34:56:78:9a:bc"
 
 3) Lock OTP::
 
-    STM32MP> fuse prog 0 0x10000039 1 1
+    STM32MP> fuse prog 0 0x10000039 0x40000000 0x40000000
 
     STM32MP> fuse sense 0 0x10000039 2
     Sensing bank 0:
-       Word 0x10000039: 00000001 00000001
+       Word 0x10000039: 40000000 40000000
 
 4) next REBOOT, in the trace::
 
