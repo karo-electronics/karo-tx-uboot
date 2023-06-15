@@ -146,7 +146,11 @@ static void __usbhsg_queue_pop(struct usbhsg_uep *uep,
 	if (pipe)
 		dev_dbg(dev, "pipe %d : queue pop\n", usbhs_pipe_number(pipe));
 
-	ureq->req.status = status;
+	if (likely(ureq->req.status == -EINPROGRESS))
+		ureq->req.status = status;
+	else
+		status = ureq->req.status;
+
 	spin_unlock(usbhs_priv_to_lock(priv));
 	usb_gadget_giveback_request(&uep->ep, &ureq->req);
 	spin_lock(usbhs_priv_to_lock(priv));
