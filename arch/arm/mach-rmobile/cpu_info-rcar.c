@@ -92,4 +92,10 @@ void reset_cpu(ulong addr)
 	wdt_delay();
 	// enable wdt timer
 	writel(BIT(0), WDT_CH0_BASE + WDTCNT);
+
+	while (1) {
+		/*
+		 * spin to prevent returning from here
+		 */
+	}
 }
