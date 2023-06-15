@@ -41,7 +41,7 @@ static int do_fastboot_usb(int argc, char *const argv[],
 	int controller_index;
 	char *usb_controller;
 	char *endp;
-	int ret;
+	int ret, i = 0;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
@@ -72,10 +72,19 @@ static int do_fastboot_usb(int argc, char *const argv[],
 	}
 
 	while (1) {
-		if (g_dnl_detach())
-			break;
+		if (g_dnl_detach()) {
+			/*
+			 * This extra number of usb_gadget_handle_interrupts()
+			 * calls is necessary to assure correct transmission
+			 * completion
+			 */
+			if (++i == 10000)
+				goto exit;
+		}
+
 		if (ctrlc())
-			break;
+			goto exit;
+
 		WATCHDOG_RESET();
 		usb_gadget_handle_interrupts(controller_index);
 	}
