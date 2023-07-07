@@ -29,85 +29,86 @@ int __weak init_i2c_power(unsigned i2c_num)
 	return 0;
 }
 
-static int imx_lpci2c_check_busy_bus(const struct imx_lpi2c_reg *regs)
+static int imx_lpci2c_check_busy_bus(const struct imx_lpi2c_bus *i2c_bus)
 {
-	lpi2c_status_t result = LPI2C_SUCESS;
 	u32 status;
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
 
 	status = readl(&regs->msr);
-
 	if ((status & LPI2C_MSR_BBF_MASK) && !(status & LPI2C_MSR_MBF_MASK))
-		result = LPI2C_BUSY;
+		return -EAGAIN;
 
-	return result;
+	return 0;
 }
 
-static int imx_lpci2c_check_clear_error(struct imx_lpi2c_reg *regs)
+static int imx_lpci2c_check_clear_error(struct imx_lpi2c_bus *i2c_bus)
 {
-	lpi2c_status_t result = LPI2C_SUCESS;
+	int result = -EINVAL;
 	u32 val, status;
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
 
 	status = readl(&regs->msr);
 	/* errors to check for */
 	status &= LPI2C_MSR_NDF_MASK | LPI2C_MSR_ALF_MASK |
 		LPI2C_MSR_FEF_MASK | LPI2C_MSR_PLTF_MASK;
 
-	if (status) {
-		if (status & LPI2C_MSR_PLTF_MASK)
-			result = LPI2C_PIN_LOW_TIMEOUT_ERR;
-		else if (status & LPI2C_MSR_ALF_MASK)
-			result = LPI2C_ARB_LOST_ERR;
-		else if (status & LPI2C_MSR_NDF_MASK)
-			result = LPI2C_NAK_ERR;
-		else if (status & LPI2C_MSR_FEF_MASK)
-			result = LPI2C_FIFO_ERR;
+	if (!status)
+		return 0;
 
-		/* clear status flags */
-		writel(0x7f00, &regs->msr);
-		/* reset fifos */
-		val = readl(&regs->mcr);
-		val |= LPI2C_MCR_RRF_MASK | LPI2C_MCR_RTF_MASK;
-		writel(val, &regs->mcr);
-	}
+	if (status & LPI2C_MSR_PLTF_MASK)
+		result = -ETIMEDOUT;
+	else if (status & LPI2C_MSR_ALF_MASK)
+		result = -EAGAIN;
+	else if (status & LPI2C_MSR_NDF_MASK)
+		result = -EREMOTEIO;
+	else if (status & LPI2C_MSR_FEF_MASK)
+		result = -ENODATA;
+
+	/* clear status flags */
+	writel(status, &regs->msr);
+	/* reset fifos */
+	val = readl(&regs->mcr);
+	val |= LPI2C_MCR_RRF_MASK | LPI2C_MCR_RTF_MASK;
+	writel(val, &regs->mcr);
 
 	return result;
 }
 
-static int bus_i2c_wait_for_tx_ready(struct imx_lpi2c_reg *regs)
+static int bus_i2c_wait_for_tx_ready(struct imx_lpi2c_bus *i2c_bus)
 {
-	lpi2c_status_t result = LPI2C_SUCESS;
-	u32 txcount = 0;
 	ulong start_time = get_timer(0);
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
 
 	do {
-		txcount = LPI2C_MFSR_TXCOUNT(readl(&regs->mfsr));
-		txcount = LPI2C_FIFO_SIZE - txcount;
-		result = imx_lpci2c_check_clear_error(regs);
+		int result;
+
+		result = imx_lpci2c_check_clear_error(i2c_bus);
 		if (result) {
-			debug("i2c: wait for tx ready: result 0x%x\n", result);
+			pr_err("i2c: wait for tx ready failed: %d\n", result);
 			return result;
 		}
-		if (get_timer(start_time) > LPI2C_TIMEOUT_MS) {
-			debug("i2c: wait for tx ready: timeout\n");
-			return -1;
-		}
-	} while (!txcount);
 
-	return result;
+		if (LPI2C_MFSR_TXCOUNT(readl(&regs->mfsr)) < LPI2C_FIFO_SIZE)
+			return 0;
+		if (get_timer(start_time) > LPI2C_TIMEOUT_MS) {
+			pr_err("i2c: wait for tx ready timed out\n");
+			return -ETIMEDOUT;
+		}
+	} while (1);
 }
 
 static int bus_i2c_send(struct udevice *bus, u8 *txbuf, int len)
 {
 	struct imx_lpi2c_bus *i2c_bus = dev_get_priv(bus);
-	struct imx_lpi2c_reg *regs = (struct imx_lpi2c_reg *)(i2c_bus->base);
-	lpi2c_status_t result = LPI2C_SUCESS;
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
+	int result;
 
 	/* empty tx */
 	if (!len)
-		return result;
+		return 0;
 
 	while (len--) {
-		result = bus_i2c_wait_for_tx_ready(regs);
+		result = bus_i2c_wait_for_tx_ready(i2c_bus);
 		if (result) {
 			debug("i2c: send wait for tx ready: %d\n", result);
 			return result;
@@ -115,14 +116,14 @@ static int bus_i2c_send(struct udevice *bus, u8 *txbuf, int len)
 		writel(*txbuf++, &regs->mtdr);
 	}
 
-	return result;
+	return 0;
 }
 
 static int bus_i2c_receive(struct udevice *bus, u8 *rxbuf, int len)
 {
 	struct imx_lpi2c_bus *i2c_bus = dev_get_priv(bus);
-	struct imx_lpi2c_reg *regs = (struct imx_lpi2c_reg *)(i2c_bus->base);
-	lpi2c_status_t result = LPI2C_SUCESS;
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
+	int result;
 	u32 val;
 	ulong start_time = get_timer(0);
 
@@ -130,7 +131,7 @@ static int bus_i2c_receive(struct udevice *bus, u8 *rxbuf, int len)
 	if (!len)
 		return result;
 
-	result = bus_i2c_wait_for_tx_ready(regs);
+	result = bus_i2c_wait_for_tx_ready(i2c_bus);
 	if (result) {
 		debug("i2c: receive wait fot tx ready: %d\n", result);
 		return result;
@@ -144,7 +145,7 @@ static int bus_i2c_receive(struct udevice *bus, u8 *rxbuf, int len)
 
 	while (len--) {
 		do {
-			result = imx_lpci2c_check_clear_error(regs);
+			result = imx_lpci2c_check_clear_error(i2c_bus);
 			if (result) {
 				debug("i2c: receive check clear error: %d\n",
 				      result);
@@ -166,18 +167,18 @@ static int bus_i2c_start(struct udevice *bus, u8 addr, u8 dir)
 {
 	lpi2c_status_t result;
 	struct imx_lpi2c_bus *i2c_bus = dev_get_priv(bus);
-	struct imx_lpi2c_reg *regs = (struct imx_lpi2c_reg *)(i2c_bus->base);
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
 	u32 val;
 
-	result = imx_lpci2c_check_busy_bus(regs);
+	result = imx_lpci2c_check_busy_bus(i2c_bus);
 	if (result) {
-		debug("i2c: start check busy bus: 0x%x\n", result);
+		debug("i2c: start check busy bus: %d\n", result);
 
 		/* Try to init the lpi2c then check the bus busy again */
 		bus_i2c_init(bus, I2C_SPEED_STANDARD_RATE);
-		result = imx_lpci2c_check_busy_bus(regs);
+		result = imx_lpci2c_check_busy_bus(i2c_bus);
 		if (result) {
-			printf("i2c: Error check busy bus: 0x%x\n", result);
+			printf("i2c: Error check busy bus: %d\n", result);
 			return result;
 		}
 	}
@@ -187,9 +188,9 @@ static int bus_i2c_start(struct udevice *bus, u8 addr, u8 dir)
 	val = readl(&regs->mcfgr1) & ~LPI2C_MCFGR1_AUTOSTOP_MASK;
 	writel(val, &regs->mcfgr1);
 	/* wait tx fifo ready */
-	result = bus_i2c_wait_for_tx_ready(regs);
+	result = bus_i2c_wait_for_tx_ready(i2c_bus);
 	if (result) {
-		debug("i2c: start wait for tx ready: 0x%x\n", result);
+		debug("i2c: start wait for tx ready: %d\n", result);
 		return result;
 	}
 	/* issue start command */
@@ -203,13 +204,13 @@ static int bus_i2c_stop(struct udevice *bus)
 {
 	lpi2c_status_t result;
 	struct imx_lpi2c_bus *i2c_bus = dev_get_priv(bus);
-	struct imx_lpi2c_reg *regs = (struct imx_lpi2c_reg *)(i2c_bus->base);
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
 	u32 status;
 	ulong start_time;
 
-	result = bus_i2c_wait_for_tx_ready(regs);
+	result = bus_i2c_wait_for_tx_ready(i2c_bus);
 	if (result) {
-		debug("i2c: stop wait for tx ready: 0x%x\n", result);
+		debug("i2c: stop wait for tx ready: %d\n", result);
 		return result;
 	}
 
@@ -219,7 +220,7 @@ static int bus_i2c_stop(struct udevice *bus)
 	start_time = get_timer(0);
 	while (1) {
 		status = readl(&regs->msr);
-		result = imx_lpci2c_check_clear_error(regs);
+		result = imx_lpci2c_check_clear_error(i2c_bus);
 		/* stop detect flag */
 		if (status & LPI2C_MSR_SDF_MASK) {
 			/* clear stop flag */
@@ -253,14 +254,12 @@ static int bus_i2c_read(struct udevice *bus, u32 chip, u8 *buf, int len)
 
 static int bus_i2c_write(struct udevice *bus, u32 chip, u8 *buf, int len)
 {
-	lpi2c_status_t result;
+	int result;
 
 	result = bus_i2c_start(bus, chip, 0);
 	if (result)
 		return result;
 	result = bus_i2c_send(bus, buf, len);
-	if (result)
-		return result;
 
 	return result;
 }
@@ -274,11 +273,11 @@ u32 __weak imx_get_i2cclk(u32 i2c_num)
 static int bus_i2c_set_bus_speed(struct udevice *bus, int speed)
 {
 	struct imx_lpi2c_bus *i2c_bus = dev_get_priv(bus);
-	struct imx_lpi2c_reg *regs = (struct imx_lpi2c_reg *)(i2c_bus->base);
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
 	u32 val;
-	u32 preescale = 0, best_pre = 0, clkhi = 0;
-	u32 best_clkhi = 0, abs_error = 0, rate;
-	u32 error = 0xffffffff;
+	u32 preescale, best_pre = 0, clkhi;
+	u32 best_clkhi = 0, abs_error, rate;
+	u32 error = UINT_MAX;
 	u32 clock_rate;
 	bool mode;
 	int i;
@@ -351,9 +350,9 @@ static int bus_i2c_init(struct udevice *bus, int speed)
 {
 	u32 val;
 	int ret;
-
 	struct imx_lpi2c_bus *i2c_bus = dev_get_priv(bus);
-	struct imx_lpi2c_reg *regs = (struct imx_lpi2c_reg *)(i2c_bus->base);
+	struct imx_lpi2c_reg *regs = i2c_bus->base;
+
 	/* reset peripheral */
 	writel(LPI2C_MCR_RST_MASK, &regs->mcr);
 	writel(0x0, &regs->mcr);
@@ -407,7 +406,7 @@ static int imx_lpi2c_xfer(struct udevice *bus, struct i2c_msg *msg, int nmsgs)
 	int ret = 0, ret_stop;
 
 	for (; nmsgs > 0; nmsgs--, msg++) {
-		debug("i2c_xfer: chip=0x%x, len=0x%x\n", msg->addr, msg->len);
+		debug("i2c_xfer: chip=0x%02x, len=0x%02x\n", msg->addr, msg->len);
 		if (msg->flags & I2C_M_RD)
 			ret = bus_i2c_read(bus, msg->addr, msg->buf, msg->len);
 		else {
@@ -419,15 +418,13 @@ static int imx_lpi2c_xfer(struct udevice *bus, struct i2c_msg *msg, int nmsgs)
 	}
 
 	if (ret)
-		debug("i2c_write: error sending\n");
+		dev_err(bus, "i2c_write: error sending: %d\n", ret);
 
 	ret_stop = bus_i2c_stop(bus);
 	if (ret_stop)
-		debug("i2c_xfer: stop bus error\n");
+		dev_err(bus, "i2c_xfer: stop bus error: %d\n", ret_stop);
 
-	ret |= ret_stop;
-
-	return ret;
+	return ret ?: ret_stop;
 }
 
 static int imx_lpi2c_set_bus_speed(struct udevice *bus, unsigned int speed)
@@ -452,7 +449,7 @@ static int imx_lpi2c_probe(struct udevice *bus)
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
-	i2c_bus->base = addr;
+	i2c_bus->base = (struct imx_lpi2c_reg *)addr;
 	i2c_bus->index = dev_seq(bus);
 	i2c_bus->bus = bus;
 
@@ -496,9 +493,8 @@ static int imx_lpi2c_probe(struct udevice *bus)
 	if (ret < 0)
 		return ret;
 
-	debug("i2c : controller bus %d at 0x%lx , speed %d: ",
-	      dev_seq(bus), i2c_bus->base,
-	      i2c_bus->speed);
+	debug("i2c : controller bus %d at 0x%p , speed %d: ",
+	      dev_seq(bus), i2c_bus->base, i2c_bus->speed);
 
 	return 0;
 }
