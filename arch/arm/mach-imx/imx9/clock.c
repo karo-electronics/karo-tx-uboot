@@ -35,6 +35,7 @@ static struct imx_intpll_rate_table imx9_intpll_tbl[] = {
 static struct imx_fracpll_rate_table imx9_fracpll_tbl[] = {
 	FRAC_PLL_RATE(1000000000U, 1, 166, 4, 2, 3), /* 1000Mhz */
 	FRAC_PLL_RATE(933000000U, 1, 155, 4, 1, 2), /* 933Mhz */
+	FRAC_PLL_RATE(800000000U, 1, 133, 4, 2, 3), /* 800Mhz */
 	FRAC_PLL_RATE(700000000U, 1, 145, 5, 5, 6), /* 700Mhz */
 	FRAC_PLL_RATE(484000000U, 1, 121, 6, 0, 1),
 	FRAC_PLL_RATE(445333333U, 1, 167, 9, 0, 1),
@@ -191,7 +192,7 @@ int configure_intpll(enum ccm_clk_src pll, u32 freq)
 	}
 
 	if (i == ARRAY_SIZE(imx9_intpll_tbl)) {
-		debug("No matched freq table %u\n", freq);
+		pr_err("%s: Unsupported clk frequency %u\n", __func__, freq);
 		return -EINVAL;
 	}
 
@@ -258,7 +259,7 @@ int configure_fracpll(enum ccm_clk_src pll, u32 freq)
 	}
 
 	if (i == ARRAY_SIZE(imx9_fracpll_tbl)) {
-		debug("No matched freq table %u\n", freq);
+		pr_err("%s: Unsupported clk frequency %u\n", __func__, freq);
 		return -EINVAL;
 	}
 
@@ -694,7 +695,7 @@ void dram_enable_bypass(ulong clk_val)
 		ccm_clk_root_cfg(DRAM_ALT_CLK_ROOT, SYS_PLL_PFD1, 8);
 		break;
 	default:
-		printf("No matched freq table %lu\n", clk_val);
+		pr_err("%s: Unsupported clk frequency %lu\n", __func__, clk_val);
 		return;
 	}
 
