@@ -52,6 +52,7 @@
 #include <asm/arch/clock.h>
 #include <asm/mach-imx/sys_proto.h>
 #endif
+#include <dm/device_compat.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
 
@@ -301,7 +302,7 @@ struct eqos_priv {
 	struct eqos_dma_regs *dma_regs;
 	struct eqos_tegra186_regs *tegra186_regs;
 	struct reset_ctl reset_ctl;
-	struct gpio_desc phy_reset_gpio;
+	struct gpio_desc *phy_reset_gpio;
 	struct clk clk_master_bus;
 	struct clk clk_rx;
 	struct clk clk_ptp_ref;
@@ -714,8 +715,10 @@ static int eqos_start_resets_tegra186(struct udevice *dev)
 	int ret;
 
 	debug("%s(dev=%p):\n", __func__, dev);
+	if (!eqos->phy_reset_gpio)
+		return 0;
 
-	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 1);
 	if (ret < 0) {
 		pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n", ret);
 		return ret;
@@ -723,7 +726,7 @@ static int eqos_start_resets_tegra186(struct udevice *dev)
 
 	udelay(2);
 
-	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 0);
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 0);
 	if (ret < 0) {
 		pr_err("dm_gpio_set_value(phy_reset, deassert) failed: %d\n", ret);
 		return ret;
@@ -752,16 +755,37 @@ static int eqos_stop_resets_tegra186(struct udevice *dev)
 	struct eqos_priv *eqos = dev_get_priv(dev);
 
 	reset_assert(&eqos->reset_ctl);
-	dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+
+	if (eqos->phy_reset_gpio)
+		dm_gpio_set_value(eqos->phy_reset_gpio, 1);
 
 	return 0;
 }
 
 static int eqos_start_resets_imx(struct udevice *dev)
 {
+	int ret;
 	struct eqos_priv *eqos = dev_get_priv(dev);
+	u32 reset_duration = dev_read_u32_default(dev, "phy-reset-duration", 100);
+	u32 reset_post_delay = dev_read_u32_default(dev, "phy-reset-post-delay", 0);
 
-	writel(EQOS_DMA_MODE_SWR, &eqos->dma_regs->mode);
+	if (!eqos->phy_reset_gpio)
+		return 0;
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 1);
+	if (ret < 0) {
+		pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n", ret);
+		return ret;
+	}
+
+	udelay(reset_duration);
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 0);
+	if (ret < 0) {
+		pr_err("dm_gpio_set_value(phy_reset, deassert) failed: %d\n", ret);
+		return ret;
+	}
+	udelay(reset_post_delay);
 	return 0;
 }
 
@@ -1702,18 +1726,18 @@ static int eqos_probe_resources_tegra186(struct udevice *dev)
 		return ret;
 	}
 
-	ret = gpio_request_by_name(dev, "phy-reset-gpios", 0,
-				   &eqos->phy_reset_gpio,
-				   GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
-	if (ret) {
-		pr_err("gpio_request_by_name(phy reset) failed: %d\n", ret);
+	eqos->phy_reset_gpio = devm_gpiod_get_optional(dev, "phy-reset",
+						       GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
+	if (IS_ERR(eqos->phy_reset_gpio)) {
+		ret = PTR_ERR(eqos->phy_reset_gpio);
+		pr_err("gpio_request_by_name(phy-reset) failed: %d\n", ret);
 		goto err_free_reset_eqos;
 	}
 
 	ret = clk_get_by_name(dev, "slave_bus", &eqos->clk_slave_bus);
 	if (ret) {
 		pr_err("clk_get_by_name(slave_bus) failed: %d\n", ret);
-		goto err_free_gpio_phy_reset;
+		goto err_free_reset_eqos;
 	}
 
 	ret = clk_get_by_name(dev, "master_bus", &eqos->clk_master_bus);
@@ -1752,8 +1776,6 @@ err_free_clk_master_bus:
 	clk_free(&eqos->clk_master_bus);
 err_free_clk_slave_bus:
 	clk_free(&eqos->clk_slave_bus);
-err_free_gpio_phy_reset:
-	dm_gpio_free(dev, &eqos->phy_reset_gpio);
 err_free_reset_eqos:
 	reset_free(&eqos->reset_ctl);
 
@@ -1879,6 +1901,13 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 	}
 #endif
 
+	eqos->phy_reset_gpio = devm_gpiod_get_optional(dev, "phy-reset",
+						       GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
+	if (IS_ERR(eqos->phy_reset_gpio)) {
+		pr_err("failed to reques 'phy-reset' gpio: %d\n", ret);
+		return PTR_ERR(eqos->phy_reset_gpio);
+	}
+
 	debug("%s: OK\n", __func__);
 	return 0;
 
@@ -1921,7 +1950,6 @@ static int eqos_remove_resources_tegra186(struct udevice *dev)
 	clk_free(&eqos->clk_slave_bus);
 	clk_free(&eqos->clk_master_bus);
 #endif
-	dm_gpio_free(dev, &eqos->phy_reset_gpio);
 	reset_free(&eqos->reset_ctl);
 
 	debug("%s: OK\n", __func__);
@@ -1942,10 +1970,6 @@ static int eqos_remove_resources_stm32(struct udevice *dev)
 	if (clk_valid(&eqos->clk_ck))
 		clk_free(&eqos->clk_ck);
 #endif
-
-	if (dm_gpio_is_valid(&eqos->phy_reset_gpio))
-		dm_gpio_free(dev, &eqos->phy_reset_gpio);
-
 	debug("%s: OK\n", __func__);
 	return 0;
 }
