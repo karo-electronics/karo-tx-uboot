@@ -132,7 +132,7 @@ config VIDEO_ANSI
 	  console.
 
 config VIDEO_MIPI_DSI
-	bool "Support MIPI DSI interface"
+	bool
 	depends on DM_VIDEO
 	help
 	  Support MIPI DSI interface for driving a MIPI compatible device.
