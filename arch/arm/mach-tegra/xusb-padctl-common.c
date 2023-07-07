@@ -157,15 +157,15 @@ tegra_xusb_padctl_group_apply(struct tegra_xusb_padctl *padctl,
 
 		lane = tegra_xusb_padctl_find_lane(padctl, group->pins[i]);
 		if (!lane) {
-			pr_err("no lane for pin %s", group->pins[i]);
+			pr_err("no lane for pin %s\n", group->pins[i]);
 			continue;
 		}
 
 		func = tegra_xusb_padctl_lane_find_function(padctl, lane,
 							    group->func);
 		if (func < 0) {
-			pr_err("function %s invalid for lane %s: %d",
-			      group->func, lane->name, func);
+			pr_err("function %s invalid for lane %s: %d\n",
+			       group->func, lane->name, func);
 			continue;
 		}
 
@@ -206,8 +206,8 @@ tegra_xusb_padctl_config_apply(struct tegra_xusb_padctl *padctl,
 
 		err = tegra_xusb_padctl_group_apply(padctl, group);
 		if (err < 0) {
-			pr_err("failed to apply group %s: %d",
-			      group->name, err);
+			pr_err("failed to apply group %s: %d\n",
+			       group->name, err);
 			continue;
 		}
 	}
@@ -250,7 +250,7 @@ static int tegra_xusb_padctl_parse_dt(struct tegra_xusb_padctl *padctl,
 
 	err = ofnode_read_resource(node, 0, &padctl->regs);
 	if (err < 0) {
-		pr_err("registers not found");
+		pr_err("registers not found\n");
 		return err;
 	}
 
@@ -262,7 +262,7 @@ static int tegra_xusb_padctl_parse_dt(struct tegra_xusb_padctl *padctl,
 							subnode);
 		if (err < 0) {
 			pr_err("failed to parse entry %s: %d\n",
-			      config->name, err);
+			       config->name, err);
 			continue;
 		}
 	}
@@ -298,7 +298,7 @@ int tegra_xusb_process_nodes(ofnode nodes[], unsigned int count,
 
 		err = tegra_xusb_padctl_config_apply(&padctl, &padctl.config);
 		if (err < 0) {
-			pr_err("failed to apply pinmux: %d", err);
+			pr_err("failed to apply pinmux: %d\n", err);
 			continue;
 		}
 

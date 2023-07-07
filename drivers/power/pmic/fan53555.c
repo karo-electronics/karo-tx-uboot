@@ -23,7 +23,7 @@ static int pmic_fan53555_read(struct udevice *dev, uint reg,
 			      u8 *buff, int len)
 {
 	if (dm_i2c_read(dev, reg, buff, len)) {
-		pr_err("%s: read error for register: %#x!", dev->name, reg);
+		pr_err("%s: read error for register: %#x!\n", dev->name, reg);
 		return -EIO;
 	}
 
@@ -34,7 +34,7 @@ static int pmic_fan53555_write(struct udevice *dev, uint reg,
 			       const u8 *buff, int len)
 {
 	if (dm_i2c_write(dev, reg, buff, len)) {
-		pr_err("%s: write error for register: %#x!", dev->name, reg);
+		pr_err("%s: write error for register: %#x!\n", dev->name, reg);
 		return -EIO;
 	}
 

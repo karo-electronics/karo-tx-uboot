@@ -21,7 +21,7 @@ int exynos_adc_channel_data(struct udevice *dev, int channel,
 	struct exynos_adc_v2 *regs = priv->regs;
 
 	if (channel != priv->active_channel) {
-		pr_err("Requested channel is not active!");
+		pr_err("Requested channel is not active!\n");
 		return -EINVAL;
 	}
 
@@ -79,7 +79,7 @@ int exynos_adc_probe(struct udevice *dev)
 
 	/* Check HW version */
 	if (readl(&regs->version) != ADC_V2_VERSION) {
-		pr_err("This driver supports only ADC v2!");
+		pr_err("This driver supports only ADC v2!\n");
 		return -ENXIO;
 	}
 
@@ -108,7 +108,7 @@ int exynos_adc_of_to_plat(struct udevice *dev)
 
 	priv->regs = dev_read_addr_ptr(dev);
 	if (priv->regs == (struct exynos_adc_v2 *)FDT_ADDR_T_NONE) {
-		pr_err("Dev: %s - can't get address!", dev->name);
+		pr_err("Dev: %s - can't get address!\n", dev->name);
 		return -ENODATA;
 	}
 

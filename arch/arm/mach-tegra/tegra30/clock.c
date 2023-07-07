@@ -698,7 +698,7 @@ static int tegra_plle_train(void)
 	} while (--timeout);
 
 	if (timeout == 0) {
-		pr_err("timeout waiting for PLLE to become ready");
+		pr_err("timeout waiting for PLLE to become ready\n");
 		return -ETIMEDOUT;
 	}
 
@@ -728,7 +728,7 @@ int tegra_plle_enable(void)
 	if ((value & PLLE_MISC_PLL_READY) == 0) {
 		err = tegra_plle_train();
 		if (err < 0) {
-			pr_err("failed to train PLLE: %d", err);
+			pr_err("failed to train PLLE: %d\n", err);
 			return err;
 		}
 	}
@@ -774,7 +774,7 @@ int tegra_plle_enable(void)
 	} while (--timeout);
 
 	if (timeout == 0) {
-		pr_err("timeout waiting for PLLE to lock");
+		pr_err("timeout waiting for PLLE to lock\n");
 		return -ETIMEDOUT;
 	}
 

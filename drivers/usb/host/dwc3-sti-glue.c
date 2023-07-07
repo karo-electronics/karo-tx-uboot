@@ -138,14 +138,14 @@ static int sti_dwc3_glue_of_to_plat(struct udevice *dev)
 	/* get powerdown reset */
 	ret = reset_get_by_name(dev, "powerdown", &plat->powerdown_ctl);
 	if (ret) {
-		pr_err("can't get powerdown reset for %s (%d)", dev->name, ret);
+		pr_err("can't get powerdown reset for %s (%d)\n", dev->name, ret);
 		return ret;
 	}
 
 	/* get softreset reset */
 	ret = reset_get_by_name(dev, "softreset", &plat->softreset_ctl);
 	if (ret)
-		pr_err("can't get soft reset for %s (%d)", dev->name, ret);
+		pr_err("can't get soft reset for %s (%d)\n", dev->name, ret);
 
 	return ret;
 };
@@ -183,13 +183,13 @@ static int sti_dwc3_glue_probe(struct udevice *dev)
 	/* deassert both powerdown and softreset */
 	ret = reset_deassert(&plat->powerdown_ctl);
 	if (ret < 0) {
-		pr_err("DWC3 powerdown reset deassert failed: %d", ret);
+		pr_err("DWC3 powerdown reset deassert failed: %d\n", ret);
 		return ret;
 	}
 
 	ret = reset_deassert(&plat->softreset_ctl);
 	if (ret < 0) {
-		pr_err("DWC3 soft reset deassert failed: %d", ret);
+		pr_err("DWC3 soft reset deassert failed: %d\n", ret);
 		goto softreset_err;
 	}
 
@@ -204,14 +204,14 @@ static int sti_dwc3_glue_probe(struct udevice *dev)
 init_err:
 	ret = reset_assert(&plat->softreset_ctl);
 	if (ret < 0) {
-		pr_err("DWC3 soft reset deassert failed: %d", ret);
+		pr_err("DWC3 soft reset deassert failed: %d\n", ret);
 		return ret;
 	}
 
 softreset_err:
 	ret = reset_assert(&plat->powerdown_ctl);
 	if (ret < 0)
-		pr_err("DWC3 powerdown reset deassert failed: %d", ret);
+		pr_err("DWC3 powerdown reset deassert failed: %d\n", ret);
 
 	return ret;
 }
@@ -224,13 +224,13 @@ static int sti_dwc3_glue_remove(struct udevice *dev)
 	/* assert both powerdown and softreset */
 	ret = reset_assert(&plat->powerdown_ctl);
 	if (ret < 0) {
-		pr_err("DWC3 powerdown reset deassert failed: %d", ret);
+		pr_err("DWC3 powerdown reset deassert failed: %d\n", ret);
 		return ret;
 	}
 
 	ret = reset_assert(&plat->softreset_ctl);
 	if (ret < 0)
-		pr_err("DWC3 soft reset deassert failed: %d", ret);
+		pr_err("DWC3 soft reset deassert failed: %d\n", ret);
 
 	return ret;
 }

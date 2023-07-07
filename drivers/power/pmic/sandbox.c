@@ -49,8 +49,8 @@ static int sandbox_pmic_read(struct udevice *dev, uint reg,
 static int sandbox_pmic_bind(struct udevice *dev)
 {
 	if (!pmic_bind_children(dev, dev_ofnode(dev), pmic_children_info))
-		pr_err("%s:%d PMIC: %s - no child found!", __func__, __LINE__,
-							  dev->name);
+		pr_err("%s:%d PMIC: %s - no child found!\n", __func__, __LINE__,
+		       dev->name);
 
 	/* Always return success for this device - allows for PMIC I/O */
 	return 0;
