@@ -175,7 +175,7 @@ config VIDEO_ANSI
 	  sequences and performing the appropriate operation.
 
 config VIDEO_MIPI_DSI
-	bool "Support MIPI DSI interface"
+	bool
 	help
 	  Support MIPI DSI interface for driving a MIPI compatible device.
 	  The MIPI Display Serial Interface (MIPI DSI) defines a high-speed
