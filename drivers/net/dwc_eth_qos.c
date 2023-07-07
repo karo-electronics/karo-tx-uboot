@@ -338,7 +338,7 @@ static int eqos_start_resets_tegra186(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
-	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 1);
 	if (ret < 0) {
 		pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n", ret);
 		return ret;
@@ -346,7 +346,7 @@ static int eqos_start_resets_tegra186(struct udevice *dev)
 
 	udelay(2);
 
-	ret = dm_gpio_set_value(&eqos->phy_reset_gpio, 0);
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 0);
 	if (ret < 0) {
 		pr_err("dm_gpio_set_value(phy_reset, deassert) failed: %d\n", ret);
 		return ret;
@@ -375,7 +375,7 @@ static int eqos_stop_resets_tegra186(struct udevice *dev)
 	struct eqos_priv *eqos = dev_get_priv(dev);
 
 	reset_assert(&eqos->reset_ctl);
-	dm_gpio_set_value(&eqos->phy_reset_gpio, 1);
+	dm_gpio_set_value(eqos->phy_reset_gpio, 1);
 
 	return 0;
 }
@@ -1314,12 +1314,18 @@ static int eqos_probe_resources_tegra186(struct udevice *dev)
 		return ret;
 	}
 
+	eqos->phy_reset_gpio = kzalloc(sizeof(*eqos->phy_reset_gpio), GFP_KERNEL);
+	if (!eqos->phy_reset_gpio) {
+		ret = -ENOMEM;
+		goto err_free_reset_eqos;
+	}
+
 	ret = gpio_request_by_name(dev, "phy-reset-gpios", 0,
-				   &eqos->phy_reset_gpio,
+				   eqos->phy_reset_gpio,
 				   GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
 	if (ret) {
 		pr_err("gpio_request_by_name(phy reset) failed: %d\n", ret);
-		goto err_free_reset_eqos;
+		goto err_free_phy_reset_gpio;
 	}
 
 	ret = clk_get_by_name(dev, "slave_bus", &eqos->clk_slave_bus);
@@ -1356,7 +1362,9 @@ static int eqos_probe_resources_tegra186(struct udevice *dev)
 	return 0;
 
 err_free_gpio_phy_reset:
-	dm_gpio_free(dev, &eqos->phy_reset_gpio);
+	dm_gpio_free(dev, eqos->phy_reset_gpio);
+err_free_phy_reset_gpio:
+	free(eqos->phy_reset_gpio);
 err_free_reset_eqos:
 	reset_free(&eqos->reset_ctl);
 
@@ -1375,7 +1383,8 @@ static int eqos_remove_resources_tegra186(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
-	dm_gpio_free(dev, &eqos->phy_reset_gpio);
+	dm_gpio_free(dev, eqos->phy_reset_gpio);
+	kfree(eqos->phy_reset_gpio);
 	reset_free(&eqos->reset_ctl);
 
 	debug("%s: OK\n", __func__);

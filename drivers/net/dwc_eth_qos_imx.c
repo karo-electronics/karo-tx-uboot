@@ -90,12 +90,19 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 		goto err_probe;
 	}
 
+	eqos->phy_reset_gpio = devm_gpiod_get_optional(dev, "phy-reset",
+						       GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
+	if (IS_ERR(eqos->phy_reset_gpio)) {
+		ret = PTR_ERR(eqos->phy_reset_gpio);
+		dev_err(dev, "failed to request 'phy-reset' gpio: %d\n", ret);
+		goto err_probe;
+	}
+
 	debug("%s: OK\n", __func__);
 	return 0;
 
 err_probe:
-
-	debug("%s: returns %d\n", __func__, ret);
+	dev_dbg(dev, "%s() failed: %d\n", __func__, ret);
 	return ret;
 }
 
@@ -162,6 +169,33 @@ static int eqos_stop_clks_imx(struct udevice *dev)
 	clk_disable(&eqos->clk_master_bus);
 
 	debug("%s: OK\n", __func__);
+	return 0;
+}
+
+static int eqos_start_resets_imx(struct udevice *dev)
+{
+	int ret;
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	u32 reset_duration = dev_read_u32_default(dev, "phy-reset-duration", 100);
+	u32 reset_post_delay = dev_read_u32_default(dev, "phy-reset-post-delay", 0);
+
+	if (!eqos->phy_reset_gpio)
+		return 0;
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 1);
+	if (ret < 0) {
+		pr_err("dm_gpio_set_value(phy_reset, assert) failed: %d\n", ret);
+		return ret;
+	}
+
+	udelay(reset_duration);
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 0);
+	if (ret < 0) {
+		pr_err("dm_gpio_set_value(phy_reset, deassert) failed: %d\n", ret);
+		return ret;
+	}
+	udelay(reset_post_delay);
 	return 0;
 }
 
@@ -244,8 +278,8 @@ static struct eqos_ops eqos_imx_ops = {
 	.eqos_flush_buffer = eqos_flush_buffer_generic,
 	.eqos_probe_resources = eqos_probe_resources_imx,
 	.eqos_remove_resources = eqos_remove_resources_imx,
-	.eqos_stop_resets = eqos_null_ops,
-	.eqos_start_resets = eqos_null_ops,
+	.eqos_stop_resets = eqos_stop_resets_imx,
+	.eqos_start_resets = eqos_start_resets_imx,
 	.eqos_stop_clks = eqos_stop_clks_imx,
 	.eqos_start_clks = eqos_start_clks_imx,
 	.eqos_calibrate_pads = eqos_null_ops,
@@ -264,5 +298,5 @@ struct eqos_config __maybe_unused eqos_imx_config = {
 	.config_mac_mdio = EQOS_MAC_MDIO_ADDRESS_CR_250_300,
 	.axi_bus_width = EQOS_AXI_WIDTH_64,
 	.interface = dev_read_phy_mode,
-	.ops = &eqos_imx_ops
+	.ops = &eqos_imx_ops,
 };

@@ -262,7 +262,7 @@ struct eqos_priv {
 	struct eqos_tegra186_regs *tegra186_regs;
 	void *eqos_qcom_rgmii_regs;
 	struct reset_ctl reset_ctl;
-	struct gpio_desc phy_reset_gpio;
+	struct gpio_desc *phy_reset_gpio;
 	struct clk clk_master_bus;
 	struct clk clk_rx;
 	struct clk clk_ptp_ref;

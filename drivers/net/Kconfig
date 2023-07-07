@@ -254,6 +254,7 @@ config DWC_ETH_QOS_ADI
 config DWC_ETH_QOS_IMX
 	bool "Synopsys DWC Ethernet QOS device support for IMX"
 	depends on DWC_ETH_QOS
+	imply DEVRES
 	help
 	  The Synopsys Designware Ethernet QOS IP block with the specific
 	  configuration used in IMX soc.
