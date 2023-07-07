@@ -196,7 +196,7 @@ int configure_intpll(enum ccm_clk_src pll, u32 freq)
 	}
 
 	if (i == ARRAY_SIZE(imx9_intpll_tbl)) {
-		debug("No matched freq table %u\n", freq);
+		debug("%s: Unsupported clk frequency %u\n", __func__, freq);
 		return -EINVAL;
 	}
 
@@ -260,7 +260,7 @@ int configure_fracpll(enum ccm_clk_src pll, u32 freq)
 	}
 
 	if (i == ARRAY_SIZE(imx9_fracpll_tbl)) {
-		debug("No matched freq table %u\n", freq);
+		debug("%s: Unsupported clk frequency %u\n", __func__, freq);
 		return -EINVAL;
 	}
 
@@ -669,7 +669,7 @@ void dram_enable_bypass(ulong clk_val)
 		ccm_clk_root_cfg(DRAM_ALT_CLK_ROOT, SYS_PLL_PFD1, 8);
 		break;
 	default:
-		printf("No matched freq table %lu\n", clk_val);
+		debug("%s: Unsupported clk frequency %lu\n", __func__, clk_val);
 		return;
 	}
 
