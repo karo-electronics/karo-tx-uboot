@@ -55,13 +55,13 @@ static int adc_supply_enable(struct udevice *dev)
 
 	ret = regulator_set_enable_if_allowed(uc_pdata->vdd_supply, true);
 	if (ret && ret != -ENOSYS) {
-		pr_err("%s: can't enable vdd-supply!", dev->name);
+		pr_err("%s: can't enable vdd-supply!\n", dev->name);
 		return ret;
 	}
 
 	ret = regulator_set_enable_if_allowed(uc_pdata->vss_supply, true);
 	if (ret && ret != -ENOSYS) {
-		pr_err("%s: can't enable vss-supply!", dev->name);
+		pr_err("%s: can't enable vss-supply!\n", dev->name);
 		return ret;
 	}
 
@@ -423,12 +423,12 @@ static int adc_pre_probe(struct udevice *dev)
 	/* Set ADC VDD plat: polarity, uV, regulator (phandle). */
 	ret = adc_vdd_plat_set(dev);
 	if (ret)
-		pr_err("%s: Can't update Vdd. Error: %d", dev->name, ret);
+		pr_err("%s: Can't update Vdd. Error: %d\n", dev->name, ret);
 
 	/* Set ADC VSS plat: polarity, uV, regulator (phandle). */
 	ret = adc_vss_plat_set(dev);
 	if (ret)
-		pr_err("%s: Can't update Vss. Error: %d", dev->name, ret);
+		pr_err("%s: Can't update Vss. Error: %d\n", dev->name, ret);
 
 	return 0;
 }

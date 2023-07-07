@@ -666,7 +666,7 @@ static int eqos_get_phy_addr(struct eqos_priv *priv, struct udevice *dev)
 
 	if (dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
 				       &phandle_args)) {
-		debug("Failed to find phy-handle");
+		debug("Failed to find phy-handle\n");
 		return -ENODEV;
 	}
 

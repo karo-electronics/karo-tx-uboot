@@ -124,14 +124,14 @@ int rockchip_saradc_channel_data(struct udevice *dev, int channel,
 	int ret;
 
 	if (channel != priv->active_channel) {
-		pr_err("Requested channel is not active!");
+		pr_err("Requested channel is not active!\n");
 		return -EINVAL;
 	}
 
 	ret = priv->data->channel_data(dev, channel, data);
 	if (ret) {
 		if (ret != -EBUSY)
-			pr_err("Error reading channel data, %d!", ret);
+			pr_err("Error reading channel data, %d!\n", ret);
 		return ret;
 	}
 
@@ -194,13 +194,13 @@ int rockchip_saradc_start_channel(struct udevice *dev, int channel)
 	int ret;
 
 	if (channel < 0 || channel >= priv->data->num_channels) {
-		pr_err("Requested channel is invalid!");
+		pr_err("Requested channel is invalid!\n");
 		return -EINVAL;
 	}
 
 	ret = priv->data->start_channel(dev, channel);
 	if (ret) {
-		pr_err("Error starting channel, %d!", ret);
+		pr_err("Error starting channel, %d!\n", ret);
 		return ret;
 	}
 
@@ -227,7 +227,7 @@ int rockchip_saradc_stop(struct udevice *dev)
 		int ret = priv->data->stop(dev);
 
 		if (ret) {
-			pr_err("Error stopping channel, %d!", ret);
+			pr_err("Error stopping channel, %d!\n", ret);
 			return ret;
 		}
 	}
@@ -293,7 +293,7 @@ int rockchip_saradc_of_to_plat(struct udevice *dev)
 	data = (struct rockchip_saradc_data *)dev_get_driver_data(dev);
 	priv->regs.v1 = dev_read_addr_ptr(dev);
 	if (!priv->regs.v1) {
-		pr_err("Dev: %s - can't get address!", dev->name);
+		pr_err("Dev: %s - can't get address!\n", dev->name);
 		return -EINVAL;
 	}
 

@@ -364,7 +364,7 @@ static int tegra_pcie_port_parse_dt(ofnode node, struct tegra_pcie_port *port)
 
 	addr = ofnode_get_property(node, "assigned-addresses", &len);
 	if (!addr) {
-		pr_err("property \"assigned-addresses\" not found");
+		pr_err("property \"assigned-addresses\" not found\n");
 		return -FDT_ERR_NOTFOUND;
 	}
 
@@ -486,25 +486,25 @@ static int tegra_pcie_parse_dt(struct udevice *dev, enum tegra_pci_id id,
 
 	err = dev_read_resource(dev, 0, &pcie->pads);
 	if (err < 0) {
-		pr_err("resource \"pads\" not found");
+		pr_err("resource \"pads\" not found\n");
 		return err;
 	}
 
 	err = dev_read_resource(dev, 1, &pcie->afi);
 	if (err < 0) {
-		pr_err("resource \"afi\" not found");
+		pr_err("resource \"afi\" not found\n");
 		return err;
 	}
 
 	err = dev_read_resource(dev, 2, &pcie->cs);
 	if (err < 0) {
-		pr_err("resource \"cs\" not found");
+		pr_err("resource \"cs\" not found\n");
 		return err;
 	}
 
 	err = tegra_pcie_board_init();
 	if (err < 0) {
-		pr_err("tegra_pcie_board_init() failed: err=%d", err);
+		pr_err("tegra_pcie_board_init() failed: err=%d\n", err);
 		return err;
 	}
 
@@ -513,7 +513,7 @@ static int tegra_pcie_parse_dt(struct udevice *dev, enum tegra_pci_id id,
 	if (pcie->phy) {
 		err = tegra_xusb_phy_prepare(pcie->phy);
 		if (err < 0) {
-			pr_err("failed to prepare PHY: %d", err);
+			pr_err("failed to prepare PHY: %d\n", err);
 			return err;
 		}
 	}
@@ -525,7 +525,7 @@ static int tegra_pcie_parse_dt(struct udevice *dev, enum tegra_pci_id id,
 
 		err = tegra_pcie_parse_port_info(subnode, &index, &num_lanes);
 		if (err < 0) {
-			pr_err("failed to obtain root port info");
+			pr_err("failed to obtain root port info\n");
 			continue;
 		}
 
@@ -613,14 +613,14 @@ static int tegra_pcie_power_on(struct tegra_pcie *pcie)
 
 	err = tegra_powergate_power_off(TEGRA_POWERGATE_PCIE);
 	if (err < 0) {
-		pr_err("failed to power off PCIe partition: %d", err);
+		pr_err("failed to power off PCIe partition: %d\n", err);
 		return err;
 	}
 
 	err = tegra_powergate_sequence_power_up(TEGRA_POWERGATE_PCIE,
 						PERIPH_ID_PCIE);
 	if (err < 0) {
-		pr_err("failed to power up PCIe partition: %d", err);
+		pr_err("failed to power up PCIe partition: %d\n", err);
 		return err;
 	}
 
@@ -700,7 +700,7 @@ static int tegra_pcie_phy_enable(struct tegra_pcie *pcie)
 	/* wait for the PLL to lock */
 	err = tegra_pcie_pll_wait(pcie, 500);
 	if (err < 0) {
-		pr_err("PLL failed to lock: %d", err);
+		pr_err("PLL failed to lock: %d\n", err);
 		return err;
 	}
 
@@ -1154,19 +1154,19 @@ static int pci_tegra_probe(struct udevice *dev)
 
 	err = tegra_pcie_enable_controller(pcie);
 	if (err < 0) {
-		pr_err("failed to enable controller");
+		pr_err("failed to enable controller\n");
 		return err;
 	}
 
 	err = tegra_pcie_setup_translations(dev);
 	if (err < 0) {
-		pr_err("failed to decode ranges");
+		pr_err("failed to decode ranges\n");
 		return err;
 	}
 
 	err = tegra_pcie_enable(pcie);
 	if (err < 0) {
-		pr_err("failed to enable PCIe");
+		pr_err("failed to enable PCIe\n");
 		return err;
 	}
 

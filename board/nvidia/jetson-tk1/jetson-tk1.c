@@ -47,7 +47,7 @@ static int as3722_sd_enable(struct udevice *pmic, unsigned int sd)
 
 	err = pmic_clrsetbits(pmic, AS3722_SD_CONTROL, 0, 1 << sd);
 	if (err) {
-		pr_err("failed to update SD control register: %d", err);
+		pr_err("failed to update SD control register: %d\n", err);
 		return err;
 	}
 

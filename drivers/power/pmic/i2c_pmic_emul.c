@@ -33,8 +33,8 @@ static int sandbox_i2c_pmic_read_data(struct udevice *emul, uchar chip,
 	struct sandbox_i2c_pmic_plat_data *plat = dev_get_plat(emul);
 
 	if (plat->rw_idx + len > plat->buf_size) {
-		pr_err("Request exceeds PMIC register range! Max register: %#x",
-		      plat->reg_count);
+		pr_err("Request exceeds PMIC register range! Max register: %#x\n",
+		       plat->reg_count);
 		return -EFAULT;
 	}
 
@@ -71,8 +71,8 @@ static int sandbox_i2c_pmic_write_data(struct udevice *emul, uchar chip,
 	len--;
 
 	if (plat->rw_idx + len > plat->buf_size) {
-		pr_err("Request exceeds PMIC register range! Max register: %#x",
-		      plat->reg_count);
+		pr_err("Request exceeds PMIC register range! Max register: %#x\n",
+		       plat->reg_count);
 	}
 
 	memcpy(plat->reg + plat->rw_idx, buffer, len);
@@ -135,8 +135,8 @@ static int sandbox_i2c_pmic_probe(struct udevice *emul)
 					     plat->buf_size);
 
 	if (!reg_defaults) {
-		pr_err("Property \"reg-defaults\" not found for device: %s!",
-		      emul->name);
+		pr_err("Property \"reg-defaults\" not found for device: %s!\n",
+		       emul->name);
 		free(plat->reg);
 		return -EINVAL;
 	}

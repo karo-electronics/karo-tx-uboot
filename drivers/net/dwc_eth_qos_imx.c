@@ -68,25 +68,25 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 
 	ret = clk_get_by_name(dev, "stmmaceth", &eqos->clk_master_bus);
 	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(master_bus) failed: %d", ret);
+		dev_dbg(dev, "clk_get_by_name(master_bus) failed: %d\n", ret);
 		goto err_probe;
 	}
 
 	ret = clk_get_by_name(dev, "ptp_ref", &eqos->clk_ptp_ref);
 	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(ptp_ref) failed: %d", ret);
+		dev_dbg(dev, "clk_get_by_name(ptp_ref) failed: %d\n", ret);
 		goto err_probe;
 	}
 
 	ret = clk_get_by_name(dev, "tx", &eqos->clk_tx);
 	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(tx) failed: %d", ret);
+		dev_dbg(dev, "clk_get_by_name(tx) failed: %d\n", ret);
 		goto err_probe;
 	}
 
 	ret = clk_get_by_name(dev, "pclk", &eqos->clk_ck);
 	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(pclk) failed: %d", ret);
+		dev_dbg(dev, "clk_get_by_name(pclk) failed: %d\n", ret);
 		goto err_probe;
 	}
 
@@ -114,25 +114,25 @@ static int eqos_start_clks_imx(struct udevice *dev)
 
 	ret = clk_enable(&eqos->clk_master_bus);
 	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_master_bus) failed: %d", ret);
+		dev_dbg(dev, "clk_enable(clk_master_bus) failed: %d\n", ret);
 		goto err;
 	}
 
 	ret = clk_enable(&eqos->clk_ptp_ref);
 	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_ptp_ref) failed: %d", ret);
+		dev_dbg(dev, "clk_enable(clk_ptp_ref) failed: %d\n", ret);
 		goto err_disable_clk_master_bus;
 	}
 
 	ret = clk_enable(&eqos->clk_tx);
 	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_tx) failed: %d", ret);
+		dev_dbg(dev, "clk_enable(clk_tx) failed: %d\n", ret);
 		goto err_disable_clk_ptp_ref;
 	}
 
 	ret = clk_enable(&eqos->clk_ck);
 	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_ck) failed: %d", ret);
+		dev_dbg(dev, "clk_enable(clk_ck) failed: %d\n", ret);
 		goto err_disable_clk_tx;
 	}
 
@@ -192,7 +192,7 @@ static int eqos_set_tx_clk_speed_imx(struct udevice *dev)
 	} else if (eqos->phy->speed == SPEED_10) {
 		rate *= 1;	/* Use base rate */
 	} else {
-		pr_err("invalid speed %d", eqos->phy->speed);
+		pr_err("invalid speed %d\n", eqos->phy->speed);
 		return -EINVAL;
 	}
 
@@ -200,7 +200,7 @@ static int eqos_set_tx_clk_speed_imx(struct udevice *dev)
 
 	ret = clk_set_rate(&eqos->clk_tx, rate);
 	if (ret < 0) {
-		pr_err("imx (tx_clk, %lu) failed: %d", rate, ret);
+		pr_err("imx (tx_clk, %lu) failed: %d\n", rate, ret);
 		return ret;
 	}
 

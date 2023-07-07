@@ -19,7 +19,7 @@
 static const struct pmic_child_info pmic_children_info[] = {
 	{ .prefix = SANDBOX_OF_LDO_PREFIX, .driver = SANDBOX_LDO_DRIVER },
 	{ .prefix = SANDBOX_OF_BUCK_PREFIX, .driver = SANDBOX_BUCK_DRIVER },
-	{ },
+	{ }
 };
 
 static int sandbox_pmic_reg_count(struct udevice *dev)

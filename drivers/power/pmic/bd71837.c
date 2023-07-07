@@ -32,7 +32,7 @@ static int bd71837_write(struct udevice *dev, uint reg, const uint8_t *buff,
 			 int len)
 {
 	if (dm_i2c_write(dev, reg, buff, len)) {
-		pr_err("write error to device: %p register: %#x!", dev, reg);
+		pr_err("write error to device: %p register: %#x!\n", dev, reg);
 		return -EIO;
 	}
 
@@ -42,7 +42,7 @@ static int bd71837_write(struct udevice *dev, uint reg, const uint8_t *buff,
 static int bd71837_read(struct udevice *dev, uint reg, uint8_t *buff, int len)
 {
 	if (dm_i2c_read(dev, reg, buff, len)) {
-		pr_err("read error from device: %p register: %#x!", dev, reg);
+		pr_err("read error from device: %p register: %#x!\n", dev, reg);
 		return -EIO;
 	}
 
