@@ -47,7 +47,7 @@ int rockchip_saradc_channel_data(struct udevice *dev, int channel,
 	struct adc_uclass_plat *uc_pdata = dev_get_uclass_plat(dev);
 
 	if (channel != priv->active_channel) {
-		pr_err("Requested channel is not active!");
+		pr_err("Requested channel is not active!\n");
 		return -EINVAL;
 	}
 
@@ -70,7 +70,7 @@ int rockchip_saradc_start_channel(struct udevice *dev, int channel)
 	struct rockchip_saradc_priv *priv = dev_get_priv(dev);
 
 	if (channel < 0 || channel >= priv->data->num_channels) {
-		pr_err("Requested channel is invalid!");
+		pr_err("Requested channel is invalid!\n");
 		return -EINVAL;
 	}
 
@@ -126,7 +126,7 @@ int rockchip_saradc_of_to_plat(struct udevice *dev)
 	data = (struct rockchip_saradc_data *)dev_get_driver_data(dev);
 	priv->regs = (struct rockchip_saradc_regs *)dev_read_addr(dev);
 	if (priv->regs == (struct rockchip_saradc_regs *)FDT_ADDR_T_NONE) {
-		pr_err("Dev: %s - can't get address!", dev->name);
+		pr_err("Dev: %s - can't get address!\n", dev->name);
 		return -ENODATA;
 	}
 

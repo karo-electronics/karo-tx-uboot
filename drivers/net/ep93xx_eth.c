@@ -326,9 +326,9 @@ static int ep93xx_eth_rcv_packet(struct eth_device *dev)
 			debug("reporting %d bytes...\n", len);
 		} else {
 			/* Do we have an erroneous packet? */
-			pr_err("packet rx error, status %08X %08X",
-				priv->rx_sq.current->word1,
-				priv->rx_sq.current->word2);
+			pr_err("packet rx error, status %08X %08X\n",
+			       priv->rx_sq.current->word1,
+			       priv->rx_sq.current->word2);
 			dump_rx_descriptor_queue(dev);
 			dump_rx_status_queue(dev);
 		}
@@ -403,8 +403,8 @@ static int ep93xx_eth_send_packet(struct eth_device *dev,
 		; /* noop */
 
 	if (!TX_STATUS_TXWE(priv->tx_sq.current)) {
-		pr_err("packet tx error, status %08X",
-			priv->tx_sq.current->word1);
+		pr_err("packet tx error, status %08X\n",
+		       priv->tx_sq.current->word1);
 		dump_tx_descriptor_queue(dev);
 		dump_tx_status_queue(dev);
 
@@ -454,7 +454,7 @@ int ep93xx_eth_initialize(u8 dev_num, int base_addr)
 
 	priv = malloc(sizeof(*priv));
 	if (!priv) {
-		pr_err("malloc() failed");
+		pr_err("malloc() failed\n");
 		goto eth_init_failed_0;
 	}
 	memset(priv, 0, sizeof(*priv));
@@ -464,34 +464,34 @@ int ep93xx_eth_initialize(u8 dev_num, int base_addr)
 	priv->tx_dq.base = calloc(NUMTXDESC,
 				sizeof(struct tx_descriptor));
 	if (priv->tx_dq.base == NULL) {
-		pr_err("calloc() failed");
+		pr_err("calloc() failed\n");
 		goto eth_init_failed_1;
 	}
 
 	priv->tx_sq.base = calloc(NUMTXDESC,
 				sizeof(struct tx_status));
 	if (priv->tx_sq.base == NULL) {
-		pr_err("calloc() failed");
+		pr_err("calloc() failed\n");
 		goto eth_init_failed_2;
 	}
 
 	priv->rx_dq.base = calloc(NUMRXDESC,
 				sizeof(struct rx_descriptor));
 	if (priv->rx_dq.base == NULL) {
-		pr_err("calloc() failed");
+		pr_err("calloc() failed\n");
 		goto eth_init_failed_3;
 	}
 
 	priv->rx_sq.base = calloc(NUMRXDESC,
 				sizeof(struct rx_status));
 	if (priv->rx_sq.base == NULL) {
-		pr_err("calloc() failed");
+		pr_err("calloc() failed\n");
 		goto eth_init_failed_4;
 	}
 
 	dev = malloc(sizeof *dev);
 	if (dev == NULL) {
-		pr_err("malloc() failed");
+		pr_err("malloc() failed\n");
 		goto eth_init_failed_5;
 	}
 	memset(dev, 0, sizeof *dev);

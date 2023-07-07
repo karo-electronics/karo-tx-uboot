@@ -305,7 +305,7 @@ static int stm32_fmc_of_to_plat(struct udevice *dev)
 		bank_name = (char *)_bank_name;
 		strsep(&bank_name, "@");
 		if (!bank_name) {
-			pr_err("missing sdram bank index");
+			pr_err("missing sdram bank index\n");
 			return -EINVAL;
 		}
 
@@ -314,8 +314,8 @@ static int stm32_fmc_of_to_plat(struct udevice *dev)
 			       (long unsigned int *)&bank_params->target_bank);
 
 		if (bank_params->target_bank >= MAX_SDRAM_BANK) {
-			pr_err("Found bank %d , but only bank 0 and 1 are supported",
-			      bank_params->target_bank);
+			pr_err("Found bank %d , but only bank 0 and 1 are supported\n",
+			       bank_params->target_bank);
 			return -EINVAL;
 		}
 
@@ -328,8 +328,8 @@ static int stm32_fmc_of_to_plat(struct udevice *dev)
 						  sizeof(struct stm32_sdram_control));
 
 		if (!params->bank_params[bank].sdram_control) {
-			pr_err("st,sdram-control not found for %s",
-			      ofnode_get_name(bank_node));
+			pr_err("st,sdram-control not found for %s\n",
+			       ofnode_get_name(bank_node));
 			return -EINVAL;
 		}
 
@@ -341,8 +341,8 @@ static int stm32_fmc_of_to_plat(struct udevice *dev)
 						  sizeof(struct stm32_sdram_timing));
 
 		if (!params->bank_params[bank].sdram_timing) {
-			pr_err("st,sdram-timing not found for %s",
-			      ofnode_get_name(bank_node));
+			pr_err("st,sdram-timing not found for %s\n",
+			       ofnode_get_name(bank_node));
 			return -EINVAL;
 		}
 

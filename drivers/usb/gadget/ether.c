@@ -1052,7 +1052,7 @@ static int eth_set_config(struct eth_dev *dev, unsigned number,
 			&& dev->config
 			&& dev->tx_qlen != 0) {
 		/* tx fifo is full, but we can't clear it...*/
-		pr_err("can't change configurations");
+		pr_err("can't change configurations\n");
 		return -ESPIPE;
 	}
 	eth_reset_config(dev);
@@ -1226,7 +1226,7 @@ static void rndis_command_complete(struct usb_ep *ep, struct usb_request *req)
 	/* received RNDIS command from USB_CDC_SEND_ENCAPSULATED_COMMAND */
 	status = rndis_msg_parser(dev->rndis_config, (u8 *) req->buf);
 	if (status < 0)
-		pr_err("%s: rndis parse error %d", __func__, status);
+		pr_err("%s: rndis parse error %d\n", __func__, status);
 }
 
 #endif	/* RNDIS */
@@ -1547,7 +1547,7 @@ static int rx_submit(struct eth_dev *dev, struct usb_request *req,
 	retval = usb_ep_queue(dev->out_ep, req, gfp_flags);
 
 	if (retval)
-		pr_err("rx submit --> %d", retval);
+		pr_err("rx submit --> %d\n", retval);
 
 	return retval;
 }
@@ -1617,7 +1617,7 @@ static int alloc_requests(struct eth_dev *dev, unsigned n, gfp_t gfp_flags)
 fail2:
 	usb_ep_free_request(dev->in_ep, dev->tx_req);
 fail1:
-	pr_err("can't alloc requests");
+	pr_err("can't alloc requests\n");
 	return -1;
 }
 
@@ -2061,8 +2061,8 @@ static int eth_bind(struct usb_gadget *gadget)
 		 * anything less functional on CDC-capable hardware,
 		 * so we fail in this case.
 		 */
-		pr_err("controller '%s' not recognized",
-			gadget->name);
+		pr_err("controller '%s' not recognized\n",
+		       gadget->name);
 		return -ENODEV;
 	}
 
@@ -2123,7 +2123,7 @@ static int eth_bind(struct usb_gadget *gadget)
 	if (!in_ep) {
 autoconf_fail:
 		pr_err("can't autoconfigure on %s\n",
-			gadget->name);
+		       gadget->name);
 		return -ENODEV;
 	}
 	in_ep->driver_data = in_ep;	/* claim */
@@ -2143,7 +2143,7 @@ autoconf_fail:
 		if (status_ep) {
 			status_ep->driver_data = status_ep;	/* claim */
 		} else if (rndis) {
-			pr_err("can't run RNDIS on %s", gadget->name);
+			pr_err("can't run RNDIS on %s\n", gadget->name);
 			return -ENODEV;
 #ifdef CONFIG_USB_ETH_CDC
 		} else if (cdc) {
@@ -2245,7 +2245,7 @@ autoconf_fail:
 	if (rndis) {
 		status = rndis_init();
 		if (status < 0) {
-			pr_err("can't init RNDIS, %d", status);
+			pr_err("can't init RNDIS, %d\n", status);
 			goto fail;
 		}
 	}
@@ -2336,7 +2336,7 @@ fail0:
 	return 0;
 
 fail:
-	pr_err("%s failed, status = %d", __func__, status);
+	pr_err("%s failed, status = %d\n", __func__, status);
 	eth_unbind(gadget);
 	return status;
 }
@@ -2373,11 +2373,11 @@ static int _usb_eth_init(struct ether_priv *priv)
 			sizeof(host_addr));
 
 	if (!is_eth_addr_valid(dev_addr)) {
-		pr_err("Need valid 'usbnet_devaddr' to be set");
+		pr_err("Need valid 'usbnet_devaddr' to be set\n");
 		goto fail;
 	}
 	if (!is_eth_addr_valid(host_addr)) {
-		pr_err("Need valid 'usbnet_hostaddr' to be set");
+		pr_err("Need valid 'usbnet_hostaddr' to be set\n");
 		goto fail;
 	}
 
@@ -2406,7 +2406,7 @@ static int _usb_eth_init(struct ether_priv *priv)
 	while (!dev->network_started) {
 		/* Handle control-c and timeouts */
 		if (ctrlc() || (get_timer(ts) > timeout)) {
-			pr_err("The remote end did not respond in time.");
+			pr_err("The remote end did not respond in time.\n");
 			goto fail;
 		}
 		usb_gadget_handle_interrupts(0);
@@ -2436,7 +2436,7 @@ static int _usb_eth_send(struct ether_priv *priv, void *packet, int length)
 		rndis_pkt = malloc(length +
 					sizeof(struct rndis_packet_msg_type));
 		if (!rndis_pkt) {
-			pr_err("No memory to alloc RNDIS packet");
+			pr_err("No memory to alloc RNDIS packet\n");
 			goto drop;
 		}
 		rndis_add_hdr(rndis_pkt, length);
@@ -2562,7 +2562,7 @@ static int usb_eth_recv(struct eth_device *netdev)
 		net_process_received_packet(net_rx_packets[0],
 					    dev->rx_req->length);
 	} else {
-		pr_err("dev->rx_req invalid");
+		pr_err("dev->rx_req invalid\n");
 	}
 	packet_received = 0;
 	rx_submit(dev, dev->rx_req, 0);
@@ -2624,7 +2624,7 @@ static int usb_eth_recv(struct udevice *dev, int flags, uchar **packetp)
 			*packetp = (uchar *)net_rx_packets[0];
 			return ethdev->rx_req->length;
 		} else {
-			pr_err("dev->rx_req invalid");
+			pr_err("dev->rx_req invalid\n");
 			return -EFAULT;
 		}
 	}

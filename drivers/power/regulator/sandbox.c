@@ -84,8 +84,8 @@ int out_get_value(struct udevice *dev, int output_count, int reg_type,
 	int ret;
 
 	if (dev->driver_data > output_count) {
-		pr_err("Unknown regulator number: %lu for PMIC %s!",
-		      dev->driver_data, dev->name);
+		pr_err("Unknown regulator number: %lu for PMIC %s!\n",
+		       dev->driver_data, dev->name);
 		return -EINVAL;
 	}
 
@@ -112,15 +112,15 @@ static int out_set_value(struct udevice *dev, int output_count, int reg_type,
 	int max_value;
 
 	if (dev->driver_data > output_count) {
-		pr_err("Unknown regulator number: %lu for PMIC %s!",
-		      dev->driver_data, dev->name);
+		pr_err("Unknown regulator number: %lu for PMIC %s!\n",
+		       dev->driver_data, dev->name);
 		return -EINVAL;
 	}
 
 	max_value = range[dev->driver_data - 1].max;
 	if (value > max_value) {
-		pr_err("Wrong value for %s: %lu. Max is: %d.",
-		      dev->name, dev->driver_data, max_value);
+		pr_err("Wrong value for %s: %lu. Max is: %d.\n",
+		       dev->name, dev->driver_data, max_value);
 		return -EINVAL;
 	}
 
@@ -160,7 +160,7 @@ static int out_get_mode(struct udevice *dev)
 			return uc_pdata->mode[i].id;
 	}
 
-	pr_err("Unknown operation mode for %s!", dev->name);
+	pr_err("Unknown operation mode for %s!\n", dev->name);
 	return -EINVAL;
 }
 
@@ -185,7 +185,7 @@ static int out_set_mode(struct udevice *dev, int mode)
 	}
 
 	if (reg_val == -1) {
-		pr_err("Unknown operation mode for %s!", dev->name);
+		pr_err("Unknown operation mode for %s!\n", dev->name);
 		return -EINVAL;
 	}
 

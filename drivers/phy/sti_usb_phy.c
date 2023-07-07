@@ -48,13 +48,13 @@ static int sti_usb_phy_deassert(struct sti_usb_phy *phy)
 
 	ret = reset_deassert(&phy->global_ctl);
 	if (ret < 0) {
-		pr_err("PHY global deassert failed: %d", ret);
+		pr_err("PHY global deassert failed: %d\n", ret);
 		return ret;
 	}
 
 	ret = reset_deassert(&phy->port_ctl);
 	if (ret < 0)
-		pr_err("PHY port deassert failed: %d", ret);
+		pr_err("PHY port deassert failed: %d\n", ret);
 
 	return ret;
 }
@@ -86,13 +86,13 @@ static int sti_usb_phy_exit(struct phy *usb_phy)
 
 	ret = reset_assert(&phy->port_ctl);
 	if (ret < 0) {
-		pr_err("PHY port assert failed: %d", ret);
+		pr_err("PHY port assert failed: %d\n", ret);
 		return ret;
 	}
 
 	ret = reset_assert(&phy->global_ctl);
 	if (ret < 0)
-		pr_err("PHY global assert failed: %d", ret);
+		pr_err("PHY global assert failed: %d\n", ret);
 
 	return ret;
 }
@@ -153,14 +153,14 @@ int sti_usb_phy_probe(struct udevice *dev)
 	/* get global reset control */
 	ret = reset_get_by_name(dev, "global", &priv->global_ctl);
 	if (ret) {
-		pr_err("can't get global reset for %s (%d)", dev->name, ret);
+		pr_err("can't get global reset for %s (%d)\n", dev->name, ret);
 		return ret;
 	}
 
 	/* get port reset control */
 	ret = reset_get_by_name(dev, "port", &priv->port_ctl);
 	if (ret) {
-		pr_err("can't get port reset for %s (%d)", dev->name, ret);
+		pr_err("can't get port reset for %s (%d)\n", dev->name, ret);
 		return ret;
 	}
 

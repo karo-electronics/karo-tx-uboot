@@ -31,7 +31,7 @@ static int mmc_block_op(enum dfu_op op, struct dfu_entity *dfu,
 
 	mmc = find_mmc_device(dfu->data.mmc.dev_num);
 	if (!mmc) {
-		pr_err("Device MMC %d - not found!", dfu->data.mmc.dev_num);
+		pr_err("Device MMC %d - not found!\n", dfu->data.mmc.dev_num);
 		return -ENODEV;
 	}
 
@@ -75,7 +75,7 @@ static int mmc_block_op(enum dfu_op op, struct dfu_entity *dfu,
 	}
 
 	if (n != blk_count) {
-		pr_err("MMC operation failed");
+		pr_err("MMC operation failed\n");
 		if (dfu->data.mmc.hw_partition >= 0)
 			blk_select_hwpart_devnum(IF_TYPE_MMC,
 						 dfu->data.mmc.dev_num,
@@ -369,7 +369,7 @@ int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *devstr, char **argv, int a
 	mmc = find_mmc_device(dfu->data.mmc.dev_num);
 	if (mmc == NULL) {
 		pr_err("Couldn't find MMC device no. %d.\n",
-		      dfu->data.mmc.dev_num);
+		       dfu->data.mmc.dev_num);
 		return -ENODEV;
 	}
 
@@ -407,7 +407,7 @@ int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *devstr, char **argv, int a
 
 		if (part_get_info(blk_dev, mmcpart, &partinfo) != 0) {
 			pr_err("Couldn't find part #%d on mmc device #%d\n",
-			      mmcpart, mmcdev);
+			       mmcpart, mmcdev);
 			return -ENODEV;
 		}
 
@@ -461,8 +461,8 @@ int dfu_fill_entity_mmc(struct dfu_entity *dfu, char *devstr, char **argv, int a
 		dfu_file_buf = memalign(CONFIG_SYS_CACHELINE_SIZE,
 					CONFIG_SYS_DFU_MAX_FILE_SIZE);
 		if (!dfu_file_buf) {
-			pr_err("Could not memalign 0x%x bytes",
-			      CONFIG_SYS_DFU_MAX_FILE_SIZE);
+			pr_err("Could not memalign 0x%x bytes\n",
+			       CONFIG_SYS_DFU_MAX_FILE_SIZE);
 			return -ENOMEM;
 		}
 	}
