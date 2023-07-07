@@ -165,6 +165,8 @@ config PHY_INPHI
 		speed adds up (e.g. 100G = 4x25G lanes -> 2 retimers).
 		The driver also uses a microcode firmware in the form of
 		address-data tuples for phy initialization
+if PHY_INPHI
+
 choice
 	prompt "Speed selection for INPHI in112525 s03 retimer"
 	default IN112525_S03_25G
@@ -214,6 +216,8 @@ config IN112525_S05_100G
 	help
 		100G best settings for Inphi in112525 gen2 retimer
 endchoice
+
+endif # PHY_INPHI
 
 config PHY_LXT
 	bool "LXT971 Ethernet PHY support"
