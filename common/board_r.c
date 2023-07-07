@@ -585,20 +585,6 @@ static int initr_avbkey(void)
 }
 #endif
 
-#ifdef CONFIG_FSL_FASTBOOT
-static int initr_fastboot_setup(void)
-{
-	fastboot_setup();
-	return 0;
-}
-
-static int initr_check_fastboot(void)
-{
-	fastboot_run_bootmode();
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_IMX_TRUSTY_OS
 extern void tee_setup(void);
 static int initr_tee_setup(void)
@@ -799,9 +785,6 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
 #endif
-#ifdef CONFIG_FSL_FASTBOOT
-	initr_fastboot_setup,
-#endif
 #if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
 	INIT_FUNC_WATCHDOG_RESET
 	initr_scsi,
@@ -842,9 +825,6 @@ static init_fnc_t init_sequence_r[] = {
 #endif
 #ifdef CONFIG_IMX_TRUSTY_OS
 	initr_tee_setup,
-#endif
-#ifdef CONFIG_FSL_FASTBOOT
-	initr_check_fastboot,
 #endif
 #ifdef CONFIG_DUAL_BOOTLOADER
 	initr_check_spl_recovery,

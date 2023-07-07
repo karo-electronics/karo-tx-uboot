@@ -121,7 +121,7 @@ void fastboot_none_resp(char *response)
 	*response = 0;
 }
 
-void board_fastboot_setup(void)
+__weak void board_fastboot_setup(void)
 {
 	static char boot_dev_part[32];
 	u32 dev_no;

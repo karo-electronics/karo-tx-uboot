@@ -93,7 +93,7 @@ static FbBootMode fastboot_get_bootmode(void)
 {
 	int boot_mode = BOOTMODE_NORMAL;
 #ifdef CONFIG_ANDROID_RECOVERY
-	if(is_recovery_key_pressing()) {
+	if (is_recovery_key_pressing()) {
 		boot_mode = BOOTMODE_RECOVERY_KEY_PRESSED;
 		return boot_mode;
 	}
@@ -737,11 +737,11 @@ static void flashing(char *cmd, char *response)
 #endif /* !CONFIG_AVB_ATX */
 #endif /* CONFIG_IMX_TRUSTY_OS */
 	else if (endswith(cmd, ERASE_UBOOT_ENV)) {
-		if(erase_uboot_env())
+		if (erase_uboot_env()) {
 			strcpy(response, "OKAY");
-		else {
-			printf("ERROR erase uboot environment variable failed!");
-		        strcpy(response, "FAILerase uboot environment variable failed!");
+		} else {
+			printf("ERROR erase uboot environment variable failed!\n");
+			strcpy(response, "FAILerase uboot environment variable failed!");
 		}
 	} else if (endswith(cmd, "unlock_critical")) {
 		strcpy(response, "OKAY");
@@ -904,7 +904,7 @@ static void flash(char *cmd, char *response)
 		/* If gpt is valid, load partitons table into memory.
 		   So if the next command is "fastboot reboot bootloader",
 		   it can find the "misc" partition to r/w. */
-		if(gpt_valid) {
+		if (gpt_valid) {
 			fastboot_load_partitions();
 			/* Unlock device if the gpt is valid */
 			do_fastboot_unlock(true);
@@ -939,7 +939,7 @@ static void erase(char *cmd, char *response)
 
 #ifdef CONFIG_VIRTUAL_AB_SUPPORT
 	if (partition_is_protected_during_merge(cmd)) {
-		printf("Can not erase partition %s while a snapshot update is in progress!", cmd);
+		printf("Can not erase partition %s while a snapshot update is in progress!\n", cmd);
 		fastboot_fail("Snapshot update is in progress", response);
 		return;
 	}
@@ -976,7 +976,7 @@ static void run_ucmd(char *cmd_parameter, char *response)
 		fastboot_fail("missing command", response);
 		return;
 	}
-	if(run_command(cmd_parameter, 0)) {
+	if (run_command(cmd_parameter, 0)) {
 		fastboot_fail("", response);
 	} else {
 		fastboot_okay(NULL, response);
@@ -1038,7 +1038,7 @@ static void snapshot_update(char *cmd_parameter, char *response)
 
 		return;
 	} else {
-		printf("Error! Only 'cancel' is supported!");
+		printf("Error! Only 'cancel' is supported!\n");
 		strcpy(response, "FAILInternal error!");
 	}
 
@@ -1150,12 +1150,17 @@ int fastboot_handle_command(char *cmd_string, char *response)
 {
 	int i;
 	char *cmd_parameter;
+	static int fastboot_init;
+
+	if (!fastboot_init) {
+		fastboot_setup();
+		fastboot_init = 1;
+	}
 
 	cmd_parameter = cmd_string;
 	strsep(&cmd_parameter, ":");
 	/* separate cmdstring for "fastboot oem/flashing" with a blank */
-	if(cmd_parameter == NULL)
-	{
+	if (cmd_parameter == NULL) {
 		cmd_parameter = cmd_string;
 		strsep(&cmd_parameter, " ");
 	}
