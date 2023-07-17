@@ -681,7 +681,6 @@ static int eqos_start(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret, i;
-	ulong rate;
 	u32 val, tx_fifo_sz, rx_fifo_sz, tqs, rqs, pbl;
 	ulong last_rx_desc;
 	ulong desc_pad;
@@ -689,91 +688,14 @@ static int eqos_start(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
-	eqos->tx_desc_idx = 0;
-	eqos->rx_desc_idx = 0;
-
-	ret = eqos->config->ops->eqos_start_resets(dev);
-	if (ret < 0) {
-		pr_err("eqos_start_resets() failed: %d\n", ret);
+	if (!eqos->phy) {
+		dev_err(dev, "No PHY attached\n");
+		ret = -ENODEV;
 		goto err;
 	}
 
-	udelay(10);
-
-	eqos->reg_access_ok = true;
-
-	/*
-	 * Assert the SWR first, the actually reset the MAC and to latch in
-	 * e.g. i.MX8M Plus GPR[1] content, which selects interface mode.
-	 */
-	setbits_le32(&eqos->dma_regs->mode, EQOS_DMA_MODE_SWR);
-
-	if (eqos->config->ops->eqos_fix_soc_reset)
-		eqos->config->ops->eqos_fix_soc_reset(dev);
-
-	ret = wait_for_bit_le32(&eqos->dma_regs->mode,
-				EQOS_DMA_MODE_SWR, false,
-				eqos->config->swr_wait, false);
-	if (ret) {
-		pr_err("EQOS_DMA_MODE_SWR stuck\n");
-		goto err_stop_resets;
-	}
-
-	ret = eqos->config->ops->eqos_calibrate_pads(dev);
-	if (ret < 0) {
-		pr_err("eqos_calibrate_pads() failed: %d\n", ret);
-		goto err_stop_resets;
-	}
-
-	if (eqos->config->ops->eqos_get_tick_clk_rate) {
-		rate = eqos->config->ops->eqos_get_tick_clk_rate(dev);
-
-		val = (rate / 1000000) - 1;
-		writel(val, &eqos->mac_regs->us_tic_counter);
-	}
-
-	/*
-	 * if PHY was already connected and configured,
-	 * don't need to reconnect/reconfigure again
-	 */
-	if (!eqos->phy) {
-		int addr = -1;
-		ofnode fixed_node;
-
-		if (IS_ENABLED(CONFIG_PHY_FIXED)) {
-			fixed_node = ofnode_find_subnode(dev_ofnode(dev),
-							 "fixed-link");
-			if (ofnode_valid(fixed_node))
-				eqos->phy = fixed_phy_create(dev_ofnode(dev));
-		}
-
-		if (!eqos->phy) {
-			addr = eqos_get_phy_addr(eqos, dev);
-			eqos->phy = phy_connect(eqos->mii, addr, dev,
-						eqos->config->interface(dev));
-		}
-
-		if (!eqos->phy) {
-			pr_err("phy_connect() failed\n");
-			ret = -ENODEV;
-			goto err_stop_resets;
-		}
-
-		if (eqos->max_speed) {
-			ret = phy_set_supported(eqos->phy, eqos->max_speed);
-			if (ret) {
-				pr_err("phy_set_supported() failed: %d\n", ret);
-				goto err_shutdown_phy;
-			}
-		}
-
-		eqos->phy->node = eqos->phy_of_node;
-		ret = phy_config(eqos->phy);
-		if (ret < 0) {
-			pr_err("phy_config() failed: %d\n", ret);
-			goto err_shutdown_phy;
-		}
-	}
+	eqos->tx_desc_idx = 0;
+	eqos->rx_desc_idx = 0;
 
 	ret = phy_startup(eqos->phy);
 	if (ret < 0) {
@@ -1029,8 +951,6 @@ static int eqos_start(struct udevice *dev)
 
 err_shutdown_phy:
 	phy_shutdown(eqos->phy);
-err_stop_resets:
-	eqos->config->ops->eqos_stop_resets(dev);
 err:
 	pr_err("FAILED: %d\n", ret);
 	return ret;
@@ -1084,7 +1004,6 @@ static void eqos_stop(struct udevice *dev)
 	if (eqos->phy) {
 		phy_shutdown(eqos->phy);
 	}
-	eqos->config->ops->eqos_stop_resets(dev);
 
 	debug("%s: OK\n", __func__);
 }
@@ -1135,75 +1054,59 @@ static int eqos_recv(struct udevice *dev, int flags, uchar **packetp)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	struct eqos_desc *rx_desc;
+	void *dmabuf;
 	int length;
+	static int idle;
+
+	if (!(flags & ETH_RECV_CHECK_DEVICE))
+		return -EAGAIN;
 
 	rx_desc = eqos_get_desc(eqos, eqos->rx_desc_idx, true);
 	eqos->config->ops->eqos_inval_desc(rx_desc);
-	if (rx_desc->des3 & EQOS_DESC3_OWN)
+	if (rx_desc->des3 & EQOS_DESC3_OWN) {
+		if (!idle)
+			debug("%s: No RX packet available rx_desc=%p dma_buf=%p\n",
+			      __func__, rx_desc, eqos->rx_dma_buf);
+		idle = 1;
 		return -EAGAIN;
+	}
+	dev_dbg(dev, "%s(dev=%p, flags=%08x):\n", __func__, dev, flags);
 
-	debug("%s(dev=%p, flags=%x):\n", __func__, dev, flags);
-
-	*packetp = eqos->rx_dma_buf +
-		(eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE);
+	idle = 0;
+	dmabuf = eqos->rx_dma_buf + eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE;
 	length = rx_desc->des3 & 0x7fff;
-	debug("%s: *packetp=%p, length=%d\n", __func__, *packetp, length);
 
-	eqos->config->ops->eqos_inval_buffer(*packetp, length);
+	rx_desc->des0 = 0;
+	rx_desc->des1 = 0;
+	mb();
+	eqos->config->ops->eqos_flush_desc(rx_desc);
+	rx_desc->des0 = lower_32_bits((ulong)dmabuf);
+	rx_desc->des1 = upper_32_bits((ulong)dmabuf);
+	rx_desc->des2 = 0;
+	mb();
+	rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
+	eqos->config->ops->eqos_flush_desc(rx_desc);
+
+	writel((ulong)rx_desc, &eqos->dma_regs->ch0_rxdesc_tail_pointer);
+
+	eqos->rx_desc_idx = (eqos->rx_desc_idx + 1) % EQOS_DESCRIPTORS_RX;
+
+	*packetp = memalign(ARCH_DMA_MINALIGN, length);
+	if (!*packetp) {
+		dev_err(dev, "Failed to allocate packet buffer\n");
+		return -ENOMEM;
+	}
+
+	eqos->config->ops->eqos_inval_buffer(dmabuf, length);
+	memcpy(*packetp, dmabuf, length);
 
 	return length;
 }
 
-static int eqos_free_pkt(struct udevice *dev, uchar *packet, int length)
+int eqos_free_pkt(struct udevice *dev, uchar *packet, int length)
 {
-	struct eqos_priv *eqos = dev_get_priv(dev);
-	u32 idx, idx_mask = eqos->desc_per_cacheline - 1;
-	uchar *packet_expected;
-	struct eqos_desc *rx_desc = NULL;
-
 	debug("%s(packet=%p, length=%d)\n", __func__, packet, length);
-
-	packet_expected = eqos->rx_dma_buf +
-		(eqos->rx_desc_idx * EQOS_MAX_PACKET_SIZE);
-	if (packet != packet_expected) {
-		debug("%s: Unexpected packet (expected %p)\n", __func__,
-		      packet_expected);
-		return -EINVAL;
-	}
-
-	eqos->config->ops->eqos_inval_buffer(packet, length);
-
-	if (eqos->started && (eqos->rx_desc_idx & idx_mask) == idx_mask) {
-		for (idx = eqos->rx_desc_idx - idx_mask;
-		     idx <= eqos->rx_desc_idx;
-		     idx++) {
-			ulong addr64;
-
-			rx_desc = eqos_get_desc(eqos, idx, true);
-			rx_desc->des0 = 0;
-			rx_desc->des1 = 0;
-			mb();
-			eqos->config->ops->eqos_flush_desc(rx_desc);
-			eqos->config->ops->eqos_inval_buffer(packet, length);
-			addr64 = (ulong)(eqos->rx_dma_buf + (idx * EQOS_MAX_PACKET_SIZE));
-			rx_desc->des0 = lower_32_bits(addr64);
-			rx_desc->des1 = upper_32_bits(addr64);
-			rx_desc->des2 = 0;
-			/*
-			 * Make sure that if HW sees the _OWN write below,
-			 * it will see all the writes to the rest of the
-			 * descriptor too.
-			 */
-			mb();
-			rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
-			eqos->config->ops->eqos_flush_desc(rx_desc);
-		}
-		writel((ulong)rx_desc, &eqos->dma_regs->ch0_rxdesc_tail_pointer);
-	}
-
-	eqos->rx_desc_idx++;
-	eqos->rx_desc_idx %= EQOS_DESCRIPTORS_RX;
-
+	free(packet);
 	return 0;
 }
 
@@ -1262,7 +1165,7 @@ static int eqos_probe_resources_core(struct udevice *dev)
 	debug("%s: rx_dma_buf=%p\n", __func__, eqos->rx_dma_buf);
 
 	eqos->config->ops->eqos_inval_buffer(eqos->rx_dma_buf,
-			EQOS_MAX_PACKET_SIZE * EQOS_DESCRIPTORS_RX);
+					     EQOS_MAX_PACKET_SIZE * EQOS_DESCRIPTORS_RX);
 
 	debug("%s: OK\n", __func__);
 	return 0;
@@ -1458,6 +1361,9 @@ static int eqos_probe(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 	int ret;
+	ulong rate;
+	u32 val;
+	int addr;
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
@@ -1486,7 +1392,7 @@ static int eqos_probe(struct udevice *dev)
 	ret = eqos->config->ops->eqos_start_clks(dev);
 	if (ret < 0) {
 		pr_err("eqos_start_clks() failed: %d\n", ret);
-		goto err_remove_resources_tegra;
+		goto err_remove_resources;
 	}
 
 #ifdef CONFIG_DM_ETH_PHY
@@ -1514,15 +1420,81 @@ static int eqos_probe(struct udevice *dev)
 #ifdef CONFIG_DM_ETH_PHY
 	eth_phy_set_mdio_bus(dev, eqos->mii);
 #endif
+	ret = eqos->config->ops->eqos_start_resets(dev);
+	if (ret < 0) {
+		pr_err("eqos_start_resets() failed: %d\n", ret);
+		goto err_unregister_mdio;
+	}
+
+	udelay(10);
+
+	eqos->reg_access_ok = true;
+
+	/*
+	 * Assert the SWR first, then actually reset the MAC to latch in
+	 * e.g. i.MX8M Plus GPR[1] content, which selects interface mode.
+	 */
+	setbits_le32(&eqos->dma_regs->mode, EQOS_DMA_MODE_SWR);
+
+	if (eqos->config->ops->eqos_fix_soc_reset)
+		eqos->config->ops->eqos_fix_soc_reset(dev);
+
+	ret = wait_for_bit_le32(&eqos->dma_regs->mode,
+				EQOS_DMA_MODE_SWR, false,
+				eqos->config->swr_wait, false);
+	if (ret) {
+		dev_err(dev, "Timeout waiting for soft reset to finish\n");
+		goto err_stop_resets;
+	}
+
+	ret = eqos->config->ops->eqos_calibrate_pads(dev);
+	if (ret < 0) {
+		dev_err(dev, "eqos_calibrate_pads() failed: %d\n", ret);
+		goto err_stop_resets;
+	}
+	rate = eqos->config->ops->eqos_get_tick_clk_rate(dev);
+
+	val = (rate / 1000000) - 1;
+	writel(val, &eqos->mac_regs->us_tic_counter);
+
+	addr = eqos_get_phy_addr(eqos, dev);
+	eqos->phy = phy_connect(eqos->mii, addr, dev,
+				eqos->config->interface(dev));
+	if (!eqos->phy) {
+		dev_err(dev, "phy_connect() failed\n");
+		ret = -EIO;
+		goto err_stop_resets;
+	}
+
+	if (eqos->max_speed) {
+		ret = phy_set_supported(eqos->phy, eqos->max_speed);
+		if (ret) {
+			pr_err("phy_set_supported() failed: %d\n", ret);
+			goto err_shutdown_phy;
+		}
+	}
+
+	eqos->phy->node = eqos->phy_of_node;
+	ret = phy_config(eqos->phy);
+	if (ret < 0) {
+		dev_err(dev, "phy_config() failed: %d\n", ret);
+		goto err_shutdown_phy;
+	}
 
 	debug("%s: OK\n", __func__);
 	return 0;
 
+err_shutdown_phy:
+	phy_shutdown(eqos->phy);
+err_stop_resets:
+	eqos->config->ops->eqos_stop_resets(dev);
+err_unregister_mdio:
+	mdio_unregister(eqos->mii);
 err_free_mdio:
 	mdio_free(eqos->mii);
 err_stop_clks:
 	eqos->config->ops->eqos_stop_clks(dev);
-err_remove_resources_tegra:
+err_remove_resources:
 	eqos->config->ops->eqos_remove_resources(dev);
 err_remove_resources_core:
 	eqos_remove_resources_core(dev);
@@ -1540,6 +1512,7 @@ static int eqos_remove(struct udevice *dev)
 	mdio_unregister(eqos->mii);
 	mdio_free(eqos->mii);
 	eqos->config->ops->eqos_stop_clks(dev);
+	eqos->config->ops->eqos_stop_resets(dev);
 	eqos->config->ops->eqos_remove_resources(dev);
 
 	eqos_remove_resources_core(dev);
