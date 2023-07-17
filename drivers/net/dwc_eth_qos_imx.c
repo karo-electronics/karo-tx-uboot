@@ -27,6 +27,13 @@
 
 #include "dwc_eth_qos.h"
 
+static struct clk_ref eqos_imx_clks[] = {
+	{ "stmmaceth", offsetof(struct eqos_priv, clk_master_bus), },
+	{ "ptp_ref", offsetof(struct eqos_priv, clk_ptp_ref), },
+	{ "tx", offsetof(struct eqos_priv, clk_tx), },
+	{ "pclk", offsetof(struct eqos_priv, clk_ck), },
+};
+
 __weak u32 imx_get_eqos_csr_clk(void)
 {
 	return 100 * 1000000;
@@ -37,6 +44,28 @@ static ulong eqos_get_tick_clk_rate_imx(struct udevice *dev)
 	struct eqos_priv *eqos = dev_get_priv(dev);
 
 	return clk_get_rate(&eqos->clk_master_bus);
+}
+
+static int eqos_get_clks(struct udevice *dev)
+{
+	int ret;
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	struct clk_ref *clkref = eqos->clkrefs;
+	size_t num_clks = eqos->num_clks;
+	ssize_t i;
+
+	for (i = 0; i < num_clks; i++) {
+		const char *name = clkref[i].name;
+		struct clk *clk = ((void *)eqos) + clkref[i].offset;
+
+		ret = clk_get_by_name(dev, name, clk);
+		if (ret) {
+			pr_err("clk_get_by_name(%s) failed: %d", name, ret);
+			return ret;
+		}
+		dev_dbg(dev, "Got '%s' clk\n", name);
+	}
+	return 0;
 }
 
 static int eqos_probe_resources_imx(struct udevice *dev)
@@ -60,35 +89,18 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 		return -EINVAL;
 	}
 
+	eqos->clkrefs = eqos_imx_clks;
+	eqos->num_clks = ARRAY_SIZE(eqos_imx_clks);
+
+	ret = eqos_get_clks(dev);
+	if (ret)
+		return ret;
+
 	ret = board_interface_eth_init(dev, interface);
 	if (ret)
 		return ret;
 
 	eqos->max_speed = dev_read_u32_default(dev, "max-speed", 0);
-
-	ret = clk_get_by_name(dev, "stmmaceth", &eqos->clk_master_bus);
-	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(master_bus) failed: %d\n", ret);
-		goto err_probe;
-	}
-
-	ret = clk_get_by_name(dev, "ptp_ref", &eqos->clk_ptp_ref);
-	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(ptp_ref) failed: %d\n", ret);
-		goto err_probe;
-	}
-
-	ret = clk_get_by_name(dev, "tx", &eqos->clk_tx);
-	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(tx) failed: %d\n", ret);
-		goto err_probe;
-	}
-
-	ret = clk_get_by_name(dev, "pclk", &eqos->clk_ck);
-	if (ret) {
-		dev_dbg(dev, "clk_get_by_name(pclk) failed: %d\n", ret);
-		goto err_probe;
-	}
 
 	eqos->phy_reset_gpio = devm_gpiod_get_optional(dev, "phy-reset",
 						       GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
@@ -112,63 +124,57 @@ static int eqos_remove_resources_imx(struct udevice *dev)
 	return 0;
 }
 
-static int eqos_start_clks_imx(struct udevice *dev)
+static int _eqos_stop_clks_imx(struct udevice *dev, size_t index)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
+	struct clk_ref *clkref = eqos->clkrefs;
 	int ret;
+	int i;
 
-	debug("%s(dev=%p):\n", __func__, dev);
+	dev_dbg(dev, "%s:\n", __func__);
 
-	ret = clk_enable(&eqos->clk_master_bus);
-	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_master_bus) failed: %d\n", ret);
-		goto err;
-	}
+	for (i = index - 1; i >= 0; i--) {
+		struct clk *clk = ((void *)eqos) + clkref[i].offset;
+		const char *name = clkref[i].name;
 
-	ret = clk_enable(&eqos->clk_ptp_ref);
-	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_ptp_ref) failed: %d\n", ret);
-		goto err_disable_clk_master_bus;
-	}
-
-	ret = clk_enable(&eqos->clk_tx);
-	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_tx) failed: %d\n", ret);
-		goto err_disable_clk_ptp_ref;
-	}
-
-	ret = clk_enable(&eqos->clk_ck);
-	if (ret < 0) {
-		dev_dbg(dev, "clk_enable(clk_ck) failed: %d\n", ret);
-		goto err_disable_clk_tx;
+		ret = clk_disable(clk);
+		if (ret < 0)
+			pr_err("clk_disable(%s) failed: %d\n", name, ret);
 	}
 
 	debug("%s: OK\n", __func__);
 	return 0;
-
-err_disable_clk_tx:
-	clk_disable(&eqos->clk_tx);
-err_disable_clk_ptp_ref:
-	clk_disable(&eqos->clk_ptp_ref);
-err_disable_clk_master_bus:
-	clk_disable(&eqos->clk_master_bus);
-err:
-	debug("%s: FAILED: %d\n", __func__, ret);
-	return ret;
 }
 
 static int eqos_stop_clks_imx(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
 
-	debug("%s(dev=%p):\n", __func__, dev);
+	return _eqos_stop_clks_imx(dev, eqos->num_clks);
+}
 
-	clk_disable(&eqos->clk_ck);
-	clk_disable(&eqos->clk_tx);
-	clk_disable(&eqos->clk_ptp_ref);
-	clk_disable(&eqos->clk_master_bus);
+static int eqos_start_clks_imx(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	struct clk_ref *clkref = eqos->clkrefs;
+	int ret;
+	size_t num_clks = eqos->num_clks;
+	int i;
 
-	debug("%s: OK\n", __func__);
+	dev_dbg(dev, "%s:\n", __func__);
+
+	for (i = 0; i < num_clks; i++) {
+		struct clk *clk = ((void *)eqos) + clkref[i].offset;
+		const char *name = clkref[i].name;
+
+		ret = clk_enable(clk);
+		if (ret < 0) {
+			dev_dbg(dev, "clk_enable(%s) failed: %d\n", name, ret);
+			_eqos_stop_clks_imx(dev, i);
+			return ret;
+		}
+	}
+	dev_dbg(dev, "%s: OK\n", __func__);
 	return 0;
 }
 
@@ -196,6 +202,14 @@ static int eqos_start_resets_imx(struct udevice *dev)
 		return ret;
 	}
 	udelay(reset_post_delay);
+	return 0;
+}
+
+static int eqos_stop_resets_imx(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+
+	dm_gpio_set_value(eqos->phy_reset_gpio, 1);
 	return 0;
 }
 

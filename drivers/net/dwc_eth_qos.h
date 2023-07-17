@@ -252,6 +252,11 @@ struct eqos_ops {
 	void (*eqos_fix_soc_reset)(struct udevice *dev);
 };
 
+struct clk_ref {
+	const char * const name;
+	size_t offset;
+};
+
 struct eqos_priv {
 	struct udevice *dev;
 	const struct eqos_config *config;
@@ -285,6 +290,8 @@ struct eqos_priv {
 	bool clk_ck_enabled;
 	unsigned int tx_fifo_sz, rx_fifo_sz;
 	u32 reset_delays[3];
+	struct clk_ref *clkrefs;
+	size_t num_clks;
 };
 
 void eqos_inval_desc_generic(void *desc);
