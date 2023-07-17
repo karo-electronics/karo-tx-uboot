@@ -823,7 +823,8 @@ static int fecmxc_recv(struct udevice *dev, int flags, uchar **packetp)
 	/* Check if any critical events have happened */
 	ievent = readl(&fec->eth->ievent);
 	writel(ievent, &fec->eth->ievent);
-	debug("fec_recv: ievent 0x%lx\n", ievent);
+	if (ievent)
+		debug("%s: ievent 0x%lx\n", __func__, ievent);
 	if (ievent & FEC_IEVENT_BABR) {
 		fecmxc_halt(dev);
 		fecmxc_init(dev);
@@ -864,9 +865,9 @@ static int fecmxc_recv(struct udevice *dev, int flags, uchar **packetp)
 	invalidate_dcache_range(addr, addr + size);
 
 	bd_status = readw(&rbd->status);
-	debug("fec_recv: status 0x%x\n", bd_status);
 
 	if (!(bd_status & FEC_RBD_EMPTY)) {
+		debug("%s: status 0x%04x\n", __func__, bd_status);
 		if ((bd_status & FEC_RBD_LAST) && !(bd_status & FEC_RBD_ERR) &&
 		    ((readw(&rbd->data_length) - 4) > 14)) {
 			/* Get buffer address and size */
@@ -911,7 +912,8 @@ static int fecmxc_recv(struct udevice *dev, int flags, uchar **packetp)
 		fec_rx_task_enable(fec);
 		fec->rbd_index = (fec->rbd_index + 1) % FEC_RBD_NUM;
 	}
-	debug("fec_recv: stop\n");
+	if (ievent || !(bd_status & FEC_RBD_EMPTY))
+		debug("%s: stop\n", __func__);
 
 	return len;
 }
