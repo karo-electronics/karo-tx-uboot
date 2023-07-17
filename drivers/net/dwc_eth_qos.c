@@ -97,7 +97,7 @@ static void *eqos_alloc_descs(struct eqos_priv *eqos, unsigned int num)
 #ifdef CONFIG_SYS_NONCACHED_MEMORY
 		descs = (void *)noncached_alloc(num * eqos->desc_size, ARCH_DMA_MINALIGN);
 #else
-		log_err("DMA descriptors with cached memory.");
+		log_err("DMA descriptors with cached memory.\n");
 #endif
 	}
 
@@ -777,7 +777,7 @@ static int eqos_get_phy_addr(struct eqos_priv *priv, struct udevice *dev)
 
 	if (dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
 				       &phandle_args)) {
-		debug("Failed to find phy-handle\n");
+		pr_err("Failed to find phy-handle\n");
 		return -ENODEV;
 	}
 
@@ -804,7 +804,7 @@ static int eqos_start(struct udevice *dev)
 
 	ret = eqos->config->ops->eqos_phy_power_on(dev);
 	if (ret < 0) {
-		pr_err("eqos_phy_power_on() failed: %d", ret);
+		pr_err("eqos_phy_power_on() failed: %d\n", ret);
 		goto err;
 	}
 
@@ -874,6 +874,7 @@ static int eqos_start(struct udevice *dev)
 
 	if (!eqos->phy->link) {
 		pr_err("No link\n");
+		ret = -ENOTCONN;
 		goto err_shutdown_phy;
 	}
 
@@ -976,7 +977,7 @@ static int eqos_start(struct udevice *dev)
 	/* Multicast and Broadcast Queue Enable */
 	setbits_le32(&eqos->mac_regs->unused_0a4,
 		     0x00100000);
-	/* enable promise mode */
+	/* enable promisc mode */
 	setbits_le32(&eqos->mac_regs->unused_004[1],
 		     0x1);
 
@@ -1030,7 +1031,7 @@ static int eqos_start(struct udevice *dev)
 		setbits_le32(&eqos->dma_regs->ch0_control,
 			     desc_pad << EQOS_DMA_CH0_CONTROL_DSL_SHIFT);
 		if (desc_pad > EQOS_DMA_CH0_CONTROL_DSL_MAX)
-			dev_dbg(dev, "DMA_CH0_CONTROL.DSL overflow");
+			dev_dbg(dev, "DMA_CH0_CONTROL.DSL overflow\n");
 	}
 
 	/*
@@ -1069,6 +1070,7 @@ static int eqos_start(struct udevice *dev)
 
 	for (i = 0; i < EQOS_DESCRIPTORS_RX; i++) {
 		struct eqos_desc *rx_desc = eqos_get_desc(eqos, i, true);
+
 		rx_desc->des0 = (u32)(ulong)(eqos->rx_dma_buf +
 					     (i * EQOS_MAX_PACKET_SIZE));
 		rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
@@ -1455,7 +1457,7 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 	/*  Get ETH_CLK clocks (optional) */
 	ret = clk_get_by_name(dev, "eth-ck", &eqos->clk_ck);
 	if (ret)
-		debug("No phy clock provided %d", ret);
+		debug("No phy clock provided %d\n", ret);
 	else
 		rate = clk_get_rate(&eqos->clk_ck);
 
@@ -1486,7 +1488,7 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 	/* check presence of optional regulator */
 	ret = device_get_supply_regulator(dev, "phy-supply", &eqos->phy_supply);
 	if (ret && ret != -ENOENT) {
-		pr_err("device_get_supply_regulator failed: %d", ret);
+		pr_err("device_get_supply_regulator failed: %d\n", ret);
 		goto err_free_clk_rx;
 	}
 #endif
