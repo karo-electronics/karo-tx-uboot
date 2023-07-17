@@ -1209,6 +1209,27 @@ static int eqos_start(struct udevice *dev)
 
 	eqos->reg_access_ok = true;
 
+	if (of_machine_is_compatible("fsl,imx93") &&
+	    eqos->config->interface(dev) == PHY_INTERFACE_MODE_RMII) {
+		u32 intf;
+
+		/* workaround for broken RMII mode on i.MX93 */
+		dev_dbg(dev, "writel(%08lx, %p)\n", EQOS_DMA_MODE_SWR,
+			&eqos->dma_regs->mode);
+		writel(EQOS_DMA_MODE_SWR, &eqos->dma_regs->mode);
+		dev_dbg(dev, "writel(%08lx, %p)\n",
+			EQOS_MAC_CONFIGURATION_PS | EQOS_MAC_CONFIGURATION_FES,
+			&eqos->mac_regs->configuration);
+		writel(EQOS_MAC_CONFIGURATION_PS | EQOS_MAC_CONFIGURATION_FES,
+		       &eqos->mac_regs->configuration);
+		intf = readl(&eqos->mac_regs->hw_feature0);
+		dev_dbg(dev, "HW_FEATURE0=%08x\n", intf);
+		if (((intf >> 28) & 0x7) != 4) {
+			dev_err(dev, "Failed to switch EQOS interface to RMII mode\n");
+			goto err_stop_resets;
+		}
+	}
+
 	ret = wait_for_bit_le32(&eqos->dma_regs->mode,
 				EQOS_DMA_MODE_SWR, false,
 				eqos->config->swr_wait, false);
