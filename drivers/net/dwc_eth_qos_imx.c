@@ -62,7 +62,7 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 
 	ret = board_interface_eth_init(dev, interface);
 	if (ret)
-		return -EINVAL;
+		return ret;
 
 	eqos->max_speed = dev_read_u32_default(dev, "max-speed", 0);
 
