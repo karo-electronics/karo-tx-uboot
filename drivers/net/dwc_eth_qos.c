@@ -1965,6 +1965,10 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 		return -EINVAL;
 	}
 
+	ret = board_interface_eth_init(dev, interface);
+	if (ret)
+		return ret;
+
 	ret = eqos_get_clks(dev);
 	if (ret)
 		return ret;
