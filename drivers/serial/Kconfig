@@ -421,6 +421,14 @@ config DEBUG_UART_MXC
 	  will need to provide parameters to make this work. The driver will
 	  be available until the real driver model serial is running.
 
+config DEBUG_UART_FSL_LPUART
+	bool "FSL LPUART Serial port"
+	depends on FSL_LPUART
+	help
+	  Select this to enable a debug UART using the serial_lpuart driver. You
+	  will need to provide parameters to make this work. The driver will
+	  be available until the real driver model serial is running.
+
 config DEBUG_UART_SANDBOX
 	bool "sandbox"
 	depends on SANDBOX_SERIAL
