@@ -7,6 +7,11 @@
  */
 
 #ifndef _DEBUG_UART_H
+#if defined(CONFIG_SPL_BUILD)
+#define DEBUG_UART_FUNCS \
+void debug_uart_init(void) {} \
+void printch(int ch) {}
+#else
 #define _DEBUG_UART_H
 
 /*
@@ -197,4 +202,5 @@ void printdec(unsigned int value);
 		_DEBUG_UART_ANNOUNCE \
 	} \
 
+#endif
 #endif

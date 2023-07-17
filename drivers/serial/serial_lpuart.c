@@ -253,7 +253,7 @@ static void _lpuart32_serial_setbrg_7ulp(struct udevice *dev,
 		if (tmp_sbr == 0)
 			tmp_sbr = 1;
 
-		/*calculate difference in actual buad w/ current values */
+		/*calculate difference in actual baud w/ current values */
 		tmp_diff = (clk / (tmp_osr * tmp_sbr));
 		tmp_diff = tmp_diff - baudrate;
 
@@ -271,7 +271,7 @@ static void _lpuart32_serial_setbrg_7ulp(struct udevice *dev,
 	}
 
 	/*
-	 * TODO: handle buadrate outside acceptable rate
+	 * TODO: handle baudrate outside acceptable rate
 	 * if (baudDiff > ((config->baudRate_Bps / 100) * 3))
 	 * {
 	 *   Unacceptable baud rate difference of more than 3%
@@ -280,11 +280,11 @@ static void _lpuart32_serial_setbrg_7ulp(struct udevice *dev,
 	 */
 	tmp = in_le32(&base->baud);
 
-	if ((osr > 3) && (osr < 8))
+	if (osr > 3 && osr < 8)
 		tmp |= LPUART_BAUD_BOTHEDGE_MASK;
 
 	tmp &= ~LPUART_BAUD_OSR_MASK;
-	tmp |= LPUART_BAUD_OSR(osr-1);
+	tmp |= LPUART_BAUD_OSR(osr - 1);
 
 	tmp &= ~LPUART_BAUD_SBR_MASK;
 	tmp |= LPUART_BAUD_SBR(sbr);
@@ -579,3 +579,101 @@ U_BOOT_DRIVER(serial_lpuart) = {
 	.probe = lpuart_serial_probe,
 	.ops	= &lpuart_serial_ops,
 };
+
+#ifdef CONFIG_DEBUG_UART
+#include <debug_uart.h>
+
+static inline void _debug_uart_init(void)
+{
+	struct lpuart_fsl_reg32 *base = (struct lpuart_fsl_reg32 *)CONFIG_DEBUG_UART_BASE;
+	u32 val, tx_fifo_size;
+	u32 sbr, osr, baud_diff, tmp_osr, tmp_sbr, tmp_diff, tmp;
+	u32 clk = CONFIG_DEBUG_UART_CLOCK;
+	u32 baudrate = CONFIG_BAUDRATE;
+
+	writel(1, 0x44450000 + 0x8d00); /* Enable LPUART1 clock */
+
+	writel(0, 0x443c0000 + 0x180);
+	writel(0x31e, 0x443c0000 + 0x330);
+	writel(0, 0x443c0000 + 0x184);
+	writel(0x31e, 0x443c0000 + 0x334);
+
+	val = readl(&base->ctrl);
+	val &= ~CTRL_RE;
+	val &= ~CTRL_TE;
+	writel(val, &base->ctrl);
+
+	writel(0, &base->modir);
+
+	val = readl(&base->fifo);
+	tx_fifo_size = (val & FIFO_TXSIZE_MASK) >> FIFO_TXSIZE_OFF;
+	/* Set the TX water to half of FIFO size */
+	if (tx_fifo_size > 1)
+		tx_fifo_size = tx_fifo_size >> 1;
+
+	/* Set RX water to 0, to be triggered by any receive data */
+	writel(tx_fifo_size << WATER_TXWATER_OFF, &base->water);
+
+	/* Enable TX and RX FIFO */
+	val |= (FIFO_TXFE | FIFO_RXFE | FIFO_TXFLUSH | FIFO_RXFLUSH);
+	writel(val, &base->fifo);
+
+	writel(0, &base->match);
+
+	baud_diff = baudrate;
+	osr = 0;
+	sbr = 0;
+
+	for (tmp_osr = 4; tmp_osr <= 32; tmp_osr++) {
+		tmp_sbr = (clk / (baudrate * tmp_osr));
+
+		if (tmp_sbr == 0)
+			tmp_sbr = 1;
+
+		/* calculate difference in actual baud w/ current values */
+		tmp_diff = (clk / (tmp_osr * tmp_sbr));
+		tmp_diff = tmp_diff - baudrate;
+
+		/* select best values between sbr and sbr+1 */
+		if (tmp_diff > (baudrate - (clk / (tmp_osr * (tmp_sbr + 1))))) {
+			tmp_diff = baudrate - (clk / (tmp_osr * (tmp_sbr + 1)));
+			tmp_sbr++;
+		}
+
+		if (tmp_diff <= baud_diff) {
+			baud_diff = tmp_diff;
+			osr = tmp_osr;
+			sbr = tmp_sbr;
+		}
+	}
+
+	tmp = in_le32(&base->baud);
+	if (osr > 3 && osr < 8)
+		tmp |= LPUART_BAUD_BOTHEDGE_MASK;
+
+	tmp &= ~LPUART_BAUD_OSR_MASK;
+	tmp |= LPUART_BAUD_OSR(osr - 1);
+
+	tmp &= ~LPUART_BAUD_SBR_MASK;
+	tmp |= LPUART_BAUD_SBR(sbr);
+
+	/* explicitly disable 10 bit mode & set 1 stop bit */
+	tmp &= ~(LPUART_BAUD_M10_MASK | LPUART_BAUD_SBNS_MASK);
+
+	out_le32(&base->baud, tmp);
+
+	writel(CTRL_RE | CTRL_TE, &base->ctrl);
+}
+
+static inline void _debug_uart_putc(int ch)
+{
+	struct lpuart_fsl_reg32 *base = (struct lpuart_fsl_reg32 *)CONFIG_DEBUG_UART_BASE;
+
+	while (!(readl(&base->stat) & STAT_TDRE))
+		WATCHDOG_RESET();
+
+	writel(ch, &base->data);
+}
+
+DEBUG_UART_FUNCS
+#endif
