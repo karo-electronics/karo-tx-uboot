@@ -1115,7 +1115,7 @@ static int eqos_get_phy_addr(struct eqos_priv *priv, struct udevice *dev)
 
 	if (dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
 				       &phandle_args)) {
-		debug("Failed to find phy-handle\n");
+		pr_err("Failed to find phy-handle\n");
 		return -ENODEV;
 	}
 
@@ -1209,6 +1209,7 @@ static int eqos_start(struct udevice *dev)
 
 	if (!eqos->phy->link) {
 		pr_err("No link\n");
+		ret = -ENOTCONN;
 		goto err_shutdown_phy;
 	}
 
@@ -1311,7 +1312,7 @@ static int eqos_start(struct udevice *dev)
 	/* Multicast and Broadcast Queue Enable */
 	setbits_le32(&eqos->mac_regs->unused_0a4,
 		     0x00100000);
-	/* enable promise mode */
+	/* enable promisc mode */
 	setbits_le32(&eqos->mac_regs->unused_004[1],
 		     0x1);
 
@@ -1399,6 +1400,7 @@ static int eqos_start(struct udevice *dev)
 
 	for (i = 0; i < EQOS_DESCRIPTORS_RX; i++) {
 		struct eqos_desc *rx_desc = eqos_get_desc(eqos, i, true);
+
 		rx_desc->des0 = (u32)(ulong)(eqos->rx_dma_buf +
 					     (i * EQOS_MAX_PACKET_SIZE));
 		rx_desc->des3 = EQOS_DESC3_OWN | EQOS_DESC3_BUF1V;
@@ -1783,7 +1785,7 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 
 	ret = board_interface_eth_init(dev, interface);
 	if (ret)
-		return -EINVAL;
+		return ret;
 
 	eqos->max_speed = dev_read_u32_default(dev, "max-speed", 0);
 
@@ -2053,7 +2055,7 @@ static int eqos_remove(struct udevice *dev)
 	eqos->config->ops->eqos_stop_clks(dev);
 	eqos->config->ops->eqos_remove_resources(dev);
 
-	eqos_probe_resources_core(dev);
+	eqos_remove_resources_core(dev);
 
 	debug("%s: OK\n", __func__);
 	return 0;
