@@ -1378,6 +1378,13 @@ static void fec_gpio_reset(struct fec_priv *priv)
 }
 #endif
 
+/* board-specific Ethernet Interface initializations. */
+__weak int board_interface_eth_init(struct udevice *dev,
+				    phy_interface_t interface_type)
+{
+	return 0;
+}
+
 static int fecmxc_probe(struct udevice *dev)
 {
 	bool dm_mii_bus = true;
@@ -1556,6 +1563,10 @@ static int fecmxc_probe(struct udevice *dev)
 		       priv->interface, priv->xcv_type);
 		break;
 	}
+
+	ret = board_interface_eth_init(dev, priv->interface);
+	if (ret)
+		return ret;
 
 	ret = fec_phy_init(priv, dev);
 	if (ret)
