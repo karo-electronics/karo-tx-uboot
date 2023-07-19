@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+#include "imx93-tx93-5210.dts"
+
+/{
+	model = "Ka-Ro electronics GmbH TX93-5210 (NXP i.MX93) module on MIPI-LVDS-MB baseboard";
+};

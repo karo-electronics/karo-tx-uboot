@@ -42,10 +42,15 @@ config TARGET_IMX93_9X9_QSB
 	select IMX93
 	select IMX9_LPDDR4X
 
+config TARGET_TX93
+	bool "Ka-Ro electronics i.MX93 module family"
+	select IMX93
+
 endchoice
 
 source "board/freescale/imx93_evk/Kconfig"
 source "board/freescale/imx93_qsb/Kconfig"
+source "board/karo/imx93/Kconfig"
 
 endif
 

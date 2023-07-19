@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+/dts-v1/;
+
+#include "imx93-qs93-5210.dts"
+
+/{
+	model = "Ka-Ro electronics GmbH QS93-5210 (NXP i.MX93) solder-in module on QSBASE93 baseboard";
+};
+
+&eqos {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_eqos_rmii &pinctrl_ethphy0_rst>;
+	assigned-clock-rates = <0 50000000>;
+	phy-mode = "rmii";
+	phy-handle = <&ethphy0>;
+	phy-supply = <&buck4>;
+	phy-reset-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
+	phy-reset-duration = <25000>; /* µs */
+	phy-reset-post-delay = <100>; /* µs */
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <2500000>;
+
+		ethphy0: ethernet-phy@0 {
+			reg = <0>;
+			clocks = <&clk IMX93_CLK_ENET>;
+			smsc,disable-energy-detect;
+		};
+	};
+};
+
+&fec {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_fec_rmii &pinctrl_ethphy1_rst>;
+	assigned-clock-rates = <100000000>, <50000000>, <50000000>;
+	phy-mode = "rmii";
+	phy-handle = <&ethphy1>;
+	phy-supply = <&buck4>;
+	phy-reset-gpios = <&gpio4 13 GPIO_ACTIVE_LOW>;
+	phy-reset-duration = <25>; /* ms */
+	phy-reset-post-delay = <1>; /* ms */
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <2500000>;
+
+		ethphy1: ethernet-phy@1 {
+			reg = <1>;
+			clocks = <&clk IMX93_CLK_ENET>;
+			smsc,disable-energy-detect;
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+	status = "okay";
+
+	pinctrl_eqos_rmii: eqos-rmiigrp {
+		fsl,pins = <
+			MX93_PAD_ENET1_MDC__ENET_QOS_MDC			0x57e
+			MX93_PAD_ENET1_MDIO__ENET_QOS_MDIO			0x17e
+			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK	0x4000017e
+			/* SMSC LAN8710 Strap pins: MODE0 */
+			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0			0x37e
+			/* MODE1 */
+			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1			0x37e
+			/* MODE2 (external Pullup) */
+			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL		0x37e
+			/* PHYAD0 */
+			MX93_PAD_ENET1_RXC__ENET_QOS_RX_ER			0x57e
+
+			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0			0x57e
+			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1			0x57e
+			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL		0x57e
+		>;
+	};
+
+	pinctrl_ethphy0_rst: ethphy0-rstgrp {
+		fsl,pins = <
+			MX93_PAD_SD2_DATA1__GPIO3_IO04				0x4000017e
+		>;
+	};
+
+	pinctrl_ethphy1_rst: ethphy1-rstgrp {
+		fsl,pins = <
+			MX93_PAD_ENET1_RD3__GPIO4_IO13				0x4000017e
+		>;
+	};
+
+	pinctrl_fec_rmii: fec-rmiigrp {
+		fsl,pins = <
+			MX93_PAD_ENET2_MDC__ENET1_MDC				0x57e
+			MX93_PAD_ENET2_MDIO__ENET1_MDIO				0x17e
+			MX93_PAD_ENET2_TD2__ENET1_TX_CLK			0x4000017e
+			/* SMSC LAN8710 Strap pins: MODE0 */
+			MX93_PAD_ENET2_RD0__ENET1_RGMII_RD0			0x37e
+			/* MODE1 */
+			MX93_PAD_ENET2_RD1__ENET1_RGMII_RD1			0x37e
+			/* MODE2 (external Pullup) */
+			MX93_PAD_ENET2_RX_CTL__ENET1_RGMII_RX_CTL		0x37e
+			/* PHYAD0 */
+			MX93_PAD_ENET2_RXC__ENET1_RX_ER				0x3fe
+
+			MX93_PAD_ENET2_TD0__ENET1_RGMII_TD0			0x57e
+			MX93_PAD_ENET2_TD1__ENET1_RGMII_TD1			0x57e
+			MX93_PAD_ENET2_TX_CTL__ENET1_RGMII_TX_CTL		0x57e
+		>;
+	};
+};

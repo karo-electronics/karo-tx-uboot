@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+/dts-v1/;
+
+#include "imx93-karo.dtsi"
+
+/{
+	model = "Ka-Ro electronics GmbH QS93-5210 (NXP i.MX93) solder-in module";
+	compatible = "karo,qs93-5210", "fsl,imx93";
+};
+
+&gpio3 {
+	clko1 {
+		/* pin 20 */
+		gpio-hog;
+		gpios = <26 GPIO_ACTIVE_HIGH>;
+		input;
+	};
+
+	clko2 {
+		/* NC */
+		gpio-hog;
+		gpios = <27 GPIO_ACTIVE_HIGH>;
+		input;
+	};
+};
+
+&gpio4 {
+	clko3 {
+		/* NC */
+		gpio-hog;
+		gpios = <28 GPIO_ACTIVE_HIGH>;
+		input;
+	};
+
+	clko4 {
+		/* NC */
+		gpio-hog;
+		gpios = <29 GPIO_ACTIVE_HIGH>;
+		input;
+	};
+};
+
+&lpi2c2 {
+	clock-frequency = <400000>;
+	pinctrl-names = "default", "gpio";
+	pinctrl-0 = <&pinctrl_lpi2c2>;
+	pinctrl-1 = <&pinctrl_lpi2c2_gpio>;
+	scl-gpios = <&gpio1 2 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	sda-gpios = <&gpio1 3 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	status = "okay";
+};
+
+&lpi2c3 {
+	clock-frequency = <400000>;
+	pinctrl-names = "default", "gpio";
+	pinctrl-0 = <&pinctrl_lpi2c3>;
+	pinctrl-1 = <&pinctrl_lpi2c3_gpio>;
+	scl-gpios = <&gpio2 29 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	sda-gpios = <&gpio2 28 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+	status = "okay";
+};
+
+&lpuart1 { /* console */
+	pinctrl-0 = <&pinctrl_uart1>;
+};
+
+&lpuart5 {
+	status = "okay";
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>;
+
+	pinctrl_hog: hoggrp {
+		fsl,pins = <
+			MX93_PAD_CCM_CLKO1__GPIO3_IO26				0x400
+			MX93_PAD_CCM_CLKO2__GPIO3_IO27				0x400
+			MX93_PAD_CCM_CLKO3__GPIO4_IO28				0x400
+			MX93_PAD_CCM_CLKO4__GPIO4_IO29				0x400
+		>;
+	};
+
+	pinctrl_lpi2c3: lpi2c3grp {
+		fsl,pins = <
+			MX93_PAD_GPIO_IO29__LPI2C3_SCL				0x40001b9e
+			MX93_PAD_GPIO_IO28__LPI2C3_SDA				0x40001b9e
+		>;
+	};
+
+	pinctrl_lpi2c3_gpio: lpi2c3-gpiogrp {
+		fsl,pins = <
+			MX93_PAD_GPIO_IO29__GPIO2_IO29				0x40001b9e
+			MX93_PAD_GPIO_IO28__GPIO2_IO28				0x40001b9e
+		>;
+	};
+
+	pinctrl_pmic: pmic-intgrp {
+		fsl,pins = <
+			MX93_PAD_PDM_BIT_STREAM1__GPIO1_IO10			0x31e
+		>;
+	};
+};

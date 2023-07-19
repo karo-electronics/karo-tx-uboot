@@ -1,0 +1,60 @@
+if TARGET_TX93
+
+config SYS_BOARD
+	default "imx93"
+
+config SYS_CONFIG_NAME
+	default "tx93"
+
+config SYS_VENDOR
+	default "karo"
+
+config KARO_IMX93
+	bool
+#	select BINMAN
+	imply BOARD_LATE_INIT
+	imply DM_ETH
+	imply DM_PMIC
+	imply FEC_MXC
+	imply IMX9_LPDDR4X
+	imply MII
+	imply MXC_UART
+	imply PHYLIB
+	imply POWER
+	imply SPL_DM_PMIC
+	imply SPL_DM_PMIC_PCA9450
+	imply SPL_POWER
+	imply SPL_SERIAL
+
+choice
+	prompt "Ka-Ro IMX93 module variant"
+	default KARO_TX93_5210
+
+config KARO_TX93_5210
+	bool "Ka-Ro TX93-5210 module"
+	select KARO_IMX93
+
+config KARO_QS93_5210
+	bool "Ka-Ro QS93-5210 module"
+	select KARO_IMX93
+
+endchoice
+
+choice
+        prompt "U-Boot image variant"
+	default TX93_UBOOT
+
+config TX93_UBOOT
+        bool "Standard U-Boot image"
+
+config KARO_UBOOT_MFG
+        bool "U-Boot image for use with Freescale's MfGTool"
+        select UBOOT_IGNORE_ENV
+
+config KARO_UBOOT_NOENV
+        bool "U-Boot using only built-in environment"
+        select UBOOT_IGNORE_ENV
+
+endchoice
+
+endif
