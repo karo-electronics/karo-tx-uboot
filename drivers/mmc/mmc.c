@@ -1561,7 +1561,6 @@ static inline int bus_width(uint cap)
 		return 4;
 	if (cap == MMC_MODE_1BIT)
 		return 1;
-	pr_warn("invalid bus witdh capability 0x%x\n", cap);
 	return 0;
 }
 
@@ -1769,17 +1768,23 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
 		uint *w;
 
 		for (w = widths; w < widths + ARRAY_SIZE(widths); w++) {
+			int bw = bus_width(*w);
+
+			if (!bw) {
+				pr_warn("invalid bus width capability 0x%x\n", *w);
+				continue;
+			}
+
 			if (*w & caps & mwt->widths) {
 				pr_debug("trying mode %s width %d (at %d MHz)\n",
-					 mmc_mode_name(mwt->mode),
-					 bus_width(*w),
+					 mmc_mode_name(mwt->mode), bw,
 					 mmc_mode2freq(mmc, mwt->mode) / 1000000);
 
 				/* configure the bus width (card + host) */
-				err = sd_select_bus_width(mmc, bus_width(*w));
+				err = sd_select_bus_width(mmc, bw);
 				if (err)
 					goto error;
-				mmc_set_bus_width(mmc, bus_width(*w));
+				mmc_set_bus_width(mmc, bw);
 
 				/* configure the bus mode (card) */
 				err = sd_set_card_speed(mmc, mwt->mode);
@@ -2114,9 +2119,15 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
 		for_each_supported_width(card_caps & mwt->widths,
 					 mmc_is_mode_ddr(mwt->mode), ecbw) {
 			enum mmc_voltage old_voltage;
+			int bw = bus_width(ecbw->cap);
+
+			if (!bw) {
+				pr_warn("invalid bus width capability 0x%x\n",
+					ecbw->cap);
+				continue;
+			}
 			pr_debug("trying mode %s width %d (at %d MHz)\n",
-				 mmc_mode_name(mwt->mode),
-				 bus_width(ecbw->cap),
+				 mmc_mode_name(mwt->mode), bw,
 				 mmc_mode2freq(mmc, mwt->mode) / 1000000);
 			old_voltage = mmc->signal_voltage;
 			err = mmc_set_lowest_voltage(mmc, mwt->mode,
@@ -2130,7 +2141,7 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
 				    ecbw->ext_csd_bits & ~EXT_CSD_DDR_FLAG);
 			if (err)
 				goto error;
-			mmc_set_bus_width(mmc, bus_width(ecbw->cap));
+			mmc_set_bus_width(mmc, bw);
 
 			if (mwt->mode == MMC_HS_400) {
 				err = mmc_select_hs400(mmc);
