@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright 2025 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+/dts-v1/;
+
+#include "imx93-qs93-5210.dts"
+
+/{
+	model = "Ka-Ro electronics GmbH QS93-5210 (NXP i.MX93) solder-in module on QSBASE4 baseboard";
+};
+
+&eqos {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_eqos_rgmii &pinctrl_ethphy0_rst>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&ethphy0>;
+	phy-supply = <&buck4>;
+	phy-reset-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
+	phy-reset-duration = <1000>; /* µs */
+	phy-reset-post-delay = <100>; /* µs */
+	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ethphy0: ethernet-phy@7 {
+			reg = <7>;
+		};
+	};
+};
+
+&iomuxc {
+	pinctrl-names = "default";
+	status = "okay";
+
+	pinctrl_eqos_rgmii: eqos-rgmiigrp {
+		fsl,pins = <
+			MX93_PAD_ENET1_MDC__ENET_QOS_MDC			0x106
+			MX93_PAD_ENET1_MDIO__ENET_QOS_MDIO			0x106
+			MX93_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0			0x51e
+			MX93_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1			0x51e
+			MX93_PAD_ENET1_TD2__ENET_QOS_RGMII_TD2			0x51e
+			MX93_PAD_ENET1_TD3__ENET_QOS_RGMII_TD3			0x51e
+			MX93_PAD_ENET1_TXC__CCM_ENET_QOS_CLOCK_GENERATE_TX_CLK	0x51e
+			MX93_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL		0x51e
+			/* KSZ9131 Strap pins 0x5..: LOW; 0x3..: HIGH */
+			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0			0x500 /* MODE0 */
+			MX93_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1			0x300 /* MODE1 */
+			MX93_PAD_ENET1_RD2__ENET_QOS_RGMII_RD2			0x300 /* MODE2 */
+			MX93_PAD_ENET1_RD3__ENET_QOS_RGMII_RD3			0x300 /* MODE3 */
+			MX93_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL		0x500 /* CLK125_EN */
+			MX93_PAD_ENET1_RXC__CCM_ENET_QOS_CLOCK_GENERATE_RX_CLK	0x500 /* PHYAD2 */
+		>;
+	};
+
+	pinctrl_ethphy0_rst: ethphy0-rstgrp {
+		fsl,pins = <
+			MX93_PAD_SD2_DATA1__GPIO3_IO04				0x4000017e
+		>;
+	};
+};
