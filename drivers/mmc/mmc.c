@@ -3087,6 +3087,8 @@ int mmc_init(struct mmc *mmc)
 
 	if (!mmc->init_in_progress)
 		err = mmc_start_init(mmc);
+	if (err == -ENOMEDIUM)
+		return err;
 
 	if (!err)
 		err = mmc_complete_init(mmc);
@@ -3180,8 +3182,24 @@ static int mmc_probe(struct bd_info *bis)
 	}
 	uclass_foreach_dev(dev, uc) {
 		ret = device_probe(dev);
-		if (ret)
+		if (ret) {
 			log_err("%s - probe failed: %d\n", dev->name, ret);
+		} else if (CONFIG_IS_ENABLED(BLK)) {
+			struct udevice *blkdev;
+
+			for (device_find_first_child(dev, &blkdev); blkdev;
+			     device_find_next_child(&blkdev)) {
+				if (device_get_uclass_id(blkdev) == UCLASS_BLK)
+					break;
+			}
+			if (!blkdev) {
+				log_err("%s - no BLK device found\n", dev->name);
+				continue;
+			}
+			ret = device_probe(blkdev);
+			if (ret && ret != -ENOMEDIUM)
+				log_err("%s - probe failed: %d\n", blkdev->name, ret);
+		}
 	}
 
 	return 0;
