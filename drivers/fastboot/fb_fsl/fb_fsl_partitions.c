@@ -339,10 +339,6 @@ bool fastboot_parts_is_raw(struct fastboot_ptentry *ptn)
 			!strncmp(ptn->name, FASTBOOT_PARTITION_BOOT_B,
 			strlen(FASTBOOT_PARTITION_BOOT_B)))
 			return true;
-#else
-		else if (!strncmp(ptn->name, FASTBOOT_PARTITION_BOOT,
-			strlen(FASTBOOT_PARTITION_BOOT)))
-			return true;
 #endif
 #if defined(CONFIG_FASTBOOT_LOCK)
 		else if (!strncmp(ptn->name, FASTBOOT_PARTITION_FBMISC,
