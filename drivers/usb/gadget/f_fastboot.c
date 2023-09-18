@@ -202,7 +202,7 @@ static struct usb_gadget_strings *fastboot_strings[] = {
 	NULL,
 };
 
-#if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT)
+#if CONFIG_IS_ENABLED(FSL_FASTBOOT)
 extern struct stdio_dev g_fastboot_stdio;
 #endif
 
@@ -296,7 +296,7 @@ static int fastboot_bind(struct usb_configuration *c, struct usb_function *f)
 	if (s)
 		g_dnl_set_serialnumber((char *)s);
 
-#if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT)
+#if CONFIG_IS_ENABLED(FSL_FASTBOOT)
 	stdio_register(&g_fastboot_stdio);
 #endif
 
@@ -309,7 +309,7 @@ static void fastboot_unbind(struct usb_configuration *c, struct usb_function *f)
 	list_del(&fb_os_desc.ext_prop);
 	memset(fastboot_func, 0, sizeof(*fastboot_func));
 
-#if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT) && CONFIG_IS_ENABLED(SYS_STDIO_DEREGISTER)
+#if CONFIG_IS_ENABLED(FSL_FASTBOOT) && CONFIG_IS_ENABLED(SYS_STDIO_DEREGISTER)
 	struct stdio_dev *dev;
 	dev = stdio_get_by_name("fastboot");
 	if (dev)

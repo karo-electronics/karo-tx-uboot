@@ -83,13 +83,13 @@ config FASTBOOT_FLASH
 config FASTBOOT_UUU_SUPPORT
 	bool "Enable FASTBOOT i.MX UUU special command"
 	default y if ARCH_MX7 || ARCH_MX6 || ARCH_IMX8 || ARCH_IMX8M || ARCH_MX7ULP
-	select FSL_FASTBOOT
-	select FAT_WRITE
-	select CMD_GPT
-	select RANDOM_UUID
-	select CMD_GPT_RENAME
-	select CONSOLE_MUX
-	select SYS_STDIO_DEREGISTER
+	imply FSL_FASTBOOT
+	imply FAT_WRITE if CMD_FAT
+	imply CMD_GPT
+	imply RANDOM_UUID
+	imply CMD_GPT_RENAME
+	imply CONSOLE_MUX
+	imply SYS_STDIO_DEREGISTER
 	help
 	  The fastboot protocol includes "UCmd" and "ACmd" command.
 	  Be aware that you provide full access to any U-Boot command,
@@ -127,14 +127,6 @@ config FASTBOOT_LOCK
 	depends on FSL_FASTBOOT
 	help
 	  This enables the lock support for android flashing command
-
-config FASTBOOT_USB_DEV
-	int "USB controller number"
-	default 0
-	help
-	  Some boards have USB OTG controller other than 0. Define this
-	  option so it can be used in compiled environment (e.g. in
-	  CONFIG_BOOTCOMMAND).
 
 choice
 	prompt "Flash provider for FASTBOOT"
