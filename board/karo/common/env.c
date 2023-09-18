@@ -133,9 +133,12 @@ void karo_env_cleanup(void)
 	size_t i;
 
 	debug("%s@%d: Cleaning up environment\n", __func__, __LINE__);
+
 	for (i = 0; i < ARRAY_SIZE(cleanup_vars); i++) {
-		if (!env_get(cleanup_vars[i]))
+		if (env_get(cleanup_vars[i])) {
+			debug("Deleting %s='%s'\n", cleanup_vars[i], env_get(cleanup_vars[i]));
 			env_set(cleanup_vars[i], NULL);
+		}
 	}
 	karo_set_part_uuids();
 	karo_env_set_uboot_vars();
