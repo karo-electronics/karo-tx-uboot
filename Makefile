@@ -1898,7 +1898,9 @@ include/generated/env.txt: $(wildcard $(ENV_FILE)) include/generated/autoconf.h
 # Write out the resulting environment, converted to a C string
 quiet_cmd_gen_envt = ENVT    $@
       cmd_gen_envt = \
-	awk -f $(srctree)/scripts/env2string.awk $< >$@
+	awk -f $(srctree)/scripts/env2string.awk $< > $@.tmp; \
+	[ -e $@ ] && cmp -s $@ $@.tmp && rm $@.tmp; \
+	! [ -e $@.tmp ] || mv $@.tmp $@
 $(env_h): include/generated/env.in
 	$(call cmd,gen_envt)
 
