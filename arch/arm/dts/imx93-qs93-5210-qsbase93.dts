@@ -26,7 +26,6 @@
 	mdio {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clock-frequency = <2500000>;
 
 		ethphy0: ethernet-phy@0 {
 			reg = <0>;
@@ -51,7 +50,6 @@
 	mdio {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clock-frequency = <2500000>;
 
 		ethphy1: ethernet-phy@1 {
 			reg = <1>;
@@ -70,6 +68,7 @@
 			MX93_PAD_ENET1_MDC__ENET_QOS_MDC			0x57e
 			MX93_PAD_ENET1_MDIO__ENET_QOS_MDIO			0x17e
 			MX93_PAD_ENET1_TD2__CCM_ENET_QOS_CLOCK_GENERATE_REF_CLK	0x4000017e
+			/* Strap pins: HIGH: 0x3.. LOW: 0x5.. */
 			/* SMSC LAN8710 Strap pins: MODE0 */
 			MX93_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0			0x37e
 			/* MODE1 */

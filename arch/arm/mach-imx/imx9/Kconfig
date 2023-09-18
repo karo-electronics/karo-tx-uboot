@@ -50,7 +50,6 @@ endchoice
 
 source "board/freescale/imx93_evk/Kconfig"
 source "board/freescale/imx93_qsb/Kconfig"
-source "board/karo/imx93/Kconfig"
 
 endif
 

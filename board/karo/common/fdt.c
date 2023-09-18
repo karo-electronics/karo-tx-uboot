@@ -29,7 +29,7 @@ static void karo_set_fdtsize(void *fdt)
 	env_set_hex("fdt_size", fdt_totalsize(fdt));
 }
 
-#ifdef CONFIG_TX93_UBOOT
+#ifdef CONFIG_KARO_UBOOT_DEFAULT
 static char *karo_fdt_overlay_filename(const char *prefix,
 				       const char *overlay)
 {

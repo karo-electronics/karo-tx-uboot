@@ -9,8 +9,8 @@
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 
-//#define __pfx(p, v)			(p##v)
-//#define _pfx(p, v)			__pfx(p, v)
+#define SOC_PREFIX			"imx93"
+#define SOC_FAMILY			"imx93"
 
 #define CONFIG_SYS_BOOTM_LEN		SZ_64M
 #define CONFIG_SPL_MAX_SIZE		(148 * 1024)

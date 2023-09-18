@@ -250,12 +250,10 @@
 
 &pinctrl_uart1 {
 	u-boot,dm-spl;
-//	u-boot,dm-pre-reloc;
 };
 
 &pinctrl_usdhc1 {
 	u-boot,dm-spl;
-//	u-boot,dm-pre-reloc;
 };
 
 &pmic {
@@ -313,5 +311,4 @@
 
 &usdhc1 {
 	u-boot,dm-spl;
-//	u-boot,dm-pre-reloc;
 };

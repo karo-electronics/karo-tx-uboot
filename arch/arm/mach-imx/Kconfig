@@ -411,3 +411,5 @@ config BOOTLOADER_MENU
 	bool "Enable bootloader menu for android device"
 	help
 	bootloader menu feature for android device.
+
+source board/karo/Kconfig

@@ -1,0 +1,21 @@
+if TARGET_TX93
+
+source board/karo/imx93/Kconfig
+
+endif
+
+choice
+        prompt "U-Boot image variant"
+	default KARO_UBOOT_DEFAULT
+
+config KARO_UBOOT_DEFAULT
+        bool "Standard U-Boot image"
+
+config KARO_UBOOT_MFG
+        bool "U-Boot image for use with Freescale's MfGTool"
+
+config KARO_UBOOT_NOENV
+        bool "U-Boot using only built-in environment"
+        select UBOOT_IGNORE_ENV
+
+endchoice

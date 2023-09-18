@@ -209,7 +209,7 @@ endif
 endif
 
 ifdef CONFIG_ARM64
-ifeq ($(CONFIG_ARCH_IMX8M), y)
+ifneq ($(CONFIG_ARCH_IMX8M)$(CONFIG_ARCH_IMX9),)
 
 SPL: spl/u-boot-spl.bin spl/u-boot-spl.cfgout FORCE
 

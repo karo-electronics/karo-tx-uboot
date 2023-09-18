@@ -40,21 +40,4 @@ config KARO_QS93_5210
 
 endchoice
 
-choice
-        prompt "U-Boot image variant"
-	default TX93_UBOOT
-
-config TX93_UBOOT
-        bool "Standard U-Boot image"
-
-config KARO_UBOOT_MFG
-        bool "U-Boot image for use with Freescale's MfGTool"
-        select UBOOT_IGNORE_ENV
-
-config KARO_UBOOT_NOENV
-        bool "U-Boot using only built-in environment"
-        select UBOOT_IGNORE_ENV
-
-endchoice
-
 endif
