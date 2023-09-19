@@ -2,6 +2,7 @@
 /*
  * (C) Copyright 2015 Freescale Semiconductor, Inc.
  */
+#include <linux/bitops.h>
 
 struct watchdog_regs {
 	u16	wcr;	/* Control */
@@ -9,11 +10,14 @@ struct watchdog_regs {
 	u16	wrsr;	/* Reset Status */
 };
 
-#define WCR_WDZST	0x01
-#define WCR_WDBG	0x02
-#define WCR_WDE		0x04
-#define WCR_WDT		0x08
-#define WCR_SRS		0x10
-#define WCR_WDA		0x20
-#define SET_WCR_WT(x)	(x << 8)
+#define WCR_WDZST	BIT(0)
+#define WCR_WDBG	BIT(1)
+#define WCR_WDE		BIT(2)
+#define WCR_WDT		BIT(3)
+#define WCR_SRS		BIT(4)
+#define WCR_WDA		BIT(5)
+#define SET_WCR_WT(x)	((x) << 8)
 #define WCR_WT_MSK	SET_WCR_WT(0xFF)
+
+#define WRSR_SFTW	BIT(0)
+#define WRSR_TOUT	BIT(1)
