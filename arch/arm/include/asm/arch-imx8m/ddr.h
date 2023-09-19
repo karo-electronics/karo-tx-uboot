@@ -724,7 +724,10 @@ void ddrphy_init_read_msg_block(enum fw_type type);
 void update_umctl2_rank_space_setting(unsigned int pstat_num);
 void get_trained_CDD(unsigned int fsp);
 
-ulong ddrphy_addr_remap(uint32_t paddr_apb_from_ctlr);
+static inline ulong ddrphy_addr_remap(uint32_t paddr_apb_from_ctlr)
+{
+	return paddr_apb_from_ctlr * 4;
+}
 
 static inline void reg32_write(unsigned long addr, u32 val)
 {

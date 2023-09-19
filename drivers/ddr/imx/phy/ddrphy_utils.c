@@ -11,14 +11,16 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/ddr.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/iopoll.h>
 
 static inline void poll_pmu_message_ready(void)
 {
 	unsigned int reg;
 
-	do {
-		reg = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(0xd0004));
-	} while (reg & 0x1);
+	if (read_poll_timeout(reg32_read,
+			      IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(0xd0004),
+			      reg, !(reg & 1), 1, 1000000))
+		panic("%s() timed out\n", __func__);
 }
 
 static inline void ack_pmu_message_receive(void)
@@ -27,9 +29,10 @@ static inline void ack_pmu_message_receive(void)
 
 	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(0xd0031), 0x0);
 
-	do {
-		reg = reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(0xd0004));
-	} while (!(reg & 0x1));
+	if (read_poll_timeout(reg32_read,
+			      IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(0xd0004),
+			      reg, reg & 1, 1, 10000))
+		panic("%s() timed out\n", __func__);
 
 	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(0xd0031), 0x1);
 }
