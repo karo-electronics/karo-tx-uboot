@@ -9,6 +9,7 @@
 #include <asm/arch/ddr.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/iopoll.h>
 
 static unsigned int g_cdd_rr_max[4];
 static unsigned int g_cdd_rw_max[4];
@@ -48,13 +49,11 @@ void ddrc_inline_ecc_scrub(unsigned int start_address,
 	/* Step8: Enable the SBR by programming SBRCTL.scrub_en=1 */
 	reg32setbit(DDRC_SBRCTL(0), 0x0);
 	/* Step9: Poll SBRSTAT.scrub_done=1 */
-	tmp = reg32_read(DDRC_SBRSTAT(0));
-	while (tmp != 0x00000002)
-		tmp = reg32_read(DDRC_SBRSTAT(0)) & 0x2;
 	/* Step10: Poll SBRSTAT.scrub_busy=0 */
-	tmp = reg32_read(DDRC_SBRSTAT(0));
-	while (tmp != 0x0)
-		tmp = reg32_read(DDRC_SBRSTAT(0)) & 0x1;
+	ret = read_poll_timeout(reg32_read, tmp, (tmp & 3) == 2, 1, 10000, DDRC_SBRSTAT(0));
+	if (ret)
+		return ret;
+
 	/* Step11: Disable SBR by programming SBRCTL.scrub_en=0 */
 	clrbits_le32(DDRC_SBRCTL(0), 0x1);
 	/* Step12: Prepare for normal scrub operation(Read) and set scrub_interval*/
@@ -93,56 +92,6 @@ void ddrc_inline_ecc_scrub_end(unsigned int start_address,
 
 void __weak board_dram_ecc_scrub(void)
 {
-}
-
-void lpddr4_mr_write(unsigned int mr_rank, unsigned int mr_addr,
-		     unsigned int mr_data)
-{
-	unsigned int tmp;
-	/*
-	 * 1. Poll MRSTAT.mr_wr_busy until it is 0.
-	 * This checks that there is no outstanding MR transaction.
-	 * No writes should be performed to MRCTRL0 and MRCTRL1 if
-	 * MRSTAT.mr_wr_busy = 1.
-	 */
-	do {
-		tmp = reg32_read(DDRC_MRSTAT(0));
-	} while (tmp & 0x1);
-	/*
-	 * 2. Write the MRCTRL0.mr_type, MRCTRL0.mr_addr, MRCTRL0.mr_rank and
-	 * (for MRWs) MRCTRL1.mr_data to define the MR transaction.
-	 */
-	reg32_write(DDRC_MRCTRL0(0), (mr_rank << 4));
-	reg32_write(DDRC_MRCTRL1(0), (mr_addr << 8) | mr_data);
-	reg32setbit(DDRC_MRCTRL0(0), 31);
-}
-
-unsigned int lpddr4_mr_read(unsigned int mr_rank, unsigned int mr_addr)
-{
-	unsigned int tmp;
-
-	reg32_write(DRC_PERF_MON_MRR0_DAT(0), 0x1);
-	do {
-		tmp = reg32_read(DDRC_MRSTAT(0));
-	} while (tmp & 0x1);
-
-	reg32_write(DDRC_MRCTRL0(0), (mr_rank << 4) | 0x1);
-	reg32_write(DDRC_MRCTRL1(0), (mr_addr << 8));
-	reg32setbit(DDRC_MRCTRL0(0), 31);
-	do {
-		tmp = reg32_read(DRC_PERF_MON_MRR0_DAT(0));
-	} while ((tmp & 0x8) == 0);
-	tmp = reg32_read(DRC_PERF_MON_MRR1_DAT(0));
-	reg32_write(DRC_PERF_MON_MRR0_DAT(0), 0x4);
-	while (tmp) { //try to find a significant byte in the word
-		if (tmp & 0xff) {
-			tmp &= 0xff;
-			break;
-		}
-		tmp >>= 8;
-	}
-
-	return tmp;
 }
 
 static unsigned int look_for_max(unsigned int data[], unsigned int addr_start,
@@ -340,7 +289,7 @@ int ddr_init(struct dram_timing_info *dram_timing)
 	/* default to the frequency point 0 clock */
 	ddrphy_init_set_dfi_clk(initial_drate);
 
-	/* D-aasert the presetn */
+	/* De-assert the presetn */
 	reg32_write(SRC_DDRC_RCR_ADDR, 0x8F000006);
 
 	/* Step2: Program the dwc_ddr_umctl2 registers */
@@ -380,10 +329,9 @@ int ddr_init(struct dram_timing_info *dram_timing)
 
 	/* Step7: Set SWCTL.sw_done to 1; need to polling SWSTAT.sw_done_ack */
 	reg32_write(DDRC_SWCTL(0), 0x00000001);
-	do {
-		tmp = reg32_read(DDRC_SWSTAT(0));
-	} while ((tmp & 0x1) == 0x0);
-
+	ret = read_poll_timeout(reg32_read, tmp, tmp & 1, 1, 10000, DDRC_SWSTAT(0));
+	if (ret)
+		return ret;
 	/*
 	 * Step8 ~ Step13: Start PHY initialization and training by
 	 * accessing relevant PUB registers
@@ -400,9 +348,9 @@ int ddr_init(struct dram_timing_info *dram_timing)
 	 * step14 CalBusy.0 =1, indicates the calibrator is actively
 	 * calibrating. Wait Calibrating done.
 	 */
-	do {
-		tmp = reg32_read(DDRPHY_CalBusy(0));
-	} while ((tmp & 0x1));
+	ret = read_poll_timeout(reg32_read, tmp, !(tmp & 1), 1, 10000, DDRPHY_CalBusy(0));
+	if (ret)
+		return ret;
 
 	debug("DDRINFO:ddrphy calibration done\n");
 
@@ -415,16 +363,16 @@ int ddr_init(struct dram_timing_info *dram_timing)
 	/* Step16: Set DFIMISC.dfi_init_start to 1 */
 	setbits_le32(DDRC_DFIMISC(0), (0x1 << 5));
 
-	/* Step17: Set SWCTL.sw_done to 1; need to polling SWSTAT.sw_done_ack */
+	/* Step17: Set SWCTL.sw_done to 1; need to poll SWSTAT.sw_done_ack */
 	reg32_write(DDRC_SWCTL(0), 0x00000001);
-	do {
-		tmp = reg32_read(DDRC_SWSTAT(0));
-	} while ((tmp & 0x1) == 0x0);
+	ret = read_poll_timeout(reg32_read, tmp, tmp & 1, 1, 10000, DDRC_SWSTAT(0));
+	if (ret)
+		return ret;
 
-	/* Step18: Polling DFISTAT.dfi_init_complete = 1 */
-	do {
-		tmp = reg32_read(DDRC_DFISTAT(0));
-	} while ((tmp & 0x1) == 0x0);
+	/* Step18: Poll DFISTAT.dfi_init_complete = 1 */
+	ret = read_poll_timeout(reg32_read, tmp, tmp & 1, 1, 10000, DDRC_DFISTAT(0));
+	if (ret)
+		return ret;
 
 	/* Step19: Set SWCTL.sw_done to 0 */
 	reg32_write(DDRC_SWCTL(0), 0x00000000);
@@ -442,15 +390,13 @@ int ddr_init(struct dram_timing_info *dram_timing)
 
 	/* Step24: Set SWCTL.sw_done to 1; need polling SWSTAT.sw_done_ack */
 	reg32_write(DDRC_SWCTL(0), 0x00000001);
-	do {
-		tmp = reg32_read(DDRC_SWSTAT(0));
-	} while ((tmp & 0x1) == 0x0);
+	ret = read_poll_timeout(reg32_read, tmp, tmp & 1, 1, 10000, DDRC_SWSTAT(0));
 
 	/* Step25: Wait for dwc_ddr_umctl2 to move to normal operating mode by monitoring
 	 * STAT.operating_mode signal */
-	do {
-		tmp = reg32_read(DDRC_STAT(0));
-	} while ((tmp & 0x3) != 0x1);
+	ret = read_poll_timeout(reg32_read, tmp, (tmp & 3) == 1, 1, 10000, DDRC_STAT(0));
+	if (ret)
+		return ret;
 
 	/* Step26: Set back register in Step4 to the original values if desired */
 	reg32_write(DDRC_RFSHCTL3(0), 0x0000000);
@@ -468,9 +414,4 @@ int ddr_init(struct dram_timing_info *dram_timing)
 	dram_config_save(dram_timing, CONFIG_SAVED_DRAM_TIMING_BASE);
 
 	return 0;
-}
-
-ulong ddrphy_addr_remap(uint32_t paddr_apb_from_ctlr)
-{
-	return 4 * paddr_apb_from_ctlr;
 }
