@@ -12,9 +12,11 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/global_data.h>
+#include <dm/device_compat.h>
 #include <dm/platform_data/serial_mxc.h>
 #include <serial.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
 
 /* UART Control Register Bit Fields.*/
 #define URXD_CHARRDY	BIT(15)
@@ -63,6 +65,11 @@
 #define UCR3_AWAKEN	BIT(4)  /* Async wake interrupt enable */
 #define UCR3_REF25	BIT(3)  /* Ref freq 25 MHz */
 #define UCR3_REF30	BIT(2)  /* Ref Freq 30 MHz */
+
+/* imx8 names these bitsfields instead: */
+#define UCR3_DTRDEN	BIT(3)  /* bit not used in this chip */
+#define UCR3_RXDMUXSEL	BIT(2)  /* RXD muxed input selected; 'should always be set' */
+
 #define UCR3_INVT	BIT(1)  /* Inverted Infrared transmission */
 #define UCR3_BPEN	BIT(0)  /* Preset registers enable */
 #define UCR4_CTSTL_32	(32<<10) /* CTS trigger level (32 chars) */
@@ -141,8 +148,22 @@ struct mxc_uart {
 	u32 ts;
 };
 
+static void _mxc_serial_flush(struct mxc_uart *base)
+{
+	unsigned int timeout = 4000;
+
+	if (!(readl(&base->cr1) & UCR1_UARTEN) ||
+	    !(readl(&base->cr2) & UCR2_TXEN))
+		return;
+
+	while (!(readl(&base->sr2) & USR2_TXDC) && --timeout)
+		udelay(1);
+}
+
 static void _mxc_serial_init(struct mxc_uart *base, int use_dte)
 {
+	_mxc_serial_flush(base);
+
 	writel(0, &base->cr1);
 	writel(0, &base->cr2);
 
@@ -166,6 +187,8 @@ static void _mxc_serial_setbrg(struct mxc_uart *base, unsigned long clk,
 {
 	u32 tmp;
 
+	_mxc_serial_flush(base);
+
 	tmp = RFDIV << UFCR_RFDIV_SHF;
 	if (use_dte)
 		tmp |= UFCR_DCEDTE;
@@ -178,6 +201,14 @@ static void _mxc_serial_setbrg(struct mxc_uart *base, unsigned long clk,
 
 	writel(UCR2_WS | UCR2_IRTS | UCR2_RXEN | UCR2_TXEN | UCR2_SRST,
 	       &base->cr2);
+
+	/*
+	 * setting the baudrate triggers a reset, returning cr3 to its
+	 * reset value but UCR3_RXDMUXSEL "should always be set."
+	 * according to the imx8 reference-manual
+	 */
+	writel(readl(&base->cr3) | UCR3_RXDMUXSEL, &base->cr3);
+
 	writel(UCR1_UARTEN, &base->cr1);
 }
 
@@ -204,10 +235,12 @@ static inline void _debug_uart_putc(int ch)
 	if (init_needed)
 		return;
 
-	while (!(readl(&base->ts) & UTS_TXEMPTY))
+	while (readl(&base->ts) & UTS_TXFULL)
 		WATCHDOG_RESET();
 
 	writel(ch, &base->txd);
+
+	_mxc_serial_flush(base);
 }
 
 DEBUG_UART_FUNCS
@@ -245,11 +278,11 @@ static void mxc_serial_putc(const char c)
 	if (c == '\n')
 		serial_putc('\r');
 
-	writel(c, &mxc_base->txd);
-
 	/* wait for transmitter to be ready */
-	while (!(readl(&mxc_base->ts) & UTS_TXEMPTY))
+	while (readl(&mxc_base->ts) & UTS_TXFULL)
 		WATCHDOG_RESET();
+
+	writel(c, &mxc_base->txd);
 }
 
 /*
@@ -289,10 +322,17 @@ static int mxc_serial_init(void)
 	return 0;
 }
 
+static int mxc_serial_stop(void)
+{
+	_mxc_serial_flush(mxc_base);
+
+	return 0;
+}
+
 static struct serial_device mxc_serial_drv = {
 	.name	= "mxc_serial",
 	.start	= mxc_serial_init,
-	.stop	= NULL,
+	.stop	= mxc_serial_stop,
 	.setbrg	= mxc_serial_setbrg,
 	.putc	= mxc_serial_putc,
 	.puts	= default_serial_puts,
@@ -377,7 +417,7 @@ static int mxc_serial_putc(struct udevice *dev, const char ch)
 	struct mxc_serial_plat *plat = dev_get_plat(dev);
 	struct mxc_uart *const uart = plat->reg;
 
-	if (!(readl(&uart->ts) & UTS_TXEMPTY))
+	if (readl(&uart->ts) & UTS_TXFULL)
 		return -EAGAIN;
 
 	writel(ch, &uart->txd);
