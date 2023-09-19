@@ -172,7 +172,6 @@ static void _mxc_serial_init(struct mxc_uart *base, int use_dte)
 	else
 		writel(0x704 | UCR3_ADNIMP, &base->cr3);
 
-	writel(0x704 | UCR3_ADNIMP, &base->cr3);
 	writel(0x8000, &base->cr4);
 	writel(0x2b, &base->esc);
 	writel(0, &base->tim);
