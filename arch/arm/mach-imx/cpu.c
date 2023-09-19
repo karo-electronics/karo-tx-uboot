@@ -9,6 +9,7 @@
 #include <bootm.h>
 #include <common.h>
 #include <dm.h>
+#include <fsl_wdog.h>
 #include <init.h>
 #include <log.h>
 #include <net.h>
@@ -58,6 +59,7 @@ u32 get_imx_reset_cause(void)
 #if defined(CONFIG_DISPLAY_CPUINFO) && !defined(CONFIG_SPL_BUILD)
 static char *get_reset_cause(void)
 {
+	struct watchdog_regs *wdog = (void *)WDOG1_BASE_ADDR;
 	switch (get_imx_reset_cause()) {
 	case 0x00001:
 	case 0x00011:
@@ -70,6 +72,8 @@ static char *get_reset_cause(void)
 #ifdef	CONFIG_MX7
 		return "WDOG1";
 #else
+		if (readw(&wdog->wrsr) & WRSR_SFTW)
+			return "SRST";
 		return "WDOG";
 #endif
 	case 0x00020:
