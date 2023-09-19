@@ -7,10 +7,14 @@
 #include <image.h>
 #include <imx_container.h>
 #include <log.h>
-#include <asm/global_data.h>
-#include <linux/libfdt.h>
+#include <malloc.h>
 #include <spl.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
+#include <linux/kernel.h>
+#include <linux/libfdt.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -19,7 +23,7 @@ ulong spl_romapi_raw_seekable_read(u32 offset, u32 size, void *buf)
 {
 	int ret;
 
-	debug("%s 0x%x, size 0x%x\n", __func__, offset, size);
+	debug("%s 0x%x, size 0x%x buf %p\n", __func__, offset, size, buf);
 
 	ret = rom_api_download_image(buf, offset, size);
 
@@ -58,11 +62,76 @@ static int is_boot_from_stream_device(u32 boot)
 	return 0;
 }
 
+static inline bool within_range(void *p1, ulong len1, void *p2, ulong len2)
+{
+	return ((p1 <= p2 && p1 + len1 > p2) ||
+		(p2 <= p1 && p2 + len2 > p1));
+}
+
 static ulong spl_romapi_read_seekable(struct spl_load_info *load,
-				      ulong offset, ulong byte,
+				      ulong offset, ulong len,
 				      void *buf)
 {
-	return spl_romapi_raw_seekable_read(offset, byte, buf);
+	const u32 pagesize = load->bl_len;
+
+	/*
+	 * Handle corner case for ocram 0x980000 to 0x98ffff ecc region,
+	 * which cannot be accessed from ROM code.
+	 * Make sure the read buffer does not end on the boundary of the
+	 * reserved area to prevent prefetches into that area.
+	 */
+#define RSRVD_ADDR		((void *)0x980000 - pagesize)
+#define RSRVD_LEN		((void *)0x990000 - RSRVD_ADDR + pagesize)
+	if (is_imx8mp() && within_range(buf, len, RSRVD_ADDR, RSRVD_LEN)) {
+		ulong ret;
+		void *new_buf;
+		ulong remaining = len;
+		ulong chunk_size = len > SZ_4K ? SZ_4K : len;
+		ulong offs = 0;
+
+		if (buf < RSRVD_ADDR && buf + len >= RSRVD_ADDR) {
+			u32 over_size = RSRVD_ADDR - buf;
+
+			ret = spl_romapi_raw_seekable_read(offset, over_size, buf);
+			if (!ret)
+				return ret;
+			offs += ret;
+			remaining -= ret;
+			chunk_size = min(remaining, chunk_size);
+		}
+
+		new_buf = memalign(ARCH_DMA_MINALIGN, chunk_size);
+		if (!new_buf) {
+			debug("%s: Failed to allocate bounce buffer\n", __func__);
+			return 0;
+		}
+		while (remaining && buf + offs < RSRVD_ADDR + RSRVD_LEN) {
+			ulong over_size = RSRVD_ADDR + RSRVD_LEN - (buf + offs);
+
+			chunk_size = min(remaining, chunk_size);
+			chunk_size = min(over_size, chunk_size);
+			ret = spl_romapi_raw_seekable_read(offset + offs, chunk_size, new_buf);
+			if (!ret)
+				goto free_buf;
+
+			memcpy(buf + offs, new_buf, ret);
+			remaining -= ret;
+			offs += ret;
+		}
+		ret = offs;
+		if (remaining) {
+			ret = spl_romapi_raw_seekable_read(offset + offs, remaining, buf + offs);
+			if (!ret)
+				goto free_buf;
+			offs += ret;
+			assert(offs == len);
+			ret = len;
+		}
+free_buf:
+		free(new_buf);
+		return ret;
+	}
+	return spl_romapi_raw_seekable_read(offset, len, buf);
 }
 
 static int spl_romapi_load_image_seekable(struct spl_image_info *spl_image,
@@ -134,7 +203,7 @@ struct stream_state {
 };
 
 static ulong spl_romapi_read_stream(struct spl_load_info *load, ulong sector,
-			       ulong count, void *buf)
+				    ulong count, void *buf)
 {
 	struct stream_state *ss = load->priv;
 	u8 *end = (u8*)(sector + count);
@@ -142,12 +211,9 @@ static ulong spl_romapi_read_stream(struct spl_load_info *load, ulong sector,
 	int ret;
 
 	if (end > ss->end) {
-		bytes = end - ss->end;
-		bytes += ss->pagesize - 1;
-		bytes /= ss->pagesize;
-		bytes *= ss->pagesize;
+		bytes = ALIGN(end - ss->end, ss->pagesize);
 
-		debug("downloading another 0x%x bytes\n", bytes);
+		debug("downloading another 0x%x bytes to %p\n", bytes, ss->end);
 		ret = rom_api_download_image(ss->end, 0, bytes);
 
 		if (ret != ROM_API_OKAY) {
@@ -158,7 +224,7 @@ static ulong spl_romapi_read_stream(struct spl_load_info *load, ulong sector,
 		ss->end += bytes;
 	}
 
-	memcpy(buf, (void *)(sector), count);
+	memcpy(buf, (void *)sector, count);
 	return count;
 }
 
@@ -290,7 +356,7 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 	}
 
 	if (!phdr) {
-		puts("Can't found uboot image in 640K range\n");
+		puts("Could not find U-Boot image header within first 640KiB of image\n");
 		return -1;
 	}
 
@@ -310,19 +376,17 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 
 	if (p - phdr < imagesize) {
 		imagesize -= p - phdr;
-		/*need pagesize hear after ROM fix USB problme*/
-		imagesize += pg - 1;
-		imagesize /= pg;
-		imagesize *= pg;
+		/* need pagesize here after ROM fix USB problem */
+		imagesize = ALIGN(imagesize, pg);
 
-		printf("Need continue download %d\n", imagesize);
+		printf("Need to continue download %u\n", imagesize);
 
 		ret = rom_api_download_image(p, 0, imagesize);
 
 		p += imagesize;
 
 		if (ret != ROM_API_OKAY) {
-			printf("Failure download %d\n", imagesize);
+			printf("Download failed: %d\n", imagesize);
 			return -1;
 		}
 	}
@@ -338,22 +402,15 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 
 		return spl_load_simple_fit(spl_image, &load, (ulong)phdr, phdr);
 	}
+	total = ALIGN(img_total_size(phdr), 4);
 
-	total = img_total_size(phdr);
-	total += 3;
-	total &= ~0x3;
-
-	imagesize = total - (p - phdr);
-
-	imagesize += pagesize - 1;
-	imagesize /= pagesize;
-	imagesize *= pagesize;
+	imagesize = ALIGN(total - (p - phdr), pagesize);
 
 	printf("Download %d, Total size %d\n", imagesize, total);
 
 	ret = rom_api_download_image(p, 0, imagesize);
 	if (ret != ROM_API_OKAY)
-		printf("ROM download failure %d\n", imagesize);
+		printf("ROMAPI: download failure %d\n", imagesize);
 
 	memset(&load, 0, sizeof(load));
 	spl_set_bl_len(&load, 1);
