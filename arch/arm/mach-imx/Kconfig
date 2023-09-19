@@ -204,3 +204,5 @@ config IOMUX_SHARE_CONF_REG
 	bool
 
 endif
+
+source "board/karo/Kconfig"

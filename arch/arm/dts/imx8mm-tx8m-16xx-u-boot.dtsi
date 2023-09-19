@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2021 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx8mm-u-boot.dtsi"
+#include "imx8mm-karo-u-boot.dtsi"
+
+&binman_imx_spl {
+	section {
+		ddr-1d-imem-fw {
+			filename = "ddr3_imem_1d.bin";
+		};
+
+		ddr-1d-dmem-fw {
+			filename = "ddr3_dmem_1d.bin";
+		};
+
+		/delete-node/ ddr-2d-imem-fw;
+
+		/delete-node/ ddr-2d-dmem-fw;
+	};
+};
+
+&pmic {
+	regulators {
+		BUCK1 {
+			bootph-pre-ram;
+		};
+
+		BUCK2 {
+			bootph-pre-ram;
+		};
+
+		BUCK3 {
+			bootph-pre-ram;
+		};
+
+		BUCK4 {
+			bootph-pre-ram;
+		};
+
+		BUCK5 {
+			bootph-pre-ram;
+		};
+
+		BUCK6 {
+			bootph-pre-ram;
+		};
+
+		BUCK7 {
+			bootph-pre-ram;
+		};
+
+		BUCK8 {
+			bootph-pre-ram;
+		};
+
+		LDO1 {
+			bootph-pre-ram;
+		};
+
+		LDO2 {
+			bootph-pre-ram;
+		};
+
+		LDO3 {
+			bootph-pre-ram;
+		};
+
+		LDO4 {
+			bootph-pre-ram;
+		};
+
+		LDO5 {
+			bootph-pre-ram;
+		};
+
+		LDO6 {
+			bootph-pre-ram;
+		};
+
+		LDO7 {
+			bootph-pre-ram;
+		};
+	};
+};
+
+&usbmisc1 {
+	bootph-all;
+};
+
+&usbotg1 {
+	bootph-all;
+};
+
+&usbphynop1 {
+	bootph-all;
+};

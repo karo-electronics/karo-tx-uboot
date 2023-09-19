@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx8mm-tx8m-1622-u-boot.dtsi"
+
+&usdhc2 {
+	fsl,cd-data3;
+};

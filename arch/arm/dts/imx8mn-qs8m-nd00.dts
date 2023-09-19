@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2019 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "imx8mn-karo.dtsi"
+#include "imx8m-qs8m.dtsi"
+
+/ {
+	model = "Ka-Ro electronics QS8M-ND00 (NXP i.MX8MN) module";
+};

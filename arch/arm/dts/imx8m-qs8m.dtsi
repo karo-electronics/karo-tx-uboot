@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/ {
+	aliases {
+		i2c0 = &i2c1;
+		i2c1 = &i2c2;
+		i2c2 = &i2c3;
+		mmc0 = &usdhc1;
+		mmc1 = &usdhc2;
+		usbotg = &usbotg1;
+	};
+};
+
+&A53_0 {
+	arm-supply = <&reg_vdd_arm>;
+};
+
+&i2c1 {
+	pmic: pmic@34 {
+		compatible = "ricoh,rn5t567";
+		reg = <0x34>;
+		system-power-controller;
+
+		regulators {
+			reg_vdd_dram_pu: DCDC1 {
+				regulator-name = "vdd_dram_pu_0v9";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-ramp-delay = <14000>;
+				regulator-always-on;
+			};
+
+			reg_vdd_arm: DCDC2 {
+				regulator-name = "vdd_arm_0v9";
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <950000>;
+				regulator-ramp-delay = <14000>;
+				regulator-always-on;
+			};
+
+			reg_vdd_soc: DCDC3 {
+				regulator-name = "vdd_soc_0v8";
+				regulator-min-microvolt = <780000>;
+				regulator-max-microvolt = <900000>;
+				regulator-ramp-delay = <14000>;
+				regulator-always-on;
+			};
+
+			reg_nvcc_dram: DCDC4 {
+				regulator-name = "nvcc_dram";
+				regulator-min-microvolt = <1350000>;
+				regulator-max-microvolt = <1350000>;
+				regulator-ramp-delay = <14000>;
+				regulator-always-on;
+			};
+
+			reg_vdd_3v3: LDO1 {
+				regulator-name = "vdd_3v3";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+			};
+
+			reg_vdda_1v8: LDO2 {
+				regulator-name = "vdda_1v8";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+			};
+
+			reg_vdd_1v8: LDO3 {
+				regulator-name = "vdd_1v8";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-always-on;
+			};
+
+			reg_vdd_phy_1v2: LDO4 {
+				regulator-name = "vdd_phy_1v2";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-always-on;
+			};
+
+			reg_vdd_phy_0v9: LDO5 {
+				regulator-name = "vdd_phy_0v9";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-always-on;
+			};
+
+			reg_snvs_1v8: LDORTC1 {
+				regulator-name = "nvcc_snvs_1v8";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
+};

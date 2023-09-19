@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx8mp-tx8p-ml81.dts"
+
+/ {
+	model = "Ka-Ro electronics TX8P-ML82 (NXP i.MX8MP) module";
+};

@@ -1,0 +1,41 @@
+config BL31_BASE
+	hex "Load address of BL31 image (imx-atf)"
+	default 0x00920000 if IMX8MM
+	default 0x00960000 if IMX8MN
+	default 0x00970000 if IMX8MP
+	default 0x204c0000 if IMX91
+	default 0x204e0000 if IMX93
+	help
+	  The load address for the BL31 image. This value is used to build the
+	  FIT image header that places BL31 in memory where it will run.
+
+config BL31_SIZE
+	hex "memory space reserved for BL31 image"
+	default 0x20000 if IMX8M
+	default 0x20000 if IMX91
+	default 0x25000 if IMX93
+	help
+	  The memory size reserved for the BL31 image.
+
+config UBOOT_IGNORE_ENV
+       bool
+       help
+	 Ignore non-volatile environment settings and use default
+	 environment only.
+
+choice
+        prompt "U-Boot image variant"
+	default KARO_UBOOT_DEFAULT
+
+config KARO_UBOOT_DEFAULT
+        bool "Standard U-Boot image"
+
+config KARO_UBOOT_MFG
+        bool "U-Boot image for use with Freescale's MfGTool or UUU"
+        select UBOOT_IGNORE_ENV
+
+config KARO_UBOOT_NOENV
+        bool "U-Boot using only built-in environment"
+        select UBOOT_IGNORE_ENV
+
+endchoice

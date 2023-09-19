@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+&reg_vdd_dram_pu {
+	bootph-all;
+};
+
+&reg_vdd_arm {
+	bootph-all;
+};
+
+&reg_vdd_soc {
+	bootph-all;
+};
+
+&reg_nvcc_dram {
+	bootph-all;
+};
+
+&reg_vdd_3v3 {
+	bootph-all;
+};
+
+&reg_vdda_1v8 {
+	bootph-all;
+};
+
+&reg_vdd_1v8 {
+	bootph-all;
+};
+
+&reg_vdd_phy_1v2 {
+	bootph-all;
+};
+
+&reg_vdd_phy_0v9 {
+	bootph-all;
+};
+
+&reg_snvs_1v8 {
+	bootph-all;
+};
