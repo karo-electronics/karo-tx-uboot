@@ -14,7 +14,6 @@
 #include <power/regulator.h>
 
 #define HW_STATE_CONTROL 0
-#define DEBUG
 
 /**
  * struct bd71837_vrange - describe linear range of voltages
