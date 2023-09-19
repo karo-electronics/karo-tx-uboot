@@ -55,7 +55,7 @@ config DM_REGULATOR_BD71837
 
 config SPL_DM_REGULATOR_BD71837
 	bool "Enable Driver Model for ROHM BD71837/BD71847 regulators in SPL"
-	depends on DM_REGULATOR_BD71837
+	depends on SPL_DM_REGULATOR && SPL_DM_PMIC_BD71837
 	help
 	This config enables implementation of driver-model regulator uclass
 	features for regulators on ROHM BD71837 and BD71847 in SPL.
