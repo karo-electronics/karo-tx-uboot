@@ -748,7 +748,8 @@ bool is_usb_boot(void)
 {
 	return get_boot_device() == USB_BOOT;
 }
-#ifdef CONFIG_SERIAL_TAG
+
+#if defined(CONFIG_SERIAL_TAG) || defined(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)
 void get_board_serial(struct tag_serialnr *serialnr)
 {
 	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
