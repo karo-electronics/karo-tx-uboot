@@ -10,8 +10,13 @@ int karo_load_fdt(const char *fdt_file);
 int karo_load_fdt_overlay(void *fdt, const char *dev_type, const char *dev_part,
 			  const char *overlay);
 #ifdef CONFIG_LED
+void tx8m_led_init(void);
 void tx93_led_init(void);
 #else
+static inline void tx8m_led_init(void)
+{
+}
+
 static inline void tx93_led_init(void)
 {
 }

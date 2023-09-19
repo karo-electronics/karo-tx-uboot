@@ -4,6 +4,12 @@ source board/karo/imx93/Kconfig
 
 endif
 
+if TARGET_TX8M
+
+source board/karo/tx8m/Kconfig
+
+endif
+
 choice
         prompt "U-Boot image variant"
 	default KARO_UBOOT_DEFAULT

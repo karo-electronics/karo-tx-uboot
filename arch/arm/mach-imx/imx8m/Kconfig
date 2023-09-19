@@ -163,6 +163,10 @@ config TARGET_IMX8MM_VENICE
 	select SUPPORT_SPL
 	select IMX8M_LPDDR4
 
+config TARGET_TX8M
+	bool "Ka-Ro electronics imx8m boards"
+	select SUPPORT_SPL
+
 config TARGET_KONTRON_MX8MM
 	bool "Kontron Electronics N80xx"
 	select BINMAN

@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2021 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx8mm-u-boot.dtsi"
+#include "imx8m-karo-u-boot.dtsi"
+
+&binman {
+	imx-boot {
+		spl {
+#ifndef CONFIG_FSL_FASTBOOT
+			offset = <0x8400>;
+#endif
+		};
+	};
+};
+
+&aips4 {
+	u-boot,dm-spl;
+};
+
+&binman_uboot {
+#ifndef CONFIG_FSL_FASTBOOT
+	offset = <(0x57c00 + 0x8400)>;
+#else
+	offset = <0x57c00>;
+#endif
+};
+
+&pinctrl_uart3 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_uart3_rtscts {
+	u-boot,dm-spl;
+};
+
+&pinctrl_uart4 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc1 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc1_100mhz {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc1_200mhz {
+	u-boot,dm-spl;
+};
+
+&uart4 {
+	u-boot,dm-spl;
+};
+
+&usdhc1 {
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
+	u-boot,dm-spl;
+};

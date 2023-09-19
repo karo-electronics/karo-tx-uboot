@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+#include "imx8mp-karo-u-boot.dtsi"
+
+&clk {
+	/delete-property/ assigned-clocks;
+};
+
+&uart1 {
+	/delete-property/ u-boot,dm-spl;
+};

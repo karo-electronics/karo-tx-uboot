@@ -7,6 +7,10 @@
  * Alexander Graf <agraf@suse.de>
  */
 
+#if CONFIG_VAL(LOGLEVEL) < 8
+#undef DEBUG
+#endif
+
 #include <common.h>
 #include <cpu_func.h>
 #include <hang.h>

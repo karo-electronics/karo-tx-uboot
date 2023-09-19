@@ -1,0 +1,11 @@
+#include "imx8mn-tx8m-nd00.dts"
+
+/ {
+	model = "Ka-Ro electronics TX8M-ND00 (NXP i.MX8MN) module on TX-MIPI-LVDS baseboard";
+};
+
+&usdhc2 {
+	pinctrl-0 = <&pinctrl_usdhc2>;
+	/delete-property/ cd-gpios;
+	no-mmc;
+};

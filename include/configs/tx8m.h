@@ -1,0 +1,217 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright 2019 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#ifndef __TX8M_H
+#define __TX8M_H
+
+#include <linux/sizes.h>
+#include <asm/arch/imx-regs.h>
+
+#define CONFIG_SYS_MONITOR_LEN		SZ_512K
+
+#define CONFIG_FDTADDR			0x43000000
+
+#define SOC_PREFIX			"imx8m"
+
+#if defined(CONFIG_IMX8MM)
+#define SOC_FAMILY			"imx8mm"
+#elif defined(CONFIG_IMX8MN)
+#define SOC_FAMILY			"imx8mn"
+#elif defined(CONFIG_IMX8MP)
+#define SOC_FAMILY			"imx8mp"
+#else
+#error Unsupported SOC type
+#endif
+
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_ENABLE_DDR_TRAINING_DEBUG
+#define CONFIG_USBD_HS
+
+#if IS_ENABLED(CONFIG_IMX8M_LPDDR4)
+#define SPL_DDRFW_SIZE			(2 * (16 + 32) * SZ_1K)
+#elif IS_ENABLED(CONFIG_IMX8M_DDR3L)
+#define SPL_DDRFW_SIZE			((16 + 32) * SZ_1K)
+#else
+#error Unsupported SDRAM type
+#endif
+
+#define CONFIG_SPL_MAX_SIZE		(SPL_OCRAM_SIZE - SPL_DTB_SIZE - SPL_DDRFW_SIZE)
+
+#if defined(CONFIG_IMX8MM)
+#define SPL_OCRAM_SIZE			(0x820000 - 0x7e1000)
+#define SPL_DTB_SIZE			(11 * SZ_1K)
+/* available OCRAM 252KiB
+ * SPL DTB: 8KiB .. ~10KiB
+ * DDRFW (DDR3L): (32+16) KiB
+ * DDRFW (LPDDR4): 2 * (32+16) KiB
+ */
+/*
+ *  TCML:	7e0000 ..   7fffff	0x20000
+ *  TCMU:	800000 ..   81ffff	0x20000
+ *  OCRAM:	900000 ..   91ffff	0x20000
+ *		920000 ..   93ffff	0x20000
+ *  OCRAM_S:	180000 ..   187fff	0x8000
+ *
+ *  SPL:	7e1000 ..   8037ff	0x22800
+ *  DTB:	803800 ..   8052ff	0x1b00
+ *  DDRFW:	805300 ..   81d2ff	0x18000
+ *  BSS:	81f800 ..   81ffff	0x800
+ *  Stack:	911400 ..   913fff	0x3c00
+ *  MALLOCF:	914000 ..   91ffff	0xd000
+ *  BL31:	920000 ..   93ffff	0x20000
+ *  U-Boot:   40200000 .. 402bffff
+ *  MALLOC:   42200000 .. 4227ffff
+SPL:		007e1000..00803690
+DTB:            00803690..00805e04
+DDRFW:          00805e04..00811e04	0xC000
+BSS:            0081f800..0081f878
+Stack:          009114c0..00914000
+MALLOC:         00914000..00920000
+BL31:           00920000..00940000
+
+QSXM:
+SPL:            007e1000..00808848
+DTB:            00808848..0080a620
+DDRFW:          0080a620..00822620	0x18000
+BSS:            0081f800..0081fcc0	0x800
+Stack:          0090fcc0..00912800
+MALLOC:         00912800..00920000
+BL31:           00920000..00940000
+DDRFW 0080a620..0082261f overlaps BSS 0081f800..0081fcbf
+ */
+#define CONFIG_SPL_BSS_START_ADDR	CONFIG_SPL_STACK
+#define CONFIG_SPL_STACK		(0x00920000 - CONFIG_SPL_BSS_MAX_SIZE)
+//#define CONFIG_MALLOC_F_ADDR		0x00930000
+#elif defined(CONFIG_IMX8MN)
+#define SPL_OCRAM_SIZE			(0x940000 - 0x912000)
+#define SPL_DTB_SIZE			(9 * SZ_1K)
+/*
+ *  OCRAM_S:	180000 ..   187fff	0x8000
+ *  ITCM:	7e0000 ..   7fffff	0x20000
+ *  DTCM:	800000 ..   81ffff	0x20000
+ *  OCRAM:	900000 ..   91ffff	0x20000
+ *		920000 ..   93ffff	0x20000
+ *		940000 ..   97ffff	0x40000
+ *
+Stack:          0090fff0..00911ff0
+SPL:            00912000..0092bd10
+DTB:            0092bd10..0092df3e
+DDRFW:          0092df3e..00939f3e
+BSS:            00949800..00949870
+MALLOC:         0094a000..00957000
+BL31:           00960000..00980000
+***
+Stack:          0090e3f0..00911ff0
+SPL:            00912000..00935168
+DTB:            00935168..00936f65
+DDRFW:          00936f65..00942f65
+BSS:            00949000..009494c0
+MALLOC:         0094a000..00957000
+BL31:           00960000..00980000
+ *
+ */
+#define CONFIG_MALLOC_F_ADDR		(0x00960000 - CONFIG_SPL_SYS_MALLOC_F_LEN)
+#define CONFIG_SPL_BSS_START_ADDR	(CONFIG_MALLOC_F_ADDR - CONFIG_SPL_BSS_MAX_SIZE)
+#define CONFIG_SPL_STACK		(0x00911ff0 + CONFIG_SPL_SYS_MALLOC_F_LEN)
+#elif defined(CONFIG_IMX8MP)
+#define SPL_OCRAM_SIZE			(0x970000 - 0x920000)
+#define SPL_DTB_SIZE			(11 * SZ_1K)
+/*
+ *  OCRAM_S:	180000 ..   187fff	0x8000
+ *  ITCM:	7e0000 ..   7fffff	0x20000
+ *  DTCM:	800000 ..   81ffff	0x20000
+ *  OCRAM:	900000 ..   98ffff	0x90000
+ *
+ *  SPL:	920000 ..   944fff	0x25000
+ *  DTB:	945000 ..   950fff	0xc000
+ *  DDRFW:	951000 ..   969000	0x18000
+ *  MALLOCF:	969000 ..   964fef	0x13ff0
+ *  Stack:	964ff0 ..   96dfef	0x9000
+ *  BSS:	96e000 ..   96ffff	0x2000
+ *  BL31:	970000 ..   98afff	0x1b000
+ *  U-Boot:   40200000 .. 402bffff
+ *  MALLOC:   42200000 .. 4227ffff
+ */
+
+#define CONFIG_SPL_BSS_START_ADDR	0x0096e000
+#define CONFIG_SPL_STACK		(CONFIG_SPL_BSS_START_ADDR - 16 + \
+					 CONFIG_SPL_SYS_MALLOC_F_LEN)
+#define CONFIG_MALLOC_F_ADDR		0x95b000
+#endif
+
+#define CONFIG_SYS_SPL_MALLOC_START	0x42200000
+#define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_512K
+
+#ifndef CONFIG_SPL_BSS_MAX_SIZE
+#define CONFIG_SPL_BSS_MAX_SIZE		SZ_2K
+#endif
+
+#if CONFIG_IS_ENABLED(USB_SUPPORT)
+#define CONFIG_SYS_USB_FAT_BOOT_PARTITION  1
+#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME "u-boot"
+#endif
+
+#endif /* CONFIG_SPL_BUILD */
+
+#define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_SDRAM_BASE
+#define CONFIG_SYS_INIT_RAM_SIZE	0x80000
+#define CONFIG_SYS_INIT_SP_OFFSET \
+	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_SP_ADDR \
+	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
+
+#ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
+#define CONFIG_SYS_MEM_RESERVE_SECURE	0
+#endif
+
+#define CONFIG_SYS_SDRAM_BASE		0x40000000
+#define PHYS_SDRAM			CONFIG_SYS_SDRAM_BASE
+#if defined(CONFIG_KARO_TX8P_ML82)
+#define PHYS_SDRAM_1			CONFIG_SYS_SDRAM_BASE
+#define PHYS_SDRAM_1_SIZE		(SZ_4G - SZ_1G)
+#define PHYS_SDRAM_2			0x100000000UL
+#define PHYS_SDRAM_2_SIZE		SZ_1G
+#define PHYS_SDRAM_SIZE			PHYS_SDRAM_1_SIZE
+#elif defined(CONFIG_KARO_TX8MM_1620) || defined(CONFIG_KARO_QSXM) || \
+	defined(CONFIG_KARO_TX8P) || defined(CONFIG_KARO_TX8MM_1622)
+#define PHYS_SDRAM_SIZE			SZ_2G
+#elif defined(CONFIG_IMX8MN)
+#define PHYS_SDRAM_SIZE			SZ_512M
+#elif defined(CONFIG_IMX8MM)
+#define PHYS_SDRAM_SIZE			SZ_1G
+#else
+#error Unsupported Board type
+#endif
+
+#ifndef CONFIG_DEBUG_UART
+#ifndef CONFIG_KARO_QSXP_ML81
+#define CONFIG_MXC_UART_BASE		UART1_BASE_ADDR
+#else
+#define CONFIG_MXC_UART_BASE		UART2_BASE_ADDR
+#endif
+#else
+#define CONFIG_MXC_UART_BASE		CONFIG_DEBUG_UART_BASE
+#endif
+
+/* Monitor Command Prompt */
+#define CONFIG_SYS_CBSIZE		2048
+#define CONFIG_SYS_MAXARGS		256
+#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
+#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
+
+#ifdef CONFIG_KARO_QSXM
+#define CONFIG_SYS_FSL_USDHC_NUM	2
+#else /* CONFIG_KARO_QSXM */
+#define CONFIG_SYS_FSL_USDHC_NUM	3
+#endif
+#define CONFIG_SYS_FSL_ESDHC_ADDR	0
+
+#ifdef CONFIG_USB_EHCI_MX7
+#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
+#define CONFIG_USB_MAX_CONTROLLER_COUNT	2
+#endif
+
+#endif /* __TX8M_H */

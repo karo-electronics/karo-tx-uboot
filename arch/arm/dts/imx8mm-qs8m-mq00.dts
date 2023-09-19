@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2019 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+/dts-v1/;
+
+#include "imx8mm-karo.dtsi"
+#include "imx8m-qs8m.dtsi"
+
+/ {
+	model = "Ka-Ro electronics QS8M-MQ00 (NXP i.MX8MM) module";
+
+	leds {
+		compatible = "gpio-leds";
+
+		led {
+			label = "Heartbeat";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_led>;
+			gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x0 0x40000000 0 0x40000000>;
+	};
+};
+
+&usbotg2 {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usdhc3 {
+	status = "disabled";
+};
+
+&pinctrl_usdhc1 {
+	fsl,pins = <
+		MX8MM_IOMUXC_SD1_CLK_USDHC1_CLK			0x190
+		MX8MM_IOMUXC_SD1_CMD_USDHC1_CMD			0x150
+		MX8MM_IOMUXC_SD1_DATA0_USDHC1_DATA0		0x1d0
+		MX8MM_IOMUXC_SD1_DATA1_USDHC1_DATA1		0x1d0
+		MX8MM_IOMUXC_SD1_DATA2_USDHC1_DATA2		0x1d0
+		MX8MM_IOMUXC_SD1_DATA3_USDHC1_DATA3		0x1d0
+		MX8MM_IOMUXC_SD1_DATA4_USDHC1_DATA4		0x1d0
+		MX8MM_IOMUXC_SD1_DATA5_USDHC1_DATA5		0x1d0
+		MX8MM_IOMUXC_SD1_DATA6_USDHC1_DATA6		0x1d0
+		MX8MM_IOMUXC_SD1_DATA7_USDHC1_DATA7		0x1d0
+		MX8MM_IOMUXC_SD1_STROBE_USDHC1_STROBE		0x156
+		MX8MM_IOMUXC_SD1_RESET_B_USDHC1_RESET_B		0x156
+	>;
+};
+
+&uart1 {
+	/delete-property/uart-has-rtscts;
+	pinctrl-0 = <&pinctrl_uart1>;
+};
+
+&uart2 {
+	/delete-property/uart-has-rtscts;
+	pinctrl-0 = <&pinctrl_uart2>;
+};
+
+&uart3 {
+	/delete-property/uart-has-rtscts;
+	pinctrl-0 = <&pinctrl_uart3_qs8m>;
+};
+
+&iomuxc {
+	pinctrl_uart3_qs8m: uart3-qs8mgrp {
+		fsl,pins = <
+			MX8MM_IOMUXC_UART3_RXD_UART3_DCE_RX	0x140
+			MX8MM_IOMUXC_UART3_TXD_UART3_DCE_TX	0x140
+		>;
+	};
+};
