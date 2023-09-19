@@ -1434,8 +1434,8 @@ usb_modify_speed:
 if (IS_ENABLED(CONFIG_KASLR)) {
        int ret = do_generate_kaslr(blob);
        if (ret)
-           printf("Unable to set property %s, err=%s\n",
-                       "kaslr-seed", fdt_strerror(ret));
+	       printf("Unable to set property %s, err=%s\n",
+		      "kaslr-seed", fdt_strerror(ret));
        }
 
 #if defined(CONFIG_ANDROID_SUPPORT) || defined(CONFIG_ANDROID_AUTO_SUPPORT)
@@ -1448,7 +1448,7 @@ if (IS_ENABLED(CONFIG_KASLR)) {
 
 #ifdef CONFIG_OF_BOARD_FIXUP
 #ifndef CONFIG_SPL_BUILD
-int board_fix_fdt(void *fdt)
+__weak int board_fix_fdt(void *fdt)
 {
 	if (is_imx8mpul()) {
 		int i = 0;
