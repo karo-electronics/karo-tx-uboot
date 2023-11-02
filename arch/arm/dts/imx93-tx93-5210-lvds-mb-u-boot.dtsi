@@ -4,3 +4,9 @@
  */
 
 #include "imx93-tx93-5210-u-boot.dtsi"
+
+&usdhc2 {
+	pinctrl-0 = <&pinctrl_usdhc2>;
+	/delete-property/ cd-gpios;
+	fsl,cd-data3;
+};

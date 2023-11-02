@@ -10,6 +10,11 @@
 /{
 	model = "Ka-Ro electronics GmbH QS93-5210 (NXP i.MX93) solder-in module";
 	compatible = "karo,qs93-5210", "fsl,imx93";
+
+	aliases {
+		mmc1 = &usdhc3;
+		mmc2 = &usdhc2;
+	};
 };
 
 &gpio3 {
@@ -72,6 +77,19 @@
 	status = "okay";
 };
 
+&usdhc3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc3 &pinctrl_usdhc3_cd>;
+	cd-gpios = <&gpio3 6 GPIO_ACTIVE_LOW>;
+	vmmc-supply = <&buck4>;
+	vqmmc-supply = <&buck4>;
+	bus-width = <4>;
+	no-1-8-v;
+	no-sdio;
+	no-mmc;
+	status = "okay";
+};
+
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>;
@@ -102,6 +120,23 @@
 	pinctrl_pmic: pmic-intgrp {
 		fsl,pins = <
 			MX93_PAD_PDM_BIT_STREAM1__GPIO1_IO10			0x31e
+		>;
+	};
+
+	pinctrl_usdhc3: usdhc3grp {
+		fsl,pins = <
+			MX93_PAD_SD3_CLK__USDHC3_CLK				0x17fe
+			MX93_PAD_SD3_CMD__USDHC3_CMD				0x13fe
+			MX93_PAD_SD3_DATA0__USDHC3_DATA0			0x13fe
+			MX93_PAD_SD3_DATA1__USDHC3_DATA1			0x13fe
+			MX93_PAD_SD3_DATA2__USDHC3_DATA2			0x13fe
+			MX93_PAD_SD3_DATA3__USDHC3_DATA3			0x13fe
+		>;
+	};
+
+	pinctrl_usdhc3_cd: usdhc3-cdgrp {
+		fsl,pins = <
+			MX93_PAD_SD2_DATA3__GPIO3_IO06				0x1200
 		>;
 	};
 };

@@ -5,6 +5,10 @@
 
 #include "imx93-tx93-5210.dts"
 
-/{
+/ {
 	model = "Ka-Ro electronics GmbH TX93-5210 (NXP i.MX93) module on MIPI-LVDS-MB baseboard";
+};
+
+&usdhc2 {
+	fsl,cd-data3;
 };

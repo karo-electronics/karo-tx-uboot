@@ -12,7 +12,6 @@
 		ethernet0 = &eqos;
 		ethernet1 = &fec;
 		mmc0 = &usdhc1;
-		mmc1 = &usdhc2;
 		serial1 = &lpuart3;
 		serial2 = &lpuart5;
 		serial3 = &lpuart4;
@@ -203,18 +202,6 @@
 	status = "okay";
 };
 
-&usdhc2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usdhc2>;
-	vmmc-supply = <&buck4>;
-	vqmmc-supply = <&buck4>;
-	bus-width = <4>;
-	no-1-8-v;
-	no-sdio;
-	no-mmc;
-	status = "okay";
-};
-
 &wdog3 {
 	status = "okay";
 };
@@ -350,18 +337,6 @@
 			MX93_PAD_SD1_DATA6__USDHC1_DATA6			0x13fe
 			MX93_PAD_SD1_DATA7__USDHC1_DATA7			0x13fe
 			MX93_PAD_SD1_STROBE__USDHC1_STROBE			0x17fe
-		>;
-	};
-
-	pinctrl_usdhc2: usdhc2grp {
-		fsl,pins = <
-			MX93_PAD_SD2_CLK__USDHC2_CLK				0x17fe
-			MX93_PAD_SD2_CMD__USDHC2_CMD				0x13fe
-			MX93_PAD_SD2_DATA0__USDHC2_DATA0			0x13fe
-			MX93_PAD_SD2_DATA1__USDHC2_DATA1			0x13fe
-			MX93_PAD_SD2_DATA2__USDHC2_DATA2			0x13fe
-			MX93_PAD_SD2_DATA3__USDHC2_DATA3			0x13fe
-			MX93_PAD_SD2_VSELECT__USDHC2_VSELECT			0x51e
 		>;
 	};
 };
