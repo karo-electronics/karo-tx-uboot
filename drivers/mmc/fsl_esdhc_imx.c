@@ -161,6 +161,7 @@ struct fsl_esdhc_priv {
 	struct udevice *dev;
 	int broken_cd;
 	int wp_enable;
+	int cd_data3;
 	int vs18_enable;
 	u32 flags;
 	u32 caps;
@@ -1031,7 +1032,7 @@ static int esdhc_init_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 	esdhc_clrbits32(&regs->irqstaten, IRQSTATEN_BRR | IRQSTATEN_BWR);
 
 	/* Put the PROCTL reg back to the default */
-	if (IS_ENABLED(CONFIG_MCF5441x))
+	if (priv->cd_data3)
 		esdhc_write32(&regs->proctl, PROCTL_INIT | PROCTL_D3CD);
 	else
 		esdhc_write32(&regs->proctl, PROCTL_INIT);
@@ -1050,10 +1051,8 @@ static int esdhc_init_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 static int esdhc_getcd_common(struct fsl_esdhc_priv *priv)
 {
 	struct fsl_esdhc *regs = priv->esdhc_regs;
-	int timeout = 1000;
-
-	if (IS_ENABLED(CONFIG_ESDHC_DETECT_QUIRK))
-		return 1;
+	int timeout_us = 1;
+	u32 tmp;
 
 	if (CONFIG_IS_ENABLED(DM_MMC)) {
 		if (priv->broken_cd)
@@ -1064,10 +1063,8 @@ static int esdhc_getcd_common(struct fsl_esdhc_priv *priv)
 #endif
 	}
 
-	while (!(esdhc_read32(&regs->prsstat) & PRSSTAT_CINS) && --timeout)
-		udelay(1000);
-
-	return timeout > 0;
+	return !readx_poll_timeout(esdhc_read32, &regs->prsstat, tmp,
+				   tmp & PRSSTAT_CINS, timeout_us);
 }
 
 static int esdhc_reset(struct fsl_esdhc *regs)
@@ -1146,7 +1143,7 @@ static int fsl_esdhc_init(struct fsl_esdhc_priv *priv,
 		return ret;
 
 	/* ColdFire, using SDHC_DATA[3] for card detection */
-	if (IS_ENABLED(CONFIG_MCF5441x))
+	if (priv->cd_data3)
 		esdhc_write32(&regs->proctl, PROCTL_INIT | PROCTL_D3CD);
 
 	if (IS_ENABLED(CONFIG_FSL_USDHC)) {
@@ -1290,6 +1287,7 @@ int fsl_esdhc_initialize(struct bd_info *bis, struct fsl_esdhc_cfg *cfg)
 	priv->esdhc_regs = (struct fsl_esdhc *)(unsigned long)(cfg->esdhc_base);
 	priv->sdhc_clk = cfg->sdhc_clk;
 	priv->wp_enable  = cfg->wp_enable;
+	priv->cd_data3 = IS_ENABLED(CONFIG_MCF5441x);
 
 	mmc_cfg = &plat->cfg;
 
@@ -1414,11 +1412,9 @@ static int fsl_esdhc_of_to_plat(struct udevice *dev)
 	if (dev_read_bool(dev, "broken-cd"))
 		priv->broken_cd = 1;
 
-	if (dev_read_prop(dev, "fsl,wp-controller", NULL)) {
-		priv->wp_enable = 1;
-	} else {
-		priv->wp_enable = 0;
-	}
+	priv->cd_data3 = IS_ENABLED(CONFIG_MCF5441x) ||
+		dev_read_bool(dev, "fsl,cd-data3");
+	priv->wp_enable = dev_read_bool(dev, "fsl,wp-controller");
 
 #if CONFIG_IS_ENABLED(DM_GPIO)
 	gpio_request_by_name(dev, "cd-gpios", 0, &priv->cd_gpio,
