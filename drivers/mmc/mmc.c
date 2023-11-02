@@ -1155,8 +1155,7 @@ int mmc_hwpart_config(struct mmc *mmc,
 		return -EMEDIUMTYPE;
 	}
 
-	if (ext_csd[EXT_CSD_PARTITION_SETTING] &
-	    EXT_CSD_PARTITION_SETTING_COMPLETED) {
+	if (ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED]) {
 		dev_err(mmc->dev, "Card already partitioned\n");
 		return -EPERM;
 	}
@@ -1231,14 +1230,114 @@ int mmc_hwpart_config(struct mmc *mmc,
 	 * in the mmc struct. */
 
 	err = mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL,
-			 EXT_CSD_PARTITION_SETTING,
-			 EXT_CSD_PARTITION_SETTING_COMPLETED);
+			 EXT_CSD_PARTITION_SETTING_COMPLETED, 1);
 	if (err)
 		return err;
 
 	return 0;
 }
 #endif
+
+int mmc_set_extcsd(struct mmc *mmc, u8 index, u8 value)
+{
+	return mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, index, value);
+}
+
+#if CONFIG_IS_ENABLED(MMC_WRITE)
+int mmc_set_psa(struct mmc *mmc, u8 mode, lbaint_t blkcnt)
+{
+	int err;
+	int gen_cmd6_time = mmc->gen_cmd6_time;
+	ALLOC_CACHE_ALIGN_BUFFER(u8, ext_csd, MMC_MAX_BLOCK_LEN);
+	ulong max_data_size = 0;
+	int i;
+	int value = -1;
+
+printf("%s@%d: Loading EXT_CSD to %08lx\n", __func__, __LINE__, (ulong)ext_csd);
+	err = mmc_send_ext_csd(mmc, ext_csd);
+	if (err) {
+		puts("Could not get ext_csd register values\n");
+		return err;
+	}
+	for (i = 0; i < sizeof(u32); i++)
+		max_data_size |= (u32)ext_csd[EXT_CSD_PSA_MAX_PRE_LOADING_DATA_SIZE + i] << (i * 8);
+
+printf("%s@%d: max_data_size=%lu blkcnt=" LBAF "\n", __func__, __LINE__,
+       max_data_size, blkcnt);
+	if (blkcnt > max_data_size)
+		return -EINVAL;
+
+	switch (mode) {
+	case EXT_CSD_PSA_NORMAL:
+		value = 0;
+	case EXT_CSD_PSA_PRE_SOLDERING_POST_WRITES:
+		break;
+
+	case EXT_CSD_PSA_PRE_SOLDERING_WRITES:
+		if (!(ext_csd[EXT_CSD_PSA_ENABLEMENT] & 1)) {
+			pr_err("PSA Manual mode is not supported by device\n");
+			err = -EINVAL;
+			goto out;
+		}
+		value = EXT_CSD_PSA_ENABLEMENT_MANU;
+		break;
+
+	case EXT_CSD_PSA_AUTO_PRE_SOLDERING:
+		if (!(ext_csd[EXT_CSD_PSA_ENABLEMENT] & 2)) {
+			pr_err("PSA Auto mode is not supported by device\n");
+			err = -EINVAL;
+			goto out;
+		}
+		value = EXT_CSD_PSA_ENABLEMENT_AUTO;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	mmc->gen_cmd6_time = (1 << (u32)ext_csd[EXT_CSD_PSA_TIMEOUT]) / 10;
+	debug("%s@%d: psa_timeout=%08x: %u\n", __func__, __LINE__,
+	      ext_csd[EXT_CSD_PSA_TIMEOUT], mmc->gen_cmd6_time);
+
+	if (value >= 0 && (ext_csd[EXT_CSD_PSA_ENABLEMENT] & 0x30) != value) {
+		value |= ext_csd[EXT_CSD_PSA_ENABLEMENT] & 0x03;
+		printf("Setting EXT_CSD_PSA_ENABLEMENT to 0x%02x\n", value);
+		err = mmc_set_extcsd(mmc, EXT_CSD_PSA_ENABLEMENT, value);
+		if (err) {
+			pr_err("Failed to enable PSA mode 0x%02x: %d\n", value, err);
+			goto out;
+		}
+	}
+
+	if (mode != ext_csd[EXT_CSD_PSA]) {
+		printf("Setting EXT_CSD_PSA to 0x%02x\n", mode);
+		err = mmc_set_extcsd(mmc, EXT_CSD_PSA, mode);
+		if (err) {
+			printf("Failed to set PSA mode 0x%02x: %d\n", mode, err);
+			goto out;
+		}
+	}
+	if (!blkcnt)
+		goto out;
+
+	printf("Setting EXT_CSD_PSA_PRE_LOADING_DATA_SIZE to " LBAF "\n", blkcnt);
+	for (i = 0; i < sizeof(u32); i++) {
+		err = mmc_set_extcsd(mmc, EXT_CSD_PSA_PRE_LOADING_DATA_SIZE + i,
+				     (u8)(blkcnt >> (i * 8)));
+		if (err) {
+			pr_err("Failed to set PSA_PRE_LOADING_DATA_SIZE[%u]=%02x: %d\n",
+			       i, (u8)(blkcnt >> (i * 8)), err);
+			goto out;
+		}
+	}
+
+out:
+	debug("%s@%d: Restoring gen_cmd6_time to %u\n", __func__, __LINE__,
+	      gen_cmd6_time);
+	mmc->gen_cmd6_time = gen_cmd6_time;
+	return err;
+}
+#endif /* CONFIG_IS_ENABLED(MMC_WRITE) */
 
 #if !CONFIG_IS_ENABLED(DM_MMC)
 int mmc_getcd(struct mmc *mmc)
@@ -2300,8 +2399,7 @@ static int mmc_startup_v4(struct mmc *mmc)
 	 * except for enabling the high-capacity group size
 	 * definition (see below).
 	 */
-	part_completed = !!(ext_csd[EXT_CSD_PARTITION_SETTING] &
-			    EXT_CSD_PARTITION_SETTING_COMPLETED);
+	part_completed = !!(ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED]);
 
 	mmc->part_switch_time = ext_csd[EXT_CSD_PART_SWITCH_TIME];
 	/* Some eMMC set the value too low so set a minimum */

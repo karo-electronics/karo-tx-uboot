@@ -26,8 +26,8 @@ struct bd_info;
 #endif
 
 /* SD/MMC version bits; 8 flags, 8 major, 8 minor, 8 change */
-#define SD_VERSION_SD	(1U << 31)
-#define MMC_VERSION_MMC	(1U << 30)
+#define SD_VERSION_SD		BIT(31)
+#define MMC_VERSION_MMC		BIT(30)
 
 #define MAKE_SDMMC_VERSION(a, b, c)	\
 	((((u32)(a)) << 16) | ((u32)(b) << 8) | (u32)(c))
@@ -63,7 +63,7 @@ struct bd_info;
 #define MMC_VERSION_5_0		MAKE_MMC_VERSION(5, 0, 0)
 #define MMC_VERSION_5_1		MAKE_MMC_VERSION(5, 1, 0)
 
-#define MMC_CAP(mode)		(1 << mode)
+#define MMC_CAP(mode)		BIT(mode)
 #define MMC_MODE_HS		(MMC_CAP(MMC_HS) | MMC_CAP(SD_HS))
 #define MMC_MODE_HS_52MHz	MMC_CAP(MMC_HS_52)
 #define MMC_MODE_DDR_52MHz	MMC_CAP(MMC_DDR_52)
@@ -80,14 +80,13 @@ struct bd_info;
 #define MMC_MODE_1BIT		BIT(28)
 #define MMC_MODE_SPI		BIT(27)
 
+#define SD_DATA_4BIT			BIT(18) // 0x00040000
 
-#define SD_DATA_4BIT	0x00040000
+#define IS_SD(x)			((x)->version & SD_VERSION_SD)
+#define IS_MMC(x)			((x)->version & MMC_VERSION_MMC)
 
-#define IS_SD(x)	((x)->version & SD_VERSION_SD)
-#define IS_MMC(x)	((x)->version & MMC_VERSION_MMC)
-
-#define MMC_DATA_READ		1
-#define MMC_DATA_WRITE		2
+#define MMC_DATA_READ			1
+#define MMC_DATA_WRITE			2
 
 #define MMC_CMD_GO_IDLE_STATE		0
 #define MMC_CMD_SEND_OP_COND		1
@@ -172,10 +171,10 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define MMC_SECURE_TRIM2_ARG	0x80008000
 
 #define MMC_STATUS_MASK		(~0x0206BF7F)
-#define MMC_STATUS_SWITCH_ERROR	(1 << 7)
-#define MMC_STATUS_RDY_FOR_DATA (1 << 8)
+#define MMC_STATUS_SWITCH_ERROR	BIT(7)
+#define MMC_STATUS_RDY_FOR_DATA BIT(8)
 #define MMC_STATUS_CURR_STATE	(0xf << 9)
-#define MMC_STATUS_ERROR	(1 << 19)
+#define MMC_STATUS_ERROR	BIT(19)
 
 #define MMC_STATE_PRG		(7 << 9)
 #define MMC_STATE_TRANS		(4 << 9)
@@ -207,12 +206,176 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 						1 in value field */
 #define MMC_SWITCH_MODE_WRITE_BYTE	0x03 /* Set target byte to value */
 
-#define SD_SWITCH_CHECK		0
-#define SD_SWITCH_SWITCH	1
+#define SD_SWITCH_CHECK			0
+#define SD_SWITCH_SWITCH		1
 
 /*
  * EXT_CSD fields
  */
+#define EXT_CSD_S_CMD_SET		504
+#define EXT_CSD_HPI_FEATURE		503
+#define EXT_CSD_BKOPS_SUPPORT		502	/* RO */
+#define EXT_CSD_SUPPORTED_MODES		493	/* RO */
+#define EXT_CSD_FFU_FEATURES		492	/* RO */
+#define EXT_CSD_FFU_ARG_3		490	/* RO */
+#define EXT_CSD_FFU_ARG_2		489	/* RO */
+#define EXT_CSD_FFU_ARG_1		488	/* RO */
+#define EXT_CSD_FFU_ARG_0		487	/* RO */
+#define EXT_CSD_CMDQ_DEPTH		307	/* RO */
+#define EXT_CSD_CMDQ_SUPPORT		308	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_3	305	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_2	304	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_1	303	/* RO */
+#define EXT_CSD_NUM_OF_FW_SEC_PROG_0	302	/* RO */
+#define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B 269	/* RO */
+#define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A 268	/* RO */
+#define EXT_CSD_PRE_EOL_INFO		267	/* RO */
+#define EXT_CSD_FIRMWARE_VERSION	254	/* RO */
+#define EXT_CSD_CACHE_SIZE_3		252
+#define EXT_CSD_CACHE_SIZE_2		251
+#define EXT_CSD_CACHE_SIZE_1		250
+#define EXT_CSD_CACHE_SIZE_0		249
+#define EXT_CSD_SEC_FEATURE_SUPPORT	231
+#define EXT_CSD_BOOT_INFO		228	/* R/W */
+#define EXT_CSD_HC_ERASE_GRP_SIZE	224
+#define EXT_CSD_HC_WP_GRP_SIZE		221
+#define EXT_CSD_SEC_COUNT_3		215
+#define EXT_CSD_SEC_COUNT_2		214
+#define EXT_CSD_SEC_COUNT_1		213
+#define EXT_CSD_SEC_COUNT_0		212
+#define EXT_CSD_PART_SWITCH_TIME	199
+#define EXT_CSD_REV			192
+#define EXT_CSD_BOOT_CFG		179
+#define EXT_CSD_PART_CONFIG		179
+#define EXT_CSD_BOOT_BUS_CONDITIONS	177
+#define EXT_CSD_ERASE_GROUP_DEF		175
+#define EXT_CSD_BOOT_WP_STATUS		174
+#define EXT_CSD_BOOT_WP			173
+#define EXT_CSD_USER_WP			171
+#define EXT_CSD_FW_CONFIG		169	/* R/W */
+#define EXT_CSD_WR_REL_SET		167
+#define EXT_CSD_WR_REL_PARAM		166
+#define EXT_CSD_SANITIZE_START		165
+#define EXT_CSD_BKOPS_EN		163	/* R/W */
+#define EXT_CSD_RST_N_FUNCTION		162	/* R/W */
+#define EXT_CSD_PARTITIONING_SUPPORT	160	/* RO */
+#define EXT_CSD_MAX_ENH_SIZE_MULT_2	159
+#define EXT_CSD_MAX_ENH_SIZE_MULT_1	158
+#define EXT_CSD_MAX_ENH_SIZE_MULT_0	157
+#define EXT_CSD_PARTITIONS_ATTRIBUTE	156	/* R/W */
+#define EXT_CSD_PARTITION_SETTING_COMPLETED	155	/* R/W */
+#define EXT_CSD_GP_SIZE_MULT_4_2	154
+#define EXT_CSD_GP_SIZE_MULT_4_1	153
+#define EXT_CSD_GP_SIZE_MULT_4_0	152
+#define EXT_CSD_GP_SIZE_MULT_3_2	151
+#define EXT_CSD_GP_SIZE_MULT_3_1	150
+#define EXT_CSD_GP_SIZE_MULT_3_0	149
+#define EXT_CSD_GP_SIZE_MULT_2_2	148
+#define EXT_CSD_GP_SIZE_MULT_2_1	147
+#define EXT_CSD_GP_SIZE_MULT_2_0	146
+#define EXT_CSD_GP_SIZE_MULT_1_2	145
+#define EXT_CSD_GP_SIZE_MULT_1_1	144
+#define EXT_CSD_GP_SIZE_MULT_1_0	143
+#define EXT_CSD_ENH_SIZE_MULT_2		142
+#define EXT_CSD_ENH_SIZE_MULT_1		141
+#define EXT_CSD_ENH_SIZE_MULT_0		140
+#define EXT_CSD_ENH_START_ADDR_3	139
+#define EXT_CSD_ENH_START_ADDR_2	138
+#define EXT_CSD_ENH_START_ADDR_1	137
+#define EXT_CSD_ENH_START_ADDR_0	136
+#define EXT_CSD_NATIVE_SECTOR_SIZE	63 /* R */
+#define EXT_CSD_USE_NATIVE_SECTOR	62 /* R/W */
+#define EXT_CSD_DATA_SECTOR_SIZE	61 /* R */
+#define EXT_CSD_EXT_PARTITIONS_ATTRIBUTE_1 53
+#define EXT_CSD_EXT_PARTITIONS_ATTRIBUTE_0 52
+#define EXT_CSD_CACHE_CTRL		33
+#define EXT_CSD_MODE_CONFIG		30
+#define EXT_CSD_MODE_OPERATION_CODES	29	/* W */
+#define EXT_CSD_FFU_STATUS		26	/* R */
+#define EXT_CSD_SECURE_REMOVAL_TYPE	16	/* R/W */
+#define EXT_CSD_CMDQ_MODE_EN		15	/* R/W */
+
+/*
+ * WR_REL_PARAM field definitions
+ */
+#define HS_CTRL_REL			BIT(0)
+#define EN_REL_WR			BIT(2)
+
+/*
+ * BKOPS_EN field definitions
+ */
+#define BKOPS_MAN_ENABLE		BIT(0)
+#define BKOPS_AUTO_ENABLE		BIT(1)
+
+/*
+ * EXT_CSD field definitions
+ */
+#define EXT_CSD_CONFIG_SECRM_TYPE	0x30
+#define EXT_CSD_SUPPORTED_SECRM_TYPE	0x0f
+#define EXT_CSD_FFU_INSTALL		0x01
+#define EXT_CSD_FFU_MODE		0x01
+#define EXT_CSD_NORMAL_MODE		0x00
+#define EXT_CSD_FFU			BIT(0)
+#define EXT_CSD_UPDATE_DISABLE		BIT(0)
+#define EXT_CSD_HPI_SUPP		BIT(0)
+#define EXT_CSD_HPI_IMPL		BIT(1)
+#define EXT_CSD_CMD_SET_NORMAL		BIT(0)
+/*
+ * NOTE: The eMMC spec calls the partitions "Area 1" and "Area 2", but Linux
+ * calls them mmcblk0boot0 and mmcblk0boot1. To avoid confustion between the two
+ * numbering schemes, this tool uses 0 and 1 throughout.
+ */
+#define EXT_CSD_BOOT_WP_S_AREA_1_PERM	0x08
+#define EXT_CSD_BOOT_WP_S_AREA_1_PWR	0x04
+#define EXT_CSD_BOOT_WP_S_AREA_0_PERM	0x02
+#define EXT_CSD_BOOT_WP_S_AREA_0_PWR	0x01
+#define EXT_CSD_BOOT_WP_B_SEC_WP_SEL	0x80
+#define EXT_CSD_BOOT_WP_B_PWR_WP_DIS	0x40
+#define EXT_CSD_BOOT_WP_B_PERM_WP_DIS	0x10
+#define EXT_CSD_BOOT_WP_B_PERM_WP_SEC_SEL 0x08
+#define EXT_CSD_BOOT_WP_B_PERM_WP_EN	0x04
+#define EXT_CSD_BOOT_WP_B_PWR_WP_SEC_SEL 0x02
+#define EXT_CSD_BOOT_WP_B_PWR_WP_EN	0x01
+#define EXT_CSD_BOOT_INFO_HS_MODE	BIT(2)
+#define EXT_CSD_BOOT_INFO_DDR_DDR	BIT(1)
+#define EXT_CSD_BOOT_INFO_ALT		BIT(0)
+#define EXT_CSD_BOOT_CFG_ACK		BIT(6)
+#define EXT_CSD_BOOT_CFG_EN		0x38
+#define EXT_CSD_BOOT_CFG_ACC		0x07
+#define EXT_CSD_RST_N_EN_MASK		0x03
+#define EXT_CSD_HW_RESET_EN		0x01
+#define EXT_CSD_HW_RESET_DIS		0x02
+#define EXT_CSD_PART_CONFIG_ACC_MASK	0x7
+#define EXT_CSD_PART_CONFIG_ACC_NONE	0x0
+#define EXT_CSD_PART_CONFIG_ACC_BOOT0	0x1
+#define EXT_CSD_PART_CONFIG_ACC_BOOT1	0x2
+#define EXT_CSD_PART_CONFIG_ACC_USER_AREA 0x7
+#define EXT_CSD_PART_CONFIG_ACC_ACK	0x40
+#define EXT_CSD_PARTITIONING_EN		BIT(0)
+#define EXT_CSD_ENH_ATTRIBUTE_EN	BIT(1)
+#define EXT_CSD_ENH_4			BIT(4)
+#define EXT_CSD_ENH_3			BIT(3)
+#define EXT_CSD_ENH_2			BIT(2)
+#define EXT_CSD_ENH_1			BIT(1)
+#define EXT_CSD_ENH_USR			BIT(0)
+#define EXT_CSD_REV_V5_1		8
+#define EXT_CSD_REV_V5_0		7
+#define EXT_CSD_REV_V4_5		6
+#define EXT_CSD_REV_V4_4_1		5
+#define EXT_CSD_REV_V4_3		3
+#define EXT_CSD_REV_V4_2		2
+#define EXT_CSD_REV_V4_1		1
+#define EXT_CSD_REV_V4_0		0
+#define EXT_CSD_SEC_GB_CL_EN		BIT(4)
+#define EXT_CSD_SEC_ER_EN		BIT(0)
+/*
+ * EXT_CSD fields
+ */
+#define EXT_CSD_PSA_ENABLEMENT			17
+#define EXT_CSD_PSA_MAX_PRE_LOADING_DATA_SIZE	18
+#define EXT_CSD_PSA_PRE_LOADING_DATA_SIZE	22
+
+#define EXT_CSD_PSA			133	/* R/W/E */
 #define EXT_CSD_ENH_START_ADDR		136	/* R/W */
 #define EXT_CSD_ENH_SIZE_MULT		140	/* R/W */
 #define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
@@ -238,24 +401,24 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_CARD_TYPE		196	/* RO */
 #define EXT_CSD_PART_SWITCH_TIME	199	/* RO */
 #define EXT_CSD_SEC_CNT			212	/* RO, 4 bytes */
+#define EXT_CSD_PSA_TIMEOUT		218	/* RO */
 #define EXT_CSD_HC_WP_GRP_SIZE		221	/* RO */
 #define EXT_CSD_HC_ERASE_GRP_SIZE	224	/* RO */
 #define EXT_CSD_BOOT_MULT		226	/* RO */
 #define EXT_CSD_GENERIC_CMD6_TIME       248     /* RO */
 #define EXT_CSD_BKOPS_SUPPORT		502	/* RO */
-
 /*
  * EXT_CSD field definitions
  */
 
-#define EXT_CSD_CMD_SET_NORMAL		(1 << 0)
-#define EXT_CSD_CMD_SET_SECURE		(1 << 1)
-#define EXT_CSD_CMD_SET_CPSECURE	(1 << 2)
+#define EXT_CSD_CMD_SET_NORMAL		BIT(0)
+#define EXT_CSD_CMD_SET_SECURE		BIT(1)
+#define EXT_CSD_CMD_SET_CPSECURE	BIT(2)
 
-#define EXT_CSD_CARD_TYPE_26	(1 << 0)	/* Card can run at 26MHz */
-#define EXT_CSD_CARD_TYPE_52	(1 << 1)	/* Card can run at 52MHz */
-#define EXT_CSD_CARD_TYPE_DDR_1_8V	(1 << 2)
-#define EXT_CSD_CARD_TYPE_DDR_1_2V	(1 << 3)
+#define EXT_CSD_CARD_TYPE_26		BIT(0)	/* Card can run at 26MHz */
+#define EXT_CSD_CARD_TYPE_52		BIT(1)	/* Card can run at 52MHz */
+#define EXT_CSD_CARD_TYPE_DDR_1_8V	BIT(2)
+#define EXT_CSD_CARD_TYPE_DDR_1_2V	BIT(3)
 #define EXT_CSD_CARD_TYPE_DDR_52	(EXT_CSD_CARD_TYPE_DDR_1_8V \
 					| EXT_CSD_CARD_TYPE_DDR_1_2V)
 
@@ -270,28 +433,28 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V | \
 					 EXT_CSD_CARD_TYPE_HS400_1_2V)
 
-#define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
-#define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
-#define EXT_CSD_BUS_WIDTH_8	2	/* Card is in 8 bit mode */
-#define EXT_CSD_DDR_BUS_WIDTH_4	5	/* Card is in 4 bit DDR mode */
-#define EXT_CSD_DDR_BUS_WIDTH_8	6	/* Card is in 8 bit DDR mode */
-#define EXT_CSD_DDR_FLAG	BIT(2)	/* Flag for DDR mode */
-#define EXT_CSD_BUS_WIDTH_STROBE BIT(7)	/* Enhanced strobe mode */
+#define EXT_CSD_BUS_WIDTH_1		0	/* Card is in 1 bit mode */
+#define EXT_CSD_BUS_WIDTH_4		1	/* Card is in 4 bit mode */
+#define EXT_CSD_BUS_WIDTH_8		2	/* Card is in 8 bit mode */
+#define EXT_CSD_DDR_BUS_WIDTH_4		5	/* Card is in 4 bit DDR mode */
+#define EXT_CSD_DDR_BUS_WIDTH_8		6	/* Card is in 8 bit DDR mode */
+#define EXT_CSD_DDR_FLAG		BIT(2)	/* Flag for DDR mode */
+#define EXT_CSD_BUS_WIDTH_STROBE	BIT(7)	/* Enhanced strobe mode */
 
-#define EXT_CSD_TIMING_LEGACY	0	/* no high speed */
-#define EXT_CSD_TIMING_HS	1	/* HS */
-#define EXT_CSD_TIMING_HS200	2	/* HS200 */
-#define EXT_CSD_TIMING_HS400	3	/* HS400 */
-#define EXT_CSD_DRV_STR_SHIFT	4	/* Driver Strength shift */
+#define EXT_CSD_TIMING_LEGACY		0	/* no high speed */
+#define EXT_CSD_TIMING_HS		1	/* HS */
+#define EXT_CSD_TIMING_HS200		2	/* HS200 */
+#define EXT_CSD_TIMING_HS400		3	/* HS400 */
+#define EXT_CSD_DRV_STR_SHIFT		4	/* Driver Strength shift */
 
-#define EXT_CSD_BOOT_ACK_ENABLE			(1 << 6)
-#define EXT_CSD_BOOT_PARTITION_ENABLE		(1 << 3)
-#define EXT_CSD_PARTITION_ACCESS_ENABLE		(1 << 0)
+#define EXT_CSD_BOOT_ACK_ENABLE			BIT(6)
+#define EXT_CSD_BOOT_PARTITION_ENABLE		BIT(3)
+#define EXT_CSD_PARTITION_ACCESS_ENABLE		BIT(0)
 #define EXT_CSD_PARTITION_ACCESS_DISABLE	(0 << 0)
 
-#define EXT_CSD_BOOT_ACK(x)		(x << 6)
-#define EXT_CSD_BOOT_PART_NUM(x)	(x << 3)
-#define EXT_CSD_PARTITION_ACCESS(x)	(x << 0)
+#define EXT_CSD_BOOT_ACK(x)			((x) << 6)
+#define EXT_CSD_BOOT_PART_NUM(x)		((x) << 3)
+#define EXT_CSD_PARTITION_ACCESS(x)		((x) << 0)
 
 #define EXT_CSD_EXTRACT_BOOT_ACK(x)		(((x) >> 6) & 0x1)
 #define EXT_CSD_EXTRACT_BOOT_PART(x)		(((x) >> 3) & 0x7)
@@ -301,26 +464,37 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define EXT_CSD_BOOT_BUS_WIDTH_RESET(x)	(x << 2)
 #define EXT_CSD_BOOT_BUS_WIDTH_WIDTH(x)	(x)
 
-#define EXT_CSD_PARTITION_SETTING_COMPLETED	(1 << 0)
+//#define EXT_CSD_PARTITION_SETTING_COMPLETED	BIT(0)
 
-#define EXT_CSD_ENH_USR		(1 << 0)	/* user data area is enhanced */
-#define EXT_CSD_ENH_GP(x)	(1 << ((x)+1))	/* GP part (x+1) is enhanced */
+#define EXT_CSD_ENH_USR		BIT(0)	/* user data area is enhanced */
+#define EXT_CSD_ENH_GP(x)	BIT(((x) + 1))	/* GP part (x+1) is enhanced */
 
-#define EXT_CSD_HS_CTRL_REL	(1 << 0)	/* host controlled WR_REL_SET */
+#define EXT_CSD_HS_CTRL_REL	BIT(0)	/* host controlled WR_REL_SET */
 
-#define EXT_CSD_WR_DATA_REL_USR		(1 << 0)	/* user data area WR_REL */
-#define EXT_CSD_WR_DATA_REL_GP(x)	(1 << ((x)+1))	/* GP part (x+1) WR_REL */
+#define EXT_CSD_WR_DATA_REL_USR		BIT(0)	/* user data area WR_REL */
+#define EXT_CSD_WR_DATA_REL_GP(x)	BIT(((x) + 1))	/* GP part (x+1) WR_REL */
 
-#define R1_ILLEGAL_COMMAND		(1 << 22)
-#define R1_APP_CMD			(1 << 5)
+/*
+ * PRODUCTION STATE AWARENESS fields
+ */
+#define EXT_CSD_PSA_ENABLEMENT_AUTO		(3 << 4)
+#define EXT_CSD_PSA_ENABLEMENT_MANU		BIT(4)
 
-#define MMC_RSP_PRESENT (1 << 0)
-#define MMC_RSP_136	(1 << 1)		/* 136 bit response */
-#define MMC_RSP_CRC	(1 << 2)		/* expect valid crc */
-#define MMC_RSP_BUSY	(1 << 3)		/* card may send busy */
-#define MMC_RSP_OPCODE	(1 << 4)		/* response contains opcode */
+#define EXT_CSD_PSA_NORMAL			0
+#define EXT_CSD_PSA_PRE_SOLDERING_WRITES	1
+#define EXT_CSD_PSA_PRE_SOLDERING_POST_WRITES	2
+#define EXT_CSD_PSA_AUTO_PRE_SOLDERING		3
 
-#define MMC_RSP_NONE	(0)
+#define R1_ILLEGAL_COMMAND			BIT(22)
+#define R1_APP_CMD				BIT(5)
+
+#define MMC_RSP_PRESENT				BIT(0)
+#define MMC_RSP_136				BIT(1)		/* 136 bit response */
+#define MMC_RSP_CRC				BIT(2)		/* expect valid crc */
+#define MMC_RSP_BUSY				BIT(3)		/* card may send busy */
+#define MMC_RSP_OPCODE				BIT(4)		/* response contains opcode */
+
+#define MMC_RSP_NONE	0
 #define MMC_RSP_R1	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 #define MMC_RSP_R1b	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE| \
 			MMC_RSP_BUSY)
@@ -331,17 +505,17 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
 #define MMC_RSP_R6	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 #define MMC_RSP_R7	(MMC_RSP_PRESENT|MMC_RSP_CRC|MMC_RSP_OPCODE)
 
-#define MMCPART_NOAVAILABLE	(0xff)
-#define PART_ACCESS_MASK	(0x7)
-#define PART_SUPPORT		(0x1)
-#define ENHNCD_SUPPORT		(0x2)
-#define PART_ENH_ATTRIB		(0x1f)
+#define MMCPART_NOAVAILABLE	0xff
+#define PART_ACCESS_MASK	0x7
+#define PART_SUPPORT		0x1
+#define ENHNCD_SUPPORT		0x2
+#define PART_ENH_ATTRIB		0x1f
 
 #define MMC_QUIRK_RETRY_SEND_CID	BIT(0)
 #define MMC_QUIRK_RETRY_SET_BLOCKLEN	BIT(1)
-#define MMC_QUIRK_RETRY_APP_CMD	BIT(2)
+#define MMC_QUIRK_RETRY_APP_CMD		BIT(2)
 
-#define BOOT1_PWR_WP   (0x83)
+#define BOOT1_PWR_WP		0x83
 
 enum mmc_voltage {
 	MMC_SIGNAL_VOLTAGE_000 = 0,
@@ -361,7 +535,7 @@ enum mmc_voltage {
  * boot partitions (2), general purpose partitions (4) in MMC v4.4.
  */
 #define MMC_NUM_BOOT_PARTITION	2
-#define MMC_PART_RPMB           3       /* RPMB partition number */
+#define MMC_PART_RPMB		3	/* RPMB partition number */
 
 /* timing specification used */
 #define MMC_TIMING_LEGACY	0
@@ -863,6 +1037,12 @@ int mmc_set_part_conf(struct mmc *mmc, u8 ack, u8 part_num, u8 access);
 int mmc_set_boot_bus_width(struct mmc *mmc, u8 width, u8 reset, u8 mode);
 /* Function to modify the RST_n_FUNCTION field of EXT_CSD */
 int mmc_set_rst_n_function(struct mmc *mmc, u8 enable);
+/* Function to enable Production State Awareness mode */
+//int mmc_set_psa(struct mmc *mmc, u8 index, u8 value, lbaint_t blkcnt);
+int mmc_set_psa(struct mmc *mmc, u8 mode, lbaint_t blkcnt);
+/* Function to set extcsd values */
+int mmc_set_extcsd(struct mmc *mmc, u8 index, u8 value);
+
 /* Functions to read / write the RPMB partition */
 /* Sizes of RPMB data frame */
 #define RPMB_SZ_STUFF		196

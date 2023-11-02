@@ -25,14 +25,14 @@ static void print_mmcinfo(struct mmc *mmc)
 	if (IS_SD(mmc)) {
 		printf("OEM: %x\n", (mmc->cid[0] >> 8) & 0xffff);
 		printf("Name: %c%c%c%c%c \n", mmc->cid[0] & 0xff,
-		(mmc->cid[1] >> 24), (mmc->cid[1] >> 16) & 0xff,
-		(mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff);
+		       (mmc->cid[1] >> 24), (mmc->cid[1] >> 16) & 0xff,
+		       (mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff);
 	} else {
 		printf("OEM: %x\n", (mmc->cid[0] >> 8) & 0xff);
 		printf("Name: %c%c%c%c%c%c \n", mmc->cid[0] & 0xff,
-		(mmc->cid[1] >> 24), (mmc->cid[1] >> 16) & 0xff,
-		(mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff,
-		(mmc->cid[2] >> 24));
+		       (mmc->cid[1] >> 24), (mmc->cid[1] >> 16) & 0xff,
+		       (mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff,
+		       (mmc->cid[2] >> 24));
 	}
 
 	printf("Bus Speed: %d\n", mmc->clock);
@@ -44,8 +44,8 @@ static void print_mmcinfo(struct mmc *mmc)
 	printf("Rd Block Len: %d\n", mmc->read_bl_len);
 
 	printf("%s version %d.%d", IS_SD(mmc) ? "SD" : "MMC",
-			EXTRACT_SDMMC_MAJOR_VERSION(mmc->version),
-			EXTRACT_SDMMC_MINOR_VERSION(mmc->version));
+	       EXTRACT_SDMMC_MAJOR_VERSION(mmc->version),
+	       EXTRACT_SDMMC_MINOR_VERSION(mmc->version));
 	if (EXTRACT_SDMMC_CHANGE_VERSION(mmc->version) != 0)
 		printf(".%d", EXTRACT_SDMMC_CHANGE_VERSION(mmc->version));
 	printf("\n");
@@ -55,7 +55,7 @@ static void print_mmcinfo(struct mmc *mmc)
 	print_size(mmc->capacity, "\n");
 
 	printf("Bus Width: %d-bit%s\n", mmc->bus_width,
-			mmc->ddr_mode ? " DDR" : "");
+	       mmc->ddr_mode ? " DDR" : "");
 
 #if CONFIG_IS_ENABLED(MMC_WRITE)
 	puts("Erase Group Size: ");
@@ -105,8 +105,11 @@ static void print_mmcinfo(struct mmc *mmc)
 			}
 		}
 		ret = mmc_send_ext_csd(mmc, ext_csd);
-		if (ret)
+		if (ret) {
+			pr_err("Failed to read EXT_CSD: %d\n", ret);
 			return;
+		}
+
 		wp = ext_csd[EXT_CSD_BOOT_WP_STATUS];
 		for (i = 0; i < 2; ++i) {
 			printf("Boot area %d is ", i);
@@ -189,9 +192,7 @@ static int do_mmcinfo(struct cmd_tbl *cmdtp, int flag, int argc,
 #if CONFIG_IS_ENABLED(CMD_MMC_RPMB)
 static int confirm_key_prog(void)
 {
-	puts("Warning: Programming authentication key can be done only once !\n"
-	     "         Use this command only if you are sure of what you are doing,\n"
-	     "Really perform the key programming? <y/N> ");
+	puts("Warning: Programming authentication key can be done only once !\n         Use this command only if you are sure of what you are doing,\nReally perform the key programming? <y/N> ");
 	if (confirm_yesno())
 		return 1;
 
@@ -440,15 +441,24 @@ static int do_mmc_write(struct cmd_tbl *cmdtp, int flag,
 			int argc, char *const argv[])
 {
 	struct mmc *mmc;
-	u32 blk, cnt, n;
+	u32 blk, cnt, n = 0;
 	void *addr;
+	int psa_mode = 0;
+	int ret;
 
-	if (argc != 4)
+	if (argc < 4 || argc > 5)
 		return CMD_RET_USAGE;
 
-	addr = (void *)hextoul(argv[1], NULL);
-	blk = hextoul(argv[2], NULL);
-	cnt = hextoul(argv[3], NULL);
+	if (argc == 5) {
+		if (strncmp(argv[1], "-psa", strlen("-psa")))
+			return CMD_RET_USAGE;
+		n++;
+		psa_mode = strcmp(argv[1], "-psa.auto") == 0 ?
+			EXT_CSD_PSA_AUTO_PRE_SOLDERING : EXT_CSD_PSA_PRE_SOLDERING_WRITES;
+	}
+	addr = (void *)hextoul(argv[n + 1], NULL);
+	blk = hextoul(argv[n + 2], NULL);
+	cnt = hextoul(argv[n + 3], NULL);
 
 	mmc = init_mmc_device(curr_device, false);
 	if (!mmc)
@@ -461,9 +471,55 @@ static int do_mmc_write(struct cmd_tbl *cmdtp, int flag,
 		printf("Error: card is write protected!\n");
 		return CMD_RET_FAILURE;
 	}
-	n = blk_dwrite(mmc_get_blk_desc(mmc), blk, cnt, addr);
+
+	struct blk_desc *blk_desc = mmc_get_blk_desc(mmc);
+	unsigned long blksz;
+
+	if (!blk_desc) {
+		pr_err("Failed to get blk_desc for mmc dev\n");
+		return CMD_RET_FAILURE;
+	}
+	if (psa_mode) {
+		cnt /= 8;
+		blksz = blk_desc->blksz;
+		blk_desc->blksz = 4096;
+		ret = mmc_set_psa(mmc, psa_mode, cnt);
+		if (ret) {
+			pr_err("Failed to set PSA_PRESOLDERING: %d\n", ret);
+			ret = mmc_set_extcsd(mmc, EXT_CSD_PSA_ENABLEMENT, 0);
+			if (ret)
+				printf("Failed to reset PSA_ENABLEMENT}: %d\n", ret);
+			ret = mmc_set_extcsd(mmc, EXT_CSD_PSA, EXT_CSD_PSA_NORMAL);
+			if (ret)
+				printf("Failed to reset PSA_MODE}: %d\n", ret);
+			return CMD_RET_FAILURE;
+		}
+	}
+	n = blk_dwrite(blk_desc, blk, cnt, addr);
 	printf("%d blocks written: %s\n", n, (n == cnt) ? "OK" : "ERROR");
 
+	if (psa_mode)
+		blk_desc->blksz = blksz;
+
+	if (psa_mode && n == cnt) {
+		if (psa_mode == EXT_CSD_PSA_AUTO_PRE_SOLDERING) {
+			ALLOC_CACHE_ALIGN_BUFFER(u8, ext_csd, MMC_MAX_BLOCK_LEN);
+
+			ret = mmc_send_ext_csd(mmc, ext_csd);
+			if (ret) {
+				pr_err("Failed to read EXT_CSD: %d\n", ret);
+				return CMD_RET_FAILURE;
+			}
+			if (ext_csd[EXT_CSD_PSA] != EXT_CSD_PSA_NORMAL) {
+				pr_err("EXT_CSD_PSA[%u] not reset to NORMAL after writing %u blocks\n",
+				       ext_csd[EXT_CSD_PSA], cnt);
+			}
+		} else {
+			ret = mmc_set_psa(mmc, EXT_CSD_PSA_PRE_SOLDERING_POST_WRITES, 0);
+			if (ret)
+				pr_err("Failed to set PSA_PRESOLDERING_POST_WRITES: %d\n", ret);
+		}
+	}
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
 
@@ -617,8 +673,8 @@ static void parse_hwpart_user_enh_size(struct mmc *mmc,
 		/* The enh_size value is in 512B block units */
 		pconf->user.enh_size =
 			((ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT + 2] << 16) +
-			(ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT + 1] << 8) +
-			ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT]) * 1024 *
+			 (ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT + 1] << 8) +
+			 ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT]) * 1024 *
 			ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] *
 			ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
 		pconf->user.enh_size -= pconf->user.enh_start;
@@ -790,8 +846,7 @@ static int do_mmc_hwpartition(struct cmd_tbl *cmdtp, int flag,
 
 	if (!mmc_hwpart_config(mmc, &pconf, mode)) {
 		if (mode == MMC_HWPART_CONF_COMPLETE)
-			puts("Partitioning successful, "
-			     "power-cycle to make effective\n");
+			puts("Partitioning successful, power-cycle to make effective\n");
 		return CMD_RET_SUCCESS;
 	} else {
 		puts("Failed!\n");
@@ -861,7 +916,7 @@ static int do_mmc_bootbus(struct cmd_tbl *cmdtp, int flag,
 	}
 
 	printf("Set to BOOT_BUS_WIDTH = 0x%x, RESET = 0x%x, BOOT_MODE = 0x%x\n",
-			width, reset, mode);
+	       width, reset, mode);
 	return CMD_RET_SUCCESS;
 }
 
@@ -910,13 +965,11 @@ static int mmc_partconf_print(struct mmc *mmc, const char *varname)
 	ack = EXT_CSD_EXTRACT_BOOT_ACK(mmc->part_config);
 	part = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
 
-	if(varname)
+	if (varname)
 		env_set_hex(varname, part);
 
-	printf("EXT_CSD[179], PARTITION_CONFIG:\n"
-		"BOOT_ACK: 0x%x\n"
-		"BOOT_PARTITION_ENABLE: 0x%x\n"
-		"PARTITION_ACCESS: 0x%x\n", ack, part, access);
+	printf("EXT_CSD[179], PARTITION_CONFIG:\nBOOT_ACK: 0x%x\nBOOT_PARTITION_ENABLE: 0x%x\nPARTITION_ACCESS: 0x%x\n",
+	       ack, part, access);
 
 	return CMD_RET_SUCCESS;
 }
@@ -988,6 +1041,631 @@ static int do_mmc_rst_func(struct cmd_tbl *cmdtp, int flag,
 	return mmc_set_rst_n_function(mmc, enable);
 }
 #endif
+
+static inline unsigned int get_extcsd_val32(u8 *ext_csd, int index)
+{
+	return (ext_csd[index + 3] << 24) |
+		(ext_csd[index + 2] << 16) |
+		(ext_csd[index + 1] << 8)  |
+		ext_csd[index];
+}
+
+static inline unsigned int get_sector_count(u8 *ext_csd)
+{
+	return get_extcsd_val32(ext_csd, EXT_CSD_SEC_COUNT_0);
+}
+
+static inline int is_blockaddresed(u8 *ext_csd)
+{
+	unsigned int sectors = get_sector_count(ext_csd);
+
+	/* over 2GiB devices are block-addressed */
+	return (sectors > (2u * 1024 * 1024 * 1024) / 512);
+}
+
+static void print_writeprotect_boot_status(u8 *ext_csd)
+{
+	u8 reg;
+	u8 ext_csd_rev = ext_csd[EXT_CSD_REV];
+
+	/* A43: reserved [174:0] */
+	if (ext_csd_rev >= 5) {
+		printf("Boot write protection status registers [BOOT_WP_STATUS]: 0x%02x\n", ext_csd[174]);
+
+		reg = ext_csd[EXT_CSD_BOOT_WP];
+		printf("Boot Area Write protection [BOOT_WP]: 0x%02x\n", reg);
+		printf(" Power ro locking: ");
+		if (reg & EXT_CSD_BOOT_WP_B_PWR_WP_DIS)
+			printf("not possible\n");
+		else
+			printf("possible\n");
+
+		printf(" Permanent ro locking: ");
+		if (reg & EXT_CSD_BOOT_WP_B_PERM_WP_DIS)
+			printf("not possible\n");
+		else
+			printf("possible\n");
+
+		reg = ext_csd[EXT_CSD_BOOT_WP_STATUS];
+		printf(" partition 0 ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_S_AREA_0_PERM)
+			printf("locked permanently\n");
+		else if (reg & EXT_CSD_BOOT_WP_S_AREA_0_PWR)
+			printf("locked until next power on\n");
+		else
+			printf("not locked\n");
+		printf(" partition 1 ro lock status: ");
+		if (reg & EXT_CSD_BOOT_WP_S_AREA_1_PERM)
+			printf("locked permanently\n");
+		else if (reg & EXT_CSD_BOOT_WP_S_AREA_1_PWR)
+			printf("locked until next power on\n");
+		else
+			printf("not locked\n");
+	}
+}
+
+void mmc_extcsd_print(u8 *ext_csd)
+{
+	u8 ext_csd_rev;
+	u8 reg;
+	u32 regl;
+	const char *str;
+
+	ext_csd_rev = ext_csd[EXT_CSD_REV];
+
+	switch (ext_csd_rev) {
+	case 8:
+		str = "5.1";
+		break;
+	case 7:
+		str = "5.0";
+		break;
+	case 6:
+		str = "4.5";
+		break;
+	case 5:
+		str = "4.41";
+		break;
+	case 3:
+		str = "4.3";
+		break;
+	case 2:
+		str = "4.2";
+		break;
+	case 1:
+		str = "4.1";
+		break;
+	case 0:
+		str = "4.0";
+		break;
+	default:
+		return;
+	}
+	printf("=============================================\n");
+	printf("  Extended CSD rev 1.%d (MMC %s)\n", ext_csd_rev, str);
+	printf("=============================================\n\n");
+
+	if (ext_csd_rev < 3)
+		return;
+
+	/* Parse the Extended CSD registers.
+	 * Reserved bit should be read as "0" in case of spec older
+	 * than A441.
+	 */
+	reg = ext_csd[EXT_CSD_S_CMD_SET];
+	printf("Card Supported Command sets [S_CMD_SET: 0x%02x]\n", reg);
+	if (!reg)
+		printf(" - Standard MMC command sets\n");
+
+	reg = ext_csd[EXT_CSD_HPI_FEATURE];
+	printf("HPI Features [HPI_FEATURE: 0x%02x]: ", reg);
+	if (reg & EXT_CSD_HPI_SUPP) {
+		if (reg & EXT_CSD_HPI_IMPL)
+			printf("implementation based on CMD12\n");
+		else
+			printf("implementation based on CMD13\n");
+	}
+
+	printf("Background operations support [BKOPS_SUPPORT: 0x%02x]\n",
+	       ext_csd[502]);
+
+	if (ext_csd_rev >= 6) {
+		printf("Max Packet Read Cmd [MAX_PACKED_READS: 0x%02x]\n",
+		       ext_csd[501]);
+		printf("Max Packet Write Cmd [MAX_PACKED_WRITES: 0x%02x]\n",
+		       ext_csd[500]);
+		printf("Data TAG support [DATA_TAG_SUPPORT: 0x%02x]\n",
+		       ext_csd[499]);
+
+		printf("Data TAG Unit Size [TAG_UNIT_SIZE: 0x%02x]\n",
+		       ext_csd[498]);
+		printf("Tag Resources Size [TAG_RES_SIZE: 0x%02x]\n",
+		       ext_csd[497]);
+		printf("Context Management Capabilities [CONTEXT_CAPABILITIES: 0x%02x]\n", ext_csd[496]);
+		printf("Large Unit Size [LARGE_UNIT_SIZE_M1: 0x%02x]\n",
+		       ext_csd[495]);
+		printf("Extended partition attribute support [EXT_SUPPORT: 0x%02x]\n", ext_csd[494]);
+		printf("Generic CMD6 Timer [GENERIC_CMD6_TIME: 0x%02x]\n",
+		       ext_csd[248]);
+		printf("Power off notification [POWER_OFF_LONG_TIME: 0x%02x]\n",
+		       ext_csd[247]);
+		printf("Cache Size [CACHE_SIZE] is %d KiB\n",
+		       (ext_csd[249] << 0 | (ext_csd[250] << 8) |
+			(ext_csd[251] << 16) | (ext_csd[252] << 24)) / 8);
+	}
+
+	/* A441: Reserved [501:247]
+	   A43: reserved [246:229] */
+	if (ext_csd_rev >= 5) {
+		printf("Background operations status [BKOPS_STATUS: 0x%02x]\n", ext_csd[246]);
+
+		/* CORRECTLY_PRG_SECTORS_NUM [245:242] TODO */
+
+		printf("1st Initialisation Time after programmed sector [INI_TIMEOUT_AP: 0x%02x]\n", ext_csd[241]);
+
+		/* A441: reserved [240] */
+		printf("Power class for 52MHz, DDR at 3.6V [PWR_CL_DDR_52_360: 0x%02x]\n", ext_csd[239]);
+		printf("Power class for 52MHz, DDR at 1.95V [PWR_CL_DDR_52_195: 0x%02x]\n", ext_csd[238]);
+
+		/* A441: reserved [237-236] */
+
+		if (ext_csd_rev >= 6) {
+			printf("Power class for 200MHz at 3.6V [PWR_CL_200_360: 0x%02x]\n", ext_csd[237]);
+			printf("Power class for 200MHz, at 1.95V [PWR_CL_200_195: 0x%02x]\n", ext_csd[236]);
+		}
+		printf("Minimum Performance for 8bit at 52MHz in DDR mode:\n");
+		printf(" [MIN_PERF_DDR_W_8_52: 0x%02x]\n", ext_csd[235]);
+		printf(" [MIN_PERF_DDR_R_8_52: 0x%02x]\n", ext_csd[234]);
+		/* A441: reserved [233] */
+		printf("TRIM Multiplier [TRIM_MULT: 0x%02x]\n", ext_csd[232]);
+		printf("Secure Feature support [SEC_FEATURE_SUPPORT: 0x%02x]\n",
+		       ext_csd[231]);
+	}
+	if (ext_csd_rev == 5) { /* Obsolete in 4.5 */
+		printf("Secure Erase Multiplier [SEC_ERASE_MULT: 0x%02x]\n",
+		       ext_csd[230]);
+		printf("Secure TRIM Multiplier [SEC_TRIM_MULT: 0x%02x]\n",
+		       ext_csd[229]);
+	}
+	reg = ext_csd[EXT_CSD_BOOT_INFO];
+	printf("Boot Information [BOOT_INFO: 0x%02x]\n", reg);
+	if (reg & EXT_CSD_BOOT_INFO_ALT)
+		printf(" Device supports alternative boot method\n");
+	if (reg & EXT_CSD_BOOT_INFO_DDR_DDR)
+		printf(" Device supports dual data rate during boot\n");
+	if (reg & EXT_CSD_BOOT_INFO_HS_MODE)
+		printf(" Device supports high speed timing during boot\n");
+
+	/* A441/A43: reserved [227] */
+	printf("Boot partition size [BOOT_SIZE_MULTI: 0x%02x]\n", ext_csd[226]);
+	printf("Access size [ACC_SIZE: 0x%02x]\n", ext_csd[225]);
+
+	reg = ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE];
+	printf("High-capacity erase unit size [HC_ERASE_GRP_SIZE: 0x%02x]\n",
+	       reg);
+	printf(" i.e. %u KiB\n", 512 * reg);
+
+	printf("High-capacity erase timeout [ERASE_TIMEOUT_MULT: 0x%02x]\n",
+	       ext_csd[223]);
+	printf("Reliable write sector count [REL_WR_SEC_C: 0x%02x]\n",
+	       ext_csd[222]);
+
+	reg = ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
+	printf("High-capacity W protect group size [HC_WP_GRP_SIZE: 0x%02x]\n",
+	       reg);
+	printf(" i.e. %lu KiB\n", 512l * ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] * reg);
+
+	printf("Sleep current (VCC) [S_C_VCC: 0x%02x]\n", ext_csd[220]);
+	printf("Sleep current (VCCQ) [S_C_VCCQ: 0x%02x]\n", ext_csd[219]);
+	/* A441/A43: reserved [218] */
+	printf("Sleep/awake timeout [S_A_TIMEOUT: 0x%02x]\n", ext_csd[217]);
+	/* A441/A43: reserved [216] */
+
+	unsigned int sectors =	get_sector_count(ext_csd);
+	printf("Sector Count [SEC_COUNT: 0x%08x]\n", sectors);
+	if (is_blockaddresed(ext_csd))
+		printf(" Device is block-addressed\n");
+	else
+		printf(" Device is NOT block-addressed\n");
+
+	/* A441/A43: reserved [211] */
+	printf("Minimum Write Performance for 8bit:\n");
+	printf(" [MIN_PERF_W_8_52: 0x%02x]\n", ext_csd[210]);
+	printf(" [MIN_PERF_R_8_52: 0x%02x]\n", ext_csd[209]);
+	printf(" [MIN_PERF_W_8_26_4_52: 0x%02x]\n", ext_csd[208]);
+	printf(" [MIN_PERF_R_8_26_4_52: 0x%02x]\n", ext_csd[207]);
+	printf("Minimum Write Performance for 4bit:\n");
+	printf(" [MIN_PERF_W_4_26: 0x%02x]\n", ext_csd[206]);
+	printf(" [MIN_PERF_R_4_26: 0x%02x]\n", ext_csd[205]);
+	/* A441/A43: reserved [204] */
+	printf("Power classes registers:\n");
+	printf(" [PWR_CL_26_360: 0x%02x]\n", ext_csd[203]);
+	printf(" [PWR_CL_52_360: 0x%02x]\n", ext_csd[202]);
+	printf(" [PWR_CL_26_195: 0x%02x]\n", ext_csd[201]);
+	printf(" [PWR_CL_52_195: 0x%02x]\n", ext_csd[200]);
+
+	/* A43: reserved [199:198] */
+	if (ext_csd_rev >= 5) {
+		printf("Partition switching timing [PARTITION_SWITCH_TIME: 0x%02x]\n", ext_csd[199]);
+		printf("Out-of-interrupt busy timing [OUT_OF_INTERRUPT_TIME: 0x%02x]\n", ext_csd[198]);
+	}
+
+	/* A441/A43: reserved	[197] [195] [193] [190] [188]
+	 * [186] [184] [182] [180] [176] */
+
+	if (ext_csd_rev >= 6)
+		printf("I/O Driver Strength [DRIVER_STRENGTH: 0x%02x]\n",
+		       ext_csd[197]);
+
+	/* DEVICE_TYPE in A45, CARD_TYPE in A441 */
+	reg = ext_csd[196];
+	printf("Card Type [CARD_TYPE: 0x%02x]\n", reg);
+	if (reg & 0x80)
+		printf(" HS400 Dual Data Rate eMMC @200MHz 1.2VI/O\n");
+	if (reg & 0x40)
+		printf(" HS400 Dual Data Rate eMMC @200MHz 1.8VI/O\n");
+	if (reg & 0x20)
+		printf(" HS200 Single Data Rate eMMC @200MHz 1.2VI/O\n");
+	if (reg & 0x10)
+		printf(" HS200 Single Data Rate eMMC @200MHz 1.8VI/O\n");
+	if (reg & 0x08)
+		printf(" HS Dual Data Rate eMMC @52MHz 1.2VI/O\n");
+	if (reg & 0x04)
+		printf(" HS Dual Data Rate eMMC @52MHz 1.8V or 3VI/O\n");
+	if (reg & 0x02)
+		printf(" HS eMMC @52MHz - at rated device voltage(s)\n");
+	if (reg & 0x01)
+		printf(" HS eMMC @26MHz - at rated device voltage(s)\n");
+
+	printf("CSD structure version [CSD_STRUCTURE: 0x%02x]\n", ext_csd[194]);
+	/* ext_csd_rev = ext_csd[EXT_CSD_REV] (already done!!!) */
+	printf("Command set [CMD_SET: 0x%02x]\n", ext_csd[191]);
+	printf("Command set revision [CMD_SET_REV: 0x%02x]\n", ext_csd[189]);
+	printf("Power class [POWER_CLASS: 0x%02x]\n", ext_csd[187]);
+	printf("High-speed interface timing [HS_TIMING: 0x%02x]\n",
+	       ext_csd[185]);
+	if (ext_csd_rev >= 8)
+		printf("Enhanced Strobe mode [STROBE_SUPPORT: 0x%02x]\n",
+		       ext_csd[184]);
+	/* bus_width: ext_csd[183] not readable */
+	printf("Erased memory content [ERASED_MEM_CONT: 0x%02x]\n",
+	       ext_csd[181]);
+	reg = ext_csd[EXT_CSD_BOOT_CFG];
+	printf("Boot configuration bytes [PARTITION_CONFIG: 0x%02x]\n", reg);
+	switch ((reg & EXT_CSD_BOOT_CFG_EN) >> 3) {
+	case 0x0:
+		printf(" Not boot enable\n");
+		break;
+	case 0x1:
+		printf(" Boot Partition 1 enabled\n");
+		break;
+	case 0x2:
+		printf(" Boot Partition 2 enabled\n");
+		break;
+	case 0x7:
+		printf(" User Area Enabled for boot\n");
+		break;
+	}
+	switch (reg & EXT_CSD_BOOT_CFG_ACC) {
+	case 0x0:
+		printf(" No access to boot partition\n");
+		break;
+	case 0x1:
+		printf(" R/W Boot Partition 1\n");
+		break;
+	case 0x2:
+		printf(" R/W Boot Partition 2\n");
+		break;
+	case 0x3:
+		printf(" R/W Replay Protected Memory Block (RPMB)\n");
+		break;
+	default:
+		printf(" Access to General Purpose partition %d\n",
+		       (reg & EXT_CSD_BOOT_CFG_ACC) - 3);
+		break;
+	}
+
+	printf("Boot config protection [BOOT_CONFIG_PROT: 0x%02x]\n",
+	       ext_csd[178]);
+	printf("Boot bus Conditions [BOOT_BUS_CONDITIONS: 0x%02x]\n",
+	       ext_csd[177]);
+	printf("High-density erase group definition [ERASE_GROUP_DEF: 0x%02x]\n", ext_csd[EXT_CSD_ERASE_GROUP_DEF]);
+
+	print_writeprotect_boot_status(ext_csd);
+
+	if (ext_csd_rev >= 5) {
+		int i;
+		const char * const fast = "existing data is at risk if a power failure occurs during a write operation";
+		const char * const reliable = "the device protects existing data if a power failure occurs during a write operation";
+		unsigned int wp_sz = ext_csd[EXT_CSD_HC_WP_GRP_SIZE];
+		unsigned int erase_sz = ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE];
+
+		/* A441]: reserved [172] */
+		printf("User area write protection register [USER_WP]: 0x%02x\n", ext_csd[171]);
+		/* A441]: reserved [170] */
+		printf("FW configuration [FW_CONFIG]: 0x%02x\n", ext_csd[169]);
+		printf("RPMB Size [RPMB_SIZE_MULT]: 0x%02x\n", ext_csd[168]);
+
+		reg = ext_csd[EXT_CSD_WR_REL_SET];
+		printf("Write reliability setting register [WR_REL_SET]: 0x%02x\n", reg);
+		printf(" user area: %s\n", (reg & BIT(0)) ? reliable : fast);
+
+		for (i = 1; i <= 4; i++)
+			printf(" partition %d: %s\n", i,
+			       (reg & BIT(i)) ? reliable : fast);
+
+		reg = ext_csd[EXT_CSD_WR_REL_PARAM];
+		printf("Write reliability parameter register [WR_REL_PARAM]: 0x%02x\n", reg);
+		if (reg & 0x01)
+			printf(" Device supports writing EXT_CSD_WR_REL_SET\n");
+		if (reg & 0x04)
+			printf(" Device supports the enhanced def. of reliable write\n");
+
+		/* sanitize_start ext_csd[165]]: not readable
+		 * bkops_start ext_csd[164]]: only writable */
+		printf("Enable background operations handshake [BKOPS_EN]: 0x%02x\n", ext_csd[163]);
+		printf("H/W reset function [RST_N_FUNCTION]: 0x%02x\n", ext_csd[162]);
+		printf("HPI management [HPI_MGMT]: 0x%02x\n", ext_csd[161]);
+		reg = ext_csd[EXT_CSD_PARTITIONING_SUPPORT];
+		printf("Partitioning Support [PARTITIONING_SUPPORT]: 0x%02x\n",
+		       reg);
+		if (reg & EXT_CSD_PARTITIONING_EN)
+			printf(" Device support partitioning feature\n");
+		else
+			printf(" Device NOT support partitioning feature\n");
+		if (reg & EXT_CSD_ENH_ATTRIBUTE_EN)
+			printf(" Device can have enhanced tech.\n");
+		else
+			printf(" Device cannot have enhanced tech.\n");
+
+		regl = (ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_2] << 16) |
+			(ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_1] << 8) |
+			ext_csd[EXT_CSD_MAX_ENH_SIZE_MULT_0];
+
+		printf("Max Enhanced Area Size [MAX_ENH_SIZE_MULT]: 0x%06x\n",
+		       regl);
+
+		printf(" i.e. %lu KiB\n", 512l * regl * wp_sz * erase_sz);
+
+		printf("Partitions attribute [PARTITIONS_ATTRIBUTE]: 0x%02x\n",
+		       ext_csd[EXT_CSD_PARTITIONS_ATTRIBUTE]);
+		reg = ext_csd[EXT_CSD_PARTITION_SETTING_COMPLETED];
+		printf("Partitioning Setting [PARTITION_SETTING_COMPLETED]: 0x%02x\n",
+		       reg);
+		if (reg)
+			printf(" Device partition setting complete\n");
+		else
+			printf(" Device partition setting NOT complete\n");
+
+		printf("General Purpose Partition Size\n [GP_SIZE_MULT_4]: 0x%06x\n", (ext_csd[154] << 16) |
+		       (ext_csd[153] << 8) | ext_csd[152]);
+		printf(" [GP_SIZE_MULT_3]: 0x%06x\n", (ext_csd[151] << 16) |
+		       (ext_csd[150] << 8) | ext_csd[149]);
+		printf(" [GP_SIZE_MULT_2]: 0x%06x\n", (ext_csd[148] << 16) |
+		       (ext_csd[147] << 8) | ext_csd[146]);
+		printf(" [GP_SIZE_MULT_1]: 0x%06x\n", (ext_csd[145] << 16) |
+		       (ext_csd[144] << 8) | ext_csd[143]);
+
+		regl =	(ext_csd[EXT_CSD_ENH_SIZE_MULT_2] << 16) |
+			(ext_csd[EXT_CSD_ENH_SIZE_MULT_1] << 8) |
+			ext_csd[EXT_CSD_ENH_SIZE_MULT_0];
+
+		printf("Enhanced User Data Area Size [ENH_SIZE_MULT]: 0x%06x\n", regl);
+		printf(" i.e. %lu KiB\n", 512l * regl *
+		       ext_csd[EXT_CSD_HC_ERASE_GRP_SIZE] *
+		       ext_csd[EXT_CSD_HC_WP_GRP_SIZE]);
+
+		regl =	(ext_csd[EXT_CSD_ENH_START_ADDR_3] << 24) |
+			(ext_csd[EXT_CSD_ENH_START_ADDR_2] << 16) |
+			(ext_csd[EXT_CSD_ENH_START_ADDR_1] << 8) |
+			ext_csd[EXT_CSD_ENH_START_ADDR_0];
+		printf("Enhanced User Data Start Address [ENH_START_ADDR]: 0x%08x\n", regl);
+		printf(" i.e. %llu bytes offset\n", (is_blockaddresed(ext_csd) ?
+						     512ll : 1ll) * regl);
+
+		/* A441]: reserved [135] */
+		printf("Bad Block Management mode [SEC_BAD_BLK_MGMNT]: 0x%02x\n", ext_csd[134]);
+		/* A441: reserved [133:0] */
+	}
+	/* B45 */
+	if (ext_csd_rev >= 6) {
+		int j;
+
+		/* tcase_support ext_csd[132] not readable */
+		printf("Periodic Wake-up [PERIODIC_WAKEUP]: 0x%02x\n",
+		       ext_csd[131]);
+		printf("Program CID/CSD in DDR mode support [PROGRAM_CID_CSD_DDR_SUPPORT]: 0x%02x\n",
+		       ext_csd[130]);
+
+		for (j = 127; j >= 64; j--)
+			printf("Vendor Specific Fields [VENDOR_SPECIFIC_FIELD[%d]]: 0x%02x\n",
+			       j, ext_csd[j]);
+
+		printf("Native sector size [NATIVE_SECTOR_SIZE]: 0x%02x\n",
+		       ext_csd[63]);
+		printf("Sector size emulation [USE_NATIVE_SECTOR]: 0x%02x\n",
+		       ext_csd[62]);
+		printf("Sector size [DATA_SECTOR_SIZE]: 0x%02x\n", ext_csd[61]);
+		printf("1st initialization after disabling sector size emulation [INI_TIMEOUT_EMU]: 0x%02x\n",
+		       ext_csd[60]);
+		printf("Class 6 commands control [CLASS_6_CTRL]: 0x%02x\n",
+		       ext_csd[59]);
+		printf("Number of addressed group to be Released[DYNCAP_NEEDED]: 0x%02x\n", ext_csd[58]);
+		printf("Exception events control [EXCEPTION_EVENTS_CTRL]: 0x%04x\n",
+		       (ext_csd[57] << 8) | ext_csd[56]);
+		printf("Exception events status[EXCEPTION_EVENTS_STATUS]: 0x%04x\n",
+		       (ext_csd[55] << 8) | ext_csd[54]);
+		printf("Extended Partitions Attribute [EXT_PARTITIONS_ATTRIBUTE]: 0x%04x\n",
+		       (ext_csd[53] << 8) | ext_csd[52]);
+
+		for (j = 51; j >= 37; j--)
+			printf("Context configuration [CONTEXT_CONF[%d]]: 0x%02x\n", j, ext_csd[j]);
+
+		printf("Packed command status [PACKED_COMMAND_STATUS]: 0x%02x\n", ext_csd[36]);
+		printf("Packed command failure index [PACKED_FAILURE_INDEX]: 0x%02x\n", ext_csd[35]);
+		printf("Power Off Notification [POWER_OFF_NOTIFICATION]: 0x%02x\n", ext_csd[34]);
+		printf("Control to turn the Cache ON/OFF [CACHE_CTRL]: 0x%02x\n", ext_csd[33]);
+		/* flush_cache ext_csd[32] not readable */
+		printf("Control to turn the Cache Barrier ON/OFF [BARRIER_CTRL]: 0x%02x\n", ext_csd[31]);
+		/*Reserved [30:0] */
+	}
+
+	if (ext_csd_rev >= 7) {
+		printf("eMMC Firmware Version: %.8s\n", (char *)&ext_csd[EXT_CSD_FIRMWARE_VERSION]);
+		printf("eMMC Life Time Estimation A [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]: 0x%02x\n",
+		       ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]);
+		printf("eMMC Life Time Estimation B [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]: 0x%02x\n",
+		       ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]);
+		printf("eMMC Pre EOL information [EXT_CSD_PRE_EOL_INFO]: 0x%02x\n",
+		       ext_csd[EXT_CSD_PRE_EOL_INFO]);
+		reg = ext_csd[EXT_CSD_SECURE_REMOVAL_TYPE];
+		printf("Secure Removal Type [SECURE_REMOVAL_TYPE]: 0x%02x\n", reg);
+		printf(" information is configured to be removed ");
+		/* Bit [5:4]: Configure Secure Removal Type */
+		switch ((reg & EXT_CSD_CONFIG_SECRM_TYPE) >> 4) {
+		case 0x0:
+			printf("by an erase of the physical memory\n");
+			break;
+		case 0x1:
+			printf("by overwriting the addressed locations with a character followed by an erase\n");
+			break;
+		case 0x2:
+			printf("by overwriting the addressed locations with a character, its complement, then a random character\n");
+			break;
+		case 0x3:
+			printf("using a vendor defined\n");
+		}
+		/* Bit [3:0]: Supported Secure Removal Type */
+		printf(" Supported Secure Removal Type:\n");
+		if (reg & 0x01)
+			printf("  information removed by an erase of the physical memory\n");
+		if (reg & 0x02)
+			printf("  information removed by overwriting the addressed locations with a character followed by an erase\n");
+		if (reg & 0x04)
+			printf("  information removed by overwriting the addressed locations with a character, its complement, then a random character\n");
+		if (reg & 0x08)
+			printf("  information removed using a vendor defined\n");
+
+		printf("Production State Awareness:\n");
+		printf("Enablement [PSA_ENABLEMENT[%u]]: 0x%02x\n",
+		       EXT_CSD_PSA_ENABLEMENT, ext_csd[EXT_CSD_PSA_ENABLEMENT]);
+		printf("MAX Preloading Data Size [PSA_MAX_PRE_LOADING_DATA_SIZE[%u..%u]]: 0x%02x\n",
+		       EXT_CSD_PSA_MAX_PRE_LOADING_DATA_SIZE,
+		       EXT_CSD_PSA_MAX_PRE_LOADING_DATA_SIZE + 3,
+		       get_extcsd_val32(ext_csd, EXT_CSD_PSA_MAX_PRE_LOADING_DATA_SIZE));
+		printf("Preloading Data Size [PSA_PRE_LOADING_DATA_SIZE[%u..%u]]: 0x%02x\n",
+		       EXT_CSD_PSA_PRE_LOADING_DATA_SIZE,
+		       EXT_CSD_PSA_PRE_LOADING_DATA_SIZE + 3,
+		       get_extcsd_val32(ext_csd, EXT_CSD_PSA_PRE_LOADING_DATA_SIZE));
+		printf("PSA mode [PSA[%u]]: 0x%02x\n", EXT_CSD_PSA, ext_csd[EXT_CSD_PSA]);
+
+		switch (ext_csd[EXT_CSD_PSA]) {
+		case 0:
+			str = "NORMAL";
+			break;
+
+		case 1:
+			str = "PRE_SOLDERING_WRITES";
+			break;
+
+		case 2:
+			str = "PRE_SOLDERING_POST_WRITES";
+			break;
+
+		case 3:
+			str = "AUTO_PRE_SOLDERING";
+			break;
+
+		default:
+			str = "undefined";
+		}
+		printf("  %s\n", str);
+	}
+
+	if (ext_csd_rev >= 8) {
+		printf("Command Queue Support [CMDQ_SUPPORT]: 0x%02x\n",
+		       ext_csd[EXT_CSD_CMDQ_SUPPORT]);
+		printf("Command Queue Depth [CMDQ_DEPTH]: %u\n",
+		       (ext_csd[EXT_CSD_CMDQ_DEPTH] & 0x1f) + 1);
+		printf("Command Enabled [CMDQ_MODE_EN]: 0x%02x\n",
+		       ext_csd[EXT_CSD_CMDQ_MODE_EN]);
+		printf("Note: CMDQ_MODE_EN may not indicate the runtime CMDQ ON or OFF.\nPlease check sysfs node '/sys/devices/.../mmc_host/mmcX/mmcX:XXXX/cmdq_en'\n");
+	}
+}
+
+static int do_mmc_extcsd(struct cmd_tbl *cmdtp, int flag,
+			 int argc, char *const argv[])
+{
+	int ret;
+	struct mmc *mmc = find_mmc_device(curr_device);
+	u8 value;
+	u16 index;
+	ALLOC_CACHE_ALIGN_BUFFER(u8, ext_csd, MMC_MAX_BLOCK_LEN);
+	char *eol;
+	unsigned long val;
+
+	if (argc < 1)
+		return CMD_RET_USAGE;
+
+	if (argc > 2) {
+		val = simple_strtoul(argv[2], &eol, 0);
+		if (argv[2][0] == '\0' || *eol != '\0') {
+			printf("Invalid index: '%s'\n", argv[2]);
+			return CMD_RET_USAGE;
+		}
+		index = val;
+		if (index >= 512) {
+			printf("Index %d is out or range\n", index);
+			return CMD_RET_USAGE;
+		}
+	}
+
+	ret = mmc_send_ext_csd(mmc, ext_csd);
+	if (ret) {
+		printf("Failed to read ext_csd: %d\n", ret);
+		return CMD_RET_FAILURE;
+	}
+	if (argc == 1) {
+		mmc_extcsd_print(ext_csd);
+		return CMD_RET_SUCCESS;
+	}
+	if (strncmp(argv[1], "get", strlen("get")) == 0) {
+		int precision;
+
+		if (strcmp(argv[1], "get.32") == 0) {
+			val = get_extcsd_val32(ext_csd, index);
+			precision = 8;
+		} else {
+			val = ext_csd[index];
+			precision = 2;
+		}
+		if (argc > 3)
+			env_set_ulong(argv[3], val);
+		else
+			printf("EXT_CSD[%u]=%0*lx\n", index, precision, val);
+		return CMD_RET_SUCCESS;
+	}
+	if (strcmp(argv[1], "set") == 0) {
+		if (argc < 4)
+			return CMD_RET_USAGE;
+		val = simple_strtoul(argv[3], &eol, 0);
+		if (argv[3][0] == '\0' || *eol != '\0') {
+			printf("Invalid value: '%s'\n", argv[3]);
+			return CMD_RET_USAGE;
+		}
+		value = val;
+
+		ret = mmc_set_extcsd(mmc, index, value);
+		if (ret) {
+			printf("Failed to set EXT_CSD[%u]=%02x: %d\n",
+			       index, value, ret);
+			return CMD_RET_FAILURE;
+		}
+		return CMD_RET_SUCCESS;
+	}
+	return CMD_RET_USAGE;
+}
+
 static int do_mmc_setdsr(struct cmd_tbl *cmdtp, int flag,
 			 int argc, char *const argv[])
 {
@@ -1066,7 +1744,7 @@ static struct cmd_tbl cmd_mmc[] = {
 	U_BOOT_CMD_MKENT(read, 4, 1, do_mmc_read, "", ""),
 	U_BOOT_CMD_MKENT(wp, 1, 0, do_mmc_boot_wp, "", ""),
 #if CONFIG_IS_ENABLED(MMC_WRITE)
-	U_BOOT_CMD_MKENT(write, 4, 0, do_mmc_write, "", ""),
+	U_BOOT_CMD_MKENT(write, 5, 0, do_mmc_write, "", ""),
 	U_BOOT_CMD_MKENT(erase, 3, 0, do_mmc_erase, "", ""),
 #endif
 #if CONFIG_IS_ENABLED(CMD_MMC_SWRITE)
@@ -1092,6 +1770,7 @@ static struct cmd_tbl cmd_mmc[] = {
 #ifdef CONFIG_CMD_BKOPS_ENABLE
 	U_BOOT_CMD_MKENT(bkops-enable, 2, 0, do_mmc_bkops_enable, "", ""),
 #endif
+	U_BOOT_CMD_MKENT(extcsd, 5, 0, do_mmc_extcsd, "", ""),
 };
 
 static int do_mmcops(struct cmd_tbl *cmdtp, int flag, int argc,
@@ -1174,6 +1853,12 @@ U_BOOT_CMD(
 	"mmc bkops-enable <dev> - enable background operations handshake on device\n"
 	"   WARNING: This is a write-once setting.\n"
 #endif
+	"mmc extcsd - print the contents of the EXT_CSD area\n"
+	"mmc extcsd read [addr] - read the contents of the EXT_CSD area to memory\n"
+	"                         addr defaults to ${loadaddr}\n"
+	"mmc extcsd get index [variable] - read the EXT_CSD value at index\n"
+	"                                  and optionally store the value in ${variable}\n"
+	"mmc extcsd set index value\n"
 	);
 
 /* Old command kept for compatibility. Same as 'mmc info' */
