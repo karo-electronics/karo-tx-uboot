@@ -9,9 +9,3 @@
 / {
 	model = "Ka-Ro electronics TX8M-1620 (NXP i.MX8MM) module on TX-MIPI-LVDS baseboard";
 };
-
-&usdhc2 {
-	pinctrl-0 = <&pinctrl_usdhc2>;
-	/delete-property/ cd-gpios;
-	no-mmc;
-};

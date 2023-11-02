@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx8mn-tx8m-nd00.dts"
+
+/ {
+	model = "Ka-Ro electronics TX8M-ND00 (NXP i.MX8MN) module on MB7 baseboard";
+};

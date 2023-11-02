@@ -3,4 +3,5 @@
  * Copyright (C) 2022 Lothar Waßmann <LW@KARO-electronics.de>
  *
  */
+
 #include "imx8mp-qsxp-ml81-u-boot.dtsi"

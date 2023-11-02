@@ -5,3 +5,9 @@
  */
 
 #include "imx8mm-tx8m-1622-u-boot.dtsi"
+
+&usdhc2 {
+	pinctrl-0 = <&pinctrl_usdhc2>;
+	/delete-property/ cd-gpios;
+	fsl,cd-data3;
+};
