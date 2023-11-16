@@ -11,7 +11,7 @@ config SYS_VENDOR
 
 config KARO_IMX93
 	bool
-#	select BINMAN
+	select BINMAN
 	imply BOARD_LATE_INIT
 	imply DM_ETH
 	imply DM_PMIC
