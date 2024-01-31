@@ -1332,6 +1332,52 @@ __weak int board_interface_eth_init(struct udevice *dev,
 	return 0;
 }
 
+static int eqos_start_resets_stm32(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	u32 reset_delay_us;
+	u32 post_reset_delay_us;
+	int ret;
+
+	debug("%s(dev=%p):\n", __func__, dev);
+
+	if (!eqos->phy_reset_gpio)
+		return 0;
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 1);
+	if (ret)
+		dev_err(dev, "dm_gpio_set_value(phy_reset, assert) failed: %d\n", ret);
+
+	reset_delay_us = dev_read_u32_default(dev, "phy-reset-delay-us", 1000);
+	post_reset_delay_us = dev_read_u32_default(dev, "phy-reset-post-delay-us", 100);
+
+	udelay(reset_delay_us);
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 0);
+	if (ret)
+		dev_err(dev, "dm_gpio_set_value(phy_reset, deassert) failed: %d\n", ret);
+
+	udelay(post_reset_delay_us);
+
+	return ret;
+}
+
+static int eqos_stop_resets_stm32(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+	int ret;
+
+	debug("%s(dev=%p):\n", __func__, dev);
+	if (!eqos->phy_reset_gpio)
+		return 0;
+
+	ret = dm_gpio_set_value(eqos->phy_reset_gpio, 0);
+	if (ret)
+		dev_err(dev, "dm_gpio_set_value(phy_reset, assert) failed: %d\n", ret);
+
+	return ret;
+}
+
 static int eqos_probe_resources_stm32(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
@@ -1346,6 +1392,14 @@ static int eqos_probe_resources_stm32(struct udevice *dev)
 	if (interface == PHY_INTERFACE_MODE_NA) {
 		dev_err(dev, "Invalid PHY interface\n");
 		return -EINVAL;
+	}
+
+	eqos->phy_reset_gpio = devm_gpiod_get_optional(dev, "phy-reset",
+						       GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
+	if (IS_ERR(eqos->phy_reset_gpio)) {
+		ret = PTR_ERR(eqos->phy_reset_gpio);
+		dev_err(dev, "failed to request phy-reset-gpios: %d\n", ret);
+		return ret;
 	}
 
 	/*  Get ETH_CLK clocks (optional) */
@@ -1659,8 +1713,8 @@ static struct eqos_ops eqos_stm32_ops = {
 	.eqos_flush_buffer = eqos_flush_buffer_generic,
 	.eqos_probe_resources = eqos_probe_resources_stm32,
 	.eqos_remove_resources = eqos_remove_resources_stm32,
-	.eqos_stop_resets = eqos_null_ops,
-	.eqos_start_resets = eqos_null_ops,
+	.eqos_stop_resets = eqos_stop_resets_stm32,
+	.eqos_start_resets = eqos_start_resets_stm32,
 	.eqos_stop_clks = eqos_stop_clks_stm32,
 	.eqos_start_clks = eqos_start_clks_stm32,
 	.eqos_calibrate_pads = eqos_null_ops,
