@@ -752,9 +752,9 @@ static int init_device(struct stm32prog_data *data,
 	char mtd_id[16];
 	int part_id;
 	int ret;
-	u64 first_addr = 0, last_addr = 0;
+	lbaint_t first_addr = 0, last_addr = 0;
 	struct stm32prog_part_t *part, *next_part;
-	u64 part_addr, part_size;
+	lbaint_t part_addr, part_size;
 	bool part_found;
 	const char *part_name;
 	u8 i;
@@ -781,17 +781,17 @@ static int init_device(struct stm32prog_data *data,
 		/* reserve a full erase group for each GTP headers */
 		if (mmc->erase_grp_size > GPT_HEADER_SZ) {
 			first_addr = dev->erase_size;
-			last_addr = (u64)(block_dev->lba -
-					  mmc->erase_grp_size) *
-				    block_dev->blksz;
+			last_addr = (block_dev->lba -
+				     mmc->erase_grp_size) *
+				block_dev->blksz;
 		} else {
-			first_addr = (u64)GPT_HEADER_SZ * block_dev->blksz;
-			last_addr = (u64)(block_dev->lba - GPT_HEADER_SZ - 1) *
-				    block_dev->blksz;
+			first_addr = GPT_HEADER_SZ * block_dev->blksz;
+			last_addr = (block_dev->lba - GPT_HEADER_SZ - 1) *
+				block_dev->blksz;
 		}
-		log_debug("MMC %d: lba=%ld blksz=%ld\n", dev->dev_id,
+		log_debug("MMC %d: lba=" LBAFU " blksz=%ld\n", dev->dev_id,
 			  block_dev->lba, block_dev->blksz);
-		log_debug(" available address = 0x%llx..0x%llx\n",
+		log_debug(" available address = 0x" LBAF "..0x" LBAF "\n",
 			  first_addr, last_addr);
 		log_debug(" full_update = %d\n", dev->full_update);
 		break;
@@ -817,7 +817,7 @@ static int init_device(struct stm32prog_data *data,
 		dev->erase_size = mtd->erasesize;
 		log_debug("MTD device %s: size=%lld erasesize=%d\n",
 			  mtd_id, mtd->size, mtd->erasesize);
-		log_debug(" available address = 0x%llx..0x%llx\n",
+		log_debug(" available address = 0x" LBAF "..0x" LBAF "\n",
 			  first_addr, last_addr);
 		dev->mtd = mtd;
 		break;
@@ -859,7 +859,7 @@ static int init_device(struct stm32prog_data *data,
 			log_debug("-- : %1d %02x %14s %02d.%d %02d.%02d %08llx %08llx\n",
 				  part->option, part->id, part->name,
 				  part->part_type, part->bin_nb, part->target,
-				  part->dev_id, part->addr, part->size);
+				  part->dev_id, (u64)part->addr, (u64)part->size);
 			continue;
 		}
 		if (part->part_id < 0) { /* boot hw partition for eMMC */
@@ -884,7 +884,7 @@ static int init_device(struct stm32prog_data *data,
 					part->size = next_part->addr -
 						     part->addr;
 				} else {
-					stm32prog_err("%s (0x%x): same address : 0x%llx == %s (0x%x): 0x%llx",
+					stm32prog_err("%s (0x%x): same address : 0x" LBAF " == %s (0x%x): 0x" LBAF "",
 						      part->name, part->id,
 						      part->addr,
 						      next_part->name,
@@ -896,21 +896,21 @@ static int init_device(struct stm32prog_data *data,
 				if (part->addr <= last_addr) {
 					part->size = last_addr - part->addr;
 				} else {
-					stm32prog_err("%s (0x%x): invalid address 0x%llx (max=0x%llx)",
+					stm32prog_err("%s (0x%x): invalid address 0x" LBAF " (max=0x" LBAF ")",
 						      part->name, part->id,
 						      part->addr, last_addr);
 					return -EINVAL;
 				}
 			}
 			if (part->addr < first_addr) {
-				stm32prog_err("%s (0x%x): invalid address 0x%llx (min=0x%llx)",
+				stm32prog_err("%s (0x%x): invalid address 0x" LBAF " (min=0x" LBAF ")",
 					      part->name, part->id,
 					      part->addr, first_addr);
 				return -EINVAL;
 			}
 		}
-		if ((part->addr & ((u64)part->dev->erase_size - 1)) != 0) {
-			stm32prog_err("%s (0x%x): not aligned address : 0x%llx on erase size 0x%x",
+		if ((part->addr & (part->dev->erase_size - 1)) != 0) {
+			stm32prog_err("%s (0x%x): not aligned address : 0x" LBAF " on erase size 0x%x",
 				      part->name, part->id, part->addr,
 				      part->dev->erase_size);
 			return -EINVAL;
@@ -918,7 +918,7 @@ static int init_device(struct stm32prog_data *data,
 		log_debug("%02d : %1d %02x %14s %02d.%d %02d.%02d %08llx %08llx",
 			  part->part_id, part->option, part->id, part->name,
 			  part->part_type, part->bin_nb, part->target,
-			  part->dev_id, part->addr, part->size);
+			  part->dev_id, (u64)part->addr, (u64)part->size);
 
 		part_addr = 0;
 		part_size = 0;
@@ -946,8 +946,8 @@ static int init_device(struct stm32prog_data *data,
 					      part_id, part->dev_id);
 				return -ENODEV;
 			}
-			part_addr = (u64)partinfo.start * partinfo.blksz;
-			part_size = (u64)partinfo.size * partinfo.blksz;
+			part_addr = partinfo.start * partinfo.blksz;
+			part_size = partinfo.size * partinfo.blksz;
 			part_name = (char *)partinfo.name;
 			part_found = true;
 		}
@@ -978,16 +978,16 @@ static int init_device(struct stm32prog_data *data,
 			continue;
 		}
 
-		log_debug(" %08llx %08llx\n", part_addr, part_size);
+		log_debug(" %08llx %08llx\n", (u64)part_addr, (u64)part_size);
 
 		if (part->addr != part_addr) {
-			stm32prog_err("%s (0x%x): Bad address for partition %d (%s) = 0x%llx <> 0x%llx expected",
+			stm32prog_err("%s (0x%x): Bad address for partition %d (%s) = 0x" LBAF " <> 0x" LBAF " expected",
 				      part->name, part->id, part->part_id,
 				      part_name, part->addr, part_addr);
 			return -ENODEV;
 		}
 		if (part->size != part_size) {
-			stm32prog_err("%s (0x%x): Bad size for partition %d (%s) at 0x%llx = 0x%llx <> 0x%llx expected",
+			stm32prog_err("%s (0x%x): Bad size for partition %d (%s) at 0x" LBAF " = 0x" LBAF " <> 0x" LBAF " expected",
 				      part->name, part->id, part->part_id,
 				      part_name, part->addr, part->size,
 				      part_size);
@@ -1108,7 +1108,7 @@ static int create_gpt_partitions(struct stm32prog_data *data)
 						  data->dev[i].dev_id);
 
 			offset += snprintf(buf + offset, buflen - offset,
-					   "name=%s,start=0x%llx,size=0x%llx",
+					   "name=%s,start=0x" LBAF ",size=0x" LBAF "",
 					   part->name,
 					   part->addr,
 					   part->size);
@@ -1241,22 +1241,22 @@ static int stm32prog_alt_add(struct stm32prog_data *data,
 
 	if (part->target == STM32PROG_RAM) {
 		offset += snprintf(buf + offset, ALT_BUF_LEN - offset,
-				   "ram 0x%llx 0x%llx",
+				   "ram 0x" LBAF " 0x" LBAF,
 				   part->addr, part->size);
 	} else if (part->part_type == RAW_IMAGE) {
-		u64 dfu_size;
+		lbaint_t dfu_size;
 
 		if (part->dev->target == STM32PROG_MMC)
 			dfu_size = part->size / part->dev->mmc->read_bl_len;
 		else
 			dfu_size = part->size;
 		offset += snprintf(buf + offset, ALT_BUF_LEN - offset,
-				   "raw 0x0 0x%llx", dfu_size);
+				   "raw 0x0 0x" LBAF, dfu_size);
 	} else if (part->part_id < 0) {
-		u64 nb_blk = part->size / part->dev->mmc->read_bl_len;
+		lbaint_t nb_blk = part->size / part->dev->mmc->read_bl_len;
 
 		offset += snprintf(buf + offset, ALT_BUF_LEN - offset,
-				   "raw 0x%llx 0x%llx",
+				   "raw 0x" LBAF " 0x" LBAF,
 				   part->addr, nb_blk);
 		offset += snprintf(buf + offset, ALT_BUF_LEN - offset,
 				   " mmcpart %d", -(part->part_id));
@@ -1708,7 +1708,7 @@ error:
 	return ret;
 }
 
-static void stm32prog_end_phase(struct stm32prog_data *data, u64 offset)
+static void stm32prog_end_phase(struct stm32prog_data *data, lbaint_t offset)
 {
 	if (data->phase == PHASE_FLASHLAYOUT) {
 #if defined(CONFIG_LEGACY_IMAGE_FORMAT)
@@ -1719,7 +1719,7 @@ static void stm32prog_end_phase(struct stm32prog_data *data, u64 offset)
 			return;
 		}
 #endif
-		log_notice("\nFlashLayout received, size = %lld\n", offset);
+		log_notice("\nFlashLayout received, size = " LBAFU "\n", offset);
 		if (parse_flash_layout(data, CONFIG_SYS_LOAD_ADDR, offset))
 			stm32prog_err("Layout: invalid FlashLayout");
 		return;
@@ -1864,7 +1864,7 @@ static int part_delete(struct stm32prog_data *data,
 		}
 		get_mtd_by_target(devstr, part->target, part->dev->dev_id);
 		printf("on %s: ", devstr);
-		sprintf(cmdbuf, "mtd erase %s 0x%llx 0x%llx",
+		sprintf(cmdbuf, "mtd erase %s 0x" LBAF " 0x" LBAF,
 			devstr, part->addr, part->size);
 		if (run_command(cmdbuf, 0)) {
 			ret = -1;

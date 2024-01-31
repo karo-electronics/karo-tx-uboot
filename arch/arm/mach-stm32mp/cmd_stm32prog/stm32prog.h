@@ -125,7 +125,7 @@ struct stm32prog_dev_t {
 	bool			full_update;
 };
 
-/* partition information build from FlashLayout and device */
+/* partition information built from FlashLayout and device */
 struct stm32prog_part_t {
 	/* FlashLayout information */
 	int			option;
@@ -138,8 +138,8 @@ struct stm32prog_part_t {
 	 * (16 char in gpt, + 1 for null terminated string
 	 */
 	char			name[16 + 1];
-	u64			addr;
-	u64			size;
+	lbaint_t		addr;
+	lbaint_t			size;
 	enum stm32prog_part_type bin_nb;	/* SSBL repeatition */
 
 	/* information on associated device */
