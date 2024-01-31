@@ -18,6 +18,8 @@ config KARO_STM32
 	imply DM_USB_GADGET
 	imply RNG_STM32MP1
 
+source "board/st/common/Kconfig"
+
 choice
 	prompt "Ka-Ro STM32 module variant"
 

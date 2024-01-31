@@ -10,3 +10,9 @@ config SYS_FDT_ADDR
 	default 0xc4000000
 	help
 	  The address the FDT file should be loaded to.
+
+config TARGET_KARO_TXMP
+	bool "Support Ka-Ro TXMP modules"
+	select STM32MP15x
+	help
+		Ka-Ro electronics TXMP/QSMP board support

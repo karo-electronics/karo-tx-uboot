@@ -7,6 +7,7 @@
 #include <common.h>
 #include <env.h>
 #include <env_internal.h>
+#include <stdlib.h>
 #include <asm/global_data.h>
 
 #if defined(CONFIG_NEEDS_MANUAL_RELOC)

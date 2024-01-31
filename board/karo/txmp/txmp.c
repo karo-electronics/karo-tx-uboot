@@ -33,6 +33,7 @@
 #include <asm/gpio.h>
 #include <asm/arch/stm32.h>
 #include <asm/arch/stm32mp1_smc.h>
+#include <asm/arch/sys_proto.h>
 #include <jffs2/load_kernel.h>
 #include <linux/delay.h>
 #include <linux/if_ether.h>
@@ -53,7 +54,7 @@
 #define SYSCFG_ICNR				0x1C
 #define SYSCFG_CMPCR				0x20
 #define SYSCFG_CMPENSETR			0x24
-#define SYSCFG_PMCCLRR				0x44
+#define SYSCFG_PMCCLRR				0x08
 
 #define SYSCFG_BOOTR_BOOT_MASK			GENMASK(2, 0)
 #define SYSCFG_BOOTR_BOOTPD_SHIFT		4
@@ -145,53 +146,51 @@ int checkboard(void)
 
 static void board_key_check(void)
 {
-#if defined(CONFIG_FASTBOOT) || defined(CONFIG_CMD_STM32PROG)
 	ofnode node;
 	struct gpio_desc gpio;
 	enum forced_boot_mode boot_mode = BOOT_NORMAL;
 
-	debug("%s@%d:\n", __func__, __LINE__);
+	if (!IS_ENABLED(CONFIG_FASTBOOT) && !IS_ENABLED(CONFIG_CMD_STM32PROG))
+		return;
 
 	node = ofnode_path("/config");
 	if (!ofnode_valid(node)) {
-		pr_debug("%s: no /config node?\n", __func__);
+		log_debug("no /config node?\n");
 		return;
 	}
-#ifdef CONFIG_FASTBOOT
-	if (gpio_request_by_name_nodev(node, "st,fastboot-gpios", 0,
-				       &gpio, GPIOD_IS_IN)) {
-		pr_debug("%s: could not find /config/st,fastboot-gpios\n",
-			 __func__);
-	} else {
-		if (dm_gpio_get_value(&gpio)) {
-			puts("Fastboot key pressed, ");
-			boot_mode = BOOT_FASTBOOT;
-		}
+	if (IS_ENABLED(CONFIG_FASTBOOT)) {
+		if (gpio_request_by_name_nodev(node, "st,fastboot-gpios", 0,
+					       &gpio, GPIOD_IS_IN)) {
+			log_debug("could not find a /config/st,fastboot-gpios\n");
+		} else {
+			udelay(20);
+			if (dm_gpio_get_value(&gpio)) {
+				log_notice("Fastboot key pressed, ");
+				boot_mode = BOOT_FASTBOOT;
+			}
 
-		dm_gpio_free(NULL, &gpio);
-	}
-#endif
-#ifdef CONFIG_CMD_STM32PROG
-	if (gpio_request_by_name_nodev(node, "st,stm32prog-gpios", 0,
-				       &gpio, GPIOD_IS_IN)) {
-		pr_debug("%s: could not find /config/st,stm32prog-gpios\n",
-			 __func__);
-	} else {
-		if (dm_gpio_get_value(&gpio)) {
-			puts("STM32Programmer key pressed, ");
-			boot_mode = BOOT_STM32PROG;
+			dm_gpio_free(NULL, &gpio);
 		}
-		dm_gpio_free(NULL, &gpio);
 	}
-#endif
-
+	if (IS_ENABLED(CONFIG_CMD_STM32PROG)) {
+		if (gpio_request_by_name_nodev(node, "st,stm32prog-gpios", 0,
+					       &gpio, GPIOD_IS_IN)) {
+			log_debug("could not find a /config/st,stm32prog-gpios\n");
+		} else {
+			udelay(20);
+			if (dm_gpio_get_value(&gpio)) {
+				log_notice("STM32Programmer key pressed, ");
+				boot_mode = BOOT_STM32PROG;
+			}
+			dm_gpio_free(NULL, &gpio);
+		}
+	}
 	if (boot_mode != BOOT_NORMAL) {
-		puts("entering download mode...\n");
+		log_notice("entering download mode...\n");
 		clrsetbits_le32(TAMP_BOOT_CONTEXT,
 				TAMP_BOOT_FORCED_MASK,
 				boot_mode);
 	}
-#endif
 }
 
 static void sysconf_init(void)
@@ -242,11 +241,11 @@ static void sysconf_init(void)
 	 *      but this value need to be consistent with board design
 	 */
 	ret = uclass_get_device_by_driver(UCLASS_PMIC,
-					  DM_GET_DRIVER(stm32mp_pwr_pmic),
+					  DM_DRIVER_GET(stm32mp_pwr_pmic),
 					  &pwr_dev);
 	if (!ret) {
 		ret = uclass_get_device_by_driver(UCLASS_MISC,
-						  DM_GET_DRIVER(stm32mp_bsec),
+						  DM_DRIVER_GET(stm32mp_bsec),
 						  &dev);
 		if (ret) {
 			pr_err("Can't find stm32mp_bsec driver\n");
@@ -337,38 +336,30 @@ int board_interface_eth_init(struct udevice *dev,
 	print_mac_from_fuse();
 
 	switch (interface_type) {
-	case PHY_INTERFACE_MODE_MII:
-		value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII |
-			SYSCFG_PMCSETR_ETH_REF_CLK_SEL;
-		debug("%s: PHY_INTERFACE_MODE_MII %08x\n", __func__, value);
-		break;
-	case PHY_INTERFACE_MODE_GMII:
-		if (eth_clk_sel_reg)
-			value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII |
-				SYSCFG_PMCSETR_ETH_CLK_SEL;
-		else
-			value = SYSCFG_PMCSETR_ETH_SEL_GMII_MII;
-		debug("%s: PHY_INTERFACE_MODE_GMII %08x\n", __func__, value);
-		break;
 	case PHY_INTERFACE_MODE_RMII:
 		if (eth_ref_clk_sel_reg)
 			value = SYSCFG_PMCSETR_ETH_SEL_RMII |
 				SYSCFG_PMCSETR_ETH_REF_CLK_SEL;
 		else
 			value = SYSCFG_PMCSETR_ETH_SEL_RMII;
-		debug("%s: PHY_INTERFACE_MODE_RMII %08x\n", __func__, value);
+		debug("%s: %s %08x\n", __func__,
+		      phy_interface_strings[interface_type], value);
 		break;
 	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
 		if (eth_clk_sel_reg)
 			value = SYSCFG_PMCSETR_ETH_SEL_RGMII |
 				SYSCFG_PMCSETR_ETH_CLK_SEL;
 		else
 			value = SYSCFG_PMCSETR_ETH_SEL_RGMII;
-		debug("%s: PHY_INTERFACE_MODE_RGMII %08x\n", __func__, value);
+		debug("%s: %s %08x\n", __func__,
+		      phy_interface_strings[interface_type], value);
 		break;
 	default:
-		pr_warn("%s: Unsupported interface type %d\n",
-			__func__, interface_type);
+		printf("%s: Error: Unsupported interface type %d\n",
+		       __func__, interface_type);
 		/* Do not manage others interfaces */
 		return -EINVAL;
 	}
@@ -472,175 +463,51 @@ static inline void txmp_setup_led(void)
 }
 #endif /* CONFIG_LED */
 
-#ifdef CONFIG_USB_GADGET_DWC2_OTG
-
-#define DWC2_GGPIO_OFFSET		0x38
-#define DWC2_GGPIO_VBUS_SENSING		BIT(21)
-
-#define STM32MP_GUSBCFG			0x40002407
-
-static struct dwc2_plat_otg_data stm32mp_otg_data = {
-	.regs_otg = FDT_ADDR_T_NONE,
-	.usb_gusbcfg = STM32MP_GUSBCFG,
-};
-
-static struct reset_ctl usbotg_reset;
-
-static void board_usbotg_init(void)
-{
-	ofnode node;
-	struct ofnode_phandle_args args;
-	struct udevice *dev;
-	struct clk clk;
-
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	/* find the usb otg node */
-	node = ofnode_by_compatible(ofnode_null(), "snps,dwc2");
-	if (!ofnode_valid(node)) {
-		pr_err("usb_otg device not found\n");
-		return;
-	}
-
-	if (!ofnode_is_available(node)) {
-		pr_err("stm32 usbotg is disabled in the device tree\n");
-		return;
-	}
-
-	/* Enable clock */
-	if (ofnode_parse_phandle_with_args(node, "clocks",
-					   "#clock-cells", 0, 0, &args)) {
-		pr_err("usbotg has no clocks defined in the device tree\n");
-		return;
-	}
-
-	if (uclass_get_device_by_ofnode(UCLASS_CLK, args.node, &dev)) {
-		pr_err("Can't get clk device\n");
-		return;
-	}
-
-	if (args.args_count != 1) {
-		printf("Bad args count %d for usb-otg clk\n", args.args_count);
-		return;
-	}
-
-	clk.dev = dev;
-	clk.id = args.args[0];
-
-	if (clk_enable(&clk)) {
-		pr_err("Failed to enable usbotg clock\n");
-		return;
-	}
-
-	/* Reset */
-	if (ofnode_parse_phandle_with_args(node, "resets",
-					   "#reset-cells", 0, 0, &args)) {
-		pr_err("usbotg has no resets defined in the device tree\n");
-		goto clk_err;
-	}
-
-	if ((uclass_get_device_by_ofnode(UCLASS_RESET, args.node, &dev)) ||
-	    args.args_count != 1)
-		goto clk_err;
-
-	usbotg_reset.dev = dev;
-	usbotg_reset.id = args.args[0];
-
-	/* Phy */
-	if (!(ofnode_parse_phandle_with_args(node, "phys",
-					     "#phy-cells", 0, 0, &args))) {
-		int __maybe_unused ret;
-
-		stm32mp_otg_data.phy_of_node = ofnode_get_parent(args.node);
-		if (!ofnode_valid(stm32mp_otg_data.phy_of_node)) {
-			pr_err("USB0 PHY device not found\n");
-			goto clk_err;
-		}
-		if (of_live_active()) {
-			stm32mp_otg_data.regs_phy = ofnode_get_addr(args.node);
-			if (stm32mp_otg_data.regs_phy == FDT_ADDR_T_NONE) {
-				printf("Failed to get addr of usbotg phy from %s\n",
-				       ofnode_get_name(args.node));
-				goto clk_err;
-			}
-		} else {
-			stm32mp_otg_data.regs_phy = ofnode_get_addr(args.node);
-			if (stm32mp_otg_data.regs_phy == FDT_ADDR_T_NONE) {
-				printf("Failed to get addr of usbotg phy from %s\n",
-				       ofnode_get_name(args.node));
-				goto clk_err;
-			}
-		}
-		debug("usbotg PHY addr=%08lx\n", stm32mp_otg_data.regs_phy);
-	}
-
-	/* Parse and store data needed for gadget */
-	stm32mp_otg_data.regs_otg = ofnode_get_addr(node);
-	if (stm32mp_otg_data.regs_otg == FDT_ADDR_T_NONE) {
-		printf("usbotg: can't get base address\n");
-		goto clk_err;
-	}
-
-	stm32mp_otg_data.rx_fifo_sz = ofnode_read_u32_default(node,
-							      "g-rx-fifo-size",
-							      0);
-	stm32mp_otg_data.np_tx_fifo_sz = ofnode_read_u32_default(node,
-								 "g-np-tx-fifo-size", 0);
-	stm32mp_otg_data.tx_fifo_sz = ofnode_read_u32_default(node,
-							      "g-tx-fifo-size", 0);
-
-	/* Enable voltage level detector */
-	if (!(ofnode_parse_phandle_with_args(node, "usb33d-supply",
-					     NULL, 0, 0, &args)))
-		if (!uclass_get_device_by_ofnode(UCLASS_REGULATOR,
-						 args.node, &dev)) {
-			int ret = regulator_set_enable(dev, true);
-
-			if (ret) {
-				pr_err("Failed to enable usb33d: %d\n", ret);
-				goto clk_err;
-			}
-		}
-
-	return;
-
-clk_err:
-	clk_disable(&clk);
-}
-
 int g_dnl_board_usb_cable_connected(void)
 {
-	int ret;
 	struct udevice *dwc2_udc_otg;
+	int ret;
+
+	if (!IS_ENABLED(CONFIG_USB_GADGET_DWC2_OTG))
+		return -ENODEV;
+
+	/*
+	 * In case of USB boot device is detected, consider USB cable is
+	 * connected
+	 */
+	if ((get_bootmode() & TAMP_BOOT_DEVICE_MASK) == BOOT_SERIAL_USB)
+		return true;
 
 	ret = uclass_get_device_by_driver(UCLASS_USB_GADGET_GENERIC,
-					  DM_GET_DRIVER(dwc2_udc_otg),
+					  DM_DRIVER_GET(dwc2_udc_otg),
 					  &dwc2_udc_otg);
 	if (ret) {
-		printf("failed to get UDC device: %d\n", ret);
-		return 0;
+		log_debug("dwc2_udc_otg init failed\n");
+		return ret;
 	}
 
-	return !!dwc2_udc_B_session_valid(dwc2_udc_otg);
+	return dwc2_udc_B_session_valid(dwc2_udc_otg);
 }
 
+#ifdef CONFIG_USB_GADGET_DOWNLOAD
 #define STM32MP1_G_DNL_DFU_PRODUCT_NUM 0xdf11
+#define STM32MP1_G_DNL_FASTBOOT_PRODUCT_NUM 0x0afb
+
 int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 {
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	if (!strcmp(name, "usb_dnl_dfu"))
+	if (IS_ENABLED(CONFIG_DFU_OVER_USB) &&
+	    !strcmp(name, "usb_dnl_dfu"))
 		put_unaligned(STM32MP1_G_DNL_DFU_PRODUCT_NUM, &dev->idProduct);
+	else if (IS_ENABLED(CONFIG_FASTBOOT) &&
+		 !strcmp(name, "usb_dnl_fastboot"))
+		put_unaligned(STM32MP1_G_DNL_FASTBOOT_PRODUCT_NUM,
+			      &dev->idProduct);
 	else
 		put_unaligned(CONFIG_USB_GADGET_PRODUCT_NUM, &dev->idProduct);
 
 	return 0;
 }
-#else
-static inline void board_usbotg_init(void)
-{
-}
-#endif /* CONFIG_USB_GADGET_DWC2_OTG */
+#endif /* CONFIG_USB_GADGET_DOWNLOAD */
 
 #include <linux/mtd/mtd.h>
 
@@ -672,8 +539,6 @@ int board_init(void)
 	show_bmp_logo();
 	board_key_check();
 	txmp_setup_led();
-
-	board_usbotg_init();
 
 	return 0;
 }
@@ -742,7 +607,7 @@ int board_late_init(void)
 			env_set("board_name", fdt_compat + 5);
 	}
 #endif
-	env_cleanup();
+	karo_env_cleanup();
 
 	if (had_ctrlc()) {
 		env_set_hex("safeboot", 1);
