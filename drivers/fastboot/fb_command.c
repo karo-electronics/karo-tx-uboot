@@ -43,6 +43,7 @@ static void oem_format(char *, char *);
 #endif
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_UCMD)
 static void oem_ucmd(char *, char *);
+#endif
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_PARTCONF)
 static void oem_partconf(char *, char *);
 #endif
