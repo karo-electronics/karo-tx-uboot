@@ -219,7 +219,6 @@ int print_buffer(ulong addr, const void *data, uint width, uint count,
 
 		thislinelen = hexdump_line(addr, data, width, count, linelen,
 					   buf, sizeof(buf));
-		assert(thislinelen >= 0);
 		puts(buf);
 		putc('\n');
 
