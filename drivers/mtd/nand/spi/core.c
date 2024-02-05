@@ -836,6 +836,7 @@ static const struct spinand_manufacturer *spinand_manufacturers[] = {
 	spinand_manf_entry(MTD_SPI_NAND_NETSOL, netsol),
 	spinand_manf_entry(MTD_SPI_NAND_TOSHIBA, toshiba),
 	spinand_manf_entry(MTD_SPI_NAND_WINBOND, winbond),
+	spinand_manf_entry(MTD_SPI_NAND_XTX, xtx),
 };
 
 static int spinand_manufacturer_detect(struct spinand_device *spinand)
@@ -974,16 +975,19 @@ static int spinand_detect(struct spinand_device *spinand)
 	int ret;
 
 	ret = spinand_reset_op(spinand);
+printf("%s@%d: ret=%d\n", __func__, __LINE__, ret);
 	if (ret)
 		return ret;
 
 	ret = spinand_read_id_op(spinand, spinand->id.data);
+printf("%s@%d: ret=%d\n", __func__, __LINE__, ret);
 	if (ret)
 		return ret;
 
 	spinand->id.len = SPINAND_MAX_ID_LEN;
 
 	ret = spinand_manufacturer_detect(spinand);
+printf("%s@%d: ret=%d\n", __func__, __LINE__, ret);
 	if (ret) {
 		dev_err(spinand->slave->dev, "unknown raw ID %02x%02x%02x%02x\n",
 			spinand->id.data[0], spinand->id.data[1],

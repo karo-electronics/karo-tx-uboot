@@ -8,3 +8,4 @@ obj-$(CONFIG_MTD_SPI_NAND_MICRON) += micron.o
 obj-$(CONFIG_MTD_SPI_NAND_NETSOL) += netsol.o
 obj-$(CONFIG_MTD_SPI_NAND_TOSHIBA) += toshiba.o
 obj-$(CONFIG_MTD_SPI_NAND_WINBOND) += winbond.o
+obj-$(CONFIG_MTD_SPI_NAND_XTX) += xtx.o

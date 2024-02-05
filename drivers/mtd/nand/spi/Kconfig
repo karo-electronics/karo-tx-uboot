@@ -38,4 +38,9 @@ config MTD_SPI_NAND_WINBOND
 	help
 	  Add support for Winbond W25[MN] SPI NAND devices.
 
+config MTD_SPI_NAND_XTX
+	bool "XTX SPI NAND support"
+	help
+	  Add support for XTX XT26 SPI NAND devices.
+
 endif
