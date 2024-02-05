@@ -301,6 +301,13 @@ static void sysconf_init(void)
 	      syscfg + SYSCFG_CMPCR, readl(syscfg + SYSCFG_CMPCR));
 }
 
+#if IS_ENABLED(CONFIG_STM32MP13X)
+int get_eth_nb(void)
+{
+	return 1;
+}
+#endif
+
 static void print_mac_from_fuse(void)
 {
 	u32 fuse[2];

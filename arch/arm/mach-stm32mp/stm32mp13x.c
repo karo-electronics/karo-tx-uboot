@@ -51,7 +51,7 @@ u32 get_cpu_type(void)
 	return (get_cpu_dev() << 16) | get_cpu_rpn();
 }
 
-int get_eth_nb(void)
+__weak int get_eth_nb(void)
 {
 	int nb_eth = 2;
 
