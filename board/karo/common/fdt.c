@@ -42,7 +42,6 @@ static void karo_set_fdtsize(void *fdt)
 
 static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 {
-	int ret;
 	void *fdt = (void *)fdtaddr;
 	loff_t fdtsize;
 	char *dtbfile;
@@ -57,6 +56,7 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 
 #if CONFIG_IS_ENABLED(ENV_IS_IN_MMC)
 	{
+		int ret;
 		const char *bootdev = env_get("bootdev");
 		const char *bootpart = env_get("bootpart");
 
@@ -81,8 +81,15 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 #endif
 #if CONFIG_IS_ENABLED(ENV_IS_IN_UBI)
 	{
-		dtbfile = "dtb";
+		int ret;
 
+		dtbfile = "dtb";
+		ret = ubi_part(CONFIG_ENV_UBI_PART, CONFIG_ENV_UBI_VID_OFFSET);
+		if (ret) {
+			printf("Failed to find UBI partition '%s': %d\n",
+			       CONFIG_ENV_UBI_PART, ret);
+			return NULL;
+		}
 		ret = ubi_volume_read(dtbfile, fdt, 0);
 		if (ret) {
 			printf("Failed to read UBI volume '%s': %d\n",
