@@ -17,7 +17,9 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-#if defined(CONFIG_KARO_QSMP_1510)
+#if defined(CONFIG_KARO_QSMP_1351)
+#define KARO_BOARD_NAME		"qsmp-1351"
+#elif defined(CONFIG_KARO_QSMP_1510)
 #define KARO_BOARD_NAME		"qsmp-1510"
 #elif defined(CONFIG_KARO_QSMP_1530)
 #define KARO_BOARD_NAME		"qsmp-1530"
@@ -78,7 +80,7 @@ static const char * const cleanup_vars[] = {
 	"wdreset",
 };
 
-#if defined(CONFIG_TXMP_EMMC) && !defined(CONFIG_KARO_UBOOT_MFG)
+#if defined(CONFIG_KARO_STM32_EMMC) && !defined(CONFIG_KARO_UBOOT_MFG)
 static void karo_set_part_uuids(void)
 {
 	int ret;

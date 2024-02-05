@@ -16,6 +16,7 @@
 
 #define DFU_ALT_BUF_LEN SZ_1K
 
+#if CONFIG_IS_ENABLED(SET_DFU_ALT_INFO)
 static void board_get_alt_info_mmc(struct udevice *dev, char *buf)
 {
 	struct disk_partition info;
@@ -142,20 +143,16 @@ void set_dfu_alt_info(char *interface, char *devstr)
 			board_get_alt_info_mtd(mtd, buf);
 	}
 
-	if (IS_ENABLED(CONFIG_DFU_VIRT)) {
-		strncat(buf, "&virt 0=OTP", DFU_ALT_BUF_LEN);
-
-		if (IS_ENABLED(CONFIG_PMIC_STPMIC1))
-			strncat(buf, "&virt 1=PMIC", DFU_ALT_BUF_LEN);
-	}
+	if (IS_ENABLED(CONFIG_DFU_VIRT))
+		strlcat(buf, "&virt 0=OTP", DFU_ALT_BUF_LEN);
 
 	env_set("dfu_alt_info", buf);
 	puts("DFU alt info setting: done\n");
 }
+#endif
 
 #if CONFIG_IS_ENABLED(DFU_VIRT)
 #include <dfu.h>
-#include <power/stpmic1.h>
 
 static int dfu_otp_read(u64 offset, u8 *buffer, long *size)
 {
@@ -177,35 +174,6 @@ static int dfu_otp_read(u64 offset, u8 *buffer, long *size)
 	return 0;
 }
 
-static int dfu_pmic_read(u64 offset, u8 *buffer, long *size)
-{
-	int ret;
-#ifdef CONFIG_PMIC_STPMIC1
-	struct udevice *dev;
-
-	ret = uclass_get_device_by_driver(UCLASS_MISC,
-					  DM_DRIVER_GET(stpmic1_nvm),
-					  &dev);
-	if (ret)
-		return ret;
-
-	ret = misc_read(dev, 0xF8 + offset, buffer, *size);
-	if (ret >= 0) {
-		*size = ret;
-		ret = 0;
-	}
-	if (ret == -EACCES) {
-		*size = 0;
-		ret = 0;
-	}
-#else
-	pr_err("PMIC update not supported");
-	ret = -EOPNOTSUPP;
-#endif
-
-	return ret;
-}
-
 int dfu_read_medium_virt(struct dfu_entity *dfu, u64 offset,
 			 void *buf, long *len)
 {
@@ -213,7 +181,8 @@ int dfu_read_medium_virt(struct dfu_entity *dfu, u64 offset,
 	case 0x0:
 		return dfu_otp_read(offset, buf, len);
 	case 0x1:
-		return dfu_pmic_read(offset, buf, len);
+		/* STPMIC1 */
+		return -EOPNOTSUPP;
 	}
 
 	if (CONFIG_IS_ENABLED(CMD_STM32PROG) &&

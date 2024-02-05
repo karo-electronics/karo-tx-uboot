@@ -34,6 +34,7 @@
 #include <asm/arch/stm32.h>
 #include <asm/arch/stm32mp1_smc.h>
 #include <asm/arch/sys_proto.h>
+#include <dm/ofnode.h>
 #include <jffs2/load_kernel.h>
 #include <linux/delay.h>
 #include <linux/if_ether.h>
@@ -89,7 +90,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define USB_START_LOW_THRESHOLD_UV		1230000
 #define USB_START_HIGH_THRESHOLD_UV		2100000
 
-#ifdef CONFIG_VIDEO_LOGO
+#if CONFIG_IS_ENABLED(VIDEO_LOGO)
 static void show_bmp_logo(void)
 {
 	int ret;
@@ -132,6 +133,8 @@ int checkboard(void)
 	printf("Board: QSMP-1530 in %s mode", mode);
 #elif defined(CONFIG_KARO_QSMP_1570)
 	printf("Board: QSMP-1570 in %s mode", mode);
+#elif defined(CONFIG_KARO_QSMP_1351)
+	printf("Board: QSMP-1351 in %s mode", mode);
 #else
 #error Unsupported Board type
 #endif
@@ -196,7 +199,7 @@ static void board_key_check(void)
 static void sysconf_init(void)
 {
 	void *syscfg;
-#ifdef CONFIG_DM_REGULATOR
+#if CONFIG_IS_ENABLED(DM_REGULATOR)
 	struct udevice *pwr_dev;
 	struct udevice *pwr_reg;
 	struct udevice *dev;
@@ -226,7 +229,7 @@ static void sysconf_init(void)
 	debug("[%p] SYSCFG.bootr = 0x%08x\n",
 	      syscfg + SYSCFG_BOOTR, readl(syscfg + SYSCFG_BOOTR));
 
-#ifdef CONFIG_DM_REGULATOR
+#if CONFIG_IS_ENABLED(DM_REGULATOR)
 	/* High Speed Low Voltage Pad mode Enable for SPI, SDMMC, ETH, QSPI
 	 * and TRACE. Needed above ~50MHz and conditioned by AFMUX selection.
 	 * The customer will have to disable this for low frequencies
@@ -389,13 +392,13 @@ static struct udevice *led_dev;
 
 static int txmp_get_led(struct udevice **dev, char *led_string)
 {
-	char *led_name;
+	const char *led_name;
 	int ret;
 
 	if (led_state == LED_STATE_DISABLED)
 		return -ENODEV;
 
-	led_name = fdtdec_get_config_string(gd->fdt_blob, led_string);
+	led_name = ofnode_conf_read_str(led_string);
 	if (!led_name) {
 		debug("%s: could not find %s config string\n",
 		      __func__, led_string);
@@ -451,11 +454,6 @@ static void txmp_setup_led(void)
 		pr_err("No boot-led defined\n");
 		led_state = LED_STATE_DISABLED;
 	}
-	ret = led_default_state();
-	if (ret) {
-		pr_err("Failed to initialize default LED state: %d\n", ret);
-		led_state = LED_STATE_DISABLED;
-	}
 }
 #else
 static inline void txmp_setup_led(void)
@@ -489,7 +487,7 @@ int g_dnl_board_usb_cable_connected(void)
 	return dwc2_udc_B_session_valid(dwc2_udc_otg);
 }
 
-#ifdef CONFIG_USB_GADGET_DOWNLOAD
+#if CONFIG_IS_ENABLED(USB_GADGET_DOWNLOAD)
 #define STM32MP1_G_DNL_DFU_PRODUCT_NUM 0xdf11
 #define STM32MP1_G_DNL_FASTBOOT_PRODUCT_NUM 0x0afb
 
@@ -536,7 +534,6 @@ int board_init(void)
 	if (ctrlc())
 		printf("<CTRL-C> detected; safeboot enabled\n");
 
-	show_bmp_logo();
 	board_key_check();
 	txmp_setup_led();
 
@@ -594,7 +591,7 @@ static inline void rand_init(void)
 
 int board_late_init(void)
 {
-#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+#if CONFIG_IS_ENABLED(ENV_VARS_UBOOT_RUNTIME_CONFIG)
 	const void *fdt_compat;
 	ofnode root = ofnode_path("/");
 
@@ -614,6 +611,7 @@ int board_late_init(void)
 	} else if (!IS_ENABLED(CONFIG_KARO_UBOOT_MFG)) {
 		karo_fdt_move_fdt();
 		rand_init();
+		show_bmp_logo();
 	}
 	txmp_set_bootdevice();
 
@@ -626,9 +624,9 @@ void board_quiesce_devices(void)
 	debug("%s@%d:\n", __func__, __LINE__);
 }
 
-#if defined(CONFIG_OF_BOARD_SETUP)
+#if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
 
-#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
 	struct node_info nodes[] = {
 		{ "st,stm32f469-qspi",		MTD_DEV_TYPE_NOR,  },
 		{ "stf1ge4u00m",		MTD_DEV_TYPE_SPINAND,  },
@@ -638,7 +636,7 @@ void board_quiesce_devices(void)
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	int ret;
-	ofnode node;
+	// ofnode node;
 
 	debug("%s@%d:\n", __func__, __LINE__);
 
@@ -647,34 +645,9 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		printf("Warning: Failed to increase FDT size: %s\n",
 		       fdt_strerror(ret));
 
-#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
 	karo_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
 #endif
-
-	/* Update DT if coprocessor started */
-	node = ofnode_path("/m4");
-	if (ofnode_valid(node)) {
-		const char *s_copro = env_get("copro_state");
-		ulong copro_rsc_addr, copro_rsc_size;
-
-		copro_rsc_addr = env_get_hex("copro_rsc_addr", 0);
-		copro_rsc_size = env_get_hex("copro_rsc_size", 0);
-
-		if (s_copro) {
-			ofnode_write_prop(node, "early-booted", 0, NULL);
-			if (copro_rsc_addr)
-				ofnode_write_prop(node, "rsc-address",
-						  sizeof(copro_rsc_addr),
-						  (void *)cpu_to_fdt32(copro_rsc_addr));
-			if (copro_rsc_size)
-				ofnode_write_prop(node, "rsc-size",
-						  sizeof(copro_rsc_size),
-						  (void *)cpu_to_fdt32(copro_rsc_size));
-		} else {
-			fdt_delprop(blob, ofnode_to_offset(node),
-				    "early-booted");
-		}
-	}
 
 	karo_fixup_lcd_panel(env_get("videomode"));
 
@@ -700,8 +673,10 @@ void board_copro_image_process(ulong fw_image, size_t fw_size)
 	printf("Load Remote Processor %d with data@addr=0x%08lx %u bytes:%s\n",
 	       id, fw_image, fw_size, ret ? " Failed!" : " Success!");
 
-	if (!ret)
+	if (!ret) {
 		rproc_start(id);
+		env_set("copro_state", "booted");
+	}
 }
 
 U_BOOT_FIT_LOADABLE_HANDLER(IH_TYPE_COPRO, board_copro_image_process);

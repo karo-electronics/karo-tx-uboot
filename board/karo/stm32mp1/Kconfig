@@ -1,9 +1,9 @@
 source "board/karo/common/Kconfig"
 
-if TARGET_KARO_TXMP
+if TARGET_KARO_STM32MP1
 
 config SYS_BOARD
-	default "txmp"
+	default "stm32mp1"
 
 config SYS_VENDOR
 	default "karo"
@@ -25,24 +25,27 @@ choice
 
 config KARO_TXMP_1570
 	bool "Ka-Ro TXMP-1570 module"
+	depends on STM32MP15X
 	select KARO_STM32
-	imply TXMP_EMMC
+	imply KARO_STM32_EMMC
 	help
 	  Enable support for the Ka-Ro electronics TXMP-1570 module featuring
 	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB or 8GiB eMMC.
 
 config KARO_TXMP_1571
 	bool "Ka-Ro TXMP-1571 module"
+	depends on STM32MP15X
 	select KARO_STM32
-	imply TXMP_EMMC
+	imply KARO_STM32_EMMC
 	help
 	  TXMP-1570 with corrected pinout compatible with the rest of the
 	  TX module family
 
 config KARO_QSMP_1510
 	bool "Ka-Ro QSMP-1510 solder-in module"
+	depends on STM32MP15X
 	select KARO_STM32
-	select TXMP_NAND
+	select KARO_STM32_NAND
 	help
 	  Enable support for the Ka-Ro electronics QSMP-1510 module featuring
 	  an STM32MP151A SOC, 256MiB of SDRAM and 128MiB NAND flash on a
@@ -50,8 +53,9 @@ config KARO_QSMP_1510
 
 config KARO_QSMP_1530
 	bool "Ka-Ro QSMP-1530 solder-in module"
+	depends on STM32MP15X
 	select KARO_STM32
-	imply TXMP_EMMC
+	imply KARO_STM32_EMMC
 	help
 	  Enable support for the Ka-Ro electronics QSMP-1530 module featuring
 	  an STM32MP153A SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
@@ -59,28 +63,40 @@ config KARO_QSMP_1530
 
 config KARO_QSMP_1570
 	bool "Ka-Ro QSMP-1570 solder-in module"
+	depends on STM32MP15X
 	select KARO_STM32
-	imply TXMP_EMMC
+	imply KARO_STM32_EMMC
 	help
 	  Enable support for the Ka-Ro electronics QSMP-1570 module featuring
 	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB eMMC on a solder-in
+	  module.
+
+config KARO_QSMP_1351
+	bool "Ka-Ro QSMP-1351 solder-in module"
+	depends on STM32MP13X
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1351 module featuring
+	  an STM32MP135C SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
 	  module.
 
 endchoice
 
 choice
 	prompt "Ka-Ro TXMP/QSMP boot device"
-	default TXMP_EMMC
+	default KARO_STM32_NAND if KARO_QSMP_1510
+	default KARO_STM32_EMMC
 
-config TXMP_EMMC
+config KARO_STM32_EMMC
 	bool "eMMC device"
 
-config TXMP_NAND
+config KARO_STM32_NAND
 	bool "SPI NAND device"
 	depends on STM32_QSPI
 	select DM_MTD
 
-config TXMP_SPI
+config KARO_STM32_SPI
 	bool "SPI NOR device"
 	depends on STM32_QSPI
 	select DM_MTD
