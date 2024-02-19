@@ -42,6 +42,7 @@ static void karo_set_fdtsize(void *fdt)
 
 static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 {
+	int ret = -ENOENT;
 	void *fdt = (void *)fdtaddr;
 	loff_t fdtsize;
 	char *dtbfile;
@@ -51,50 +52,65 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 
 	if (had_ctrlc()) {
 		printf("aborting DTB load\n");
-		return NULL;
+		return ERR_PTR(-EINVAL);
 	}
 
 #if CONFIG_IS_ENABLED(ENV_IS_IN_MMC)
-	{
-		int ret;
+	if (ret) {
+		loff_t fsize;
 		const char *bootdev = env_get("bootdev");
 		const char *bootpart = env_get("bootpart");
 
 		dtbfile = env_get("dtbfile");
-		debug("%s@%d:\n", __func__, __LINE__);
 
 		if (!dtbfile) {
-			debug("'dtbfile' not set; cannot load DTB\n");
-			return NULL;
+			printf("'dtbfile' not set; cannot load DTB\n");
+			return ERR_PTR(-EINVAL);
 		}
 
-		if (fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY))
-			return NULL;
+		printf("Loading DTB from %s %s '%s'\n", bootdev, bootpart,
+		       dtbfile);
+		ret = fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY);
+		if (ret)
+			return ERR_PTR(ret);
 
+		ret = fs_size(dtbfile, &fsize);
+		if (ret) {
+			printf("Could not find '%s'\n", dtbfile);
+			return ERR_PTR(ret);
+		}
+
+		if (fsize > MAX_DTB_SIZE) {
+			printf("%s filesize %llu exceeds max. supported DTB size: %llu\n",
+			       dtbfile, fsize, MAX_DTB_SIZE);
+			return ERR_PTR(-ENOSPC);
+		}
+
+		ret = fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY);
+		if (ret)
+			return ERR_PTR(ret);
 		ret = fs_read(dtbfile, fdtaddr, 0, MAX_DTB_SIZE, &fdtsize);
 		if (ret) {
 			printf("Failed to load dtb from '%s': %d\n",
 			       dtbfile, ret);
-			return NULL;
+			return ERR_PTR(ret);
 		}
 	}
 #endif
 #if CONFIG_IS_ENABLED(ENV_IS_IN_UBI)
-	{
-		int ret;
-
+	if (ret) {
 		dtbfile = "dtb";
 		ret = ubi_part(CONFIG_ENV_UBI_PART, CONFIG_ENV_UBI_VID_OFFSET);
 		if (ret) {
 			printf("Failed to find UBI partition '%s': %d\n",
 			       CONFIG_ENV_UBI_PART, ret);
-			return NULL;
+			return ERR_PTR(ret);
 		}
 		ret = ubi_volume_read(dtbfile, fdt, 0);
 		if (ret) {
 			printf("Failed to read UBI volume '%s': %d\n",
 			       dtbfile, ret);
-			return NULL;
+			return ERR_PTR(ret);
 		}
 		fdtsize = env_get_hex("filesize", 0);
 	}
@@ -135,6 +151,7 @@ int karo_load_fdt_overlay(void *fdt,
 {
 	int ret;
 	loff_t size;
+	loff_t read_size;
 	void *fdto;
 	const char *filename = karo_fdt_overlay_filename(soc_prefix, baseboard);
 
@@ -166,19 +183,26 @@ int karo_load_fdt_overlay(void *fdt,
 		goto free_fn;
 	}
 
-	debug("%s@%d: reading %llu bytes from '%s'\n", __func__, __LINE__,
-	      size, filename);
+	debug("%s@%d: reading %llu bytes from '%s' to %p\n", __func__, __LINE__,
+	      size, filename, fdto);
 
 	if (fs_set_blk_dev(dev_type, dev_part, FS_TYPE_ANY)) {
 		ret = -ENOENT;
 		goto free_buf;
 	}
-	ret = fs_read(filename, (ulong)fdto, 0, 0, &size);
+
+	ret = fs_read(filename, (ulong)fdto, 0, 0, &read_size);
 	if (ret)
 		goto free_buf;
 
+	if (read_size != size) {
+		printf("Read only %llu bytes of %llu from %s\n",
+		       read_size, size, filename);
+		goto free_buf;
+	}
 	debug("Read %llu byte from '%s'\n", size, filename);
 	fdt_shrink_to_minimum(fdt, size);
+
 	ret = fdt_overlay_apply_verbose(fdt, fdto);
 	if (ret) {
 		printf("Failed to load FDT overlay from '%s': %s\n",
@@ -276,6 +300,8 @@ void karo_fdt_move_fdt(void)
 	}
 
 	fdt = karo_fdt_load_dtb(fdt_addr);
+	if (IS_ERR(fdt))
+		return;
 	if (!fdt) {
 		fdt = (void *)gd->fdt_blob;
 		if (!fdt) {
