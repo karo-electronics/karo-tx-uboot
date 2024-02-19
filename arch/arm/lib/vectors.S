@@ -154,7 +154,7 @@ fiq:
 .globl IRQ_STACK_START_IN
 IRQ_STACK_START_IN:
 #ifdef IRAM_BASE_ADDR
-	.word   IRAM_BASE_ADDR + 0x20
+	.word   IRAM_BASE_ADDR + 0x48
 #else
 	.word	0x0badc0de
 #endif
