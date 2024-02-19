@@ -115,9 +115,9 @@ static int stm32_ipcc_probe(struct udevice *dev)
 	ipcc->reg_base = (void __iomem *)addr;
 
 	/* proc_id */
-	ret = dev_read_u32_index(dev, "st,proc_id", 1, &ipcc->proc_id);
+	ret = dev_read_u32(dev, "st,proc-id", &ipcc->proc_id);
 	if (ret) {
-		dev_dbg(dev, "Missing st,proc_id\n");
+		dev_dbg(dev, "Missing st,proc-id\n");
 		return -EINVAL;
 	}
 
