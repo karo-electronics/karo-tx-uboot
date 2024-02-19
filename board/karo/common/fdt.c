@@ -19,10 +19,10 @@
 #include <linux/libfdt.h>
 #include "karo.h"
 
-#ifdef CONFIG_MAX_DTB_SIZE
-#define MAX_DTB_SIZE	CONFIG_MAX_DTB_SIZE
+#ifdef MAX_DTB_SIZE
+#define max_dtb_size	(loff_t)MAX_DTB_SIZE
 #else
-#define MAX_DTB_SIZE	SZ_64K
+#define max_dtb_size	(loff_t)SZ_1M
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -80,16 +80,16 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 			return ERR_PTR(ret);
 		}
 
-		if (fsize > MAX_DTB_SIZE) {
+		if (fsize > max_dtb_size) {
 			printf("%s filesize %llu exceeds max. supported DTB size: %llu\n",
-			       dtbfile, fsize, MAX_DTB_SIZE);
+			       dtbfile, fsize, max_dtb_size);
 			return ERR_PTR(-ENOSPC);
 		}
 
 		ret = fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY);
 		if (ret)
 			return ERR_PTR(ret);
-		ret = fs_read(dtbfile, fdtaddr, 0, MAX_DTB_SIZE, &fdtsize);
+		ret = fs_read(dtbfile, fdtaddr, 0, max_dtb_size, &fdtsize);
 		if (ret) {
 			printf("Failed to load dtb from '%s': %d\n",
 			       dtbfile, ret);
