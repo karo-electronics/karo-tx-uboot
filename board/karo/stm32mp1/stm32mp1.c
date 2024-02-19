@@ -34,10 +34,12 @@
 #include <asm/arch/stm32.h>
 #include <asm/arch/stm32mp1_smc.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/sections.h>
 #include <dm/ofnode.h>
 #include <jffs2/load_kernel.h>
 #include <linux/delay.h>
 #include <linux/if_ether.h>
+#include <linux/mtd/mtd.h>
 #include <power/regulator.h>
 #include <usb/dwc2_udc.h>
 
@@ -514,8 +516,6 @@ int g_dnl_bind_fixup(struct usb_device_descriptor *dev, const char *name)
 }
 #endif /* CONFIG_USB_GADGET_DOWNLOAD */
 
-#include <linux/mtd/mtd.h>
-
 /* board dependent setup after relocate */
 int board_init(void)
 {
@@ -643,7 +643,6 @@ void board_quiesce_devices(void)
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	int ret;
-	// ofnode node;
 
 	debug("%s@%d:\n", __func__, __LINE__);
 
