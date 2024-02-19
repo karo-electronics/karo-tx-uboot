@@ -28,6 +28,7 @@
 #include <reset.h>
 #include <rng.h>
 #include <syscon.h>
+#include <system-constants.h>
 #include <usb.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
@@ -112,6 +113,135 @@ static inline void show_bmp_logo(void)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_KARO_UBOOT_MFG) || defined(DEBUG)
+enum mem_regions {
+	TEXT,
+	DTB,
+	BSS,
+	STACK,
+	MALLOC,
+	TFA,
+	OPTEE,
+};
+
+#if IS_ENABLED(CONFIG_STM32MP13)
+#define TFA_START	0x2ffe1000
+#define TFA_END		0x2fff2000
+
+#define OPTEE_START	0xce000000
+#define OPTEE_END	0xd0000000
+#else
+#define TFA_START	0x2ffe1000
+#define TFA_END		0x2fff2000
+
+#define OPTEE_START	0xde000000
+#define OPTEE_END	0xe0000000
+#endif
+
+static struct mem_region {
+	const char *name;
+	unsigned long start;
+	unsigned long end;
+} mem_regions[] = {
+	[TEXT] = { "U-Boot", (unsigned long)&__image_copy_start, (unsigned long)&__image_copy_end, },
+	[DTB] = { "DTB", (unsigned long)&_end, },
+	[BSS] = { "BSS", (unsigned long)&__bss_start, (unsigned long)&__bss_end, },
+	[STACK] = { "STACK", },
+	[MALLOC] = { "MALLOC", },
+	[TFA] = { "TF-A", TFA_START, TFA_END, },
+	[OPTEE] = { "OPTEE", OPTEE_START, OPTEE_END, },
+};
+
+/*
+*/
+
+static int check_region(const struct mem_region *r1, const struct mem_region *r2)
+{
+	if (r1->start >= r2->end || r1->end <= r2->start)
+		return 0;
+	printf("%s:\t%08lx..%08lx overlaps %s %08lx..%08lx\n", r1->name,
+	       r1->start, r1->end - 1, r2->name, r2->start, r2->end - 1);
+	return 1;
+}
+
+#define STACK_SIZE	SZ_8K
+
+void check_mem_regions(void)
+{
+	unsigned long sp;
+	unsigned long eof = (unsigned long)&_end;
+	unsigned long dtb = (unsigned long)gd->fdt_blob;
+	size_t i, j;
+	int err = 0;
+	int mri[ARRAY_SIZE(mem_regions)] = { -1, };
+
+	asm("mov %0, sp\n" : "=r"(sp));
+
+	mem_regions[STACK].end = SYS_INIT_SP_ADDR - CONFIG_VAL(SYS_MALLOC_F_LEN);
+	mem_regions[STACK].start = mem_regions[STACK].end - STACK_SIZE;
+
+	if (sp < mem_regions[STACK].start)
+		printf("Stack overflow: sp=%08lx [%08lx..%08lx]\n", sp,
+		       mem_regions[STACK].start, mem_regions[STACK].end);
+	if (sp >= mem_regions[STACK].end)
+		printf("Stack underflow: sp=%08lx [%08lx..%08lx]\n", sp,
+		       mem_regions[STACK].start, mem_regions[STACK].end);
+
+	if (gd->fdt_blob && !fdt_check_header(gd->fdt_blob)) {
+		eof += fdt_totalsize(gd->fdt_blob);
+		mem_regions[DTB].start = dtb;
+		mem_regions[DTB].end = dtb + fdt_totalsize(gd->fdt_blob);
+	} else {
+		printf("No valid DTB found\n");
+	}
+	mem_regions[MALLOC].start = gd->malloc_base;
+	mem_regions[MALLOC].end = gd->malloc_base + gd->malloc_limit;
+
+	for (i = j = 0; i < ARRAY_SIZE(mem_regions); i++) {
+		int k;
+
+		if (!mem_regions[i].start || !mem_regions[i].end)
+			continue;
+		mri[j++] = i;
+		if (i == 0)
+			continue;
+		for (k = j; k > 0; k--) {
+			if (mem_regions[mri[k - 1]].start < mem_regions[i].start) {
+				break;
+			}
+			mri[k] = mri[k - 1];
+			mri[k - 1] = i;
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(mri); i++) {
+		if (mri[i] < 0)
+			break;
+		j = mri[i];
+		printf("%s:\t\t%08lx..%08lx\n", mem_regions[j].name,
+		       mem_regions[j].start, mem_regions[j].end);
+	}
+	for (i = 0; i < ARRAY_SIZE(mem_regions); i++) {
+		if (!mem_regions[i].start || !mem_regions[i].end)
+			continue;
+		for (j = i + 1; j < ARRAY_SIZE(mem_regions); j++) {
+			if (!mem_regions[j].start || !mem_regions[j].end)
+				continue;
+			err |= check_region(&mem_regions[i], &mem_regions[j]);
+		}
+	}
+	if (err)
+#ifdef DEBUG
+		printf("Memory regions overlap detected\n");
+#else
+		panic("Memory regions overlap detected\n");
+#endif
+}
+#else
+static inline void check_mem_regions(void)
+{
+}
+#endif
+
 int checkboard(void)
 {
 	char *mode;
@@ -119,6 +249,8 @@ int checkboard(void)
 	int fdt_compat_len;
 
 	debug("%s@%d:\n", __func__, __LINE__);
+
+	check_mem_regions();
 
 	if (IS_ENABLED(CONFIG_TFABOOT))
 		mode = "trusted";
