@@ -27,7 +27,8 @@ static void *alloc_simple(size_t bytes, int align)
 	log_debug("size=%lx, ptr=%lx, limit=%lx: ", (ulong)bytes, new_ptr,
 		  gd->malloc_limit);
 	if (new_ptr > gd->malloc_limit) {
-		log_err("alloc space exhausted\n");
+		log_err("Failed to allocate %zu bytes of memory (limit=%lu)\n",
+			bytes, gd->malloc_limit);
 		return NULL;
 	}
 
