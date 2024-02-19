@@ -304,7 +304,6 @@ int _log_buffer(enum log_category_t cat, enum log_level_t level,
 
 		thislinelen = hexdump_line(addr, data, width, count, linelen,
 					   buf, sizeof(buf));
-		assert(thislinelen >= 0);
 		_log(cat, level, file, line, func, "%s\n", buf);
 
 		/* update references */
