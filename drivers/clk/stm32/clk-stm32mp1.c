@@ -784,7 +784,9 @@ char * const stm32mp1_clk_parent_sel_name[_PARENT_SEL_NB] = {
 	[_DSI_SEL] = "DSI",
 	[_ADC12_SEL] = "ADC12",
 	[_SPI1_SEL] = "SPI1",
+	[_SPI23_SEL] = "SPI23",
 	[_SPI45_SEL] = "SPI45",
+	[_SPI6_SEL] = "SPI6",
 	[_RTC_SEL] = "RTC",
 };
 
@@ -2239,9 +2241,13 @@ static void  __maybe_unused stm32mp1_clk_dump(struct stm32mp1_clk_priv *priv)
 		     priv->data->sel[i].src) & priv->data->sel[i].msk;
 		if (p < priv->data->sel[i].nb_parent) {
 			s = priv->data->sel[i].parent[p];
-			printf("- %s(%d) => parent %s(%d)\n",
-			       stm32mp1_clk_parent_sel_name[i], i,
-			       stm32mp1_clk_parent_name[s], s);
+			if (s != _UNKNOWN_SEL)
+				printf("- %s(%d) => parent %s(%d)\n",
+				       stm32mp1_clk_parent_sel_name[i], i,
+				       stm32mp1_clk_parent_name[s], s);
+			else
+				printf("- %s(%d) => parent <UNKNOWN>\n",
+				       stm32mp1_clk_parent_sel_name[i], i);
 		} else {
 			printf("- %s(%d) => parent index %d is invalid\n",
 			       stm32mp1_clk_parent_sel_name[i], i, p);
