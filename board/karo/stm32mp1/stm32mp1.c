@@ -655,8 +655,6 @@ int board_init(void)
 
 	debug("%s@%d:\n", __func__, __LINE__);
 
-	//txmp_mtd_board_init();
-
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = STM32_DDR_BASE + 0x100;
 
@@ -669,9 +667,6 @@ int board_init(void)
 
 	if (!IS_ENABLED(CONFIG_TFABOOT))
 		sysconf_init();
-
-	if (ctrlc())
-		printf("<CTRL-C> detected; safeboot enabled\n");
 
 	board_key_check();
 	txmp_setup_led();
@@ -745,7 +740,8 @@ int board_late_init(void)
 #endif
 	karo_env_cleanup();
 
-	if (had_ctrlc()) {
+	if (ctrlc()) {
+		printf("<CTRL-C> detected; safeboot enabled\n");
 		env_set_hex("safeboot", 1);
 	} else if (!IS_ENABLED(CONFIG_KARO_UBOOT_MFG)) {
 		karo_fdt_move_fdt();
