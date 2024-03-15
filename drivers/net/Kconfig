@@ -195,6 +195,7 @@ config DWC_ETH_QOS
 	bool "Synopsys DWC Ethernet QOS device support"
 	depends on DM_ETH
 	select PHYLIB
+	imply DEVRES
 	help
 	  This driver supports the Synopsys Designware Ethernet QOS (Quality
 	  Of Service) IP block. The IP supports many options for bus type,
