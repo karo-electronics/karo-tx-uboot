@@ -239,6 +239,7 @@ config DM9000_USE_16BIT
 config DWC_ETH_QOS
 	bool "Synopsys DWC Ethernet QOS device support"
 	select PHYLIB
+	imply DEVRES
 	help
 	  This driver supports the Synopsys Designware Ethernet QOS (Quality
 	  Of Service) IP block. The IP supports many options for bus type,
