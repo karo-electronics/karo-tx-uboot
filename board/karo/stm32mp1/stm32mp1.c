@@ -124,18 +124,15 @@ enum mem_regions {
 	OPTEE,
 };
 
-#if IS_ENABLED(CONFIG_STM32MP13)
 #define TFA_START	0x2ffe1000
 #define TFA_END		0x2fff2000
 
-#define OPTEE_START	0xce000000
-#define OPTEE_END	0xd0000000
-#else
-#define TFA_START	0x2ffe1000
-#define TFA_END		0x2fff2000
-
+#if IS_ENABLED(CONFIG_KARO_TXMP_1570) || IS_ENABLED(CONFIG_KARO_QSMP_1570)
 #define OPTEE_START	0xde000000
 #define OPTEE_END	0xe0000000
+#else
+#define OPTEE_START	0xce000000
+#define OPTEE_END	0xd0000000
 #endif
 
 static struct mem_region {
@@ -143,9 +140,11 @@ static struct mem_region {
 	unsigned long start;
 	unsigned long end;
 } mem_regions[] = {
-	[TEXT] = { "U-Boot", (unsigned long)&__image_copy_start, (unsigned long)&__image_copy_end, },
+	[TEXT] = { "U-Boot", (unsigned long)&__image_copy_start,
+		(unsigned long)&__image_copy_end, },
 	[DTB] = { "DTB", (unsigned long)&_end, },
-	[BSS] = { "BSS", (unsigned long)&__bss_start, (unsigned long)&__bss_end, },
+	[BSS] = { "BSS", (unsigned long)&__bss_start,
+		(unsigned long)&__bss_end, },
 	[STACK] = { "STACK", },
 	[MALLOC] = { "MALLOC", },
 	[TFA] = { "TF-A", TFA_START, TFA_END, },
@@ -182,10 +181,10 @@ void check_mem_regions(void)
 
 	if (sp < mem_regions[STACK].start)
 		printf("Stack overflow: sp=%08lx [%08lx..%08lx]\n", sp,
-		       mem_regions[STACK].start, mem_regions[STACK].end);
+		       mem_regions[STACK].start, mem_regions[STACK].end - 1);
 	if (sp >= mem_regions[STACK].end)
 		printf("Stack underflow: sp=%08lx [%08lx..%08lx]\n", sp,
-		       mem_regions[STACK].start, mem_regions[STACK].end);
+		       mem_regions[STACK].start, mem_regions[STACK].end - 1);
 
 	if (gd->fdt_blob && !fdt_check_header(gd->fdt_blob)) {
 		eof += fdt_totalsize(gd->fdt_blob);
@@ -218,7 +217,7 @@ void check_mem_regions(void)
 			break;
 		j = mri[i];
 		printf("%s:\t\t%08lx..%08lx\n", mem_regions[j].name,
-		       mem_regions[j].start, mem_regions[j].end);
+		       mem_regions[j].start, mem_regions[j].end - 1);
 	}
 	for (i = 0; i < ARRAY_SIZE(mem_regions); i++) {
 		if (!mem_regions[i].start || !mem_regions[i].end)
