@@ -99,7 +99,7 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
 
 		unmap_sysmem(start);
 	} else if (!strcmp(op, "cmp")) {
-		if (argc != 3 || strtou32(argv[2], 0, &cmp))
+		if (argc != 3 || strtou32(argv[2], 16, &cmp))
 			return CMD_RET_USAGE;
 
 		printf("Comparing bank %u:\n", bank);
