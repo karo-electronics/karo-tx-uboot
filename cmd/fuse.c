@@ -102,7 +102,7 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
 		unmap_sysmem(start);
 	} else if (!strcmp(op, "cmp")) {
 		if (argc == 3)
-			cmp = simple_strtoul(argv[2], NULL, 0);
+			cmp = simple_strtoul(argv[2], NULL, 16);
 		else
 			return CMD_RET_USAGE;
 
