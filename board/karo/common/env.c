@@ -9,6 +9,7 @@
 #include <env_internal.h>
 #include <malloc.h>
 #include <part.h>
+#include <usb.h>
 #include <asm/bootm.h>
 #include <asm/global_data.h>
 #include <asm/setup.h>
@@ -87,25 +88,32 @@ static void karo_set_part_uuids(void)
 	struct blk_desc *dev_desc;
 	struct disk_partition info;
 	int partno;
-	char dev_part_str[16];
 	char part_uuid_name[PART_NAME_LEN + 5]; /* "uuid_${part_name}" */
-	const char *mmcdev = env_get("mmcdev");
+	const char *bootpart = env_get("bootpart");
+	const char *dev_type = env_get("bootdev");
 	const char *cur_uuid;
+	int devno;
 
-	if (!mmcdev)
-		mmcdev = "0";
+	if (!dev_type)
+		return;
 
-	ret = blk_get_device_by_str("mmc", mmcdev, &dev_desc);
-	if (ret < 0)
+	if (bootpart)
+		devno = strtoul(bootpart, NULL, 10);
+	else
+		devno = 0;
+
+	if (CONFIG_IS_ENABLED(USB_STORAGE) &&
+	    strcmp(dev_type, "usb") == 0) {
+		ret = usb_init();
+		if (ret)
+			return;
+	}
+
+	dev_desc = blk_get_devnum_by_typename(dev_type, devno);
+	if (!dev_desc)
 		return;
 
 	for (partno = 1; partno < MAX_SEARCH_PARTITIONS; partno++) {
-		ret = snprintf(dev_part_str, sizeof(dev_part_str), "%s:%u",
-			       mmcdev, partno);
-		if (ret >= sizeof(dev_part_str)) {
-			printf("Invalid mmcdev '%s'\n", env_get("mmcdev"));
-			break;
-		}
 		ret = part_get_info(dev_desc, partno, &info);
 		if (ret != 0)
 			continue;

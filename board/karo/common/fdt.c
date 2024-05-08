@@ -14,6 +14,7 @@
 #include <mtd_node.h>
 #include <of_live.h>
 #include <ubi_uboot.h>
+#include <usb.h>
 #include <asm/cache.h>
 #include <dm/of_access.h>
 #include <linux/libfdt.h>
@@ -31,12 +32,10 @@ static void karo_set_fdtsize(void *fdt)
 {
 	size_t fdtsize = env_get_hex("fdtsize", 0);
 
-	debug("%s@%d: fdtsize=%u\n", __func__, __LINE__, fdtsize);
-
 	if (fdtsize == fdt_totalsize(fdt))
 		return;
 
-	debug("FDT size changed from %u to %u\n", fdtsize, fdt_totalsize(fdt));
+	debug("FDT size changed from %zu to %u\n", fdtsize, fdt_totalsize(fdt));
 	env_set_hex("fdtsize", fdt_totalsize(fdt));
 }
 
@@ -58,8 +57,18 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 #if CONFIG_IS_ENABLED(ENV_IS_IN_MMC)
 	if (ret) {
 		loff_t fsize;
-		const char *bootdev = env_get("bootdev");
-		const char *bootpart = env_get("bootpart");
+		const char *dev_type = env_get("bootdev");
+		const char *dev_part = env_get("bootpart");
+
+		if (!dev_type || !dev_part)
+			return ERR_PTR(-ENOENT);
+
+		if (0 && CONFIG_IS_ENABLED(USB_STORAGE) &&
+		    strcmp(dev_type, "usb") == 0) {
+			ret = usb_init();
+			if (ret)
+				return ERR_PTR(ret);
+		}
 
 		dtbfile = env_get("dtbfile");
 
@@ -68,9 +77,9 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 			return ERR_PTR(-EINVAL);
 		}
 
-		printf("Loading DTB from %s %s '%s'\n", bootdev, bootpart,
+		printf("Loading DTB from %s %s '%s'\n", dev_type, dev_part,
 		       dtbfile);
-		ret = fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY);
+		ret = fs_set_blk_dev(dev_type, dev_part, FS_TYPE_ANY);
 		if (ret)
 			return ERR_PTR(ret);
 
@@ -86,7 +95,7 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 			return ERR_PTR(-ENOSPC);
 		}
 
-		ret = fs_set_blk_dev(bootdev, bootpart, FS_TYPE_ANY);
+		ret = fs_set_blk_dev(dev_type, dev_part, FS_TYPE_ANY);
 		if (ret)
 			return ERR_PTR(ret);
 		ret = fs_read(dtbfile, fdtaddr, 0, max_dtb_size, &fdtsize);
@@ -251,7 +260,7 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 {
 	int ret;
 	const char *baseboard = env_get("baseboard");
-	const char *dev_type = "mmc";
+	const char *dev_type = env_get("bootdev");
 	const char *dev_part = env_get("bootpart");
 	const char *soc_prefix = env_get("soc_prefix");
 	char *overlays;
@@ -261,6 +270,9 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 		char *overlay_list = strdup(overlays);
 		const char *overlay_listp = overlay_list;
 		char *overlay;
+
+		if (!dev_type || !dev_part)
+			return;
 
 		debug("Loading FDT overlays for '%s': %s\n", baseboard, overlays);
 		while ((overlay = strsep(&overlay_list, ", "))) {
