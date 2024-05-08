@@ -3,4 +3,4 @@
  * Copyright (C) 2022: Lothar Waßmann <LW@KARO-electronics.de>
  */
 
-#include "stm32mp151a-qsmp-1510-u-boot.dtsi"
+#include "stm32mp157c-txmp-1571-u-boot.dtsi"

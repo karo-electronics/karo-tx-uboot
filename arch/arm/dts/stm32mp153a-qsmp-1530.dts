@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 /*
  * Copyright 2020 (C) Lothar Waßmann <LW@KARO-electronics.de>
  */
@@ -8,6 +8,7 @@
 #include "stm32mp153a-qsmp.h"
 #include "stm32mp153-karo.dtsi"
 #include "stm32mp153-qsmp.dtsi"
+#include "stm32mp153a-karo-scmi.dtsi"
 
 / {
 	model = "Ka-Ro electronics GmbH QSMP-1530 solder-in module";

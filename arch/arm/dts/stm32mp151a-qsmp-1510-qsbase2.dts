@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 /*
  * Copyright 2022 (C) Lothar Waßmann <LW@KARO-electronics.de>
  */
@@ -7,4 +7,8 @@
 
 / {
 	model = "Ka-Ro electronics GmbH QSMP-1510 solder-in module on QSBASE2 baseboard";
+};
+
+&ethernet0 {
+	status = "okay";
 };

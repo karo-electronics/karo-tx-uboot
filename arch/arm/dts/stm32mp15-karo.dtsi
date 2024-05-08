@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 /*
  * Copyright (C) 2020: Lothar Waßmann <LW@KARO-electronics.de>
  */
@@ -14,8 +14,6 @@
 		ethernet0 = &ethernet0;
 		i2c0 = &i2c6;
 		mmc0 = &sdmmc2;
-		mmc1 = &sdmmc3;
-		mmc2 = &sdmmc1;
 		serial0 = &uart4;
 		serial1 = &usart2;
 		serial2 = &usart3;
@@ -172,7 +170,6 @@
 		compatible = "gpio-leds";
 
 		module_led: module-led {
-			pinctrl-names = "default", "sleep";
 			label = "Heartbeat";
 			default-state = "on";
 			linux,default-trigger = "heartbeat";
@@ -187,22 +184,46 @@
 		regulator-always-on;
 	};
 
-	reg_usbh_vbus: regulator-usbh-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USBH VBUS";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		enable-active-high;
-		gpio = <&gpiob 9 GPIO_ACTIVE_HIGH>;
-	};
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
 
-	reg_usbotg_vbus: regulator-usbotg-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USBOTG VBUS";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		enable-active-high;
-		gpio = <&gpioc 0 GPIO_ACTIVE_HIGH>;
+		mcuram2: mcuram2@10000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10000000 0x40000>;
+			no-map;
+		};
+
+		vdev0vring0: vdev0vring0@10040000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10040000 0x1000>;
+			no-map;
+		};
+
+		vdev0vring1: vdev0vring1@10041000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10041000 0x1000>;
+			no-map;
+		};
+
+		vdev0buffer: vdev0buffer@10042000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10042000 0x4000>;
+			no-map;
+		};
+
+		mcuram: mcuram@30000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x30000000 0x40000>;
+			no-map;
+		};
+
+		retram: retram@38000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x38000000 0x10000>;
+			no-map;
+		};
 	};
 };
 
@@ -226,15 +247,14 @@
 	};
 };
 
-&rcc{
-	u-boot,dm-pre-reloc;
-	status = "okay";
-};
-
 &i2c6 {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&i2c6_pins>;
 	pinctrl-1 = <&i2c6_sleep_pins>;
+	status = "okay";
+};
+
+&ipcc {
 	status = "okay";
 };
 
@@ -278,11 +298,9 @@
 	};
 };
 
-#if 0
 &rng1 {
 	status = "okay";
 };
-#endif
 
 &rtc {
 	status = "okay";
@@ -301,7 +319,6 @@
 &usbh_ehci {
 	phy-names = "usb";
 	phys = <&usbphyc_port0>;
-	vbus-supply = <&reg_usbh_vbus>;
 	status = "okay";
 };
 
@@ -309,7 +326,6 @@
 	dr_mode = "peripheral";
 	phy-names = "usb2-phy";
 	phys = <&usbphyc_port1 0>;
-	vbus-supply = <&reg_usbotg_vbus>;
 	u-boot,force-b-session-valid;
 	hnp-srp-disable;
 	status = "okay";
