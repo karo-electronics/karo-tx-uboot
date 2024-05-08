@@ -280,55 +280,6 @@ int checkboard(void)
 	return 0;
 }
 
-static void board_key_check(void)
-{
-	ofnode node;
-	struct gpio_desc gpio;
-	enum forced_boot_mode boot_mode = BOOT_NORMAL;
-
-	if (!IS_ENABLED(CONFIG_FASTBOOT) && !IS_ENABLED(CONFIG_CMD_STM32PROG))
-		return;
-
-	node = ofnode_path("/config");
-	if (!ofnode_valid(node)) {
-		log_debug("no /config node?\n");
-		return;
-	}
-	if (IS_ENABLED(CONFIG_FASTBOOT)) {
-		if (gpio_request_by_name_nodev(node, "st,fastboot-gpios", 0,
-					       &gpio, GPIOD_IS_IN)) {
-			log_debug("could not find a /config/st,fastboot-gpios\n");
-		} else {
-			udelay(20);
-			if (dm_gpio_get_value(&gpio)) {
-				log_notice("Fastboot key pressed, ");
-				boot_mode = BOOT_FASTBOOT;
-			}
-
-			dm_gpio_free(NULL, &gpio);
-		}
-	}
-	if (IS_ENABLED(CONFIG_CMD_STM32PROG)) {
-		if (gpio_request_by_name_nodev(node, "st,stm32prog-gpios", 0,
-					       &gpio, GPIOD_IS_IN)) {
-			log_debug("could not find a /config/st,stm32prog-gpios\n");
-		} else {
-			udelay(20);
-			if (dm_gpio_get_value(&gpio)) {
-				log_notice("STM32Programmer key pressed, ");
-				boot_mode = BOOT_STM32PROG;
-			}
-			dm_gpio_free(NULL, &gpio);
-		}
-	}
-	if (boot_mode != BOOT_NORMAL) {
-		log_notice("entering download mode...\n");
-		clrsetbits_le32(TAMP_BOOT_CONTEXT,
-				TAMP_BOOT_FORCED_MASK,
-				boot_mode);
-	}
-}
-
 static void sysconf_init(void)
 {
 	void *syscfg;
@@ -667,7 +618,6 @@ int board_init(void)
 	if (!IS_ENABLED(CONFIG_TFABOOT))
 		sysconf_init();
 
-	board_key_check();
 	txmp_setup_led();
 
 	return 0;
@@ -684,7 +634,7 @@ static inline void txmp_set_bootdevice(void)
 		return;
 	}
 	debug("%s@%d: boot_device='%s' boot_instance='%s' preboot='%s'\n",
-	      __func__, __LINE__, env_get("boot_device"),
+	      __func__, __LINE__, bootdev,
 	      env_get("boot_instance"), env_get("preboot"));
 	if (strcmp(bootdev, "mmc") == 0) {
 		unsigned long instance = env_get_ulong("boot_instance", 0, 0);
@@ -728,7 +678,8 @@ int board_late_init(void)
 	const void *fdt_compat;
 	ofnode root = ofnode_path("/");
 
-	fdt_compat = ofnode_read_string(root, "compatible");
+	if (ofnode_valid(root))
+		fdt_compat = ofnode_read_string(root, "compatible");
 
 	if (fdt_compat) {
 		if (strncmp(fdt_compat, "karo,", 5) != 0)
