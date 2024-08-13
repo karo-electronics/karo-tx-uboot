@@ -48,6 +48,20 @@ static int simple_panel_set_backlight(struct udevice *dev, int percent)
 	return 0;
 }
 
+static int simple_panel_get_display_timing(struct udevice *dev, struct display_timing *timing)
+{
+	int ret;
+
+	ret = ofnode_decode_display_timing(dev_ofnode(dev), 0, timing);
+	if (ret) {
+		debug("%s: Could not decode display timings: ret=%d\n",
+		      __func__, ret);
+		ret = ofnode_decode_panel_timing(dev_ofnode(dev), timing);
+	}
+
+	return ret;
+}
+
 static int simple_panel_of_to_plat(struct udevice *dev)
 {
 	struct simple_panel_priv *priv = dev_get_priv(dev);
@@ -99,6 +113,7 @@ static int simple_panel_probe(struct udevice *dev)
 static const struct panel_ops simple_panel_ops = {
 	.enable_backlight	= simple_panel_enable_backlight,
 	.set_backlight		= simple_panel_set_backlight,
+	.get_display_timing	= simple_panel_get_display_timing,
 };
 
 static const struct udevice_id simple_panel_ids[] = {
@@ -111,6 +126,7 @@ static const struct udevice_id simple_panel_ids[] = {
 	{ .compatible = "sharp,lq123p1jx31" },
 	{ .compatible = "boe,nv101wxmn51" },
 	{ .compatible = "panel-dpi" },
+	{ .compatible = "panel-lvds" },
 	{ }
 };
 

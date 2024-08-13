@@ -29,6 +29,12 @@
 #define OTYPE_MSK			1
 #define AFR_MASK			0xF
 #define SECCFG_MSK			1
+#define ADVCFGR_MASK			0xF
+#define DELAYR_MASK			0xF
+#define ADVCFGR_DLYPATH_POS		0
+#define ADVCFGR_DE_POS			1
+#define ADVCFGR_INVCLK_POS		2
+#define ADVCFGR_RET_POS			3
 
 struct stm32_pinctrl_priv {
 	struct hwspinlock hws;
@@ -43,6 +49,8 @@ struct stm32_gpio_bank {
 
 struct stm32_pinctrl_data {
 	bool secure_control;
+	bool io_sync_control;
+	bool rif_control;
 };
 
 static int stm32_pinctrl_get_access(struct udevice *gpio_dev, unsigned int gpio_idx);
@@ -277,6 +285,11 @@ static int stm32_pinctrl_get_access(struct udevice *gpio_dev, unsigned int gpio_
 	    ((readl(&regs->seccfgr) >> gpio_idx) & SECCFG_MSK))
 		return -EACCES;
 
+	/* Deny request access if IO RIF semaphore is not available */
+	if ((drv_data & STM32_GPIO_FLAG_RIF_CTRL) &&
+	    !stm32_gpio_rif_valid(regs, gpio_idx))
+		return -EACCES;
+
 	return 0;
 }
 
@@ -305,7 +318,15 @@ static int stm32_gpio_config(ofnode node,
 	struct stm32_gpio_regs *regs = priv->regs;
 	struct stm32_pinctrl_priv *ctrl_priv;
 	int ret;
-	u32 index;
+	u32 index, io_sync, advcfg;
+
+	/* Check access protection */
+	ret = stm32_pinctrl_get_access(desc->dev, desc->offset);
+	if (ret) {
+		dev_err(desc->dev, "Failed to get secure IO %s %d @ %p\n",
+			uc_priv->bank_name, desc->offset, regs);
+		return ret;
+	}
 
 	/* Check access protection */
 	ret = stm32_pinctrl_get_access(desc->dev, desc->offset);
@@ -317,6 +338,14 @@ static int stm32_gpio_config(ofnode node,
 
 	if (!ctl || ctl->af > 15 || ctl->mode > 3 || ctl->otype > 1 ||
 	    ctl->pupd > 2 || ctl->speed > 3)
+		return -EINVAL;
+
+	io_sync = dev_get_driver_data(desc->dev) & STM32_GPIO_FLAG_IO_SYNC_CTRL;
+	if (io_sync && (ctl->delay_path > STM32_GPIO_DELAY_PATH_IN ||
+			ctl->clk_edge > STM32_GPIO_CLK_EDGE_DOUBLE ||
+			ctl->clk_type > STM32_GPIO_CLK_TYPE_INVERT ||
+			ctl->retime > STM32_GPIO_RETIME_ENABLED ||
+			ctl->delay > STM32_GPIO_DELAY_3_25))
 		return -EINVAL;
 
 	ctrl_priv = dev_get_priv(dev_get_parent(desc->dev));
@@ -339,6 +368,20 @@ static int stm32_gpio_config(ofnode node,
 
 	index = desc->offset;
 	clrsetbits_le32(&regs->otyper, OTYPE_MSK << index, ctl->otype << index);
+
+	if (io_sync) {
+		index = (desc->offset & 0x07) * 4;
+		advcfg = (ctl->delay_path << ADVCFGR_DLYPATH_POS) |
+			 (ctl->clk_edge << ADVCFGR_DE_POS) |
+			 (ctl->clk_type << ADVCFGR_INVCLK_POS) |
+			 (ctl->retime << ADVCFGR_RET_POS);
+
+		clrsetbits_le32(&regs->advcfgr[desc->offset >> 3],
+				ADVCFGR_MASK << index, advcfg << index);
+
+		clrsetbits_le32(&regs->delayr[desc->offset >> 3],
+				DELAYR_MASK << index, ctl->delay << index);
+	}
 
 	uc_priv->name[desc->offset] = strdup(ofnode_get_name(node));
 
@@ -392,9 +435,23 @@ static int prep_gpio_ctl(struct stm32_gpio_ctl *gpio_ctl, u32 gpio_fn,
 	else
 		gpio_ctl->pupd = STM32_GPIO_PUPD_NO;
 
+	gpio_ctl->delay_path = ofnode_read_u32_default(node, "st,io-delay-path", 0);
+	gpio_ctl->clk_edge = ofnode_read_u32_default(node, "st,io-clk-edge", 0);
+	gpio_ctl->clk_type = ofnode_read_u32_default(node, "st,io-clk-type", 0);
+	gpio_ctl->retime = ofnode_read_u32_default(node, "st,io-retime", 0);
+	gpio_ctl->delay = ofnode_read_u32_default(node, "st,io-delay", 0);
+
 	log_debug("gpio fn= %d, slew-rate= %x, op type= %x, pull-upd is = %x\n",
 		  gpio_fn, gpio_ctl->speed, gpio_ctl->otype,
 		  gpio_ctl->pupd);
+
+	if (gpio_ctl->retime || gpio_ctl->clk_type || gpio_ctl->clk_edge || gpio_ctl->delay_path ||
+	    gpio_ctl->delay)
+		log_debug("	Retime:%d InvClk:%d DblEdge:%d DelayIn:%d\n",
+			  gpio_ctl->retime, gpio_ctl->clk_type, gpio_ctl->clk_edge,
+			  gpio_ctl->delay_path);
+	if (gpio_ctl->delay)
+		log_debug("	Delay: %d (%d ps)\n", gpio_ctl->delay, gpio_ctl->delay * 250);
 
 	return 0;
 }
@@ -467,7 +524,11 @@ static int stm32_pinctrl_bind(struct udevice *dev)
 		return -EINVAL;
 	}
 	if (drv_data->secure_control)
-		gpio_data = STM32_GPIO_FLAG_SEC_CTRL;
+		gpio_data |= STM32_GPIO_FLAG_SEC_CTRL;
+	if (drv_data->io_sync_control)
+		gpio_data |= STM32_GPIO_FLAG_IO_SYNC_CTRL;
+	if (drv_data->rif_control)
+		gpio_data |= STM32_GPIO_FLAG_RIF_CTRL;
 
 	dev_for_each_subnode(node, dev) {
 		dev_dbg(dev, "bind %s\n", ofnode_get_name(node));
@@ -547,23 +608,35 @@ static struct pinctrl_ops stm32_pinctrl_ops = {
 #endif
 };
 
-static const struct stm32_pinctrl_data stm32_pinctrl_no_sec = {
+static const struct stm32_pinctrl_data stm32_pinctrl_base = {
 	.secure_control = false,
+	.io_sync_control = false,
+	.rif_control = false,
 };
 
-static const struct stm32_pinctrl_data stm32_pinctrl_with_sec = {
+static const struct stm32_pinctrl_data stm32_pinctrl_sec = {
 	.secure_control = true,
+	.io_sync_control = false,
+	.rif_control = false,
+};
+
+static const struct stm32_pinctrl_data stm32_pinctrl_sec_iosync = {
+	.secure_control = true,
+	.io_sync_control = true,
+	.rif_control = true,
 };
 
 static const struct udevice_id stm32_pinctrl_ids[] = {
-	{ .compatible = "st,stm32f429-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32f469-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32f746-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32f769-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32h743-pinctrl",    .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32mp157-pinctrl",   .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32mp157-z-pinctrl", .data = (ulong)&stm32_pinctrl_no_sec },
-	{ .compatible = "st,stm32mp135-pinctrl",   .data = (ulong)&stm32_pinctrl_with_sec },
+	{ .compatible = "st,stm32f429-pinctrl",    .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32f469-pinctrl",    .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32f746-pinctrl",    .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32f769-pinctrl",    .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32h743-pinctrl",    .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32mp157-pinctrl",   .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32mp157-z-pinctrl", .data = (ulong)&stm32_pinctrl_base },
+	{ .compatible = "st,stm32mp135-pinctrl",   .data = (ulong)&stm32_pinctrl_sec },
+	{ .compatible = "st,stm32mp257-pinctrl",   .data = (ulong)&stm32_pinctrl_sec_iosync },
+	{ .compatible = "st,stm32mp257-z-pinctrl", .data = (ulong)&stm32_pinctrl_sec_iosync },
 	{ }
 };
 

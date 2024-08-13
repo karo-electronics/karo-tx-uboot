@@ -51,7 +51,46 @@ enum stm32_gpio_af {
 	STM32_GPIO_AF15
 };
 
+enum stm32_gpio_delay_path {
+	STM32_GPIO_DELAY_PATH_OUT = 0,
+	STM32_GPIO_DELAY_PATH_IN
+};
+
+enum stm32_gpio_clk_edge {
+	STM32_GPIO_CLK_EDGE_SINGLE = 0,
+	STM32_GPIO_CLK_EDGE_DOUBLE
+};
+
+enum stm32_gpio_clk_type {
+	STM32_GPIO_CLK_TYPE_NOT_INVERT = 0,
+	STM32_GPIO_CLK_TYPE_INVERT
+};
+
+enum stm32_gpio_retime {
+	STM32_GPIO_RETIME_DISABLED = 0,
+	STM32_GPIO_RETIME_ENABLED
+};
+
+enum stm32_gpio_delay {
+	STM32_GPIO_DELAY_NONE = 0,
+	STM32_GPIO_DELAY_0_3,
+	STM32_GPIO_DELAY_0_5,
+	STM32_GPIO_DELAY_0_75,
+	STM32_GPIO_DELAY_1_0,
+	STM32_GPIO_DELAY_1_25,
+	STM32_GPIO_DELAY_1_5,
+	STM32_GPIO_DELAY_1_75,
+	STM32_GPIO_DELAY_2_0,
+	STM32_GPIO_DELAY_2_25,
+	STM32_GPIO_DELAY_2_5,
+	STM32_GPIO_DELAY_2_75,
+	STM32_GPIO_DELAY_3_0,
+	STM32_GPIO_DELAY_3_25
+};
+
 #define STM32_GPIO_FLAG_SEC_CTRL	BIT(0)
+#define STM32_GPIO_FLAG_IO_SYNC_CTRL	BIT(1)
+#define STM32_GPIO_FLAG_RIF_CTRL	BIT(2)
 
 struct stm32_gpio_dsc {
 	u8	port;
@@ -59,11 +98,16 @@ struct stm32_gpio_dsc {
 };
 
 struct stm32_gpio_ctl {
-	enum stm32_gpio_mode	mode;
-	enum stm32_gpio_otype	otype;
-	enum stm32_gpio_speed	speed;
-	enum stm32_gpio_pupd	pupd;
-	enum stm32_gpio_af	af;
+	enum stm32_gpio_mode		mode;
+	enum stm32_gpio_otype		otype;
+	enum stm32_gpio_speed		speed;
+	enum stm32_gpio_pupd		pupd;
+	enum stm32_gpio_af		af;
+	enum stm32_gpio_delay_path	delay_path;
+	enum stm32_gpio_clk_edge	clk_edge;
+	enum stm32_gpio_clk_type	clk_type;
+	enum stm32_gpio_retime		retime;
+	enum stm32_gpio_delay		delay;
 };
 
 struct stm32_gpio_regs {
@@ -79,11 +123,22 @@ struct stm32_gpio_regs {
 	u32 brr;	/* GPIO port bit reset */
 	u32 rfu;	/* Reserved */
 	u32 seccfgr;	/* GPIO secure configuration */
+	u32 rfu2;	/* Reserved (privcfgr) */
+	u32 rfu3;	/* Reserved (rcfglock) */
+	u32 rfu4;	/* Reserved */
+	u32 delayr[2];	/* GPIO port delay */
+	u32 advcfgr[2];	/* GPIO port PIO control */
+	struct {
+		u32 cidcfgr;	/* GPIO RIF CID configuration */
+		u32 semcr;	/* GPIO RIF semaphore */
+	} rif[16];
 };
 
 struct stm32_gpio_priv {
 	struct stm32_gpio_regs *regs;
 	unsigned int gpio_range;
 };
+
+bool stm32_gpio_rif_valid(struct stm32_gpio_regs *regs, unsigned int offset);
 
 #endif /* _STM32_GPIO_PRIV_H_ */

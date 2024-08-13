@@ -42,7 +42,7 @@ static int scmi_clk_get_num_clock(struct udevice *dev, size_t *num_clocks)
 	return 0;
 }
 
-static int scmi_clk_get_attibute(struct udevice *dev, int clkid, char **name)
+static int scmi_clk_get_attribute(struct udevice *dev, int clkid, char **name)
 {
 	struct scmi_clk_priv *priv = dev_get_priv(dev);
 	struct scmi_clk_attribute_in in = {
@@ -72,7 +72,7 @@ static int scmi_clk_gate(struct clk *clk, int enable)
 {
 	struct scmi_clk_priv *priv = dev_get_priv(clk->dev);
 	struct scmi_clk_state_in in = {
-		.clock_id = clk->id,
+		.clock_id = clk_get_id(clk),
 		.attributes = enable,
 	};
 	struct scmi_clk_state_out out;
@@ -102,7 +102,7 @@ static ulong scmi_clk_get_rate(struct clk *clk)
 {
 	struct scmi_clk_priv *priv = dev_get_priv(clk->dev);
 	struct scmi_clk_rate_get_in in = {
-		.clock_id = clk->id,
+		.clock_id = clk_get_id(clk),
 	};
 	struct scmi_clk_rate_get_out out;
 	struct scmi_msg msg = SCMI_MSG_IN(SCMI_PROTOCOL_ID_CLOCK,
@@ -125,7 +125,7 @@ static ulong scmi_clk_set_rate(struct clk *clk, ulong rate)
 {
 	struct scmi_clk_priv *priv = dev_get_priv(clk->dev);
 	struct scmi_clk_rate_set_in in = {
-		.clock_id = clk->id,
+		.clock_id = clk_get_id(clk),
 		.flags = SCMI_CLK_RATE_ROUND_CLOSEST,
 		.rate_lsb = (u32)rate,
 		.rate_msb = (u32)((u64)rate >> 32),
@@ -172,7 +172,7 @@ static int scmi_clk_probe(struct udevice *dev)
 	for (i = 0; i < num_clocks; i++) {
 		char *clock_name;
 
-		if (!scmi_clk_get_attibute(dev, i, &clock_name)) {
+		if (!scmi_clk_get_attribute(dev, i, &clock_name)) {
 			clk = kzalloc(sizeof(*clk), GFP_KERNEL);
 			if (!clk || !clock_name)
 				ret = -ENOMEM;
@@ -186,7 +186,7 @@ static int scmi_clk_probe(struct udevice *dev)
 				return ret;
 			}
 
-			clk_dm(i, clk);
+			dev_clk_dm(dev, i, clk);
 		}
 	}
 
@@ -205,5 +205,5 @@ U_BOOT_DRIVER(scmi_clock) = {
 	.id = UCLASS_CLK,
 	.ops = &scmi_clk_ops,
 	.probe = scmi_clk_probe,
-	.priv_auto = sizeof(struct scmi_clk_priv *),
+	.priv_auto = sizeof(struct scmi_clk_priv),
 };

@@ -127,7 +127,7 @@ struct stm32_clock_match_data {
 	unsigned int num_clocks;
 	const struct clock_config *tab_clocks;
 	const struct clk_stm32_clock_data *clock_data;
-	int (*check_security)(void __iomem *base,
+	int (*check_security)(struct udevice *dev, void __iomem *base,
 			      const struct clock_config *cfg);
 };
 
@@ -188,16 +188,16 @@ int stm32_rcc_init(struct udevice *dev,
  * the bus or the Kernel was enable.
  *
  * Example:
- * 1) enable the bus clock
- *	--> bus_clk ref_counting = 1, gate_ref_count = 1
- * 2) enable the kernel clock
- *	--> perx_ker_ck ref_counting = 1, gate_ref_count = 2
- * 3) disable kernel clock
- * 	---> perx_ker_ck ref_counting = 0, gate_ref_count = 1
- * 	==> then i will not gate because gate_ref_count > 0
- * 4) disable bus clock
- *	--> bus_clk  ref_counting  = 0, gate_ref_count = 0
- *	==> then i can gate (write in the register) because
+ * 1) enable the bus clock
+ *	--> bus_clk ref_counting = 1, gate_ref_count = 1
+ * 2) enable the kernel clock
+ *	--> perx_ker_ck ref_counting = 1, gate_ref_count = 2
+ * 3) disable kernel clock
+ *	---> perx_ker_ck ref_counting = 0, gate_ref_count = 1
+ *	==> then i will not gate because gate_ref_count > 0
+ * 4) disable bus clock
+ *	--> bus_clk  ref_counting  = 0, gate_ref_count = 0
+ *	==> then i can gate (write in the register) because
  *	    gate_ref_count = 0
  */
 

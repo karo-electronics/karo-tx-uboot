@@ -32,6 +32,10 @@
 #define CONFIG_SERVERIP                 192.168.1.1
 #endif
 
+#define STM32MP_FIP_IMAGE_GUID \
+	EFI_GUID(0x19d5df83, 0x11b0, 0x457b, 0xbe, 0x2c, \
+		 0x75, 0x59, 0xc1, 0x31, 0x42, 0xa5)
+
 /*****************************************************************************/
 #ifdef CONFIG_DISTRO_DEFAULTS
 /*****************************************************************************/
@@ -95,19 +99,6 @@
 		"run distro_bootcmd;" \
 	"fi;\0"
 
-#ifdef CONFIG_FASTBOOT_CMD_OEM_FORMAT
-/* eMMC default partitions for fastboot command: oem format */
-#define STM32MP_PARTS_DEFAULT \
-	"partitions=" \
-	"name=ssbl,size=2M;" \
-	"name=bootfs,size=64MB,bootable;" \
-	"name=vendorfs,size=16M;" \
-	"name=rootfs,size=746M;" \
-	"name=userfs,size=-\0"
-#else
-#define STM32MP_PARTS_DEFAULT
-#endif
-
 #define STM32MP_EXTRA \
 	"env_check=if env info -p -d -q; then env save; fi\0" \
 	"boot_net_usb_start=true\0"
@@ -124,11 +115,11 @@
  * and the ramdisk at the end.
  */
 #define __KERNEL_ADDR_R     __stringify(0xc2000000)
-#define __FDT_ADDR_R        __stringify(0xc4000000)
-#define __SCRIPT_ADDR_R     __stringify(0xc4100000)
-#define __PXEFILE_ADDR_R    __stringify(0xc4200000)
-#define __FDTOVERLAY_ADDR_R __stringify(0xc4300000)
-#define __RAMDISK_ADDR_R    __stringify(0xc4400000)
+#define __FDT_ADDR_R        __stringify(0xc6000000)
+#define __SCRIPT_ADDR_R     __stringify(0xc6100000)
+#define __PXEFILE_ADDR_R    __stringify(0xc6200000)
+#define __FDTOVERLAY_ADDR_R __stringify(0xc6300000)
+#define __RAMDISK_ADDR_R    __stringify(0xc6400000)
 
 #define STM32MP_MEM_LAYOUT \
 	"kernel_addr_r=" __KERNEL_ADDR_R "\0" \
@@ -141,7 +132,6 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	STM32MP_MEM_LAYOUT \
 	STM32MP_BOOTCMD \
-	STM32MP_PARTS_DEFAULT \
 	BOOTENV \
 	STM32MP_EXTRA \
 	STM32MP_BOARD_EXTRA_ENV

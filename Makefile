@@ -3,7 +3,7 @@
 VERSION = 2022
 PATCHLEVEL = 10
 SUBLEVEL =
-EXTRAVERSION = -stm32mp-r1.1
+EXTRAVERSION = -stm32mp-r2
 NAME =
 
 # *DOCUMENTATION*
@@ -482,6 +482,11 @@ export RCS_FIND_IGNORE := \( -name SCCS -o -name BitKeeper -o -name .svn -o    \
 			  -prune -o
 export RCS_TAR_IGNORE := --exclude SCCS --exclude BitKeeper --exclude .svn \
 			 --exclude CVS --exclude .pc --exclude .hg --exclude .git
+
+# handle external device tree
+
+EXT_DTS ?= $(srctree)/arch/$(ARCH)/dts/external-dt/u-boot
+export EXT_DTS
 
 # ===========================================================================
 # Rules shared between *config targets and build targets

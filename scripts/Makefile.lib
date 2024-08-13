@@ -189,6 +189,7 @@ dtc_cpp_flags  = -Wp,-MD,$(depfile).pre.tmp -nostdinc                    \
 		 -I$(srctree)/arch/$(ARCH)/dts                           \
 		 -I$(srctree)/arch/$(ARCH)/dts/include                   \
 		 -I$(srctree)/include                                    \
+		 -I$(EXT_DTS)                                            \
 		 -D__ASSEMBLY__                                          \
 		 -undef -D__DTS__
 

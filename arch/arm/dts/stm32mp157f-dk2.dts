@@ -30,7 +30,7 @@
 
 		framebuffer {
 			compatible = "simple-framebuffer";
-			clocks = <&rcc LTDC_PX>;
+			clocks = <&rcc LTDC_PX>, <&rcc DSI>, <&rcc DSI_PX>;
 			status = "disabled";
 		};
 	};
@@ -84,6 +84,13 @@
 	};
 };
 
+&hdp {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&hdp2_gpo &hdp2_pins_a>;
+	pinctrl-1 = <&hdp2_sleep_pins_a>;
+	status = "disabled";
+};
+
 &i2c1 {
 	touchscreen@38 {
 		compatible = "focaltech,ft6236";
@@ -101,6 +108,7 @@
 };
 
 &ltdc {
+	default-on;
 	status = "okay";
 
 	port {

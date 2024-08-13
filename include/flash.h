@@ -89,6 +89,7 @@ int flash_sect_roundb(ulong *addr);
 unsigned long flash_sector_size(flash_info_t *info, flash_sect_t sect);
 void flash_cmd_reset(flash_info_t *info);
 void flash_set_verbose(uint v);
+int is_flash_available(void);
 
 /* common/flash.c */
 void flash_protect(int flag, ulong from, ulong to, flash_info_t *info);
@@ -166,6 +167,7 @@ void flash_perror(int err);
 #define AMIC_MANUFACT	0x00370037	/* AMIC    manuf. ID in D23..D16, D7..D0 */
 #define WINB_MANUFACT	0x00DA00DA	/* Winbond manuf. ID in D23..D16, D7..D0 */
 #define EON_ALT_MANU	0x001C001C	/* EON     manuf. ID in D23..D16, D7..D0 */
+#define CY_MANUFACT	0x00340034	/* Cypress manuf. IF in D23..D16, D7..D0 */
 
 /* Manufacturers inside bank 1 have ids like 0x01xx01xx */
 #define EON_MANUFACT	0x011C011C	/* EON     manuf. ID in D23..D16, D7..D0 */

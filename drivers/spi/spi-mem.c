@@ -179,10 +179,6 @@ bool spi_mem_dtr_supports_op(struct spi_slave *slave,
 	if (op->dummy.nbytes && op->dummy.buswidth == 8 && op->dummy.nbytes % 2)
 		return false;
 
-	if (op->data.dir != SPI_MEM_NO_DATA &&
-	    op->dummy.buswidth == 8 && op->data.nbytes % 2)
-		return false;
-
 	return spi_mem_check_buswidth(slave, op);
 }
 EXPORT_SYMBOL_GPL(spi_mem_dtr_supports_op);

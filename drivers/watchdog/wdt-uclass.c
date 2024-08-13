@@ -38,7 +38,20 @@ struct wdt_priv {
 	bool running;
 	/* No autostart */
 	bool noautostart;
+	/* Force start */
+	bool force_start;
 };
+
+int wdt_set_force_start(struct udevice *dev)
+{
+	struct wdt_priv *priv;
+
+	priv = dev_get_uclass_priv(dev);
+
+	priv->force_start = true;
+
+	return 0;
+}
 
 static void init_watchdog_dev(struct udevice *dev)
 {
@@ -54,7 +67,8 @@ static void init_watchdog_dev(struct udevice *dev)
 			       dev->name);
 	}
 
-	if (!IS_ENABLED(CONFIG_WATCHDOG_AUTOSTART) || priv->noautostart) {
+	if (!priv->force_start &&
+	    (!IS_ENABLED(CONFIG_WATCHDOG_AUTOSTART) || priv->noautostart)) {
 		printf("WDT:   Not starting %s\n", dev->name);
 		return;
 	}

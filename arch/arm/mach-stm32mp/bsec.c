@@ -19,7 +19,6 @@
 #include <linux/arm-smccc.h>
 #include <linux/iopoll.h>
 
-#define BSEC_OTP_MAX_VALUE		95
 #define BSEC_OTP_UPPER_START		32
 #define BSEC_TIMEOUT_US			10000
 
@@ -109,7 +108,7 @@
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: true if locked else false
  */
-static bool bsec_read_lock(u32 address, u32 otp)
+static bool bsec_read_lock(void __iomem *address, u32 otp)
 {
 	u32 bit;
 	u32 bank;
@@ -117,7 +116,7 @@ static bool bsec_read_lock(u32 address, u32 otp)
 	bit = 1 << (otp & OTP_LOCK_MASK);
 	bank = ((otp >> OTP_LOCK_BANK_SHIFT) & OTP_LOCK_MASK) * sizeof(u32);
 
-	return !!(readl(address + bank) & bit);
+	return !!(readl((address + bank)) & bit);
 }
 
 /**
@@ -126,7 +125,7 @@ static bool bsec_read_lock(u32 address, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: 0 if no error, -EAGAIN or -ENOTSUPP
  */
-static u32 bsec_check_error(u32 base, u32 otp)
+static u32 bsec_check_error(void __iomem *base, u32 otp)
 {
 	u32 bit;
 	u32 bank;
@@ -148,7 +147,7 @@ static u32 bsec_check_error(u32 base, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: true if locked else false
  */
-static bool bsec_read_SR_lock(u32 base, u32 otp)
+static bool bsec_read_SR_lock(void __iomem *base, u32 otp)
 {
 	return bsec_read_lock(base + BSEC_SRLOCK_OFF, otp);
 }
@@ -159,7 +158,7 @@ static bool bsec_read_SR_lock(u32 base, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: true if locked else false
  */
-static bool bsec_read_SP_lock(u32 base, u32 otp)
+static bool bsec_read_SP_lock(void __iomem *base, u32 otp)
 {
 	return bsec_read_lock(base + BSEC_SPLOCK_OFF, otp);
 }
@@ -170,7 +169,7 @@ static bool bsec_read_SP_lock(u32 base, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: true if locked else false
  */
-static bool bsec_read_SW_lock(u32 base, u32 otp)
+static bool bsec_read_SW_lock(void __iomem *base, u32 otp)
 {
 	return bsec_read_lock(base + BSEC_SWLOCK_OFF, otp);
 }
@@ -181,7 +180,7 @@ static bool bsec_read_SW_lock(u32 base, u32 otp)
  * @power: true to power up , false to power down
  * Return: 0 if succeed
  */
-static int bsec_power_safmem(u32 base, bool power)
+static int bsec_power_safmem(void __iomem *base, bool power)
 {
 	u32 val;
 	u32 mask;
@@ -207,7 +206,7 @@ static int bsec_power_safmem(u32 base, bool power)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: 0 if no error
  */
-static int bsec_shadow_register(struct udevice *dev, u32 base, u32 otp)
+static int bsec_shadow_register(struct udevice *dev, void __iomem *base, u32 otp)
 {
 	u32 val;
 	int ret;
@@ -252,7 +251,8 @@ static int bsec_shadow_register(struct udevice *dev, u32 base, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: 0 if no error
  */
-static int bsec_read_shadow(struct udevice *dev, u32 base, u32 *val, u32 otp)
+static int bsec_read_shadow(struct udevice *dev, void __iomem *base, u32 *val,
+			    u32 otp)
 {
 	*val = readl(base + BSEC_OTP_DATA_OFF + otp * sizeof(u32));
 
@@ -267,7 +267,7 @@ static int bsec_read_shadow(struct udevice *dev, u32 base, u32 *val, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: 0 if no error
  */
-static int bsec_write_shadow(struct udevice *dev, u32 base, u32 val, u32 otp)
+static int bsec_write_shadow(struct udevice *dev, void __iomem *base, u32 val, u32 otp)
 {
 	/* check if programming of otp is locked */
 	if (bsec_read_SW_lock(base, otp))
@@ -287,7 +287,7 @@ static int bsec_write_shadow(struct udevice *dev, u32 base, u32 val, u32 otp)
  * after the function the otp data is not refreshed in shadow
  * Return: 0 if no error
  */
-static int bsec_program_otp(struct udevice *dev, long base, u32 val, u32 otp)
+static int bsec_program_otp(struct udevice *dev,void __iomem *base, u32 val, u32 otp)
 {
 	u32 ret;
 	bool power_up = false;
@@ -337,7 +337,7 @@ static int bsec_program_otp(struct udevice *dev, long base, u32 val, u32 otp)
  * @otp: otp number (0 - BSEC_OTP_MAX_VALUE)
  * Return: 0 if no error
  */
-static int bsec_permanent_lock_otp(struct udevice *dev, long base, uint32_t otp)
+static int bsec_permanent_lock_otp(struct udevice *dev, void __iomem *base, uint32_t otp)
 {
 	int ret;
 	bool power_up = false;
@@ -391,7 +391,16 @@ static int bsec_permanent_lock_otp(struct udevice *dev, long base, uint32_t otp)
 
 /* BSEC MISC driver *******************************************************/
 struct stm32mp_bsec_plat {
-	u32 base;
+	void __iomem *base;
+};
+
+struct stm32mp_bsec_priv {
+	struct udevice *tee;
+};
+
+struct stm32mp_bsec_drvdata {
+	int size;
+	bool ta;
 };
 
 struct stm32mp_bsec_priv {
@@ -401,7 +410,7 @@ struct stm32mp_bsec_priv {
 static int stm32mp_bsec_read_otp(struct udevice *dev, u32 *val, u32 otp)
 {
 	struct stm32mp_bsec_plat *plat;
-	u32 tmp_data = 0;
+	u32 tmp_data;
 	int ret;
 
 	if (IS_ENABLED(CONFIG_ARM_SMCCC) && !IS_ENABLED(CONFIG_SPL_BUILD))
@@ -607,6 +616,7 @@ static int stm32mp_bsec_read(struct udevice *dev, int offset,
 			     void *buf, int size)
 {
 	struct stm32mp_bsec_priv *priv = dev_get_priv(dev);
+	struct stm32mp_bsec_drvdata *data = (struct stm32mp_bsec_drvdata *)dev_get_driver_data(dev);
 	int ret;
 	int i;
 	bool shadow = true, lock = false;
@@ -640,7 +650,7 @@ static int stm32mp_bsec_read(struct udevice *dev, int offset,
 
 	otp = offs / sizeof(u32);
 
-	for (i = otp; i < (otp + nb_otp) && i <= BSEC_OTP_MAX_VALUE; i++) {
+	for (i = otp; i < (otp + nb_otp) && i < data->size; i++) {
 		u32 *addr = &((u32 *)buf)[i - otp];
 
 		if (lock)
@@ -663,6 +673,7 @@ static int stm32mp_bsec_write(struct udevice *dev, int offset,
 			      const void *buf, int size)
 {
 	struct stm32mp_bsec_priv *priv = dev_get_priv(dev);
+	struct stm32mp_bsec_drvdata *data = (struct stm32mp_bsec_drvdata *)dev_get_driver_data(dev);
 	int ret = 0;
 	int i;
 	bool shadow = true, lock = false;
@@ -696,7 +707,7 @@ static int stm32mp_bsec_write(struct udevice *dev, int offset,
 
 	otp = offs / sizeof(u32);
 
-	for (i = otp; i < otp + nb_otp && i <= BSEC_OTP_MAX_VALUE; i++) {
+	for (i = otp; i < otp + nb_otp && i < data->size; i++) {
 		u32 *val = &((u32 *)buf)[i - otp];
 
 		if (lock)
@@ -723,13 +734,14 @@ static int stm32mp_bsec_of_to_plat(struct udevice *dev)
 {
 	struct stm32mp_bsec_plat *plat = dev_get_plat(dev);
 
-	plat->base = (u32)dev_read_addr_ptr(dev);
+	plat->base = dev_read_addr_ptr(dev);
 
 	return 0;
 }
 
 static int stm32mp_bsec_probe(struct udevice *dev)
 {
+	struct stm32mp_bsec_drvdata *data = (struct stm32mp_bsec_drvdata *)dev_get_driver_data(dev);
 	int otp;
 	struct stm32mp_bsec_plat *plat;
 	struct clk_bulk clk_bulk;
@@ -743,16 +755,22 @@ static int stm32mp_bsec_probe(struct udevice *dev)
 	}
 
 	if (IS_ENABLED(CONFIG_OPTEE))
-		bsec_optee_open(dev);
+		ret = bsec_optee_open(dev);
+	else
+		ret = -ENOTSUPP;
+	/* failed if OP-TEE TA is required */
+	if (data->ta && !ret)
+		return ret;
 
 	/*
 	 * update unlocked shadow for OTP cleared by the rom code
 	 * only executed in SPL, it is done in TF-A for TFABOOT
 	 */
-	if (IS_ENABLED(CONFIG_SPL_BUILD)) {
+	if (IS_ENABLED(CONFIG_SPL_BUILD) && !data->ta) {
 		plat = dev_get_plat(dev);
 
-		for (otp = 57; otp <= BSEC_OTP_MAX_VALUE; otp++)
+		/* here 57 is the value for STM32MP15x ROM code, only MPU with SPL support*/
+		for (otp = 57; otp < data->size; otp++)
 			if (!bsec_read_SR_lock(plat->base, otp))
 				bsec_shadow_register(dev, plat->base, otp);
 	}
@@ -760,9 +778,25 @@ static int stm32mp_bsec_probe(struct udevice *dev)
 	return 0;
 }
 
+static const struct stm32mp_bsec_drvdata stm32mp13_data = {
+	.size = 96,
+	.ta = true,
+};
+
+static const struct stm32mp_bsec_drvdata stm32mp15_data = {
+	.size = 96,
+	.ta = false,
+};
+
+static const struct stm32mp_bsec_drvdata stm32mp25_data = {
+	.size = 368, /* 384 but no access to HWKEY and STM32PRVKEY */
+	.ta = true,
+};
+
 static const struct udevice_id stm32mp_bsec_ids[] = {
-	{ .compatible = "st,stm32mp13-bsec" },
-	{ .compatible = "st,stm32mp15-bsec" },
+	{ .compatible = "st,stm32mp13-bsec", .data = (ulong)&stm32mp13_data},
+	{ .compatible = "st,stm32mp15-bsec", .data = (ulong)&stm32mp15_data},
+	{ .compatible = "st,stm32mp25-bsec", .data = (ulong)&stm32mp25_data},
 	{}
 };
 

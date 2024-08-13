@@ -162,6 +162,11 @@ __weak int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
 		return -ENOENT;
 	}
 
+	if (offset == ENV_MMC_INVALID_OFFSET) {
+		printf("Invalid ENV offset in MMC, copy=%d\n", copy);
+		return -ENOENT;
+	}
+
 	if (offset < 0)
 		offset += mmc->capacity;
 

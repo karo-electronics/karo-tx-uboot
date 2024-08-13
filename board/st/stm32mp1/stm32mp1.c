@@ -11,6 +11,7 @@
 #include <clk.h>
 #include <config.h>
 #include <dm.h>
+#include <efi_loader.h>
 #include <env.h>
 #include <env_internal.h>
 #include <fdt_simplefb.h>
@@ -81,6 +82,16 @@
 #define USB_WARNING_LOW_THRESHOLD_UV	660000
 #define USB_START_LOW_THRESHOLD_UV	1230000
 #define USB_START_HIGH_THRESHOLD_UV	2150000
+
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+struct efi_fw_image fw_images[1];
+
+struct efi_capsule_update_info update_info = {
+	.num_images = ARRAY_SIZE(fw_images),
+	.images = fw_images,
+};
+
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 int board_early_init_f(void)
 {
@@ -835,6 +846,13 @@ int board_init(void)
 
 	setup_led(LEDST_ON);
 
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+	efi_guid_t image_type_guid = STM32MP_FIP_IMAGE_GUID;
+
+	guidcpy(&fw_images[0].image_type_id, &image_type_guid);
+	fw_images[0].fw_name = u"STM32MP-FIP";
+	fw_images[0].image_index = 1;
+#endif
 	return 0;
 }
 
@@ -849,7 +867,7 @@ int board_late_init(void)
 	char dtb_name[256];
 	int buf_len;
 
-	if (board_is_stm32mp15x_ev1())
+	if (IS_ENABLED(CONFIG_VIDEO_LCD_RAYDIUM_RM68200) && board_is_stm32mp15x_ev1())
 		board_stm32mp15x_ev1_init();
 
 	if (board_is_stm32mp15x_dk2())
@@ -1199,6 +1217,92 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 }
 #endif
 
+#if defined(CONFIG_OF_BOARD_FIXUP)
+
+int fdt_update_fwu_properties(void *blob, int nodeoff,
+			      const char *compat_str,
+			      const char *storage_path)
+{
+	int ret;
+	int storage_off;
+
+	ret = fdt_increase_size(blob, 100);
+	if (ret) {
+		printf("fdt_increase_size: err=%s\n", fdt_strerror(ret));
+		return ret;
+	}
+
+	ret = fdt_setprop_string(blob, nodeoff, "compatible", compat_str);
+	if (ret) {
+		log_err("Can't set compatible property\n");
+		return ret;
+	}
+
+	storage_off = fdt_path_offset(blob, storage_path);
+	if (storage_off < 0) {
+		log_err("Can't find %s path\n", storage_path);
+		return nodeoff;
+	}
+
+	ret = fdt_setprop_string(blob, nodeoff, "fwu-mdata-store", storage_path);
+
+	if (ret < 0)
+		log_err("Can't set fwu-mdata-store property\n");
+
+	return ret;
+}
+
+int fdt_update_fwu_mdata(void *blob)
+{
+	int nodeoff, ret = 0;
+	u32 bootmode;
+
+	nodeoff = fdt_path_offset(blob, "/fwu-mdata");
+	if (nodeoff < 0) {
+		log_info("no /fwu-mdata node ?\n");
+
+		return 0;
+	}
+
+	bootmode = get_bootmode() & TAMP_BOOT_DEVICE_MASK;
+
+	switch (bootmode) {
+	case BOOT_FLASH_SD:
+		/* sdmmc1 : nothing to do, already the default device tree configuration */
+		break;
+	case BOOT_FLASH_EMMC:
+		/* sdmmc2 */
+		ret = fdt_update_fwu_properties(blob, nodeoff, "u-boot,fwu-mdata-mtd",
+						"/soc/mmc@58007000");
+		break;
+
+	case BOOT_FLASH_NAND:
+		/* nand@0 */
+		ret = fdt_update_fwu_properties(blob, nodeoff, "u-boot,fwu-mdata-gpt",
+						"/soc/etzpc@5c007000/memory-controller@58002000/nand-controller@4,0/nand@0");
+		break;
+
+	case BOOT_FLASH_SPINAND:
+	case BOOT_FLASH_NOR:
+		/* flash0 */
+		ret = fdt_update_fwu_properties(blob, nodeoff, "u-boot,fwu-mdata-gpt",
+						"/soc/etzpc@5c007000/spi@58003000/flash@0");
+		break;
+	}
+
+	return ret;
+}
+
+int board_fix_fdt(void *blob)
+{
+	int ret = 0;
+	if (CONFIG_IS_ENABLED(FWU_MDATA) && board_is_stm32mp15x_ev1())
+		ret = fdt_update_fwu_mdata(blob);
+
+	return ret;
+}
+#endif /* CONFIG_OF_BOARD_FIXUP */
+
 static void board_copro_image_process(ulong fw_image, size_t fw_size)
 {
 	int ret, id = 0; /* Copro id fixed to 0 as only one coproc on mp1 */
@@ -1219,3 +1323,24 @@ static void board_copro_image_process(ulong fw_image, size_t fw_size)
 }
 
 U_BOOT_FIT_LOADABLE_HANDLER(IH_TYPE_COPRO, board_copro_image_process);
+
+#if defined(CONFIG_FWU_MULTI_BANK_UPDATE)
+
+#include <fwu.h>
+
+/**
+ * fwu_plat_get_bootidx() - Get the value of the boot index
+ * @boot_idx: Boot index value
+ *
+ * Get the value of the bank(partition) from which the platform
+ * has booted. This value is passed to U-Boot from the earlier
+ * stage bootloader which loads and boots all the relevant
+ * firmware images
+ *
+ */
+void fwu_plat_get_bootidx(uint *boot_idx)
+{
+	*boot_idx = (readl(TAMP_FWU_BOOT_INFO_REG) >>
+		    TAMP_FWU_BOOT_IDX_OFFSET) & TAMP_FWU_BOOT_IDX_MASK;
+}
+#endif /* CONFIG_FWU_MULTI_BANK_UPDATE */

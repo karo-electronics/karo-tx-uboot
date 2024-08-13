@@ -28,7 +28,7 @@
 
 		framebuffer {
 			compatible = "simple-framebuffer";
-			clocks = <&rcc LTDC_PX>;
+			clocks = <&rcc LTDC_PX>, <&rcc DSI>, <&rcc DSI_PX>;
 			status = "disabled";
 		};
 	};
@@ -129,6 +129,7 @@
 		compatible = "gpio-backlight";
 		gpios = <&gpiod 13 GPIO_ACTIVE_LOW>;
 		default-on;
+		default-brightness-level = <1>;
 		status = "okay";
 	};
 
@@ -180,6 +181,15 @@
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&dcmi_pins_a>;
 	pinctrl-1 = <&dcmi_sleep_pins_a>;
+
+	/*
+	 * Enable DMA-MDMA chaining by adding a SRAM pool and
+	 * a MDMA channel
+	 */
+	sram = <&dcmi_pool>;
+
+	dmas = <&dmamux1 75 0x400 0x01>, <&mdma1 0 0x3 0x1200000a 0 0>;
+	dma-names = "tx", "mdma_tx";
 
 	port {
 		dcmi_0: endpoint {
@@ -304,6 +314,7 @@
 &dsi {
 	#address-cells = <1>;
 	#size-cells = <0>;
+	default-on;
 	status = "okay";
 
 	ports {
@@ -487,9 +498,11 @@
 		panel = <&panel_dsi>;
 		pinctrl-0 = <&goodix_pins>;
 		pinctrl-names = "default";
+		AVDD28-supply = <&v3v3>;
+		VDDIO-supply = <&v3v3>;
 		status = "okay";
 
-		interrupts = <14 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <14 IRQ_TYPE_NONE>;
 		interrupt-parent = <&stmfx_pinctrl>;
 	};
 };
@@ -516,6 +529,7 @@
 };
 
 &ltdc {
+	default-on;
 	status = "okay";
 
 	port {
@@ -659,11 +673,21 @@
 	status = "disabled";
 };
 
+&sram4 {
+	dcmi_pool: dcmi-pool@0 {
+		reg = <0x0 0x8000>;
+		pool;
+	};
+};
+
 &timers2 {
 	/* spare dmas for other usage (un-delete to enable pwm capture) */
 	/delete-property/dmas;
 	/delete-property/dma-names;
 	status = "disabled";
+	counter {
+		status = "okay";
+	};
 	pwm {
 		pinctrl-0 = <&pwm2_pins_a>;
 		pinctrl-1 = <&pwm2_sleep_pins_a>;
@@ -679,6 +703,9 @@
 	/delete-property/dmas;
 	/delete-property/dma-names;
 	status = "disabled";
+	counter {
+		status = "okay";
+	};
 	pwm {
 		pinctrl-0 = <&pwm8_pins_a>;
 		pinctrl-1 = <&pwm8_sleep_pins_a>;
@@ -694,6 +721,9 @@
 	/delete-property/dmas;
 	/delete-property/dma-names;
 	status = "disabled";
+	counter {
+		status = "okay";
+	};
 	pwm {
 		pinctrl-0 = <&pwm12_pins_a>;
 		pinctrl-1 = <&pwm12_sleep_pins_a>;

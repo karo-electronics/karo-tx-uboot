@@ -118,6 +118,13 @@ config FLASH_CFI_MTD
 	  in the drivers directory. The driver exports CFI flash
 	  to the MTD layer.
 
+ config FLASH_CFI_SFDP
+	bool "Enable SFDP parsing"
+	depends on FLASH_CFI_DRIVER
+	help
+	  This option enables the SFDP parsing which allows
+	  to support SEMPER flashes.
+
 config SYS_FLASH_PROTECTION
 	bool "Use hardware flash protection"
 	depends on FLASH_CFI_DRIVER
@@ -179,6 +186,13 @@ config STM32_FLASH
 	 This is the driver of embedded flash for some STMicroelectronics
 	 STM32 MCU.
 
+config STM32_HYPERBUS
+	bool "STMicroelectronics HyperBus driver"
+	depends on STM32MP25X && DM_MTD && CFI_FLASH
+	help
+	  This enables STMicroelectronics HyperBus controller on STM32MP2
+	  SoCs family.
+
 config SYS_MAX_FLASH_SECT
 	int "Maximumm number of sectors on a flash chip"
 	depends on MTD_NOR_FLASH || FLASH_CFI_DRIVER
@@ -186,6 +200,7 @@ config SYS_MAX_FLASH_SECT
 
 config SAMSUNG_ONENAND
 	bool "Samsung OneNAND driver support"
+
 
 config USE_SYS_MAX_FLASH_BANKS
 	bool "Enable Max number of Flash memory banks"

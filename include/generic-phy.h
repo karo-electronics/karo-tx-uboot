@@ -11,6 +11,29 @@
 
 struct ofnode_phandle_args;
 
+enum phy_mode {
+	PHY_MODE_INVALID,
+	PHY_MODE_USB_HOST,
+	PHY_MODE_USB_HOST_LS,
+	PHY_MODE_USB_HOST_FS,
+	PHY_MODE_USB_HOST_HS,
+	PHY_MODE_USB_HOST_SS,
+	PHY_MODE_USB_DEVICE,
+	PHY_MODE_USB_DEVICE_LS,
+	PHY_MODE_USB_DEVICE_FS,
+	PHY_MODE_USB_DEVICE_HS,
+	PHY_MODE_USB_DEVICE_SS,
+	PHY_MODE_USB_OTG,
+	PHY_MODE_UFS_HS_A,
+	PHY_MODE_UFS_HS_B,
+	PHY_MODE_PCIE,
+	PHY_MODE_ETHERNET,
+	PHY_MODE_MIPI_DPHY,
+	PHY_MODE_SATA,
+	PHY_MODE_LVDS,
+	PHY_MODE_DP
+};
+
 /**
  * struct phy - A handle to (allowing control of) a single phy port.
  *
@@ -136,6 +159,21 @@ struct phy_ops {
 	* Return: 0 if OK, or a negative error code
 	*/
 	int	(*configure)(struct phy *phy, void *params);
+
+	/*
+	 * set_mode - set mode for a PHY device
+	 *
+	 * @phy:	PHY port to be configured
+	 * @mode: PHY mode, enum phy_mode
+	 * @submode: submode, underlying data is specific to the PHY function
+	 *
+	 * During runtime, the PHY mode may need to be set for it's main function.
+	 * This function sets the PHY mode for it's main function following
+	 * power_on/off() after being initialized.
+	 *
+	 * Return 0 if OK, or a negative error code
+	 */
+	int	(*set_mode)(struct phy *phy, enum phy_mode mode, int submode);
 };
 
 /**
@@ -206,6 +244,15 @@ int generic_phy_power_off(struct phy *phy);
  */
 int generic_phy_configure(struct phy *phy, void *params);
 
+/**
+ * generic_phy_set_mode() - configure a PHY device
+ *
+ * @phy:	PHY port to be configured
+ * @mode:	PHY mode, enum phy_mode
+ * @submode:	submode, underlying data is specific to the PHY function
+ * Return 0 if OK, or a negative error code
+ */
+int generic_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode);
 
 /**
  * generic_phy_get_by_index() - Get a PHY device by integer index.
@@ -362,6 +409,17 @@ int generic_setup_phy(struct udevice *dev, struct phy *phy, int index);
  */
 int generic_shutdown_phy(struct phy *phy);
 
+/**
+ * generic_phy_set_mode_bulk() - Set Mode on all phys in a phy bulk struct.
+ *
+ * @bulk:	A phy bulk struct that was previously successfully requested
+ *		by generic_phy_get_bulk().
+ * @mode:	PHY mode, enum phy_mode
+ * @submode:	submode, underlying data is specific to the PHY function
+ * Return 0 if OK, or negative error code.
+ */
+int generic_phy_set_mode_bulk(struct phy_bulk *bulk, enum phy_mode mode, int submode);
+
 #else /* CONFIG_PHY */
 
 static inline int generic_phy_init(struct phy *phy)
@@ -385,6 +443,11 @@ static inline int generic_phy_power_on(struct phy *phy)
 }
 
 static inline int generic_phy_power_off(struct phy *phy)
+{
+	return 0;
+}
+
+static inline int generic_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
 {
 	return 0;
 }
@@ -433,6 +496,11 @@ static inline int generic_setup_phy(struct udevice *dev, struct phy *phy, int in
 }
 
 static inline int generic_shutdown_phy(struct phy *phy)
+{
+	return 0;
+}
+
+static inline int generic_phy_set_mode_bulk(struct phy_bulk *bulk, enum phy_mode mode, int submode)
 {
 	return 0;
 }

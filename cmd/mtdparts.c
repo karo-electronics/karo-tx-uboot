@@ -1726,7 +1726,7 @@ static int parse_mtdids(const char *const ids)
 static void mtdparts_default_build(struct mtd_info *mtd, char *mtdids, char *mtdparts)
 {
 	struct mtd_info *part;
-	char multiplier;
+	char multiplier = 'b';
 	u32 size;
 	char partition[PARTITION_MAXLEN + 20]; /* name + size + mutiliplier */
 	bool first_part;

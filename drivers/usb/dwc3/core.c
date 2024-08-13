@@ -700,12 +700,6 @@ static int dwc3_core_init_mode(struct dwc3 *dwc)
 	return 0;
 }
 
-static void dwc3_gadget_run(struct dwc3 *dwc)
-{
-	dwc3_writel(dwc->regs, DWC3_DCTL, DWC3_DCTL_RUN_STOP);
-	mdelay(100);
-}
-
 static void dwc3_core_stop(struct dwc3 *dwc)
 {
 	u32 reg;
@@ -737,7 +731,6 @@ static void dwc3_core_exit_mode(struct dwc3 *dwc)
 	 * This enables the phy to enter idle and then, if enabled, suspend.
 	 */
 	dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
-	dwc3_gadget_run(dwc);
 }
 
 #define DWC3_ALIGN_MASK		(16 - 1)
@@ -939,6 +932,8 @@ MODULE_DESCRIPTION("DesignWare USB3 DRD Controller Driver");
 int dwc3_setup_phy(struct udevice *dev, struct phy_bulk *phys)
 {
 	int ret;
+	enum usb_dr_mode dr_mode;
+	enum phy_mode phymode;
 
 	ret = generic_phy_get_bulk(dev, phys);
 	if (ret)
@@ -950,7 +945,33 @@ int dwc3_setup_phy(struct udevice *dev, struct phy_bulk *phys)
 
 	ret = generic_phy_power_on_bulk(phys);
 	if (ret)
-		generic_phy_exit_bulk(phys);
+		goto err_power_on;
+
+	dr_mode = usb_get_dr_mode(dev_ofnode(dev));
+
+	switch(dr_mode)
+	{
+		case USB_DR_MODE_HOST:
+			phymode = PHY_MODE_USB_HOST;
+			break;
+		case USB_DR_MODE_PERIPHERAL:
+			phymode = PHY_MODE_USB_DEVICE;
+			break;
+		default:
+			goto err_mode;
+	}
+
+	ret = generic_phy_set_mode_bulk(phys, phymode, (dr_mode == USB_DR_MODE_HOST) ?
+					USB_ROLE_HOST : USB_ROLE_DEVICE);
+	if (ret)
+		goto err_mode;
+
+	return ret;
+
+err_mode:
+	generic_phy_power_off_bulk(phys);
+err_power_on:
+	generic_phy_exit_bulk(phys);
 
 	return ret;
 }
@@ -1058,7 +1079,8 @@ void dwc3_of_parse(struct dwc3 *dwc)
 				       i, &val))
 			break;
 
-		dwc->incrx_mode = INCRX_UNDEF_LENGTH_BURST_MODE;
+		if (i > 0)
+			dwc->incrx_mode = INCRX_UNDEF_LENGTH_BURST_MODE;
 		dwc->incrx_size = max(dwc->incrx_size, val);
 	}
 }
