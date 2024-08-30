@@ -8,7 +8,6 @@ struct node_info;
 
 void karo_env_cleanup(void);
 void karo_fdt_move_fdt(void);
-void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count);
 
 #ifdef CONFIG_DM_VIDEO
 struct fb_videomode;
