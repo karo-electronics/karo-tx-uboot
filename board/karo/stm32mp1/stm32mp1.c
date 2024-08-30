@@ -20,7 +20,6 @@
 #include <led.h>
 #include <misc.h>
 #include <mmc.h>
-#include <mtd_node.h>
 #include <net.h>
 #include <phy.h>
 #include <rand.h>
@@ -37,10 +36,8 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/sections.h>
 #include <dm/ofnode.h>
-#include <jffs2/load_kernel.h>
 #include <linux/delay.h>
 #include <linux/if_ether.h>
-#include <linux/mtd/mtd.h>
 #include <power/regulator.h>
 #include <usb/dwc2_udc.h>
 
@@ -708,36 +705,6 @@ void board_quiesce_devices(void)
 {
 	debug("%s@%d:\n", __func__, __LINE__);
 }
-
-#if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
-
-#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
-	struct node_info nodes[] = {
-		{ "st,stm32f469-qspi",		MTD_DEV_TYPE_NOR,  },
-		{ "stf1ge4u00m",		MTD_DEV_TYPE_SPINAND,  },
-	};
-#endif
-
-int ft_board_setup(void *blob, struct bd_info *bd)
-{
-	int ret;
-
-	debug("%s@%d:\n", __func__, __LINE__);
-
-	ret = fdt_increase_size(blob, 4096);
-	if (ret)
-		printf("Warning: Failed to increase FDT size: %s\n",
-		       fdt_strerror(ret));
-
-#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
-	karo_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
-#endif
-
-	karo_fixup_lcd_panel(env_get("videomode"));
-
-	return 0;
-}
-#endif
 
 void board_copro_image_process(ulong fw_image, size_t fw_size)
 {

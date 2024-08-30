@@ -17,6 +17,7 @@
 #include <usb.h>
 #include <asm/cache.h>
 #include <dm/of_access.h>
+#include <jffs2/load_kernel.h>
 #include <linux/libfdt.h>
 #include "karo.h"
 
@@ -527,8 +528,15 @@ void karo_fixup_lcd_panel(const char *videomode)
 }
 #endif
 
-#ifndef CONFIG_SPL_BUILD
-void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
+#if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
+
+#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
+struct node_info mtd_nodes[] = {
+	{ "st,stm32f469-qspi",		MTD_DEV_TYPE_NOR,  },
+	{ "stf1ge4u00m",		MTD_DEV_TYPE_SPINAND,  },
+};
+
+static void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
 {
 	int root = fdt_path_offset(blob, "/soc");
 
@@ -543,5 +551,63 @@ void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
 			continue;
 		fdt_fixup_mtdparts(blob, &info[i], 1);
 	}
+}
+#endif
+
+static int karo_fdt_set_dr_mode(void *blob, int node, const char *mode)
+{
+	if (!fdtdec_get_is_enabled(blob, node)) {
+		printf("usbotg interface is disabled\n");
+		return 0;
+	}
+
+	printf("switching usbotg interface to %s mode\n", mode);
+	return fdt_setprop_string(blob, node, "dr_mode", mode);
+}
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	int ret;
+	int node;
+	const char *serno_str;
+
+	debug("%s@%d:\n", __func__, __LINE__);
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Warning: Failed to increase FDT size: %s\n",
+		       fdt_strerror(ret));
+
+#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
+	karo_fixup_mtdparts(blob, mtd_nodes, ARRAY_SIZE(mtd_nodes));
+#endif
+	karo_fixup_lcd_panel(env_get("videomode"));
+
+	serno_str = env_get("serial#");
+	if (serno_str) {
+		printf("serial-number: %s\n", serno_str);
+		fdt_setprop(blob, 0, "serial-number", serno_str,
+			    strlen(serno_str));
+	}
+
+	fdt_fixup_ethernet(blob);
+
+	node = fdt_path_offset(blob, "usbotg");
+	if (node > 0) {
+		const char *otg_mode = env_get("otg_mode");
+
+		if (!otg_mode || strcmp(otg_mode, "none") == 0) {
+			printf("disabling usbotg interface\n");
+			fdt_status_disabled(blob, node);
+		} else if (strcmp(otg_mode, "peripheral") == 0 ||
+		    strcmp(otg_mode, "device") == 0 ||
+		    strcmp(otg_mode, "host") == 0) {
+			karo_fdt_set_dr_mode(blob, node, otg_mode);
+		} else {
+			printf("Invalid otg_mode: '%s'\n", otg_mode);
+		}
+	}
+
+	return 0;
 }
 #endif
