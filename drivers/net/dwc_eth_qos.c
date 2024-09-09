@@ -419,27 +419,6 @@ static int eqos_phy_power_on_stm32(struct udevice *dev)
 	return 0;
 }
 
-static int eqos_phy_power_on_stm32(struct udevice *dev)
-{
-	struct eqos_priv *eqos = dev_get_priv(dev);
-	int ret;
-
-	debug("%s(dev=%p):\n", __func__, dev);
-
-#ifdef CONFIG_DM_REGULATOR
-	if (eqos->phy_supply) {
-		ret = regulator_set_enable(eqos->phy_supply, true);
-		if (ret) {
-			printf("%s: Error enabling phy supply\n", dev->name);
-			return ret;
-		}
-	}
-#endif
-
-	debug("%s: OK\n", __func__);
-	return 0;
-}
-
 static int eqos_start_resets_tegra186(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);
