@@ -14,6 +14,16 @@
 #include <dm/read.h>
 #include <dm/uclass.h>
 
+#if !CONFIG_IS_ENABLED(I2C_EEPROM)
+#define i2c_eeprom_read(dev, offset, buf, size) (-EOPNOTSUPP)
+#define i2c_eeprom_write(dev, offset, buf, size) (-EOPNOTSUPP)
+#endif
+
+#if !CONFIG_IS_ENABLED(DM_RTC)
+#define dm_rtc_read(dev, reg, buf, len) (-EOPNOTSUPP)
+#define dm_rtc_write(dev, reg, buf, len) (-EOPNOTSUPP)
+#endif
+
 int nvmem_cell_read(struct nvmem_cell *cell, void *buf, size_t size)
 {
 	dev_dbg(cell->nvmem, "%s: off=%u size=%zu\n", __func__, cell->offset, size);
