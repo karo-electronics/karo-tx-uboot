@@ -64,7 +64,7 @@ u32 get_cpu_package(void)
 	return get_otp(BSEC_OTP_PKG, PKG_SHIFT, PKG_MASK);
 }
 
-int get_eth_nb(void)
+__weak int get_eth_nb(void)
 {
 	int nb_eth;
 
@@ -98,7 +98,6 @@ int get_eth_nb(void)
 		break;
 	default:
 		nb_eth = 0;
-		break;
 	}
 
 	return nb_eth;
