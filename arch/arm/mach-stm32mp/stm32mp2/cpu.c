@@ -180,10 +180,11 @@ static void setup_boot_mode(void)
 		break;
 	case BOOT_FLASH_NOR:
 		env_set("boot_device", "nor");
-		if (IS_ENABLED(CONFIG_SYS_MAX_FLASH_BANKS))
-			sprintf(cmd, "%d", CONFIG_SYS_MAX_FLASH_BANKS);
-		else
-			sprintf(cmd, "%d", 0);
+#if IS_ENABLED(CONFIG_SYS_MAX_FLASH_BANKS)
+		sprintf(cmd, "%d", CONFIG_SYS_MAX_FLASH_BANKS);
+#else
+		sprintf(cmd, "%d", 0);
+#endif
 		env_set("boot_instance", cmd);
 		break;
 	case BOOT_FLASH_HYPERFLASH:
