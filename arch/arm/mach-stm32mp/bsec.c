@@ -403,10 +403,6 @@ struct stm32mp_bsec_drvdata {
 	bool ta;
 };
 
-struct stm32mp_bsec_priv {
-	struct udevice *tee;
-};
-
 static int stm32mp_bsec_read_otp(struct udevice *dev, u32 *val, u32 otp)
 {
 	struct stm32mp_bsec_plat *plat;
