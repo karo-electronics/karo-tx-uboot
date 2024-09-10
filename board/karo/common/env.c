@@ -13,6 +13,7 @@
 #include <asm/bootm.h>
 #include <asm/global_data.h>
 #include <asm/setup.h>
+#include <dm/ofnode.h>
 #include "karo.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -30,6 +31,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KARO_BOARD_NAME		"txmp-1570"
 #elif defined(CONFIG_KARO_TXMP_1571)
 #define KARO_BOARD_NAME		"txmp-1571"
+#elif defined(CONFIG_KARO_TXMP_2550)
+#define KARO_BOARD_NAME		"txmp-2550"
 #else
 #error Unsupported module variant
 #endif
@@ -42,7 +45,21 @@ __weak void board_debug_uart_init(void)
 
 static void karo_env_set_uboot_vars(void)
 {
-	env_set("board_name", KARO_BOARD_NAME);
+	const void *fdt_compat;
+	int fdt_compat_len;
+	const char *vendor_pfx = "karo,";
+	const int pl = strlen(vendor_pfx);
+
+	fdt_compat = ofnode_get_property(ofnode_root(), "compatible",
+					 &fdt_compat_len);
+	if (fdt_compat && fdt_compat_len) {
+		if (strncmp(fdt_compat, vendor_pfx, pl) != 0)
+			env_set("board_name", fdt_compat);
+		else
+			env_set("board_name", fdt_compat + pl);
+	} else {
+		env_set("board_name", KARO_BOARD_NAME);
+	}
 
 	if (IS_ENABLED(CONFIG_KARO_UBOOT_MFG))
 		env_set("board_rev", "mfg");

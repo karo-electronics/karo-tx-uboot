@@ -405,7 +405,7 @@ static void print_mac_from_fuse(void)
 /* board interface eth init */
 /* this is a weak define that we are overriding */
 int board_interface_eth_init(struct udevice *dev,
-			     phy_interface_t interface_type)
+			     phy_interface_t interface_type, unsigned long rate)
 {
 	u32 value;
 	u8 *syscfg = syscon_get_first_range(STM32MP_SYSCON_SYSCFG);

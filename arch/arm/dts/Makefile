@@ -1216,7 +1216,9 @@ dtb-$(CONFIG_STM32MP15X) += \
 
 dtb-$(CONFIG_STM32MP25X) += \
 	stm32mp257f-dk.dtb \
-	stm32mp257f-ev1.dtb
+	stm32mp257f-ev1.dtb \
+	stm32mp255c-txmp-2550.dtb \
+	stm32mp255c-txmp-2550-mb7.dtb
 
 dtb-$(CONFIG_SOC_K3_AM654) += \
 	k3-am654-base-board.dtb \

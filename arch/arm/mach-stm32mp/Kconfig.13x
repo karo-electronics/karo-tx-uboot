@@ -15,6 +15,11 @@ config TARGET_ST_STM32MP13X
 		managed by board/st/stm32mp1.
 		The difference between board are managed with devicetree
 
+config TARGET_KARO_STM32MP13
+	bool "Support Ka-Ro STM32MP13 modules"
+	help
+	  Ka-Ro electronics STM32MP13 based TXMP/QSMP board support
+
 endchoice
 
 config SYS_TEXT_BASE

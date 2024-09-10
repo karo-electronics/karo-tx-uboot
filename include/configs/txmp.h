@@ -17,37 +17,19 @@
 #endif
 
 #ifndef CONFIG_SPL_BUILD
+#if CONFIG_IS_ENABLED(LED)
 #define CONFIG_SHOW_ACTIVITY
+#endif
 #endif
 
 #if defined(CONFIG_STM32MP13X)
 #define SOC_PREFIX "stm32mp13"
 #elif defined(CONFIG_STM32MP15X)
 #define SOC_PREFIX "stm32mp15"
+#elif defined(CONFIG_STM32MP25X)
+#define SOC_PREFIX "stm32mp25"
 #else
 #error Unsupported STM32MP1 SoC
-#endif
-
-/*
- * Configuration of the external SRAM memory used by U-Boot
- */
-#define CONFIG_SYS_SDRAM_BASE		STM32_DDR_BASE
-/* required for exception handlers to work */
-#define IRAM_BASE_ADDR			(STM32_SYSRAM_BASE + \
-					 STM32_SYSRAM_SIZE)
-
-/* ATAGs */
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
-
-/* SDMMC */
-
-/*****************************************************************************/
-
-/* Ethernet */
-#ifdef CONFIG_DWC_ETH_QOS
-#define CONFIG_SYS_NONCACHED_MEMORY	(1 * SZ_1M)	/* 1M */
 #endif
 
 #if defined(CONFIG_KARO_QSMP_1351)
@@ -62,8 +44,29 @@
 #define SOC_FAMILY "stm32mp157c"
 #elif defined(CONFIG_KARO_TXMP_1571)
 #define SOC_FAMILY "stm32mp157c"
+#elif defined(CONFIG_KARO_TXMP_2550)
+#define SOC_FAMILY "stm32mp255c"
 #else
-#error Unsupported Ka-Ro STM32MP1 module
+#error Unsupported Ka-Ro STM32MP module
 #endif
+
+/*
+ * Configuration of the external SRAM memory used by U-Boot
+ */
+#define PHYS_SDRAM_1			STM32_DDR_BASE
+#define CONFIG_SYS_SDRAM_BASE		STM32_DDR_BASE
+
+/* required for exception handlers to work */
+#define IRAM_BASE_ADDR			(STM32_SYSRAM_BASE + \
+					 STM32_SYSRAM_SIZE)
+
+/* ATAGs */
+#define CONFIG_CMDLINE_TAG
+#define CONFIG_SETUP_MEMORY_TAGS
+#define CONFIG_INITRD_TAG
+
+/* SDMMC */
+
+/*****************************************************************************/
 
 #endif /* __CONFIG_H */

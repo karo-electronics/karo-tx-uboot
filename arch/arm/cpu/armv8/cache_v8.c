@@ -133,7 +133,7 @@ static u64 *find_pte(u64 addr, int level)
 	u64 va_bits;
 	int i;
 
-	debug("addr=%llx level=%d\n", addr, level);
+	pr_devel("addr=%llx level=%d\n", addr, level);
 
 	get_tcr(NULL, &va_bits);
 	if (va_bits < 39)
@@ -147,7 +147,7 @@ static u64 *find_pte(u64 addr, int level)
 	for (i = start_level; i < 4; i++) {
 		idx = (addr >> level2shift(i)) & 0x1FF;
 		pte += idx;
-		debug("idx=%llx PTE %p at level %d: %llx\n", idx, pte, i, *pte);
+		pr_devel("idx=%llx PTE %p at level %d: %llx\n", idx, pte, i, *pte);
 
 		/* Found it */
 		if (i == level)
@@ -187,7 +187,7 @@ static u64 *create_table(void)
 static void set_pte_table(u64 *pte, u64 *table)
 {
 	/* Point *pte to the new table */
-	debug("Setting %p to addr=%p\n", pte, table);
+	pr_devel("Setting %p to addr=%p\n", pte, table);
 	*pte = PTE_TYPE_TABLE | (ulong)table;
 }
 
@@ -206,7 +206,7 @@ static void split_block(u64 *pte, int level)
 		      "mem_map.", pte, old_pte);
 
 	new_table = create_table();
-	debug("Splitting pte %p (%llx) into %p\n", pte, old_pte, new_table);
+	pr_devel("Splitting pte %p (%llx) into %p\n", pte, old_pte, new_table);
 
 	for (i = 0; i < MAX_PTE_ENTRIES; i++) {
 		new_table[i] = old_pte | (i << levelshift);
@@ -215,7 +215,7 @@ static void split_block(u64 *pte, int level)
 		if ((level + 1) == 3)
 			new_table[i] |= PTE_TYPE_TABLE;
 
-		debug("Setting new_table[%lld] = %llx\n", i, new_table[i]);
+		pr_devel("Setting new_table[%lld] = %llx\n", i, new_table[i]);
 	}
 
 	/* Set the new table into effect */
@@ -237,7 +237,7 @@ static void add_map(struct mm_region *map)
 	while (size) {
 		pte = find_pte(virt, 0);
 		if (pte && (pte_type(pte) == PTE_TYPE_FAULT)) {
-			debug("Creating table for virt 0x%llx\n", virt);
+			pr_devel("Creating table for virt 0x%llx\n", virt);
 			new_table = create_table();
 			set_pte_table(pte, new_table);
 		}
@@ -248,12 +248,12 @@ static void add_map(struct mm_region *map)
 				panic("pte not found\n");
 
 			blocksize = 1ULL << level2shift(level);
-			debug("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
-			      virt, size, blocksize);
+			pr_devel("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
+				 virt, size, blocksize);
 			if (size >= blocksize && !(virt & (blocksize - 1))) {
 				/* Page fits, create block PTE */
-				debug("Setting PTE %p to block virt=%llx\n",
-				      pte, virt);
+				pr_devel("Setting PTE %p to block virt=%llx\n",
+					 pte, virt);
 				if (level == 3)
 					*pte = phys | attrs | PTE_TYPE_PAGE;
 				else
@@ -264,13 +264,13 @@ static void add_map(struct mm_region *map)
 				break;
 			} else if (pte_type(pte) == PTE_TYPE_FAULT) {
 				/* Page doesn't fit, create subpages */
-				debug("Creating subtable for virt 0x%llx blksize=%llx\n",
-				      virt, blocksize);
+				pr_devel("Creating subtable for virt 0x%llx blksize=%llx\n",
+					 virt, blocksize);
 				new_table = create_table();
 				set_pte_table(pte, new_table);
 			} else if (pte_type(pte) == PTE_TYPE_BLOCK) {
-				debug("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
-				      virt, blocksize);
+				pr_devel("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
+					 virt, blocksize);
 				split_block(pte, level);
 			}
 		}
@@ -463,9 +463,9 @@ inline void flush_dcache_all(void)
 	__asm_flush_dcache_all();
 	ret = __asm_flush_l3_dcache();
 	if (ret)
-		debug("flushing dcache returns 0x%x\n", ret);
+		pr_devel("flushing dcache returns 0x%x\n", ret);
 	else
-		debug("flushing dcache successfully.\n");
+		pr_devel("flushing dcache successfully.\n");
 }
 
 #ifndef CONFIG_SYS_DISABLE_DCACHE_OPS
@@ -554,13 +554,13 @@ static u64 set_one_region(u64 start, u64 size, u64 attrs, bool flag, int level)
 			*pte &= ~PMD_ATTRINDX_MASK;
 			*pte |= attrs & PMD_ATTRINDX_MASK;
 		}
-		debug("Set attrs=%llx pte=%p level=%d\n", attrs, pte, level);
+		pr_devel("Set attrs=%llx pte=%p level=%d\n", attrs, pte, level);
 
 		return levelsize;
 	}
 
 	/* Unaligned or doesn't fit, maybe split block into table */
-	debug("addr=%llx level=%d pte=%p (%llx)\n", start, level, pte, *pte);
+	pr_devel("addr=%llx level=%d pte=%p (%llx)\n", start, level, pte, *pte);
 
 	/* Maybe we need to split the block into a table */
 	if (pte_type(pte) == PTE_TYPE_BLOCK)
@@ -582,7 +582,7 @@ void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 	u64 real_start = start;
 	u64 real_size = size;
 
-	debug("start=%lx size=%lx\n", (ulong)start, (ulong)size);
+	pr_devel("start=%lx size=%lx\n", (ulong)start, (ulong)size);
 
 	if (!gd->arch.tlb_emerg)
 		panic("Emergency page table not setup.");

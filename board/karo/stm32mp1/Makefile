@@ -5,5 +5,3 @@
 
 obj-y += stm32mp1.o
 obj-$(CONFIG_DEBUG_UART_BOARD_INIT) += dbg-uart.o
-obj-$(CONFIG_SYS_MTDPARTS_RUNTIME) += board_mtdparts.o
-obj-$(CONFIG_DFU) += dfu.o

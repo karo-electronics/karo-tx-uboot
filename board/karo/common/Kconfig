@@ -1,3 +1,13 @@
+if TARGET_KARO_STM32MP15 || TARGET_KARO_STM32MP13 || TARGET_KARO_STM32MP2
+
+if TARGET_KARO_STM32MP15 || TARGET_KARO_STM32MP13
+source "board/karo/stm32mp1/Kconfig"
+endif
+
+if TARGET_KARO_STM32MP2
+source "board/karo/stm32mp2/Kconfig"
+endif
+
 config UBOOT_IGNORE_ENV
 	bool
 	help
@@ -7,11 +17,124 @@ config UBOOT_IGNORE_ENV
 
 config SYS_FDT_ADDR
 	hex "FDT load address"
-	default 0xc4000000
+	default 0xc4000000 if STM32MP15X || STM32MP13X
+	default 0x8c000000 if STM32MP25X
 	help
 	  The address the FDT file should be loaded to.
 
-config TARGET_KARO_STM32MP1
-	bool "Support Ka-Ro STM32MP1 modules"
+config KARO_STM32
+	bool
+	imply DM_RNG
+	imply DM_USB
+	imply DM_USB_GADGET
+	imply RNG_STM32MP1
+
+choice
+	prompt "Ka-Ro STM32 module variant"
+
+config KARO_TXMP_1570
+	bool "Ka-Ro TXMP-1570 module"
+	depends on TARGET_KARO_STM32MP15
+	select KARO_STM32
+	imply KARO_STM32_EMMC
 	help
-	  Ka-Ro electronics STM32MP1 based TXMP/QSMP board support
+	  Enable support for the Ka-Ro electronics TXMP-1570 module featuring
+	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB or 8GiB eMMC.
+
+config KARO_TXMP_1571
+	bool "Ka-Ro TXMP-1571 module"
+	depends on TARGET_KARO_STM32MP15
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  TXMP-1570 with corrected pinout compatible with the rest of the
+	  TX module family
+
+config KARO_QSMP_1510
+	bool "Ka-Ro QSMP-1510 solder-in module"
+	depends on TARGET_KARO_STM32MP15
+	select KARO_STM32
+	select KARO_STM32_NAND
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1510 module featuring
+	  an STM32MP151A SOC, 256MiB of SDRAM and 128MiB NAND flash on a
+	  solder-in module.
+
+config KARO_QSMP_1530
+	bool "Ka-Ro QSMP-1530 solder-in module"
+	depends on TARGET_KARO_STM32MP15
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1530 module featuring
+	  an STM32MP153A SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
+	  module.
+
+config KARO_QSMP_1570
+	bool "Ka-Ro QSMP-1570 solder-in module"
+	depends on TARGET_KARO_STM32MP15
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1570 module featuring
+	  an STM32MP157C SOC, 512MiB of SDRAM and 4GiB eMMC on a solder-in
+	  module.
+
+config KARO_QSMP_1351
+	bool "Ka-Ro QSMP-1351 solder-in module"
+	depends on TARGET_KARO_STM32MP13
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-1351 module featuring
+	  an STM32MP135C SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
+	  module.
+
+config KARO_TXMP_2550
+	bool "Ka-Ro TXMP-2550 module"
+	depends on TARGET_KARO_STM32MP2
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics TXMP-2550 module featuring
+	  an STM32MP255C SOC, 1GiB of SDRAM and 4GiB or 8GiB eMMC.
+
+endchoice
+
+choice
+	prompt "Ka-Ro TXMP/QSMP boot devices"
+	default KARO_STM32_NAND if KARO_QSMP_1510
+	default KARO_STM32_EMMC
+
+config KARO_STM32_EMMC
+	bool "eMMC device"
+
+config KARO_STM32_NAND
+	bool "SPI NAND device"
+	depends on STM32_QSPI
+	select DM_MTD
+
+config KARO_STM32_SPI
+	bool "SPI NOR device"
+	depends on STM32_QSPI
+	select DM_MTD
+
+endchoice
+
+choice
+	prompt "U-Boot image variant"
+	default KARO_UBOOT
+
+config KARO_UBOOT
+	bool "Standard U-Boot image"
+
+config KARO_UBOOT_MFG
+	bool "U-Boot image for use with stm32prog"
+
+config KARO_UBOOT_NOENV
+	bool "U-Boot using only built-in environment"
+	select UBOOT_IGNORE_ENV
+
+endchoice
+
+endif

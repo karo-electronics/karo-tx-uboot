@@ -13,6 +13,11 @@ config TARGET_ST_STM32MP25X
 		managed by board/st/stm32mp2
 		The difference between board are managed with devicetree
 
+config TARGET_KARO_STM32MP2
+	bool "Ka-Ro electronics STM32MP2 modules"
+	help
+	  Ka-Ro electronics STM32MP2 based TXMP board support
+
 endchoice
 
 config SYS_TEXT_BASE

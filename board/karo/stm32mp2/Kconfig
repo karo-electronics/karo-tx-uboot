@@ -1,5 +1,5 @@
 config SYS_BOARD
-	default "stm32mp1"
+	default "stm32mp2"
 
 config SYS_VENDOR
 	default "karo"

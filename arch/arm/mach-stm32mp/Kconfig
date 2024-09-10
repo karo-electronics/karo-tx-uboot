@@ -162,5 +162,5 @@ source "arch/arm/mach-stm32mp/Kconfig.25x"
 
 source "arch/arm/mach-stm32mp/cmd_stm32prog/Kconfig"
 
-source "board/karo/stm32mp1/Kconfig"
+source "board/karo/common/Kconfig"
 endif

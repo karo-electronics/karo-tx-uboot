@@ -5,7 +5,6 @@
  */
 
 #include <common.h>
-#include <console.h>
 #include <env.h>
 #include <fdt_support.h>
 #include <fs.h>
@@ -135,10 +134,13 @@ static void *karo_fdt_load_dtb(unsigned long fdtaddr)
 	return fdt;
 }
 
-static const char *karo_fdt_overlay_filename(const char *soc_prefix,
-					     const char *baseboard)
+#ifdef CONFIG_KARO_UBOOT
+static bool fdt_overlay_debug = IS_ENABLED(CONFIG_DEBUG);
+
+static char *karo_fdt_overlay_filename(const char *prefix,
+				       const char *overlay)
 {
-	size_t malloc_size = strlen(soc_prefix) + strlen(baseboard) + 6;
+	size_t malloc_size = strlen(prefix) + strlen(overlay) + 6;
 	char *fdtfile = malloc(malloc_size);
 	const char *pfx_end;
 	size_t pos;
@@ -146,30 +148,38 @@ static const char *karo_fdt_overlay_filename(const char *soc_prefix,
 	if (!fdtfile)
 		return NULL;
 
-	strcpy(fdtfile, soc_prefix);
+	strcpy(fdtfile, prefix);
 	pfx_end = strchrnul(fdtfile, '-');
 	pos = pfx_end - fdtfile;
 	snprintf(&fdtfile[pos], malloc_size - pos, "%s%s.dtb",
-		 *pfx_end == '-' ? "" : "-", baseboard);
+		 *pfx_end == '-' ? "" : "-", overlay);
 
 	return fdtfile;
 }
 
-int karo_load_fdt_overlay(void *fdt,
-			  const char *dev_type, const char *dev_part,
-			  const char *soc_prefix, const char *baseboard)
+int karo_load_fdt_overlay(void *fdt, const char *dev_type, const char *dev_part,
+			  const char *overlay)
 {
 	int ret;
 	loff_t size;
 	loff_t read_size;
 	void *fdto;
-	const char *filename = karo_fdt_overlay_filename(soc_prefix, baseboard);
+	const char *soc_prefix = env_get("soc_prefix");
+	const char *soc_family = env_get("soc_family");
+	char *filename = karo_fdt_overlay_filename(soc_family, overlay);
 
 	if (!filename)
 		return -ENOMEM;
 
-	printf("Loading FDT overlay for '%s' from %s %s '%s'\n", baseboard,
-	       dev_type, dev_part, filename);
+	if (!file_exists(dev_type, dev_part, filename, FS_TYPE_ANY)) {
+		free(filename);
+		filename = karo_fdt_overlay_filename(soc_prefix, overlay);
+		if (!filename)
+			return -ENOMEM;
+	}
+	if (fdt_overlay_debug)
+		printf("Loading FDT overlay for '%s' from %s %s '%s'\n", overlay,
+		       dev_type, dev_part, filename);
 
 	if (!file_exists(dev_type, dev_part, filename, FS_TYPE_ANY)) {
 		printf("'%s' does not exist\n", filename);
@@ -182,8 +192,10 @@ int karo_load_fdt_overlay(void *fdt,
 	}
 
 	ret = fs_size(filename, &size);
-	if (ret)
+	if (ret) {
+		printf("Failed to get size of '%s': %d\n", filename, errno);
 		goto free_fn;
+	}
 
 	fdto = memalign(ARCH_DMA_MINALIGN, size);
 	if (!fdto) {
@@ -217,6 +229,7 @@ int karo_load_fdt_overlay(void *fdt,
 	if (ret) {
 		printf("Failed to load FDT overlay from '%s': %s\n",
 		       filename, fdt_strerror(ret));
+		memset(fdt, 0, sizeof(struct fdt_header));
 		ret = -EINVAL;
 	}
 
@@ -263,8 +276,9 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 	const char *baseboard = env_get("baseboard");
 	const char *dev_type = env_get("bootdev");
 	const char *dev_part = env_get("bootpart");
-	const char *soc_prefix = env_get("soc_prefix");
 	char *overlays;
+
+	fdt_overlay_debug |= env_get_yesno("debug_overlays") == 1;
 
 	ret = karo_fdt_get_overlays(baseboard, &overlays);
 	if (ret == 0 && overlays) {
@@ -280,7 +294,7 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 			if (!strlen(overlay))
 				continue;
 			ret = karo_load_fdt_overlay((void *)fdt_addr, dev_type,
-						    dev_part, soc_prefix, overlay);
+						    dev_part, overlay);
 			if (ret) {
 				printf("Failed to load '%s' FDT overlay: %d\n",
 				       overlay, ret);
@@ -293,7 +307,14 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 	} else {
 		printf("No FDT overlays to be loaded\n");
 	}
+	if (ret)
+		memset((void *)fdt_addr, 0, sizeof(fdt_addr));
 }
+#else
+static inline void karo_fdt_apply_overlays(unsigned long fdt_addr)
+{
+}
+#endif
 
 void karo_fdt_move_fdt(void)
 {
