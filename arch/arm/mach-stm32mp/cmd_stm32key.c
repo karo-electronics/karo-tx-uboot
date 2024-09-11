@@ -227,8 +227,8 @@ static void read_key_value(const struct stm32key *key, uintptr_t addr)
 	int i;
 
 	for (i = 0; i < key->size; i++) {
-		printf("%s OTP %i: [%08x] %08x\n", key->name, key->start + i,
-		       addr, __be32_to_cpup((__be32 *)addr);
+		printf("%s OTP %i: [%08lx] %08x\n", key->name, key->start + i,
+		       addr, __be32_to_cpup((__be32 *)addr));
 		addr += 4;
 	}
 }

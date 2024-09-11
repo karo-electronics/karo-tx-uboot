@@ -126,7 +126,7 @@ static phys_addr_t stm32_copro_device_to_phys(struct udevice *dev, ulong da,
 	phys_addr_t paddr;
 
 	paddr = dev_translate_dma_address(dev, &in_addr);
-	if (paddr == OF_BAD_ADDR) {
+	if (paddr == (phys_addr_t)OF_BAD_ADDR) {
 		dev_err(dev, "Unable to convert address %ld\n", da);
 		return 0;
 	}
