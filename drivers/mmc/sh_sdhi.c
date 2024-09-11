@@ -21,6 +21,7 @@
 #include <linux/errno.h>
 #include <linux/compat.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/sizes.h>
 #include <asm/arch/rmobile.h>
 #include <asm/arch/sh_sdhi.h>
@@ -160,7 +161,7 @@ static int sh_sdhi_wait_interrupt_flag(struct sh_sdhi_host *host)
 	while (1) {
 		timeout--;
 		if (timeout < 0) {
-			debug(DRIVER_NAME": %s timeout\n", __func__);
+			printf(DRIVER_NAME": %s timeout\n", __func__);
 			return 0;
 		}
 
@@ -175,7 +176,9 @@ static int sh_sdhi_wait_interrupt_flag(struct sh_sdhi_host *host)
 
 static int sh_sdhi_clock_control(struct sh_sdhi_host *host, unsigned long clk)
 {
-	u32 clkdiv, i, timeout;
+	int ret;
+	u32 clkdiv, i;
+	u16 val;
 
 	if (sh_sdhi_readw(host, SDHI_INFO2) & (1 << 14)) {
 		printf(DRIVER_NAME": Busy state ! Cannot change the clock\n");
@@ -195,38 +198,30 @@ static int sh_sdhi_clock_control(struct sh_sdhi_host *host, unsigned long clk)
 
 	sh_sdhi_writew(host, SDHI_CLK_CTRL, clkdiv);
 
-	timeout = 100000;
-	/* Waiting for SD Bus busy to be cleared */
-	while (timeout--) {
-		if ((sh_sdhi_readw(host, SDHI_INFO2) & 0x2000))
-			break;
-	}
-
-	if (timeout)
-		sh_sdhi_writew(host, SDHI_CLK_CTRL,
-			       CLK_ENABLE | sh_sdhi_readw(host, SDHI_CLK_CTRL));
-	else
+	ret = readw_poll_timeout(host->addr + (SDHI_INFO2 << host->bus_shift),
+				 val, val & 0x2000, 100000);
+	if (ret)
 		return -EBUSY;
+
+	sh_sdhi_writew(host, SDHI_CLK_CTRL,
+		       CLK_ENABLE | sh_sdhi_readw(host, SDHI_CLK_CTRL));
 
 	return 0;
 }
 
 static int sh_sdhi_sync_reset(struct sh_sdhi_host *host)
 {
-	u32 timeout;
+	int ret;
+	u16 val;
+
 	sh_sdhi_writew(host, SDHI_SOFT_RST, SOFT_RST_ON);
 	sh_sdhi_writew(host, SDHI_SOFT_RST, SOFT_RST_OFF);
 	sh_sdhi_writew(host, SDHI_CLK_CTRL,
 		       CLK_ENABLE | sh_sdhi_readw(host, SDHI_CLK_CTRL));
 
-	timeout = 100000;
-	while (timeout--) {
-		if (!(sh_sdhi_readw(host, SDHI_INFO2) & INFO2_CBUSY))
-			break;
-		udelay(100);
-	}
-
-	if (!timeout)
+	ret = readw_poll_timeout(host->addr + (SDHI_INFO2 << host->bus_shift),
+				 val, !(val & INFO2_CBUSY), 10000000);
+	if (ret)
 		return -EBUSY;
 
 	if (host->quirks & SH_SDHI_QUIRK_16BIT_BUF)
@@ -250,7 +245,7 @@ static int sh_sdhi_error_manage(struct sh_sdhi_host *host)
 			ret = -ETIMEDOUT;
 		else
 			ret = -EILSEQ;
-		debug("%s: ERR_STS2 = %04x\n",
+		printf("%s: ERR_STS2 = %04x\n",
 		      DRIVER_NAME, sh_sdhi_readw(host, SDHI_ERR_STS2));
 		sh_sdhi_sync_reset(host);
 
@@ -263,7 +258,7 @@ static int sh_sdhi_error_manage(struct sh_sdhi_host *host)
 	else
 		ret = -ETIMEDOUT;
 
-	debug("%s: ERR_STS1 = %04x\n",
+	printf("%s: ERR_STS1 = %04x\n",
 	      DRIVER_NAME, sh_sdhi_readw(host, SDHI_ERR_STS1));
 	sh_sdhi_sync_reset(host);
 	sh_sdhi_writew(host, SDHI_INFO1_MASK,
@@ -279,7 +274,7 @@ static int sh_sdhi_single_read(struct sh_sdhi_host *host, struct mmc_data *data)
 	u64 *q = (u64 *)data->dest;
 
 	if ((unsigned long)p & 0x00000001) {
-		debug(DRIVER_NAME": %s: The data pointer is unaligned.",
+		printf(DRIVER_NAME": %s: The data pointer is unaligned.",
 		      __func__);
 		return -EIO;
 	}
@@ -320,8 +315,8 @@ static int sh_sdhi_multi_read(struct sh_sdhi_host *host, struct mmc_data *data)
 	u64 *q = (u64 *)data->dest;
 
 	if ((unsigned long)p & 0x00000001) {
-		debug(DRIVER_NAME": %s: The data pointer is unaligned.",
-		      __func__);
+		printf(DRIVER_NAME": %s: The data pointer is unaligned.",
+		       __func__);
 		return -EIO;
 	}
 
@@ -539,8 +534,8 @@ static int sh_sdhi_start_cmd(struct sh_sdhi_host *host,
 {
 	long time;
 	unsigned short shcmd, opc = cmd->cmdidx;
-	int ret = 0;
-	unsigned long timeout;
+	int ret;
+	u16 val;
 
 	debug("opc = %d, arg = %x, resp_type = %x\n",
 	      opc, cmd->cmdarg, cmd->resp_type);
@@ -582,12 +577,10 @@ static int sh_sdhi_start_cmd(struct sh_sdhi_host *host,
 	sh_sdhi_writew(host, SDHI_ARG1,
 		       (unsigned short)((cmd->cmdarg >> 16) & ARG1_MASK));
 
-	timeout = 100000;
-	/* Waiting for SD Bus busy to be cleared */
-	while (timeout--) {
-		if ((sh_sdhi_readw(host, SDHI_INFO2) & 0x2000))
-			break;
-	}
+	ret = readw_poll_timeout(host->addr + (SDHI_INFO2 << host->bus_shift),
+				 val, val & 0x2000, 100000);
+	if (ret)
+		return ret;
 
 	host->wait_int = 0;
 	sh_sdhi_writew(host, SDHI_INFO1_MASK,
@@ -614,8 +607,8 @@ static int sh_sdhi_start_cmd(struct sh_sdhi_host *host,
 			ret = -ETIMEDOUT;
 			break;
 		default:
-			debug(DRIVER_NAME": Cmd(d'%d) err\n", opc);
-			debug(DRIVER_NAME": cmdidx = %d\n", cmd->cmdidx);
+			printf(DRIVER_NAME": Cmd(d'%d) err\n", opc);
+			printf(DRIVER_NAME": cmdidx = %d\n", cmd->cmdidx);
 			ret = sh_sdhi_error_manage(host);
 			break;
 		}
@@ -844,13 +837,13 @@ static int sh_sdhi_dm_probe(struct udevice *dev)
 
 	ret = clk_get_by_index(dev, 0, &sh_sdhi_clk);
 	if (ret) {
-		debug("failed to get clock, ret=%d\n", ret);
+		printf("failed to get clock, ret=%d\n", ret);
 		return ret;
 	}
 
 	ret = clk_enable(&sh_sdhi_clk);
 	if (ret) {
-		debug("failed to enable clock, ret=%d\n", ret);
+		printf("failed to enable clock, ret=%d\n", ret);
 		return ret;
 	}
 
