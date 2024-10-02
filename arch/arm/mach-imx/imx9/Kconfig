@@ -76,6 +76,10 @@ config TARGET_PHYCORE_IMX93
 	select OF_BOARD_FIXUP
 	select OF_BOARD_SETUP
 
+config TARGET_KARO_IMX91
+	bool "Ka-Ro electronics i.MX91 module family"
+	select IMX91
+
 config TARGET_KARO_IMX93
 	bool "Ka-Ro electronics i.MX93 module family"
 	select IMX93
@@ -92,6 +96,7 @@ endchoice
 source "board/freescale/imx91_evk/Kconfig"
 source "board/freescale/imx93_evk/Kconfig"
 source "board/freescale/imx93_qsb/Kconfig"
+source "board/karo/imx91/Kconfig"
 source "board/karo/imx93/Kconfig"
 source "board/phytec/phycore_imx93/Kconfig"
 source "board/variscite/imx93_var_som/Kconfig"

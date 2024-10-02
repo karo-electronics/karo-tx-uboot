@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: (GPL-2.0 or MIT)
+/*
+ * Copyright 2025 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+#include "imx91-karo-u-boot.dtsi"
+
+&lpuart4 {
+	bootph-all;
+};
+
+&pinctrl_lpuart4 {
+	bootph-all;
+};
+
+&lpuart5 {
+	bootph-all;
+};
+
+&pinctrl_lpuart5 {
+	bootph-all;
+};
+
+&pinctrl_lpuart5_rtscts {
+	bootph-all;
+};
+
+&lpuart8 {
+	bootph-all;
+};
+
+&pinctrl_lpuart8 {
+	bootph-all;
+};

@@ -1,0 +1,165 @@
+// SPDX-License-Identifier: (GPL-2.0 or MIT)
+/*
+ * Copyright 2023 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+#include <config.h>
+#include <linux/stringify.h>
+#include "imx91-u-boot.dtsi"
+
+/ {
+	aliases {
+		usbgadget0 = &usbg1;
+		usbgadget1 = &usbg2;
+	};
+
+	chosen {
+		bootph-all;
+	};
+
+	usbg1: usbg1 {
+		compatible = "fsl,imx27-usb-gadget";
+		dr_mode = "peripheral";
+		chipidea,usb = <&usbotg1>;
+		status = "okay";
+	};
+
+	usbg2: usbg2 {
+		compatible = "fsl,imx27-usb-gadget";
+		dr_mode = "peripheral";
+		chipidea,usb = <&usbotg2>;
+		status = "okay";
+	};
+
+	wdt-reboot {
+		compatible = "wdt-reboot";
+		wdt = <&wdog3>;
+		bootph-all;
+	};
+};
+
+&A55_0 {
+	clocks = <&clk IMX93_CLK_A55_SEL>;
+};
+
+&{/soc@0} {
+	bootph-all;
+};
+
+&aips1 {
+	bootph-all;
+};
+
+&aips2 {
+	bootph-all;
+};
+
+&aips3 {
+	bootph-all;
+};
+
+&binman {
+	spl {
+		mkimage {
+			args = "-n", "spl/u-boot-spl.cfgout", "-T", "imx8image",
+			       "-e", __stringify(CONFIG_SPL_TEXT_BASE);
+		};
+	};
+};
+
+&buck1 {
+	bootph-pre-ram;
+};
+
+&buck2 {
+	bootph-pre-ram;
+};
+
+&buck4 {
+	bootph-pre-ram;
+};
+
+&buck5 {
+	bootph-pre-ram;
+};
+
+&buck6 {
+	bootph-pre-ram;
+};
+
+&clk {
+	bootph-all;
+};
+
+&clk_ext1 {
+	bootph-all;
+};
+
+&gpio1 {
+	bootph-all;
+};
+
+&gpio2 {
+	bootph-all;
+};
+
+&gpio3 {
+	bootph-all;
+};
+
+&gpio4 {
+	bootph-all;
+};
+
+&iomuxc {
+	bootph-all;
+};
+
+&ldo1 {
+	bootph-pre-ram;
+};
+
+&ldo4 {
+	bootph-pre-ram;
+};
+
+&lpi2c1 {
+	bootph-pre-ram;
+};
+
+&osc_32k {
+	bootph-all;
+};
+
+&osc_24m {
+	bootph-all;
+};
+
+&pinctrl_lpi2c1 {
+	bootph-pre-ram;
+};
+
+&pinctrl_pmic {
+	bootph-pre-ram;
+};
+
+&pinctrl_usdhc1 {
+	bootph-all;
+};
+
+&pmic {
+	bootph-pre-ram;
+
+	regulators {
+		bootph-pre-ram;
+	};
+};
+
+&s4muap {
+	bootph-all;
+	status = "okay";
+};
+
+&usdhc1 {
+	bootph-all;
+};

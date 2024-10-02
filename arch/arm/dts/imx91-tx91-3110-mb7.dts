@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: (GPL-2.0 or MIT)
+/*
+ * Copyright 2025 Lothar Waßmann <LW@KARO-electronics.de>
+ */
+
+#include "imx91-tx91-3110.dts"
+
+/ {
+	model = "Ka-Ro electronics GmbH TX91-3110 (NXP i.MX91) module on MB7 baseboard";
+};
+
+&usdhc2 {
+	pinctrl-0 = <&pinctrl_usdhc2 &pinctrl_usdhc2_cd>;
+	cd-gpios = <&gpio3 0 GPIO_ACTIVE_LOW>;
+};

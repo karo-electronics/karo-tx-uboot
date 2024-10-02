@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2025 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+#include "imx91-qs91-3110-u-boot.dtsi"
