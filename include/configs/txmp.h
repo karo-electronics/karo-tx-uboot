@@ -24,6 +24,7 @@
 
 #if defined(CONFIG_STM32MP13X)
 #define SOC_PREFIX "stm32mp13"
+#define CONFIG_SYS_NONCACHED_MEMORY	SZ_1M
 #elif defined(CONFIG_STM32MP15X)
 #define SOC_PREFIX "stm32mp15"
 #elif defined(CONFIG_STM32MP25X)
