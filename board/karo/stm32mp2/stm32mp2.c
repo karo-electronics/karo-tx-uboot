@@ -400,8 +400,6 @@ int board_interface_eth_init(struct udevice *dev,
 		return -ENODEV;
 	}
 
-	print_mac_from_fuse();
-
 	switch (interface_type) {
 	case PHY_INTERFACE_MODE_MII:
 		value = SYSCFG_ETHCR_ETH_SEL_MII;
@@ -490,6 +488,23 @@ static inline void rand_init(void)
 
 int board_late_init(void)
 {
+	if (CONFIG_IS_ENABLED(ENV_VARS_UBOOT_RUNTIME_CONFIG)) {
+		const void *fdt_compat;
+		ofnode root = ofnode_path("/");
+
+		if (ofnode_valid(root))
+			fdt_compat = ofnode_read_string(root, "compatible");
+
+		if (fdt_compat) {
+			if (strncmp(fdt_compat, "karo,", 5) != 0)
+				env_set("board_name", fdt_compat);
+			else
+				env_set("board_name", fdt_compat + 5);
+		}
+	}
+
+	print_mac_from_fuse();
+
 	karo_env_cleanup();
 
 	if (ctrlc()) {
