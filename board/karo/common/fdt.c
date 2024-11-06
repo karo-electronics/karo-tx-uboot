@@ -621,11 +621,11 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 			printf("disabling usbotg interface\n");
 			fdt_status_disabled(blob, node);
 		} else if (strcmp(otg_mode, "peripheral") == 0 ||
-		    strcmp(otg_mode, "device") == 0 ||
 		    strcmp(otg_mode, "host") == 0) {
 			karo_fdt_set_dr_mode(blob, node, otg_mode);
 		} else {
-			printf("Invalid otg_mode: '%s'\n", otg_mode);
+			printf("Invalid otg_mode: '%s';supported values are 'peripheral', 'host', 'none'\n",
+			       otg_mode);
 		}
 	}
 
