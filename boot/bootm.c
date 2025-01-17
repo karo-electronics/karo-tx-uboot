@@ -737,7 +737,14 @@ int do_bootm_states(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (!ret && (states & BOOTM_STATE_OS_BD_T))
 		ret = boot_fn(BOOTM_STATE_OS_BD_T, argc, argv, images);
 	if (!ret && (states & BOOTM_STATE_OS_PREP)) {
-		ret = bootm_process_cmdline_env(images->os.os == IH_OS_LINUX);
+		enum bootm_cmdline_t flags = 0;
+
+		if (images->os.os == IH_OS_LINUX) {
+			flags |= BOOTM_CL_SILENT;
+			if (IS_ENABLED(CONFIG_BOOTARGS_SUBST))
+				flags |= BOOTM_CL_SUBST;
+		}
+		ret = bootm_process_cmdline_env(flags);
 		if (ret) {
 			printf("Cmdline setup failed (err=%d)\n", ret);
 			ret = CMD_RET_FAILURE;
