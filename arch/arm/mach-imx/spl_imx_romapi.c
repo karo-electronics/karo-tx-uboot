@@ -143,8 +143,8 @@ static int spl_romapi_load_image_seekable(struct spl_image_info *spl_image,
 
 	header = (struct image_header *)(CONFIG_SPL_IMX_ROMAPI_LOADADDR);
 
-	printf("image offset 0x%x, pagesize 0x%x, ivt offset 0x%x\n",
-	       image_offset, pagesize, offset);
+	debug("image offset 0x%x, pagesize 0x%x, ivt offset 0x%x\n",
+	      image_offset, pagesize, offset);
 
 	offset = spl_romapi_get_uboot_base(image_offset, rom_bt_dev);
 
@@ -357,7 +357,7 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 	}
 
 	imagesize = img_info_size(phdr);
-	printf("Find img info 0x%p, size %d\n", phdr, imagesize);
+	debug("Found img info 0x%p, size %d\n", phdr, imagesize);
 
 	if (p - phdr < imagesize) {
 		imagesize -= p - phdr;
