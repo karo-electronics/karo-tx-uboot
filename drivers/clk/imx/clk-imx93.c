@@ -129,7 +129,7 @@ static struct imx93_clk_root clk_roots[] = {
 	{ IMX93_CLK_I3C1_SLOW, "i3c1_slow_root", low_speed_sels, 0x2d80, },
 	{ IMX93_CLK_I3C2_SLOW, "i3c2_slow_root", low_speed_sels, 0x2e00, },
 	{ IMX93_CLK_USB_PHY_BURUNIN, "usb_phy_root", low_speed_sels, 0x2e80, },
-	{ IMX93_CLK_PAL_CAME_SCAN, "pal_came_scan_root", misc_sels, 0x2f00, }
+	{ IMX93_CLK_PAL_CAME_SCAN, "pal_came_scan_root", misc_sels, 0x2f00, },
 };
 
 struct imx93_clk_ccgr {
@@ -228,7 +228,7 @@ static struct imx93_clk_ccgr clk_ccgrs[] = {
 	{ IMX93_CLK_TSTMR1_GATE, "tstmr1", "bus_aon_root", 0x9ec0, },
 	{ IMX93_CLK_TSTMR2_GATE, "tstmr2", "bus_wakeup_root", 0x9f00, },
 	{ IMX93_CLK_TMC_GATE, "tmc", "clock-osc-24m", 0x9f40, },
-	{ IMX93_CLK_PMRO_GATE, "pmro", "clock-osc-24m", 0x9f80, }
+	{ IMX93_CLK_PMRO_GATE, "pmro", "clock-osc-24m", 0x9f80, },
 };
 
 static ulong imx93_clk_set_rate(struct clk *clk, ulong rate)
@@ -388,6 +388,8 @@ static int imx93_clk_probe(struct udevice *dev)
 	       imx_clk_fixed_factor("sys_pll_pfd2_div2", "sys_pll_pfd2", 1, 2));
 
 #ifndef CONFIG_SPL_BUILD
+	clk_dm(IMX93_CLK_AUDIO_PLL,
+	       clk_register_imx93_pll("audio_pll", "clock-osc-24m", (void __iomem *)0x44481200));
 	clk_dm(IMX93_CLK_VIDEO_PLL,
 	       clk_register_imx93_pll("video_pll", "clock-osc-24m", (void __iomem *)0x44481400));
 #endif
