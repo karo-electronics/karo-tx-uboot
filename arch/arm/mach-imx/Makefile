@@ -214,7 +214,19 @@ endif
 ifdef CONFIG_ARM64
 ifneq ($(CONFIG_ARCH_IMX8M)$(CONFIG_ARCH_IMX9),)
 
-SPL: spl/u-boot-spl.bin spl/u-boot-spl.cfgout FORCE
+ifeq ($(CONFIG_ARCH_IMX9), y)
+U_BOOT_CONTAINER_CFG = u-boot-container.cfgout
+U_BOOT_ITB = container.cfgout
+
+u-boot-container.cfgout: $(IMX_CONTAINER_CFG) FORCE
+	$(Q)mkdir -p $(dir $@)
+	$(call if_changed_dep,cpp_cfg)
+
+else
+U_BOOT_ITB = u-boot.itb
+endif
+
+SPL: spl/u-boot-spl.bin spl/u-boot-spl.cfgout $(U_BOOT_CONTAINER_CFG) FORCE
 
 MKIMAGEFLAGS_flash.bin = -n spl/u-boot-spl.cfgout \
 		   -T $(IMAGE_TYPE) -e $(CONFIG_SPL_TEXT_BASE)
@@ -226,28 +238,7 @@ spl/u-boot-spl.cfgout: $(IMX_CONFIG) FORCE
 
 spl/u-boot-spl-ddr.bin: spl/u-boot-spl.bin spl/u-boot-spl.cfgout FORCE
 
-flash.bin: spl/u-boot-spl-ddr.bin u-boot.itb FORCE
-	$(call if_changed,mkimage)
-endif
-
-ifeq ($(CONFIG_ARCH_IMX9), y)
-
-SPL: spl/u-boot-spl.bin spl/u-boot-spl.cfgout u-boot-container.cfgout FORCE
-
-MKIMAGEFLAGS_flash.bin = -n spl/u-boot-spl.cfgout -T $(IMAGE_TYPE) -e $(CONFIG_SPL_TEXT_BASE)
-flash.bin: MKIMAGEOUTPUT = flash.log
-
-spl/u-boot-spl.cfgout: $(IMX_CONFIG) FORCE
-	$(Q)mkdir -p $(dir $@)
-	$(call if_changed_dep,cpp_cfg)
-
-spl/u-boot-spl-ddr.bin: spl/u-boot-spl.bin spl/u-boot-spl.cfgout FORCE
-
-u-boot-container.cfgout: $(IMX_CONTAINER_CFG) FORCE
-	$(Q)mkdir -p $(dir $@)
-	$(call if_changed_dep,cpp_cfg)
-
-flash.bin: spl/u-boot-spl-ddr.bin container.cfgout FORCE
+flash.bin: spl/u-boot-spl-ddr.bin $(U_BOOT_ITB) FORCE
 	$(call if_changed,mkimage)
 endif
 
