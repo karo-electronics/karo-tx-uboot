@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <env.h>
 #include <fdtdec.h>
 #include <fdt_support.h>
 #include <log.h>
@@ -649,15 +650,32 @@ int ofnode_decode_display_timing(ofnode parent, int index,
 {
 	int i;
 	ofnode timings, node;
-	u32 val = 0;
-	int ret = 0;
+	u32 native_mode;
+	u32 val;
+	int ret;
+	const char *videomode = env_get("videomode");
+
+	if (!videomode)
+		videomode = env_get("video_mode");
 
 	timings = ofnode_find_subnode(parent, "display-timings");
 	if (ofnode_valid(timings)) {
-		i = 0;
-		ofnode_for_each_subnode(node, timings) {
-			if (i++ == index)
-				break;
+		if (videomode) {
+			ofnode_for_each_subnode(node, timings) {
+				if (!strcmp(ofnode_get_name(node), videomode))
+					break;
+			}
+		} else {
+			ret = ofnode_read_u32(timings, "native-mode", &native_mode);
+			if (!ret) {
+				node = ofnode_get_by_phandle(native_mode);
+			} else {
+				i = 0;
+				ofnode_for_each_subnode(node, timings) {
+					if (i++ == index)
+						break;
+				}
+			}
 		}
 	} else {
 		if (index != 0)
@@ -670,6 +688,7 @@ int ofnode_decode_display_timing(ofnode parent, int index,
 
 	memset(dt, 0, sizeof(*dt));
 
+	ret = 0;
 	ret |= decode_timing_property(node, "hback-porch", &dt->hback_porch);
 	ret |= decode_timing_property(node, "hfront-porch", &dt->hfront_porch);
 	ret |= decode_timing_property(node, "hactive", &dt->hactive);
