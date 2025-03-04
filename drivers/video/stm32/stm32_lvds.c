@@ -651,6 +651,11 @@ static int stm32_lvds_probe(struct udevice *dev)
 	}
 
 	data_mapping = ofnode_read_string(dev_ofnode(priv->panel), "data-mapping");
+	if (!data_mapping) {
+		dev_err(dev, "missing 'data-mapping' property\n");
+		ret = -EINVAL;
+		goto err_rst;
+	}
 	if (!strcmp(data_mapping, "vesa-24"))
 		priv->bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG;
 	else if (!strcmp(data_mapping, "jeida-24"))
