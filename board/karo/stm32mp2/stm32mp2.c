@@ -213,8 +213,13 @@ int checkboard(void)
 
 	check_mem_regions();
 
+#if defined(CONFIG_KARO_TXMP_2550)
 	printf("Board: TXMP-2550");
-
+#elif defined(CONFIG_KARO_QSMP_2550)
+	printf("Board: QSMP-2550");
+#else
+#error Unsupported Board type
+#endif
 	fdt_compat = ofnode_get_property(ofnode_root(), "compatible", &fdt_compat_len);
 	if (fdt_compat && fdt_compat_len)
 		printf(" (%s)", fdt_compat);

@@ -45,6 +45,8 @@
 #define SOC_FAMILY "stm32mp157c"
 #elif defined(CONFIG_KARO_TXMP_1571)
 #define SOC_FAMILY "stm32mp157c"
+#elif defined(CONFIG_KARO_QSMP_2550)
+#define SOC_FAMILY "stm32mp255f"
 #elif defined(CONFIG_KARO_TXMP_2550)
 #define SOC_FAMILY "stm32mp255c"
 #else
@@ -65,8 +67,6 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
-
-/* SDMMC */
 
 /*****************************************************************************/
 

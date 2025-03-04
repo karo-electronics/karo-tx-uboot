@@ -511,7 +511,8 @@ void karo_fixup_lcd_panel(const char *videomode)
 			return;
 		}
 
-		if (fdt_node_check_compatible(fdt, panel_node, "panel-dpi") == 0) {
+		if (fdt_node_check_compatible(fdt, panel_node, "panel-dpi") == 0 ||
+		    fdt_node_check_compatible(fdt, panel_node, "panel-lvds") == 0) {
 			int timing_node = fdt_subnode_offset(fdt, panel_node,
 							     "panel-timing");
 
