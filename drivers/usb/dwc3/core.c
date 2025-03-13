@@ -974,7 +974,8 @@ void dwc3_uboot_exit(int index)
 		dwc3_free_event_buffers(dwc);
 		dwc3_core_exit(dwc);
 		list_del(&dwc->list);
-		kfree(dwc->mem);
+		if (!CONFIG_IS_ENABLED(DEVRES))
+			kfree(dwc->mem);
 		break;
 	}
 }
@@ -1220,6 +1221,7 @@ void dwc3_remove(struct dwc3 *dwc)
 	dwc3_free_event_buffers(dwc);
 	dwc3_core_stop(dwc);
 	dwc3_core_exit(dwc);
-	kfree(dwc->mem);
+	if (!CONFIG_IS_ENABLED(DEVRES))
+		kfree(dwc->mem);
 }
 #endif
