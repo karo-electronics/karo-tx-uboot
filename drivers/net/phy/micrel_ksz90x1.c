@@ -239,7 +239,7 @@ static int ksz9131_of_config_group(struct phy_device *phydev,
 	}
 
 	for (i = 0; i < ofcfg->grpsz; i++) {
-		struct ksz90x1_reg_field *grp = &ofcfg->grp[i];
+		const struct ksz90x1_reg_field *grp = &ofcfg->grp[i];
 		int step = grp->size == 5 ? 41 : 50;
 		int offset = grp->size == 5 ? 290 : 355;
 		int val;
