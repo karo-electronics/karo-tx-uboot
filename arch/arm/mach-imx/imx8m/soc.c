@@ -19,6 +19,7 @@
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/syscounter.h>
 #include <asm/ptrace.h>
+#include <asm/setup.h>
 #include <asm/armv8/mmu.h>
 #include <dm/uclass.h>
 #include <dm/device.h>
@@ -827,6 +828,19 @@ unsigned long arch_spl_mmc_get_uboot_raw_sector(struct mmc *mmc,
 	return raw_sect;
 }
 #endif /* CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION */
+#endif
+
+#if defined(CONFIG_SERIAL_TAG) || defined(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)
+void get_board_serial(struct tag_serialnr *serialnr)
+{
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank *bank = &ocotp->bank[0];
+	struct fuse_bank0_regs *fuse =
+		(struct fuse_bank0_regs *)bank->fuse_regs;
+
+	serialnr->low = fuse->uid_low;
+	serialnr->high = fuse->uid_high;
+}
 #endif
 
 #if IS_ENABLED(CONFIG_OF_SYSTEM_SETUP)
