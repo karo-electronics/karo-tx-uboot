@@ -19,6 +19,7 @@
 
 static void conf(struct menu *menu);
 static void check_conf(struct menu *menu);
+static bool do_abort;
 
 enum input_mode {
 	oldaskconfig,
@@ -156,6 +157,13 @@ static int conf_string(struct menu *menu)
 		}
 		if (def && sym_set_string_value(sym, def))
 			return 0;
+		if (feof(stdin)) {
+			fprintf(stderr,
+				"EOF on stdin; required value for symbol CONFIG_%s could not be obtained\n",
+				sym->name);
+			do_abort = true;
+			return 1;
+		}
 	}
 }
 
@@ -677,6 +685,10 @@ int main(int ac, char **av)
 		do {
 			conf_cnt = 0;
 			check_conf(&rootmenu);
+			if (do_abort) {
+				fprintf(stderr, "EOF on stdin; Kconfig aborted\n");
+				exit(1);
+			}
 		} while (conf_cnt);
 		break;
 	case olddefconfig:
