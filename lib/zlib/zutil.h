@@ -59,7 +59,7 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
   return (strm->msg = (char*)ERR_MSG(err), (err))
 /* To be used only when the state is known to be valid */
 
-        /* common constants */
+	/* common constants */
 
 #ifndef DEF_WBITS
 #  define DEF_WBITS MAX_WBITS
@@ -95,8 +95,7 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
 /* Diagnostic functions */
 #ifdef DEBUG
-/* Not valid for U-Boot
-#  include <stdio.h> */
+#  include <stdio.h>
    extern int z_verbose;
    extern void z_error    OF((char *m));
 #  define Assert(cond,msg) {if(!(cond)) z_error(msg);}
@@ -118,7 +117,7 @@ voidpf zcalloc OF((voidpf opaque, unsigned items, unsigned size));
 void   zcfree  OF((voidpf opaque, voidpf ptr, unsigned size));
 
 #define ZALLOC(strm, items, size) \
-           (*((strm)->zalloc))((strm)->opaque, (items), (size))
+	   (*((strm)->zalloc))((strm)->opaque, (items), (size))
 #define ZFREE(strm, addr)  (*((strm)->zfree))((strm)->opaque, (voidpf)(addr), 0)
 #define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
 
