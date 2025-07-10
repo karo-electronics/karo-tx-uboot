@@ -217,6 +217,8 @@ int checkboard(void)
 	printf("Board: TXMP-2550");
 #elif defined(CONFIG_KARO_QSMP_2550)
 	printf("Board: QSMP-2550");
+#elif defined(CONFIG_KARO_QSMP_2350)
+	printf("Board: QSMP-2350");
 #else
 #error Unsupported Board type
 #endif

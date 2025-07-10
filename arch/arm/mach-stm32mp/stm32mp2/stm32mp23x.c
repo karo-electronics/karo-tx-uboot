@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR BSD-3-Clause
 /*
- * Copyright (C) 2023, STMicroelectronics - All Rights Reserved
+ * Copyright (C) 2024, STMicroelectronics - All Rights Reserved
  */
 
 #define LOG_CATEGORY LOGC_ARCH
@@ -16,10 +16,8 @@
 #define SYSCFG_DEVICEID_OFFSET		0x6400
 #define SYSCFG_DEVICEID_DEV_ID_MASK	GENMASK(11, 0)
 #define SYSCFG_DEVICEID_DEV_ID_SHIFT	0
-
-/* Revision ID = OTP102[5:0] 6 bits : 3 for Major / 3 for Minor*/
-#define REVID_SHIFT	0
-#define REVID_MASK	GENMASK(5, 0)
+#define SYSCFG_DEVICEID_REV_ID_MASK	GENMASK(31, 16)
+#define SYSCFG_DEVICEID_REV_ID_SHIFT	16
 
 /* Device Part Number (RPN) = OTP9 */
 #define RPN_SHIFT	0
@@ -27,8 +25,8 @@
 
 /* Package = bit 0:2 of OTP122 => STM32MP25_PKG defines
  * - 000: Custom package
- * - 001: VFBGA361 => AL = 10x10, 361 balls pith 0.5mm
- * - 011: VFBGA424 => AK = 14x14, 424 balls pith 0.5mm
+ * - 011: TFBGA361 => AL = 10x10, 361 balls pith 0.5mm
+ * - 100: TFBGA424 => AK = 14x14, 424 balls pith 0.5mm
  * - 101: TFBGA436 => AI = 18x18, 436 balls pith 0.5mm
  * - others: Reserved
  */
@@ -49,7 +47,7 @@ u32 get_cpu_dev(void)
 
 u32 get_cpu_rev(void)
 {
-	return get_otp(BSEC_OTP_REVID, REVID_SHIFT, REVID_MASK);
+	return (read_deviceid() & SYSCFG_DEVICEID_REV_ID_MASK) >> SYSCFG_DEVICEID_REV_ID_SHIFT;
 }
 
 /* Get Device Part Number (RPN) from OTP */
@@ -69,31 +67,32 @@ __weak int get_eth_nb(void)
 	int nb_eth;
 
 	switch (get_cpu_type()) {
-	case CPU_STM32MP257Fxx:
+	case CPU_STM32MP257Fxx: /* Dirty hack to test STM32MP23 soft on STM32MP25 board */
 		fallthrough;
-	case CPU_STM32MP257Dxx:
+	case CPU_STM32MP235Fxx:
 		fallthrough;
-	case CPU_STM32MP257Cxx:
+	case CPU_STM32MP235Dxx:
 		fallthrough;
-	case CPU_STM32MP257Axx:
-		nb_eth = 5; /* dual ETH with TSN support */
-		break;
-	case CPU_STM32MP253Fxx:
+	case CPU_STM32MP235Cxx:
 		fallthrough;
-	case CPU_STM32MP253Dxx:
+	case CPU_STM32MP235Axx:
 		fallthrough;
-	case CPU_STM32MP253Cxx:
+	case CPU_STM32MP233Fxx:
 		fallthrough;
-	case CPU_STM32MP253Axx:
+	case CPU_STM32MP233Dxx:
+		fallthrough;
+	case CPU_STM32MP233Cxx:
+		fallthrough;
+	case CPU_STM32MP233Axx:
 		nb_eth = 2; /* dual ETH */
 		break;
-	case CPU_STM32MP251Fxx:
+	case CPU_STM32MP231Fxx:
 		fallthrough;
-	case CPU_STM32MP251Dxx:
+	case CPU_STM32MP231Dxx:
 		fallthrough;
-	case CPU_STM32MP251Cxx:
+	case CPU_STM32MP231Cxx:
 		fallthrough;
-	case CPU_STM32MP251Axx:
+	case CPU_STM32MP231Axx:
 		nb_eth = 1; /* single ETH */
 		break;
 	default:
@@ -113,90 +112,69 @@ void get_soc_name(char name[SOC_NAME_SIZE])
 	package = "??";
 	if (get_cpu_dev() == CPU_DEV_STM32MP25) {
 		switch (get_cpu_type()) {
-		case CPU_STM32MP257Fxx:
-			cpu_s = "257F";
+		case CPU_STM32MP235Fxx:
+			cpu_s = "235F";
 			break;
-		case CPU_STM32MP257Dxx:
-			cpu_s = "257D";
+		case CPU_STM32MP235Dxx:
+			cpu_s = "235D";
 			break;
-		case CPU_STM32MP257Cxx:
-			cpu_s = "257C";
+		case CPU_STM32MP235Cxx:
+			cpu_s = "235C";
 			break;
-		case CPU_STM32MP257Axx:
-			cpu_s = "257A";
+		case CPU_STM32MP235Axx:
+			cpu_s = "235A";
 			break;
-		case CPU_STM32MP255Fxx:
-			cpu_s = "255F";
+		case CPU_STM32MP233Fxx:
+			cpu_s = "233F";
 			break;
-		case CPU_STM32MP255Dxx:
-			cpu_s = "255D";
+		case CPU_STM32MP233Dxx:
+			cpu_s = "233D";
 			break;
-		case CPU_STM32MP255Cxx:
-			cpu_s = "255C";
+		case CPU_STM32MP233Cxx:
+			cpu_s = "233C";
 			break;
-		case CPU_STM32MP255Axx:
-			cpu_s = "255A";
+		case CPU_STM32MP233Axx:
+			cpu_s = "233A";
 			break;
-		case CPU_STM32MP253Fxx:
-			cpu_s = "253F";
+		case CPU_STM32MP231Fxx:
+			cpu_s = "231F";
 			break;
-		case CPU_STM32MP253Dxx:
-			cpu_s = "253D";
+		case CPU_STM32MP231Dxx:
+			cpu_s = "231D";
 			break;
-		case CPU_STM32MP253Cxx:
-			cpu_s = "253C";
+		case CPU_STM32MP231Cxx:
+			cpu_s = "231C";
 			break;
-		case CPU_STM32MP253Axx:
-			cpu_s = "253A";
-			break;
-		case CPU_STM32MP251Fxx:
-			cpu_s = "251F";
-			break;
-		case CPU_STM32MP251Dxx:
-			cpu_s = "251D";
-			break;
-		case CPU_STM32MP251Cxx:
-			cpu_s = "251C";
-			break;
-		case CPU_STM32MP251Axx:
-			cpu_s = "251A";
+		case CPU_STM32MP231Axx:
+			cpu_s = "231A";
 			break;
 		default:
-			cpu_s = "25??";
+			cpu_s = "23??";
 			break;
 		}
 		/* REVISION */
 		switch (get_cpu_rev()) {
-		case OTP_REVID_1:
+		case CPU_REV1:
 			cpu_r = "A";
 			break;
-		case OTP_REVID_1_1:
-			cpu_r = "Z";
-			break;
-		case OTP_REVID_2:
+		case CPU_REV2:
 			cpu_r = "B";
-			break;
-		case OTP_REVID_2_1:
-			cpu_r = "Y";
-			break;
-		case OTP_REVID_2_2:
-			cpu_r = "X";
 			break;
 		default:
 			break;
 		}
 		/* PACKAGE */
 		switch (get_cpu_package()) {
-		case STM32MP25_PKG_CUSTOM:
+		case STM32MP23_PKG_CUSTOM:
 			package = "XX";
 			break;
-		case STM32MP25_PKG_AL_VFBGA361:
+		case STM32MP23_PKG_AL_VFBGA361:
 			package = "AL";
 			break;
-		case STM32MP25_PKG_AK_VFBGA424:
+		case STM32MP23_PKG_AK_VFBGA424:
 			package = "AK";
 			break;
-		case STM32MP25_PKG_AI_TFBGA436:
+		case STM32MP23_PKG_AJ_TFBGA361:
 			package = "AI";
 			break;
 		default:

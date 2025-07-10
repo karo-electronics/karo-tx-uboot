@@ -1,10 +1,10 @@
-if TARGET_KARO_STM32MP15 || TARGET_KARO_STM32MP13 || TARGET_KARO_STM32MP2
+if TARGET_KARO_STM32MP15 || TARGET_KARO_STM32MP13 || TARGET_KARO_STM32MP2 || TARGET_KARO_STM32MP23
 
 if TARGET_KARO_STM32MP15 || TARGET_KARO_STM32MP13
 source "board/karo/stm32mp1/Kconfig"
 endif
 
-if TARGET_KARO_STM32MP2
+if TARGET_KARO_STM32MP2 || TARGET_KARO_STM32MP23
 source "board/karo/stm32mp2/Kconfig"
 endif
 
@@ -18,7 +18,7 @@ config UBOOT_IGNORE_ENV
 config SYS_FDT_ADDR
 	hex "FDT load address"
 	default 0xc4000000 if STM32MP15X || STM32MP13X
-	default 0x8c000000 if STM32MP25X
+	default 0x8c000000 if STM32MP25X || STM32MP23X
 	help
 	  The address the FDT file should be loaded to.
 
@@ -89,6 +89,15 @@ config KARO_QSMP_1351
 	  Enable support for the Ka-Ro electronics QSMP-1351 module featuring
 	  an STM32MP135C SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
 	  module.
+
+config KARO_QSMP_2350
+	bool "Ka-Ro QSMP-2350 module"
+	depends on TARGET_KARO_STM32MP23
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-2350 module featuring
+	  an STM32MP235C SOC, 1GiB of SDRAM and 4GiB eMMC.
 
 config KARO_QSMP_2550
 	bool "Ka-Ro QSMP-2550 module"

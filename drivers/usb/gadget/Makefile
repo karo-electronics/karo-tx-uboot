@@ -2,7 +2,6 @@
 #
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-
 obj-$(CONFIG_USB_GADGET) += epautoconf.o config.o usbstring.o
 obj-$(CONFIG_USB_ETHER) += epautoconf.o config.o usbstring.o
 

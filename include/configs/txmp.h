@@ -27,6 +27,8 @@
 #define CONFIG_SYS_NONCACHED_MEMORY	SZ_1M
 #elif defined(CONFIG_STM32MP15X)
 #define SOC_PREFIX "stm32mp15"
+#elif defined(CONFIG_STM32MP23X)
+#define SOC_PREFIX "stm32mp23"
 #elif defined(CONFIG_STM32MP25X)
 #define SOC_PREFIX "stm32mp25"
 #else
@@ -45,6 +47,8 @@
 #define SOC_FAMILY "stm32mp157c"
 #elif defined(CONFIG_KARO_TXMP_1571)
 #define SOC_FAMILY "stm32mp157c"
+#elif defined(CONFIG_KARO_QSMP_2350)
+#define SOC_FAMILY "stm32mp235c"
 #elif defined(CONFIG_KARO_QSMP_2550)
 #define SOC_FAMILY "stm32mp255f"
 #elif defined(CONFIG_KARO_TXMP_2550)

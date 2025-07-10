@@ -31,6 +31,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KARO_BOARD_NAME		"txmp-1570"
 #elif defined(CONFIG_KARO_TXMP_1571)
 #define KARO_BOARD_NAME		"txmp-1571"
+#elif defined(CONFIG_KARO_QSMP_2350)
+#define KARO_BOARD_NAME		"qsmp-2350"
 #elif defined(CONFIG_KARO_QSMP_2550)
 #define KARO_BOARD_NAME		"qsmp-2550"
 #elif defined(CONFIG_KARO_TXMP_2550)
