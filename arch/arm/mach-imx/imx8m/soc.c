@@ -829,11 +829,6 @@ unsigned long arch_spl_mmc_get_uboot_raw_sector(struct mmc *mmc,
 #endif /* CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION */
 #endif
 
-bool is_usb_boot(void)
-{
-	return get_boot_device() == USB_BOOT;
-}
-
 #if IS_ENABLED(CONFIG_OF_SYSTEM_SETUP)
 bool check_fdt_new_path(void *blob)
 {

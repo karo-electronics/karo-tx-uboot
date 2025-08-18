@@ -23,4 +23,6 @@ enum imx9_soc_voltage_mode soc_target_voltage_mode(void);
 
 #define is_voltage_mode(mode) (soc_target_voltage_mode() == (mode))
 
+#define is_boot_from_usb()	(get_boot_device() == USB_BOOT)
+
 #endif
