@@ -67,6 +67,18 @@
 
 #define TZASC_BASE_ADDR		0x32F80000
 
+#if defined(CONFIG_IMX8MP)
+#define USB1_BASE_ADDR		0x38100000
+#define USB2_BASE_ADDR		0x38200000
+#define USB1_PHY_BASE_ADDR	0x381f0000
+#define USB2_PHY_BASE_ADDR	0x382f0000
+#else
+#define USB1_BASE_ADDR		0x32e40000
+#define USB2_BASE_ADDR		0x32e50000
+#endif
+
+#define USB_BASE_ADDR		USB1_BASE_ADDR
+
 #define MXS_LCDIF_BASE		IS_ENABLED(CONFIG_IMX8MQ) ? \
 					0x30320000 : 0x32e00000
 
@@ -326,6 +338,13 @@ struct anamix_pll {
 	u32 reserved3[437];
 	u32 digprog;
 };
+
+#if defined(CONFIG_IMX8MP) || defined(CONFIG_IMX8MQ)
+#define disconnect_from_pc() clrbits_le32(USB1_BASE_ADDR + 0xc704, BIT(31))
+#else
+#define disconnect_from_pc() writel(0x0, USB1_BASE_ADDR + 0x140)
+#endif
+
 #endif
 
 /* System Reset Controller (SRC) */

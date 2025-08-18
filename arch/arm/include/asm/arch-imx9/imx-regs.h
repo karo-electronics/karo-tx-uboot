@@ -33,6 +33,10 @@
 #define BLK_CTRL_NS_ANOMIX_BASE_ADDR		0x44210000UL
 #define BLK_CTRL_S_ANOMIX_BASE_ADDR		0x444f0000UL
 
+#define USB1_BASE_ADDR				0x4c100000UL
+#define USB2_BASE_ADDR				0x4c200000UL
+#define USB_BASE_ADDR				USB1_BASE_ADDR
+
 #define SRC_IPS_BASE_ADDR			0x44460000UL
 #define SRC_GLOBAL_RBASE			(SRC_IPS_BASE_ADDR + 0x0000)
 
@@ -250,5 +254,7 @@ struct src_mix_slice_regs {
 	u32 func_stat;
 };
 #endif
+
+#define disconnect_from_pc() writel(0x0, USB1_BASE_ADDR + 0x140)
 
 #endif
