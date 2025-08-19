@@ -42,6 +42,7 @@ config SYS_HAS_ARMV8_SECURE_BASE
 
 config IMX8M_OPTEE_LOAD_ADDR
 	hex "Load address of OPTEE image"
+	depends on OPTEE
 	default 0xbe000000 if IMX8MM
 	default 0xbe000000 if IMX8MN
 	default 0x56000000 if IMX8MP
@@ -49,7 +50,6 @@ config IMX8M_OPTEE_LOAD_ADDR
 	help
 	  The load and entry address for the OPTEE image. This value defaults to
 	  the one defined in tf-a if not provided in the board defconfig file.
-
 
 choice
 	prompt "NXP i.MX8M board select"
