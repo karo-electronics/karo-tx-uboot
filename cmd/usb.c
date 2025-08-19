@@ -609,33 +609,33 @@ static int do_usb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 
 	if (strncmp(argv[1], "start", 5) == 0) {
 		if (usb_started)
-			return 0; /* Already started */
+			return CMD_RET_SUCCESS; /* Already started */
 		printf("starting USB...\n");
 		do_usb_start();
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 
 	if (strncmp(argv[1], "reset", 5) == 0) {
 		printf("resetting USB...\n");
 		usb_stop();
 		do_usb_start();
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 	if (strncmp(argv[1], "stop", 4) == 0) {
 		if (argc != 2)
 			console_assign(stdin, "serial");
 		printf("stopping USB..\n");
 		usb_stop();
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 	if (!usb_started) {
 		printf("USB is stopped. Please issue 'usb start' first.\n");
-		return 1;
+		return CMD_RET_FAILURE;
 	}
 	if (strncmp(argv[1], "tree", 4) == 0) {
 		puts("USB device tree:\n");
 		usb_show_tree();
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 	if (strncmp(argv[1], "inf", 3) == 0) {
 		if (argc == 2) {
@@ -651,7 +651,7 @@ static int do_usb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 				usb_display_config(udev);
 			}
 #endif
-			return 0;
+			return CMD_RET_SUCCESS;
 		} else {
 			/*
 			 * With driver model this isn't right since we can
@@ -663,13 +663,13 @@ static int do_usb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 			udev = usb_find_device(i);
 			if (udev == NULL) {
 				printf("*** No device available ***\n");
-				return 0;
+				return CMD_RET_SUCCESS;
 			} else {
 				usb_display_desc(udev);
 				usb_display_config(udev);
 			}
 		}
-		return 0;
+		return CMD_RET_SUCCESS;
 	}
 	if (strncmp(argv[1], "test", 4) == 0) {
 		if (argc < 5)
@@ -678,7 +678,7 @@ static int do_usb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		udev = usb_find_device(i);
 		if (udev == NULL) {
 			printf("Device %d does not exist.\n", i);
-			return 1;
+			return CMD_RET_FAILURE;
 		}
 		i = dectoul(argv[3], NULL);
 		return usb_test(udev, i, argv[4]);
