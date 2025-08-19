@@ -922,7 +922,7 @@ static int imx8mp_fec_interface_init(struct udevice *dev,
 }
 #endif
 
-int board_interface_eth_init(struct udevice *dev, phy_interface_t interface_type)
+__weak int board_interface_eth_init(struct udevice *dev, phy_interface_t interface_type)
 {
 	if (IS_ENABLED(CONFIG_IMX8MM) &&
 	    IS_ENABLED(CONFIG_FEC_MXC) &&
