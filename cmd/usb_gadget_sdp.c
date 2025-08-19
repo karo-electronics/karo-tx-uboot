@@ -24,7 +24,7 @@ static int do_sdp(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	controller_index = simple_strtoul(argv[1], NULL, 0);
 	ret = udc_device_get_by_index(controller_index, &udc);
 	if (ret)
-		return ret;
+		return CMD_RET_FAILURE;
 
 	g_dnl_clear_detach();
 	ret = g_dnl_register("usb_dnl_sdp");
