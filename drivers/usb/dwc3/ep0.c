@@ -460,12 +460,14 @@ static int dwc3_ep0_handle_feature(struct dwc3 *dwc,
 	case USB_RECIP_INTERFACE:
 		switch (wValue) {
 		case USB_INTRF_FUNC_SUSPEND:
-			if (wIndex & USB_INTRF_FUNC_SUSPEND_LP)
+			if (wIndex & USB_INTRF_FUNC_SUSPEND_LP) {
 				/* XXX enable Low power suspend */
 				;
-			if (wIndex & USB_INTRF_FUNC_SUSPEND_RW)
+			}
+			if (wIndex & USB_INTRF_FUNC_SUSPEND_RW) {
 				/* XXX enable remote wakeup */
 				;
+			}
 			break;
 		default:
 			return -EINVAL;
