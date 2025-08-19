@@ -91,7 +91,7 @@ static int do_fastboot_usb(int argc, char *const argv[],
 	g_dnl_clear_detach();
 	ret = g_dnl_register("usb_dnl_fastboot");
 	if (ret)
-		return ret;
+		return CMD_RET_FAILURE;
 
 	if (!g_dnl_board_usb_cable_connected()) {
 		puts("\rUSB cable not detected.\n" \
