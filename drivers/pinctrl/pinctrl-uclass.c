@@ -83,15 +83,15 @@ static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
 		ret = uclass_get_device_by_phandle_id(UCLASS_PINCONFIG, phandle,
 						      &config);
 		if (ret) {
-			dev_warn(dev, "%s: uclass_get_device_by_phandle_id: err=%d\n",
-				__func__, ret);
+			dev_warn(dev, "%s: uclass_get_device_by_phandle_id(0x%02x): err=%d\n",
+				 __func__, phandle, ret);
 			continue;
 		}
 
 		ret = pinctrl_config_one(config);
 		if (ret) {
 			dev_warn(dev, "%s: pinctrl_config_one: err=%d\n",
-				__func__, ret);
+				 __func__, ret);
 			continue;
 		}
 	}
