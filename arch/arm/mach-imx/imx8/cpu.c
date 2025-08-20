@@ -837,8 +837,7 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 	mac[4] = val[1];
 	mac[5] = val[1] >> 8;
 
-	debug("%s: MAC%d: %02x.%02x.%02x.%02x.%02x.%02x\n",
-	      __func__, dev_id, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	debug("%s: MAC%d: %pM\n", __func__, dev_id, mac);
 	return;
 err:
 	printf("%s: fuse %d, err: %d\n", __func__, word[i], ret);
