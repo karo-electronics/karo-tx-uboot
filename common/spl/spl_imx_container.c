@@ -39,8 +39,7 @@ static struct boot_img_t *read_auth_image(struct spl_image_info *spl_image,
 		return NULL;
 	}
 
-	images = (struct boot_img_t *)((u8 *)container +
-				       sizeof(struct container_hdr));
+	images = (struct boot_img_t *)&container[1];
 
 	if (!IS_ALIGNED(images[image_index].offset, spl_get_bl_len(info))) {
 		printf("%s: image%d offset not aligned to %u\n",
@@ -51,7 +50,7 @@ static struct boot_img_t *read_auth_image(struct spl_image_info *spl_image,
 	size = ALIGN(images[image_index].size, spl_get_bl_len(info));
 	offset = images[image_index].offset + container_offset;
 
-	debug("%s: container: %p offset: %lu size: %lu\n", __func__,
+	debug("%s: container: %p offset: %08lx size: %lu\n", __func__,
 	      container, offset, size);
 
 	if (!images[image_index].dst)
@@ -104,7 +103,7 @@ static int read_auth_container(struct spl_image_info *spl_image,
 	if (!container)
 		return -ENOMEM;
 
-	debug("%s: container: %p offset: %lu size: %u\n", __func__,
+	debug("%s: container: %p offset: %08lx size: %u\n", __func__,
 	      container, offset, size);
 	if (info->read(info, offset, size, container) <
 	    CONTAINER_HDR_ALIGNMENT) {
