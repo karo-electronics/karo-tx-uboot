@@ -861,7 +861,7 @@ u32 spl_arch_boot_image_offset(u32 image_offset, u32 rom_bt_dev)
 	return image_offset;
 }
 
-enum env_location env_get_location(enum env_operation op, int prio)
+enum env_location arch_env_get_location(enum env_operation op, int prio)
 {
 	enum boot_device dev = get_boot_device();
 
