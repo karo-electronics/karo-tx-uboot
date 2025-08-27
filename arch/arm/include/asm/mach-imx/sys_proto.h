@@ -11,6 +11,7 @@
 #include <asm/mach-imx/regs-common.h>
 #include <asm/mach-imx/module_fuse.h>
 #include <linux/bitops.h>
+#include "boot_mode.h"
 #include "../arch-imx/cpu.h"
 
 struct bd_info;
