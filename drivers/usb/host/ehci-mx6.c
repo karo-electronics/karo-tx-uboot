@@ -17,6 +17,7 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/regs-usbphy.h>
 #include <asm/mach-imx/sys_proto.h>
 #include <dm.h>
 #include <asm/mach-types.h>
@@ -25,6 +26,7 @@
 #include <linux/usb/phy.h>
 
 #include "ehci.h"
+#include <usb/usb_mx6_common.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -36,37 +38,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define USB_H1_CTRL_OFFSET	0x04
 
-#define USBPHY_CTRL				0x00000030
-#define USBPHY_CTRL_SET				0x00000034
-#define USBPHY_CTRL_CLR				0x00000038
-#define USBPHY_CTRL_TOG				0x0000003c
-
 #define USBPHY_PWD				0x00000000
-#define USBPHY_CTRL_SFTRST			0x80000000
-#define USBPHY_CTRL_CLKGATE			0x40000000
-#define USBPHY_CTRL_ENUTMILEVEL3		0x00008000
-#define USBPHY_CTRL_ENUTMILEVEL2		0x00004000
-#define USBPHY_CTRL_OTG_ID			0x08000000
-
-#define ANADIG_USB2_CHRG_DETECT_EN_B		0x00100000
-#define ANADIG_USB2_CHRG_DETECT_CHK_CHRG_B	0x00080000
-
-#define ANADIG_USB2_PLL_480_CTRL_BYPASS		0x00010000
-#define ANADIG_USB2_PLL_480_CTRL_ENABLE		0x00002000
-#define ANADIG_USB2_PLL_480_CTRL_POWER		0x00001000
-#define ANADIG_USB2_PLL_480_CTRL_EN_USB_CLKS	0x00000040
-
-#define USBNC_OFFSET		0x200
-#define USBNC_PHY_STATUS_OFFSET	0x23C
-#define USBNC_PHYSTATUS_ID_DIG	(1 << 4) /* otg_id status */
-#define USBNC_PHYCFG2_ACAENB	(1 << 4) /* otg_id detection enable */
-#define UCTRL_PWR_POL		(1 << 9) /* OTG Polarity of Power Pin */
-#define UCTRL_OVER_CUR_POL	(1 << 8) /* OTG Polarity of Overcurrent */
-#define UCTRL_OVER_CUR_DIS	(1 << 7) /* Disable OTG Overcurrent Detection */
-
-/* USBCMD */
-#define UCMD_RUN_STOP           (1 << 0) /* controller run/stop */
-#define UCMD_RESET		(1 << 1) /* controller reset */
 
 /* If this is not defined, assume MX6/MX7/MX8M SoC default */
 #ifndef CFG_MXC_USB_PORTSC
@@ -137,8 +109,9 @@ static void usb_power_config_mx6(struct anatop_regs __iomem *anatop,
 		     pll_480_ctrl_set);
 }
 #else
-static void __maybe_unused
-usb_power_config_mx6(void *anatop, int anatop_bits_index) { }
+static inline void usb_power_config_mx6(void *anatop, int anatop_bits_index)
+{
+}
 #endif
 
 #if defined(CONFIG_MX7) && !defined(CONFIG_PHY)
@@ -156,8 +129,9 @@ static void usb_power_config_mx7(struct usbnc_regs *usbnc)
 	clrbits_le32(phy_cfg2, USBNC_PHYCFG2_ACAENB);
 }
 #else
-static void __maybe_unused
-usb_power_config_mx7(void *usbnc) { }
+static inline void usb_power_config_mx7(void *usbnc)
+{
+}
 #endif
 
 #if defined(CONFIG_MX7ULP) && !defined(CONFIG_PHY)
@@ -173,8 +147,9 @@ static void usb_power_config_mx7ulp(struct usbphy_regs __iomem *usbphy)
 	scg_enable_usb_pll(true);
 }
 #else
-static void __maybe_unused
-usb_power_config_mx7ulp(void *usbphy) { }
+static inline void usb_power_config_mx7ulp(void *usbphy)
+{
+}
 #endif
 
 #if defined(CONFIG_MX6) || defined(CONFIG_MX7ULP) || defined(CONFIG_IMXRT)
