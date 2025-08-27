@@ -309,7 +309,10 @@ enum {
 	MX91_PAD_CCM_CLKO4__FLEXIO2_FLEXIO29                                            = IOMUX_PAD(0x0244, 0x0094, 0x04, 0x0000, 0x00, 0x00),
 	MX91_PAD_CCM_CLKO4__GPIO4_IO29                                                  = IOMUX_PAD(0x0244, 0x0094, 0x05, 0x0000, 0x00, 0x00),
 
-	MX91_PAD_ENET1_MDC__ENET1_MDC                                                   = IOMUX_PAD(0x0248, 0x0098, 0x00, 0x0000, 0x00, 0x00),
+/* renamed for consistency, keeping the original definition to prevent breaking of out-of-tree users */
+	MX91_PAD_ENET1_MDC__ENET_QOS_MDC                                                = IOMUX_PAD(0x0248, 0x0098, 0x00, 0x0000, 0x00, 0x00),
+#define MX91_PAD_ENET1_MDC__ENET1_MDC		MX91_PAD_ENET1_MDC__ENET_QOS_MDC
+
 	MX91_PAD_ENET1_MDC__LPUART3_DCB_B                                               = IOMUX_PAD(0x0248, 0x0098, 0x01, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_MDC__I3C2_SCL                                                    = IOMUX_PAD(0x0248, 0x0098, 0x02, 0x03CC, 0x00, 0x00),
 	MX91_PAD_ENET1_MDC__HSIOMIX_OTG_ID1                                             = IOMUX_PAD(0x0248, 0x0098, 0x03, 0x0000, 0x00, 0x00),
@@ -329,7 +332,7 @@ enum {
 	MX91_PAD_ENET1_TD3__CAN2_TX                                                     = IOMUX_PAD(0x0250, 0x00A0, 0x02, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_TD3__HSIOMIX_OTG_ID2                                             = IOMUX_PAD(0x0250, 0x00A0, 0x03, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_TD3__FLEXIO2_FLEXIO2                                             = IOMUX_PAD(0x0250, 0x00A0, 0x04, 0x0000, 0x00, 0x00),
-	MX91_PAD_ENET1_TD3__GPIO4_IO3                                                   = IOMUX_PAD(0x0250, 0x00A0, 0x05, 0x0000, 0x00, 0x00),
+	MX91_PAD_ENET1_TD3__GPIO4_IO2                                                   = IOMUX_PAD(0x0250, 0x00A0, 0x05, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_TD3__LPI2C2_SCL                                                  = IOMUX_PAD(0x0250, 0x00A0, 0x06, 0x03E8, 0x00, 0x00),
 
 	MX91_PAD_ENET1_TD2__ENET_QOS_RGMII_TD2                                          = IOMUX_PAD(0x0254, 0x00A4, 0x00, 0x0000, 0x00, 0x00),
@@ -340,7 +343,10 @@ enum {
 	MX91_PAD_ENET1_TD2__GPIO4_IO3                                                   = IOMUX_PAD(0x0254, 0x00A4, 0x05, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_TD2__LPI2C2_SDA                                                  = IOMUX_PAD(0x0254, 0x00A4, 0x06, 0x03EC, 0x00, 0x00),
 
-	MX91_PAD_ENET1_TD1__ENET1_RGMII_TD1                                             = IOMUX_PAD(0x0258, 0x00A8, 0x00, 0x0000, 0x00, 0x00),
+/* renamed for consistency, keeping the original definition to prevent breaking of out-of-tree users */
+	MX91_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1                                          = IOMUX_PAD(0x0258, 0x00A8, 0x00, 0x0000, 0x00, 0x00),
+#define MX91_PAD_ENET1_TD1__ENET1_RGMII_TD1	MX91_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1
+
 	MX91_PAD_ENET1_TD1__LPUART3_RTS_B                                               = IOMUX_PAD(0x0258, 0x00A8, 0x01, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_TD1__I3C2_PUR                                                    = IOMUX_PAD(0x0258, 0x00A8, 0x02, 0x0000, 0x00, 0x00),
 	MX91_PAD_ENET1_TD1__HSIOMIX_OTG_OC1                                             = IOMUX_PAD(0x0258, 0x00A8, 0x03, 0x0000, 0x00, 0x00),
@@ -679,7 +685,7 @@ enum {
 	MX91_PAD_I2C2_SCL__LPUART2_DCB_B                                                = IOMUX_PAD(0x0328, 0x0178, 0x02, 0x0000, 0x00, 0x00),
 	MX91_PAD_I2C2_SCL__TPM2_CH2                                                     = IOMUX_PAD(0x0328, 0x0178, 0x03, 0x0000, 0x00, 0x00),
 	MX91_PAD_I2C2_SCL__SAI1_RX_SYNC                                                 = IOMUX_PAD(0x0328, 0x0178, 0x04, 0x0000, 0x00, 0x00),
-	MX91_PAD_I2C2_SCL__GPIO1_IO3                                                    = IOMUX_PAD(0x0328, 0x0178, 0x05, 0x0000, 0x00, 0x00),
+	MX91_PAD_I2C2_SCL__GPIO1_IO2                                                    = IOMUX_PAD(0x0328, 0x0178, 0x05, 0x0000, 0x00, 0x00),
 	MX91_PAD_I2C2_SCL__I3C1_PUR_B                                                   = IOMUX_PAD(0x0328, 0x0178, 0x06, 0x0000, 0x00, 0x00),
 
 	MX91_PAD_I2C2_SDA__LPI2C2_SDA                                                   = IOMUX_PAD(0x032C, 0x017C, 0x00, 0x03EC, 0x01, 0x00),
