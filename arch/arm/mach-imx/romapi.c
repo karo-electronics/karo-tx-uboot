@@ -30,23 +30,20 @@ u32 rom_api_query_boot_infor(u32 info_type, u32 *info)
 	return ret;
 }
 
-extern struct rom_api *g_rom_api;
-
 enum boot_device get_boot_device(void)
 {
-	volatile gd_t *pgd = gd;
 	int ret;
 	u32 boot;
 	u16 boot_type;
 	u8 boot_instance;
-	enum boot_device boot_dev = SD1_BOOT;
+	static enum boot_device boot_dev = UNKNOWN_BOOT;
 
-	ret = g_rom_api->query_boot_infor(QUERY_BT_DEV, &boot,
-					  ((uintptr_t)&boot) ^ QUERY_BT_DEV);
-	set_gd(pgd);
+	if (boot_dev != UNKNOWN_BOOT)
+		return boot_dev;
 
+	ret = rom_api_query_boot_infor(QUERY_BT_DEV, &boot);
 	if (ret != ROM_API_OKAY) {
-		puts("ROMAPI: failure at query_boot_info\n");
+		puts("ROMAPI: failed to get boot device\n");
 		return -1;
 	}
 
@@ -75,7 +72,7 @@ enum boot_device get_boot_device(void)
 		boot_dev = boot_instance + USB_BOOT;
 		break;
 	default:
-		break;
+		boot_dev = SD1_BOOT;
 	}
 
 	return boot_dev;
