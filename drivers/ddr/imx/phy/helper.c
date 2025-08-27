@@ -24,6 +24,13 @@ DECLARE_GLOBAL_DATA_PTR;
 #define DMEM_OFFSET_ADDR 0x00054000
 #define DDR_TRAIN_CODE_BASE_ADDR IP2APB_DDRPHY_IPS_BASE_ADDR(0)
 
+#ifdef CONFIG_IMX8M
+#define BINMAN_SYM_DDRFW	nxp_imx8mimage
+#else
+#define BINMAN_SYM_DDRFW	u_boot_spl_ddr
+#endif
+binman_sym_declare(ulong, BINMAN_SYM_DDRFW, image_pos);
+
 binman_sym_declare(ulong, ddr_1d_imem_fw, image_pos);
 binman_sym_declare(ulong, ddr_1d_imem_fw, size);
 
@@ -67,23 +74,33 @@ void ddr_load_train_firmware(enum fw_type type)
 	dmem_start = imem_start + imem_len;
 
 	if (BINMAN_SYMS_OK) {
+		unsigned long spl_start = binman_sym(ulong, BINMAN_SYM_DDRFW, image_pos);
+		unsigned long ddrfw_offset = 0;
+
+		if (spl_start != BINMAN_SYM_MISSING)
+			ddrfw_offset = spl_start - CONFIG_SPL_TEXT_BASE;
+
+		debug("%s(): ddrfw_offset=%08lx\n", __func__, ddrfw_offset);
+
 		switch (type) {
 		case FW_1D_IMAGE:
-			imem_start = binman_sym(ulong, ddr_1d_imem_fw, image_pos);
+			imem_start = binman_sym(ulong, ddr_1d_imem_fw, image_pos) - ddrfw_offset;
 			imem_len = binman_sym(ulong, ddr_1d_imem_fw, size);
-			dmem_start = binman_sym(ulong, ddr_1d_dmem_fw, image_pos);
+			dmem_start = binman_sym(ulong, ddr_1d_dmem_fw, image_pos) - ddrfw_offset;
 			dmem_len = binman_sym(ulong, ddr_1d_dmem_fw, size);
 			break;
 		case FW_2D_IMAGE:
 #if !IS_ENABLED(CONFIG_IMX8M_DDR3L)
-			imem_start = binman_sym(ulong, ddr_2d_imem_fw, image_pos);
+			imem_start = binman_sym(ulong, ddr_2d_imem_fw, image_pos) - ddrfw_offset;
 			imem_len = binman_sym(ulong, ddr_2d_imem_fw, size);
-			dmem_start = binman_sym(ulong, ddr_2d_dmem_fw, image_pos);
+			dmem_start = binman_sym(ulong, ddr_2d_dmem_fw, image_pos) - ddrfw_offset;
 			dmem_len = binman_sym(ulong, ddr_2d_dmem_fw, size);
 #endif
 			break;
 		}
 	}
+	debug("%s(): imem_start=%08lx\n", __func__, imem_start);
+	debug("%s(): dmem_start=%08lx\n", __func__, dmem_start);
 
 	pr_from32 = imem_start;
 	pr_to32 = IMEM_OFFSET_ADDR;
