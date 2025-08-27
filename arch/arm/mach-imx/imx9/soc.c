@@ -64,7 +64,7 @@ int mmc_get_env_dev(void)
 	ret = rom_api_query_boot_infor(QUERY_BT_DEV, &boot);
 
 	if (ret != ROM_API_OKAY) {
-		puts("ROMAPI: failure at query_boot_info\n");
+		printf("%s: failed to get boot device from ROMAPI\n", __func__);
 		return IMX9_MMC_ENV_DEV;
 	}
 
@@ -333,7 +333,7 @@ static struct mm_region imx93_mem_map[] = {
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 			 PTE_BLOCK_OUTER_SHARE
 	}, {
-		/* empty entrie to split table entry 5 if needed when TEEs are used */
+		/* empty entry to split table entry 5 if needed when TEEs are used */
 		0,
 	}, {
 		/* List terminator */
@@ -439,7 +439,7 @@ int dram_init_banksize(void)
 	if (ret)
 		return ret;
 
-	/* Bank 1 can't cross over 4GB space */
+	/* Bank 1 can't cross 4GiB boundary */
 	if (sdram_size > 0x80000000) {
 		sdram_b1_size = 0x80000000;
 		sdram_b2_size = sdram_size - 0x80000000;
@@ -451,12 +451,13 @@ int dram_init_banksize(void)
 	gd->bd->bi_dram[bank].start = PHYS_SDRAM;
 	if (!IS_ENABLED(CONFIG_XPL_BUILD) && rom_pointer[1]) {
 		phys_addr_t optee_start = (phys_addr_t)rom_pointer[0];
-		phys_size_t optee_size = (size_t)rom_pointer[1];
+		phys_size_t optee_size = (phys_size_t)rom_pointer[1];
 
 		gd->bd->bi_dram[bank].size = optee_start - gd->bd->bi_dram[bank].start;
 		if ((optee_start + optee_size) < (PHYS_SDRAM + sdram_b1_size)) {
 			if (++bank >= CONFIG_NR_DRAM_BANKS) {
-				puts("CONFIG_NR_DRAM_BANKS is not enough\n");
+				printf("CONFIG_NR_DRAM_BANKS must be at least %d\n",
+				       CONFIG_NR_DRAM_BANKS + !!sdram_b2_size + 1);
 				return -1;
 			}
 
@@ -470,7 +471,8 @@ int dram_init_banksize(void)
 
 	if (sdram_b2_size) {
 		if (++bank >= CONFIG_NR_DRAM_BANKS) {
-			puts("CONFIG_NR_DRAM_BANKS is not enough for SDRAM_2\n");
+			printf("CONFIG_NR_DRAM_BANKS must be at least %d\n",
+			       CONFIG_NR_DRAM_BANKS + 1);
 			return -1;
 		}
 		gd->bd->bi_dram[bank].start = 0x100000000UL;
