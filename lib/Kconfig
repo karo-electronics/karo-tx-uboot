@@ -844,7 +844,6 @@ config BZIP2
 
 config ZLIB
 	bool
-	default y
 	help
 	  This enables ZLIB compression lib.
 
