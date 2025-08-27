@@ -132,32 +132,32 @@ int trdc_mda_set_noncpu(ulong trdc_reg, u32 mda_inst, u32 mda_reg,
 	return 0;
 }
 
-static ulong trdc_get_mbc_base(ulong trdc_reg, u32 mbc_x)
+static struct trdc_mbc *trdc_get_mbc_base(ulong trdc_reg, u32 mbc_x)
 {
 	struct trdc_mgr *trdc_base = (struct trdc_mgr *)trdc_reg;
 	u32 mbc_num = MBC_NUM(trdc_base->trdc_hwcfg0);
 
 	if (mbc_x >= mbc_num)
-		return 0;
+		return NULL;
 
-	return trdc_reg + 0x10000 + 0x2000 * mbc_x;
+	return (struct trdc_mbc *)(trdc_reg + 0x10000 + 0x2000 * mbc_x);
 }
 
-static ulong trdc_get_mrc_base(ulong trdc_reg, u32 mrc_x)
+static struct trdc_mrc *trdc_get_mrc_base(ulong trdc_reg, u32 mrc_x)
 {
 	struct trdc_mgr *trdc_base = (struct trdc_mgr *)trdc_reg;
 	u32 mbc_num = MBC_NUM(trdc_base->trdc_hwcfg0);
 	u32 mrc_num = MRC_NUM(trdc_base->trdc_hwcfg0);
 
 	if (mrc_x >= mrc_num)
-		return 0;
+		return NULL;
 
-	return trdc_reg + 0x10000 + 0x2000 * mbc_num + 0x1000 * mrc_x;
+	return (struct trdc_mrc *)(trdc_reg + 0x10000 + 0x2000 * mbc_num + 0x1000 * mrc_x);
 }
 
 static u32 trdc_mbc_blk_num(ulong trdc_reg, u32 mbc_x, u32 mem_x)
 {
-	struct trdc_mbc *mbc_base = (struct trdc_mbc *)trdc_get_mbc_base(trdc_reg, mbc_x);
+	struct trdc_mbc *mbc_base = trdc_get_mbc_base(trdc_reg, mbc_x);
 	struct mbc_mem_dom *mbc_dom;
 	u32 glbcfg;
 
@@ -173,7 +173,7 @@ static u32 trdc_mbc_blk_num(ulong trdc_reg, u32 mbc_x, u32 mem_x)
 
 int trdc_mbc_set_control(ulong trdc_reg, u32 mbc_x, u32 glbac_id, u32 glbac_val)
 {
-	struct trdc_mbc *mbc_base = (struct trdc_mbc *)trdc_get_mbc_base(trdc_reg, mbc_x);
+	struct trdc_mbc *mbc_base = trdc_get_mbc_base(trdc_reg, mbc_x);
 	struct mbc_mem_dom *mbc_dom;
 
 	if (mbc_base == 0 || glbac_id >= 8)
@@ -182,7 +182,7 @@ int trdc_mbc_set_control(ulong trdc_reg, u32 mbc_x, u32 glbac_id, u32 glbac_val)
 	/* only first dom has the glbac */
 	mbc_dom = &mbc_base->mem_dom[0];
 
-	debug("mbc 0x%lx\n", (ulong)mbc_dom);
+	debug("mbc %p\n", mbc_dom);
 
 	writel(glbac_val, &mbc_dom->memn_glbac[glbac_id]);
 
@@ -192,7 +192,7 @@ int trdc_mbc_set_control(ulong trdc_reg, u32 mbc_x, u32 glbac_id, u32 glbac_val)
 int trdc_mbc_blk_config(ulong trdc_reg, u32 mbc_x, u32 dom_x, u32 mem_x,
 			u32 blk_x, bool sec_access, u32 glbac_id)
 {
-	struct trdc_mbc *mbc_base = (struct trdc_mbc *)trdc_get_mbc_base(trdc_reg, mbc_x);
+	struct trdc_mbc *mbc_base = trdc_get_mbc_base(trdc_reg, mbc_x);
 	struct mbc_mem_dom *mbc_dom;
 	u32 *cfg_w, *nse_w;
 	u32 index, offset, val;
@@ -202,7 +202,7 @@ int trdc_mbc_blk_config(ulong trdc_reg, u32 mbc_x, u32 dom_x, u32 mem_x,
 
 	mbc_dom = &mbc_base->mem_dom[dom_x];
 
-	debug("mbc 0x%lx\n", (ulong)mbc_dom);
+	debug("mbc %p\n", mbc_dom);
 
 	switch (mem_x) {
 	case 0:
@@ -249,7 +249,7 @@ int trdc_mbc_blk_config(ulong trdc_reg, u32 mbc_x, u32 dom_x, u32 mem_x,
 
 int trdc_mrc_set_control(ulong trdc_reg, u32 mrc_x, u32 glbac_id, u32 glbac_val)
 {
-	struct trdc_mrc *mrc_base = (struct trdc_mrc *)trdc_get_mrc_base(trdc_reg, mrc_x);
+	struct trdc_mrc *mrc_base = trdc_get_mrc_base(trdc_reg, mrc_x);
 	struct mrc_rgn_dom *mrc_dom;
 
 	if (mrc_base == 0 || glbac_id >= 8)
@@ -268,7 +268,7 @@ int trdc_mrc_set_control(ulong trdc_reg, u32 mrc_x, u32 glbac_id, u32 glbac_val)
 int trdc_mrc_region_config(ulong trdc_reg, u32 mrc_x, u32 dom_x, u32 addr_start,
 			   u32 addr_end, bool sec_access, u32 glbac_id)
 {
-	struct trdc_mrc *mrc_base = (struct trdc_mrc *)trdc_get_mrc_base(trdc_reg, mrc_x);
+	struct trdc_mrc *mrc_base = trdc_get_mrc_base(trdc_reg, mrc_x);
 	struct mrc_rgn_dom *mrc_dom;
 	u32 *desc_w;
 	u32 start, end;
@@ -288,7 +288,7 @@ int trdc_mrc_region_config(ulong trdc_reg, u32 mrc_x, u32 dom_x, u32 addr_start,
 	for (i = 0; i < 8; i++) {
 		desc_w = &mrc_dom->rgn_desc_words[i][0];
 
-		debug("desc_w 0x%lx\n", (ulong)desc_w);
+		debug("desc_w %p\n", desc_w);
 
 		start = readl((void __iomem *)desc_w) & (~0x3fff);
 		end = readl((void __iomem *)(desc_w + 1));
@@ -474,11 +474,11 @@ void trdc_init(void)
 		trdc_mrc_region_config(TRDC_NIC_BASE, MRC(0), DOM(9), 0x80000000,
 				       0xFFFFFFFF, false, GLOBAL_ID(0));
 
-		/*SoC masters */
+		/* SoC masters */
 		trdc_mrc_region_config(TRDC_NIC_BASE, MRC(0), DOM(10), 0x80000000,
 				       0xFFFFFFFF, false, GLOBAL_ID(0));
 
-		/*USB*/
+		/* USB */
 		trdc_mrc_region_config(TRDC_NIC_BASE, MRC(0), DOM(11), 0x80000000,
 				       0xFFFFFFFF, false, GLOBAL_ID(0));
 	}
@@ -487,7 +487,7 @@ void trdc_init(void)
 #ifdef DEBUG
 int trdc_mbc_control_dump(ulong trdc_reg, u32 mbc_x, u32 glbac_id)
 {
-	struct trdc_mbc *mbc_base = (struct trdc_mbc *)trdc_get_mbc_base(trdc_reg, mbc_x);
+	struct trdc_mbc *mbc_base = trdc_get_mbc_base(trdc_reg, mbc_x);
 	struct mbc_mem_dom *mbc_dom;
 
 	if (mbc_base == 0 || glbac_id >= 8)
@@ -504,7 +504,7 @@ int trdc_mbc_control_dump(ulong trdc_reg, u32 mbc_x, u32 glbac_id)
 
 int trdc_mbc_mem_dump(ulong trdc_reg, u32 mbc_x, u32 dom_x, u32 mem_x, u32 word)
 {
-	struct trdc_mbc *mbc_base = (struct trdc_mbc *)trdc_get_mbc_base(trdc_reg, mbc_x);
+	struct trdc_mbc *mbc_base = trdc_get_mbc_base(trdc_reg, mbc_x);
 	struct mbc_mem_dom *mbc_dom;
 	u32 *cfg_w;
 
@@ -538,7 +538,7 @@ int trdc_mbc_mem_dump(ulong trdc_reg, u32 mbc_x, u32 dom_x, u32 mem_x, u32 word)
 
 int trdc_mrc_control_dump(ulong trdc_reg, u32 mrc_x, u32 glbac_id)
 {
-	struct trdc_mrc *mrc_base = (struct trdc_mrc *)trdc_get_mrc_base(trdc_reg, mrc_x);
+	struct trdc_mrc *mrc_base = trdc_get_mrc_base(trdc_reg, mrc_x);
 	struct mrc_rgn_dom *mrc_dom;
 
 	if (mrc_base == 0 || glbac_id >= 8)
