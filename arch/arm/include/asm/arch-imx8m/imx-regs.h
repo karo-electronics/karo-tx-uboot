@@ -6,8 +6,6 @@
 #ifndef __ASM_ARCH_IMX8M_REGS_H__
 #define __ASM_ARCH_IMX8M_REGS_H__
 
-#define ARCH_MXC
-
 #include <asm/mach-imx/regs-lcdif.h>
 
 #define ROM_VERSION_A0		IS_ENABLED(CONFIG_IMX8MQ) ? 0x800 : 0x800
@@ -47,12 +45,12 @@
 #define I2C4_BASE_ADDR		0x30A50000
 #define UART4_BASE_ADDR		0x30A60000
 #ifdef CONFIG_IMX8MP
-#define I2C5_BASE_ADDR          0x30AD0000
-#define I2C6_BASE_ADDR          0x30AE0000
+#define I2C5_BASE_ADDR		0x30AD0000
+#define I2C6_BASE_ADDR		0x30AE0000
 #endif
 #define USDHC1_BASE_ADDR	0x30B40000
 #define USDHC2_BASE_ADDR	0x30B50000
-#define QSPI0_AMBA_BASE     0x08000000
+#define QSPI0_AMBA_BASE		0x08000000
 #if defined(CONFIG_IMX8MM) || defined(CONFIG_IMX8MP)
 #define USDHC3_BASE_ADDR	0x30B60000
 #endif
@@ -102,26 +100,26 @@
 #define FEC_QUIRK_ENET_MAC
 
 #ifdef CONFIG_ARMV8_PSCI	/* Final jump location */
-#define CPU_RELEASE_ADDR               0x900000
+#define CPU_RELEASE_ADDR		0x900000
 #endif
 
-#define CAAM_ARB_BASE_ADDR              (0x00100000)
-#define CAAM_ARB_END_ADDR               (0x00107FFF)
-#define CAAM_IPS_BASE_ADDR              (0x30900000)
-#define CFG_SYS_FSL_SEC_OFFSET       (0)
-#define CFG_SYS_FSL_SEC_ADDR         (CAAM_IPS_BASE_ADDR + \
+#define CAAM_ARB_BASE_ADDR		0x00100000
+#define CAAM_ARB_END_ADDR		0x00107FFF
+#define CAAM_IPS_BASE_ADDR		0x30900000
+#define CFG_SYS_FSL_SEC_OFFSET		0
+#define CFG_SYS_FSL_SEC_ADDR		(CAAM_IPS_BASE_ADDR + \
 					 CFG_SYS_FSL_SEC_OFFSET)
-#define CFG_SYS_FSL_JR0_OFFSET       (0x1000)
-#define CFG_SYS_FSL_JR0_ADDR         (CFG_SYS_FSL_SEC_ADDR + \
+#define CFG_SYS_FSL_JR0_OFFSET		0x1000
+#define CFG_SYS_FSL_JR0_ADDR		(CFG_SYS_FSL_SEC_ADDR + \
 					 CFG_SYS_FSL_JR0_OFFSET)
 #if !defined(__ASSEMBLY__)
 #include <asm/types.h>
 #include <linux/bitops.h>
 #include <stdbool.h>
 
-#define GPR_TZASC_EN					BIT(0)
-#define GPR_TZASC_ID_SWAP_BYPASS		BIT(1)
-#define GPR_TZASC_EN_LOCK				BIT(16)
+#define GPR_TZASC_EN			BIT(0)
+#define GPR_TZASC_ID_SWAP_BYPASS	BIT(1)
+#define GPR_TZASC_EN_LOCK		BIT(16)
 #define GPR_TZASC_ID_SWAP_BYPASS_LOCK	BIT(17)
 
 #define SRC_SCR_M4_ENABLE_OFFSET	3
@@ -371,7 +369,7 @@ struct src {
 	u32 ddr2_rcr;
 };
 
-#define PWMCR_PRESCALER(x)	(((x - 1) & 0xFFF) << 4)
+#define PWMCR_PRESCALER(x)	((((x) - 1) & 0xFFF) << 4)
 #define PWMCR_DOZEEN		(1 << 24)
 #define PWMCR_WAITEN		(1 << 23)
 #define PWMCR_DBGEN		(1 << 22)
@@ -388,8 +386,8 @@ struct pwm_regs {
 	u32	cnr;
 };
 
-#define WDOG_WDT_MASK	BIT(3)
-#define WDOG_WDZST_MASK	BIT(0)
+#define WDOG_WDT_MASK		BIT(3)
+#define WDOG_WDZST_MASK		BIT(0)
 struct wdog_regs {
 	u16	wcr;	/* Control */
 	u16	wsr;	/* Service */
@@ -410,12 +408,11 @@ struct bootrom_sw_info {
 	u32 reserved_3[3];
 };
 
-#define ROM_SW_INFO_ADDR_B0	(IS_ENABLED(CONFIG_IMX8MQ) ? 0x00000968 :\
-				 0x000009e8)
+#define ROM_SW_INFO_ADDR_B0	(IS_ENABLED(CONFIG_IMX8MQ) ? 0x00000968 : 0x000009e8)
 #define ROM_SW_INFO_ADDR_A0	0x000009e8
 
-#define ROM_SW_INFO_ADDR is_soc_rev(CHIP_REV_1_0) ? \
-		(struct bootrom_sw_info **)ROM_SW_INFO_ADDR_A0 : \
+#define ROM_SW_INFO_ADDR is_soc_rev(CHIP_REV_1_0) ?			\
+		(struct bootrom_sw_info **)ROM_SW_INFO_ADDR_A0 :	\
 		(struct bootrom_sw_info **)ROM_SW_INFO_ADDR_B0
 
 struct gpc_reg {
@@ -575,5 +572,5 @@ struct pgc_reg {
 	u32 pgauxsw;
 	u32 pgdr;
 };
-#endif
-#endif
+#endif /* __ASSEMBLY__ */
+#endif /* __ASM_ARCH_IMX8M_REGS_H__ */

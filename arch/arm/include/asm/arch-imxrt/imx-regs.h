@@ -7,8 +7,6 @@
 #ifndef __ASM_ARCH_IMX_REGS_H__
 #define __ASM_ARCH_IMX_REGS_H__
 
-#define ARCH_MXC
-
 #define GPIO1_BASE_ADDR		0x401B8000
 #define GPIO2_BASE_ADDR		0x401BC000
 #define GPIO3_BASE_ADDR		0x401C0000

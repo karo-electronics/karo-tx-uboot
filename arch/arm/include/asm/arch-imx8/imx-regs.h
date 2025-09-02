@@ -6,8 +6,6 @@
 #ifndef __ASM_ARCH_IMX8_REGS_H__
 #define __ASM_ARCH_IMX8_REGS_H__
 
-#define ARCH_MXC
-
 #define LPUART_BASE		0x5A060000
 
 #define GPT1_BASE_ADDR		0x5D140000
@@ -47,6 +45,6 @@
 #define USB_BASE_ADDR		0x5b0d0000
 #define USB_PHY0_BASE_ADDR	0x5b100000
 
-#define CFG_SYS_FSL_SEC_ADDR (0x31400000)
+#define CFG_SYS_FSL_SEC_ADDR	0x31400000
 
 #endif /* __ASM_ARCH_IMX8_REGS_H__ */

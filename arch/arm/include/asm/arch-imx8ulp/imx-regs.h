@@ -5,12 +5,11 @@
 
 #ifndef _IMX8ULP_REGS_H_
 #define _IMX8ULP_REGS_H_
-#define ARCH_MXC
 
 #include <linux/bitops.h>
 #include <linux/sizes.h>
 
-#define SRAM0_BASE          0x22010000
+#define SRAM0_BASE		0x22010000
 #define PBRIDGE0_BASE		0x28000000
 
 #define CMC0_RBASE		0x28025000
@@ -63,7 +62,7 @@
 
 #define FEC_QUIRK_ENET_MAC
 
-#define IMG_CONTAINER_BASE             (0x22010000UL)
+#define IMG_CONTAINER_BASE	0x22010000UL
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
@@ -116,7 +115,7 @@ struct usbphy_regs {
 	u32	usbphy_debug_set;		/* 0x054 */
 	u32	usbphy_debug_clr;		/* 0x058 */
 	u32	usbphy_debug_tog;		/* 0x05c */
-	u32	usbphy_debug0_status;	/* 0x060 */
+	u32	usbphy_debug0_status;		/* 0x060 */
 	u32	reserved1[3];
 	u32	usbphy_debug1;			/* 0x070 */
 	u32	usbphy_debug1_set;		/* 0x074 */
@@ -162,6 +161,6 @@ struct usbphy_regs {
 	u32	usb1_pfda_ctrl1_clr;		/* 0x148 */
 	u32	usb1_pfda_ctrl1_tog;		/* 0x14c */
 };
-#endif
+#endif /* !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__)) */
 
-#endif
+#endif /* _IMX8ULP_REGS_H_ */

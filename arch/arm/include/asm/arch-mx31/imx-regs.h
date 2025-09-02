@@ -516,33 +516,31 @@ struct esdc_regs {
 	u32 dlyl;
 };
 
-#endif
+#endif /* __ASSEMBLY__ */
 
-#define ARCH_MXC
+#define __REG(x)		(*((volatile u32 *)(x)))
+#define __REG16(x)		(*((volatile u16 *)(x)))
+#define __REG8(x)		(*((volatile u8 *)(x)))
 
-#define __REG(x)     (*((volatile u32 *)(x)))
-#define __REG16(x)   (*((volatile u16 *)(x)))
-#define __REG8(x)    (*((volatile u8 *)(x)))
+#define CCM_BASE		0x53f80000
+#define CCM_CCMR		(CCM_BASE + 0x00)
+#define CCM_PDR0		(CCM_BASE + 0x04)
+#define CCM_PDR1		(CCM_BASE + 0x08)
+#define CCM_RCSR		(CCM_BASE + 0x0c)
+#define CCM_MPCTL		(CCM_BASE + 0x10)
+#define CCM_UPCTL		(CCM_BASE + 0x14)
+#define CCM_SPCTL		(CCM_BASE + 0x18)
+#define CCM_COSR		(CCM_BASE + 0x1C)
+#define CCM_CGR0		(CCM_BASE + 0x20)
+#define CCM_CGR1		(CCM_BASE + 0x24)
+#define CCM_CGR2		(CCM_BASE + 0x28)
 
-#define CCM_BASE	0x53f80000
-#define CCM_CCMR	(CCM_BASE + 0x00)
-#define CCM_PDR0	(CCM_BASE + 0x04)
-#define CCM_PDR1	(CCM_BASE + 0x08)
-#define CCM_RCSR	(CCM_BASE + 0x0c)
-#define CCM_MPCTL	(CCM_BASE + 0x10)
-#define CCM_UPCTL	(CCM_BASE + 0x14)
-#define CCM_SPCTL	(CCM_BASE + 0x18)
-#define CCM_COSR	(CCM_BASE + 0x1C)
-#define CCM_CGR0	(CCM_BASE + 0x20)
-#define CCM_CGR1	(CCM_BASE + 0x24)
-#define CCM_CGR2	(CCM_BASE + 0x28)
-
-#define CCMR_MDS	(1 << 7)
-#define CCMR_SBYCS	(1 << 4)
-#define CCMR_MPE	(1 << 3)
-#define CCMR_PRCS_MASK	(3 << 1)
-#define CCMR_FPM	(1 << 1)
-#define CCMR_CKIH	(2 << 1)
+#define CCMR_MDS		(1 << 7)
+#define CCMR_SBYCS		(1 << 4)
+#define CCMR_MPE		(1 << 3)
+#define CCMR_PRCS_MASK		(3 << 1)
+#define CCMR_FPM		(1 << 1)
+#define CCMR_CKIH		(2 << 1)
 
 #define MX31_IIM_BASE_ADDR	0x5001C000
 #define IIM_BASE_ADDR		MX31_IIM_BASE_ADDR
@@ -585,17 +583,17 @@ struct esdc_regs {
 #define GET_PLL_MFI(x)		(((x) >> 10) & 0xf)
 #define GET_PLL_MFN(x)		(((x) >> 0) & 0x3ff)
 
-#define WEIM_ESDCTL0	0xB8001000
-#define WEIM_ESDCFG0	0xB8001004
-#define WEIM_ESDCTL1	0xB8001008
-#define WEIM_ESDCFG1	0xB800100C
-#define WEIM_ESDMISC	0xB8001010
+#define WEIM_ESDCTL0		0xB8001000
+#define WEIM_ESDCFG0		0xB8001004
+#define WEIM_ESDCTL1		0xB8001008
+#define WEIM_ESDCFG1		0xB800100C
+#define WEIM_ESDMISC		0xB8001010
 
-#define UART1_BASE	0x43F90000
-#define UART2_BASE	0x43F94000
-#define UART3_BASE	0x5000C000
-#define UART4_BASE	0x43FB0000
-#define UART5_BASE	0x43FB4000
+#define UART1_BASE		0x43F90000
+#define UART2_BASE		0x43F94000
+#define UART3_BASE		0x5000C000
+#define UART4_BASE		0x43FB0000
+#define UART5_BASE		0x43FB4000
 
 #define UART_BASE_ADDR(n)	(			\
 	!!sizeof(struct {				\
@@ -609,55 +607,55 @@ struct esdc_regs {
 	UART5_BASE_ADDR)				\
 	)
 
-#define I2C1_BASE_ADDR          0x43f80000
+#define I2C1_BASE_ADDR		0x43f80000
 #define I2C1_CLK_OFFSET		26
-#define I2C2_BASE_ADDR          0x43F98000
+#define I2C2_BASE_ADDR		0x43F98000
 #define I2C2_CLK_OFFSET		28
-#define I2C3_BASE_ADDR          0x43f84000
+#define I2C3_BASE_ADDR		0x43f84000
 #define I2C3_CLK_OFFSET		30
 
-#define ESDCTL_SDE			(1 << 31)
-#define ESDCTL_CMD_RW			(0 << 28)
-#define ESDCTL_CMD_PRECHARGE		(1 << 28)
-#define ESDCTL_CMD_AUTOREFRESH		(2 << 28)
-#define ESDCTL_CMD_LOADMODEREG		(3 << 28)
-#define ESDCTL_CMD_MANUALREFRESH	(4 << 28)
-#define ESDCTL_ROW_13			(2 << 24)
-#define ESDCTL_ROW(x)			((x) << 24)
-#define ESDCTL_COL_9			(1 << 20)
-#define ESDCTL_COL(x)			((x) << 20)
-#define ESDCTL_DSIZ(x)			((x) << 16)
-#define ESDCTL_SREFR(x)			((x) << 13)
-#define ESDCTL_PWDT(x)			((x) << 10)
-#define ESDCTL_FP(x)			((x) << 8)
-#define ESDCTL_BL(x)			((x) << 7)
-#define ESDCTL_PRCT(x)			((x) << 0)
+#define ESDCTL_SDE		(1 << 31)
+#define ESDCTL_CMD_RW		(0 << 28)
+#define ESDCTL_CMD_PRECHARGE	(1 << 28)
+#define ESDCTL_CMD_AUTOREFRESH	(2 << 28)
+#define ESDCTL_CMD_LOADMODEREG	(3 << 28)
+#define ESDCTL_CMD_MANUALREFRESH (4 << 28)
+#define ESDCTL_ROW_13		(2 << 24)
+#define ESDCTL_ROW(x)		((x) << 24)
+#define ESDCTL_COL_9		(1 << 20)
+#define ESDCTL_COL(x)		((x) << 20)
+#define ESDCTL_DSIZ(x)		((x) << 16)
+#define ESDCTL_SREFR(x)		((x) << 13)
+#define ESDCTL_PWDT(x)		((x) << 10)
+#define ESDCTL_FP(x)		((x) << 8)
+#define ESDCTL_BL(x)		((x) << 7)
+#define ESDCTL_PRCT(x)		((x) << 0)
 
 #define ESDCTL_BASE_ADDR	0xB8001000
 
 /* 13 fields of the upper CS control register */
-#define CSCR_U(sp, wp, bcd, bcs, psz, pme, sync, dol, \
-		cnc, wsc, ew, wws, edc) \
-	((sp) << 31 | (wp) << 30 | (bcd) << 28 | (psz) << 22 | (pme) << 21 |\
-	 (sync) << 20 | (dol) << 16 | (cnc) << 14 | (wsc) << 8 | (ew) << 7 |\
+#define CSCR_U(sp, wp, bcd, bcs, psz, pme, sync, dol,			\
+		cnc, wsc, ew, wws, edc)					\
+	((sp) << 31 | (wp) << 30 | (bcd) << 28 | (psz) << 22 | (pme) << 21 | \
+	 (sync) << 20 | (dol) << 16 | (cnc) << 14 | (wsc) << 8 | (ew) << 7 | \
 	 (wws) << 4 | (edc) << 0)
 /* 12 fields of the lower CS control register */
-#define CSCR_L(oea, oen, ebwa, ebwn, \
-		csa, ebc, dsz, csn, psr, cre, wrap, csen) \
-	((oea) << 28 | (oen) << 24 | (ebwa) << 20 | (ebwn) << 16 |\
-	 (csa) << 12 | (ebc) << 11 | (dsz) << 8 | (csn) << 4 |\
+#define CSCR_L(oea, oen, ebwa, ebwn,					\
+		csa, ebc, dsz, csn, psr, cre, wrap, csen)		\
+	((oea) << 28 | (oen) << 24 | (ebwa) << 20 | (ebwn) << 16 |	\
+	 (csa) << 12 | (ebc) << 11 | (dsz) << 8 | (csn) << 4 |		\
 	 (psr) << 3 | (cre) << 2 | (wrap) << 1 | (csen) << 0)
 /* 14 fields of the additional CS control register */
-#define CSCR_A(ebra, ebrn, rwa, rwn, mum, lah, lbn, lba, dww, dct, \
-		wwu, age, cnc2, fce) \
-	((ebra) << 28 | (ebrn) << 24 | (rwa) << 20 | (rwn) << 16 |\
-	 (mum) << 15 | (lah) << 13 | (lbn) << 10 | (lba) << 8 |\
-	 (dww) << 6 | (dct) << 4 | (wwu) << 3 |\
+#define CSCR_A(ebra, ebrn, rwa, rwn, mum, lah, lbn, lba, dww, dct,	\
+		wwu, age, cnc2, fce)					\
+	((ebra) << 28 | (ebrn) << 24 | (rwa) << 20 | (rwn) << 16 |	\
+	 (mum) << 15 | (lah) << 13 | (lbn) << 10 | (lba) << 8 |		\
+	 (dww) << 6 | (dct) << 4 | (wwu) << 3 |				\
 	 (age) << 2 | (cnc2) << 1 | (fce) << 0)
 
-#define WEIM_BASE	0xb8002000
+#define WEIM_BASE		0xb8002000
 
-#define IOMUXC_BASE	0x43FAC000
+#define IOMUXC_BASE		0x43FAC000
 #define IOMUXC_SW_MUX_CTL(x)	(IOMUXC_BASE + 0xc + (x) * 4)
 #define IOMUXC_SW_PAD_CTL(x)	(IOMUXC_BASE + 0x154 + (x) * 4)
 
@@ -681,12 +679,12 @@ struct esdc_regs {
 /*
  * GPIO
  */
-#define GPIO1_BASE_ADDR	0x53FCC000
-#define GPIO2_BASE_ADDR	0x53FD0000
-#define GPIO3_BASE_ADDR	0x53FA4000
-#define GPIO_DR		0x00000000	/* data register */
-#define GPIO_GDIR	0x00000004	/* direction register */
-#define GPIO_PSR	0x00000008	/* pad status register */
+#define GPIO1_BASE_ADDR		0x53FCC000
+#define GPIO2_BASE_ADDR		0x53FD0000
+#define GPIO3_BASE_ADDR		0x53FA4000
+#define GPIO_DR			0x00000000	/* data register */
+#define GPIO_GDIR		0x00000004	/* direction register */
+#define GPIO_PSR		0x00000008	/* pad status register */
 
 /*
  * Signal Multiplexing (IOMUX)
@@ -714,10 +712,10 @@ struct esdc_regs {
 
 /* Register offsets based on IOMUXC_BASE */
 /* 0x00 .. 0x7b */
-#define MUX_CTL_CSPI3_MISO		0x0c
-#define MUX_CTL_CSPI3_SCLK		0x0d
+#define MUX_CTL_CSPI3_MISO	0x0c
+#define MUX_CTL_CSPI3_SCLK	0x0d
 #define MUX_CTL_CSPI3_SPI_RDY	0x0e
-#define MUX_CTL_CSPI3_MOSI		0x13
+#define MUX_CTL_CSPI3_MOSI	0x13
 
 #define MUX_CTL_SD1_DATA1	0x18
 #define MUX_CTL_SD1_DATA2	0x19
@@ -854,32 +852,32 @@ struct esdc_regs {
 /*
  * Memory regions and CS
  */
-#define IPU_MEM_BASE	0x70000000
-#define CSD0_BASE	0x80000000
-#define CSD1_BASE	0x90000000
-#define CS0_BASE	0xA0000000
-#define CS1_BASE	0xA8000000
-#define CS2_BASE	0xB0000000
-#define CS3_BASE	0xB2000000
-#define CS4_BASE	0xB4000000
-#define CS4_PSRAM_BASE	0xB5000000
-#define CS5_BASE	0xB6000000
-#define PCMCIA_MEM_BASE	0xC0000000
+#define IPU_MEM_BASE		0x70000000
+#define CSD0_BASE		0x80000000
+#define CSD1_BASE		0x90000000
+#define CS0_BASE		0xA0000000
+#define CS1_BASE		0xA8000000
+#define CS2_BASE		0xB0000000
+#define CS3_BASE		0xB2000000
+#define CS4_BASE		0xB4000000
+#define CS4_PSRAM_BASE		0xB5000000
+#define CS5_BASE		0xB6000000
+#define PCMCIA_MEM_BASE		0xC0000000
 
 /*
  * NAND controller
  */
-#define NFC_BASE_ADDR	0xB8000000
+#define NFC_BASE_ADDR		0xB8000000
 
 /* SD card controller */
-#define SDHC1_BASE_ADDR	0x50004000
-#define SDHC2_BASE_ADDR	0x50008000
+#define SDHC1_BASE_ADDR		0x50004000
+#define SDHC2_BASE_ADDR		0x50008000
 
 /*
  * Internal RAM (16KB)
  */
-#define	IRAM_BASE_ADDR	0x1FFFC000
-#define IRAM_SIZE	(16 * 1024)
+#define	IRAM_BASE_ADDR		0x1FFFC000
+#define IRAM_SIZE		(16 * 1024)
 
 #define MX31_AIPS1_BASE_ADDR	0x43f00000
 #define IMX_USB_BASE		(MX31_AIPS1_BASE_ADDR + 0x88000)

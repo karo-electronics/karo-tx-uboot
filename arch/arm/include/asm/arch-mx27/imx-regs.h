@@ -169,8 +169,6 @@ struct fuse_bank0_regs {
 
 #endif
 
-#define ARCH_MXC
-
 #define IMX_IO_BASE		0x10000000
 
 #define IMX_AIPI1_BASE		(0x00000 + IMX_IO_BASE)
@@ -198,9 +196,9 @@ struct fuse_bank0_regs {
 #define IIM_BASE_ADDR		IMX_IIM_BASE
 #define IMX_FEC_BASE		(0x2b000 + IMX_IO_BASE)
 
-#define IMX_NFC_BASE		(0xD8000000)
-#define IMX_ESD_BASE		(0xD8001000)
-#define IMX_WEIM_BASE		(0xD8002000)
+#define IMX_NFC_BASE		0xD8000000
+#define IMX_ESD_BASE		0xD8001000
+#define IMX_WEIM_BASE		0xD8002000
 
 #define NFC_BASE_ADDR		IMX_NFC_BASE
 
@@ -217,24 +215,24 @@ struct fuse_bank0_regs {
 	UART6_BASE_ADDR)				\
 	)
 
-/* FMCR System Control bit definition*/
-#define UART4_RXD_CTL	(1 << 25)
-#define UART4_RTS_CTL	(1 << 24)
-#define KP_COL6_CTL	(1 << 18)
-#define KP_ROW7_CTL	(1 << 17)
-#define KP_ROW6_CTL	(1 << 16)
-#define PC_WAIT_B_CTL	(1 << 14)
-#define PC_READY_CTL	(1 << 13)
-#define PC_VS1_CTL	(1 << 12)
-#define PC_VS2_CTL	(1 << 11)
-#define PC_BVD1_CTL	(1 << 10)
-#define PC_BVD2_CTL	(1 << 9)
-#define IOS16_CTL	(1 << 8)
-#define NF_FMS		(1 << 5)
-#define NF_16BIT_SEL	(1 << 4)
-#define SLCDC_SEL	(1 << 2)
-#define SDCS1_SEL	(1 << 1)
-#define SDCS0_SEL	(1 << 0)
+/* FMCR System Control bit definitions */
+#define UART4_RXD_CTL		(1 << 25)
+#define UART4_RTS_CTL		(1 << 24)
+#define KP_COL6_CTL		(1 << 18)
+#define KP_ROW7_CTL		(1 << 17)
+#define KP_ROW6_CTL		(1 << 16)
+#define PC_WAIT_B_CTL		(1 << 14)
+#define PC_READY_CTL		(1 << 13)
+#define PC_VS1_CTL		(1 << 12)
+#define PC_VS2_CTL		(1 << 11)
+#define PC_BVD1_CTL		(1 << 10)
+#define PC_BVD2_CTL		(1 << 9)
+#define IOS16_CTL		(1 << 8)
+#define NF_FMS			(1 << 5)
+#define NF_16BIT_SEL		(1 << 4)
+#define SLCDC_SEL		(1 << 2)
+#define SDCS1_SEL		(1 << 1)
+#define SDCS0_SEL		(1 << 0)
 
 /* important definition of some bits of WCR */
 #define WCR_WDE 0x04
@@ -262,37 +260,37 @@ struct fuse_bank0_regs {
 #define MPCTL1_BRMO		(1 << 6)
 #define MPCTL1_LF		(1 << 15)
 
-#define PCCR0_SSI2_EN	(1 << 0)
-#define PCCR0_SSI1_EN	(1 << 1)
-#define PCCR0_SLCDC_EN	(1 << 2)
-#define PCCR0_SDHC3_EN	(1 << 3)
-#define PCCR0_SDHC2_EN	(1 << 4)
-#define PCCR0_SDHC1_EN	(1 << 5)
-#define PCCR0_SDC_EN	(1 << 6)
-#define PCCR0_SAHARA_EN	(1 << 7)
-#define PCCR0_RTIC_EN	(1 << 8)
-#define PCCR0_RTC_EN	(1 << 9)
-#define PCCR0_PWM_EN	(1 << 11)
-#define PCCR0_OWIRE_EN	(1 << 12)
-#define PCCR0_MSHC_EN	(1 << 13)
-#define PCCR0_LCDC_EN	(1 << 14)
-#define PCCR0_KPP_EN	(1 << 15)
-#define PCCR0_IIM_EN	(1 << 16)
-#define PCCR0_I2C2_EN	(1 << 17)
-#define PCCR0_I2C1_EN	(1 << 18)
-#define PCCR0_GPT6_EN	(1 << 19)
-#define PCCR0_GPT5_EN	(1 << 20)
-#define PCCR0_GPT4_EN	(1 << 21)
-#define PCCR0_GPT3_EN	(1 << 22)
-#define PCCR0_GPT2_EN	(1 << 23)
-#define PCCR0_GPT1_EN	(1 << 24)
-#define PCCR0_GPIO_EN	(1 << 25)
-#define PCCR0_FEC_EN	(1 << 26)
-#define PCCR0_EMMA_EN	(1 << 27)
-#define PCCR0_DMA_EN	(1 << 28)
-#define PCCR0_CSPI3_EN	(1 << 29)
-#define PCCR0_CSPI2_EN	(1 << 30)
-#define PCCR0_CSPI1_EN	(1 << 31)
+#define PCCR0_SSI2_EN		(1 << 0)
+#define PCCR0_SSI1_EN		(1 << 1)
+#define PCCR0_SLCDC_EN		(1 << 2)
+#define PCCR0_SDHC3_EN		(1 << 3)
+#define PCCR0_SDHC2_EN		(1 << 4)
+#define PCCR0_SDHC1_EN		(1 << 5)
+#define PCCR0_SDC_EN		(1 << 6)
+#define PCCR0_SAHARA_EN		(1 << 7)
+#define PCCR0_RTIC_EN		(1 << 8)
+#define PCCR0_RTC_EN		(1 << 9)
+#define PCCR0_PWM_EN		(1 << 11)
+#define PCCR0_OWIRE_EN		(1 << 12)
+#define PCCR0_MSHC_EN		(1 << 13)
+#define PCCR0_LCDC_EN		(1 << 14)
+#define PCCR0_KPP_EN		(1 << 15)
+#define PCCR0_IIM_EN		(1 << 16)
+#define PCCR0_I2C2_EN		(1 << 17)
+#define PCCR0_I2C1_EN		(1 << 18)
+#define PCCR0_GPT6_EN		(1 << 19)
+#define PCCR0_GPT5_EN		(1 << 20)
+#define PCCR0_GPT4_EN		(1 << 21)
+#define PCCR0_GPT3_EN		(1 << 22)
+#define PCCR0_GPT2_EN		(1 << 23)
+#define PCCR0_GPT1_EN		(1 << 24)
+#define PCCR0_GPIO_EN		(1 << 25)
+#define PCCR0_FEC_EN		(1 << 26)
+#define PCCR0_EMMA_EN		(1 << 27)
+#define PCCR0_DMA_EN		(1 << 28)
+#define PCCR0_CSPI3_EN		(1 << 29)
+#define PCCR0_CSPI2_EN		(1 << 30)
+#define PCCR0_CSPI1_EN		(1 << 31)
 
 #define PCCR1_MSHC_BAUDEN	(1 << 2)
 #define PCCR1_NFC_BAUDEN	(1 << 3)
@@ -431,61 +429,61 @@ struct fuse_bank0_regs {
 #define PE25_PF_USBOTG_DATA7	(GPIO_PORTE | GPIO_OUT | GPIO_PF | 25)
 
 /* Clocksource Bitfields */
-#define TCTL_SWR	(1 << 15)	/* Software reset */
-#define TCTL_FRR	(1 << 8)	/* Freerun / restart */
-#define TCTL_CAP	(3 << 6)	/* Capture Edge */
-#define TCTL_OM		(1 << 5)	/* output mode */
-#define TCTL_IRQEN	(1 << 4)	/* interrupt enable */
-#define TCTL_CLKSOURCE	1		/* Clock source bit position */
-#define TCTL_TEN	1		/* Timer enable */
-#define TPRER_PRES	0xff		/* Prescale */
-#define TSTAT_CAPT	(1 << 1)	/* Capture event */
-#define TSTAT_COMP	1		/* Compare event */
+#define TCTL_SWR		(1 << 15)	/* Software reset */
+#define TCTL_FRR		(1 << 8)	/* Freerun / restart */
+#define TCTL_CAP		(3 << 6)	/* Capture Edge */
+#define TCTL_OM			(1 << 5)	/* output mode */
+#define TCTL_IRQEN		(1 << 4)	/* interrupt enable */
+#define TCTL_CLKSOURCE		1		/* Clock source bit position */
+#define TCTL_TEN		1		/* Timer enable */
+#define TPRER_PRES		0xff		/* Prescale */
+#define TSTAT_CAPT		(1 << 1)	/* Capture event */
+#define TSTAT_COMP		1		/* Compare event */
 
-#define GPIO1_BASE_ADDR 0x10015000
-#define GPIO2_BASE_ADDR 0x10015100
-#define GPIO3_BASE_ADDR 0x10015200
-#define GPIO4_BASE_ADDR 0x10015300
-#define GPIO5_BASE_ADDR 0x10015400
-#define GPIO6_BASE_ADDR 0x10015500
+#define GPIO1_BASE_ADDR		0x10015000
+#define GPIO2_BASE_ADDR		0x10015100
+#define GPIO3_BASE_ADDR		0x10015200
+#define GPIO4_BASE_ADDR		0x10015300
+#define GPIO5_BASE_ADDR		0x10015400
+#define GPIO6_BASE_ADDR		0x10015500
 
-#define GPIO_OUT	(1 << 8)
-#define GPIO_IN		(0 << 8)
-#define GPIO_PUEN	(1 << 9)
+#define GPIO_OUT		(1 << 8)
+#define GPIO_IN			(0 << 8)
+#define GPIO_PUEN		(1 << 9)
 
-#define GPIO_PF		(1 << 10)
-#define GPIO_AF		(1 << 11)
+#define GPIO_PF			(1 << 10)
+#define GPIO_AF			(1 << 11)
 
-#define GPIO_OCR_SHIFT	12
-#define GPIO_OCR_MASK	(3 << GPIO_OCR_SHIFT)
-#define GPIO_AIN	(0 << GPIO_OCR_SHIFT)
-#define GPIO_BIN	(1 << GPIO_OCR_SHIFT)
-#define GPIO_CIN	(2 << GPIO_OCR_SHIFT)
-#define GPIO_GPIO	(3 << GPIO_OCR_SHIFT)
+#define GPIO_OCR_SHIFT		12
+#define GPIO_OCR_MASK		(3 << GPIO_OCR_SHIFT)
+#define GPIO_AIN		(0 << GPIO_OCR_SHIFT)
+#define GPIO_BIN		(1 << GPIO_OCR_SHIFT)
+#define GPIO_CIN		(2 << GPIO_OCR_SHIFT)
+#define GPIO_GPIO		(3 << GPIO_OCR_SHIFT)
 
-#define GPIO_AOUT_SHIFT	14
-#define GPIO_AOUT_MASK	(3 << GPIO_AOUT_SHIFT)
-#define GPIO_AOUT	(0 << GPIO_AOUT_SHIFT)
-#define GPIO_AOUT_ISR	(1 << GPIO_AOUT_SHIFT)
-#define GPIO_AOUT_0	(2 << GPIO_AOUT_SHIFT)
-#define GPIO_AOUT_1	(3 << GPIO_AOUT_SHIFT)
+#define GPIO_AOUT_SHIFT		14
+#define GPIO_AOUT_MASK		(3 << GPIO_AOUT_SHIFT)
+#define GPIO_AOUT		(0 << GPIO_AOUT_SHIFT)
+#define GPIO_AOUT_ISR		(1 << GPIO_AOUT_SHIFT)
+#define GPIO_AOUT_0		(2 << GPIO_AOUT_SHIFT)
+#define GPIO_AOUT_1		(3 << GPIO_AOUT_SHIFT)
 
-#define GPIO_BOUT_SHIFT	16
-#define GPIO_BOUT_MASK	(3 << GPIO_BOUT_SHIFT)
-#define GPIO_BOUT	(0 << GPIO_BOUT_SHIFT)
-#define GPIO_BOUT_ISR	(1 << GPIO_BOUT_SHIFT)
-#define GPIO_BOUT_0	(2 << GPIO_BOUT_SHIFT)
-#define GPIO_BOUT_1	(3 << GPIO_BOUT_SHIFT)
+#define GPIO_BOUT_SHIFT		16
+#define GPIO_BOUT_MASK		(3 << GPIO_BOUT_SHIFT)
+#define GPIO_BOUT		(0 << GPIO_BOUT_SHIFT)
+#define GPIO_BOUT_ISR		(1 << GPIO_BOUT_SHIFT)
+#define GPIO_BOUT_0		(2 << GPIO_BOUT_SHIFT)
+#define GPIO_BOUT_1		(3 << GPIO_BOUT_SHIFT)
 
-#define IIM_STAT_BUSY	(1 << 7)
-#define IIM_STAT_PRGD	(1 << 1)
-#define IIM_STAT_SNSD	(1 << 0)
-#define IIM_ERR_PRGE	(1 << 7)
-#define IIM_ERR_WPE	(1 << 6)
-#define IIM_ERR_OPE	(1 << 5)
-#define IIM_ERR_RPE	(1 << 4)
-#define IIM_ERR_WLRE	(1 << 3)
-#define IIM_ERR_SNSE	(1 << 2)
-#define IIM_ERR_PARITYE	(1 << 1)
+#define IIM_STAT_BUSY		(1 << 7)
+#define IIM_STAT_PRGD		(1 << 1)
+#define IIM_STAT_SNSD		(1 << 0)
+#define IIM_ERR_PRGE		(1 << 7)
+#define IIM_ERR_WPE		(1 << 6)
+#define IIM_ERR_OPE		(1 << 5)
+#define IIM_ERR_RPE		(1 << 4)
+#define IIM_ERR_WLRE		(1 << 3)
+#define IIM_ERR_SNSE		(1 << 2)
+#define IIM_ERR_PARITYE		(1 << 1)
 
 #endif				/* _IMX_REGS_H */
