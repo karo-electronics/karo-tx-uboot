@@ -344,10 +344,6 @@ static int _lpuart32_serial_getc(struct lpuart_serial_plat *plat)
 
 	lpuart_read32(plat->flags, &base->data, &val);
 
-	lpuart_read32(plat->flags, &base->stat, &stat);
-	if (stat & STAT_OR)
-		lpuart_write32(plat->flags, &base->stat, STAT_OR);
-
 	return val & 0x3ff;
 }
 
@@ -370,6 +366,11 @@ static int _lpuart32_serial_tstc(struct lpuart_serial_plat *plat)
 {
 	struct lpuart_fsl_reg32 *base = plat->reg;
 	u32 fifo;
+	u32 stat;
+
+	lpuart_read32(plat->flags, &base->stat, &stat);
+	if (stat & STAT_OR)
+		lpuart_write32(plat->flags, &base->stat, STAT_OR);
 
 	lpuart_read32(plat->flags, &base->fifo, &fifo);
 
@@ -417,6 +418,10 @@ static int _lpuart32_serial_init(struct udevice *dev)
 	}
 
 	lpuart_write32(plat->flags, &base->ctrl, CTRL_RE | CTRL_TE);
+
+	/* clear all pending error flags */
+	lpuart_read32(plat->flags, &base->stat, &val);
+	lpuart_write32(plat->flags, &base->stat, val);
 
 	return 0;
 }
