@@ -19,35 +19,37 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 
-#define US1_TDRE	(1 << 7)
-#define US1_RDRF	(1 << 5)
-#define US1_OR		(1 << 3)
-#define UC2_TE		(1 << 3)
-#define UC2_RE		(1 << 2)
-#define CFIFO_TXFLUSH	(1 << 7)
-#define CFIFO_RXFLUSH	(1 << 6)
-#define SFIFO_RXOF	(1 << 2)
-#define SFIFO_RXUF	(1 << 0)
+#define US1_TDRE		BIT(7)
+#define US1_RDRF		BIT(5)
+#define US1_OR			BIT(3)
+#define UC2_TE			BIT(3)
+#define UC2_RE			BIT(2)
+#define CFIFO_TXFLUSH		BIT(7)
+#define CFIFO_RXFLUSH		BIT(6)
+#define SFIFO_RXOF		BIT(2)
+#define SFIFO_RXUF		BIT(0)
 
-#define STAT_LBKDIF	(1 << 31)
-#define STAT_RXEDGIF	(1 << 30)
-#define STAT_TDRE	(1 << 23)
-#define STAT_RDRF	(1 << 21)
-#define STAT_IDLE	(1 << 20)
-#define STAT_OR		(1 << 19)
-#define STAT_NF		(1 << 18)
-#define STAT_FE		(1 << 17)
-#define STAT_PF		(1 << 16)
-#define STAT_MA1F	(1 << 15)
-#define STAT_MA2F	(1 << 14)
-#define STAT_FLAGS	(STAT_LBKDIF | STAT_RXEDGIF | STAT_IDLE | STAT_OR | \
-			 STAT_NF | STAT_FE | STAT_PF | STAT_MA1F | STAT_MA2F)
+#define STAT_LBKDIF		BIT(31)
+#define STAT_RXEDGIF		BIT(30)
+#define STAT_TDRE		BIT(23)
+#define STAT_TC			BIT(22)
+#define STAT_RDRF		BIT(21)
+#define STAT_IDLE		BIT(20)
+#define STAT_OR			BIT(19)
+#define STAT_NF			BIT(18)
+#define STAT_FE			BIT(17)
+#define STAT_PF			BIT(16)
+#define STAT_MA1F		BIT(15)
+#define STAT_MA2F		BIT(14)
+#define STAT_FLAGS		(STAT_LBKDIF | STAT_RXEDGIF | STAT_IDLE | STAT_OR | \
+				 STAT_NF | STAT_FE | STAT_PF | STAT_MA1F | STAT_MA2F)
 
-#define CTRL_TE		(1 << 19)
-#define CTRL_RE		(1 << 18)
+#define CTRL_TE			BIT(19)
+#define CTRL_RE			BIT(18)
 
 #define FIFO_RXFLUSH		BIT(14)
 #define FIFO_TXFLUSH		BIT(15)
+#define FIFO_RXEMPTY		BIT(22)
 #define FIFO_TXSIZE_MASK	0x70
 #define FIFO_TXSIZE_OFF	4
 #define FIFO_RXSIZE_MASK	0x7
@@ -173,6 +175,7 @@ static void _lpuart_serial_setbrg(struct udevice *dev,
 static int _lpuart_serial_getc(struct lpuart_serial_plat *plat)
 {
 	struct lpuart_fsl *base = plat->reg;
+
 	if (!(__raw_readb(&base->us1) & (US1_RDRF | US1_OR)))
 		return -EAGAIN;
 
@@ -182,7 +185,7 @@ static int _lpuart_serial_getc(struct lpuart_serial_plat *plat)
 }
 
 static int _lpuart_serial_putc(struct lpuart_serial_plat *plat,
-				const char c)
+			       const char c)
 {
 	struct lpuart_fsl *base = plat->reg;
 
@@ -198,7 +201,7 @@ static int _lpuart_serial_tstc(struct lpuart_serial_plat *plat)
 {
 	struct lpuart_fsl *base = plat->reg;
 
-	if (__raw_readb(&base->urcfifo) == 0)
+	if (!__raw_readb(&base->urcfifo))
 		return 0;
 
 	return 1;
@@ -334,7 +337,7 @@ static int _lpuart32_serial_getc(struct lpuart_serial_plat *plat)
 	u32 stat, val;
 
 	lpuart_read32(plat->flags, &base->stat, &stat);
-	if ((stat & STAT_RDRF) == 0) {
+	if (!(stat & STAT_RDRF)) {
 		lpuart_write32(plat->flags, &base->stat, STAT_FLAGS);
 		return -EAGAIN;
 	}
@@ -349,7 +352,7 @@ static int _lpuart32_serial_getc(struct lpuart_serial_plat *plat)
 }
 
 static int _lpuart32_serial_putc(struct lpuart_serial_plat *plat,
-				  const char c)
+				 const char c)
 {
 	struct lpuart_fsl_reg32 *base = plat->reg;
 	u32 stat;
@@ -366,14 +369,11 @@ static int _lpuart32_serial_putc(struct lpuart_serial_plat *plat,
 static int _lpuart32_serial_tstc(struct lpuart_serial_plat *plat)
 {
 	struct lpuart_fsl_reg32 *base = plat->reg;
-	u32 water;
+	u32 fifo;
 
-	lpuart_read32(plat->flags, &base->water, &water);
+	lpuart_read32(plat->flags, &base->fifo, &fifo);
 
-	if ((water >> 24) == 0)
-		return 0;
-
-	return 1;
+	return !(fifo & FIFO_RXEMPTY);
 }
 
 /*
@@ -397,11 +397,10 @@ static int _lpuart32_serial_init(struct udevice *dev)
 	tx_fifo_size = (val & FIFO_TXSIZE_MASK) >> FIFO_TXSIZE_OFF;
 	/* Set the TX water to half of FIFO size */
 	if (tx_fifo_size > 1)
-		tx_fifo_size = tx_fifo_size >> 1;
+		tx_fifo_size >>= 1;
 
 	/* Set RX water to 0, to be triggered by any receive data */
-	lpuart_write32(plat->flags, &base->water,
-		       (tx_fifo_size << WATER_TXWATER_OFF));
+	lpuart_write32(plat->flags, &base->water, tx_fifo_size << WATER_TXWATER_OFF);
 
 	/* Enable TX and RX FIFO */
 	val |= (FIFO_TXFE | FIFO_RXFE | FIFO_TXFLUSH | FIFO_RXFLUSH);
@@ -612,7 +611,7 @@ static inline void _debug_uart_init(void)
 	tx_fifo_size = (val & FIFO_TXSIZE_MASK) >> FIFO_TXSIZE_OFF;
 	/* Set the TX water to half of FIFO size */
 	if (tx_fifo_size > 1)
-		tx_fifo_size = tx_fifo_size >> 1;
+		tx_fifo_size >>= 1;
 
 	/* Set RX water to 0, to be triggered by any receive data */
 	writel(tx_fifo_size << WATER_TXWATER_OFF, &base->water);
