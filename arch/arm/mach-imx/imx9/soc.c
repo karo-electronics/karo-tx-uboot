@@ -511,7 +511,7 @@ phys_size_t get_effective_memsize(void)
 	}
 }
 
-void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
+__weak void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 {
 	u32 val[2] = {};
 	int ret;

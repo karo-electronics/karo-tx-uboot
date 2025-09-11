@@ -4,6 +4,7 @@
  */
 
 #include <env.h>
+#include <fuse.h>
 #include <init.h>
 #include <malloc.h>
 #include <miiphy.h>
@@ -35,6 +36,51 @@ int board_phys_sdram_size(phys_size_t *size)
 {
 	*size = PHYS_SDRAM_SIZE;
 	return 0;
+}
+
+void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
+{
+	u32 val[2] = {};
+	int ret;
+
+	if (dev_id == 0) {
+		ret = fuse_read(39, 3, &val[0]);
+		if (ret)
+			goto err;
+
+		ret = fuse_read(39, 4, &val[1]);
+		if (ret)
+			goto err;
+
+		mac[0] = val[1] >> 8;
+		mac[1] = val[1];
+		mac[2] = val[0] >> 24;
+		mac[3] = val[0] >> 16;
+		mac[4] = val[0] >> 8;
+		mac[5] = val[0];
+
+	} else {
+		ret = fuse_read(39, 5, &val[0]);
+		if (ret)
+			goto err;
+
+		ret = fuse_read(39, 4, &val[1]);
+		if (ret)
+			goto err;
+
+		mac[0] = val[1] >> 24;
+		mac[1] = val[1] >> 16;
+		mac[2] = val[0] >> 24;
+		mac[3] = val[0] >> 16;
+		mac[4] = val[0] >> 8;
+		mac[5] = val[0];
+	}
+
+	debug("%s: MAC%d: %pM\n", __func__, dev_id, mac);
+	return;
+err:
+	memset(mac, 0, 6);
+	printf("%s: fuse read err: %d\n", __func__, ret);
 }
 
 int board_interface_eth_init(struct udevice *dev, phy_interface_t interface)
