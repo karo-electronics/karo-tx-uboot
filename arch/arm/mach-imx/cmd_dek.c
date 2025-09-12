@@ -41,6 +41,7 @@
 static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 {
 	u8 *src_ptr, *dst_ptr;
+	int ret;
 
 	src_ptr = map_sysmem(src_addr, len / 8);
 	dst_ptr = map_sysmem(dst_addr, BLOB_SIZE(len / 8));
@@ -58,7 +59,8 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	}
 
 	len /= 8;
-	return blob_dek(src_ptr, dst_ptr, len);
+	ret = blob_dek(src_ptr, dst_ptr, len);
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
 #endif /* CONFIG_IMX_CAAM_DEK_ENCAP */
 
@@ -83,7 +85,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	dev = tee_find_device(NULL, NULL, NULL, NULL);
 	if (!dev) {
 		printf("Cannot get OP-TEE device\n");
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Set TA UUID */
@@ -93,7 +95,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	ret = tee_open_session(dev, &arg, 0, NULL);
 	if (ret < 0) {
 		printf("Cannot open session with PTA Blob 0x%X\n", ret);
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Allocate shared input and output buffers for TA */
@@ -140,7 +142,7 @@ error:
 	if (ret < 0)
 		printf("Cannot close session with PTA DEK Blob 0x%X\n", ret);
 
-	return ret;
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
 #endif /* CONFIG_IMX_OPTEE_DEK_ENCAP */
 #ifdef CONFIG_IMX_SECO_DEK_ENCAP
@@ -181,7 +183,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	/* Check addr input */
 	if (!(src_ptr && dst_ptr)) {
 		debug("src_addr or dst_addr invalid\n");
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Build key header */
@@ -206,7 +208,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	default:
 		/* Not supported */
 		debug("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Build input message */
@@ -223,7 +225,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 				ALIGN(src_addr + in_size, CONFIG_SYS_CACHELINE_SIZE));
 	if (err) {
 		printf("Error: find memory region 0x%X\n", src_addr);
-		return -ENOMEM;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Find output memory region */
@@ -231,7 +233,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 				ALIGN(dst_addr + out_size, CONFIG_SYS_CACHELINE_SIZE));
 	if (err) {
 		printf("Error: find memory region 0x%X\n", dst_addr);
-		return -ENOMEM;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Set memory region permissions for SECO */
@@ -239,15 +241,14 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 					   SC_RM_PERM_FULL);
 	if (err) {
 		printf("Set permission failed for input memory region\n");
-		ret = -EPERM;
-		goto error;
+		return CMD_RET_FAILURE;
 	}
 
 	err = sc_rm_set_memreg_permissions(-1, mr_output, SECO_PT,
 					   SC_RM_PERM_FULL);
 	if (err) {
 		printf("Set permission failed for output memory region\n");
-		ret = -EPERM;
+		ret = CMD_RET_FAILURE;
 		goto error;
 	}
 
@@ -258,7 +259,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	/* Generate DEK blob */
 	err = sc_seco_gen_key_blob((-1), 0x0, src_addr, dst_addr, out_size);
 	if (err) {
-		ret = -EPERM;
+		ret = CMD_RET_FAILURE;
 		goto error;
 	}
 
@@ -277,14 +278,14 @@ error:
 					   SC_RM_PERM_NONE);
 	if (err) {
 		printf("Error: remove permission failed for input\n");
-		ret = -EPERM;
+		ret = CMD_RET_FAILURE;
 	}
 
 	err = sc_rm_set_memreg_permissions(-1, mr_output, SECO_PT,
 					   SC_RM_PERM_NONE);
 	if (err) {
 		printf("Error: remove permission failed for output\n");
-		ret = -EPERM;
+		ret = CMD_RET_FAILURE;
 	}
 
 	return ret;
@@ -318,7 +319,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	/* Check addr input */
 	if (!(src_ptr && dst_ptr)) {
 		debug("src_addr or dst_addr invalid\n");
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Build key header */
@@ -343,7 +344,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	default:
 		/* Not supported */
 		debug("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
-		return -1;
+		return CMD_RET_FAILURE;
 	}
 
 	/* Move input key and append blob header */
@@ -359,13 +360,13 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 
 	/* Call ELE */
 	if (ele_generate_dek_blob(0x00, src_addr, dst_addr, out_size))
-		return -1;
+		return CMD_RET_FAILURE;
 
 	/* Invalidate output buffer */
 	invalidate_dcache_range((ulong)dst_ptr, (ulong)(dst_ptr +
 			roundup(out_size, ARCH_DMA_MINALIGN)));
 
-	return 0;
+	return CMD_RET_SUCCESS;
 }
 #endif /* CONFIG_IMX_ELE_DEK_ENCAP */
 
