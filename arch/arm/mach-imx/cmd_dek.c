@@ -182,7 +182,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 
 	/* Check addr input */
 	if (!(src_ptr && dst_ptr)) {
-		debug("src_addr or dst_addr invalid\n");
+		printf("src_addr or dst_addr invalid\n");
 		return CMD_RET_FAILURE;
 	}
 
@@ -207,7 +207,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 		break;
 	default:
 		/* Not supported */
-		debug("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
+		printf("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
 		return CMD_RET_FAILURE;
 	}
 
@@ -318,7 +318,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 
 	/* Check addr input */
 	if (!(src_ptr && dst_ptr)) {
-		debug("src_addr or dst_addr invalid\n");
+		printf("src_addr or dst_addr invalid\n");
 		return CMD_RET_FAILURE;
 	}
 
@@ -343,7 +343,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 		break;
 	default:
 		/* Not supported */
-		debug("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
+		printf("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
 		return CMD_RET_FAILURE;
 	}
 
