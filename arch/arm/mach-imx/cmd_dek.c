@@ -41,6 +41,7 @@
 static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 {
 	u8 *src_ptr, *dst_ptr;
+	u32 out_jr_size;
 	int ret;
 
 	src_ptr = map_sysmem(src_addr, len / 8);
@@ -48,15 +49,10 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 
 	hab_caam_clock_enable(1);
 
-	u32 out_jr_size = sec_in32(CFG_SYS_FSL_JR0_ADDR +
-				   FSL_CAAM_ORSR_JRa_OFFSET);
+	out_jr_size = sec_in32(CFG_SYS_FSL_JR0_ADDR +
+			       FSL_CAAM_ORSR_JRa_OFFSET);
 	if (out_jr_size != FSL_CAAM_MAX_JR_SIZE)
 		sec_init();
-
-	if (!((len == 128) | (len == 192) | (len == 256))) {
-		debug("Invalid DEK size. Valid sizes are 128, 192 and 256b\n");
-		return -1;
-	}
 
 	len /= 8;
 	ret = blob_dek(src_ptr, dst_ptr, len);
@@ -166,30 +162,23 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 {
 	int err;
 	sc_rm_mr_t mr_input, mr_output;
-	struct generate_key_blob_hdr hdr;
+	struct generate_key_blob_hdr hdr = {};
 	u8 in_size, out_size;
 	u8 *src_ptr, *dst_ptr;
-	int ret = 0;
+	int ret;
 	int i;
 
 	/* Set sizes */
-	in_size = sizeof(struct generate_key_blob_hdr) + len / 8;
+	in_size = sizeof(hdr) + len / 8;
 	out_size = BLOB_SIZE(len / 8) + DEK_BLOB_HDR_SIZE;
 
 	/* Get src and dst virtual addresses */
 	src_ptr = map_sysmem(src_addr, in_size);
 	dst_ptr = map_sysmem(dst_addr, out_size);
 
-	/* Check addr input */
-	if (!(src_ptr && dst_ptr)) {
-		printf("src_addr or dst_addr invalid\n");
-		return CMD_RET_FAILURE;
-	}
-
 	/* Build key header */
 	hdr.version = AHAB_VERSION;
-	hdr.length_lsb = sizeof(struct generate_key_blob_hdr) + len / 8;
-	hdr.length_msb = 0x00;
+	hdr.length_lsb = sizeof(hdr) + len / 8;
 	hdr.tag = AHAB_PRIVATE_KEY;
 	hdr.flags = AHAB_DEK_BLOB;
 	hdr.algorithm = AHAB_ALG_AES;
@@ -212,16 +201,14 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	}
 
 	/* Build input message */
-	memmove((void *)(src_ptr + sizeof(struct generate_key_blob_hdr)),
-		(void *)src_ptr, len / 8);
-	memcpy((void *)src_ptr, (void *)&hdr,
-	       sizeof(struct generate_key_blob_hdr));
+	memmove(src_ptr + sizeof(hdr), src_ptr, len / 8);
+	memcpy(src_ptr, &hdr, sizeof(hdr));
 
 	/* Flush the cache before triggering the CAAM DMA */
 	flush_dcache_range(src_addr, src_addr + in_size);
 
 	/* Find input memory region */
-	err = sc_rm_find_memreg((-1), &mr_input, src_addr & ~(CONFIG_SYS_CACHELINE_SIZE - 1),
+	err = sc_rm_find_memreg(-1, &mr_input, src_addr & ~(CONFIG_SYS_CACHELINE_SIZE - 1),
 				ALIGN(src_addr + in_size, CONFIG_SYS_CACHELINE_SIZE));
 	if (err) {
 		printf("Error: find memory region 0x%X\n", src_addr);
@@ -229,7 +216,7 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	}
 
 	/* Find output memory region */
-	err = sc_rm_find_memreg((-1), &mr_output, dst_addr & ~(CONFIG_SYS_CACHELINE_SIZE - 1),
+	err = sc_rm_find_memreg(-1, &mr_output, dst_addr & ~(CONFIG_SYS_CACHELINE_SIZE - 1),
 				ALIGN(dst_addr + out_size, CONFIG_SYS_CACHELINE_SIZE));
 	if (err) {
 		printf("Error: find memory region 0x%X\n", dst_addr);
@@ -253,19 +240,17 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	}
 
 	/* Flush output data before SECO operation */
-	flush_dcache_range((ulong)dst_ptr, (ulong)(dst_ptr +
-			roundup(out_size, ARCH_DMA_MINALIGN)));
+	flush_dcache_range(dst_addr, dst_addr + roundup(out_size, ARCH_DMA_MINALIGN)));
 
 	/* Generate DEK blob */
-	err = sc_seco_gen_key_blob((-1), 0x0, src_addr, dst_addr, out_size);
+	err = sc_seco_gen_key_blob(-1, 0x0, src_addr, dst_addr, out_size);
 	if (err) {
 		ret = CMD_RET_FAILURE;
 		goto error;
 	}
 
 	/* Invalidate output buffer */
-	invalidate_dcache_range((ulong)dst_ptr, (ulong)(dst_ptr +
-			roundup(out_size, ARCH_DMA_MINALIGN)));
+	invalidate_dcache_range(dst_addr, dst_addr + roundup(out_size, ARCH_DMA_MINALIGN)));
 
 	printf("DEK Blob\n");
 	for (i = 0; i < DEK_BLOB_HDR_SIZE + BLOB_SIZE(len / 8); i++)
@@ -306,26 +291,18 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 {
 	u8 in_size, out_size;
 	u8 *src_ptr, *dst_ptr;
-	struct generate_key_blob_hdr hdr;
+	struct generate_key_blob_hdr hdr = {};
 
 	/* Set sizes */
-	in_size = sizeof(struct generate_key_blob_hdr) + len / 8;
+	in_size = sizeof(hdr) + len / 8;
 	out_size = BLOB_SIZE(len / 8) + DEK_BLOB_HDR_SIZE;
 
 	/* Get src and dst virtual addresses */
 	src_ptr = map_sysmem(src_addr, in_size);
 	dst_ptr = map_sysmem(dst_addr, out_size);
 
-	/* Check addr input */
-	if (!(src_ptr && dst_ptr)) {
-		printf("src_addr or dst_addr invalid\n");
-		return CMD_RET_FAILURE;
-	}
-
 	/* Build key header */
-	hdr.version = 0x0;
 	hdr.length_lsb = in_size;
-	hdr.length_msb = 0x00;
 	hdr.tag = AHAB_PRIVATE_KEY;
 	hdr.flags = AHAB_DEK_BLOB;
 	hdr.algorithm = AHAB_ALG_AES;
@@ -348,23 +325,21 @@ static int blob_encap_dek(u32 src_addr, u32 dst_addr, u32 len)
 	}
 
 	/* Move input key and append blob header */
-	memmove((void *)(src_ptr + sizeof(struct generate_key_blob_hdr)),
-		(void *)src_ptr, len / 8);
-	memcpy((void *)src_ptr, (void *)&hdr,
-	       sizeof(struct generate_key_blob_hdr));
+	memmove(src_ptr + sizeof(hdr), src_ptr, len / 8);
+	memcpy(src_ptr, &hdr, sizeof(hdr));
 
 	/* Flush the cache */
 	flush_dcache_range(src_addr, src_addr + in_size);
-	flush_dcache_range((ulong)dst_ptr, (ulong)(dst_ptr +
-			roundup(out_size, ARCH_DMA_MINALIGN)));
+	flush_dcache_range(dst_addr, dst_addr +
+			   roundup(out_size, ARCH_DMA_MINALIGN));
 
 	/* Call ELE */
 	if (ele_generate_dek_blob(0x00, src_addr, dst_addr, out_size))
 		return CMD_RET_FAILURE;
 
 	/* Invalidate output buffer */
-	invalidate_dcache_range((ulong)dst_ptr, (ulong)(dst_ptr +
-			roundup(out_size, ARCH_DMA_MINALIGN)));
+	invalidate_dcache_range(dst_addr, dst_addr +
+				roundup(out_size, ARCH_DMA_MINALIGN));
 
 	return CMD_RET_SUCCESS;
 }
@@ -392,17 +367,33 @@ static int do_dek_blob(struct cmd_tbl *cmdtp, int flag, int argc,
 	dst_addr = hextoul(argv[2], NULL);
 	len = dectoul(argv[3], NULL);
 
+	/* Check input parameters */
+	if (!src_addr || src_addr & 0x3) {
+		printf("Invalid src_addr 0x%08x (must be != 0 and 32bit aligned)\n",
+		       src_addr);
+		return CMD_RET_FAILURE;
+	}
+	if (!dst_addr || dst_addr & 0x3) {
+		printf("Invalid dst_addr 0x%08x (must be != 0 and 32bit aligned)\n",
+		       dst_addr);
+		return CMD_RET_FAILURE;
+	}
+	if (len != 128 && len != 192 && len != 256) {
+		printf("Invalid DEK size. Valid sizes are 128, 192 and 256 bits\n");
+		return CMD_RET_FAILURE;
+	}
+
 	return blob_encap_dek(src_addr, dst_addr, len);
 }
 
 /***************************************************/
 U_BOOT_LONGHELP(dek_blob,
-	"src dst len            - Encapsulate and create blob of data\n"
-	"                         $len bits long at address $src and\n"
-	"                         store the result at address $dst.\n");
+	"src dst len  - Encapsulate and create blob of data\n"
+	"                        $len bits long at address $src and\n"
+	"                        store the result at address $dst.\n");
 
 U_BOOT_CMD(
-	dek_blob, 4, 1, do_dek_blob,
+	dek_blob, 4, 0, do_dek_blob,
 	"Data Encryption Key blob encapsulation",
 	dek_blob_help_text
 );
