@@ -171,12 +171,10 @@ int karo_fdt_get_overlays(const char *baseboard, char **overlays)
 	return 0;
 }
 
-void karo_fdt_apply_overlays(unsigned long fdt_addr)
+void karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_part)
 {
 	int ret;
 	const char *baseboard = env_get("baseboard");
-	const char *dev_type = "mmc";
-	const char *dev_part = "0:1";
 	char *overlays;
 
 	fdt_overlay_debug |= env_get_yesno("debug_overlays") == 1;
@@ -184,7 +182,7 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 	ret = karo_fdt_get_overlays(baseboard, &overlays);
 	if (ret == 0 && overlays) {
 		char *overlay_list = strdup(overlays);
-		const char *overlay_listp = overlay_list;
+		char *overlay_listp = overlay_list;
 		char *overlay;
 
 		debug("loading FDT overlays for '%s': %s\n",
@@ -192,7 +190,7 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 		while ((overlay = strsep(&overlay_list, ", "))) {
 			if (!strlen(overlay))
 				continue;
-			ret = karo_load_fdt_overlay((void *)fdt_addr, dev_type,
+			ret = karo_load_fdt_overlay(fdt, dev_type,
 						    dev_part, overlay);
 			if (ret) {
 				printf("Failed to load FDT overlay '%s': %d\n",
@@ -200,17 +198,17 @@ void karo_fdt_apply_overlays(unsigned long fdt_addr)
 				break;
 			}
 		}
-		free((void *)overlay_listp);
+		free(overlay_listp);
 	} else if (ret) {
 		printf("Failed to load FDT overlays: %d\n", ret);
 	} else {
 		printf("No FDT overlays to be loaded\n");
 	}
 	if (ret)
-		memset((void *)fdt_addr, 0, sizeof(struct fdt_header));
+		memset(fdt, 0, sizeof(struct fdt_header));
 }
 #else
-static inline void karo_fdt_apply_overlays(unsigned long fdt_addr)
+static inline void karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_part)
 {
 }
 #endif
@@ -266,7 +264,7 @@ int karo_load_fdt(const char *fdt_file)
 		printf("ERROR: No valid DTB found at %p\n", fdt);
 		return -EINVAL;
 	}
-	karo_fdt_apply_overlays(fdt_addr);
+	karo_fdt_apply_overlays(fdt, dev_type, dev_part);
 	if (fdt_check_header(fdt) != 0)
 		return 0;
 	fdt_shrink_to_minimum(fdt, 4096);
