@@ -21,8 +21,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #if defined(CONFIG_KARO_QSMP_1351)
 #define KARO_BOARD_NAME		"qsmp-1351"
-#elif defined(CONFIG_KARO_QSMP_1510)
-#define KARO_BOARD_NAME		"qsmp-1510"
 #elif defined(CONFIG_KARO_QSMP_1530)
 #define KARO_BOARD_NAME		"qsmp-1530"
 #elif defined(CONFIG_KARO_QSMP_1570)
@@ -37,6 +35,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KARO_BOARD_NAME		"qsmp-2550"
 #elif defined(CONFIG_KARO_TXMP_2550)
 #define KARO_BOARD_NAME		"txmp-2550"
+#elif defined(CONFIG_KARO_TXMP_2570)
+#define KARO_BOARD_NAME		"txmp-2570"
 #else
 #error Unsupported module variant
 #endif

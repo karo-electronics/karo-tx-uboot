@@ -215,6 +215,8 @@ int checkboard(void)
 
 #if defined(CONFIG_KARO_TXMP_2550)
 	printf("Board: TXMP-2550");
+#elif defined(CONFIG_KARO_TXMP_2570)
+	printf("Board: TXMP-2570");
 #elif defined(CONFIG_KARO_QSMP_2550)
 	printf("Board: QSMP-2550");
 #elif defined(CONFIG_KARO_QSMP_2350)

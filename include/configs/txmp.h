@@ -37,8 +37,6 @@
 
 #if defined(CONFIG_KARO_QSMP_1351)
 #define SOC_FAMILY "stm32mp135c"
-#elif defined(CONFIG_KARO_QSMP_1510)
-#define SOC_FAMILY "stm32mp151a"
 #elif defined(CONFIG_KARO_QSMP_1530)
 #define SOC_FAMILY "stm32mp153a"
 #elif defined(CONFIG_KARO_QSMP_1570)
@@ -52,7 +50,9 @@
 #elif defined(CONFIG_KARO_QSMP_2550)
 #define SOC_FAMILY "stm32mp255f"
 #elif defined(CONFIG_KARO_TXMP_2550)
-#define SOC_FAMILY "stm32mp255c"
+#define SOC_FAMILY "stm32mp257f"
+#elif defined(CONFIG_KARO_TXMP_2570)
+#define SOC_FAMILY "stm32mp2557f"
 #else
 #error Unsupported Ka-Ro STM32MP module
 #endif
