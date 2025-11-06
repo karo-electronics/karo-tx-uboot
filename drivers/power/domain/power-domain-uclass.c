@@ -11,6 +11,7 @@
 #include <power-domain.h>
 #include <power-domain-uclass.h>
 #include <dm/device-internal.h>
+#include <dm/device_compat.h>
 
 struct power_domain_priv {
 	int *on_count;
@@ -27,7 +28,8 @@ static int power_domain_of_xlate_default(struct power_domain *power_domain,
 	debug("%s(power_domain=%p)\n", __func__, power_domain);
 
 	if (args->args_count != 1) {
-		debug("Invalid args_count: %d\n", args->args_count);
+		dev_err(power_domain->dev, "Invalid args_count: %d\n",
+			args->args_count);
 		return -EINVAL;
 	}
 
@@ -113,16 +115,25 @@ int power_domain_free(struct power_domain *power_domain)
 
 int power_domain_on_lowlevel(struct power_domain *power_domain)
 {
-	struct power_domain_priv *priv = dev_get_uclass_priv(power_domain->dev);
-	struct power_domain_plat *plat = dev_get_uclass_plat(power_domain->dev);
-	struct power_domain_ops *ops = power_domain_dev_ops(power_domain->dev);
-	int *on_count = plat->subdomains ? &priv->on_count[power_domain->id] : NULL;
+	struct udevice *dev = power_domain->dev;
+	struct power_domain_priv *priv = dev_get_uclass_priv(dev);
+	struct power_domain_plat *plat = dev_get_uclass_plat(dev);
+	struct power_domain_ops *ops = power_domain_dev_ops(dev);
+	int *on_count = NULL;
 	int ret;
 
+	if (plat->subdomains) {
+		if (power_domain->id >= plat->subdomains) {
+			dev_err(power_domain->dev, "powerdomain %s ID out of range 0..%u\n",
+				dev->name, plat->subdomains);
+			return -EINVAL;
+		}
+		on_count = &priv->on_count[power_domain->id];
+	}
 	/* Refcounting is not enabled on all drivers by default */
 	if (on_count) {
 		debug("Enable power domain %s.%ld: %d -> %d (%s)\n",
-		      power_domain->dev->name, power_domain->id, *on_count, *on_count + 1,
+		      dev->name, power_domain->id, *on_count, *on_count + 1,
 		      (((*on_count + 1) > 1) ? "EALREADY" : "todo"));
 
 		(*on_count)++;
@@ -142,16 +153,25 @@ int power_domain_on_lowlevel(struct power_domain *power_domain)
 
 int power_domain_off_lowlevel(struct power_domain *power_domain)
 {
-	struct power_domain_priv *priv = dev_get_uclass_priv(power_domain->dev);
-	struct power_domain_plat *plat = dev_get_uclass_plat(power_domain->dev);
-	struct power_domain_ops *ops = power_domain_dev_ops(power_domain->dev);
-	int *on_count = plat->subdomains ? &priv->on_count[power_domain->id] : NULL;
+	struct udevice *dev = power_domain->dev;
+	struct power_domain_priv *priv = dev_get_uclass_priv(dev);
+	struct power_domain_plat *plat = dev_get_uclass_plat(dev);
+	struct power_domain_ops *ops = power_domain_dev_ops(dev);
+	int *on_count = NULL;
 	int ret;
 
+	if (plat->subdomains) {
+		if (power_domain->id >= plat->subdomains) {
+			dev_err(power_domain->dev, "powerdomain %s ID out of range 0..%u\n",
+				dev->name, plat->subdomains);
+			return -EINVAL;
+		}
+		on_count = &priv->on_count[power_domain->id];
+	}
 	/* Refcounting is not enabled on all drivers by default */
 	if (on_count) {
 		debug("Disable power domain %s.%ld: %d -> %d (%s%s)\n",
-		      power_domain->dev->name, power_domain->id, *on_count, *on_count - 1,
+		      dev->name, power_domain->id, *on_count, *on_count - 1,
 		      (((*on_count) <= 0) ? "EALREADY" : ""),
 		      (((*on_count - 1) > 0) ? "BUSY" : "todo"));
 
@@ -184,12 +204,19 @@ static int dev_power_domain_ctrl(struct udevice *dev, bool on)
 					    "#power-domain-cells", 0);
 	for (i = 0; i < count; i++) {
 		ret = power_domain_get_by_index(dev, &pd, i);
-		if (ret)
-			return ret;
+		if (ret) {
+			dev_err(dev, "Failed to get power domain[%d]: %d\n", i, ret);
+			goto err_pd_get;
+		}
 		if (on)
 			ret = power_domain_on(&pd);
 		else
 			ret = power_domain_off(&pd);
+		if (ret) {
+			dev_err(dev, "Failed to switch power domain[%d] %s.%ld o%s: %d\n",
+				i, pd.dev->name, pd.id, on ? "n" : "ff", ret);
+			goto err_pd_onoff;
+		}
 	}
 
 	/*
@@ -212,6 +239,26 @@ static int dev_power_domain_ctrl(struct udevice *dev, bool on)
 	if (count > 0 && !on)
 		device_remove(pd.dev, DM_REMOVE_NORMAL);
 
+	return 0;
+
+/* restore the previous state in case of error */
+err_pd_onoff:
+	if (on)
+		power_domain_off(&pd);
+	else
+		power_domain_on(&pd);
+err_pd_get:
+	while (--i >= 0) {
+		int err;
+
+		err = power_domain_get_by_index(dev, &pd, i);
+		if (err)
+			continue;
+		if (on)
+			power_domain_off(&pd);
+		else
+			power_domain_on(&pd);
+	}
 	return ret;
 }
 
