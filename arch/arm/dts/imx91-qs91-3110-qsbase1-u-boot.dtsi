@@ -5,7 +5,3 @@
  */
 
 #include "imx91-qs91-3110-u-boot.dtsi"
-
-&usdhc3 {
-	/delete-property/ fsl,cd-data3;
-};

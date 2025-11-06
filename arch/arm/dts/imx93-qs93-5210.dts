@@ -7,7 +7,7 @@
 
 #include "imx93-karo.dtsi"
 
-/{
+/ {
 	model = "Ka-Ro electronics GmbH QS93-5210 (NXP i.MX93) solder-in module";
 	compatible = "karo,qs93-5210", "fsl,imx93";
 

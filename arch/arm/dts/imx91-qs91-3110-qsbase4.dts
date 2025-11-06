@@ -7,18 +7,18 @@
 
 #include "imx91-qs91-3110.dts"
 
-/{
+/ {
 	model = "Ka-Ro electronics GmbH QS91-3110 (NXP i.MX91) solder-in module on QSBASE4 baseboard";
 };
 
 &eqos {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_eqos_rmii &pinctrl_ethphy0_rst>;
-	phy-mode = "rmii";
+	pinctrl-0 = <&pinctrl_eqos_rgmii &pinctrl_ethphy0_rst>;
+	phy-mode = "rgmii-id";
 	phy-handle = <&ethphy0>;
-	phy-supply = <&buck4>;
+	phy-supply = <&reg_vdd_3v3>;
 	phy-reset-gpios = <&gpio3 1 GPIO_ACTIVE_LOW>;
-	phy-reset-duration = <25000>; /* µs */
+	phy-reset-duration = <1000>; /* µs */
 	phy-reset-post-delay = <100>; /* µs */
 	status = "okay";
 
@@ -33,19 +33,24 @@
 };
 
 &iomuxc {
-	pinctrl_eqos_rmii: eqos-rmiigrp {
+	pinctrl_eqos_rgmii: eqos-rgmiigrp {
 		fsl,pins = <
-			MX91_PAD_ENET1_MDC__ENET_QOS_MDC		0x57e
-			MX91_PAD_ENET1_MDIO__ENET_QOS_MDIO		0x17e
-			MX91_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0		0x57e
-			MX91_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1		0x57e
-			MX91_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL	0x57e
-			MX91_PAD_ENET1_TD2__ENET_QOS_CLOCK_GENERATE_CLK	0x4000017e
-			/* SMSC LAN8710 Strap pins */
-			MX91_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0		0x37e /* MODE0 */
-			MX91_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1		0x37e /* MODE1 */
-			MX91_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL	0x37e /* MODE2 (ext. Pullup) */
-			MX91_PAD_ENET1_RXC__ENET_QOS_RX_ER		0x57e /* PHYAD0 */
+			MX91_PAD_ENET1_MDC__ENET_QOS_MDC			0x106
+			MX91_PAD_ENET1_MDIO__ENET_QOS_MDIO			0x106
+			MX91_PAD_ENET1_TD0__ENET_QOS_RGMII_TD0			0x51e
+			MX91_PAD_ENET1_TD1__ENET_QOS_RGMII_TD1			0x51e
+			MX91_PAD_ENET1_TD2__ENET_QOS_RGMII_TD2			0x51e
+			MX91_PAD_ENET1_TD3__ENET_QOS_RGMII_TD3			0x51e
+			MX91_PAD_ENET1_TX_CTL__ENET_QOS_RGMII_TX_CTL		0x51e
+			MX91_PAD_ENET1_TXC__CCM_ENET_QOS_CLOCK_GENERATE_TX_CLK	0x51e
+			/* KSZ9131 Strap pins: HIGH: 0x3.. LOW: 0x5.. */
+			MX91_PAD_ENET1_RD0__ENET_QOS_RGMII_RD0			0x500 /* MODE0 */
+			MX91_PAD_ENET1_RD1__ENET_QOS_RGMII_RD1			0x300 /* MODE1 */
+			MX91_PAD_ENET1_RD2__ENET_QOS_RGMII_RD2			0x300 /* MODE2 */
+			MX91_PAD_ENET1_RD3__ENET_QOS_RGMII_RD3			0x300 /* MODE3 */
+			MX91_PAD_ENET1_RX_CTL__ENET_QOS_RGMII_RX_CTL		0x500 /* CLK125_EN */
+			/* ext. pullup on baseboard */
+			MX91_PAD_ENET1_RXC__ENET_QOS_RGMII_RXC			0x300 /* PHYAD2 */
 		>;
 	};
 

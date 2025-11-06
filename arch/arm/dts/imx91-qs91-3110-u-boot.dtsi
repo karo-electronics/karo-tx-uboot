@@ -17,15 +17,15 @@
 	bootph-all;
 };
 
+&lpuart8 {
+	bootph-all;
+};
+
 &pinctrl_lpuart5 {
 	bootph-all;
 };
 
 &pinctrl_lpuart5_rtscts {
-	bootph-all;
-};
-
-&lpuart8 {
 	bootph-all;
 };
 

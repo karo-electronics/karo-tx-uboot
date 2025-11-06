@@ -7,7 +7,7 @@
 
 #include "imx91-qs91-3110.dts"
 
-/{
+/ {
 	model = "Ka-Ro electronics GmbH QS91-3110 (NXP i.MX91) solder-in module on QSBASE1 baseboard";
 };
 
