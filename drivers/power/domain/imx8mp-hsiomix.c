@@ -129,14 +129,6 @@ static int imx8mp_hsiomix_off(struct power_domain *power_domain)
 	return imx8mp_hsiomix_set(power_domain, false);
 }
 
-static int imx8mp_hsiomix_of_xlate(struct power_domain *power_domain,
-				   struct ofnode_phandle_args *args)
-{
-	power_domain->id = args->args[0];
-
-	return 0;
-}
-
 static int hsio_pll_clk_enable(struct clk *clk)
 {
 	void *base = (void *)dev_get_driver_data(clk->dev);
@@ -264,7 +256,6 @@ static const struct udevice_id imx8mp_hsiomix_ids[] = {
 struct power_domain_ops imx8mp_hsiomix_ops = {
 	.on = imx8mp_hsiomix_on,
 	.off = imx8mp_hsiomix_off,
-	.of_xlate = imx8mp_hsiomix_of_xlate,
 };
 
 U_BOOT_DRIVER(imx8mp_hsiomix) = {

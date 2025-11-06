@@ -468,6 +468,10 @@ out_clk_disable:
 static int imx8m_power_domain_of_xlate(struct power_domain *power_domain,
 				      struct ofnode_phandle_args *args)
 {
+	if (args->args_count > 0)
+		power_domain->id = args->args[0];
+	else
+		power_domain->id = 0;
 	return 0;
 }
 

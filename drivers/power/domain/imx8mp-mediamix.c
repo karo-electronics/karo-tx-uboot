@@ -127,14 +127,6 @@ static int imx8mp_mediamix_off(struct power_domain *power_domain)
 	return 0;
 }
 
-static int imx8mp_mediamix_of_xlate(struct power_domain *power_domain,
-				    struct ofnode_phandle_args *args)
-{
-	power_domain->id = args->args[0];
-
-	return 0;
-}
-
 static int imx8mp_mediamix_bind(struct udevice *dev)
 {
 	/* Bind child lcdif */
@@ -197,7 +189,6 @@ static const struct udevice_id imx8mp_mediamix_ids[] = {
 struct power_domain_ops imx8mp_mediamix_ops = {
 	.on = imx8mp_mediamix_on,
 	.off = imx8mp_mediamix_off,
-	.of_xlate = imx8mp_mediamix_of_xlate,
 };
 
 U_BOOT_DRIVER(imx8mp_mediamix) = {
