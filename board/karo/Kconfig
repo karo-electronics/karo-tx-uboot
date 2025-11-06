@@ -24,18 +24,18 @@ config UBOOT_IGNORE_ENV
 	 environment only.
 
 choice
-        prompt "U-Boot image variant"
+	prompt "U-Boot image variant"
 	default KARO_UBOOT_DEFAULT
 
 config KARO_UBOOT_DEFAULT
-        bool "Standard U-Boot image"
+	bool "Standard U-Boot image"
 
 config KARO_UBOOT_MFG
-        bool "U-Boot image for use with Freescale's MfGTool or UUU"
-        select UBOOT_IGNORE_ENV
+	bool "U-Boot image for use with Freescale's MfGTool or UUU"
+	select UBOOT_IGNORE_ENV
 
 config KARO_UBOOT_NOENV
-        bool "U-Boot using only built-in environment"
-        select UBOOT_IGNORE_ENV
+	bool "U-Boot using only built-in environment"
+	select UBOOT_IGNORE_ENV
 
 endchoice
