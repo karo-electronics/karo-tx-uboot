@@ -42,12 +42,6 @@ DECLARE_GLOBAL_DATA_PTR;
 					     PAD_CTL_PUE |	\
 					     PAD_CTL_DSE6)
 
-enum tx8m_boardtype {
-	TX8MN,
-	QS8M_QSBASE,
-	NUM_BOARD_TYPES
-};
-
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
@@ -154,24 +148,10 @@ int board_early_init_r(void)
 int board_late_init(void)
 {
 	int ret;
-	struct src *src_regs = (void *)SRC_BASE_ADDR;
-	struct watchdog_regs *wdog = (void *)WDOG1_BASE_ADDR;
-	u32 srsr = readl(&src_regs->srsr);
-	u16 wrsr = readw(&wdog->wrsr);
-	enum tx8m_boardtype board = TX8MN;
 	const char *fdt_file;
-	const char *baseboard;
 
 	karo_env_cleanup();
 
-	baseboard = env_get("baseboard");
-	if (baseboard && strncmp(baseboard, "qsbase", 6) == 0)
-		board = QS8M_QSBASE;
-
-	if (srsr & 0x10 && !(wrsr & WRSR_SFTW)) {
-		printf("Watchog reset detected; reboot required!\n");
-		env_set("wdreset", "1");
-	}
 	if (had_ctrlc()) {
 		env_set("safeboot", "1");
 		fdt_file = NULL;
