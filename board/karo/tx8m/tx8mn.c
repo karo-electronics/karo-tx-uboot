@@ -141,7 +141,19 @@ int board_init(void)
 #ifdef CONFIG_BOARD_EARLY_INIT_R
 int board_early_init_r(void)
 {
-	return 0;
+	int ret;
+	struct udevice *cpudev;
+
+	/*
+	 * make sure the clktree is correctly initialized via clk_set_defaults()
+	 * that is called somewhere down the callchain of uclass_get_device()
+	 */
+	ret = uclass_get_device(UCLASS_CPU, 0, &cpudev);
+	if (ret) {
+		printf("Failed to get CPU device: %d\n", ret);
+		return ret;
+	}
+	return ret;
 }
 #endif
 
