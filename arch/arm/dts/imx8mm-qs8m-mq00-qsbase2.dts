@@ -30,7 +30,7 @@
 	pinctrl-1 = <&pinctrl_fec1_b_sleep>;
 	phy-mode = "rgmii";
 	phy-handle = <&ethphy0>;
-	phy-supply = <&reg_3v3>;
+	phy-supply = <&reg_vdd_3v3>;
 	phy-reset-gpios = <&gpio4 22 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <25>; /* ms */
 	phy-reset-post-delay = <100>;

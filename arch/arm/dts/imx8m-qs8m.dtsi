@@ -31,7 +31,7 @@
 				regulator-min-microvolt = <900000>;
 				regulator-max-microvolt = <900000>;
 				regulator-ramp-delay = <14000>;
-				regulator-always-on;
+				regulator-boot-on;
 			};
 
 			reg_vdd_arm: DCDC2 {
@@ -39,6 +39,7 @@
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <950000>;
 				regulator-ramp-delay = <14000>;
+				regulator-boot-on;
 				regulator-always-on;
 			};
 
@@ -47,6 +48,7 @@
 				regulator-min-microvolt = <780000>;
 				regulator-max-microvolt = <900000>;
 				regulator-ramp-delay = <14000>;
+				regulator-boot-on;
 				regulator-always-on;
 			};
 
@@ -62,13 +64,14 @@
 				regulator-name = "vdd_3v3";
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-always-on;
+				regulator-boot-on;
 			};
 
 			reg_vdda_1v8: LDO2 {
 				regulator-name = "vdda_1v8";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
 				regulator-always-on;
 			};
 
@@ -76,6 +79,7 @@
 				regulator-name = "vdd_1v8";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
 				regulator-always-on;
 			};
 
@@ -83,14 +87,14 @@
 				regulator-name = "vdd_phy_1v2";
 				regulator-min-microvolt = <1200000>;
 				regulator-max-microvolt = <1200000>;
-				regulator-always-on;
+				regulator-boot-on;
 			};
 
 			reg_vdd_phy_0v9: LDO5 {
 				regulator-name = "vdd_phy_0v9";
 				regulator-min-microvolt = <900000>;
 				regulator-max-microvolt = <900000>;
-				regulator-always-on;
+				regulator-boot-on;
 			};
 
 			reg_snvs_1v8: LDORTC1 {

@@ -8,8 +8,6 @@
 #include "imx8m-karo.dtsi"
 
 / {
-	compatible = "karo,imx8mm-tx8m", "fsl,imx8mm";
-
 	aliases {
 		mmc0 = &usdhc1;
 		usb-host = &usbotg2;
@@ -81,8 +79,8 @@
 	assigned-clocks = <&clk IMX8MM_CLK_USDHC1_ROOT>;
 	assigned-clock-rates = <400000000>;
 	bus-width = <8>;
-	vqmmc-supply = <&reg_1v8>;
-	vmmc-supply = <&reg_3v3>;
+	vmmc-supply = <&reg_vdd_3v3>;
+	vqmmc-supply = <&reg_vdd_1v8>;
 	non-removable;
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
@@ -141,12 +139,6 @@
 	pinctrl_owire: owiregrp {
 		fsl,pins = <
 			MX8MM_IOMUXC_SAI5_MCLK_GPIO3_IO25		0x400001c0
-		>;
-	};
-
-	pinctrl_pmic: pmicgrp {
-		fsl,pins = <
-			MX8MM_IOMUXC_GPIO1_IO03_GPIO1_IO3		0x1c0
 		>;
 	};
 

@@ -22,7 +22,7 @@
 	assigned-clock-rates = <0 50000000>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy0>;
-	phy-supply = <&buck4>;
+	phy-supply = <&reg_vdd_3v3>;
 	phy-reset-gpios = <&gpio4 13 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <25000>; /* µs */
 	phy-reset-post-delay = <10>; /* µs */
@@ -44,7 +44,7 @@
 &fec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_fec_rgmii>;
-	phy-supply = <&buck4>;
+	phy-supply = <&reg_vdd_3v3>;
 	status = "disabled";
 
 	mdio {
@@ -95,8 +95,8 @@
 &usdhc2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2>;
-	vmmc-supply = <&buck4>;
-	vqmmc-supply = <&buck4>;
+	vmmc-supply = <&reg_vdd_3v3>;
+	vqmmc-supply = <&reg_vdd_3v3>;
 	bus-width = <4>;
 	no-1-8-v;
 	no-sdio;

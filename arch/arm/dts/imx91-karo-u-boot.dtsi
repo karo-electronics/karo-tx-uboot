@@ -3,7 +3,6 @@
  * Copyright 2023 Lothar Waßmann <LW@KARO-electronics.de>
  */
 
-#include <config.h>
 #include <linux/stringify.h>
 #include "imx91-u-boot.dtsi"
 
@@ -42,22 +41,6 @@
 	clocks = <&clk IMX93_CLK_A55_SEL>;
 };
 
-&{/soc@0} {
-	bootph-all;
-};
-
-&aips1 {
-	bootph-all;
-};
-
-&aips2 {
-	bootph-all;
-};
-
-&aips3 {
-	bootph-all;
-};
-
 &binman {
 	spl {
 		mkimage {
@@ -65,26 +48,6 @@
 			       "-e", __stringify(CONFIG_SPL_TEXT_BASE);
 		};
 	};
-};
-
-&buck1 {
-	bootph-pre-ram;
-};
-
-&buck2 {
-	bootph-pre-ram;
-};
-
-&buck4 {
-	bootph-pre-ram;
-};
-
-&buck5 {
-	bootph-pre-ram;
-};
-
-&buck6 {
-	bootph-pre-ram;
 };
 
 &clk {
@@ -109,18 +72,6 @@
 
 &gpio4 {
 	bootph-all;
-};
-
-&iomuxc {
-	bootph-all;
-};
-
-&ldo1 {
-	bootph-pre-ram;
-};
-
-&ldo4 {
-	bootph-pre-ram;
 };
 
 &lpi2c1 {
@@ -148,10 +99,30 @@
 };
 
 &pmic {
-	bootph-pre-ram;
-
 	regulators {
-		bootph-pre-ram;
+		BUCK1 {
+			bootph-pre-ram;
+		};
+
+		BUCK4 {
+			bootph-pre-ram;
+		};
+
+		BUCK5 {
+			bootph-pre-ram;
+		};
+
+		BUCK6 {
+			bootph-pre-ram;
+		};
+
+		LDO1 {
+			bootph-pre-ram;
+		};
+
+		LDO4 {
+			bootph-pre-ram;
+		};
 	};
 };
 

@@ -81,8 +81,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3 &pinctrl_usdhc3_cd>;
 	cd-gpios = <&gpio3 6 GPIO_ACTIVE_LOW>;
-	vmmc-supply = <&buck4>;
-	vqmmc-supply = <&buck4>;
+	vmmc-supply = <&reg_vdd_3v3>;
+	vqmmc-supply = <&reg_vdd_3v3>;
 	bus-width = <4>;
 	no-1-8-v;
 	no-sdio;

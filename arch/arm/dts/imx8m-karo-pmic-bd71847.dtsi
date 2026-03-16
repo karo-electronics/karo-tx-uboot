@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2026 Lothar Waßmann <LW@KARO-electronics.de>
+ *
+ */
+
+&i2c1 {
+	pmic: pmic@4b {
+		reg = <0x4b>;
+		compatible = "rohm,bd71847";
+
+		regulators {
+			reg_vdd_soc: BUCK1 {
+				regulator-name = "buck1";
+				regulator-min-microvolt = <750000>;
+				regulator-max-microvolt = <900000>;
+				regulator-init-microvolt = <820000>;
+				regulator-ramp-delay = <1250>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_vdd_arm: BUCK2 {
+				regulator-name = "buck2";
+				regulator-min-microvolt = <805000>;
+				regulator-max-microvolt = <1000000>;
+				regulator-init-microvolt = <900000>;
+				regulator-ramp-delay = <1250>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_vdd_dram_pu: BUCK3 {
+				/* BUCK5 in datasheet */
+				regulator-name = "buck3";
+				regulator-min-microvolt = <805000>;
+				regulator-max-microvolt = <1000000>;
+				regulator-init-microvolt = <900000>;
+				regulator-boot-on;
+			};
+
+			reg_vdd_3v3: BUCK4 {
+				/* BUCK6 in datasheet */
+				regulator-name = "buck4";
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-init-microvolt = <3300000>;
+				regulator-boot-on;
+			};
+
+			reg_vdd_1v8: BUCK5 {
+				/* BUCK7 in datasheet */
+				regulator-name = "buck5";
+				regulator-min-microvolt = <1605000>;
+				regulator-max-microvolt = <1950000>;
+				regulator-init-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_nvcc_dram: BUCK6 {
+				/* BUCK8 in datasheet */
+				regulator-name = "buck6";
+				regulator-min-microvolt = <(1343300 / (2200 + 499) * 2200)>;
+				regulator-max-microvolt = <(1360000 / (2200 + 499) * 2200)>;
+				regulator-init-microvolt = <(1350000 / (2200 + 499) * 2200)>;
+				regulator-boot-on;
+			};
+
+			reg_snvs_1v8: LDO1 {
+				regulator-name = "ldo1";
+				regulator-min-microvolt = <1620000>;
+				regulator-max-microvolt = <1980000>;
+				regulator-init-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_snvs_0v8: LDO2 {
+				regulator-name = "ldo2";
+				regulator-min-microvolt = <760000>;
+				regulator-max-microvolt = <900000>;
+				regulator-init-microvolt = <800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_vdda_1v8: LDO3 {
+				regulator-name = "ldo3";
+				regulator-min-microvolt = <1710000>;
+				regulator-max-microvolt = <1890000>;
+				regulator-init-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_vdd_phy_0v9: LDO4 {
+				regulator-name = "ldo4";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <1000000>;
+				regulator-init-microvolt = <900000>;
+				regulator-boot-on;
+			};
+
+			reg_vdd_phy_1v2: LDO6 {
+				regulator-name = "ldo6";
+				regulator-min-microvolt = <1140000>;
+				regulator-max-microvolt = <1260000>;
+				regulator-init-microvolt = <1200000>;
+				regulator-boot-on;
+			};
+		};
+	};
+};

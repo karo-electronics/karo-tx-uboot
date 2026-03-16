@@ -4,42 +4,46 @@
  *
  */
 
-&reg_vdd_dram_pu {
-	bootph-all;
-};
+&pmic {
+	regulators {
+		DCDC1 {
+			bootph-pre-ram;
+		};
 
-&reg_vdd_arm {
-	bootph-all;
-};
+		DCDC2 {
+			bootph-pre-ram;
+		};
 
-&reg_vdd_soc {
-	bootph-all;
-};
+		DCDC3 {
+			bootph-pre-ram;
+		};
 
-&reg_nvcc_dram {
-	bootph-all;
-};
+		DCDC4 {
+			bootph-pre-ram;
+		};
 
-&reg_vdd_3v3 {
-	bootph-all;
-};
+		LDO1 {
+			bootph-pre-ram;
+		};
 
-&reg_vdda_1v8 {
-	bootph-all;
-};
+		LDO2 {
+			bootph-pre-ram;
+		};
 
-&reg_vdd_1v8 {
-	bootph-all;
-};
+		LDO3 {
+			bootph-pre-ram;
+		};
 
-&reg_vdd_phy_1v2 {
-	bootph-all;
-};
+		LDO4 {
+			bootph-pre-ram;
+		};
 
-&reg_vdd_phy_0v9 {
-	bootph-all;
-};
+		LDO5 {
+			bootph-pre-ram;
+		};
 
-&reg_snvs_1v8 {
-	bootph-all;
+		LDORTC1 {
+			bootph-pre-ram;
+		};
+	};
 };

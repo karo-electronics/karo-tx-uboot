@@ -11,6 +11,7 @@
 
 / {
 	model = "Ka-Ro electronics QS8M-MQ00 (NXP i.MX8MM) module";
+	compatible = "karo,imx8mm-qs8m", "fsl,imx8mm";
 
 	leds {
 		compatible = "gpio-leds";

@@ -49,14 +49,6 @@
 			bootph-pre-ram;
 		};
 
-		BUCK7 {
-			bootph-pre-ram;
-		};
-
-		BUCK8 {
-			bootph-pre-ram;
-		};
-
 		LDO1 {
 			bootph-pre-ram;
 		};
@@ -73,15 +65,7 @@
 			bootph-pre-ram;
 		};
 
-		LDO5 {
-			bootph-pre-ram;
-		};
-
 		LDO6 {
-			bootph-pre-ram;
-		};
-
-		LDO7 {
 			bootph-pre-ram;
 		};
 	};

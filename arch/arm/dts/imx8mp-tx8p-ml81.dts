@@ -19,37 +19,6 @@
 		serial2 = &uart4;
 	};
 
-	reg_3v3_etn: regulator-3v3-etn {
-		compatible = "regulator-fixed";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_reg_3v3_etn>;
-		regulator-name = "3v3-etn";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		gpio = <&gpio1 23 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-		regulator-always-on;
-	};
-
-	reg_nvcc_dram: regulator-nvcc-dram {
-		compatible = "regulator-fixed";
-		regulator-name = "nvcc-dram";
-		regulator-min-microvolt = <1100000>;
-		regulator-max-microvolt = <1100000>;
-		vin-supply = <&buck6>;
-		regulator-boot-on;
-		regulator-always-on;
-	};
-
-	reg_nvcc_nand: regulator-nvcc-nand {
-		compatible = "regulator-fixed";
-		regulator-name = "nvcc-nand";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
-		vin-supply = <&buck5>;
-		regulator-boot-on;
-	};
-
 	reg_usb1_vbus: regulator-usb1-vbus {
 		compatible = "regulator-fixed";
 		pinctrl-names = "default";
@@ -74,7 +43,7 @@
 };
 
 &A53_0 {
-	cpu-supply = <&reg_vdd_core>;
+	cpu-supply = <&reg_vdd_soc>;
 };
 
 &eqos {
@@ -86,6 +55,7 @@
 	assigned-clock-rates = <0>, <100000000>, <50000000>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy0>;
+	phy-supply = <&reg_3v3_etn>; /* for completeness, but not supported by driver */
 	phy-reset-gpios = <&gpio4 22 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <25000>; /* µs */
 	phy-reset-post-delay = <100>;
@@ -117,85 +87,81 @@
 		status = "okay";
 
 		regulators {
-			buck1: BUCK1 {
+			reg_vdd_soc: BUCK1 {
 				regulator-name = "BUCK1";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <2187500>;
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <1000000>;
+				regulator-ramp-delay = <3125>;
 				regulator-boot-on;
 				regulator-always-on;
-				regulator-ramp-delay = <3125>;
 			};
 
-			buck2: BUCK2 {
+			reg_vdd_arm: BUCK2 {
 				regulator-name = "BUCK2";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <2187500>;
-				regulator-boot-on;
-				regulator-always-on;
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
 				regulator-ramp-delay = <3125>;
-			};
-
-			buck3: BUCK3 {
-				regulator-name = "BUCK3";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <2187500>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
 
-			buck4: BUCK4 {
+			reg_vdd_3v3: BUCK4 {
 				regulator-name = "BUCK4";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <3400000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			buck5: BUCK5 {
-				regulator-name = "BUCK5";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <3400000>;
-			};
-
-			buck6: BUCK6 {
-				regulator-name = "BUCK6";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <3400000>;
-			};
-
-			ldo1: LDO1 {
-				regulator-name = "LDO1";
-				regulator-min-microvolt = <1600000>;
+				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
 
-			ldo2: LDO2 {
+			reg_vdd_1v8: BUCK5 {
+				regulator-name = "BUCK5";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_nvcc_dram: BUCK6 {
+				regulator-name = "BUCK6";
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_snvs_1v8: LDO1 {
+				regulator-name = "LDO1";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_snvs_0v8: LDO2 {
 				regulator-name = "LDO2";
 				regulator-min-microvolt = <800000>;
-				regulator-max-microvolt = <1150000>;
+				regulator-max-microvolt = <800000>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
 
-			ldo3: LDO3 {
+			reg_vdda_1v8: LDO3 {
 				regulator-name = "LDO3";
-				regulator-min-microvolt = <800000>;
-				regulator-max-microvolt = <3300000>;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
 
-			ldo4: LDO4 {
+			reg_vdd_phy_0v9: LDO4 {
 				regulator-name = "LDO4";
-				regulator-min-microvolt = <800000>;
-				regulator-max-microvolt = <3300000>;
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
 				regulator-boot-on;
 				regulator-always-on;
 			};
 
-			ldo5: LDO5 {
+			reg_nvcc_enet: LDO5 {
 				regulator-name = "LDO5";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
@@ -204,8 +170,13 @@
 	};
 };
 
-&reg_vdd_core {
-	vin-supply = <&buck2>;
+&reg_3v3_etn {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_reg_3v3_etn>;
+	gpio = <&gpio1 23 GPIO_ACTIVE_HIGH>;
+	vin-supply = <&reg_nvcc_enet>;
+	enable-active-high;
+	regulator-always-on;
 };
 
 &uart1 { /* console */
@@ -229,10 +200,6 @@
 	status = "okay";
 };
 
-&usdhc3 { /* eMMC */
-	vqmmc-supply = <&reg_nvcc_nand>;
-};
-
 &usb_dwc3_0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usb1_oc>;
@@ -251,12 +218,6 @@
 		>;
 	};
 
-	pinctrl_reg_3v3_etn: reg-3v3-etngrp {
-		fsl,pins = <
-			    MX8MP_IOMUXC_ENET_TXC__GPIO1_IO23		0x40000140
-		>;
-	};
-
 	pinctrl_eqos: eqosgrp {
 		fsl,pins = <
 			    MX8MP_IOMUXC_ENET_MDC__ENET_QOS_MDC		0x142
@@ -270,6 +231,12 @@
 			    MX8MP_IOMUXC_ENET_RD1__ENET_QOS_RGMII_RD1	0x150 /* MODE1 */
 			    MX8MP_IOMUXC_ENET_RXC__ENET_QOS_RX_ER	0x110 /* PHYAD0 */
 			    MX8MP_IOMUXC_ENET_RX_CTL__ENET_QOS_RGMII_RX_CTL 0x156 /* MODE2 */
+		>;
+	};
+
+	pinctrl_reg_3v3_etn: reg-3v3-etngrp {
+		fsl,pins = <
+			    MX8MP_IOMUXC_ENET_TXC__GPIO1_IO23		0x40000140
 		>;
 	};
 

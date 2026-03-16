@@ -6,10 +6,6 @@
 
 #include "imx8mp-karo-u-boot.dtsi"
 
-&reg_nvcc_nand {
-	bootph-all;
-};
-
 &uart2 {
 	bootph-all;
 };

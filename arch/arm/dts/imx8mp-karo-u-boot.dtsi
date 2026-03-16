@@ -63,10 +63,6 @@
 	};
 };
 
-&reg_3v3 {
-	bootph-all;
-};
-
 &uart4 {
 	bootph-all;
 };

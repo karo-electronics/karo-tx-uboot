@@ -16,7 +16,7 @@
 	pinctrl-0 = <&pinctrl_eqos_rgmii &pinctrl_ethphy0_rst>;
 	phy-mode = "rgmii-id";
 	phy-handle = <&ethphy0>;
-	phy-supply = <&buck4>;
+	phy-supply = <&reg_vdd_3v3>;
 	phy-reset-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <1000>; /* µs */
 	phy-reset-post-delay = <100>; /* µs */

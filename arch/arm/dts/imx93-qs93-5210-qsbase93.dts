@@ -17,7 +17,7 @@
 	assigned-clock-rates = <0 50000000>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy0>;
-	phy-supply = <&buck4>;
+	phy-supply = <&reg_vdd_3v3>;
 	phy-reset-gpios = <&gpio3 4 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <25000>; /* µs */
 	phy-reset-post-delay = <100>; /* µs */
@@ -40,7 +40,7 @@
 	assigned-clock-rates = <100000000>, <50000000>, <50000000>;
 	phy-mode = "rmii";
 	phy-handle = <&ethphy1>;
-	phy-supply = <&buck4>;
+	phy-supply = <&reg_vdd_3v3>;
 	phy-reset-gpios = <&gpio4 13 GPIO_ACTIVE_LOW>;
 	phy-reset-duration = <25>; /* ms */
 	phy-reset-post-delay = <1>; /* ms */

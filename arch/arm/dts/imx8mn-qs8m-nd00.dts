@@ -11,4 +11,5 @@
 
 / {
 	model = "Ka-Ro electronics QS8M-ND00 (NXP i.MX8MN) module";
+	compatible = "karo,imx8mn-qs8m", "fsl,imx8mn";
 };

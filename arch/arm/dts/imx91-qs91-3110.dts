@@ -76,6 +76,7 @@
 	pinctrl-0 = <&pinctrl_usdhc3>;
 	vmmc-supply = <&reg_vdd_3v3>;
 	vqmmc-supply = <&reg_vdd_3v3>;
+	voltage-ranges = <3300 3300>;
 	bus-width = <4>;
 	no-1-8-v;
 	no-sdio;

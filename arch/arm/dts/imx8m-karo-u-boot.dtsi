@@ -4,8 +4,6 @@
  *
  */
 
-#include <config.h>
-
 / {
 	config {
 		u-boot,mmc-env-offset = <CONFIG_ENV_OFFSET>;
@@ -73,10 +71,6 @@
 	bootph-pre-ram;
 };
 
-&pinctrl_pmic {
-	bootph-pre-ram;
-};
-
 &pinctrl_uart1 {
 	bootph-all;
 };
@@ -90,10 +84,50 @@
 };
 
 &pmic {
-	bootph-pre-ram;
-
 	regulators {
-		bootph-pre-ram;
+		BUCK1 {
+			bootph-pre-ram;
+		};
+
+		BUCK2 {
+			bootph-pre-ram;
+		};
+
+		BUCK3 {
+			bootph-pre-ram;
+		};
+
+		BUCK4 {
+			bootph-pre-ram;
+		};
+
+		BUCK5 {
+			bootph-pre-ram;
+		};
+
+		BUCK6 {
+			bootph-pre-ram;
+		};
+
+		LDO1 {
+			bootph-pre-ram;
+		};
+
+		LDO2 {
+			bootph-pre-ram;
+		};
+
+		LDO3 {
+			bootph-pre-ram;
+		};
+
+		LDO4 {
+			bootph-pre-ram;
+		};
+
+		LDO6 {
+			bootph-pre-ram;
+		};
 	};
 };
 

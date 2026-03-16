@@ -7,10 +7,6 @@
 #include "imx8mm-u-boot.dtsi"
 #include "imx8m-karo-u-boot.dtsi"
 
-&aips4 {
-	bootph-all;
-};
-
 &binman_imx_spl {
 	offset = <0x8400>;
 };
