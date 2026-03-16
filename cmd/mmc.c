@@ -1650,17 +1650,32 @@ static int do_mmc_extcsd(struct cmd_tbl *cmdtp, int flag,
 	if (argc < 1)
 		return CMD_RET_USAGE;
 
-	if (argc > 2) {
+	if (strncmp(argv[1], "read", strlen("read")) == 0) {
+		if (argc > 2) {
+			val = simple_strtoul(argv[2], &eol, 16);
+			if (argv[2][0] == '\0' || *eol != '\0') {
+				printf("Invalid destination address: '%s'\n", argv[2]);
+				return CMD_RET_USAGE;
+			}
+			if (val & 0x3) {
+				printf("destination address must be 32bit aligned\n");
+				return CMD_RET_FAILURE;
+			}
+		} else {
+			val = env_get_ulong("loadaddr", 16, CONFIG_SYS_LOAD_ADDR);
+		}
+		ext_csd = (u8 *)val;
+	} else if (argc > 2) {
 		val = simple_strtoul(argv[2], &eol, 0);
 		if (argv[2][0] == '\0' || *eol != '\0') {
 			printf("Invalid index: '%s'\n", argv[2]);
 			return CMD_RET_USAGE;
 		}
-		index = val;
-		if (index >= 512) {
-			printf("Index %d is out or range\n", index);
+		if (val >= MMC_MAX_BLOCK_LEN) {
+			printf("Index %ld is out of range\n", val);
 			return CMD_RET_USAGE;
 		}
+		index = val;
 	}
 
 	ret = mmc_send_ext_csd(mmc, ext_csd);
@@ -1672,6 +1687,8 @@ static int do_mmc_extcsd(struct cmd_tbl *cmdtp, int flag,
 		mmc_extcsd_print(ext_csd);
 		return CMD_RET_SUCCESS;
 	}
+	if (strncmp(argv[1], "read", strlen("read")) == 0)
+		return CMD_RET_SUCCESS;
 	if (strncmp(argv[1], "get", strlen("get")) == 0) {
 		int precision;
 
