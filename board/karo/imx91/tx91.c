@@ -83,7 +83,7 @@ int board_interface_eth_init(struct udevice *dev, phy_interface_t interface)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_BOARD_EARLY_INIT_F) || IS_ENABLED(CONFIG_DEBUG_UART_BOARD_INIT)
+#if IS_ENABLED(CONFIG_DEBUG_UART_BOARD_INIT)
 #define UART_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_DSE(6) | PAD_CTL_FSEL2)
 #define WDOG_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_DSE(6) | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
 
@@ -92,7 +92,6 @@ static const iomux_v3_cfg_t uart_pads[] = {
 	MX91_PAD_UART1_TXD__LPUART1_TX | UART_PAD_CTRL,
 };
 
-#if IS_ENABLED(CONFIG_DEBUG_UART_BOARD_INIT)
 void board_debug_uart_init(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
@@ -100,14 +99,20 @@ void board_debug_uart_init(void)
 }
 #endif
 
-int board_early_init_f(void)
-{
-	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
-	init_uart_clk(LPUART1_CLK_ROOT);
-
-	return 0;
-}
-#endif
+#define SRC_BASE_ADDR		0x44460000
+#define SRC_GPR1		0x54
+#define SRSR_POR_B		BIT(0)
+#define SRSR_IPP_USER_RESET_B	BIT(2)
+#define SRSR_WDOG1_RST_B	BIT(3)
+#define SRSR_WDOG2_RST_B	BIT(4)
+#define SRSR_WDOG3_RST_B	BIT(5)
+#define SRSR_WDOG4_RST_B	BIT(6)
+#define SRSR_WDOG5_RST_B	BIT(7)
+#define SRSR_TEMPSENSE_RST_B	BIT(8)
+#define SRSR_CSU_RST_B		BIT(9)
+#define SRSR_JTAG_RST_B		BIT(10)
+#define SRSR_JTAG_SW_RST_B	BIT(12)
+#define SRSR_RESET_MASK		0x000017fd
 
 int board_init(void)
 {

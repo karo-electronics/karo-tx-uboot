@@ -129,7 +129,7 @@ int board_interface_eth_init(struct udevice *dev, phy_interface_t interface)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_BOARD_EARLY_INIT_F) || IS_ENABLED(CONFIG_DEBUG_UART_BOARD_INIT)
+#if IS_ENABLED(CONFIG_DEBUG_UART_BOARD_INIT)
 #define UART_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_DSE(6) | PAD_CTL_FSEL2)
 #define WDOG_PAD_CTRL	MUX_PAD_CTRL(PAD_CTL_DSE(6) | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
 
@@ -138,20 +138,10 @@ static const iomux_v3_cfg_t uart_pads[] = {
 	MX93_PAD_UART1_TXD__LPUART1_TX | UART_PAD_CTRL,
 };
 
-#if IS_ENABLED(CONFIG_DEBUG_UART_BOARD_INIT)
 void board_debug_uart_init(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
 	init_uart_clk(LPUART1_CLK_ROOT);
-}
-#endif
-
-int board_early_init_f(void)
-{
-	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
-	init_uart_clk(LPUART1_CLK_ROOT);
-
-	return 0;
 }
 #endif
 
