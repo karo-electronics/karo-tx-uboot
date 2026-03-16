@@ -4,6 +4,7 @@
  *
  */
 
+#include <binman_sym.h>
 #include <errno.h>
 #include <fdtdec.h>
 #include <fsl_esdhc_imx.h>
@@ -38,6 +39,7 @@
 #include <power/pmic.h>
 #include <asm/arch/ddr.h>
 #include "pmic.h"
+#include "../common/karo.h"
 
 #ifdef CONFIG_DEBUG_UART
 #include <debug_uart.h>
@@ -241,6 +243,7 @@ struct mem_region {
 	const char *name;
 	unsigned long start;
 	unsigned long end;
+	u32 flags;
 };
 
 #if !IS_ENABLED(CONFIG_SPL_FRAMEWORK_BOARD_INIT_F)
@@ -257,6 +260,9 @@ enum mem_regions {
 	STACK,
 	MALLOC,
 	BL31,
+#if IS_ENABLED(CONFIG_PRE_CONSOLE_BUFFER)
+	PRE_CON_BUF,
+#endif
 };
 
 #ifdef CONFIG_SPL_BSS_MAX_SIZE
@@ -265,24 +271,68 @@ enum mem_regions {
 #define BSS_SIZE	((uintptr_t)&__bss_end - (uintptr_t)&__bss_start)
 #endif
 
+static struct mem_region iram_regions[] = {
+#if defined(CONFIG_IMX8MM)
+	{ "OCRAM_S", 0x180000, 0x188000, },
+	{ "TCM", 0x7E1000, 0x820000, },
+	{ "OCRAM", 0x900000, 0x940000, },
+#elif defined(CONFIG_IMX8MN)
+	{ "OCRAM_S", 0x180000, 0x188000, },
+	{ "ITCM", 0x7E1000, 0x800000, },
+	{ "DTCM", 0x800000, 0x820000, },
+	{ "OCRAM", 0x900000, 0x980000, },
+#elif defined(CONFIG_IMX8MP)
+	{ "CAAM", 0x100000, 0x108000, },
+	{ "OCRAM_S", 0x180000, 0x189000, },
+	{ "ITCM", 0x7E1000, 0x800000, },
+	{ "DTCM", 0x800000, 0x820000, },
+	{ "OCRAM", 0x900000, 0x990000, },
+#else
+#error Unsupported SoC type
+#endif
+};
+
+#define SHARED_REGION(n)		BIT(n)
+
 static struct mem_region mem_regions[] = {
 	[SPL] = { "SPL", CONFIG_SPL_TEXT_BASE, (uintptr_t)&_end, },
 	[DTB] = { "DTB", (uintptr_t)&_end, },
-	[DDRFW] = { "DDRFW", },
-	[BSS] = { "BSS", (uintptr_t)&__bss_start,
-		  (uintptr_t)&__bss_start + BSS_SIZE, },
-	[STACK] = { "Stack", },
+	[DDRFW] = { "DDRFW", 0, 0, SHARED_REGION(0), },
+	[BSS] = { "BSS", (uintptr_t)&__bss_start, (uintptr_t)&__bss_start + BSS_SIZE, },
+	[STACK] = { "STACK+GD", },
 	[MALLOC] = { "MALLOC", },
-	[BL31] = { "BL31", CONFIG_BL31_BASE, BL31_END, },
-	[DRAMCFG] = {"DRAMCFG", CONFIG_SAVED_DRAM_TIMING_BASE,
-		       CONFIG_SAVED_DRAM_TIMING_BASE + 0x2b00, },
+	[BL31] = { "BL31", CONFIG_BL31_BASE, BL31_END, SHARED_REGION(0), },
+	[DRAMCFG] = {"DRAMCFG", CONFIG_SAVED_DRAM_TIMING_BASE, },
+#if IS_ENABLED(CONFIG_PRE_CONSOLE_BUFFER)
+	[PRE_CON_BUF] = {"RS232BUF", CONFIG_PRE_CON_BUF_ADDR,
+			 CONFIG_PRE_CON_BUF_ADDR + CONFIG_PRE_CON_BUF_SZ, },
+#endif
 };
 
 static const size_t num_regions = ARRAY_SIZE(mem_regions);
 
+static int region_is_in_iram(const struct mem_region *r1, const struct mem_region *ri)
+{
+	size_t overflow;
+
+	if (r1->start >= ri->start && r1->end <= ri->end)
+		return 0;
+	if (r1->end <= ri->start || r1->start >= ri->end)
+		return 1;
+	overflow = r1->end > ri->end ? r1->end - ri->end : 0;
+	overflow += r1->start < ri->start ? ri->start - r1->start : 0;
+	printf("%-8s:\t%08lx..%08lx (%08lx) overflows %-8s %08lx..%08lx by %zu (%08zx) bytes\n",
+	       r1->name, r1->start, r1->end - 1, r1->end - r1->start,
+	       ri->name, ri->start, ri->end - 1, overflow, overflow);
+	return -1;
+}
+
 static bool check_region(const struct mem_region *r1, const struct mem_region *r2)
 {
 	size_t overlap;
+
+	if (!r1)
+		return true;
 
 	if (r1->start >= r2->end || r1->end <= r2->start)
 		return true;
@@ -290,11 +340,15 @@ static bool check_region(const struct mem_region *r1, const struct mem_region *r
 	if (r2->start >= r1->start)
 		overlap = min(r1->end - r2->start, r2->end - r2->start);
 	else if (r1->start > r2->start)
-		overlap = min(r2->end - r1->start, r1->end - r1->start);
-
-	printf("%-8s:\t%08lx..%08lx (%08lx) overlaps %8s %08lx..%08lx by %zu (%08zx) bytes\n",
-	       r2->name, r2->start, r2->end - 1, r2->end - r2->start,
-	       r1->name, r1->start, r1->end - 1, overlap, overlap);
+		overlap = min(r2->end - r1->start, r2->end - r2->start);
+	if (r1->flags | r2->flags && r1->flags == r2->flags)
+		printf("%-8s:\t%08lx..%08lx (%08lx) shares %8s %08lx..%08lx for %zu (%08zx) bytes\n",
+		       r2->name, r2->start, r2->end - 1, r2->end - r2->start,
+		       r1->name, r1->start, r1->end - 1, overlap, overlap);
+	else
+		printf("%-8s:\t%08lx..%08lx (%08lx) overlaps %8s %08lx..%08lx by %zu (%08zx) bytes\n",
+		       r2->name, r2->start, r2->end - 1, r2->end - r2->start,
+		       r1->name, r1->start, r1->end - 1, overlap, overlap);
 
 	return false;
 }
@@ -306,28 +360,79 @@ static bool check_region(const struct mem_region *r1, const struct mem_region *r
 #endif
 
 #if !defined(CFG_MALLOC_F_ADDR)
-#define SPL_STACK_END		(CONFIG_SPL_STACK - CONFIG_VAL(SYS_MALLOC_F_LEN))
-#define MALLOC_START_ADDR	SPL_SYS_MALLOC_START
+#define MALLOC_START_ADDR	get_spl_stack()
 #else
-#define SPL_STACK_END		CONFIG_SPL_STACK
 #define MALLOC_START_ADDR	CFG_MALLOC_F_ADDR
 #endif
+
+static inline unsigned long get_spl_stack(void)
+{
+	unsigned long spl_stack;
+
+#if CONFIG_IS_ENABLED(HAVE_INIT_STACK)
+	spl_stack = CONFIG_SPL_STACK;
+#elif IS_ENABLED(CONFIG_INIT_SP_RELATIVE)
+	spl_stack = (unsigned long)&__bss_start + CONFIG_SYS_INIT_SP_BSS_OFFSET;
+#else
+	spl_stack = SYS_INIT_SP_ADDR;
+#endif
+	spl_stack = rounddown(spl_stack, 16);
+#ifndef CFG_MALLOC_F_ADDR
+	if (CONFIG_IS_ENABLED(SYS_MALLOC_F)) {
+		spl_stack -= CONFIG_VAL(SYS_MALLOC_F_LEN);
+	}
+#endif
+	return spl_stack;
+}
+
+static inline unsigned long dram_timing_size(struct dram_timing_info *dram_timing)
+{
+	return dram_timing->ddrc_cfg_num * sizeof(*dram_timing->ddrc_cfg) +
+		dram_timing->ddrphy_cfg_num * sizeof(*dram_timing->ddrphy_cfg) +
+		dram_timing->fsp_msg_num * sizeof(*dram_timing->fsp_msg) +
+		dram_timing->ddrphy_trained_csr_num * sizeof(*dram_timing->ddrphy_trained_csr) +
+		dram_timing->ddrphy_pie_num * sizeof(*dram_timing->ddrphy_pie) +
+		sizeof(*dram_timing->fsp_table);
+}
+
+static inline unsigned long ddrfw_size(void)
+{
+	unsigned long ddrfw_size = 0;
+
+	if (BINMAN_SYMS_OK) {
+		ddrfw_size += binman_sym(ulong, ddr_1d_imem_fw, size);
+		ddrfw_size += binman_sym(ulong, ddr_1d_dmem_fw, size);
+#if !IS_ENABLED(CONFIG_IMX8M_DDR3L)
+		ddrfw_size += binman_sym(ulong, ddr_2d_imem_fw, size);
+		ddrfw_size += binman_sym(ulong, ddr_2d_dmem_fw, size);
+#endif
+	} else {
+		ddrfw_size = SPL_DDRFW_SIZE;
+	}
+	return ddrfw_size;
+}
 
 static void check_mem_regions(struct mem_region *mem_regions, size_t num_regions)
 {
 	uintptr_t sp;
-	uintptr_t eof = (uintptr_t)&_end;
+	uintptr_t eof;
 	uintptr_t dtb = (uintptr_t)gd->fdt_blob;
 	size_t i, j;
 	int err = 0;
-	int mri[num_regions];
+	size_t mri[num_regions];
+
+	if (CONFIG_IS_ENABLED(SEPARATE_BSS))
+		eof = (uintptr_t)&_end;
+	else
+		eof = (uintptr_t)&__bss_end;
 
 	memset(mri, 0xff, sizeof(mri));
 
 	asm("mov %0, sp\n" : "=r"(sp));
 
-	mem_regions[STACK].end = SPL_STACK_END;
-	mem_regions[STACK].start = SPL_STACK_END - STACK_SIZE - ALIGN(GD_SIZE, 16);
+	mem_regions[DRAMCFG].end = mem_regions[DRAMCFG].start + dram_timing_size(&dram_timing);
+	mem_regions[STACK].end = get_spl_stack();
+	mem_regions[STACK].start = mem_regions[STACK].end - STACK_SIZE - ALIGN(GD_SIZE, 16);
 
 	if (sp < mem_regions[STACK].start) {
 		printf("Stack overflow: sp=%08lx [%08lx..%08lx]\n", sp,
@@ -350,9 +455,11 @@ static void check_mem_regions(struct mem_region *mem_regions, size_t num_regions
 		printf("No valid DTB found\n");
 	}
 	mem_regions[DDRFW].start = eof;
-	mem_regions[DDRFW].end = eof + SPL_DDRFW_SIZE;
+	mem_regions[DDRFW].end = eof + ddrfw_size();
+#if CONFIG_IS_ENABLED(SYS_MALLOC_F)
 	mem_regions[MALLOC].start = MALLOC_START_ADDR;
 	mem_regions[MALLOC].end = MALLOC_START_ADDR + CONFIG_VAL(SYS_MALLOC_F_LEN);
+#endif
 
 	for (i = j = 0; i < num_regions; i++) {
 		int k;
@@ -371,28 +478,52 @@ static void check_mem_regions(struct mem_region *mem_regions, size_t num_regions
 			mri[k - 1] = i;
 		}
 	}
-	for (i = 0; i < j; i++) {
-		struct mem_region *r1 = NULL;
-		struct mem_region *r2;
 
-		if (mri[i] < 0)
-			break;
-		r2 = &mem_regions[mri[i]];
-		if (i > 0) {
-			r1 = &mem_regions[mri[i - 1]];
-			if (r1->end < r2->start)
-				printf("%-8s:\t%08lx..%08lx (%08lx)\n", " **GAP**",
-				       r1->end, r2->start - 1,
-				       r2->start - r1->end);
+	for (i = 0; i < ARRAY_SIZE(iram_regions); i++) {
+		struct mem_region *ri = &iram_regions[i];
+		struct mem_region *rl = NULL;
+		size_t k;
+
+		printf("\n%-8s:\t%08lx..%08lx\n", ri->name, ri->start, ri->end - 1);
+		for (k = 0; k < j; k++) {
+			struct mem_region *r1 = NULL;
+			struct mem_region *r2;
+			int err;
+
+			if (mri[k] < 0)
+				break;
+			r2 = &mem_regions[mri[k]];
+			err = region_is_in_iram(r2, ri);
+			if (err)
+				continue;
+			if (k > 0) {
+				r1 = &mem_regions[mri[k - 1]];
+				if (r2->start > r1->end && rl && r2->start > rl->end)
+					printf("%-8s:\t%08lx..%08lx (%08lx)\n", " **GAP**",
+					       r1->end, r2->start - 1,
+					       r2->start - r1->end);
+			}
+			if (check_region(r1, r2)) {
+				printf("%-8s:\t%08lx..%08lx (%08lx)\n", r2->name,
+				       r2->start, r2->end - 1,
+				       r2->end - r2->start);
+				rl = r2;
+			} else {
+				err++;
+			}
 		}
-		if (check_region(r1, r2))
-			printf("%-8s:\t%08lx..%08lx (%08lx)\n", r2->name,
-			       r2->start, r2->end - 1,
-			       r2->end - r2->start);
-		else
-			err++;
+		if (!rl)
+			printf("%-8s:\t%08lx..%08lx (%08lx)\n", " **GAP**",
+			       ri->start, ri->end - 1,
+			       ri->end - ri->start);
+		else if (ri->end > rl->end)
+			printf("%-8s:\t%08lx..%08lx (%08lx)\n", " **GAP**",
+			       rl->end, ri->end - 1,
+			       ri->end - rl->end);
 	}
-	if (err)
+	if (!err)
+		puts("\n");
+	else
 #if defined(DEBUG)
 		puts("Memory regions overlap detected\n");
 #else

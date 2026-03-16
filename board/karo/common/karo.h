@@ -4,13 +4,14 @@
  *
  */
 
+#include <binman_sym.h>
 #include <config.h>
 
 #if IS_ENABLED(CONFIG_XPL_BUILD)
-#if CONFIG_SPL_SIZE_LIMIT > 0 &&					\
-	CONFIG_VAL(SIZE_LIMIT) > (SPL_OCRAM_SIZE - SPL_DTB_SIZE - SPL_DDRFW_SIZE)
-#error CONFIG_SPL_SIZE_LIMIT exceeds available OCRAM space
-#endif /* CONFIG_SPL_SIZE_LIMIT > 0 ... */
+binman_sym_extern(ulong, ddr_1d_imem_fw, size);
+binman_sym_extern(ulong, ddr_1d_dmem_fw, size);
+binman_sym_extern(ulong, ddr_2d_imem_fw, size);
+binman_sym_extern(ulong, ddr_2d_dmem_fw, size);
 #endif /* CONFIG_XPL_BUILD */
 
 void karo_set_ethaddr(int index);
