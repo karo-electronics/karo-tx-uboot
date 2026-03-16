@@ -144,15 +144,15 @@
 
 	pinctrl_lpi2c2: lpi2c2grp {
 		fsl,pins = <
-			MX91_PAD_I2C2_SCL__LPI2C2_SCL			0x40001a1e
-			MX91_PAD_I2C2_SDA__LPI2C2_SDA			0x40001a1e
+			MX91_PAD_I2C2_SCL__LPI2C2_SCL			0x40001b1e
+			MX91_PAD_I2C2_SDA__LPI2C2_SDA			0x40001b1e
 		>;
 	};
 
 	pinctrl_lpi2c2_gpio: lpi2c2-gpiogrp {
 		fsl,pins = <
-			MX91_PAD_I2C2_SCL__GPIO1_IO2			0x40001a1e
-			MX91_PAD_I2C2_SDA__GPIO1_IO3			0x40001a1e
+			MX91_PAD_I2C2_SCL__GPIO1_IO2			0x40001b1e
+			MX91_PAD_I2C2_SDA__GPIO1_IO3			0x40001b1e
 		>;
 	};
 
@@ -166,7 +166,7 @@
 
 	pinctrl_lpspi3_cs: lpspi3-csgrp {
 		fsl,pins = <
-			MX91_PAD_SAI1_TXFS__GPIO1_IO11			0x21e
+			MX91_PAD_SAI1_TXFS__GPIO1_IO11			0x31e
 		>;
 	};
 

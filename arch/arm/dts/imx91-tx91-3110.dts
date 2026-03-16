@@ -224,15 +224,15 @@
 
 	pinctrl_lpi2c3: lpi2c3grp {
 		fsl,pins = <
-			MX91_PAD_GPIO_IO29__LPI2C3_SCL			0x40001a1e
-			MX91_PAD_GPIO_IO28__LPI2C3_SDA			0x40001a1e
+			MX91_PAD_GPIO_IO29__LPI2C3_SCL			0x40001b1e
+			MX91_PAD_GPIO_IO28__LPI2C3_SDA			0x40001b1e
 		>;
 	};
 
 	pinctrl_lpi2c3_gpio: lpi2c3-gpiogrp {
 		fsl,pins = <
-			MX91_PAD_GPIO_IO29__GPIO2_IO29			0x40001a1e
-			MX91_PAD_GPIO_IO28__GPIO2_IO28			0x40001a1e
+			MX91_PAD_GPIO_IO29__GPIO2_IO29			0x40001b1e
+			MX91_PAD_GPIO_IO28__GPIO2_IO28			0x40001b1e
 		>;
 	};
 
@@ -246,7 +246,7 @@
 
 	pinctrl_lpspi3_cs: lpspi3-csgrp {
 		fsl,pins = <
-			MX91_PAD_SAI1_TXFS__GPIO1_IO11			0x21e
+			MX91_PAD_SAI1_TXFS__GPIO1_IO11			0x31e
 		>;
 	};
 
@@ -258,8 +258,8 @@
 
 	pinctrl_lpuart4_rtscts: uart4-rtsctsgrp {
 		fsl,pins = <
-			MX91_PAD_ENET2_RD2__LPUART4_CTS_B		0x21e
-			MX91_PAD_ENET2_TD1__LPUART4_RTS_B		0x21e
+			MX91_PAD_ENET2_RD2__LPUART4_CTS_B		0x31e
+			MX91_PAD_ENET2_TD1__LPUART4_RTS_B		0x31e
 		>;
 	};
 
