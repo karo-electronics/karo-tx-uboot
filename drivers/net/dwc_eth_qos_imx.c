@@ -34,11 +34,6 @@ static struct clk_ref eqos_imx_clks[] = {
 	{ "pclk", offsetof(struct eqos_priv, clk_ck), },
 };
 
-__weak u32 imx_get_eqos_csr_clk(void)
-{
-	return 100 * 1000000;
-}
-
 static ulong eqos_get_tick_clk_rate_imx(struct udevice *dev)
 {
 	struct eqos_priv *eqos = dev_get_priv(dev);

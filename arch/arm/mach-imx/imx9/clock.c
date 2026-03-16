@@ -862,11 +862,6 @@ int set_clk_eqos(enum enet_freq type)
 	return 0;
 }
 
-u32 imx_get_eqos_csr_clk(void)
-{
-	return ccm_clk_root_get_rate(WAKEUP_AXI_CLK_ROOT);
-}
-
 u32 imx_get_fecclk(void)
 {
 	return ccm_clk_root_get_rate(WAKEUP_AXI_CLK_ROOT);
