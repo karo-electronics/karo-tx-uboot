@@ -48,12 +48,10 @@
 #define LDOEN1_VAL			(LDOEN1_LDO1EN | LDOEN1_LDO2EN | \
 					 LDOEN1_LDO3EN | LDOEN1_LDO4EN | \
 					 LDOEN1_LDO5EN)
-#define LDOEN1_MASK			0x1f
 
 #define LDOEN2_LDORTC1EN		BIT(4)
 #define LDOEN2_LDORTC2EN		BIT(5)
 #define LDOEN2_VAL			(LDOEN2_LDORTC1EN | LDOEN2_LDORTC2EN)
-#define LDOEN2_MASK			0x30
 
 /* calculate voltages in 10mV */
 #define rn5t_v2r(v, n, m)		(((((v) * 10 < (n)) ? (n) :	\
@@ -81,7 +79,7 @@
 #define VDD_DRAM_PU_VAL_LP		rn5t_mV_to_regval(900)
 
 /* DCDC2 */
-#define VDD_ARM_VAL			rn5t_mV_to_regval(900)
+#define VDD_ARM_VAL			rn5t_mV_to_regval(950)
 #define VDD_ARM_VAL_LP			rn5t_mV_to_regval(900)
 
 /* DCDC3 */
@@ -115,10 +113,16 @@
 #define VDD_PHY_0V9_VAL_LP		rn5t_mV_to_regval2(900)
 
 static const struct pmic_val pmic_vals[] = {
+	RN5T567_REG(CPUCNT, 0),
+	RN5T567_REG(OUT32KEN, 0x04),
+	RN5T567_REG(IOSEL, 0x0),
+	RN5T567_REG(VINDAC, 0x12),
+	RN5T567_REG(WATCHDOG, 0x03),
+	RN5T567_REG(PWRFUNC, 0),
+	RN5T567_REG(PWRONTIMSET, 0x39),
 	RN5T567_REG(NOETIMSETCNT, NOETIMSET_DIS_OFF_NOE_TIM | 0x5),
 	RN5T567_REG(SLPCNT, 0),
 	RN5T567_REG(REPCNT, (3 << 4) | (0 << 1)),
-
 	RN5T567_REG(LDORTC1DAC, NVCC_SNVS_1V8_VAL),
 	RN5T567_REG(LDORTC2DAC, VDD_SNVS_0V9_VAL),
 
@@ -167,15 +171,22 @@ static const struct pmic_val pmic_vals[] = {
 	RN5T567_REG(DC4_SLOT, 0x7f),
 	RN5T567_REG(LDO1_SLOT, 0x8f),
 	RN5T567_REG(LDO4_SLOT, 0x9f),
+	RN5T567_REG(PSO0_SLOT, 0xff),
+	RN5T567_REG(PSO1_SLOT, 0xff),
+	RN5T567_REG(PSO2_SLOT, 0xff),
+	RN5T567_REG(PSO3_SLOT, 0xff),
 
-	RN5T567_REG(LDOEN1, LDOEN1_VAL, ~LDOEN1_MASK),
-	RN5T567_REG(LDOEN2, LDOEN2_VAL, ~LDOEN2_MASK),
+	RN5T567_REG(LDOEN1, LDOEN1_VAL),
+	RN5T567_REG(LDOEN2, LDOEN2_VAL),
 
-	RN5T567_REG(LDODIS1, 0x1f, ~0x1f),
+	RN5T567_REG(LDODIS1, 0x1f),
 	RN5T567_REG(INTPOL, 0),
 	RN5T567_REG(INTEN, 0x0),
+	RN5T567_REG(PWRIREN, 0),
+	RN5T567_REG(PWRIRSEL, 0x0f),
 	RN5T567_REG(DCIREN, 0x0),
 	RN5T567_REG(EN_GPIR, 0),
+	RN5T567_REG(PSWR, 0x4b),
 };
 
 int power_init_board(void)
@@ -185,6 +196,7 @@ int power_init_board(void)
 	u8 ver[2];
 	struct udevice *pmic_dev;
 
+printf("%s@%d: \n", __func__, __LINE__);
 	ret = pmic_get(PMIC_NODE, &pmic_dev);
 	if (ret) {
 		printf("Could not find PMIC '%s': %d\n", PMIC_NODE, ret);

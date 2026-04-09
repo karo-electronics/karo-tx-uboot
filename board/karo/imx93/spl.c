@@ -73,13 +73,6 @@ void board_debug_uart_init(void)
 #endif
 
 #define WDOG_PAD_CTRL		MUX_PAD_CTRL(PAD_CTL_DSE(6) | PAD_CTL_ODE | PAD_CTL_PUE)
-#define WDOG_CS			0x00
-#define WDOG_CS_ULK		BIT(11)
-#define WDOG_CS_RCS		BIT(10)
-#define WDOG_CNT		0x04
-#define WDOG_CNT_UNLOCK		0xd928c520
-#define WDOG_TOVAL		0x08
-#define WDOG_WIN		0x0c
 
 static const iomux_v3_cfg_t wdog_pads[] = {
 	MX93_PAD_WDOG_ANY__WDOG1_WDOG_ANY | WDOG_PAD_CTRL,
@@ -92,9 +85,19 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 	const void *fdt_addr = gd->fdt_blob;
 
 	image_entry_noargs_t image_entry =
-		(image_entry_noargs_t)(unsigned long)spl_image->entry_point;
+		(image_entry_noargs_t)(uintptr_t)spl_image->entry_point;
+#ifdef DEBUG
+	uintptr_t sp;
 
-	debug("%s@%d: image entry point: 0x%p\n", __func__, __LINE__, image_entry);
+	asm("\tmov	%0, sp\n" : "=r"(sp));
+	debug("image entry point: 0x%p sp=%08lx\n", image_entry, sp);
+	debug("fdtaddr=%p\n", fdt_addr);
+#if CONFIG_IS_ENABLED(SYS_MALLOC_F)
+	malloc_simple_info();
+	printf("@%08lx..%08lx\n", gd->malloc_base,
+	       gd->malloc_base + gd->malloc_ptr - 1);
+#endif /* SYS_MALLOC_F */
+#endif /* DEBUG */
 
 #if CONFIG_IS_ENABLED(IMX_HAB)
 	/*
@@ -113,6 +116,7 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 		panic("spl: ERROR: failed to authenticate bootloader image\n");
 	}
 #endif
+
 	asm("\tmov x1, %0\n"
 	    :: "r"(fdt_addr) : "x0", "x1", "x2", "x3");
 	image_entry();
@@ -197,16 +201,18 @@ int power_init_board(void)
 	if (ret != 0)
 		return ret;
 
-	/* 0.9v for Overdrive mode */
-	pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS0, 0x18);
-	pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS1, 0x18);
+	/* reset all register to default values */
+	pmic_reg_write(dev, PCA9450_SW_RST, 0x05);
 
-	pmic_reg_write(dev, PCA9450_BUCK4OUT, 0x6c);
-	pmic_reg_write(dev, PCA9450_BUCK5OUT, 0x30);
-	pmic_reg_write(dev, PCA9450_BUCK6OUT, 0x14);
+	/* Disable TOFF_DEB */
+	pmic_reg_write(dev, PCA9450_PWR_CTRL, 0x4c);
+
+	/* 0.8625v for Overdrive mode */
+	pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS0, 0x15);
+	pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS1, 0x01);
 
 	/* BUCKxOUT_DVS0/1 control BUCK123 output */
-	pmic_reg_write(dev, PCA9450_BUCK123_DVS, 0x78);
+	pmic_reg_write(dev, PCA9450_BUCK123_DVS, 0x29);
 
 	/* enable DVS control through PMIC_STBY_REQ */
 	pmic_reg_write(dev, PCA9450_BUCK1CTRL, 0x59);
@@ -214,24 +220,13 @@ int power_init_board(void)
 	/* disable BUCK2 and activate discharge resistor */
 	pmic_reg_write(dev, PCA9450_BUCK2CTRL, 0x48);
 
-	pmic_reg_write(dev, PCA9450_BUCK4CTRL, 0x09);
-	pmic_reg_write(dev, PCA9450_BUCK5CTRL, 0x09);
-	pmic_reg_write(dev, PCA9450_BUCK6CTRL, 0x09);
-
-	pmic_reg_write(dev, PCA9450_LDO_AD_CTRL, 0xf8);
-	pmic_reg_write(dev, PCA9450_LDO1CTRL, 0xc2);
+	/* switch off unused LDOs */
 	pmic_reg_write(dev, PCA9450_LDO2CTRL, 0x00);
-	pmic_reg_write(dev, PCA9450_LDO3CTRL, 0x0a);
-	pmic_reg_write(dev, PCA9450_LDO4CTRL, 0x40);
-
-	/* switch off unused LDO5 */
+	pmic_reg_write(dev, PCA9450_LDO3CTRL, 0x00);
 	pmic_reg_write(dev, PCA9450_LDO5CTRL_L, 0x00);
 
-	/* disable I2C Level Translator */
-	pmic_reg_write(dev, PCA9450_CONFIG2, 0x0);
-
 	/* set WDOG_B_CFG to cold reset */
-	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0x61);
+	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0xa1);
 	return 0;
 }
 #endif
@@ -240,6 +235,7 @@ struct mem_region {
 	const char *name;
 	unsigned long start;
 	unsigned long end;
+	u32 flags;
 };
 
 #if !IS_ENABLED(CONFIG_SPL_FRAMEWORK_BOARD_INIT_F)

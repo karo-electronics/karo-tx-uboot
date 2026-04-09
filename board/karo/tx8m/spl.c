@@ -57,13 +57,12 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 	typedef void __noreturn (*image_entry_noargs_t)(void);
 	const void *fdt_addr = gd->fdt_blob;
 	image_entry_noargs_t image_entry =
-		(image_entry_noargs_t)spl_image->entry_point;
+		(image_entry_noargs_t)(uintptr_t)spl_image->entry_point;
 #ifdef DEBUG
 	uintptr_t sp;
 
 	asm("\tmov	%0, sp\n" : "=r"(sp));
-	debug("image entry point: 0x%lx sp=%08lx\n",
-	      spl_image->entry_point, sp);
+	debug("image entry point: 0x%p sp=%08lx\n", image_entry, sp);
 	debug("fdtaddr=%p\n", fdt_addr);
 #if CONFIG_IS_ENABLED(SYS_MALLOC_F)
 	malloc_simple_info();
@@ -209,10 +208,6 @@ void spl_dram_init(void)
 {
 	int loops = 0;
 	int max_loops = 5;
-	unsigned long sp;
-
-	asm("mov %0, sp\n" : "=r"(sp));
-	debug("%s@%d: SP=%08lx\n", __func__, __LINE__, sp);
 
 	while (ddr_init(&dram_timing)) {
 		if (loops == 0)
@@ -224,8 +219,6 @@ void spl_dram_init(void)
 	}
 	if (loops)
 		printf("DDR Training OK after %u loops\n", loops);
-
-	debug("%s@%d: dram_init done\n", __func__, __LINE__);
 }
 
 #ifdef CONFIG_SPL_BOARD_INIT

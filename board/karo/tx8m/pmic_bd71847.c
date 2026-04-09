@@ -66,19 +66,43 @@
 
 #define buck8_mV_to_regval(mV)		(((mV) - 800) / 10)
 
+#define ldo1_mV_to_regval(mV)		(((mV) < 3000) ? (BIT(5) | (((mV) > 1900) ? 3 : \
+								    ((mV) / 100 - 16))) : \
+					 ((mV) > 3300) ? 3 : ((mV) / 100 - 30))
+
+#define ldo2_mV_to_regval(mV)		(((mV) < 900) ? 1 : 0)
+
+#define ldo3_mV_to_regval(mV)		((mV) / 100 - 18)
+
+#define ldo46_mV_to_regval(mV)		(((mV) > 1800) ? 0xa : (mV) / 100 - 9)
+
+#define ldo5_mV_to_regval(mV)		(((mV) < 1800) ? (BIT(5) | ((mV) / 100 - 8)) : \
+					 ((mV) > 3300) ? 0xf : ((mV) / 100 - 18))
+
 #define R1				499
 #define R2				2200
 
-#define VDD_SOC_0V8_VAL			buck1_4_mV_to_regval(900)
-#define VDD_ARM_0V9_VAL			buck1_4_mV_to_regval(900)
+#define VDD_SOC_0V8_VAL			buck1_4_mV_to_regval(820)
+#define VDD_ARM_0V9_VAL			buck1_4_mV_to_regval(950)
 #define VDD_DRAM_PU_0V9_VAL		buck5_mV_to_regval(900)
 #define VDD_3V3_VAL			buck6_mV_to_regval(3300)
 #define VDD_1V8_VAL			buck7_mV_to_regval(1800)
 #define NVCC_DRAM_VAL			buck8_mV_to_regval(1350 * R2 / (R1 + R2))
 
 static const struct pmic_val pmic_vals[] = {
+	BD71847_REG(MVRFLTMASK0, 0x00),
+	BD71847_REG(MVRFLTMASK1, 0x00),
+	/* mask vrfault for unused LDO5 */
+	BD71847_REG(MVRFLTMASK2, BIT(4)),
+	BD71847_REG(VRFAULTEN, 0x01),
+	BD71847_REG(RCVCFG, 0x4c),
+	BD71847_REG(RCVNUM, 0),
 	/* decrease RESET key long push time from the default 10s to 10ms */
+	BD71847_REG(PWRONCONFIG0, 6),
 	BD71847_REG(PWRONCONFIG1, 0),
+	BD71847_REG(TRANS_COND0, 0x48),
+	BD71847_REG(MIRQ, 0x7b),
+	BD71847_REG(MUXSW_EN, 0),
 	/* unlock the PMIC regs */
 	BD71847_REG(REGLOCK, BD718XX_REGLOCK_PWRSEQ),
 	BD71847_REG(BUCK1_CTRL, 0x40),
@@ -86,6 +110,7 @@ static const struct pmic_val pmic_vals[] = {
 	BD71847_REG(1ST_NODVS_BUCK_CTRL, 0x00), /* BUCK3 */
 	BD71847_REG(2ND_NODVS_BUCK_CTRL, 0x00), /* BUCK4 */
 	BD71847_REG(3RD_NODVS_BUCK_CTRL, 0x00), /* BUCK5 */
+	BD71847_REG(4TH_NODVS_BUCK_CTRL, 0x00), /* BUCK6 */
 	BD71847_REG(BUCK1_VOLT_RUN, VDD_SOC_0V8_VAL),
 	BD71847_REG(BUCK2_VOLT_RUN, VDD_ARM_0V9_VAL),
 	/* increase VDD_DRAM to 0.9v for 3Ghz DDR */
@@ -94,6 +119,12 @@ static const struct pmic_val pmic_vals[] = {
 	BD71847_REG(3RD_NODVS_BUCK_VOLT, VDD_1V8_VAL),
 	/* increase NVCC_DRAM_1V35 to 1.35v for DDR3L */
 	BD71847_REG(4TH_NODVS_BUCK_VOLT, NVCC_DRAM_VAL),
+
+	BD71847_REG(LDO1_VOLT, ldo1_mV_to_regval(1800)),
+	BD71847_REG(LDO2_VOLT, ldo2_mV_to_regval(800)),
+	BD71847_REG(LDO3_VOLT, ldo3_mV_to_regval(1800)),
+	BD71847_REG(LDO4_VOLT, ldo46_mV_to_regval(900)),
+	BD71847_REG(LDO6_VOLT, ldo46_mV_to_regval(1200)),
 
 	/* lock the PMIC regs */
 	BD71847_REG(REGLOCK, BD718XX_REGLOCK_VREG, ~BD718XX_REGLOCK_VREG),

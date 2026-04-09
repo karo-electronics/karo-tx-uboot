@@ -30,8 +30,7 @@ static inline int pmic_update_reg(struct udevice *pmic, uint reg, uint value,
 
 	ret = pmic_reg_read(pmic, reg);
 	if (ret < 0) {
-		printf("Failed to read register %s[0x%02x]: %d\n",
-		       reg_name, reg, ret);
+		printf("Failed to read register %s[0x%02x]: %d\n", reg_name, reg, ret);
 		return ret;
 	}
 	val = ret;
@@ -43,8 +42,8 @@ static inline int pmic_update_reg(struct udevice *pmic, uint reg, uint value,
 		debug("Changing PMIC reg %s(0x%02x) from 0x%02x to 0x%02x\n",
 		      reg_name, reg, val, value);
 	} else {
-		debug("Leaving PMIC reg %s(0x%02x) at 0x%02x\n",
-		      reg_name, reg, value);
+		debug("Leaving PMIC reg %s(0x%02x) at 0x%02x\n", reg_name, reg, value);
+		return 0;
 	}
 
 	ret = pmic_reg_write(pmic, reg, value);
@@ -53,6 +52,8 @@ static inline int pmic_update_reg(struct udevice *pmic, uint reg, uint value,
 		       value, reg_name, reg, ret);
 		return ret;
 	}
+	debug("Wrote 0x%02x to register %s[0x%02x]\n", value, reg_name, reg);
+
 	return 0;
 }
 #else
