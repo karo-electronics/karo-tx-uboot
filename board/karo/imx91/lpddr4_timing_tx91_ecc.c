@@ -2,7 +2,7 @@
 /*
  * Copyright 2026 NXP
  *
- * Code generated with DDR Tool v3.9.0_2.4-378c9b3d8.
+ * Code generated with DDR Tool v4.0.0_2.5-1eade933a.
  * DDR PHY FW2022.01
  * Part number: Unknown
  */
@@ -18,7 +18,7 @@ static struct dram_cfg_param ddr_ddrc_cfg[] = {
 	{ 0x4e300080, 0x80000312, },
 	{ 0x4e300084, 0x0, },
 	{ 0x4e300114, 0x1012, },
-	{ 0x4e300260, 0x80, },
+	{ 0x4e300260, 0x4000, },
 	{ 0x4e300f04, 0x80, },
 	{ 0x4e300800, 0x43b30d00, },
 	{ 0x4e300804, 0x1f1f1f1f, },
@@ -1986,7 +1986,7 @@ struct dram_timing_info dram_timing = {
 	.ddrphy_trained_csr_num = ARRAY_SIZE(ddr_ddrphy_trained_csr),
 	.ddrphy_pie = ddr_phy_pie,
 	.ddrphy_pie_num = ARRAY_SIZE(ddr_phy_pie),
-    .fsp_table = { 2400, 1200, 625, },
+	.fsp_table = { 2400, 1200, 625, },
 	.fsp_cfg = ddr_dram_fsp_cfg,
 	.fsp_cfg_num = ARRAY_SIZE(ddr_dram_fsp_cfg),
 };
