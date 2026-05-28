@@ -90,6 +90,15 @@ config KARO_QSMP_1351
 	  an STM32MP135C SOC, 256MiB of SDRAM and 4GiB eMMC on a solder-in
 	  module.
 
+config KARO_QSMP_2030
+	bool "Ka-Ro QSMP-2030 module"
+	depends on TARGET_KARO_STM32MP23
+	select KARO_STM32
+	imply KARO_STM32_EMMC
+	help
+	  Enable support for the Ka-Ro electronics QSMP-2350 module featuring
+	  an STM32MP235C SOC, 1GiB of SDRAM and 4GiB eMMC.
+
 config KARO_QSMP_2350
 	bool "Ka-Ro QSMP-2350 module"
 	depends on TARGET_KARO_STM32MP23

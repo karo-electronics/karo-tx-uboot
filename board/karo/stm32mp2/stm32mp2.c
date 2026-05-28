@@ -221,6 +221,8 @@ int checkboard(void)
 	printf("Board: QSMP-2550");
 #elif defined(CONFIG_KARO_QSMP_2350)
 	printf("Board: QSMP-2350");
+#elif defined(CONFIG_KARO_QSMP_2030)
+	printf("Board: QSMP-2030");
 #else
 #error Unsupported Board type
 #endif
@@ -353,6 +355,10 @@ int get_eth_nb(void)
 	int eth_ports = 2;
 	const char *baseboard = env_get("baseboard");
 
+	#if defined(CONFIG_KARO_QSMP_2030)
+		eth_ports = 1;
+	#endif
+	
 	if (baseboard) {
 		if (strcmp(baseboard, "mb7") == 0)
 			eth_ports = 1;

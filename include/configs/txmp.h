@@ -45,6 +45,8 @@
 #define SOC_FAMILY "stm32mp157c"
 #elif defined(CONFIG_KARO_TXMP_1571)
 #define SOC_FAMILY "stm32mp157c"
+#elif defined(CONFIG_KARO_QSMP_2030)
+#define SOC_FAMILY "stm32mp235c"
 #elif defined(CONFIG_KARO_QSMP_2350)
 #define SOC_FAMILY "stm32mp235c"
 #elif defined(CONFIG_KARO_QSMP_2550)
