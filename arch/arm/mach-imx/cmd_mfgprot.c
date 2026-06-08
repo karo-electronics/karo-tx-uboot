@@ -7,15 +7,16 @@
  * functions in supported i.MX devices.
  */
 
-#include <asm/byteorder.h>
-#include <asm/arch/clock.h>
-#include <linux/compiler.h>
 #include <command.h>
 #include <config.h>
 #include <env.h>
 #include <fsl_sec.h>
 #include <mapmem.h>
 #include <memalign.h>
+#include <vsprintf.h>
+#include <asm/byteorder.h>
+#include <asm/arch/clock.h>
+#include <linux/compiler.h>
 
 /**
  * do_mfgprot() - Handle the "mfgprot" command-line command
@@ -29,14 +30,11 @@
  */
 static int do_mfgprot(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
-	u8 *m_ptr, *dgst_ptr, *c_ptr, *d_ptr, *dst_ptr;
-	char *pubk, *sign, *sel;
+	u8 *m_ptr, *dgst_ptr, *c_ptr, *d_ptr;
+	const char *sel = argv[1];
+
 	int m_size, i, ret;
 	u32 m_addr;
-
-	pubk = "pubk";
-	sign = "sign";
-	sel = argv[1];
 
 	/* Enable HAB clock */
 	hab_caam_clock_enable(1);
@@ -47,10 +45,11 @@ static int do_mfgprot(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	if (out_jr_size != FSL_CAAM_MAX_JR_SIZE)
 		sec_init();
 
-	if (strcmp(sel, pubk) == 0) {
-		dst_ptr = malloc_cache_aligned(FSL_CAAM_MP_PUBK_BYTES);
+	if (strcmp(sel, "pubk") == 0) {
+		u8 *dst_ptr = malloc_cache_aligned(FSL_CAAM_MP_PUBK_BYTES);
+
 		if (!dst_ptr)
-			return -ENOMEM;
+			return CMD_RET_FAILURE;
 
 		ret = gen_mppubk(dst_ptr);
 		if (ret) {
@@ -65,7 +64,7 @@ static int do_mfgprot(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 		puts("\n");
 		free(dst_ptr);
 
-	} else if (strcmp(sel, sign) == 0) {
+	} else if (strcmp(sel, "sign") == 0) {
 		if (argc != 4)
 			return CMD_RET_USAGE;
 
@@ -73,23 +72,23 @@ static int do_mfgprot(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 		m_size = dectoul(argv[3], NULL);
 		m_ptr = map_physmem(m_addr, m_size, MAP_NOCACHE);
 		if (!m_ptr)
-			return -ENOMEM;
+			return CMD_RET_FAILURE;
 
 		dgst_ptr = malloc_cache_aligned(FSL_CAAM_MP_MES_DGST_BYTES);
 		if (!dgst_ptr) {
-			ret = -ENOMEM;
+			ret = CMD_RET_FAILURE;
 			goto free_m;
 		}
 
 		c_ptr = malloc_cache_aligned(FSL_CAAM_MP_PRVK_BYTES);
 		if (!c_ptr) {
-			ret = -ENOMEM;
+			ret = CMD_RET_FAILURE;
 			goto free_dgst;
 		}
 
 		d_ptr = malloc_cache_aligned(FSL_CAAM_MP_PRVK_BYTES);
 		if (!d_ptr) {
-			ret = -ENOMEM;
+			ret = CMD_RET_FAILURE;
 			goto free_c;
 		}
 
@@ -130,7 +129,7 @@ free_m:
 	} else {
 		return CMD_RET_USAGE;
 	}
-	return ret;
+	return ret ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
 }
 
 /***************************************************/
