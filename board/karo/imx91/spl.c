@@ -246,7 +246,13 @@ struct mem_region {
 #if !IS_ENABLED(CONFIG_SPL_FRAMEWORK_BOARD_INIT_F)
 #if IS_ENABLED(CONFIG_KARO_UBOOT_MFG) || defined(DEBUG)
 
-#define BL31_END	(CONFIG_BL31_BASE + CONFIG_BL31_SIZE)
+#define BL31_START	CONFIG_BL31_BASE
+#define BL31_END	(BL31_START + CONFIG_BL31_SIZE)
+
+#ifdef CONFIG_OPTEE
+#define BL32_START	0x96000000
+#define BL32_END	(BL32_START + 0x2000000)
+#endif
 
 enum mem_regions {
 	SPL,
@@ -257,6 +263,9 @@ enum mem_regions {
 	STACK,
 	MALLOC,
 	BL31,
+#ifdef CONFIG_OPTEE
+	BL32,
+#endif
 	RSRVD1,
 	RSRVD2,
 #if IS_ENABLED(CONFIG_PRE_CONSOLE_BUFFER)
@@ -283,7 +292,10 @@ static struct mem_region mem_regions[] = {
 	[BSS] = { "BSS", (uintptr_t)&__bss_start, (uintptr_t)&__bss_start + BSS_SIZE, },
 	[STACK] = { "STACK+GD", },
 	[MALLOC] = { "MALLOC", },
-	[BL31] = { "BL31", CONFIG_BL31_BASE, BL31_END, SHARED_REGION(0), },
+	[BL31] = { "BL31", BL31_START, BL31_END, SHARED_REGION(0), },
+#ifdef CONFIG_OPTEE
+	[BL32] = { "BL32", BL32_START, BL32_END, },
+#endif
 	[DRAMCFG] = {"DRAMCFG", CONFIG_SAVED_DRAM_TIMING_BASE, },
 	[RSRVD1] = {"**RSRVD**", 0x20480000, 0x20486000, },
 	[RSRVD2] = {"**RSRVD**", 0x2048f800, 0x20490000, },
