@@ -314,11 +314,13 @@ int ft_karo_common_setup(void *blob, struct bd_info *bd)
 		    strcmp(otg_mode, "device") == 0 ||
 		    strcmp(otg_mode, "host") == 0) {
 			karo_fdt_set_dr_mode(blob, node, otg_mode);
-		} else if (!otg_mode || strcmp(otg_mode, "none") == 0) {
+		} else if (strcmp(otg_mode, "none") == 0) {
 			printf("disabling usbotg interface\n");
 			fdt_status_disabled(blob, node);
 		} else if (otg_mode) {
 			printf("Invalid otg_mode: '%s'\n", otg_mode);
+		} else {
+			printf("otg_mode not set: Not changing device tree");
 		}
 	}
 
