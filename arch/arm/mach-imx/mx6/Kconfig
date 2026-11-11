@@ -5,6 +5,7 @@ config MX6_SMP
 	select ARM_ERRATA_751472
 	select ARM_ERRATA_761320
 	select ARM_ERRATA_794072
+	select ARM_ERRATA_794073
 	select ARM_ERRATA_845369
 	select MP
 
@@ -40,6 +41,7 @@ config MX6QDL
 
 config MX6S
 	bool "i.MX 6Solo SoC support"
+	select ARM_ERRATA_794073
 	select HAS_CAAM
 
 config MX6SL
@@ -56,6 +58,7 @@ config MX6SLL
 
 config MX6UL
 	bool "i.MX 6UltraLite SoC support"
+	select ARM_ERRATA_814220
 	select HAS_CAAM
 	select ROM_UNIFIED_SECTIONS
 	select SYSCOUNTER_TIMER
@@ -63,6 +66,7 @@ config MX6UL
 
 config MX6ULL
 	bool "i.MX 6ULL SoC support"
+	select ARM_ERRATA_814220
 	select ROM_UNIFIED_SECTIONS
 	select SYSCOUNTER_TIMER
 	select SYS_L2CACHE_OFF

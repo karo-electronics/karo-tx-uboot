@@ -37,6 +37,12 @@ int cleanup_before_linux_select(int flags)
 #endif
 
 	if (flags & CBL_DISABLE_CACHES) {
+		/* ERR007007: invalidate branch predictor before MMU off */
+		if (IS_ENABLED(CONFIG_ARM_ERRATA_794073)) {
+			asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
+			dsb();
+		}
+
 		/*
 		* turn off D-cache
 		* dcache_disable() in turn flushes the d-cache and disables MMU

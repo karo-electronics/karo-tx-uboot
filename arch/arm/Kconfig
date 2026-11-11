@@ -272,10 +272,16 @@ config ARM_ERRATA_774769
 config ARM_ERRATA_794072
 	bool
 
+config ARM_ERRATA_794073
+	bool
+
 config ARM_ERRATA_798870
 	bool
 
 config ARM_ERRATA_801819
+	bool
+
+config ARM_ERRATA_814220
 	bool
 
 config ARM_ERRATA_826974

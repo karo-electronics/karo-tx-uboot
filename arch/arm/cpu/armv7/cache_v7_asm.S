@@ -63,6 +63,9 @@ loop2:
 skip:
 	add	r10, r10, #2			@ increment cache number
 	cmp	r3, r10
+#ifdef CONFIG_ARM_ERRATA_814220
+	dsb					@ ERR008958: order set/way across levels
+#endif
 	bgt	flush_levels
 finished:
 	mov	r10, #0				@ swith back to cache level 0
