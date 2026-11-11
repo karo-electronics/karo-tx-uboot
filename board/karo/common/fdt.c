@@ -375,6 +375,7 @@ int ft_karo_common_setup(void *blob, struct bd_info *bd)
 {
 	int node;
 	const char *serno_str;
+	const char *otg_mode;
 
 	serno_str = env_get("serial#");
 	if (serno_str) {
@@ -386,11 +387,10 @@ int ft_karo_common_setup(void *blob, struct bd_info *bd)
 
 	fdt_fixup_ethernet(blob);
 
+	otg_mode = env_get("otg_mode");
 	node = fdt_path_offset(blob, "usbotg");
-	if (node > 0) {
-		const char *otg_mode = env_get("otg_mode");
-
-		if (!otg_mode || strcmp(otg_mode, "none") == 0) {
+	if (otg_mode && node > 0) {
+		if (strcmp(otg_mode, "none") == 0) {
 			printf("disabling usbotg interface\n");
 			fdt_status_disabled(blob, node);
 		} else if (strcmp(otg_mode, "peripheral") == 0 ||
