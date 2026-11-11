@@ -165,17 +165,12 @@ static void board_usb_init(void)
 	/* Enable PFC write protect */
 	writel(BIT(7), PFC_PWPR);		/* PWPR.BOWI = 1 */
 
+	/* Reset USB PHY */
 	writel(0x00001133u, USBPHY_RESET);
 	udelay(1);
-#if 1	/* US0/USB1 use: USB0=OTG, USB1=Host */
+	
+	/* US0/USB1 use: USB0=OTG, USB1=Host */
 	writel(0x00001000u, USBPHY_RESET);
-#endif
-#if 0	/* USB1 unuse: USB0=OTG, USB1=USBTEST */
-	writel(0x00001011u, USBPHY_RESET);  /* USB0 only */
-#endif
-#if 0	/* USB0 unuse: USB0=USBTEST, USB1=OTG */
-	writel(0x00001000u, USBPHY_RESET);  /* USB1 only */
-#endif
 	udelay(100);
 
 	/* Setup USB0 */
