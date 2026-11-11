@@ -553,11 +553,6 @@ void karo_fixup_lcd_panel(const char *videomode)
 #if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
 
 #if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
-struct node_info mtd_nodes[] = {
-	{ "st,stm32f469-qspi",		MTD_DEV_TYPE_NOR,  },
-	{ "stf1ge4u00m",		MTD_DEV_TYPE_SPINAND,  },
-};
-
 static void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
 {
 	int root = fdt_path_offset(blob, "/soc");
@@ -592,6 +587,7 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	int ret;
 	int node;
 	const char *serno_str;
+	const char *otg_mode;
 
 	debug("%s@%d:\n", __func__, __LINE__);
 
@@ -600,9 +596,6 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		printf("Warning: Failed to increase FDT size: %s\n",
 		       fdt_strerror(ret));
 
-#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
-	karo_fixup_mtdparts(blob, mtd_nodes, ARRAY_SIZE(mtd_nodes));
-#endif
 	karo_fixup_lcd_panel(env_get("videomode"));
 
 	serno_str = env_get("serial#");
@@ -614,11 +607,10 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 
 	fdt_fixup_ethernet(blob);
 
+	otg_mode = env_get("otg_mode");
 	node = fdt_path_offset(blob, "usbotg");
-	if (node > 0) {
-		const char *otg_mode = env_get("otg_mode");
-
-		if (!otg_mode || strcmp(otg_mode, "none") == 0) {
+	if (otg_mode && node > 0) {
+		if (strcmp(otg_mode, "none") == 0) {
 			printf("disabling usbotg interface\n");
 			fdt_status_disabled(blob, node);
 		} else if (strcmp(otg_mode, "peripheral") == 0 ||
