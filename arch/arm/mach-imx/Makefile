@@ -158,6 +158,12 @@ cmd_u-boot-nand_imx = (dd bs=1024 count=1 if=/dev/zero 2>/dev/null) | cat - $< >
 u-boot-nand.imx: u-boot.imx FORCE
 	$(call if_changed,u-boot-nand_imx)
 
+quiet_cmd_u-boot-flash_imx = GEN     $@
+cmd_u-boot-flash_imx = { head -c $(CONFIG_KARO_IMX6_FLASH_PAD) /dev/zero; cat $<; } > $@
+
+u-boot-flash.imx: u-boot-dtb.imx FORCE
+	$(call if_changed,u-boot-flash_imx)
+
 ifeq ($(CONFIG_MULTI_DTB_FIT),y)
 MKIMAGEFLAGS_u-boot-dtb.imx = -n $(filter-out $(PLUGIN).bin $< $(PHONY),$^) \
 	-T $(IMAGE_TYPE) -e $(CONFIG_TEXT_BASE)

@@ -1590,6 +1590,9 @@ u-boot.uim: u-boot.bin FORCE
 u-boot-nand.imx: u-boot.imx FORCE
 	$(Q)$(MAKE) $(build)=arch/arm/mach-imx $@
 
+u-boot-flash.imx: u-boot-dtb.imx FORCE
+	$(Q)$(MAKE) $(build)=arch/arm/mach-imx $@
+
 u-boot-with-spl.imx u-boot-with-nand-spl.imx: SPL $(if $(CONFIG_OF_SEPARATE),u-boot.img,u-boot.uim) FORCE
 	$(Q)$(MAKE) $(build)=arch/arm/mach-imx $@
 

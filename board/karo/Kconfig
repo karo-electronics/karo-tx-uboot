@@ -1,5 +1,6 @@
 config BL31_BASE
 	hex "Load address of BL31 image (imx-atf)"
+	depends on ARM64
 	default 0x00920000 if IMX8MM
 	default 0x00960000 if IMX8MN
 	default 0x00970000 if IMX8MP
@@ -11,6 +12,7 @@ config BL31_BASE
 
 config BL31_SIZE
 	hex "memory space reserved for BL31 image"
+	depends on ARM64
 	default 0x20000 if IMX8M
 	default 0x20000 if IMX91
 	default 0x25000 if IMX93

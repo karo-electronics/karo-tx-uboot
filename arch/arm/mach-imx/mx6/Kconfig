@@ -236,6 +236,10 @@ config TARGET_GW_VENTANA
 	imply CMD_SATA
 	imply CMD_SPL
 
+config TARGET_KARO_IMX6
+	bool "Ka-Ro electronics GmbH i.MX6 based modules"
+	depends on MX6
+
 config TARGET_KONTRON_MX6UL
 	bool "Kontron Electronics SL/BL i.MX6UL/ULL (N63xx/N64xx)"
 	depends on MX6UL
@@ -730,6 +734,7 @@ source "board/grinn/liteboard/Kconfig"
 source "board/phytec/pcm058/Kconfig"
 source "board/phytec/pcl063/Kconfig"
 source "board/gateworks/gw_ventana/Kconfig"
+source "board/karo/imx6/Kconfig"
 source "board/kontron/sl-mx6ul/Kconfig"
 source "board/kosagi/novena/Kconfig"
 source "board/softing/vining_2000/Kconfig"
