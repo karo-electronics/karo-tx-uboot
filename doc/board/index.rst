@@ -35,6 +35,7 @@ Board-specific doc
    hisilicon/index
    htc/index
    intel/index
+   karo/index
    kontron/index
    lenovo/index
    lg/index
