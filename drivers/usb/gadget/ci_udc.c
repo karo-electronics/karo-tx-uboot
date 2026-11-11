@@ -971,6 +971,7 @@ void udc_disconnect(void)
 static int ci_pullup(struct usb_gadget *gadget, int is_on)
 {
 	struct ci_udc *udc = (struct ci_udc *)controller.ctrl->hcor;
+	u32 usbmode = USBMODE_DEVICE;
 	if (is_on) {
 		/* RESET */
 		controller.next_device_address = 0;
@@ -981,8 +982,10 @@ static int ci_pullup(struct usb_gadget *gadget, int is_on)
 
 		writel((unsigned long)controller.epts, &udc->epinitaddr);
 
-		/* select DEVICE mode */
-		writel(USBMODE_DEVICE, &udc->usbmode);
+		/* select DEVICE mode; CM is write-once after reset */
+		if (IS_ENABLED(CONFIG_CI_UDC_DISABLE_STREAMING))
+			usbmode |= SDIS;
+		writel(usbmode, &udc->usbmode);
 
 #if !defined(CONFIG_USB_GADGET_DUALSPEED)
 		/* Port force Full-Speed Connect */

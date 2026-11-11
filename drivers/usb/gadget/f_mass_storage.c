@@ -650,7 +650,12 @@ static void busy_indicator(void)
 static int sleep_thread(struct fsg_common *common)
 {
 	int	rc = 0;
+#if IS_ENABLED(CONFIG_USB_FUNCTION_MASS_STORAGE_POLLED_CTRLC)
+	/* Keep counting across host accesses */
+	static int i, k;
+#else
 	int i = 0, k = 0;
+#endif
 
 	/* Wait until a signal arrives or we are woken up */
 	for (;;) {
@@ -661,6 +666,10 @@ static int sleep_thread(struct fsg_common *common)
 			busy_indicator();
 			i = 0;
 			k++;
+
+			/* Handle CTRL+C */
+			if (IS_ENABLED(CONFIG_USB_FUNCTION_MASS_STORAGE_POLLED_CTRLC) && ctrlc())
+				return -EPIPE;
 		}
 
 		if (k == 10) {
@@ -669,7 +678,7 @@ static int sleep_thread(struct fsg_common *common)
 				return -EPIPE;
 
 			/* Handle CTRL+C */
-			if (ctrlc())
+			if (!IS_ENABLED(CONFIG_USB_FUNCTION_MASS_STORAGE_POLLED_CTRLC) && ctrlc())
 				return -EPIPE;
 
 			/* Check cable connection */

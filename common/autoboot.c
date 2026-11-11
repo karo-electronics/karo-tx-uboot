@@ -477,7 +477,8 @@ const char *bootdelay_process(void)
 		printf("Boot from USB for mfgtools\n");
 		bootdelay = 0;
 		env_set_default("mfgtools setup", 0);
-	} else if (is_boot_from_usb() && IS_ENABLED(CONFIG_FASTBOOT)) {
+	} else if (is_boot_from_usb() && IS_ENABLED(CONFIG_KARO_UBOOT_MFG) &&
+		   IS_ENABLED(CONFIG_FASTBOOT)) {
 		disconnect_from_pc();
 		printf("Boot from USB for fastboot\n");
 		bootdelay = 0;
@@ -507,7 +508,8 @@ const char *bootdelay_process(void)
 		if (env_get("bootcmd_mfg")) {
 			s = env_get("bootcmd_mfg");
 			printf("Run bootcmd_mfg: %s\n", s);
-		} else if (IS_ENABLED(CONFIG_FASTBOOT)) {
+		} else if (IS_ENABLED(CONFIG_KARO_UBOOT_MFG) &&
+			   IS_ENABLED(CONFIG_FASTBOOT)) {
 			s = "fastboot usb 0";
 		}
 	}

@@ -155,6 +155,20 @@ config CI_UDC
 	  Say Y here to enable device controller functionality of the
 	  ChipIdea driver.
 
+config CI_UDC_DISABLE_STREAMING
+	bool
+	depends on CI_UDC
+	help
+	  Set USBMODE[SDIS] when the controller enters device mode, which
+	  turns off double buffering of the RX and TX FIFOs. On some SoCs
+	  a receive FIFO overrun caused by a busy system bus leaves the
+	  controller unable to answer host tokens until the overrun ends;
+	  stream disable mode is the workaround NXP documents for the
+	  i.MX6Q/D/DL/S/QP and i.MX6UL/ULL (ERR007881, no fix scheduled),
+	  and the one Linux applies to them (CI_HDRC_DISABLE_DEVICE_STREAMING
+	  in imx6q_usb_data and imx6ul_usb_data). It costs 10% to 30% of the
+	  USB throughput, so only select it where the controller needs it.
+
 config USB_GADGET_MAX3420
 	bool "MAX3420 USB Over SPI"
 	depends on DM_SPI
@@ -200,6 +214,14 @@ config USB_FUNCTION_MASS_STORAGE
 	help
 	  Enable mass storage protocol support in U-Boot. It allows exporting
 	  the eMMC/SD card content to HOST PC so it can be mounted.
+
+config USB_FUNCTION_MASS_STORAGE_POLLED_CTRLC
+	bool "Check for Ctrl-C while the host polls the device"
+	depends on USB_FUNCTION_MASS_STORAGE
+	help
+	  Keep the busy counters across host accesses and check for Ctrl-C
+	  on every busy indicator tick, so that ums can be aborted while a
+	  host polls the device more often than every ten ticks.
 
 config USB_FUNCTION_ROCKUSB
         bool "Enable USB rockusb gadget"

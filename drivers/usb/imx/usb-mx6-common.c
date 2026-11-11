@@ -63,7 +63,7 @@ static const ulong phy_bases[] = {
 #endif
 };
 
-int usb_phy_mode(int port)
+int __weak usb_phy_mode(int port)
 {
 	void __iomem *phy_reg;
 	void __iomem *phy_ctrl;
@@ -130,7 +130,7 @@ static int usb_phy_enable(struct usb_ehci *ehci, void __iomem *phy_reg)
 	return 0;
 }
 #elif defined(CONFIG_USB_EHCI_MX7)
-int usb_phy_mode(int port)
+int __weak usb_phy_mode(int port)
 {
 	struct usbnc_regs *usbnc = (struct usbnc_regs *)(uintptr_t)USB_BASE_ADDR + USBNC_OFFSET +
 		0x10000 * port;

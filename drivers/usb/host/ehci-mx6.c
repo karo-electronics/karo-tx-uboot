@@ -39,6 +39,14 @@ DECLARE_GLOBAL_DATA_PTR;
 #define USB_H1_CTRL_OFFSET	0x04
 
 #define USBPHY_PWD				0x00000000
+/* USBNC_n_CTRL and USBCMD bits; local copies, as in ehci-vf.c. */
+#define UCTRL_PWR_POL		(1 << 9) /* OTG Polarity of Power Pin */
+#define UCTRL_OVER_CUR_POL	(1 << 8) /* OTG Polarity of Overcurrent */
+#define UCTRL_OVER_CUR_DIS	(1 << 7) /* Disable OTG Overcurrent Detection */
+
+/* USBCMD */
+#define UCMD_RUN_STOP		(1 << 0) /* controller run/stop */
+#define UCMD_RESET		(1 << 1) /* controller reset */
 
 /* If this is not defined, assume MX6/MX7/MX8M SoC default */
 #ifndef CFG_MXC_USB_PORTSC
@@ -468,6 +476,11 @@ static int mx6_init_after_reset(struct ehci_ctrl *dev)
 		return 0;
 
 	setbits_le32(&ehci->usbmode, CM_HOST);
+#ifdef CONFIG_MX6
+	/* ERR006308: stream disable in host, IMX6DQCE p.219 */
+	if (is_mx6dq() || is_mx6dqp() || is_mx6sdl())
+		setbits_le32(&ehci->usbmode, SDIS);
+#endif
 	writel(mx6_portsc(priv->phy_type), &ehci->portsc);
 	setbits_le32(&ehci->portsc, USB_EN);
 
