@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Ka-Ro TX6Q-8137 module on MB7 baseboard
+ */
+
+#include "imx6qp-tx6q-8037-mb7.dts"
+
+/ {
+	model = "Ka-Ro TX6Q-8137 Module on MB7 baseboard";
+	compatible = "karo,imx6qp-tx6q-8137-mb7", "karo,imx6qp-tx6q", "fsl,imx6qp";
+};

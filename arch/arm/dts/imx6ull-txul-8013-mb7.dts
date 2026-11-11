@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * Ka-Ro TXUL-8013 (i.MX6ULL) module on MB7 baseboard.
+ */
+
+#include "imx6ull-txul-8013.dts"
+#include "imx6ul-txul-mb7.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TXUL-8013 Module on MB7 baseboard";
+	compatible = "karo,imx6ull-txul-8013-mb7",
+		     "karo,imx6ull-txul-8013", "fsl,imx6ull";
+};

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * Ka-Ro TX6S-8134 module: the TX6S-8034 with LVDS
+ */
+
+#include "imx6dl-tx6s-8034.dts"
+
+/ {
+	model = "Ka-Ro electronics TX6S-8134 Module";
+	compatible = "karo,imx6dl-tx6s-8134", "karo,imx6dl-tx6s", "fsl,imx6dl";
+};

@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * MB7 SD slots of TX6.
+ */
+
+/* SD slots as in kernel c8787bae4b66, no WP pad */
+&usdhc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc1>;
+	bus-width = <4>;
+	no-1-8-v;
+	cd-gpios = <&gpio7 2 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&usdhc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc2>;
+	bus-width = <4>;
+	no-1-8-v;
+	cd-gpios = <&gpio7 3 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&iomuxc {
+	/* SD pads as in kernel c4aca663aebf */
+	pinctrl_usdhc1: usdhc1grp {
+		fsl,pins = <
+			MX6QDL_PAD_SD1_CMD__SD1_CMD		0x070b1
+			MX6QDL_PAD_SD1_CLK__SD1_CLK		0x070b1
+			MX6QDL_PAD_SD1_DAT0__SD1_DATA0		0x070b1
+			MX6QDL_PAD_SD1_DAT1__SD1_DATA1		0x070b1
+			MX6QDL_PAD_SD1_DAT2__SD1_DATA2		0x070b1
+			MX6QDL_PAD_SD1_DAT3__SD1_DATA3		0x070b1
+			MX6QDL_PAD_SD3_CMD__GPIO7_IO02		0x170b0 /* SD1 CD */
+		>;
+	};
+
+	pinctrl_usdhc2: usdhc2grp {
+		fsl,pins = <
+			MX6QDL_PAD_SD2_CMD__SD2_CMD		0x070b1
+			MX6QDL_PAD_SD2_CLK__SD2_CLK		0x070b1
+			MX6QDL_PAD_SD2_DAT0__SD2_DATA0		0x070b1
+			MX6QDL_PAD_SD2_DAT1__SD2_DATA1		0x070b1
+			MX6QDL_PAD_SD2_DAT2__SD2_DATA2		0x070b1
+			MX6QDL_PAD_SD2_DAT3__SD2_DATA3		0x070b1
+			MX6QDL_PAD_SD3_CLK__GPIO7_IO03		0x170b0 /* SD2 CD */
+		>;
+	};
+};

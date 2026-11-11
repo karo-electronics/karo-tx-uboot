@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+#include "imx6dl-tx6u-8130-u-boot.dtsi"
+#include "imx6qdl-tx6-mb7-lcd-u-boot.dtsi"

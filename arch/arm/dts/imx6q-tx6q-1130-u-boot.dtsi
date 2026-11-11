@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * U-Boot additions for the Ka-Ro TX6Q-1130 module
+ */
+
+#include "imx6q-tx6q-1030-u-boot.dtsi"

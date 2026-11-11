@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * U-Boot additions for the Ka-Ro TX6Q-8037 module
+ */
+
+#include "imx6qdl-tx6-emmc-u-boot.dtsi"

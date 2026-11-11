@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * U-Boot additions of the TX6 NAND modules, as imx93-karo-u-boot.dtsi
+ */
+
+&uart1 {
+	bootph-all;
+};
+
+&pinctrl_uart1 {
+	bootph-all;
+};
+
+/* NAND read by the pre-relocation DT selection */
+&gpmi {
+	bootph-all;
+};
+
+&pinctrl_gpmi_nand {
+	bootph-all;
+};
+
+/* GPMI DMA channel */
+&dma_apbh {
+	bootph-all;
+};
+
+/* Clock provider named by gpmi */
+&clks {
+	bootph-all;
+};

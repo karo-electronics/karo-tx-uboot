@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * U-Boot additions for the Ka-Ro TX6S-8135 module
+ */
+
+#include "imx6dl-tx6s-8035-u-boot.dtsi"

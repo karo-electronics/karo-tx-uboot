@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * U-Boot additions for the Ka-Ro TXUL-5010 module
+ */
+
+#include "imx6ul-txul-u-boot.dtsi"
+
+/* NAND read by the pre-relocation DT selection */
+&gpmi {
+	bootph-all;
+};
+
+&pinctrl_gpmi_nand {
+	bootph-all;
+};
+
+/* GPMI DMA channel */
+&dma_apbh {
+	bootph-all;
+};
+
+/* Clock provider named by gpmi */
+&clks {
+	bootph-all;
+};

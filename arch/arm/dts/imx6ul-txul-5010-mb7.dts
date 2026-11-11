@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * Ka-Ro TXUL-5010 (i.MX6UL) module on MB7 baseboard.
+ */
+
+#include "imx6ul-txul-5010.dts"
+#include "imx6ul-txul-mb7.dtsi"
+
+/ {
+	model = "Ka-Ro electronics TXUL-5010 Module on MB7 baseboard";
+	compatible = "karo,imx6ul-txul-5010-mb7",
+		     "karo,imx6ul-txul-5010", "fsl,imx6ul";
+
+	aliases {
+		mmc0 = &usdhc1;
+	};
+};

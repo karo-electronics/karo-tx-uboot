@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * U-Boot-specific additions for TXUL-5010 on MB7.
+ */
+
+#include "imx6ul-txul-5010-u-boot.dtsi"
+
+/* LCD bring-up in U-Boot */
+#include "imx6ul-txul-mb7-lcd-u-boot.dtsi"

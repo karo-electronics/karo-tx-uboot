@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * Ka-Ro TX6U-8133 module: the TX6U-8033 with LVDS
+ */
+
+#include "imx6dl-tx6u-8033.dts"
+
+/ {
+	model = "Ka-Ro electronics TX6U-8133 Module";
+	compatible = "karo,imx6dl-tx6u-8133", "karo,imx6dl-tx6u", "fsl,imx6dl";
+};

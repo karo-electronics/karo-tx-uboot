@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * U-Boot-specific additions for TXUL-8013 on MB7.
+ */
+
+#include "imx6ull-txul-8013-u-boot.dtsi"
+
+/* ----------------------------------------------------------------------
+ * LCD bring-up in U-Boot.
+ * ---------------------------------------------------------------------- */
+
+#include "imx6ul-txul-mb7-lcd-u-boot.dtsi"

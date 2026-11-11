@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * LCD bring-up shared by the three TXUL modules on MB7: IPU/lcdif,
+ * the ET0700 timings and the three panel control hogs are identical
+ * across i.MX6UL and i.MX6ULL.
+ */
+
+&gpio3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcd_rst>;
+
+	lcd-reset-hog {
+		gpio-hog;
+		gpios = <4 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "lcd-reset";
+	};
+};
+
+&gpio4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_backlight>;
+
+	lcd-backlight-hog {
+		gpio-hog;
+		gpios = <16 GPIO_ACTIVE_LOW>;
+		output-low;
+		line-name = "lcd-backlight";
+	};
+};
+
+&gpio5 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcd_pwr>;
+
+	lcd-power-hog {
+		gpio-hog;
+		gpios = <4 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "lcd-power";
+	};
+};
+
+&lcdif {
+	display = <&display0>;
+
+	/* Default panel on MB7 = ET0700 (800x480)*/
+	display0: display0 {
+		bits-per-pixel = <24>;
+
+		display-timings {
+			et0700 {
+				clock-frequency = <33260000>;
+				hactive = <800>;
+				vactive = <480>;
+				hback-porch = <88>;
+				hsync-len = <128>;
+				hfront-porch = <40>;
+				vback-porch = <33>;
+				vsync-len = <2>;
+				vfront-porch = <10>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				/* Compensates mxsfb.c DOTCLK_POL inversion; binding value is 0 */
+				pixelclk-active = <1>;
+			};
+		};
+	};
+};

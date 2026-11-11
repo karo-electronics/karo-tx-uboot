@@ -838,6 +838,10 @@ dtb-$(CONFIG_MX6UL) += \
 	imx6ul-phytec-segin-ff-rdk-nand.dtb \
 	imx6ul-pico-hobbit.dtb \
 	imx6ul-pico-pi.dtb \
+	imx6ul-txul-5010.dtb \
+	imx6ul-txul-5010-mb7.dtb \
+	imx6ul-txul-5011.dtb \
+	imx6ul-txul-5011-mb7.dtb \
 	imx6ul-kontron-bl.dtb \
 	imx6ull-kontron-bl.dtb
 
@@ -850,7 +854,41 @@ dtb-$(CONFIG_MX6ULL) += \
 	imx6ull-phytec-segin-ff-rdk-emmc.dtb \
 	imx6ull-dart-6ul.dtb \
 	imx6ull-somlabs-visionsom.dtb \
+	imx6ull-txul-8013.dtb \
+	imx6ull-txul-8013-mb7.dtb \
 	imx6ulz-14x14-evk.dtb
+
+dtb-$(CONFIG_MX6S) += \
+	imx6dl-tx6s-8034.dtb \
+	imx6dl-tx6s-8034-mb7.dtb \
+	imx6dl-tx6s-8035.dtb \
+	imx6dl-tx6s-8035-mb7.dtb \
+	imx6dl-tx6s-8134.dtb \
+	imx6dl-tx6s-8134-mb7.dtb \
+	imx6dl-tx6s-8135.dtb \
+	imx6dl-tx6s-8135-mb7.dtb
+
+dtb-$(CONFIG_MX6DL) += \
+	imx6dl-tx6u-8030.dtb \
+	imx6dl-tx6u-8030-mb7.dtb \
+	imx6dl-tx6u-8033.dtb \
+	imx6dl-tx6u-8033-mb7.dtb \
+	imx6dl-tx6u-8130.dtb \
+	imx6dl-tx6u-8130-mb7.dtb \
+	imx6dl-tx6u-8133.dtb \
+	imx6dl-tx6u-8133-mb7.dtb
+
+dtb-$(CONFIG_MX6Q) += \
+	imx6q-tx6q-1030.dtb \
+	imx6q-tx6q-1030-mb7.dtb \
+	imx6q-tx6q-1036.dtb \
+	imx6q-tx6q-1036-mb7.dtb \
+	imx6q-tx6q-1130.dtb \
+	imx6q-tx6q-1130-mb7.dtb \
+	imx6qp-tx6q-8037.dtb \
+	imx6qp-tx6q-8037-mb7.dtb \
+	imx6qp-tx6q-8137.dtb \
+	imx6qp-tx6q-8137-mb7.dtb
 
 dtb-$(CONFIG_ARCH_MX6) += \
 	imx6q-apalis-eval.dtb \

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * Ka-Ro TX6Q-1130 module: the TX6Q-1030 with LVDS
+ */
+
+#include "imx6q-tx6q-1030.dts"
+
+/ {
+	model = "Ka-Ro electronics TX6Q-1130 Module";
+	compatible = "karo,imx6q-tx6q-1130", "karo,imx6q-tx6q", "fsl,imx6q";
+};

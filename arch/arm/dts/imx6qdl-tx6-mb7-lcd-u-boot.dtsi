@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * TX6 LCD control on MB7, for RGB and LVDS
+ */
+
+&ipu1 {
+	bootph-some-ram;
+	status = "okay";
+};
+
+&gpio1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcd_backlight>;
+
+	lcd-backlight-hog {
+		gpio-hog;
+		gpios = <1 GPIO_ACTIVE_LOW>;
+		output-low;
+		line-name = "lcd-backlight";
+	};
+};
+
+&gpio2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcd_pwr>;
+
+	lcd-power-hog {
+		gpio-hog;
+		gpios = <31 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "lcd-power";
+	};
+};
+
+&gpio3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lcd_rst>;
+
+	lcd-reset-hog {
+		gpio-hog;
+		gpios = <29 GPIO_ACTIVE_HIGH>;
+		output-low;
+		line-name = "lcd-reset";
+	};
+};

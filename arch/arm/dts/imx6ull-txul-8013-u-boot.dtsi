@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2026 Ka-Ro Electronics GmbH
+ * U-Boot additions for the Ka-Ro TXUL-8013 module
+ */
+
+#include "imx6ul-txul-u-boot.dtsi"
+
+/* eMMC read by the pre-relocation DT selection */
+&usdhc2 {
+	bootph-all;
+};
+
+&pinctrl_usdhc2 {
+	bootph-all;
+};
