@@ -483,3 +483,50 @@ void karo_fixup_lcd_panel(const char *videomode)
 		       fdt_get_name(fdt, panel_node, NULL), fdt_strerror(ret));
 }
 #endif
+
+#if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
+static int karo_fdt_set_dr_mode(void *blob, int node, const char *mode)
+{
+	if (!fdtdec_get_is_enabled(blob, node)) {
+		printf("usbotg interface is disabled\n");
+		return 0;
+	}
+
+	printf("switching usbotg interface to %s mode\n", mode);
+	return fdt_setprop_string(blob, node, "dr_mode", mode);
+}
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	int ret;
+	int node;
+	const char *serno_str;
+	const char *otg_mode;
+
+	debug("%s@%d:\n", __func__, __LINE__);
+
+	ret = fdt_increase_size(blob, 4096);
+	if (ret)
+		printf("Warning: Failed to increase FDT size: %s\n",
+		       fdt_strerror(ret));
+
+	karo_fixup_lcd_panel(env_get("videomode"));
+
+	otg_mode = env_get("otg_mode");
+	node = fdt_path_offset(blob, "usbotg");
+	if (otg_mode && node > 0) {
+		if (strcmp(otg_mode, "none") == 0) {
+			printf("disabling usbotg interface\n");
+			fdt_status_disabled(blob, node);
+		} else if (strcmp(otg_mode, "peripheral") == 0 ||
+		    strcmp(otg_mode, "host") == 0) {
+			karo_fdt_set_dr_mode(blob, node, otg_mode);
+		} else {
+			printf("Invalid otg_mode: '%s';supported values are 'peripheral', 'host', 'none'\n",
+			       otg_mode);
+		}
+	}
+
+	return 0;
+}
+#endif
