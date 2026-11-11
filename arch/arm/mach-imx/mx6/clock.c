@@ -756,7 +756,7 @@ void mxs_set_lcdclk(u32 base_addr, u32 freq)
 
 	pll_div = best / hck;
 	pll_denom = 1000000;
-	pll_num = (best - hck * pll_div) * pll_denom / hck;
+	pll_num = lldiv((u64)(best - hck * pll_div) * pll_denom, hck);
 
 	/*
 	 *                                  pll_num

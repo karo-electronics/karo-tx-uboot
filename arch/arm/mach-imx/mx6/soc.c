@@ -442,7 +442,7 @@ int arch_cpu_init(void)
 	}
 
 	if (is_mx6ul()) {
-		if (is_soc_rev(CHIP_REV_1_0) == 0) {
+		if (is_soc_rev(CHIP_REV_1_0)) {
 			/*
 			 * According to the design team's requirement on
 			 * i.MX6UL,the PMIC_STBY_REQ PAD should be configured
