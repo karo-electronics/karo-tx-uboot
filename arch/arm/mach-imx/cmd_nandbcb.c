@@ -383,6 +383,61 @@ static void encode_bch_ecc(void *buf, struct fcb_block *fcb, int eccbits)
 	kfree(tmp_buf);
 	free_bch(bch);
 }
+
+static int decode_bch_ecc(void *buf, struct fcb_block *fcb, int eccbits)
+{
+	int i, j, m = 13, len, nerr, ret = 0;
+	int blocksize = 128;
+	int numblocks = 8;
+	int metasize = 32;
+	int ecc_buf_size = (m * eccbits + 7) / 8;
+	struct bch_control *bch = init_bch(m, eccbits, 0);
+	u8 *tmp_buf = kzalloc(metasize + blocksize + ecc_buf_size, GFP_KERNEL);
+	unsigned int *errloc = kzalloc(eccbits * sizeof(*errloc), GFP_KERNEL);
+	u8 *psrc, *pdst;
+
+	if (!bch || !tmp_buf || !errloc) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	for (i = 0; i < numblocks; i++) {
+		if (i == 0) {
+			psrc = buf;
+			len = metasize + blocksize;
+		} else {
+			psrc = buf + metasize + i * (blocksize + ecc_buf_size);
+			len = blocksize;
+		}
+
+		for (j = 0; j < len + ecc_buf_size; j++)
+			tmp_buf[j] = reverse_bit(psrc[j]);
+
+		nerr = decode_bch(bch, tmp_buf, len, tmp_buf + len,
+				  NULL, NULL, errloc);
+		if (nerr < 0) {
+			ret = -EBADMSG;
+			goto out;
+		}
+
+		for (j = 0; j < nerr; j++)
+			if (errloc[j] < 8 * len)
+				tmp_buf[errloc[j] / 8] ^= 1 << (errloc[j] % 8);
+
+		pdst = (u8 *)fcb + i * blocksize;
+		psrc = tmp_buf + len - blocksize;
+		for (j = 0; j < blocksize; j++)
+			pdst[j] = reverse_bit(psrc[j]);
+	}
+
+out:
+	kfree(errloc);
+	kfree(tmp_buf);
+	if (bch)
+		free_bch(bch);
+
+	return ret;
+}
 #else
 
 static u8 calculate_parity_13_8(u8 d)
@@ -461,7 +516,7 @@ static void fill_fcb(struct fcb_block *fcb, struct boot_config *boot_cfg)
 
 	fcb->phy_offset = mtd->writesize;
 
-	fcb->disbbm = 0;
+	fcb->disbbm = nand_info->no_blockmark_swap;
 
 	fcb->fw1_start = CONV_TO_PAGES(boot_cfg->boot_stream1_address);
 	fcb->fw2_start = CONV_TO_PAGES(boot_cfg->boot_stream2_address);
@@ -501,7 +556,6 @@ static int read_fcb(struct boot_config *boot_cfg, struct fcb_block *fcb,
 {
 	struct mtd_info *mtd;
 	void *fcb_raw_page;
-	size_t size;
 	int ret = 0;
 
 	mtd = boot_cfg->mtd;
@@ -517,7 +571,29 @@ static int read_fcb(struct boot_config *boot_cfg, struct fcb_block *fcb,
 	 * User BCH hardware to decode ECC for FCB
 	 */
 	if (plat_config.misc_flags & FCB_ENCODE_BCH) {
-		size = sizeof(struct fcb_block);
+#if defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
+		mtd_oob_ops_t ops = {
+			.datbuf = (u8 *)fcb_raw_page,
+			.oobbuf = ((u8 *)fcb_raw_page) + mtd->writesize,
+			.len = mtd->writesize,
+			.ooblen = mtd->oobsize,
+			.mode = MTD_OPS_RAW
+		};
+
+		ret = mtd_read_oob(mtd, off, &ops);
+		printf("NAND FCB read from 0x%llx offset 0x%zx read: %s\n",
+		       off, ops.len, ret ? "ERROR" : "OK");
+		if (!ret) {
+			ret = decode_bch_ecc(fcb_raw_page, fcb, 40);
+			if (ret == -EBADMSG) {
+				printf("FCB at 0x%llx is not correctable\n",
+				       off);
+				memset(fcb, 0, sizeof(*fcb));
+				ret = 0;
+			}
+		}
+#else
+		size_t size = sizeof(struct fcb_block);
 
 		/* switch nand BCH to FCB compatible settings */
 		if (plat_config.misc_flags & FCB_ENCODE_BCH_62b)
@@ -531,7 +607,7 @@ static int read_fcb(struct boot_config *boot_cfg, struct fcb_block *fcb,
 		mxs_nand_mode_normal(mtd);
 		printf("NAND FCB read from 0x%llx offset 0x%zx read: %s\n",
 		       off, size, ret ? "ERROR" : "OK");
-
+#endif
 	} else if (plat_config.misc_flags & FCB_ENCODE_HAMMING) {
 		/* raw read*/
 		mtd_oob_ops_t ops = {
@@ -1375,6 +1451,12 @@ static int nandbcb_dump(struct boot_config *boot_cfg)
 
 		/* next read location */
 		off += g_boot_search_stride;
+	}
+
+	if (fcb_not_found) {
+		printf("FCB not found\n");
+		ret = -EINVAL;
+		goto dbbt_page_copy_err;
 	}
 
 	/* read dbbt*/

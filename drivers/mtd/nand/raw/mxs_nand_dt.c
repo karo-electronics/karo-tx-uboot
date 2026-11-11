@@ -97,6 +97,8 @@ static int mxs_nand_dt_probe(struct udevice *dev)
 	info->bch_regs = devm_ioremap(dev, res.start, resource_size(&res));
 
 	info->use_minimum_ecc = dev_read_bool(dev, "fsl,use-minimum-ecc");
+	info->no_blockmark_swap =
+		dev_read_bool(dev, "fsl,no-blockmark-swap");
 
 	if (IS_ENABLED(CONFIG_CLK) &&
 	    (IS_ENABLED(CONFIG_IMX8) || IS_ENABLED(CONFIG_IMX8M))) {

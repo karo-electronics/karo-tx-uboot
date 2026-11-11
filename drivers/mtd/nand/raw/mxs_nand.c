@@ -23,6 +23,7 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/cache.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/mach-imx/regs-bch.h>
 #include <asm/mach-imx/regs-gpmi.h>
@@ -33,6 +34,8 @@
 #include <linux/time.h>
 #include <linux/types.h>
 #include <linux/math64.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
@@ -789,7 +792,9 @@ static int mxs_nand_ecc_read_page(struct mtd_info *mtd, struct nand_chip *nand,
 	mxs_nand_inval_data_buf(nand_info);
 
 	/* Read DMA completed, now do the mark swapping. */
-	mxs_nand_swap_block_mark(geo, nand_info->data_buf, nand_info->oob_buf);
+	if (!nand_info->no_blockmark_swap)
+		mxs_nand_swap_block_mark(geo, nand_info->data_buf,
+					 nand_info->oob_buf);
 
 	/* Loop over status bytes, accumulating ECC status. */
 	status = nand_info->oob_buf + mxs_nand_aux_status_offset();
@@ -861,7 +866,9 @@ static int mxs_nand_ecc_write_page(struct mtd_info *mtd,
 	memcpy(nand_info->oob_buf, nand->oob_poi, mtd->oobsize);
 
 	/* Handle block mark swapping. */
-	mxs_nand_swap_block_mark(geo, nand_info->data_buf, nand_info->oob_buf);
+	if (!nand_info->no_blockmark_swap)
+		mxs_nand_swap_block_mark(geo, nand_info->data_buf,
+					 nand_info->oob_buf);
 
 	/* Compile the DMA descriptor - write data. */
 	d = mxs_nand_get_dma_desc(nand_info);
@@ -1611,6 +1618,9 @@ int mxs_nand_init_ctrl(struct mxs_nand_info *nand_info)
 
 	nand_set_controller_data(nand, nand_info);
 	nand->options |= NAND_NO_SUBPAGE_WRITE;
+	/* The BBT buffer does not fit the pre-relocation heap. */
+	if (!(gd->flags & GD_FLG_RELOC))
+		nand->options |= NAND_SKIP_BBTSCAN;
 
 	if (nand_info->dev)
 		nand->flash_node = dev_ofnode(nand_info->dev);

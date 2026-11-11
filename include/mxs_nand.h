@@ -46,6 +46,7 @@ struct mxs_nand_info {
 	unsigned int	max_ecc_strength_supported;
 	int		max_chain_delay;
 	bool		use_minimum_ecc;
+	bool		no_blockmark_swap;
 	int		cur_chip;
 
 	uint32_t	cmd_queue_len;
