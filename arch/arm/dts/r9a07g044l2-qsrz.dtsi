@@ -15,7 +15,7 @@
 	aliases {
 		serial0 = &scif0;
 		usb-host = &ehci1;
-		usb-otg = &ehci0;
+		usbotg = &ehci0;
 	};
 
 	chosen {
