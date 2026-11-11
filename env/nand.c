@@ -172,29 +172,58 @@ static int erase_and_write_env(const struct nand_env_location *location,
 	return ret;
 }
 
+static const struct nand_env_location env_nand_location[] = {
+	{
+		.name = "NAND",
+		.erase_opts = {
+			.length = CONFIG_ENV_RANGE,
+			.offset = CONFIG_ENV_OFFSET,
+		},
+	},
+#ifdef CONFIG_ENV_OFFSET_REDUND
+	{
+		.name = "redundant NAND",
+		.erase_opts = {
+			.length = CONFIG_ENV_RANGE,
+			.offset = CONFIG_ENV_OFFSET_REDUND,
+		},
+	},
+#endif
+};
+
+static int erase_env(const struct nand_env_location *location)
+{
+	struct mtd_info *mtd;
+	int ret;
+
+	mtd = get_nand_dev_by_index(0);
+	if (!mtd)
+		return 1;
+
+	printf("Erasing %s...\n", location->name);
+	ret = nand_erase_opts(mtd, &location->erase_opts);
+	if (ret)
+		printf("Erasing %s FAILED!\n", location->name);
+
+	return ret;
+}
+
+static int env_nand_erase(void)
+{
+	size_t i;
+	int ret = 0;
+
+	for (i = 0; !ret && i < ARRAY_SIZE(env_nand_location); i++)
+		ret = erase_env(&env_nand_location[i]);
+
+	return ret;
+}
+
 static int env_nand_save(void)
 {
 	int	ret = 0;
 	ALLOC_CACHE_ALIGN_BUFFER(env_t, env_new, 1);
 	int	env_idx = 0;
-	static const struct nand_env_location location[] = {
-		{
-			.name = "NAND",
-			.erase_opts = {
-				.length = CONFIG_ENV_RANGE,
-				.offset = CONFIG_ENV_OFFSET,
-			},
-		},
-#ifdef CONFIG_ENV_OFFSET_REDUND
-		{
-			.name = "redundant NAND",
-			.erase_opts = {
-				.length = CONFIG_ENV_RANGE,
-				.offset = CONFIG_ENV_OFFSET_REDUND,
-			},
-		},
-#endif
-	};
 
 	ret = env_export(env_new);
 	if (ret)
@@ -204,7 +233,7 @@ static int env_nand_save(void)
 	env_idx = (gd->env_valid == ENV_VALID);
 #endif
 
-	ret = erase_and_write_env(&location[env_idx], (u_char *)env_new);
+	ret = erase_and_write_env(&env_nand_location[env_idx], (u_char *)env_new);
 #ifdef CONFIG_ENV_OFFSET_REDUND
 	if (!ret) {
 		/* preset other copy for next write */
@@ -214,7 +243,7 @@ static int env_nand_save(void)
 	}
 
 	env_idx = (env_idx + 1) & 1;
-	ret = erase_and_write_env(&location[env_idx], (u_char *)env_new);
+	ret = erase_and_write_env(&env_nand_location[env_idx], (u_char *)env_new);
 	if (!ret)
 		printf("Warning: primary env write failed,"
 				" redundancy is lost!\n");
@@ -376,6 +405,7 @@ U_BOOT_ENV_LOCATION(nand) = {
 	.load		= env_nand_load,
 #if defined(CMD_SAVEENV)
 	.save		= env_save_ptr(env_nand_save),
+	.erase		= ENV_ERASE_PTR(env_nand_erase),
 #endif
 	.init		= env_nand_init,
 };

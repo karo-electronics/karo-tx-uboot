@@ -778,6 +778,7 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		else
 			extrasize = 0;
 		fdt_shrink_to_minimum(working_fdt, extrasize);
+		env_set_hex("fdt_size", fdt_totalsize(working_fdt));
 	}
 	else {
 		/* Unrecognized command */
