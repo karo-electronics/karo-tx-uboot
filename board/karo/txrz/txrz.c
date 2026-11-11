@@ -295,7 +295,7 @@ int board_late_init(void)
 			env_set("board_name", fdt_compat + 5);
 	}
 #endif
-	env_cleanup();
+	karo_env_cleanup();
 
 	if (had_ctrlc()) {
 		env_set_hex("safeboot", 1);

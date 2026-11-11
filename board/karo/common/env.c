@@ -27,7 +27,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_UBOOT_IGNORE_ENV
-void env_cleanup(void)
+void karo_env_cleanup(void)
 {
 	debug("%s@%d:\n", __func__, __LINE__);
 	env_set_default(NULL, 0);
@@ -103,7 +103,7 @@ static inline void karo_set_part_uuids(void)
 }
 #endif
 
-void env_cleanup(void)
+void karo_env_cleanup(void)
 {
 	size_t i;
 
