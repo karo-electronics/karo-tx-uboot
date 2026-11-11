@@ -39,3 +39,42 @@ config KARO_UBOOT_NOENV
 	select UBOOT_IGNORE_ENV
 
 endchoice
+
+config KARO_DTB_SELECT
+	bool "Select the control DT at runtime from the stored 'baseboard'"
+	depends on FIT
+	select MULTI_DTB_FIT if !SPL
+	select DTB_RESELECT if !SPL
+	select SPL_LOAD_FIT if SPL
+	help
+	  One U-Boot image per module. The FIT appended to U-Boot (no SPL) or
+	  loaded by SPL (SPL_LOAD_FIT) holds the control DT of the bare module
+	  first and one DT per carrier named <module DT>-<baseboard>. The
+	  'baseboard' variable of the stored environment picks one; without a
+	  valid stored environment KARO_DEFAULT_BASEBOARD applies; an unknown
+	  value keeps the bare module DT.
+
+config SPL_KARO_DTB_SELECT
+	bool
+	default KARO_DTB_SELECT if SPL_LOAD_FIT
+	help
+	  Build the selection into SPL, where the boot media is already
+	  initialised when the U-Boot FIT is parsed.
+
+config KARO_DEFAULT_BASEBOARD
+	string "Baseboard used when no stored environment is valid"
+	depends on KARO_DTB_SELECT
+	default ""
+	help
+	  Set by Yocto from KARO_BASEBOARD, the same value that lands in the
+	  default environment text. Empty selects the bare module DT.
+
+config KARO_DTB_SELECT_BUF_ADDR
+	hex "Scratch DDR address for the environment block read"
+	depends on KARO_DTB_SELECT
+	default SYS_LOAD_ADDR
+	help
+	  ENV_SIZE bytes of DDR that nothing uses before relocation (and that
+	  SPL does not load into). The early heap is too small for the block:
+	  8 KiB on i.MX6, 64 KiB on i.MX9x, while the NAND environment of the
+	  TX6 is 128 KiB.

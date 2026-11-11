@@ -47,13 +47,58 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KARO_BOARD_NAME		"tx91-3110"
 #elif defined(CONFIG_KARO_QS91_3110)
 #define KARO_BOARD_NAME		"qs91-3110"
+#elif defined(CONFIG_KARO_TXUL_8013)
+#define KARO_BOARD_NAME		"txul-8013"
+#elif defined(CONFIG_KARO_TXUL_5011)
+#define KARO_BOARD_NAME		"txul-5011"
+#elif defined(CONFIG_KARO_TXUL_5010)
+#define KARO_BOARD_NAME		"txul-5010"
+#elif defined(CONFIG_KARO_TX6S_8034)
+#define KARO_BOARD_NAME		"tx6s-8034"
+#elif defined(CONFIG_KARO_TX6S_8134)
+#define KARO_BOARD_NAME		"tx6s-8134"
+#elif defined(CONFIG_KARO_TX6S_8035)
+#define KARO_BOARD_NAME		"tx6s-8035"
+#elif defined(CONFIG_KARO_TX6S_8135)
+#define KARO_BOARD_NAME		"tx6s-8135"
+#elif defined(CONFIG_KARO_TX6U_8030)
+#define KARO_BOARD_NAME		"tx6u-8030"
+#elif defined(CONFIG_KARO_TX6U_8130)
+#define KARO_BOARD_NAME		"tx6u-8130"
+#elif defined(CONFIG_KARO_TX6U_8033)
+#define KARO_BOARD_NAME		"tx6u-8033"
+#elif defined(CONFIG_KARO_TX6U_8133)
+#define KARO_BOARD_NAME		"tx6u-8133"
+#elif defined(CONFIG_KARO_TX6Q_1030)
+#define KARO_BOARD_NAME		"tx6q-1030"
+#elif defined(CONFIG_KARO_TX6Q_1130)
+#define KARO_BOARD_NAME		"tx6q-1130"
+#elif defined(CONFIG_KARO_TX6Q_1036)
+#define KARO_BOARD_NAME		"tx6q-1036"
+#elif defined(CONFIG_KARO_TX6Q_8037)
+#define KARO_BOARD_NAME		"tx6q-8037"
+#elif defined(CONFIG_KARO_TX6Q_8137)
+#define KARO_BOARD_NAME		"tx6q-8137"
 #else
 #error Unsupported module variant
 #endif
 
+/*
+ * i.MX6 lacks get_boot_device(); is_boot_from_usb() covers serial download.
+ * Distinct name avoids shadowing the non-static mainline symbol.
+ */
+#if IS_ENABLED(CONFIG_MX6)
+static inline enum boot_device karo_get_boot_device(void)
+{
+	return is_boot_from_usb() ? USB_BOOT : MMC1_BOOT;
+}
+#else
+#define karo_get_boot_device()	get_boot_device()
+#endif
+
 enum env_location env_get_location(enum env_operation op, int prio)
 {
-	enum boot_device boot_dev = get_boot_device();
+	enum boot_device boot_dev = karo_get_boot_device();
 	enum env_location loc = arch_env_get_location(op, prio);
 
 	if (loc != ENVL_NOWHERE)
@@ -122,20 +167,14 @@ void karo_set_ethaddr(int index)
 
 	imx_get_mac_from_fuse(index, fuse_mac);
 	fuse_valid = is_valid_ethaddr(fuse_mac);
-	if (fuse_valid)
-		printf("MAC addr from fuse: %pM\n", fuse_mac);
 	env_valid = eth_env_get_enetaddr_by_index("eth", index, env_mac);
-	if (env_valid) {
-		printf("MAC addr: %pM\n", env_mac);
-		if (fuse_valid && memcmp(env_mac, fuse_mac, sizeof(env_mac)))
-			printf("MAC addr from env differs from fuse settings: %pM\n", fuse_mac);
+	if (env_valid)
+		return;
+	if (fuse_valid) {
+		printf("Using MAC addr from fuse\n");
+		eth_env_set_enetaddr_by_index("eth", index, fuse_mac);
 	} else {
-		if (fuse_valid) {
-			printf("Using MAC addr from fuse\n");
-			eth_env_set_enetaddr_by_index("eth", index, fuse_mac);
-		} else {
-			printf("No MAC addr found for eth%d\n", index);
-		}
+		printf("No MAC addr found for eth%d\n", index);
 	}
 }
 

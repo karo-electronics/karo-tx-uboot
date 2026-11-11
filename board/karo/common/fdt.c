@@ -10,6 +10,7 @@
 #include <fdt_support.h>
 #include <fs.h>
 #include <malloc.h>
+#include <mapmem.h>
 #include <mmc.h>
 #include <mtd_node.h>
 #include <asm/bootm.h>
@@ -163,7 +164,7 @@ int karo_fdt_get_overlays(const char *baseboard, char **overlays)
 		}
 		*overlays = env_get(overlay_var);
 		free(overlay_var);
-		if (strstr(*overlays, "setenv overlays"))
+		if (*overlays && strstr(*overlays, "setenv overlays"))
 			*overlays += strlen("setenv overlays ");
 	} else {
 		*overlays = env_get("overlays");
@@ -171,7 +172,7 @@ int karo_fdt_get_overlays(const char *baseboard, char **overlays)
 	return 0;
 }
 
-void karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_part)
+static int karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_part)
 {
 	int ret;
 	const char *baseboard = env_get("baseboard");
@@ -204,27 +205,76 @@ void karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_pa
 	} else {
 		printf("No FDT overlays to be loaded\n");
 	}
-	if (ret)
-		memset(fdt, 0, sizeof(struct fdt_header));
+	return ret;
 }
 #else
-static inline void karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_part)
+static inline int karo_fdt_apply_overlays(void *fdt, const char *dev_type, const char *dev_part)
 {
+	return 0;
 }
 #endif
 
-int karo_load_fdt(const char *fdt_file)
+/* One boot medium per build: NAND modules read the FDT from the 'boot'
+ * UBIFS volume, all others from the (e)MMC filesystem. */
+#if IS_ENABLED(CONFIG_ENV_IS_IN_NAND) && IS_ENABLED(CONFIG_CMD_MTDPARTS) && \
+	IS_ENABLED(CONFIG_CMD_UBIFS)
+#define KARO_FDT_FROM_NAND	1
+#else
+#define KARO_FDT_FROM_NAND	0
+#endif
+
+#if KARO_FDT_FROM_NAND
+#include <jffs2/load_kernel.h>
+#include <ubi_uboot.h>
+#include <ubifs_uboot.h>
+
+/* The DTB and its overlays are files in the 'boot' UBIFS volume
+ * on the 'rootfs' MTD partition */
+static int karo_load_fdt_nand(ulong fdt_addr, const char *fdt_file)
 {
+	void *fdt = map_sysmem(fdt_addr, 0);
+	char vol[16];
 	int ret;
+
+	ret = mtdparts_init();
+	if (ret)
+		return ret;
+
+	ret = ubi_part("rootfs", NULL);
+	if (ret)
+		return ret;
+
+	snprintf(vol, sizeof(vol), "ubi%d:boot", ubi_devices[0]->ubi_num);
+	ret = cmd_ubifs_mount(vol);
+	if (ret)
+		return ret;
+
+	printf("loading FDT from ubi %s '%s'\n", vol, fdt_file);
+
+	ret = ubifs_load((char *)fdt_file, fdt_addr, 0);
+	if (ret)
+		return ret;
+
+	if (fdt_check_header(fdt) != 0) {
+		printf("No valid DTB '%s' in the 'boot' UBI volume\n", fdt_file);
+		return -EINVAL;
+	}
+
+	/* The overlays are files in the same 'boot' volume */
+	return karo_fdt_apply_overlays(fdt, "ubi", vol);
+}
+#else
+static int karo_load_fdt_mmc(ulong fdt_addr, const char *fdt_file)
+{
+	void *fdt = map_sysmem(fdt_addr, 0);
 	const char *dev_type = "mmc";
+	char dev_part[8];
 	const char *envstr = env_get("mmcdev");
 	char *eos;
 	int mmcdev = 0;
 	int mmcpart = 1;
-	char dev_part[8];
-	ulong fdt_addr = env_get_hex("fdt_addr", CFG_FDTADDR);
 	loff_t size;
-	void *fdt;
+	int ret;
 
 	if (envstr) {
 		mmcdev = simple_strtoul(envstr, &eos, 10);
@@ -258,15 +308,31 @@ int karo_load_fdt(const char *fdt_file)
 	if (ret)
 		return ret;
 	debug("Read %llu byte from '%s'\n", size, fdt_file);
-	fdt = (void *)fdt_addr;
-	debug("Checking FDT header @ %p\n", fdt);
+
 	if (fdt_check_header(fdt) != 0) {
 		printf("ERROR: No valid DTB found at %p\n", fdt);
 		return -EINVAL;
 	}
-	karo_fdt_apply_overlays(fdt, dev_type, dev_part);
-	if (fdt_check_header(fdt) != 0)
-		return 0;
+
+	/* The overlays are files in the same filesystem */
+	return karo_fdt_apply_overlays(fdt, dev_type, dev_part);
+}
+#endif
+
+int karo_load_fdt(const char *fdt_file)
+{
+	ulong fdt_addr = env_get_hex("fdt_addr", CFG_FDTADDR);
+	void *fdt = map_sysmem(fdt_addr, 0);
+	int ret;
+
+#if KARO_FDT_FROM_NAND
+	ret = karo_load_fdt_nand(fdt_addr, fdt_file);
+#else
+	ret = karo_load_fdt_mmc(fdt_addr, fdt_file);
+#endif
+	if (ret)
+		return ret;
+
 	fdt_shrink_to_minimum(fdt, 4096);
 	karo_set_fdtsize(fdt);
 	set_working_fdt_addr(fdt_addr);
@@ -324,18 +390,19 @@ int ft_karo_common_setup(void *blob, struct bd_info *bd)
 	if (node > 0) {
 		const char *otg_mode = env_get("otg_mode");
 
-		if (strcmp(otg_mode, "peripheral") == 0 ||
-		    strcmp(otg_mode, "device") == 0 ||
-		    strcmp(otg_mode, "host") == 0) {
-			karo_fdt_set_dr_mode(blob, node, otg_mode);
-		} else if (!otg_mode || strcmp(otg_mode, "none") == 0) {
+		if (!otg_mode || strcmp(otg_mode, "none") == 0) {
 			printf("disabling usbotg interface\n");
 			fdt_status_disabled(blob, node);
-		} else if (otg_mode) {
+		} else if (strcmp(otg_mode, "peripheral") == 0 ||
+			   strcmp(otg_mode, "device") == 0 ||
+			   strcmp(otg_mode, "host") == 0) {
+			karo_fdt_set_dr_mode(blob, node, otg_mode);
+		} else {
 			printf("Invalid otg_mode: '%s'\n", otg_mode);
 		}
 	}
 
+	karo_set_fdtsize(blob);
 	return 0;
 }
 
