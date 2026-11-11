@@ -254,8 +254,8 @@ typedef int	wait_queue_head_t;
 
 #define DEFINE_MUTEX(...)
 #define mutex_init(...)
-#define mutex_lock(...)
-#define mutex_unlock(...)
+#define mutex_lock(...)			do { } while (0)
+#define mutex_unlock(...)		do { } while (0)
 
 #define init_rwsem(...)			do { } while (0)
 #define down_read(...)			do { } while (0)

@@ -387,30 +387,50 @@ void mmc_do_preinit(void)
 }
 
 #if !defined(CONFIG_XPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
+static void print_mmc_device(struct udevice *dev)
+{
+	struct mmc *m = mmc_get_mmc_dev(dev);
+	char *mmc_type;
+
+	if (m->has_init)
+		mmc_type = IS_SD(m) ? "SD" : "eMMC";
+	else
+		mmc_type = NULL;
+
+	printf("%s: %d", m->cfg->name, mmc_get_blk_desc(m)->devnum);
+	if (mmc_type)
+		printf(" (%s)", mmc_type);
+}
+
 void print_mmc_devices(char separator)
 {
 	struct udevice *dev;
-	char *mmc_type;
 	bool first = true;
+	int max_seq = -1;
+	int seq;
 
 	for (uclass_first_device(UCLASS_MMC, &dev);
 	     dev;
-	     uclass_next_device(&dev), first = false) {
-		struct mmc *m = mmc_get_mmc_dev(dev);
+	     uclass_next_device(&dev)) {
+		if (dev_seq(dev) > max_seq)
+			max_seq = dev_seq(dev);
+	}
 
-		if (!first) {
-			printf("%c", separator);
-			if (separator != '\n')
-				puts(" ");
+	/* List in device-number order, not in bind order. */
+	for (seq = 0; seq <= max_seq; seq++) {
+		for (uclass_first_device(UCLASS_MMC, &dev);
+		     dev;
+		     uclass_next_device(&dev)) {
+			if (dev_seq(dev) != seq)
+				continue;
+			if (!first) {
+				printf("%c", separator);
+				if (separator != '\n')
+					puts(" ");
+			}
+			print_mmc_device(dev);
+			first = false;
 		}
-		if (m->has_init)
-			mmc_type = IS_SD(m) ? "SD" : "eMMC";
-		else
-			mmc_type = NULL;
-
-		printf("%s: %d", m->cfg->name, mmc_get_blk_desc(m)->devnum);
-		if (mmc_type)
-			printf(" (%s)", mmc_type);
 	}
 
 	printf("\n");

@@ -110,7 +110,6 @@ static int read_cpu_temperature(struct udevice *dev)
 
 	/* start the measurement process */
 	writel(TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_clr);
-	writel(TEMPSENSE0_FINISHED, &anatop->tempsense0_clr);
 	writel(TEMPSENSE0_MEASURE_TEMP, &anatop->tempsense0_set);
 
 	/* make sure that the latest temp is valid */
@@ -122,14 +121,12 @@ static int read_cpu_temperature(struct udevice *dev)
 	reg = readl(&anatop->tempsense0);
 	n_meas = (reg & TEMPSENSE0_TEMP_CNT_MASK)
 		>> TEMPSENSE0_TEMP_CNT_SHIFT;
-	writel(TEMPSENSE0_FINISHED, &anatop->tempsense0_clr);
 
 	/* Tmeas = (c2 - Nmeas * c1 + OFFSET) / 1000000 */
 	temperature = div_s64_rem(c2 - n_meas * c1 + OFFSET, 1000000, &rem);
 
 	/* power down anatop thermal sensor */
 	writel(TEMPSENSE0_POWER_DOWN, &anatop->tempsense0_set);
-	writel(MISC0_REFTOP_SELBIASOFF, &anatop->ana_misc0_clr);
 
 	return temperature;
 }

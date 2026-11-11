@@ -49,7 +49,7 @@ void fs_set_type(int type)
 static inline int fs_probe_unsupported(struct blk_desc *fs_dev_desc,
 				      struct disk_partition *fs_partition)
 {
-	log_debug("Unrecognized filesystem type\n");
+	printf("** Unrecognized filesystem type **\n");
 	return -1;
 }
 

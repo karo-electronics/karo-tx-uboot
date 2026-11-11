@@ -16,6 +16,9 @@
 #endif
 #include <fsl_wdog.h>
 #include <div64.h>
+#ifdef CONFIG_MX6
+#include <asm/mach-imx/sys_proto.h>
+#endif
 
 #define TIMEOUT_MAX	128000
 #define TIMEOUT_MIN	500
@@ -28,6 +31,12 @@ static void imx_watchdog_expire_now(struct watchdog_regs *wdog, bool ext_reset)
 		wcr |= WCR_SRS; /* do not assert internal reset */
 	else
 		wcr |= WCR_WDA; /* do not assert external reset */
+
+#ifdef CONFIG_MX6
+	/* SRE must be set on Q/QP/DL/S, IMX6SDLRM p.5727 */
+	if (is_mx6dq() || is_mx6dqp() || is_mx6sdl())
+		wcr |= WCR_SRE;
+#endif
 
 	/* Write 3 times to ensure it works, due to IMX6Q errata ERR004346 */
 	writew(wcr, &wdog->wcr);

@@ -623,7 +623,7 @@ static int ipuv3_video_probe(struct udevice *dev)
 
 	uc_priv->xsize = gmode->xres;
 	uc_priv->ysize = gmode->yres;
-	uc_priv->bpix = LCD_MAX_LOG2_BPP;
+	uc_priv->bpix = (enum video_log2_bpp)LCD_MAX_LOG2_BPP;
 
 	/* Enable dcache for the frame buffer */
 	fb_start = plat->base & ~(MMU_SECTION_SIZE - 1);

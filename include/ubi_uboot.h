@@ -34,8 +34,8 @@
 #include <linux/errno.h>
 
 /* build.c */
-#define get_device(...)
-#define put_device(...)
+#define get_device(...)			do { } while (0)
+#define put_device(...)			do { } while (0)
 #define ubi_sysfs_init(...)		0
 #define ubi_sysfs_close(...)		do { } while (0)
 

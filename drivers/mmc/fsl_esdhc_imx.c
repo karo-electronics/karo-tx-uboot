@@ -1384,6 +1384,29 @@ __weak void init_clk_usdhc(u32 index)
 {
 }
 
+#if IS_ENABLED(CONFIG_MX6) && !CONFIG_IS_ENABLED(CLK)
+#include <asm/arch/imx-regs.h>
+
+/* CSCDR1 field follows the controller, not the alias */
+static u32 esdhc_get_clk_by_base(struct udevice *dev,
+				 struct fsl_esdhc_priv *priv)
+{
+	static const ulong base[] = {
+		USDHC1_BASE_ADDR, USDHC2_BASE_ADDR,
+		USDHC3_BASE_ADDR, USDHC4_BASE_ADDR,
+	};
+	int i, index = dev_seq(dev);
+
+	for (i = 0; i < ARRAY_SIZE(base); i++)
+		if ((ulong)priv->esdhc_regs == base[i])
+			index = i;
+
+	init_clk_usdhc(index);
+
+	return mxc_get_clock(MXC_ESDHC_CLK + index);
+}
+#endif
+
 static int fsl_esdhc_of_to_plat(struct udevice *dev)
 {
 	struct fsl_esdhc_priv *priv = dev_get_priv(dev);
@@ -1536,9 +1559,13 @@ static int fsl_esdhc_probe(struct udevice *dev)
 
 	priv->sdhc_clk = clk_get_rate(&priv->per_clk);
 #else
+#if IS_ENABLED(CONFIG_MX6)
+	priv->sdhc_clk = esdhc_get_clk_by_base(dev, priv);
+#else
 	init_clk_usdhc(dev_seq(dev));
 
 	priv->sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK + dev_seq(dev));
+#endif
 	if (priv->sdhc_clk <= 0) {
 		dev_err(dev, "Unable to get clk for %s\n", dev->name);
 		return -EINVAL;
