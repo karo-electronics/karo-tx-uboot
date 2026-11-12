@@ -497,6 +497,52 @@ static int karo_fdt_set_dr_mode(void *blob, int node, const char *mode)
 	return fdt_setprop_string(blob, node, "dr_mode", mode);
 }
 
+static bool karo_fdt_shares_phy(void *blob, int node, const fdt32_t *phys,
+				int phys_len)
+{
+	int len, i, j;
+	const fdt32_t *node_phys = fdt_getprop(blob, node, "phys", &len);
+
+	if (!node_phys)
+		return false;
+
+	for (i = 0; i < len / (int)sizeof(fdt32_t); i++)
+		for (j = 0; j < phys_len / (int)sizeof(fdt32_t); j++)
+			if (node_phys[i] == phys[j])
+				return true;
+
+	return false;
+}
+
+/*
+ * On RZ/G2L the EHCI/OHCI host controllers share the PHY of the OTG
+ * controller. Disable them when the OTG port is not used in host mode,
+ * so that no host root hub shows up for the OTG port.
+ */
+static void karo_fdt_set_otg_host_ctrl(void *blob, int otg_node, bool host)
+{
+	static const char * const compats[] = { "generic-ehci", "generic-ohci" };
+	int len, off, i;
+	const fdt32_t *phys;
+
+	phys = fdt_getprop(blob, otg_node, "phys", &len);
+	if (!phys || len <= 0)
+		return;
+
+	for (i = 0; i < ARRAY_SIZE(compats); i++) {
+		off = -1;
+		while ((off = fdt_node_offset_by_compatible(blob, off,
+							   compats[i])) >= 0) {
+			if (!karo_fdt_shares_phy(blob, off, phys, len))
+				continue;
+			if (host)
+				fdt_status_okay(blob, off);
+			else
+				fdt_status_disabled(blob, off);
+		}
+	}
+}
+
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	int ret;
@@ -519,9 +565,12 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		if (strcmp(otg_mode, "none") == 0) {
 			printf("disabling usbotg interface\n");
 			fdt_status_disabled(blob, node);
+			karo_fdt_set_otg_host_ctrl(blob, node, false);
 		} else if (strcmp(otg_mode, "peripheral") == 0 ||
 		    strcmp(otg_mode, "host") == 0) {
 			karo_fdt_set_dr_mode(blob, node, otg_mode);
+			karo_fdt_set_otg_host_ctrl(blob, node,
+						   strcmp(otg_mode, "host") == 0);
 		} else {
 			printf("Invalid otg_mode: '%s';supported values are 'peripheral', 'host', 'none'\n",
 			       otg_mode);
