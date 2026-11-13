@@ -551,26 +551,6 @@ void karo_fixup_lcd_panel(const char *videomode)
 #endif
 
 #if CONFIG_IS_ENABLED(OF_BOARD_SETUP)
-
-#if CONFIG_IS_ENABLED(FDT_FIXUP_PARTITIONS)
-static void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
-{
-	int root = fdt_path_offset(blob, "/soc");
-
-	if (root <= 0)
-		return;
-
-	for (size_t i = 0; i < count; i++) {
-		int node = fdt_node_offset_by_compatible(blob, root,
-							 info[i].compat);
-
-		if (!fdtdec_get_is_enabled(blob, node))
-			continue;
-		fdt_fixup_mtdparts(blob, &info[i], 1);
-	}
-}
-#endif
-
 static int karo_fdt_set_dr_mode(void *blob, int node, const char *mode)
 {
 	if (!fdtdec_get_is_enabled(blob, node)) {
