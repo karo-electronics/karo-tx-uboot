@@ -303,6 +303,31 @@ static int img_info_size(void *img_hdr)
 #endif
 }
 
+/*
+ * End of the FIT external data relative to the FIT start: the last byte the
+ * host (uuu) sends, including images the selected configuration never loads.
+ */
+static ulong fit_external_end(const void *fit)
+{
+	ulong end = fdt_totalsize(fit);
+	int images, node, size, pos;
+
+	images = fdt_path_offset(fit, FIT_IMAGES_PATH);
+	if (images < 0)
+		return end;
+
+	fdt_for_each_subnode(node, fit, images) {
+		if (fit_image_get_data_size(fit, node, &size))
+			continue;
+		if (!fit_image_get_data_position(fit, node, &pos))
+			end = max(end, (ulong)pos + (ulong)size);
+		else if (!fit_image_get_data_offset(fit, node, &pos))
+			end = max(end, (ulong)ALIGN(fdt_totalsize(fit), 4) + (ulong)pos + (ulong)size);
+	}
+
+	return end;
+}
+
 static int img_total_size(void *img_hdr)
 {
 	if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
@@ -400,7 +425,22 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 
 		spl_load_init(&load, spl_romapi_read_stream, &ss, 1);
 
-		return spl_load_simple_fit(spl_image, &load, (ulong)phdr, phdr);
+		ret = spl_load_simple_fit(spl_image, &load, (ulong)phdr, phdr);
+
+		/*
+		 * The host keeps sending the rest of the image (e.g. the DTBs
+		 * of the other configurations). Consume it, otherwise uuu
+		 * aborts with a pipe error once the SPL stops reading.
+		 */
+		total = ALIGN(fit_external_end(phdr), pg);
+		if (ss.end - phdr < total) {
+			imagesize = total - (ss.end - phdr);
+			debug("Draining %d bytes\n", imagesize);
+			if (rom_api_download_image(ss.end, 0, imagesize) != ROM_API_OKAY)
+				printf("ROMAPI: drain failure %d\n", imagesize);
+		}
+
+		return ret;
 	}
 	total = ALIGN(img_total_size(phdr), 4);
 
