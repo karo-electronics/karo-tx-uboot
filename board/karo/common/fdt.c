@@ -340,25 +340,6 @@ int karo_load_fdt(const char *fdt_file)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_FDT_FIXUP_PARTITIONS) && !IS_ENABLED(CONFIG_XPL_BUILD)
-void karo_fixup_mtdparts(void *blob, struct node_info *info, size_t count)
-{
-	int root = fdt_path_offset(blob, "/soc");
-
-	if (root < 0)
-		return;
-
-	for (size_t i = 0; i < count; i++) {
-		int node = fdt_node_offset_by_compatible(blob, root,
-							 info[i].compat);
-
-		if (!fdtdec_get_is_enabled(blob, node))
-			continue;
-		fdt_fixup_mtdparts(blob, &info[i], 1);
-	}
-}
-#endif
-
 #ifdef CONFIG_OF_BOARD_SETUP
 static int karo_fdt_set_dr_mode(void *blob, int node, const char *mode)
 {
