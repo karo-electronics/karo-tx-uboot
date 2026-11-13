@@ -132,9 +132,6 @@ int spl_board_boot_device(enum boot_device boot_dev_spl)
 static inline void spl_wdog_init(void)
 {
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
-
-	/* Enable WDOG resets */
-	clrbits_le32(SRC_BASE_ADDR + 0x18, 0x1c);
 }
 
 void spl_board_init(void)
@@ -231,7 +228,7 @@ int power_init_board(void)
 	pmic_reg_write(dev, PCA9450_LDO5CTRL_L, 0x00);
 
 	/* set WDOG_B_CFG to cold reset */
-	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0x61);
+	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0xa1);
 	return 0;
 }
 #endif
